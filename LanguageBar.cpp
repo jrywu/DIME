@@ -78,6 +78,9 @@ VOID CCompositionProcessorEngine::SetLanguageBarStatus(DWORD status, BOOL isSet)
     if (_pLanguageBar_IMEMode) {
         _pLanguageBar_IMEMode->SetStatus(status, isSet);
     }
+	if (_pLanguageBar_IMEModeW8 &&Global::isWindows8) {
+        _pLanguageBar_IMEModeW8->SetStatus(status, isSet);
+    }
     if (_pLanguageBar_DoubleSingleByte) {
         _pLanguageBar_DoubleSingleByte->SetStatus(status, isSet);
     }
@@ -102,7 +105,7 @@ CLangBarItemButton::CLangBarItemButton(REFGUID guidLangBar, LPCWSTR description,
     // initialize TF_LANGBARITEMINFO structure.
     _tfLangBarItemInfo.clsidService = Global::TSFDayiCLSID;												    // This LangBarItem belongs to this TextService.
     _tfLangBarItemInfo.guidItem = guidLangBar;															        // GUID of this LangBarItem.
-    _tfLangBarItemInfo.dwStyle = (TF_LBI_STYLE_BTN_BUTTON | TF_LBI_STYLE_BTN_MENU);						    // This LangBar is a button type.
+    _tfLangBarItemInfo.dwStyle = (TF_LBI_STYLE_BTN_BUTTON );						    // This LangBar is a button type.
     _tfLangBarItemInfo.ulSort = 0;																			    // The position of this LangBar Item is not specified.
     StringCchCopy(_tfLangBarItemInfo.szDescription, ARRAYSIZE(_tfLangBarItemInfo.szDescription), description);  // Set the description of this LangBar Item.
 
@@ -367,15 +370,12 @@ STDAPI CLangBarItemButton::OnClick(TfLBIClick click, POINT pt, _In_ const RECT *
     click;pt;
     prcArea;
 
-	if(click == TF_LBI_CLK_RIGHT){
-		MessageBox(NULL, TEXT("righ click"), TEXT("language bar"), MB_OK);
-	}
-	else{
+	
     BOOL isOn = FALSE;
 
     _pCompartment->_GetCompartmentBOOL(isOn);
     _pCompartment->_SetCompartmentBOOL(isOn ? FALSE : TRUE);
-	}
+	
     return S_OK;
 }
 

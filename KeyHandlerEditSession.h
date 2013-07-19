@@ -15,7 +15,7 @@ class CKeyHandlerEditSession : public CEditSessionBase
 public:
     CKeyHandlerEditSession(CTSFDayi *pTextService, ITfContext *pContext, UINT uCode, WCHAR wch, _KEYSTROKE_STATE keyState) : CEditSessionBase(pTextService, pContext)
     {
-        _uCode = uCode;
+		_uCode = uCode;
         _wch = wch;
         _KeyState = keyState;
     }

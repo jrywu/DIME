@@ -99,6 +99,10 @@ inline BOOL IsTooSimilar(COLORREF cr1, COLORREF cr2)
 //---------------------------------------------------------------------
 extern HINSTANCE dllInstanceHandle;
 
+
+extern BOOL isWindows8; //OS Version
+
+
 extern ATOM AtomCandidateWindow;
 extern ATOM AtomShadowWindow;
 extern ATOM AtomScrollBarWindow;
@@ -125,6 +129,7 @@ extern BOOL IsShiftKeyDownOnly;
 extern BOOL IsControlKeyDownOnly;
 extern BOOL IsAltKeyDownOnly;
 
+extern const GUID TSFDayiGuidCompartmentIMEMode;
 extern const GUID TSFDayiGuidCompartmentDoubleSingleByte;
 extern const GUID TSFDayiGuidCompartmentPunctuation;
 

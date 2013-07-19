@@ -184,8 +184,8 @@ public:
     CCandidateRange(void);
     ~CCandidateRange(void);
 
-    BOOL IsRange(UINT vKey);
-    int GetIndex(UINT vKey);
+    BOOL IsRange(UINT vKey, CANDIDATE_MODE candidateMode);
+    int GetIndex(UINT vKey, CANDIDATE_MODE candidateMode);
 
     inline int Count() const 
     { 

@@ -32,6 +32,16 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID pvReserved)
         if (!Global::RegisterWindowClass()) {
             return FALSE;
         }
+		// Check windows version
+		OSVERSIONINFOW g_ovi;
+		ZeroMemory(&g_ovi, sizeof(g_ovi));
+        g_ovi.dwOSVersionInfoSize = sizeof(g_ovi);
+        GetVersionEx(&g_ovi);
+		if((g_ovi.dwMajorVersion == 6 && g_ovi.dwMinorVersion >= 2) || g_ovi.dwMajorVersion > 6)
+        {
+			Global::isWindows8 = TRUE;
+        }
+
 
         break;
 

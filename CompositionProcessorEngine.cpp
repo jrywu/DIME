@@ -101,11 +101,13 @@ CCompositionProcessorEngine::CCompositionProcessorEngine()
     _guidProfile = GUID_NULL;
     _tfClientId = TF_CLIENTID_NULL;
 
+	_pLanguageBar_IMEModeW8 = nullptr;
     _pLanguageBar_IMEMode = nullptr;
     _pLanguageBar_DoubleSingleByte = nullptr;
     //_pLanguageBar_Punctuation = nullptr;
 
     _pCompartmentConversion = nullptr;
+	_pCompartmentIMEModeEventSink = nullptr;
     _pCompartmentKeyboardOpenEventSink = nullptr;
     _pCompartmentConversionEventSink = nullptr;
     _pCompartmentDoubleSingleByteEventSink = nullptr;
@@ -137,7 +139,15 @@ CCompositionProcessorEngine::~CCompositionProcessorEngine()
     {
         delete _pTableDictionaryEngine;
         _pTableDictionaryEngine = nullptr;
+	}
+	
+	if (_pLanguageBar_IMEModeW8 && Global::isWindows8)
+    {
+        _pLanguageBar_IMEModeW8->CleanUp();
+        _pLanguageBar_IMEModeW8->Release();
+        _pLanguageBar_IMEModeW8 = nullptr;
     }
+
 
     if (_pLanguageBar_IMEMode)
     {
@@ -164,11 +174,17 @@ CCompositionProcessorEngine::~CCompositionProcessorEngine()
         delete _pCompartmentConversion;
         _pCompartmentConversion = nullptr;
     }
-    if (_pCompartmentKeyboardOpenEventSink)
+	if (_pCompartmentKeyboardOpenEventSink && Global::isWindows8)
     {
         _pCompartmentKeyboardOpenEventSink->_Unadvise();
         delete _pCompartmentKeyboardOpenEventSink;
         _pCompartmentKeyboardOpenEventSink = nullptr;
+    }
+	if (_pCompartmentIMEModeEventSink)
+    {
+        _pCompartmentIMEModeEventSink->_Unadvise();
+        delete _pCompartmentIMEModeEventSink;
+        _pCompartmentIMEModeEventSink = nullptr;
     }
     if (_pCompartmentConversionEventSink)
     {
@@ -674,7 +690,7 @@ void CCompositionProcessorEngine::SetupKeystroke()
 void CCompositionProcessorEngine::SetKeystrokeTable(_Inout_ CTSFDayiArray<_KEYSTROKE> *pKeystroke)
 {
 
-    for (int i = 0; i <  40; i++)
+    for (int i = 0; i <  41; i++)
     {
         _KEYSTROKE* pKS = nullptr;
 
@@ -828,9 +844,19 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL *pIsE
             return;
         }
         BOOL isOpen = FALSE;
-        CCompartment CompartmentKeyboardOpen(pThreadMgr, tfClientId, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
-        CompartmentKeyboardOpen._GetCompartmentBOOL(isOpen);
-        CompartmentKeyboardOpen._SetCompartmentBOOL(isOpen ? FALSE : TRUE);
+		CCompartment CompartmentIMEMOde(pThreadMgr, tfClientId, Global::TSFDayiGuidCompartmentIMEMode);
+        CompartmentIMEMOde._GetCompartmentBOOL(isOpen);
+        CompartmentIMEMOde._SetCompartmentBOOL(isOpen ? FALSE : TRUE);
+        
+		if(Global::isWindows8){
+			isOpen = FALSE;
+			CCompartment CompartmentKeyboardOpen(pThreadMgr, tfClientId, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
+			CompartmentKeyboardOpen._GetCompartmentBOOL(isOpen);
+			CompartmentKeyboardOpen._SetCompartmentBOOL(isOpen ? FALSE : TRUE);
+		}
+
+		
+		
 
         *pIsEaten = TRUE;
     }
@@ -897,21 +923,36 @@ void CCompositionProcessorEngine::SetupConfiguration()
 void CCompositionProcessorEngine::SetupLanguageBar(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, BOOL isSecureMode)
 {
     DWORD dwEnable = 1;
-    CreateLanguageBarButton(dwEnable, GUID_LBI_INPUTMODE, Global::LangbarImeModeDescription, Global::ImeModeDescription, Global::ImeModeOnIcoIndex, Global::ImeModeOffIcoIndex, &_pLanguageBar_IMEMode, isSecureMode);
+	//win8 only to show IME
+	if(Global::isWindows8){
+		CreateLanguageBarButton(dwEnable, GUID_LBI_INPUTMODE, Global::LangbarImeModeDescription, Global::ImeModeDescription, Global::ImeModeOnIcoIndex, Global::ImeModeOffIcoIndex, &_pLanguageBar_IMEModeW8, isSecureMode);
+		InitLanguageBar(_pLanguageBar_IMEModeW8, pThreadMgr, tfClientId, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
+		_pCompartmentKeyboardOpenEventSink = new (std::nothrow) CCompartmentEventSink(CompartmentCallback, this);
+		
+	}
+	
+    CreateLanguageBarButton(dwEnable, Global::TSFDayiGuidLangBarIMEMode, Global::LangbarImeModeDescription, Global::ImeModeDescription, Global::ImeModeOnIcoIndex, Global::ImeModeOffIcoIndex, &_pLanguageBar_IMEMode, isSecureMode);
     CreateLanguageBarButton(dwEnable, Global::TSFDayiGuidLangBarDoubleSingleByte, Global::LangbarDoubleSingleByteDescription, Global::DoubleSingleByteDescription, Global::DoubleSingleByteOnIcoIndex, Global::DoubleSingleByteOffIcoIndex, &_pLanguageBar_DoubleSingleByte, isSecureMode);
-    CreateLanguageBarButton(dwEnable, Global::TSFDayiGuidLangBarPunctuation, Global::LangbarPunctuationDescription, Global::PunctuationDescription, Global::PunctuationOnIcoIndex, Global::PunctuationOffIcoIndex, &_pLanguageBar_Punctuation, isSecureMode);
+    //CreateLanguageBarButton(dwEnable, Global::TSFDayiGuidLangBarPunctuation, Global::LangbarPunctuationDescription, Global::PunctuationDescription, Global::PunctuationOnIcoIndex, Global::PunctuationOffIcoIndex, &_pLanguageBar_Punctuation, isSecureMode);
 
-    InitLanguageBar(_pLanguageBar_IMEMode, pThreadMgr, tfClientId, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
+	
+    
+	InitLanguageBar(_pLanguageBar_IMEMode, pThreadMgr, tfClientId,  Global::TSFDayiGuidCompartmentIMEMode);
     InitLanguageBar(_pLanguageBar_DoubleSingleByte, pThreadMgr, tfClientId, Global::TSFDayiGuidCompartmentDoubleSingleByte);
-    InitLanguageBar(_pLanguageBar_Punctuation, pThreadMgr, tfClientId, Global::TSFDayiGuidCompartmentPunctuation);
+    //InitLanguageBar(_pLanguageBar_Punctuation, pThreadMgr, tfClientId, Global::TSFDayiGuidCompartmentPunctuation);
 
     _pCompartmentConversion = new (std::nothrow) CCompartment(pThreadMgr, tfClientId, GUID_COMPARTMENT_KEYBOARD_INPUTMODE_CONVERSION);
-    _pCompartmentKeyboardOpenEventSink = new (std::nothrow) CCompartmentEventSink(CompartmentCallback, this);
+	
+	_pCompartmentIMEModeEventSink = new (std::nothrow) CCompartmentEventSink(CompartmentCallback, this);
     _pCompartmentConversionEventSink = new (std::nothrow) CCompartmentEventSink(CompartmentCallback, this);
     _pCompartmentDoubleSingleByteEventSink = new (std::nothrow) CCompartmentEventSink(CompartmentCallback, this);
     _pCompartmentPunctuationEventSink = new (std::nothrow) CCompartmentEventSink(CompartmentCallback, this);
 
-    if (_pCompartmentKeyboardOpenEventSink)
+	if (_pCompartmentIMEModeEventSink)
+    {
+        _pCompartmentIMEModeEventSink->_Advise(pThreadMgr, Global::TSFDayiGuidCompartmentIMEMode);
+    }
+	if (_pCompartmentKeyboardOpenEventSink && Global::isWindows8)
     {
         _pCompartmentKeyboardOpenEventSink->_Advise(pThreadMgr, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
     }
@@ -1077,8 +1118,13 @@ void CCompositionProcessorEngine::SetupPunctuationPair()
 void CCompositionProcessorEngine::InitializeTSFDayiCompartment(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId)
 {
 	// set initial mode
-    CCompartment CompartmentKeyboardOpen(pThreadMgr, tfClientId, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
-    CompartmentKeyboardOpen._SetCompartmentBOOL(TRUE);
+	if(Global::isWindows8){
+		CCompartment CompartmentKeyboardOpen(pThreadMgr, tfClientId, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
+		CompartmentKeyboardOpen._SetCompartmentBOOL(TRUE);
+	}
+
+	CCompartment CompartmentIMEMode(pThreadMgr, tfClientId, Global::TSFDayiGuidCompartmentIMEMode);
+    CompartmentIMEMode._SetCompartmentBOOL(TRUE);
 
     CCompartment CompartmentDoubleSingleByte(pThreadMgr, tfClientId, Global::TSFDayiGuidCompartmentDoubleSingleByte);
     CompartmentDoubleSingleByte._SetCompartmentBOOL(FALSE);
@@ -1120,7 +1166,8 @@ HRESULT CCompositionProcessorEngine::CompartmentCallback(_In_ void *pv, REFGUID 
     {
         fakeThis->ConversionModeCompartmentUpdated(pThreadMgr);
     }
-    else if (IsEqualGUID(guidCompartment, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE))
+    else if (IsEqualGUID(guidCompartment, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE)||
+			 IsEqualGUID(guidCompartment, Global::TSFDayiGuidCompartmentIMEMode))
     {
         fakeThis->KeyboardOpenCompartmentUpdated(pThreadMgr);
     }
@@ -1178,18 +1225,38 @@ void CCompositionProcessorEngine::ConversionModeCompartmentUpdated(_In_ ITfThrea
     }
 
     BOOL fOpen = FALSE;
-    CCompartment CompartmentKeyboardOpen(pThreadMgr, _tfClientId, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
-    if (SUCCEEDED(CompartmentKeyboardOpen._GetCompartmentBOOL(fOpen)))
+	CCompartment CompartmentIMEMode(pThreadMgr, _tfClientId, Global::TSFDayiGuidCompartmentIMEMode);
+    if (SUCCEEDED(CompartmentIMEMode._GetCompartmentBOOL(fOpen)))
     {
         if (fOpen && !(conversionMode & TF_CONVERSIONMODE_NATIVE))
         {
-            CompartmentKeyboardOpen._SetCompartmentBOOL(FALSE);
+            CompartmentIMEMode._SetCompartmentBOOL(FALSE);
         }
         else if (!fOpen && (conversionMode & TF_CONVERSIONMODE_NATIVE))
         {
-            CompartmentKeyboardOpen._SetCompartmentBOOL(TRUE);
+            CompartmentIMEMode._SetCompartmentBOOL(TRUE);
         }
     }
+
+	if(Global::isWindows8){
+		fOpen = FALSE;
+		CCompartment CompartmentKeyboardOpen(pThreadMgr, _tfClientId, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
+		if (SUCCEEDED(CompartmentKeyboardOpen._GetCompartmentBOOL(fOpen)))
+		{
+			if (fOpen && !(conversionMode & TF_CONVERSIONMODE_NATIVE))
+			{
+				CompartmentKeyboardOpen._SetCompartmentBOOL(FALSE);
+			}
+			else if (!fOpen && (conversionMode & TF_CONVERSIONMODE_NATIVE))
+			{
+				CompartmentKeyboardOpen._SetCompartmentBOOL(TRUE);
+			}
+		}
+	}
+	
+    
+	
+
 }
 
 //+---------------------------------------------------------------------------
@@ -1271,8 +1338,9 @@ void CCompositionProcessorEngine::KeyboardOpenCompartmentUpdated(_In_ ITfThreadM
     conversionModePrev = conversionMode;
 
     BOOL isOpen = FALSE;
-    CCompartment CompartmentKeyboardOpen(pThreadMgr, _tfClientId, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
-    if (SUCCEEDED(CompartmentKeyboardOpen._GetCompartmentBOOL(isOpen)))
+    
+    CCompartment CompartmentIMEMode(pThreadMgr, _tfClientId, Global::TSFDayiGuidCompartmentIMEMode);
+    if (SUCCEEDED(CompartmentIMEMode._GetCompartmentBOOL(isOpen)))
     {
         if (isOpen && !(conversionMode & TF_CONVERSIONMODE_NATIVE))
         {
@@ -1283,6 +1351,22 @@ void CCompositionProcessorEngine::KeyboardOpenCompartmentUpdated(_In_ ITfThreadM
             conversionMode &= ~TF_CONVERSIONMODE_NATIVE;
         }
     }
+	if(Global::isWindows8){
+		isOpen = FALSE;
+		CCompartment CompartmentKeyboardOpen(pThreadMgr, _tfClientId, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
+		if (SUCCEEDED(CompartmentKeyboardOpen._GetCompartmentBOOL(isOpen)))
+		{
+			if (isOpen && !(conversionMode & TF_CONVERSIONMODE_NATIVE))
+			{
+				conversionMode |= TF_CONVERSIONMODE_NATIVE;
+			}
+			else if (!isOpen && (conversionMode & TF_CONVERSIONMODE_NATIVE))
+			{
+				conversionMode &= ~TF_CONVERSIONMODE_NATIVE;
+			}
+		}
+	}
+	
 
     if (conversionMode != conversionModePrev)
     {
@@ -1508,6 +1592,7 @@ void CCompositionProcessorEngine::InitKeyStrokeTable()
 	#define VK_OEM_PERIOD     0xBE   // '.' any country
 	#define VK_OEM_2          0xBF   // '/?' for US
 	#define VK_OEM_3          0xC0   // '`~' for US
+	#define VK_OEM_PLUS       0xBB   // '+' any country
 	*/
 
 	_keystrokeTable[36].VirtualKey = VK_OEM_1 ;  // ';'
@@ -1520,7 +1605,11 @@ void CCompositionProcessorEngine::InitKeyStrokeTable()
     _keystrokeTable[38].Modifiers = 0;
     _keystrokeTable[38].Function = FUNCTION_INPUT;
 	_keystrokeTable[39].VirtualKey = VK_OEM_2 ; // '/'
-
+	_keystrokeTable[39].Modifiers = 0;
+    _keystrokeTable[39].Function = FUNCTION_INPUT;
+	_keystrokeTable[40].VirtualKey = VK_OEM_PLUS ; // '/'
+	_keystrokeTable[40].Modifiers = 0;
+    _keystrokeTable[40].Function = FUNCTION_INPUT;
 }
 
 void CCompositionProcessorEngine::ShowAllLanguageBarIcons()
@@ -1600,8 +1689,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
     }
 
     if (candidateMode == CANDIDATE_ORIGINAL || candidateMode == CANDIDATE_PHRASE || candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)
-    {
-        fComposing = FALSE;
+    {        fComposing = FALSE;
     }
 
     if (fComposing || candidateMode == CANDIDATE_INCREMENTAL || candidateMode == CANDIDATE_NONE)
@@ -1756,7 +1844,20 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
         case VK_HOME:   if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_MOVE_PAGE_TOP; } return TRUE;
         case VK_END:    if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_MOVE_PAGE_BOTTOM; } return TRUE;
         case VK_RETURN: if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_FINALIZE_CANDIDATELIST; } return TRUE;
-        case VK_SPACE:  if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_CONVERT; } return TRUE;
+        case VK_SPACE:  if (pKeyState) { 
+			 if ( (candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)){ // space cancel the associate here instead of choose the first one.
+				 if (pKeyState)
+                    {
+                        pKeyState->Category = CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION;
+                        pKeyState->Function = FUNCTION_FINALIZE_TEXTSTORE;
+                    }
+             }else{
+				pKeyState->Category = CATEGORY_CANDIDATE; 
+				pKeyState->Function = FUNCTION_CONVERT; 
+			 }
+
+				return TRUE;
+						}
         case VK_BACK:   if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_CANCEL; } return TRUE;
 
         case VK_ESCAPE:
@@ -1925,12 +2026,12 @@ BOOL CCompositionProcessorEngine::IsKeystrokeRange(UINT uCode, _Out_ _KEYSTROKE_
     pKeyState->Category = CATEGORY_NONE;
     pKeyState->Function = FUNCTION_NONE;
 
-    if (_candidateListIndexRange.IsRange(uCode))
+    if (_candidateListIndexRange.IsRange(uCode, candidateMode))
     {
         if (candidateMode == CANDIDATE_PHRASE)
         {
             // Candidate phrase could specify modifier
-            if ((GetCandidateListPhraseModifier() == 0 && Global::ModifiersValue == 0) ||
+            if ((GetCandidateListPhraseModifier() == 0 && Global::ModifiersValue ==0 )||
                 (GetCandidateListPhraseModifier() != 0 && Global::CheckModifiers(Global::ModifiersValue, GetCandidateListPhraseModifier())))
             {
                 pKeyState->Category = CATEGORY_PHRASE; pKeyState->Function = FUNCTION_SELECT_BY_NUMBER;
@@ -1945,7 +2046,7 @@ BOOL CCompositionProcessorEngine::IsKeystrokeRange(UINT uCode, _Out_ _KEYSTROKE_
         else if (candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)
         {
             // Candidate phrase could specify modifier
-            if ((GetCandidateListPhraseModifier() == 0 && Global::ModifiersValue == 0) ||
+            if ((GetCandidateListPhraseModifier() == 0 && (Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT) )!= 0) || 
                 (GetCandidateListPhraseModifier() != 0 && Global::CheckModifiers(Global::ModifiersValue, GetCandidateListPhraseModifier())))
             {
                 pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_SELECT_BY_NUMBER;

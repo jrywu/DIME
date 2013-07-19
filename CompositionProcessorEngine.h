@@ -167,12 +167,14 @@ private:
     CTSFDayiArray<CPunctuationNestPair> _PunctuationNestPair;
 
     // Language bar data
-    CLangBarItemButton* _pLanguageBar_IMEMode;
+    CLangBarItemButton* _pLanguageBar_IMEModeW8;
+	CLangBarItemButton* _pLanguageBar_IMEMode;
     CLangBarItemButton* _pLanguageBar_DoubleSingleByte;
     CLangBarItemButton* _pLanguageBar_Punctuation;
 
     // Compartment
     CCompartment* _pCompartmentConversion;
+	CCompartmentEventSink* _pCompartmentIMEModeEventSink;
     CCompartmentEventSink* _pCompartmentConversionEventSink;
     CCompartmentEventSink* _pCompartmentKeyboardOpenEventSink;
     CCompartmentEventSink* _pCompartmentDoubleSingleByteEventSink;

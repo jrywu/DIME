@@ -16,6 +16,10 @@ HINSTANCE dllInstanceHandle;
 
 LONG dllRefCount = -1;
 
+
+BOOL isWindows8 = FALSE;
+
+
 CRITICAL_SECTION CS;
 HFONT defaultlFontHandle;				// Global font object we use everywhere
 
@@ -65,6 +69,9 @@ extern const GUID TSFDayiGuidPunctuationPreserveKey = {
 //---------------------------------------------------------------------
 // Compartments
 //---------------------------------------------------------------------
+// {91FCB13F-0BA5-4D93-846C-E8A706BB5F2B}
+extern const GUID TSFDayiGuidCompartmentIMEMode = 
+{ 0x91fcb13f, 0xba5, 0x4d93, { 0x84, 0x6c, 0xe8, 0xa7, 0x6, 0xbb, 0x5f, 0x2b } };
 // {101011C5-CF72-4F0C-A515-153019593F10}
 extern const GUID TSFDayiGuidCompartmentDoubleSingleByte = {
     0x101011c5,
@@ -85,6 +92,7 @@ extern const GUID TSFDayiGuidCompartmentPunctuation = {
 //---------------------------------------------------------------------
 // LanguageBars
 //---------------------------------------------------------------------
+
 
 // {89BE500C-9462-4070-9DB0-B467BB051327}
 extern const GUID TSFDayiGuidLangBarIMEMode = {
@@ -451,4 +459,6 @@ BOOL CompareElements(LCID locale, const CStringRange* pElement1, const CStringRa
 {
     return (CStringRange::Compare(locale, (CStringRange*)pElement1, (CStringRange*)pElement2) == CSTR_EQUAL) ? TRUE : FALSE;
 }
+
+
 }

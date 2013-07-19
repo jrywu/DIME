@@ -67,7 +67,7 @@ BOOL CTSFDayi::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *p
     *pCodeOut = codeIn;
 
     BOOL isOpen = FALSE;
-    CCompartment CompartmentKeyboardOpen(_pThreadMgr, _tfClientId, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
+	CCompartment CompartmentKeyboardOpen(_pThreadMgr, _tfClientId, Global::TSFDayiGuidCompartmentIMEMode);
     CompartmentKeyboardOpen._GetCompartmentBOOL(isOpen);
 
     BOOL isDoubleSingleByte = FALSE;

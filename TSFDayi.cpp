@@ -319,8 +319,13 @@ STDAPI CTSFDayi::Deactivate()
 
     _UninitThreadMgrEventSink();
 
-    CCompartment CompartmentKeyboardOpen(_pThreadMgr, _tfClientId, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
-    CompartmentKeyboardOpen._ClearCompartment();
+	if(Global::isWindows8){
+		CCompartment CompartmentKeyboardOpen(_pThreadMgr, _tfClientId, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
+		CompartmentKeyboardOpen._ClearCompartment();
+	}
+
+	CCompartment CompartmentIMEMode(_pThreadMgr, _tfClientId, Global::TSFDayiGuidCompartmentIMEMode);
+    CompartmentIMEMode._ClearCompartment();
 
     CCompartment CompartmentDoubleSingleByte(_pThreadMgr, _tfClientId, Global::TSFDayiGuidCompartmentDoubleSingleByte);
     CompartmentDoubleSingleByte._ClearCompartment();

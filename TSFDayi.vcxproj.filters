@@ -16,9 +16,6 @@
     <Filter Include="Source Files\Dictionary">
       <UniqueIdentifier>{1f776a05-57d4-4932-bfd7-bdbd516c8cc6}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\UI">
-      <UniqueIdentifier>{0fb4053f-2bb9-491d-90b0-47a3b5b41135}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\DLL">
       <UniqueIdentifier>{a367038d-4951-4ca3-b64a-dd4e254b3b3c}</UniqueIdentifier>
     </Filter>
@@ -31,11 +28,11 @@
     <Filter Include="Source Files\Framework\Composition\Display">
       <UniqueIdentifier>{1a80ba50-d93b-4a60-972f-3d7bf4d72fc0}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Framework\KeyHahndle">
-      <UniqueIdentifier>{c042e6b5-a475-4a96-a292-2483c47600fd}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\Framework\Composition\LanguageBar">
       <UniqueIdentifier>{b5decd04-2d7f-4134-bbcf-9cb601f78322}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Framework\Candidate">
+      <UniqueIdentifier>{0fb4053f-2bb9-491d-90b0-47a3b5b41135}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -179,34 +176,34 @@
       <Filter>Source Files\Dictionary</Filter>
     </ClCompile>
     <ClCompile Include="BaseWindow.cpp">
-      <Filter>Source Files\UI</Filter>
+      <Filter>Source Files\Framework\Candidate</Filter>
     </ClCompile>
     <ClCompile Include="ButtonWindow.cpp">
-      <Filter>Source Files\UI</Filter>
+      <Filter>Source Files\Framework\Candidate</Filter>
     </ClCompile>
     <ClCompile Include="CandidateListUIPresenter.cpp">
-      <Filter>Source Files\UI</Filter>
+      <Filter>Source Files\Framework\Candidate</Filter>
     </ClCompile>
     <ClCompile Include="CandidateWindow.cpp">
-      <Filter>Source Files\UI</Filter>
+      <Filter>Source Files\Framework\Candidate</Filter>
     </ClCompile>
     <ClCompile Include="File.cpp">
       <Filter>Source Files\Dictionary</Filter>
     </ClCompile>
     <ClCompile Include="ScrollBarWindow.cpp">
-      <Filter>Source Files\UI</Filter>
+      <Filter>Source Files\Framework\Candidate</Filter>
     </ClCompile>
     <ClCompile Include="TipCandidateString.cpp">
-      <Filter>Source Files\UI</Filter>
+      <Filter>Source Files\Framework\Candidate</Filter>
     </ClCompile>
     <ClCompile Include="TipCandidateList.cpp">
-      <Filter>Source Files\UI</Filter>
+      <Filter>Source Files\Framework\Candidate</Filter>
     </ClCompile>
     <ClCompile Include="TableDictionaryEngine.cpp">
       <Filter>Source Files\Dictionary</Filter>
     </ClCompile>
     <ClCompile Include="ShadowWindow.cpp">
-      <Filter>Source Files\UI</Filter>
+      <Filter>Source Files\Framework\Candidate</Filter>
     </ClCompile>
     <ClCompile Include="Compartment.cpp">
       <Filter>Source Files\Framework\Composition\LanguageBar</Filter>
@@ -227,10 +224,10 @@
       <Filter>Source Files\DLL</Filter>
     </ClCompile>
     <ClCompile Include="SearchCandidateProvider.cpp">
-      <Filter>Source Files\UI</Filter>
+      <Filter>Source Files\Framework\Candidate</Filter>
     </ClCompile>
     <ClCompile Include="EnumTfCandidates.cpp">
-      <Filter>Source Files\UI</Filter>
+      <Filter>Source Files\Framework\Candidate</Filter>
     </ClCompile>
     <ClCompile Include="RegKey.cpp">
       <Filter>Source Files\DLL</Filter>
@@ -265,15 +262,6 @@
     <ClCompile Include="EditSession.cpp">
       <Filter>Source Files\Framework\Composition</Filter>
     </ClCompile>
-    <ClCompile Include="KeyHandler.cpp">
-      <Filter>Source Files\Framework\KeyHahndle</Filter>
-    </ClCompile>
-    <ClCompile Include="KeyHandlerEditSession.cpp">
-      <Filter>Source Files\Framework\KeyHahndle</Filter>
-    </ClCompile>
-    <ClCompile Include="KeyStateCategory.cpp">
-      <Filter>Source Files\Framework\KeyHahndle</Filter>
-    </ClCompile>
     <ClCompile Include="StartComposition.cpp">
       <Filter>Source Files\Framework\Composition</Filter>
     </ClCompile>
@@ -281,7 +269,7 @@
       <Filter>Source Files\Framework\Composition</Filter>
     </ClCompile>
     <ClCompile Include="TfTextLayoutSink.cpp">
-      <Filter>Source Files\UI</Filter>
+      <Filter>Source Files\Framework\Candidate</Filter>
     </ClCompile>
     <ClCompile Include="ActiveLanguageProfileNotifySink.cpp">
       <Filter>Source Files\Framework</Filter>
@@ -306,6 +294,15 @@
     </ClCompile>
     <ClCompile Include="TSFDayi.cpp">
       <Filter>Source Files\Framework</Filter>
+    </ClCompile>
+    <ClCompile Include="KeyHandler.cpp">
+      <Filter>Source Files\Framework\Composition</Filter>
+    </ClCompile>
+    <ClCompile Include="KeyHandlerEditSession.cpp">
+      <Filter>Source Files\Framework\Composition</Filter>
+    </ClCompile>
+    <ClCompile Include="KeyStateCategory.cpp">
+      <Filter>Source Files\Framework\Composition</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

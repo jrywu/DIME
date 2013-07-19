@@ -217,7 +217,7 @@ HRESULT CTSFDayi::_HandleCandidateArrowKey(TfEditCookie ec, _In_ ITfContext *pCo
 
 HRESULT CTSFDayi::_HandleCandidateSelectByNumber(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode)
 {
-    int iSelectAsNumber = _pCompositionProcessorEngine->GetCandidateListIndexRange()->GetIndex(uCode);
+	int iSelectAsNumber = _pCompositionProcessorEngine->GetCandidateListIndexRange()->GetIndex(uCode, _candidateMode);
     if (iSelectAsNumber == -1)
     {
         return S_FALSE;
@@ -289,7 +289,7 @@ HRESULT CTSFDayi::_HandlePhraseArrowKey(TfEditCookie ec, _In_ ITfContext *pConte
 
 HRESULT CTSFDayi::_HandlePhraseSelectByNumber(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode)
 {
-    int iSelectAsNumber = _pCompositionProcessorEngine->GetCandidateListIndexRange()->GetIndex(uCode);
+	int iSelectAsNumber = _pCompositionProcessorEngine->GetCandidateListIndexRange()->GetIndex(uCode, _candidateMode);
     if (iSelectAsNumber == -1)
     {
         return S_FALSE;

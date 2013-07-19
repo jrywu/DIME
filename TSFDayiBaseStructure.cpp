@@ -238,45 +238,85 @@ CCandidateRange::~CCandidateRange(void)
 }
 
 
-BOOL CCandidateRange::IsRange(UINT vKey)
+BOOL CCandidateRange::IsRange(UINT vKey, CANDIDATE_MODE candidateMode)
 {
-    DWORD value = vKey - L'0';
+	if(candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)// && Global::ModifiersValue==260){
+	{
+		for (UINT i = 0; i < _CandidateListIndexRange.Count(); i++)
+		{
+			DWORD value = vKey - L'0';
+			if (value == *_CandidateListIndexRange.GetAt(i))
+			{
+				return TRUE;
+			}
+			else if ((VK_NUMPAD0 <= vKey) && (vKey <= VK_NUMPAD9))
+			{
+				if ((vKey-VK_NUMPAD0) == *_CandidateListIndexRange.GetAt(i))
+				{
+					return TRUE;
+				}
+			}
+		}
+		
+	}else {
+		//#define VK_OEM_7          0xDE  //  ''"' for US
+		//#define VK_OEM_4          0xDB  //  '[{' for US
+		//#define VK_OEM_6          0xDD  //  ']}' for US
+		//#define VK_OEM_MINUS      0xBD   // '-' any country
+		//#define VK_OEM_5          0xDC  //  '\|' for US
 
-    for (UINT i = 0; i < _CandidateListIndexRange.Count(); i++)
-    {
-        if (value == *_CandidateListIndexRange.GetAt(i))
-        {
-            return TRUE;
-        }
-        else if ((VK_NUMPAD0 <= vKey) && (vKey <= VK_NUMPAD9))
-        {
-            if ((vKey-VK_NUMPAD0) == *_CandidateListIndexRange.GetAt(i))
-            {
-                return TRUE;
-            }
-        }
-    }
+		for (UINT i = 0; i < _CandidateListIndexRange.Count(); i++)
+		{
+			switch (vKey)
+			{
+			case VK_OEM_7:		if (2 == *_CandidateListIndexRange.GetAt(i)) { return TRUE;};
+			case VK_OEM_4:		if (3 == *_CandidateListIndexRange.GetAt(i)) { return TRUE;};
+			case VK_OEM_6:		if (4 == *_CandidateListIndexRange.GetAt(i)) { return TRUE;};
+			case VK_OEM_MINUS:  if (5 == *_CandidateListIndexRange.GetAt(i)) { return TRUE;};
+			case VK_OEM_5:		if (6 == *_CandidateListIndexRange.GetAt(i)) { return TRUE;};
+			}
+		}
+	}
+
     return FALSE;
 }
 
-int CCandidateRange::GetIndex(UINT vKey)
+int CCandidateRange::GetIndex(UINT vKey, CANDIDATE_MODE candidateMode)
 {
-    DWORD value = vKey - L'0';
+	if(candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION){	//(Global::ModifiersValue==260)
 
-    for (UINT i = 0; i < _CandidateListIndexRange.Count(); i++)
-    {
-        if (value == *_CandidateListIndexRange.GetAt(i))
-        {
-            return i;
-        }
-        else if ((VK_NUMPAD0 <= vKey) && (vKey <= VK_NUMPAD9))
-        {
-            if ((vKey-VK_NUMPAD0) == *_CandidateListIndexRange.GetAt(i))
-            {
-                return i;
-            }
-        }
-    }
+
+		DWORD value = vKey - L'0';
+
+		for (UINT i = 0; i < _CandidateListIndexRange.Count(); i++)
+		{
+			if (value == *_CandidateListIndexRange.GetAt(i))
+			{
+				return i;
+			}
+			else if ((VK_NUMPAD0 <= vKey) && (vKey <= VK_NUMPAD9))
+			{
+				if ((vKey-VK_NUMPAD0) == *_CandidateListIndexRange.GetAt(i))
+				{
+					return i;
+				}
+			}
+		}
+
+	}else{
+		for (UINT i = 0; i < _CandidateListIndexRange.Count(); i++)
+		{
+			switch (vKey)
+			{    // 1 selected with space key
+			case VK_OEM_7:		if (2 == *_CandidateListIndexRange.GetAt(i)) { return i;};
+			case VK_OEM_4:		if (3 == *_CandidateListIndexRange.GetAt(i)) { return i;};
+			case VK_OEM_6:		if (4 == *_CandidateListIndexRange.GetAt(i)) { return i;};
+			case VK_OEM_MINUS:  if (5 == *_CandidateListIndexRange.GetAt(i)) { return i;};
+			case VK_OEM_5:		if (6 == *_CandidateListIndexRange.GetAt(i)) { return i;};
+			}
+		}
+
+	}
     return -1;
 }
 
