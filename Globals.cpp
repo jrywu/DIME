@@ -18,7 +18,8 @@ LONG dllRefCount = -1;
 
 
 BOOL isWindows8 = FALSE;
-
+BOOL autoCompose = TRUE; //set to true to have dictionary file readed in the first keystroke
+BOOL hasPhraseSection = FALSE;
 
 CRITICAL_SECTION CS;
 HFONT defaultlFontHandle;				// Global font object we use everywhere
@@ -155,7 +156,7 @@ extern const WCHAR UnicodeByteOrderMark = 0xFEFF;
 //---------------------------------------------------------------------
 // dictionary table delimiter
 //---------------------------------------------------------------------
-extern const WCHAR KeywordDelimiter = L'=';
+extern WCHAR KeywordDelimiter = L'=';
 extern const WCHAR StringDelimiter  = L'\"';
 
 //---------------------------------------------------------------------

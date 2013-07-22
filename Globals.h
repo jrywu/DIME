@@ -101,7 +101,8 @@ extern HINSTANCE dllInstanceHandle;
 
 
 extern BOOL isWindows8; //OS Version
-
+extern BOOL autoCompose; // show candidates while composing
+extern BOOL hasPhraseSection; // the dictionary file has TTS [Phrase] section
 
 extern ATOM AtomCandidateWindow;
 extern ATOM AtomShadowWindow;
@@ -146,7 +147,7 @@ extern const GUID TSFDayiGuidDisplayAttributeConverted;
 extern const GUID TSFDayiGuidCandUIElement;
 
 extern const WCHAR UnicodeByteOrderMark;
-extern const WCHAR KeywordDelimiter;
+extern WCHAR KeywordDelimiter;
 extern const WCHAR StringDelimiter;
 
 extern const WCHAR ImeModeDescription[];

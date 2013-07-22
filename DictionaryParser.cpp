@@ -38,7 +38,7 @@ CDictionaryParser::~CDictionaryParser()
 //
 //---------------------------------------------------------------------
 
-BOOL CDictionaryParser::ParseLine(_In_reads_(dwBufLen) LPCWSTR pwszBuffer, DWORD_PTR dwBufLen, _Out_ CParserStringRange *psrgKeyword, _Inout_opt_ CTSFDayiArray<CParserStringRange> *pValue)
+BOOL CDictionaryParser::ParseLine(_In_reads_(dwBufLen) LPCWSTR pwszBuffer, DWORD_PTR dwBufLen, _Out_ CParserStringRange *psrgKeyword, _Inout_opt_ CTSFDayiArray<CParserStringRange> *pValue, _In_opt_ BOOL ttsPhraseSearch)
 {
     LPCWSTR pwszKeyWordDelimiter = nullptr;
     pwszKeyWordDelimiter = GetToken(pwszBuffer, dwBufLen, Global::KeywordDelimiter, psrgKeyword);
@@ -56,15 +56,47 @@ BOOL CDictionaryParser::ParseLine(_In_reads_(dwBufLen) LPCWSTR pwszBuffer, DWORD
     {
         if (dwBufLen)
         {
+			
+			if(ttsPhraseSearch)
+			{
+				CParserStringRange localKeyword;
+				do{
+					pwszKeyWordDelimiter = GetToken(pwszBuffer, dwBufLen,L',', &localKeyword);
+					CParserStringRange* psrgValue = pValue->Append();
+					if (!psrgValue) 
+						return FALSE;
+
+					PWCHAR pwch = new (std::nothrow) WCHAR[psrgKeyword->GetLength() + localKeyword.GetLength() + 2];
+					if (!pwch)   
+						continue;
+    				StringCchCopyN(pwch, psrgKeyword->GetLength() + localKeyword.GetLength() + 2, psrgKeyword->Get(), psrgKeyword->GetLength());
+
+					if ((pwszKeyWordDelimiter))
+					{						
+						dwBufLen -= (pwszKeyWordDelimiter - pwszBuffer);
+						pwszBuffer = pwszKeyWordDelimiter + 1;
+						dwBufLen--;
+
+						StringCchCatN(pwch, psrgKeyword->GetLength() + localKeyword.GetLength() + 2, localKeyword.Get(),localKeyword.GetLength()); 
+					}else{ //end of line. append the last item
+						StringCchCat(pwch, psrgKeyword->GetLength() + localKeyword.GetLength() + 2, pwszBuffer); 
+					}
+					psrgValue->Set(pwch, wcslen(pwch));
+					RemoveWhiteSpaceFromBegin(psrgValue);
+					RemoveWhiteSpaceFromEnd(psrgValue);
+					RemoveStringDelimiter(psrgValue);
+				}while(pwszKeyWordDelimiter);
+			}else
+			{
             CParserStringRange* psrgValue = pValue->Append();
             if (!psrgValue)
-            {
-                return FALSE;
-            }
+                 return FALSE;
+            
             psrgValue->Set(pwszBuffer, dwBufLen);
             RemoveWhiteSpaceFromBegin(psrgValue);
             RemoveWhiteSpaceFromEnd(psrgValue);
             RemoveStringDelimiter(psrgValue);
+			}
         }
     }
 

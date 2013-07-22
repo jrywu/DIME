@@ -26,5 +26,6 @@ public:
 
     VOID CollectWordForWildcard(_In_ CStringRange *psrgKeyCode, _Inout_ CTSFDayiArray<CCandidateListItem> *pItemList);
 
+	VOID CollectWordFromConvertedString(_In_ CStringRange *pString, _Inout_ CTSFDayiArray<CCandidateListItem> *pItemList);
     VOID CollectWordFromConvertedStringForWildcard(_In_ CStringRange *pString, _Inout_ CTSFDayiArray<CCandidateListItem> *pItemList);
 };

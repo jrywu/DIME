@@ -45,7 +45,7 @@ VOID CBaseDictionaryEngine::SortListItemByFindKeyCode(_Inout_ CTSFDayiArray<CCan
 
 VOID CBaseDictionaryEngine::MergeSortByFindKeyCode(_Inout_ CTSFDayiArray<CCandidateListItem> *pItemList, int leftRange, int rightRange)
 {
-    int candidateCount = CalculateCandidateCount(leftRange, rightRange);
+     int candidateCount = CalculateCandidateCount(leftRange, rightRange);
 
     if (candidateCount > 2)
     {

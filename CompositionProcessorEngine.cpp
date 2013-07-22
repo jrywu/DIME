@@ -273,6 +273,7 @@ BOOL CCompositionProcessorEngine::AddVirtualKey(WCHAR wch)
         return FALSE;
     }
 
+
     //
     // append one keystroke in buffer.
     //
@@ -517,7 +518,7 @@ void CCompositionProcessorEngine::GetCandidateStringInConverted(CStringRange &se
     }
 
     // Search phrase from SECTION_TEXT's converted string list
-    CStringRange wildcardSearch;
+    CStringRange searchText;
     DWORD_PTR srgKeystrokeBufLen = searchString.GetLength() + 2;
     PWCHAR pwch = new (std::nothrow) WCHAR[ srgKeystrokeBufLen ];
     if (!pwch)
@@ -526,7 +527,7 @@ void CCompositionProcessorEngine::GetCandidateStringInConverted(CStringRange &se
     }
 
     StringCchCopyN(pwch, srgKeystrokeBufLen, searchString.Get(), searchString.GetLength());
-    StringCchCat(pwch, srgKeystrokeBufLen, L"*");
+	if(!Global::hasPhraseSection) StringCchCat(pwch, srgKeystrokeBufLen, L"*");  // do wild search if no TTS [Phrase]section present
 
     // add wildcard char
 	size_t len = 0;
@@ -534,16 +535,19 @@ void CCompositionProcessorEngine::GetCandidateStringInConverted(CStringRange &se
     {
         return;
     }
-    wildcardSearch.Set(pwch, len);
+    searchText.Set(pwch, len);
 
-    _pTableDictionaryEngine->CollectWordFromConvertedStringForWildcard(&wildcardSearch, pCandidateList);
+	if(Global::hasPhraseSection) // do wild search if no TTS [Phrase]section present
+		_pTableDictionaryEngine->CollectWordFromConvertedString(&searchText, pCandidateList);
+	else{
+		_pTableDictionaryEngine->CollectWordFromConvertedStringForWildcard(&searchText, pCandidateList);
 
-    if (IsKeystrokeSort())
-    {
-        _pTableDictionaryEngine->SortListItemByFindKeyCode(pCandidateList);
-    }
+		if (IsKeystrokeSort())
+			_pTableDictionaryEngine->SortListItemByFindKeyCode(pCandidateList);
+		
+	}
 
-    wildcardSearch.Clear();
+    searchText.Clear();
     delete [] pwch;
 }
 

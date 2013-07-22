@@ -28,7 +28,7 @@ public:
 
     BOOL FindPhrase(_Out_ CDictionaryResult **ppdret);
     BOOL FindPhraseForWildcard(_Out_ CDictionaryResult **ppdret);
-
+	BOOL FindConvertedString(CDictionaryResult **ppdret);
     BOOL FindConvertedStringForWildcard(CDictionaryResult **ppdret);
 
     CStringRange* _pSearchKeyCode;

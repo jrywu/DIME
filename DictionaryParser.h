@@ -33,7 +33,7 @@ public:
     CDictionaryParser(LCID locale);
     virtual ~CDictionaryParser();
 
-    BOOL ParseLine(_In_reads_(dwBufLen) LPCWSTR pwszBuffer, DWORD_PTR dwBufLen, _Out_ CParserStringRange *psrgKeyword, _Inout_opt_ CTSFDayiArray<CParserStringRange> *pValue = nullptr);
+    BOOL ParseLine(_In_reads_(dwBufLen) LPCWSTR pwszBuffer, DWORD_PTR dwBufLen, _Out_ CParserStringRange *psrgKeyword, _Inout_opt_ CTSFDayiArray<CParserStringRange> *pValue = nullptr, _In_opt_ BOOL ttsPhraseMode = FALSE);
 
     // dwBufLen - in character count
     _Ret_maybenull_

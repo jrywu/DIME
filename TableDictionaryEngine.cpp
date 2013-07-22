@@ -118,3 +118,31 @@ VOID CTableDictionaryEngine::CollectWordFromConvertedStringForWildcard(_In_ CStr
     }
 }
 
+//+---------------------------------------------------------------------------
+//
+// CollectWordFromConvertedString
+//
+//----------------------------------------------------------------------------
+
+VOID CTableDictionaryEngine::CollectWordFromConvertedString(_In_ CStringRange *pString, _Inout_ CTSFDayiArray<CCandidateListItem> *pItemList)
+{
+    CDictionaryResult* pdret = nullptr;
+    CDictionarySearch dshSearch(_locale, _pDictionaryFile, pString);
+
+    while (dshSearch.FindConvertedString(&pdret)) // TAIL ALL CHAR MATCH
+    {
+        for (UINT index = 0; index < pdret->_FindPhraseList.Count(); index++)
+        {
+            CCandidateListItem* pLI = nullptr;
+            pLI = pItemList->Append();
+            if (pLI)
+            {
+                pLI->_ItemString.Set(*pdret->_FindPhraseList.GetAt(index));
+                pLI->_FindKeyCode.Set(pdret->_FindKeyCode.Get(), pdret->_FindKeyCode.GetLength());
+            }
+        }
+
+        delete pdret;
+        pdret = nullptr;
+    }
+}

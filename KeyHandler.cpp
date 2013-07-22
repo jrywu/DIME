@@ -117,7 +117,7 @@ HRESULT CTSFDayi::_HandleCompositionInput(TfEditCookie ec, _In_ ITfContext *pCon
     CCompositionProcessorEngine* pCompositionProcessorEngine = nullptr;
     pCompositionProcessorEngine = _pCompositionProcessorEngine;
 
-    if ((_pCandidateListUIPresenter != nullptr) && (_candidateMode != CANDIDATE_INCREMENTAL))
+    if ((_pCandidateListUIPresenter != nullptr) && _candidateMode != CANDIDATE_INCREMENTAL &&_candidateMode != CANDIDATE_NONE)
     {
         _HandleCompositionFinalize(ec, pContext, FALSE);
     }
@@ -188,31 +188,35 @@ HRESULT CTSFDayi::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine
     //
     // Get candidate string from composition processor engine
     //
-    CTSFDayiArray<CCandidateListItem> candidateList;
+	if(Global::autoCompose){   // auto composing mode: show candidates while composition updated imeediately.
 
-    pCompositionProcessorEngine->GetCandidateList(&candidateList, TRUE, FALSE);
+		CTSFDayiArray<CCandidateListItem> candidateList;
 
-    if ((candidateList.Count()))
-    {
-        hr = _CreateAndStartCandidate(pCompositionProcessorEngine, ec, pContext);
-        if (SUCCEEDED(hr))
-        {
-            _pCandidateListUIPresenter->_ClearList();
-            _pCandidateListUIPresenter->_SetText(&candidateList, TRUE);
-        }
-    }
-    else if (_pCandidateListUIPresenter)
-    {
-        _pCandidateListUIPresenter->_ClearList();
-    }
-    else if (readingStrings.Count() && isWildcardIncluded)
-    {
-        hr = _CreateAndStartCandidate(pCompositionProcessorEngine, ec, pContext);
-        if (SUCCEEDED(hr))
-        {
-            _pCandidateListUIPresenter->_ClearList();
-        }
-    }
+		Global::autoCompose = FALSE; //turn off autoCompose mode for default unless see [AutoCompose] or get %autoCompose = TRUE
+		pCompositionProcessorEngine->GetCandidateList(&candidateList, TRUE, FALSE);
+
+		if ((candidateList.Count())&&Global::autoCompose) //Check autoCompose key again because the key may update from the dictionary file for the first time.  
+		{
+			hr = _CreateAndStartCandidate(pCompositionProcessorEngine, ec, pContext);
+			if (SUCCEEDED(hr))
+			{
+				_pCandidateListUIPresenter->_ClearList();
+				_pCandidateListUIPresenter->_SetText(&candidateList, TRUE);
+			}
+		}
+		else if (_pCandidateListUIPresenter)
+		{
+			_pCandidateListUIPresenter->_ClearList();
+		}
+		else if (readingStrings.Count() && isWildcardIncluded)
+		{
+			hr = _CreateAndStartCandidate(pCompositionProcessorEngine, ec, pContext);
+			if (SUCCEEDED(hr))
+			{
+				_pCandidateListUIPresenter->_ClearList();
+			}
+		}
+	}
     return hr;
 }
 //+---------------------------------------------------------------------------
