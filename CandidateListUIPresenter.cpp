@@ -131,7 +131,7 @@ HRESULT CTSFDayi::_HandleCandidateFinalize(TfEditCookie ec, _In_ ITfContext *pCo
 			{
 				// copy temp candidate
 				_pCandidateListUIPresenter = pTempCandListUIPresenter;
-				_pCandidateListUIPresenter->SetSelection(-1); // set selected index to -1 if showing phrase candidates
+				_pCandidateListUIPresenter->_SetSelection(-1); // set selected index to -1 if showing phrase candidates
 
 				_candidateMode = tempCandMode;
 				_isCandidateWithWildcard = FALSE;
@@ -279,7 +279,7 @@ HRESULT CTSFDayi::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pCont
         {
             // copy temp candidate
             _pCandidateListUIPresenter = pTempCandListUIPresenter;
-			_pCandidateListUIPresenter->SetSelection(-1); // set selected index to -1 if showing phrase candidates
+			_pCandidateListUIPresenter->_SetSelection(-1); // set selected index to -1 if showing phrase candidates
 
             _candidateMode = tempCandMode;
             _isCandidateWithWildcard = FALSE;

@@ -640,7 +640,7 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT iIndex, _In_ RECT 
         rc.right = prc->right;
 
         // Candidate Font Color And BK
-        if (_currentSelection != iIndex)
+        if (_currentSelection != (INT)iIndex)
         {
             SetTextColor(dcHandle, _crTextColor);
             SetBkColor(dcHandle, GetSysColor(COLOR_3DHIGHLIGHT));
@@ -920,12 +920,12 @@ BOOL CCandidateWindow::_MoveSelection(_In_ int offSet, _In_ BOOL isNotify)
 
 BOOL CCandidateWindow::_SetSelection(_In_ int selectedIndex, _In_ BOOL isNotify)
 {
-    if (selectedIndex == -1)
+    if (selectedIndex == -2)
     {
         selectedIndex = _candidateList.Count() - 1;
     }
 
-    if (selectedIndex < 0)
+    if (selectedIndex < -2)
     {
         return FALSE;
     }
@@ -992,7 +992,7 @@ BOOL CCandidateWindow::_MovePage(_In_ int offSet, _In_ BOOL isNotify)
     //
     // We do this for keeping behavior inline with downlevel.
     if (_currentSelection % _pIndexRange->Count() == 0 && 
-        _currentSelection == *_PageIndex.GetAt(currentPage)) 
+        _currentSelection == (INT) *_PageIndex.GetAt(currentPage)) 
     {
         _dontAdjustOnEmptyItemPage = TRUE;
     }

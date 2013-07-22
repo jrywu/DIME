@@ -59,7 +59,7 @@ public:
     STDMETHODIMP GetCurrentPage(UINT *puPage);
 
     // ITfCandidateListUIElementBehavior methods
-    STDMETHODIMP SetSelection(UINT nIndex);
+	STDMETHODIMP SetSelection(UINT nIndex);
     STDMETHODIMP Finalize(void);
     STDMETHODIMP Abort(void);
 
