@@ -191,29 +191,33 @@ HRESULT CTSFDayi::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine
 	if(Global::autoCompose){   // auto composing mode: show candidates while composition updated imeediately.
 
 		CTSFDayiArray<CCandidateListItem> candidateList;
-
 		Global::autoCompose = FALSE; //turn off autoCompose mode for default unless see [AutoCompose] or get %autoCompose = TRUE
 		pCompositionProcessorEngine->GetCandidateList(&candidateList, TRUE, FALSE);
 
-		if ((candidateList.Count())&&Global::autoCompose) //Check autoCompose key again because the key may update from the dictionary file for the first time.  
+		if(Global::autoCompose) //Check autoCompose key again because the key may update from the dictionary file for the first time.  
 		{
-			hr = _CreateAndStartCandidate(pCompositionProcessorEngine, ec, pContext);
-			if (SUCCEEDED(hr))
+			if (candidateList.Count())
 			{
-				_pCandidateListUIPresenter->_ClearList();
-				_pCandidateListUIPresenter->_SetText(&candidateList, TRUE);
+				hr = _CreateAndStartCandidate(pCompositionProcessorEngine, ec, pContext);
+				if (SUCCEEDED(hr))
+				{
+					_pCandidateListUIPresenter->_ClearList();
+					_pCandidateListUIPresenter->_SetText(&candidateList, TRUE);
+					_pCandidateListUIPresenter->Show(TRUE); 
+				}
 			}
-		}
-		else if (_pCandidateListUIPresenter)
-		{
-			_pCandidateListUIPresenter->_ClearList();
-		}
-		else if (readingStrings.Count() && isWildcardIncluded)
-		{
-			hr = _CreateAndStartCandidate(pCompositionProcessorEngine, ec, pContext);
-			if (SUCCEEDED(hr))
+			else if (_pCandidateListUIPresenter)
 			{
 				_pCandidateListUIPresenter->_ClearList();
+				_pCandidateListUIPresenter->Show(FALSE);  // hide the candidate window if now candidates in autocompose mode
+			}
+			else if (readingStrings.Count() && isWildcardIncluded)
+			{
+				hr = _CreateAndStartCandidate(pCompositionProcessorEngine, ec, pContext);
+				if (SUCCEEDED(hr))
+				{
+					_pCandidateListUIPresenter->_ClearList();
+				}
 			}
 		}
 	}
@@ -250,7 +254,7 @@ HRESULT CTSFDayi::_CreateAndStartCandidate(_In_ CCompositionProcessorEngine *pCo
         if (!_pCandidateListUIPresenter)
         {
             return E_OUTOFMEMORY;
-        }
+        }	
 
         _candidateMode = CANDIDATE_INCREMENTAL;
         _isCandidateWithWildcard = FALSE;

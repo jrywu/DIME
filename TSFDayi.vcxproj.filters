@@ -13,9 +13,6 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="Source Files\Dictionary">
-      <UniqueIdentifier>{1f776a05-57d4-4932-bfd7-bdbd516c8cc6}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\DLL">
       <UniqueIdentifier>{a367038d-4951-4ca3-b64a-dd4e254b3b3c}</UniqueIdentifier>
     </Filter>
@@ -28,11 +25,14 @@
     <Filter Include="Source Files\Framework\Composition\Display">
       <UniqueIdentifier>{1a80ba50-d93b-4a60-972f-3d7bf4d72fc0}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Framework\Composition\LanguageBar">
-      <UniqueIdentifier>{b5decd04-2d7f-4134-bbcf-9cb601f78322}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\Framework\Candidate">
       <UniqueIdentifier>{0fb4053f-2bb9-491d-90b0-47a3b5b41135}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Framework\LanguageBar">
+      <UniqueIdentifier>{b5decd04-2d7f-4134-bbcf-9cb601f78322}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Framework\Composition\Dictionary">
+      <UniqueIdentifier>{1f776a05-57d4-4932-bfd7-bdbd516c8cc6}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -167,13 +167,13 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BaseDictionaryEngine.cpp">
-      <Filter>Source Files\Dictionary</Filter>
+      <Filter>Source Files\Framework\Composition\Dictionary</Filter>
     </ClCompile>
     <ClCompile Include="DictionaryParser.cpp">
-      <Filter>Source Files\Dictionary</Filter>
+      <Filter>Source Files\Framework\Composition\Dictionary</Filter>
     </ClCompile>
     <ClCompile Include="DictionarySearch.cpp">
-      <Filter>Source Files\Dictionary</Filter>
+      <Filter>Source Files\Framework\Composition\Dictionary</Filter>
     </ClCompile>
     <ClCompile Include="BaseWindow.cpp">
       <Filter>Source Files\Framework\Candidate</Filter>
@@ -188,7 +188,7 @@
       <Filter>Source Files\Framework\Candidate</Filter>
     </ClCompile>
     <ClCompile Include="File.cpp">
-      <Filter>Source Files\Dictionary</Filter>
+      <Filter>Source Files\Framework\Composition\Dictionary</Filter>
     </ClCompile>
     <ClCompile Include="ScrollBarWindow.cpp">
       <Filter>Source Files\Framework\Candidate</Filter>
@@ -200,19 +200,19 @@
       <Filter>Source Files\Framework\Candidate</Filter>
     </ClCompile>
     <ClCompile Include="TableDictionaryEngine.cpp">
-      <Filter>Source Files\Dictionary</Filter>
+      <Filter>Source Files\Framework\Composition\Dictionary</Filter>
     </ClCompile>
     <ClCompile Include="ShadowWindow.cpp">
       <Filter>Source Files\Framework\Candidate</Filter>
     </ClCompile>
     <ClCompile Include="Compartment.cpp">
-      <Filter>Source Files\Framework\Composition\LanguageBar</Filter>
+      <Filter>Source Files\Framework\LanguageBar</Filter>
     </ClCompile>
     <ClCompile Include="LanguageBar.cpp">
-      <Filter>Source Files\Framework\Composition\LanguageBar</Filter>
+      <Filter>Source Files\Framework\LanguageBar</Filter>
     </ClCompile>
     <ClCompile Include="FileMapping.cpp">
-      <Filter>Source Files\Dictionary</Filter>
+      <Filter>Source Files\Framework\Composition\Dictionary</Filter>
     </ClCompile>
     <ClCompile Include="Globals.cpp">
       <Filter>Source Files\DLL</Filter>

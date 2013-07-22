@@ -92,7 +92,7 @@ private:
     friend COLORREF _AdjustTextColor(_In_ COLORREF crColor, _In_ COLORREF crBkColor);
 
 private:
-    UINT _currentSelection;
+    INT _currentSelection;
     CTSFDayiArray<CCandidateListItem> _candidateList;
     CTSFDayiArray<UINT> _PageIndex;
 

@@ -79,7 +79,12 @@ BOOL CDictionaryParser::ParseLine(_In_reads_(dwBufLen) LPCWSTR pwszBuffer, DWORD
 
 						StringCchCatN(pwch, psrgKeyword->GetLength() + localKeyword.GetLength() + 2, localKeyword.Get(),localKeyword.GetLength()); 
 					}else{ //end of line. append the last item
-						StringCchCat(pwch, psrgKeyword->GetLength() + localKeyword.GetLength() + 2, pwszBuffer); 
+
+						localKeyword.Set(pwszBuffer, dwBufLen);
+						RemoveWhiteSpaceFromBegin(&localKeyword);
+						RemoveWhiteSpaceFromEnd(&localKeyword);
+						RemoveStringDelimiter(&localKeyword);
+						StringCchCatN(pwch, psrgKeyword->GetLength() + localKeyword.GetLength() + 2, localKeyword.Get(),localKeyword.GetLength()); 
 					}
 					psrgValue->Set(pwch, wcslen(pwch));
 					RemoveWhiteSpaceFromBegin(psrgValue);

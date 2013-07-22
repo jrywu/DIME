@@ -842,7 +842,7 @@ DWORD CCandidateWindow::_GetSelectedCandidateString(_Outptr_result_maybenull_ co
 {
     CCandidateListItem* pItemList = nullptr;
 
-    if (_currentSelection >= _candidateList.Count())
+    if (_currentSelection < 0 || (UINT) _currentSelection >= _candidateList.Count())
     {
         *ppwchCandidateString = nullptr;
         return 0;
@@ -895,7 +895,7 @@ BOOL CCandidateWindow::_SetSelectionInPage(int nPos)
 
 BOOL CCandidateWindow::_MoveSelection(_In_ int offSet, _In_ BOOL isNotify)
 {
-    if (_currentSelection + offSet >= _candidateList.Count())
+    if (_currentSelection + offSet >= (INT) _candidateList.Count() || _currentSelection + offSet <0)
     {
         return FALSE;
     }
@@ -999,7 +999,7 @@ BOOL CCandidateWindow::_MovePage(_In_ int offSet, _In_ BOOL isNotify)
 
     selectionOffset = _currentSelection - *_PageIndex.GetAt(currentPage);
     _currentSelection = *_PageIndex.GetAt(newPage) + selectionOffset;
-    _currentSelection = _candidateList.Count() > _currentSelection ? _currentSelection : _candidateList.Count() - 1;
+    _currentSelection = _candidateList.Count() > (UINT)_currentSelection ? _currentSelection : _candidateList.Count() - 1;
 
     // adjust scrollbar position
     if (_pVScrollBarWnd && isNotify)
@@ -1018,7 +1018,7 @@ BOOL CCandidateWindow::_MovePage(_In_ int offSet, _In_ BOOL isNotify)
 
 BOOL CCandidateWindow::_SetSelectionOffset(_In_ int offSet)
 {
-	if (_currentSelection + offSet >= _candidateList.Count())
+	if (_currentSelection + offSet >=(INT) _candidateList.Count() || _currentSelection + offSet <0)
     {
         return FALSE;
     }
@@ -1142,7 +1142,7 @@ HRESULT CCandidateWindow::_GetCurrentPage(_Inout_ UINT *pCurrentPage)
         goto Exit;
     }
 
-    if (_PageIndex.Count() == 1)
+    if (_PageIndex.Count() == 1 || _currentSelection <0)
     {
         *pCurrentPage = 0;
          goto Exit;
@@ -1153,7 +1153,7 @@ HRESULT CCandidateWindow::_GetCurrentPage(_Inout_ UINT *pCurrentPage)
     {
         UINT uPageIndex = *_PageIndex.GetAt(i);
 
-        if (uPageIndex > _currentSelection)
+        if (uPageIndex >(UINT) _currentSelection)
         {
             break;
         }

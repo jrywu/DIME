@@ -101,7 +101,6 @@ BOOL CDictionarySearch::FindWorker(BOOL isTextSearch, _Out_ CDictionaryResult **
     DWORD_PTR bufLenOneLine = 0;
 
 	BOOL searchMapping = TRUE;
-	BOOL searchText = TRUE;
 	BOOL searchTTSPhrase = FALSE;
 	BOOL searchRadical = FALSE;
 
@@ -153,7 +152,6 @@ TryAgain:
 				if (CStringRange::Compare(_locale, &keyword, &controlKey) == CSTR_EQUAL)
 				{ // in Text block
 					searchMapping = TRUE;
-					searchText = FALSE;
 					Global::hasPhraseSection = FALSE;
 					searchTTSPhrase = FALSE;
 				}else
@@ -162,7 +160,6 @@ TryAgain:
 					if (CStringRange::Compare(_locale, &keyword, &controlKey) == CSTR_EQUAL)
 					{ // in Phrase block
 						searchMapping = FALSE;
-						searchText = TRUE;
 						Global::hasPhraseSection = TRUE;
 						searchTTSPhrase = TRUE;
 					}
@@ -176,7 +173,7 @@ TryAgain:
 							searchRadical = TRUE; // retrive the [Radical] Mapping Section.
 						
 						searchMapping = FALSE;
-						searchText = FALSE;
+						Global::hasPhraseSection = TRUE;
 						searchTTSPhrase = FALSE;
 					}
 			
@@ -271,7 +268,7 @@ TryAgain:
             delete [] pText;
         }
 
-		if(searchMapping || searchText)
+		if(searchMapping || searchTTSPhrase)
 		{
 			// Prepare return's CDictionaryResult
 			*ppdret = new (std::nothrow) CDictionaryResult();
@@ -325,7 +322,7 @@ TryAgain:
 
 FindNextLine:
     dwTotalBufLen -= bufLenOneLine;
-    if (dwTotalBufLen == 0 || searchTTSPhrase)
+    if (dwTotalBufLen == 0 )
     {
         indexTrace += bufLenOneLine;
         _charIndex += indexTrace;
