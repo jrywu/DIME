@@ -925,7 +925,7 @@ BOOL CCandidateWindow::_SetSelection(_In_ int selectedIndex, _In_ BOOL isNotify)
         selectedIndex = _candidateList.Count() - 1;
     }
 
-    if (selectedIndex < -2)
+    if (selectedIndex < -2) //-1 is used for phrase candidates
     {
         return FALSE;
     }

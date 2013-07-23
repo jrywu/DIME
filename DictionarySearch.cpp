@@ -17,9 +17,9 @@
 
 CDictionarySearch::CDictionarySearch(LCID locale, _In_ CFile *pFile, _In_ CStringRange *pSearchKeyCode) : CDictionaryParser(locale)
 {
-    _pFile = pFile;
-    _pSearchKeyCode = pSearchKeyCode;
-    _charIndex = 0;
+	_pFile = pFile;
+	_pSearchKeyCode = pSearchKeyCode;
+	_charIndex = 0;
 }
 
 //+---------------------------------------------------------------------------
@@ -40,7 +40,7 @@ CDictionarySearch::~CDictionarySearch()
 
 BOOL CDictionarySearch::FindPhrase(_Out_ CDictionaryResult **ppdret)
 {
-    return FindWorker(FALSE, ppdret, FALSE); // NO WILDCARD
+	return FindWorker(FALSE, ppdret, FALSE); // NO WILDCARD
 }
 
 //+---------------------------------------------------------------------------
@@ -51,7 +51,7 @@ BOOL CDictionarySearch::FindPhrase(_Out_ CDictionaryResult **ppdret)
 
 BOOL CDictionarySearch::FindPhraseForWildcard(_Out_ CDictionaryResult **ppdret)
 {
-    return FindWorker(FALSE, ppdret, TRUE); // Wildcard
+	return FindWorker(FALSE, ppdret, TRUE); // Wildcard
 }
 
 //+---------------------------------------------------------------------------
@@ -62,7 +62,7 @@ BOOL CDictionarySearch::FindPhraseForWildcard(_Out_ CDictionaryResult **ppdret)
 
 BOOL CDictionarySearch::FindConvertedString(CDictionaryResult **ppdret)
 {
-    return FindWorker(TRUE, ppdret, FALSE); //NO Wildcard
+	return FindWorker(TRUE, ppdret, FALSE); //NO Wildcard
 }
 
 
@@ -74,7 +74,7 @@ BOOL CDictionarySearch::FindConvertedString(CDictionaryResult **ppdret)
 
 BOOL CDictionarySearch::FindConvertedStringForWildcard(CDictionaryResult **ppdret)
 {
-    return FindWorker(TRUE, ppdret, TRUE); // Wildcard
+	return FindWorker(TRUE, ppdret, TRUE); // Wildcard
 }
 
 //+---------------------------------------------------------------------------
@@ -85,39 +85,39 @@ BOOL CDictionarySearch::FindConvertedStringForWildcard(CDictionaryResult **ppdre
 
 BOOL CDictionarySearch::FindWorker(BOOL isTextSearch, _Out_ CDictionaryResult **ppdret, BOOL isWildcardSearch)
 {
-    DWORD_PTR dwTotalBufLen = GetBufferInWCharLength();        // in char
-    if (dwTotalBufLen == 0)
-    {
-        return FALSE;
-    }
+	DWORD_PTR dwTotalBufLen = GetBufferInWCharLength();        // in char
+	if (dwTotalBufLen == 0)
+	{
+		return FALSE;
+	}
 
 
-    const WCHAR *pwch = GetBufferInWChar();
-    DWORD_PTR indexTrace = 0;     // in char
-    *ppdret = nullptr;
-    BOOL cinControlKeyFound = FALSE;
+	const WCHAR *pwch = GetBufferInWChar();
+	DWORD_PTR indexTrace = 0;     // in char
+	*ppdret = nullptr;
+	BOOL cinControlKeyFound = FALSE;
 	BOOL ttsControlKeyFound = FALSE;
 	BOOL isFound = FALSE;
-    DWORD_PTR bufLenOneLine = 0;
+	DWORD_PTR bufLenOneLine = 0;
 
 	BOOL searchMapping = TRUE;
 	BOOL searchTTSPhrase = FALSE;
 	BOOL searchRadical = FALSE;
 
 TryAgain:
-    bufLenOneLine = GetOneLine(&pwch[indexTrace], dwTotalBufLen);
-    if (bufLenOneLine == 0)
-    {
-        goto FindNextLine;
-    }
-    else
-    {
-        CParserStringRange keyword;
-        DWORD_PTR bufLen = 0;
-        LPWSTR pText = nullptr;
+	bufLenOneLine = GetOneLine(&pwch[indexTrace], dwTotalBufLen);
+	if (bufLenOneLine == 0)
+	{
+		goto FindNextLine;
+	}
+	else
+	{
+		CParserStringRange keyword;
+		DWORD_PTR bufLen = 0;
+		LPWSTR pText = nullptr;
 
 
-	
+
 		WCHAR ch = pwch[indexTrace];
 		switch (ch)
 		{
@@ -131,12 +131,12 @@ TryAgain:
 			ttsControlKeyFound = TRUE;
 			break;
 		}
-        if (!ParseLine(&pwch[indexTrace], bufLenOneLine, &keyword))
-        {
+		if (!ParseLine(&pwch[indexTrace], bufLenOneLine, &keyword))
+		{
 			if(!(cinControlKeyFound||ttsControlKeyFound))
 				return FALSE;    // error
-        }
-		
+		}
+
 		if (cinControlKeyFound||ttsControlKeyFound) 
 		{	
 			CParserStringRange controlKey;
@@ -151,6 +151,7 @@ TryAgain:
 				controlKey.Set(L"[Text]", 6);	
 				if (CStringRange::Compare(_locale, &keyword, &controlKey) == CSTR_EQUAL)
 				{ // in Text block
+					searchRadical = FALSE;
 					searchMapping = TRUE;
 					Global::hasPhraseSection = FALSE;
 					searchTTSPhrase = FALSE;
@@ -159,116 +160,175 @@ TryAgain:
 					controlKey.Set(L"[Phrase]", 8);	
 					if (CStringRange::Compare(_locale, &keyword, &controlKey) == CSTR_EQUAL)
 					{ // in Phrase block
+						searchRadical = FALSE;
 						searchMapping = FALSE;
 						Global::hasPhraseSection = TRUE;
 						searchTTSPhrase = TRUE;
 					}
 					else
 					{
-						controlKey.Set(L"[AutoCompose]", 13);	
-						if (CStringRange::Compare(_locale, &keyword, &controlKey) == CSTR_EQUAL)
-							Global::autoCompose = TRUE;// autoCompose is off for TTS table unless see [AutoCompose] control key
 						controlKey.Set(L"[Radical]", 9);	
 						if (CStringRange::Compare(_locale, &keyword, &controlKey) == CSTR_EQUAL)
+						{
 							searchRadical = TRUE; // retrive the [Radical] Mapping Section.
-						
-						searchMapping = FALSE;
-						Global::hasPhraseSection = TRUE;
-						searchTTSPhrase = FALSE;
+							searchMapping = FALSE;
+						}
+						else
+						{
+							controlKey.Set(L"[AutoCompose]", 13);	
+							if (CStringRange::Compare(_locale, &keyword, &controlKey) == CSTR_EQUAL)
+								Global::autoCompose = TRUE;// autoCompose is off for TTS table unless see [AutoCompose] control key
+
+							searchRadical = FALSE;
+							searchMapping = FALSE;
+							Global::hasPhraseSection = TRUE;
+							searchTTSPhrase = FALSE;
+						}
 					}
-			
 
-				
+
+
 				}
-			ttsControlKeyFound = FALSE;
-			goto FindNextLine;
+				ttsControlKeyFound = FALSE;
+				goto FindNextLine;
 			}
-			
+			else if(cinControlKeyFound)
+			{
+				controlKey.Set(L"%autoCompose*", 13);	
+				if (CStringRange::WildcardCompare(_locale, &controlKey, &keyword))
+				{
+					searchRadical = FALSE;
+					searchMapping = TRUE;
+					cinControlKeyFound = TRUE;
+					goto ReadValue;
+				}
+				controlKey.Set(L"%chardef?begin", 14);	
+				if (CStringRange::WildcardCompare(_locale, &controlKey, &keyword))
+				{
+					searchRadical = FALSE;
+					searchMapping = TRUE;
+					cinControlKeyFound = FALSE;
+					goto FindNextLine;
+				}
+				controlKey.Set(L"%chardef?end", 12);	
+				if (CStringRange::WildcardCompare(_locale, &controlKey, &keyword))
+				{
+					searchMapping = FALSE;
+					cinControlKeyFound = FALSE;
+					goto FindNextLine;
+				}
+				controlKey.Set(L"%keyname?begin", 14);	
+				if (CStringRange::WildcardCompare(_locale, &controlKey, &keyword))
+				{
+					searchMapping = FALSE;
+					searchRadical = TRUE;
+					cinControlKeyFound = FALSE;
+					goto FindNextLine;
+				}
+				controlKey.Set(L"%keyname?end", 14);	
+				if (CStringRange::WildcardCompare(_locale, &controlKey, &keyword))
+				{
+					searchMapping = TRUE;
+					searchRadical = FALSE;
+					cinControlKeyFound = FALSE;
+					goto FindNextLine;
+
+				}
+				searchRadical = FALSE;
+				searchMapping = FALSE;
+				goto FindNextLine;
+
+			}
+
 		}
-		else if (((!isTextSearch) && searchMapping) //Oridanary mode
+		else if(searchRadical)
+		{
+			goto ReadValue;
+		}
+		else if (((!isTextSearch) && (searchMapping||searchRadical)) //Oridanary mode
 			|| (isTextSearch && searchTTSPhrase))  // search TTS [Phrase] section mode
-        {
-            // Compare Dictionary key code and input key code
-            if (!isWildcardSearch)
-            {
-                if (CStringRange::Compare(_locale, &keyword, _pSearchKeyCode) != CSTR_EQUAL)
-                {
-                    if (bufLen)
-                    {
-                        delete [] pText;
-                    }
-                    goto FindNextLine;
-                }
-            }
-            else
-            {
-                // Wildcard search
-                if (!CStringRange::WildcardCompare(_locale, _pSearchKeyCode, &keyword))
-                {
-                    if (bufLen)
-                    {
-                        delete [] pText;
-                    }
-                    goto FindNextLine;
-                }
-            }
-        }
+		{
+			// Compare Dictionary key code and input key code
+			if (!isWildcardSearch)
+			{
+				if (CStringRange::Compare(_locale, &keyword, _pSearchKeyCode) != CSTR_EQUAL)
+				{
+					if (bufLen)
+					{
+						delete [] pText;
+					}
+					goto FindNextLine;
+				}
+			}
+			else
+			{
+				// Wildcard search
+				if (!CStringRange::WildcardCompare(_locale, _pSearchKeyCode, &keyword))
+				{
+					if (bufLen)
+					{
+						delete [] pText;
+					}
+					goto FindNextLine;
+				}
+			}
+		}
 		else 
-        {
-            // Compare Dictionary converted string and input string
-            CTSFDayiArray<CParserStringRange> convertedStrings;
-            if (!ParseLine(&pwch[indexTrace], bufLenOneLine, &keyword, &convertedStrings))
-            {
-                if (bufLen)
-                {
-                    delete [] pText;
-                }
-                return FALSE;
-            }
-            if (convertedStrings.Count() == 1)
-            {
-                CStringRange* pTempString = convertedStrings.GetAt(0);
+		{
+			// Compare Dictionary converted string and input string
+			CTSFDayiArray<CParserStringRange> convertedStrings;
+			if (!ParseLine(&pwch[indexTrace], bufLenOneLine, &keyword, &convertedStrings))
+			{
+				if (bufLen)
+				{
+					delete [] pText;
+				}
+				return FALSE;
+			}
+			if (convertedStrings.Count() == 1)
+			{
+				CStringRange* pTempString = convertedStrings.GetAt(0);
 
-                if (!isWildcardSearch)
-                {
-                    if (CStringRange::Compare(_locale, pTempString, _pSearchKeyCode) != CSTR_EQUAL)
-                    {
-                        if (bufLen)
-                        {
-                            delete [] pText;
-                        }
-                        goto FindNextLine;
-                    }
-                }
-                else
-                {
-                    // Wildcard search
-                    if (!CStringRange::WildcardCompare(_locale, _pSearchKeyCode, pTempString))
-                    {
-                        if (bufLen)
-                        {
-                            delete [] pText;
-                        }
-                        goto FindNextLine;
-                    }
-                }
-            }
-            else
-            {
-                if (bufLen)
-                {
-                    delete [] pText;
-                }
-                goto FindNextLine;
-            }
-        }
+				if (!isWildcardSearch)
+				{
+					if (CStringRange::Compare(_locale, pTempString, _pSearchKeyCode) != CSTR_EQUAL)
+					{
+						if (bufLen)
+						{
+							delete [] pText;
+						}
+						goto FindNextLine;
+					}
+				}
+				else
+				{
+					// Wildcard search
+					if (!CStringRange::WildcardCompare(_locale, _pSearchKeyCode, pTempString))
+					{
+						if (bufLen)
+						{
+							delete [] pText;
+						}
+						goto FindNextLine;
+					}
+				}
+			}
+			else
+			{
+				if (bufLen)
+				{
+					delete [] pText;
+				}
+				goto FindNextLine;
+			}
+		}
 
-        if (bufLen)
-        {
-            delete [] pText;
-        }
-
-		if(searchMapping || searchTTSPhrase)
+		if (bufLen)
+		{
+			delete [] pText;
+		}
+ReadValue:
+		if(searchMapping || searchTTSPhrase || searchRadical)
 		{
 			// Prepare return's CDictionaryResult
 			*ppdret = new (std::nothrow) CDictionaryResult();
@@ -278,7 +338,9 @@ TryAgain:
 			}
 
 			CTSFDayiArray<CParserStringRange> valueStrings;
-			if (!ParseLine(&pwch[indexTrace], bufLenOneLine, &keyword, &valueStrings, searchTTSPhrase))
+
+			if (!ParseLine(&pwch[indexTrace], bufLenOneLine, &keyword, &valueStrings, searchTTSPhrase,
+				(isTextSearch&&(!(cinControlKeyFound||searchRadical)))?_pSearchKeyCode:NULL))
 			{
 				if (*ppdret)
 				{
@@ -288,65 +350,73 @@ TryAgain:
 				if(!cinControlKeyFound)
 					return FALSE;
 			}
+			if(searchRadical)
+			{
+				goto FindNextLine;
+			}
 			if(cinControlKeyFound)  // get value of cin control keys
 			{
-				CParserStringRange testKey;
-				WCHAR* testKeyText= L"%autoCompose";testKey.Set(testKeyText, wcslen(testKeyText));
+				CParserStringRange testKey, value;
+				
+				
+				testKey.Set(L"%autoCompose", 12);
 				if (CStringRange::Compare(_locale, &keyword, &testKey) == CSTR_EQUAL)
 				{
-					testKeyText = L"TRUE";testKey.Set(testKeyText, wcslen(testKeyText));
-					Global::autoCompose = (CStringRange::Compare(_locale, valueStrings.GetAt(0), &testKey) == CSTR_EQUAL);
+					value.Set(L"TRUE", 4);
+					Global::autoCompose = (CStringRange::Compare(_locale, valueStrings.GetAt(0), &value) == CSTR_EQUAL);
 				}
 
 				cinControlKeyFound = FALSE;
 				goto FindNextLine;
 			}
-
-			(*ppdret)->_FindKeyCode = keyword;
-			(*ppdret)->_SearchKeyCode = *_pSearchKeyCode;
-
-			for (UINT i = 0; i < valueStrings.Count(); i++)
+			else
 			{
-				CStringRange* findPhrase = (*ppdret)->_FindPhraseList.Append();
-				if (findPhrase)
+
+				(*ppdret)->_FindKeyCode = keyword;
+				(*ppdret)->_SearchKeyCode = *_pSearchKeyCode;
+
+				for (UINT i = 0; i < valueStrings.Count(); i++)
 				{
-					*findPhrase = *valueStrings.GetAt(i);
+					CStringRange* findPhrase = (*ppdret)->_FindPhraseList.Append();
+					if (findPhrase)
+					{
+						*findPhrase = *valueStrings.GetAt(i);
+					}
 				}
+
 			}
-		
-			
 			// Seek to next line
 			isFound = TRUE;
 		}
-    }
+	}
 
 FindNextLine:
-    dwTotalBufLen -= bufLenOneLine;
-    if (dwTotalBufLen == 0 )
-    {
-        indexTrace += bufLenOneLine;
-        _charIndex += indexTrace;
+	dwTotalBufLen -= bufLenOneLine;
+	if (dwTotalBufLen == 0 )
+	{
+		indexTrace += bufLenOneLine;
+		_charIndex += indexTrace;
 
-        if (!isFound && *ppdret)
-        {
-            delete *ppdret;
-            *ppdret = nullptr;
-        }
-        return (isFound ? TRUE : FALSE);        // End of file
-    }
+		if (!isFound && *ppdret)
+		{
+			delete *ppdret;
+			*ppdret = nullptr;
+		}
+		return (isFound ? TRUE : FALSE);        // End of file
+	}
 
-    indexTrace += bufLenOneLine;
-    if (pwch[indexTrace] == L'\r' || pwch[indexTrace] == L'\n' || pwch[indexTrace] == L'\0')
-    {
-        bufLenOneLine = 1;
-        goto FindNextLine;
-    }
+	indexTrace += bufLenOneLine;
+	if (pwch[indexTrace] == L'\r' || pwch[indexTrace] == L'\n' || pwch[indexTrace] == L'\0')
+	{
+		bufLenOneLine = 1;
+		goto FindNextLine;
+	}
 
-    if (isFound)
-    {
-        _charIndex += indexTrace;
-        return TRUE;
-    }
+	if (isFound)
+	{
+		_charIndex += indexTrace;
+		return TRUE;
+	}
 
-    goto TryAgain;
+	goto TryAgain;
 }

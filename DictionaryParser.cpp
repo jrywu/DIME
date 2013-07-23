@@ -38,7 +38,8 @@ CDictionaryParser::~CDictionaryParser()
 //
 //---------------------------------------------------------------------
 
-BOOL CDictionaryParser::ParseLine(_In_reads_(dwBufLen) LPCWSTR pwszBuffer, DWORD_PTR dwBufLen, _Out_ CParserStringRange *psrgKeyword, _Inout_opt_ CTSFDayiArray<CParserStringRange> *pValue, _In_opt_ BOOL ttsPhraseSearch)
+BOOL CDictionaryParser::ParseLine(_In_reads_(dwBufLen) LPCWSTR pwszBuffer, DWORD_PTR dwBufLen, _Out_ CParserStringRange *psrgKeyword, 
+								  _Inout_opt_ CTSFDayiArray<CParserStringRange> *pValue, _In_opt_ BOOL ttsPhraseSearch, _In_opt_ CStringRange *searchText)
 {
     LPCWSTR pwszKeyWordDelimiter = nullptr;
     pwszKeyWordDelimiter = GetToken(pwszBuffer, dwBufLen, Global::KeywordDelimiter, psrgKeyword);
@@ -56,10 +57,10 @@ BOOL CDictionaryParser::ParseLine(_In_reads_(dwBufLen) LPCWSTR pwszBuffer, DWORD
     {
         if (dwBufLen)
         {
-			
+			CParserStringRange localKeyword;
 			if(ttsPhraseSearch)
 			{
-				CParserStringRange localKeyword;
+				
 				do{
 					pwszKeyWordDelimiter = GetToken(pwszBuffer, dwBufLen,L',', &localKeyword);
 					CParserStringRange* psrgValue = pValue->Append();
@@ -67,9 +68,9 @@ BOOL CDictionaryParser::ParseLine(_In_reads_(dwBufLen) LPCWSTR pwszBuffer, DWORD
 						return FALSE;
 
 					PWCHAR pwch = new (std::nothrow) WCHAR[psrgKeyword->GetLength() + localKeyword.GetLength() + 2];
-					if (!pwch)   
-						continue;
-    				StringCchCopyN(pwch, psrgKeyword->GetLength() + localKeyword.GetLength() + 2, psrgKeyword->Get(), psrgKeyword->GetLength());
+					if (!pwch)   continue;
+    				
+					//StringCchCopyN(pwch, psrgKeyword->GetLength() + localKeyword.GetLength() + 2, psrgKeyword->Get(), psrgKeyword->GetLength());
 
 					if ((pwszKeyWordDelimiter))
 					{						
@@ -77,14 +78,16 @@ BOOL CDictionaryParser::ParseLine(_In_reads_(dwBufLen) LPCWSTR pwszBuffer, DWORD
 						pwszBuffer = pwszKeyWordDelimiter + 1;
 						dwBufLen--;
 
-						StringCchCatN(pwch, psrgKeyword->GetLength() + localKeyword.GetLength() + 2, localKeyword.Get(),localKeyword.GetLength()); 
+						//StringCchCatN(pwch, psrgKeyword->GetLength() + localKeyword.GetLength() + 2, localKeyword.Get(),localKeyword.GetLength()); 
+						StringCchCopyN(pwch, psrgKeyword->GetLength() + localKeyword.GetLength() + 2, localKeyword.Get(),localKeyword.GetLength()); 
 					}else{ //end of line. append the last item
 
 						localKeyword.Set(pwszBuffer, dwBufLen);
 						RemoveWhiteSpaceFromBegin(&localKeyword);
 						RemoveWhiteSpaceFromEnd(&localKeyword);
 						RemoveStringDelimiter(&localKeyword);
-						StringCchCatN(pwch, psrgKeyword->GetLength() + localKeyword.GetLength() + 2, localKeyword.Get(),localKeyword.GetLength()); 
+						//StringCchCatN(pwch, psrgKeyword->GetLength() + localKeyword.GetLength() + 2, localKeyword.Get(),localKeyword.GetLength()); 
+						StringCchCopyN(pwch, psrgKeyword->GetLength() + localKeyword.GetLength() + 2, localKeyword.Get(),localKeyword.GetLength()); 
 					}
 					psrgValue->Set(pwch, wcslen(pwch));
 					RemoveWhiteSpaceFromBegin(psrgValue);
@@ -93,14 +96,32 @@ BOOL CDictionaryParser::ParseLine(_In_reads_(dwBufLen) LPCWSTR pwszBuffer, DWORD
 				}while(pwszKeyWordDelimiter);
 			}else
 			{
-            CParserStringRange* psrgValue = pValue->Append();
-            if (!psrgValue)
-                 return FALSE;
-            
-            psrgValue->Set(pwszBuffer, dwBufLen);
-            RemoveWhiteSpaceFromBegin(psrgValue);
-            RemoveWhiteSpaceFromEnd(psrgValue);
-            RemoveStringDelimiter(psrgValue);
+				CParserStringRange* psrgValue = pValue->Append();
+				if (!psrgValue)
+					return FALSE;
+				if(searchText == NULL)
+				{
+					psrgValue->Set(pwszBuffer, dwBufLen);
+				}
+				else
+				{
+					DWORD_PTR searchTextLen;
+					searchTextLen =  searchText->GetLength();
+					localKeyword.Set(pwszBuffer, dwBufLen);
+					RemoveWhiteSpaceFromBegin(&localKeyword);
+					RemoveWhiteSpaceFromEnd(&localKeyword);
+					RemoveStringDelimiter(&localKeyword);
+					if(searchTextLen >1)
+						searchTextLen--;//search text always in the form xxx* here.  remove the * wildcard  in last word.
+					if(localKeyword.GetLength() == searchTextLen)//the first one is itself, thus dwbuflen = searchTextLen here
+						psrgValue->Set(localKeyword.Get(), localKeyword.GetLength());
+					else
+						psrgValue->Set(localKeyword.Get() + searchTextLen, localKeyword.GetLength() - searchTextLen);
+					
+				}
+				RemoveWhiteSpaceFromBegin(psrgValue);
+				RemoveWhiteSpaceFromEnd(psrgValue);
+				RemoveStringDelimiter(psrgValue);
 			}
         }
     }

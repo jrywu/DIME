@@ -16,7 +16,6 @@ HINSTANCE dllInstanceHandle;
 
 LONG dllRefCount = -1;
 
-
 BOOL isWindows8 = FALSE;
 BOOL autoCompose = TRUE; //set to true to have dictionary file readed in the first keystroke
 BOOL hasPhraseSection = FALSE;

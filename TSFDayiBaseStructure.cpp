@@ -84,6 +84,7 @@ HRESULT SkipWhiteSpace(LCID locale, _In_ LPCWSTR pwszBuffer, DWORD_PTR dwBufLen,
 
 HRESULT FindChar(WCHAR wch, _In_ LPCWSTR pwszBuffer, DWORD_PTR dwBufLen, _Out_ DWORD_PTR *pdwIndex)
 {
+	if(pwszBuffer == NULL) return E_FAIL;
     DWORD_PTR index = 0;
 
     *pdwIndex = 0;

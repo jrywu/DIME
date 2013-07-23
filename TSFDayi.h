@@ -198,6 +198,9 @@ private:
 
     friend LRESULT CALLBACK CTSFDayi_WindowProc(HWND wndHandle, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
+	// function for process candidate
+	//HRESULT _FinalizeAndSearchPhrase(cost WCHAR *pwch, 
+
 private:
     ITfThreadMgr* _pThreadMgr;
     TfClientId _tfClientId;

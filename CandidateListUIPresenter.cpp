@@ -30,6 +30,29 @@ const int MOVETO_BOTTOM = -1;
 
 HRESULT CTSFDayi::_HandleCandidateFinalize(TfEditCookie ec, _In_ ITfContext *pContext)
 {
+	return _HandleCandidateWorker(ec, pContext);
+}
+
+//+---------------------------------------------------------------------------
+//
+// _HandleCandidateConvert
+//
+//----------------------------------------------------------------------------
+
+HRESULT CTSFDayi::_HandleCandidateConvert(TfEditCookie ec, _In_ ITfContext *pContext)
+{
+    return _HandleCandidateWorker(ec, pContext);
+	
+}
+
+//+---------------------------------------------------------------------------
+//
+// _HandleCandidateWorker
+//
+//----------------------------------------------------------------------------
+
+HRESULT CTSFDayi::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext)
+{
     HRESULT hr = S_OK;
     DWORD_PTR candidateLen = 0;
     const WCHAR* pCandidateString = nullptr;
@@ -42,261 +65,127 @@ HRESULT CTSFDayi::_HandleCandidateFinalize(TfEditCookie ec, _In_ ITfContext *pCo
     }
 
     candidateLen = _pCandidateListUIPresenter->_GetSelectedCandidateString(&pCandidateString);
+	if (candidateLen == 0)
+    {
+        hr = S_FALSE;
+        goto NoPresenter;
+    }
 
-    if (candidateLen >1 ){
-		commitString.Set(pCandidateString , candidateLen-1 );
-		
-		hr = _AddComposingAndChar(ec, pContext, &commitString);
-		if (FAILED(hr))	return hr;
-		_TerminateComposition(ec, pContext);
 
+
+	commitString.Set(pCandidateString , candidateLen );
+	if (!_IsComposing())
 		_StartComposition(pContext);
-		hr = _AddComposingAndChar(ec, pContext, &candidateString);
-		if (FAILED(hr))	return hr;
-       
+	hr = _AddComposingAndChar(ec, pContext, &commitString);
+	if (FAILED(hr))	return hr;
+	_TerminateComposition(ec, pContext);
+	_StartComposition(pContext);
+	//hr = _AddComposingAndChar(ec, pContext, &candidateString);
+	//if (FAILED(hr))	return hr;
+
+
+	if(candidateLen > 1)
+	{
 		candidateString.Set(pCandidateString + candidateLen -1 , 1 );
+	}else // cnadidateLen ==1
+	{
+		candidateString.Set(pCandidateString, 1 );
+	}
 
-		//--------------netsted phrase search
-		BOOL fMakePhraseFromText = _pCompositionProcessorEngine->IsMakePhraseFromText();
-		if (fMakePhraseFromText)
+
+	//--------------netsted phrase search
+	BOOL fMakePhraseFromText = _pCompositionProcessorEngine->IsMakePhraseFromText();
+	if (fMakePhraseFromText)
+	{
+		_pCompositionProcessorEngine->GetCandidateStringInConverted(candidateString, &candidatePhraseList);
+		LCID locale = _pCompositionProcessorEngine->GetLocale();
+
+		_pCandidateListUIPresenter->RemoveSpecificCandidateFromList(locale, candidatePhraseList, candidateString);
+	}
+
+	// We have a candidate list if candidatePhraseList.Cnt is not 0
+	// If we are showing reverse conversion, use CCandidateListUIPresenter
+	CANDIDATE_MODE tempCandMode = CANDIDATE_NONE;
+	CCandidateListUIPresenter* pTempCandListUIPresenter = nullptr;
+	if (candidatePhraseList.Count())
+	{
+		tempCandMode = CANDIDATE_WITH_NEXT_COMPOSITION;
+
+		pTempCandListUIPresenter = new (std::nothrow) CCandidateListUIPresenter(this, Global::AtomCandidateWindow,
+			CATEGORY_CANDIDATE,
+			_pCompositionProcessorEngine->GetCandidateListIndexRange(),
+			FALSE);
+		if (nullptr == pTempCandListUIPresenter)
 		{
-			_pCompositionProcessorEngine->GetCandidateStringInConverted(candidateString, &candidatePhraseList);
-			LCID locale = _pCompositionProcessorEngine->GetLocale();
-
-			_pCandidateListUIPresenter->RemoveSpecificCandidateFromList(locale, candidatePhraseList, candidateString);
-		}
-
-		// We have a candidate list if candidatePhraseList.Cnt is not 0
-		// If we are showing reverse conversion, use CCandidateListUIPresenter
-		CANDIDATE_MODE tempCandMode = CANDIDATE_NONE;
-		CCandidateListUIPresenter* pTempCandListUIPresenter = nullptr;
-		if (candidatePhraseList.Count())
-		{
-			tempCandMode = CANDIDATE_WITH_NEXT_COMPOSITION;
-
-			pTempCandListUIPresenter = new (std::nothrow) CCandidateListUIPresenter(this, Global::AtomCandidateWindow,
-				CATEGORY_CANDIDATE,
-				_pCompositionProcessorEngine->GetCandidateListIndexRange(),
-				FALSE);
-			if (nullptr == pTempCandListUIPresenter)
-			{
-				hr = E_OUTOFMEMORY;
-				goto Exit;
-			}
-		}
-
-		// call _Start*Line for CCandidateListUIPresenter or CReadingLine
-		// we don't cache the document manager object so get it from pContext.
-		ITfDocumentMgr* pDocumentMgr = nullptr;
-		HRESULT hrStartCandidateList = E_FAIL;
-		if (pContext->GetDocumentMgr(&pDocumentMgr) == S_OK)
-		{
-			ITfRange* pRange = nullptr;
-			if (_pComposition->GetRange(&pRange) == S_OK)
-			{
-				if (pTempCandListUIPresenter)
-				{
-					hrStartCandidateList = pTempCandListUIPresenter->_StartCandidateList(_tfClientId, pDocumentMgr, pContext, ec, pRange, _pCompositionProcessorEngine->GetCandidateWindowWidth());
-				} 
-
-				pRange->Release();
-			}
-			pDocumentMgr->Release();
-		}
-
-		// set up candidate list if it is being shown
-		if (SUCCEEDED(hrStartCandidateList))
-		{
-			pTempCandListUIPresenter->_SetTextColor(RGB(0, 0x80, 0), GetSysColor(COLOR_WINDOW));    // Text color is green
-			pTempCandListUIPresenter->_SetFillColor((HBRUSH)(COLOR_WINDOW+1));    // Background color is window
-			pTempCandListUIPresenter->_SetText(&candidatePhraseList, FALSE);
-
-
-
-			// Add composing character
-			hr = _AddComposingAndChar(ec, pContext, &candidateString);
-
-			// close candidate list
-			if (_pCandidateListUIPresenter)
-			{
-				_pCandidateListUIPresenter->_EndCandidateList();
-				delete _pCandidateListUIPresenter;
-				_pCandidateListUIPresenter = nullptr;
-
-				_candidateMode = CANDIDATE_NONE;
-				_isCandidateWithWildcard = FALSE;
-			}
-
-			if (hr == S_OK)
-			{
-				// copy temp candidate
-				_pCandidateListUIPresenter = pTempCandListUIPresenter;
-				_pCandidateListUIPresenter->_SetSelection(-1); // set selected index to -1 if showing phrase candidates
-
-				_candidateMode = tempCandMode;
-				_isCandidateWithWildcard = FALSE;
-			}
+			hr = E_OUTOFMEMORY;
 			goto Exit;
 		}
-		else
-		{
-			goto NoPresenter; // no next phrase list, terminate composition
-		}
-		//---------------------------------------
-
-        
 	}
-    else if (candidateLen)
-    {
-		candidateString.Set(pCandidateString, candidateLen);
 
-        hr = _AddComposingAndChar(ec, pContext, &candidateString);
+	// call _Start*Line for CCandidateListUIPresenter or CReadingLine
+	// we don't cache the document manager object so get it from pContext.
+	ITfDocumentMgr* pDocumentMgr = nullptr;
+	HRESULT hrStartCandidateList = E_FAIL;
+	if (pContext->GetDocumentMgr(&pDocumentMgr) == S_OK)
+	{
+		ITfRange* pRange = nullptr;
+		if (_pComposition->GetRange(&pRange) == S_OK)
+		{
+			if (pTempCandListUIPresenter)
+			{
+				hrStartCandidateList = pTempCandListUIPresenter->_StartCandidateList(_tfClientId, pDocumentMgr, pContext, ec, pRange, _pCompositionProcessorEngine->GetCandidateWindowWidth());
+			} 
 
-        if (FAILED(hr))
-        {
-            return hr;
-        }
-    }
+			pRange->Release();
+		}
+		pDocumentMgr->Release();
+	}
+
+	// set up candidate list if it is being shown
+	if (SUCCEEDED(hrStartCandidateList))
+	{
+		pTempCandListUIPresenter->_SetTextColor(RGB(0, 0x80, 0), GetSysColor(COLOR_WINDOW));    // Text color is green
+		pTempCandListUIPresenter->_SetFillColor((HBRUSH)(COLOR_WINDOW+1));    // Background color is window
+		pTempCandListUIPresenter->_SetText(&candidatePhraseList, FALSE);
+
+
+
+		// Add composing character
+		//candidateString.Set(L"_",1);
+		//hr = _AddComposingAndChar(ec, pContext, &candidateString);
+
+		// close candidate list
+		if (_pCandidateListUIPresenter)
+		{
+			_pCandidateListUIPresenter->_EndCandidateList();
+			delete _pCandidateListUIPresenter;
+			_pCandidateListUIPresenter = nullptr;
+
+			_candidateMode = CANDIDATE_NONE;
+			_isCandidateWithWildcard = FALSE;
+		}
+
+		if (hr == S_OK)
+		{
+			// copy temp candidate
+			_pCandidateListUIPresenter = pTempCandListUIPresenter;
+			_pCandidateListUIPresenter->_SetSelection(-1); // set selected index to -1 if showing phrase candidates
+
+			_candidateMode = tempCandMode;
+			_isCandidateWithWildcard = FALSE;
+		}
+		goto Exit;
+	}
+	else
+	{
+		goto NoPresenter; // no next phrase list, terminate composition
+	}
+	
 
 NoPresenter:
     _HandleComplete(ec, pContext);
 Exit:
     return hr;
-}
-
-//+---------------------------------------------------------------------------
-//
-// _HandleCandidateConvert
-//
-//----------------------------------------------------------------------------
-
-HRESULT CTSFDayi::_HandleCandidateConvert(TfEditCookie ec, _In_ ITfContext *pContext)
-{
-    return _HandleCandidateWorker(ec, pContext);
-}
-
-//+---------------------------------------------------------------------------
-//
-// _HandleCandidateWorker
-//
-//----------------------------------------------------------------------------
-
-HRESULT CTSFDayi::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext)
-{
-    HRESULT hrReturn = E_FAIL;
-    DWORD_PTR candidateLen = 0;
-    const WCHAR* pCandidateString = nullptr;
-    //BSTR pbstr = nullptr;
-    CStringRange candidateString;
-    CTSFDayiArray<CCandidateListItem> candidatePhraseList;
-
-    if (nullptr == _pCandidateListUIPresenter)
-    {
-        hrReturn = S_OK;
-        goto Exit;
-    }
-
-    candidateLen = _pCandidateListUIPresenter->_GetSelectedCandidateString(&pCandidateString);
-    if (0 == candidateLen)
-    {
-        hrReturn = S_FALSE;
-        goto Exit;
-    }
-
-    candidateString.Set(pCandidateString, candidateLen);
-
-    BOOL fMakePhraseFromText = _pCompositionProcessorEngine->IsMakePhraseFromText();
-    if (fMakePhraseFromText)
-    {
-        _pCompositionProcessorEngine->GetCandidateStringInConverted(candidateString, &candidatePhraseList);
-        LCID locale = _pCompositionProcessorEngine->GetLocale();
-
-        _pCandidateListUIPresenter->RemoveSpecificCandidateFromList(locale, candidatePhraseList, candidateString);
-    }
-
-    // We have a candidate list if candidatePhraseList.Cnt is not 0
-    // If we are showing reverse conversion, use CCandidateListUIPresenter
-    CANDIDATE_MODE tempCandMode = CANDIDATE_NONE;
-    CCandidateListUIPresenter* pTempCandListUIPresenter = nullptr;
-    if (candidatePhraseList.Count())
-    {
-        tempCandMode = CANDIDATE_WITH_NEXT_COMPOSITION;
-
-        pTempCandListUIPresenter = new (std::nothrow) CCandidateListUIPresenter(this, Global::AtomCandidateWindow,
-            CATEGORY_CANDIDATE,
-            _pCompositionProcessorEngine->GetCandidateListIndexRange(),
-            FALSE);
-        if (nullptr == pTempCandListUIPresenter)
-        {
-            hrReturn = E_OUTOFMEMORY;
-            goto Exit;
-        }
-    }
-
-    // call _Start*Line for CCandidateListUIPresenter or CReadingLine
-    // we don't cache the document manager object so get it from pContext.
-    ITfDocumentMgr* pDocumentMgr = nullptr;
-    HRESULT hrStartCandidateList = E_FAIL;
-    if (pContext->GetDocumentMgr(&pDocumentMgr) == S_OK)
-    {
-        ITfRange* pRange = nullptr;
-        if (_pComposition->GetRange(&pRange) == S_OK)
-        {
-            if (pTempCandListUIPresenter)
-            {
-                hrStartCandidateList = pTempCandListUIPresenter->_StartCandidateList(_tfClientId, pDocumentMgr, pContext, ec, pRange, _pCompositionProcessorEngine->GetCandidateWindowWidth());
-            } 
-
-            pRange->Release();
-        }
-        pDocumentMgr->Release();
-    }
-
-    // set up candidate list if it is being shown
-    if (SUCCEEDED(hrStartCandidateList))
-    {
-        pTempCandListUIPresenter->_SetTextColor(RGB(0, 0x80, 0), GetSysColor(COLOR_WINDOW));    // Text color is green
-        pTempCandListUIPresenter->_SetFillColor((HBRUSH)(COLOR_WINDOW+1));    // Background color is window
-        pTempCandListUIPresenter->_SetText(&candidatePhraseList, FALSE);
-
-		
-
-        // Add composing character
-        hrReturn = _AddComposingAndChar(ec, pContext, &candidateString);
-
-        // close candidate list
-        if (_pCandidateListUIPresenter)
-        {
-            _pCandidateListUIPresenter->_EndCandidateList();
-            delete _pCandidateListUIPresenter;
-            _pCandidateListUIPresenter = nullptr;
-
-            _candidateMode = CANDIDATE_NONE;
-            _isCandidateWithWildcard = FALSE;
-        }
-
-        if (hrReturn == S_OK)
-        {
-            // copy temp candidate
-            _pCandidateListUIPresenter = pTempCandListUIPresenter;
-			_pCandidateListUIPresenter->_SetSelection(-1); // set selected index to -1 if showing phrase candidates
-
-            _candidateMode = tempCandMode;
-            _isCandidateWithWildcard = FALSE;
-        }
-    }
-    else
-    {
-        hrReturn = _HandleCandidateFinalize(ec, pContext);
-    }
-
-    //if (pbstr)
-    //        SysFreeString(pbstr);
-    
-
-Exit:
-	
-    return hrReturn;
 }
 
 //+---------------------------------------------------------------------------
@@ -1256,7 +1145,7 @@ HRESULT CCandidateListUIPresenter::OnKillThreadFocus()
 {
     if (_isShowMode)
     {
-        Show(FALSE);
+      //  Show(FALSE);
     }
     return S_OK;
 }

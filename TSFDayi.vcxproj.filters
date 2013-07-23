@@ -214,9 +214,6 @@
     <ClCompile Include="FileMapping.cpp">
       <Filter>Source Files\Framework\Composition\Dictionary</Filter>
     </ClCompile>
-    <ClCompile Include="Globals.cpp">
-      <Filter>Source Files\DLL</Filter>
-    </ClCompile>
     <ClCompile Include="Register.cpp">
       <Filter>Source Files\DLL</Filter>
     </ClCompile>
@@ -303,6 +300,9 @@
     </ClCompile>
     <ClCompile Include="KeyStateCategory.cpp">
       <Filter>Source Files\Framework\Composition</Filter>
+    </ClCompile>
+    <ClCompile Include="Globals.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

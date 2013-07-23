@@ -32,7 +32,7 @@ STDAPI CTSFDayi::OnCompositionTerminated(TfEditCookie ecWrite, _In_ ITfCompositi
 
     _EndComposition(_pContext);
 
-    _DeleteCandidateList(FALSE, pContext);
+    //_DeleteCandidateList(FALSE, pContext);
 
     if (pContext)
     {

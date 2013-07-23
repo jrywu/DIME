@@ -429,7 +429,7 @@ HRESULT CTSFDayi::GetLayout(_Out_ TKBLayoutType *ptkblayoutType, _Out_ WORD *pwP
     HRESULT hr = E_INVALIDARG;
     if ((ptkblayoutType != nullptr) && (pwPreferredLayoutId != nullptr))
     {
-        *ptkblayoutType = TKBLT_OPTIMIZED;
+        *ptkblayoutType = TKBLT_CLASSIC;
         *pwPreferredLayoutId = TKBL_CLASSIC_TRADITIONAL_CHINESE_DAYI;
         hr = S_OK;
     }

@@ -4,7 +4,8 @@
 //
 //
 
-
+#include <Shlobj.h>
+#include <Shlwapi.h>
 #include "Private.h"
 #include "TSFDayi.h"
 #include "CompositionProcessorEngine.h"
@@ -1025,27 +1026,64 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 {	
     // Not yet registered
     // Register CFileMapping
-    WCHAR wszFileName[MAX_PATH] = {'\0'};
-    DWORD cchA = GetModuleFileName(Global::dllInstanceHandle, wszFileName, ARRAYSIZE(wszFileName));
-    size_t iDicFileNameLen = cchA + wcslen(TEXTSERVICE_DIC);
-    WCHAR *pwszFileName = new (std::nothrow) WCHAR[iDicFileNameLen + 1];
-    if (!pwszFileName)
-    {
-        goto ErrorExit;
-    }
-    *pwszFileName = L'\0';
+	WCHAR wszSysWOW64[MAX_PATH];
+	WCHAR wszProgramFiles[MAX_PATH];
+	WCHAR wszAppData[MAX_PATH];
+	LPWSTR pwzProgramFiles = wszProgramFiles;
+	//LPWSTR pwzAppdata = wzsAppData;
+	if(GetSystemWow64Directory(wszSysWOW64, MAX_PATH)>0){ //return 0 indicates x86 system, x64 otherwize.
+	//x64 system.  Use FOLDERID_ProgramFilesX64 to get %SystemDrive%\Program Files for x86 apps.
+		SHGetKnownFolderPath(FOLDERID_ProgramFilesX64, 0, NULL, &pwzProgramFiles);
+	}else
+	{//x86 system. 
+		SHGetKnownFolderPath(FOLDERID_ProgramFiles, 0, NULL, &pwzProgramFiles);
+	}
+	////CSIDL_APPDATA  personal roadming application data.
+	SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);
+	
+	WCHAR wzsTTSFileName[MAX_PATH] = L"\\Windows NT\\TableTextService\\TableTextServiceDaYi.txt";
+	WCHAR wzsTSFDayiProfile[MAX_PATH] = L"\\TSFDayi";
+	WCHAR wzsCINFileName[MAX_PATH] = L"\\Dayi.cin";
 
-    // find the last '/'
-    while (cchA--)
-    {
-        WCHAR wszChar = wszFileName[cchA];
-        if (wszChar == '\\' || wszChar == '/')
-        {
-            StringCchCopyN(pwszFileName, iDicFileNameLen + 1, wszFileName, cchA + 1);
-            StringCchCatN(pwszFileName, iDicFileNameLen + 1, TEXTSERVICE_DIC, wcslen(TEXTSERVICE_DIC));
-            break;
-        }
-    }
+
+ 	size_t iDicFileNameLen = wcslen(pwzProgramFiles) + wcslen(wzsTTSFileName);
+    WCHAR *pwszFileName = new (std::nothrow) WCHAR[MAX_PATH];
+    if (!pwszFileName)  goto ErrorExit;
+
+	*pwszFileName = L'\0';
+	StringCchCopyN(pwszFileName, iDicFileNameLen + 1, wszAppData, wcslen(wszAppData) + 1);
+	StringCchCatN(pwszFileName, iDicFileNameLen + 1, wzsTSFDayiProfile, wcslen(wzsTSFDayiProfile));
+	if(PathFileExists(pwszFileName))
+	{ 
+		StringCchCatN(pwszFileName, iDicFileNameLen + 1, wzsCINFileName, wcslen(wzsCINFileName));
+		if(PathFileExists(pwszFileName)) goto UseCIN;
+	}
+	else
+	{
+		//TSFDayi roadming profile is not exist. Create one.
+		CreateDirectory(pwszFileName, NULL);	
+	}
+	
+	*pwszFileName = L'\0';
+	StringCchCopyN(pwszFileName, iDicFileNameLen + 1, pwzProgramFiles, wcslen(pwzProgramFiles) + 1);
+	StringCchCatN(pwszFileName, iDicFileNameLen + 1, wzsTTSFileName, wcslen(wzsTTSFileName));
+UseCIN:
+
+
+	//DWORD cchA = GetModuleFileName(Global::dllInstanceHandle, wszFileName, ARRAYSIZE(wszFileName));
+    //size_t iDicFileNameLen = cchA + wcslen(TEXTSERVICE_DIC);
+    //// find the last '/'
+    //while (cchA--)
+    //{
+    //    WCHAR wszChar = wszFileName[cchA];
+    //    if (wszChar == '\\' || wszChar == '/')
+    //    {
+    //        StringCchCopyN(pwszFileName, iDicFileNameLen + 1, wszFileName, cchA + 1);
+    //        StringCchCatN(pwszFileName, iDicFileNameLen + 1, TEXTSERVICE_DIC, wcslen(TEXTSERVICE_DIC));
+			
+    //        break;
+    //    }
+    //}
 
     // create CFileMapping object
     if (_pDictionaryFile == nullptr)
