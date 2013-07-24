@@ -1033,7 +1033,8 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 	//LPWSTR pwzAppdata = wzsAppData;
 	if(GetSystemWow64Directory(wszSysWOW64, MAX_PATH)>0){ //return 0 indicates x86 system, x64 otherwize.
 	//x64 system.  Use FOLDERID_ProgramFilesX64 to get %SystemDrive%\Program Files for x86 apps.
-		SHGetKnownFolderPath(FOLDERID_ProgramFilesX64, 0, NULL, &pwzProgramFiles);
+		//SHGetKnownFolderPath(FOLDERID_ProgramFilesX64, 0, NULL, &pwzProgramFiles); not working for win32 apps
+		GetEnvironmentVariable(L"ProgramW6432", pwzProgramFiles, MAX_PATH);
 	}else
 	{//x86 system. 
 		SHGetKnownFolderPath(FOLDERID_ProgramFiles, 0, NULL, &pwzProgramFiles);
