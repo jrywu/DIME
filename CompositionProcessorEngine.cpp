@@ -67,7 +67,7 @@ BOOL CTSFDayi::_AddTextProcessorEngine()
     // Create composition processor engine
     if (_pCompositionProcessorEngine == nullptr)
     {
-        _pCompositionProcessorEngine = new (std::nothrow) CCompositionProcessorEngine();
+        _pCompositionProcessorEngine = new (std::nothrow) CCompositionProcessorEngine(this);
     }
     if (!_pCompositionProcessorEngine)
     {
@@ -93,8 +93,11 @@ BOOL CTSFDayi::_AddTextProcessorEngine()
 //
 //----------------------------------------------------------------------------
 
-CCompositionProcessorEngine::CCompositionProcessorEngine()
+CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CTSFDayi *pTextService)
 {
+	_pTextService = pTextService;
+    _pTextService->AddRef();
+
     _pTableDictionaryEngine = nullptr;
     _pDictionaryFile = nullptr;
 
@@ -136,6 +139,7 @@ CCompositionProcessorEngine::CCompositionProcessorEngine()
 
 CCompositionProcessorEngine::~CCompositionProcessorEngine()
 {
+	_pTextService->Release();
     if (_pTableDictionaryEngine)
     {
         delete _pTableDictionaryEngine;
@@ -1274,6 +1278,7 @@ void CCompositionProcessorEngine::ConversionModeCompartmentUpdated(_In_ ITfThrea
         if (fOpen && !(conversionMode & TF_CONVERSIONMODE_NATIVE))
         {
             CompartmentIMEMode._SetCompartmentBOOL(FALSE);
+			_pTextService->_DeleteCandidateList(TRUE,NULL);
         }
         else if (!fOpen && (conversionMode & TF_CONVERSIONMODE_NATIVE))
         {

@@ -409,6 +409,12 @@ STDAPI CTSFDayi::OnPreservedKey(ITfContext *pContext, REFGUID rguid, BOOL *pIsEa
 
     pCompositionProcessorEngine->OnPreservedKey(rguid, pIsEaten, _GetThreadMgr(), _GetClientId());
 
+	BOOL isOpen = FALSE;
+	CCompartment CompartmentKeyboardOpen(_pThreadMgr, _tfClientId, Global::TSFDayiGuidCompartmentIMEMode);
+    CompartmentKeyboardOpen._GetCompartmentBOOL(isOpen);
+	//if(!isOpen)	 _DeleteCandidateList(TRUE, pContext);  //Delete phrase candidates when switched to native mode.
+
+
     return S_OK;
 }
 

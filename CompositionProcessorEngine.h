@@ -19,7 +19,7 @@
 class CCompositionProcessorEngine
 {
 public:
-    CCompositionProcessorEngine(void);
+    CCompositionProcessorEngine(_In_ CTSFDayi *pTextService);
     ~CCompositionProcessorEngine(void);
 
     BOOL SetupLanguageProfile(LANGID langid, REFGUID guidLanguageProfile, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, BOOL isSecureMode, BOOL isComLessMode);
@@ -114,6 +114,7 @@ private:
     CFile* GetDictionaryFile();
 
 private:
+	CTSFDayi* _pTextService;
     struct _KEYSTROKE
     {
         UINT VirtualKey;

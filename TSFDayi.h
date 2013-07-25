@@ -134,6 +134,7 @@ public:
     static HRESULT CTSFDayi::CreateInstance(REFCLSID rclsid, REFIID riid, _Outptr_result_maybenull_ LPVOID* ppv, _Out_opt_ HINSTANCE* phInst, BOOL isComLessMode);
     static HRESULT CTSFDayi::ComLessCreateInstance(REFGUID rclsid, REFIID riid, _Outptr_result_maybenull_ void **ppv, _Out_opt_ HINSTANCE *phInst);
     static HRESULT CTSFDayi::GetComModuleName(REFGUID rclsid, _Out_writes_(cchPath)WCHAR* wchPath, DWORD cchPath);
+	VOID _DeleteCandidateList(BOOL fForce, _In_opt_ ITfContext *pContext);
 
 private:
     // functions for the composition object.
@@ -182,7 +183,7 @@ private:
     BOOL _IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pCodeOut, _Out_writes_(1) WCHAR *pwch, _Out_opt_ _KEYSTROKE_STATE *pKeyState);
 
     BOOL _IsRangeCovered(TfEditCookie ec, _In_ ITfRange *pRangeTest, _In_ ITfRange *pRangeCover);
-    VOID _DeleteCandidateList(BOOL fForce, _In_opt_ ITfContext *pContext);
+   
 
     WCHAR ConvertVKey(UINT code);
 

@@ -232,9 +232,6 @@
     <ClCompile Include="Server.cpp">
       <Filter>Source Files\DLL</Filter>
     </ClCompile>
-    <ClCompile Include="TSFDayiBaseStructure.cpp">
-      <Filter>Source Files\Framework\Composition</Filter>
-    </ClCompile>
     <ClCompile Include="Composition.cpp">
       <Filter>Source Files\Framework\Composition</Filter>
     </ClCompile>
@@ -303,6 +300,9 @@
     </ClCompile>
     <ClCompile Include="Globals.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TSFDayiBaseStructure.cpp">
+      <Filter>Source Files\Framework</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

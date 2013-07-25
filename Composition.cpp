@@ -20,6 +20,7 @@
 
 STDAPI CTSFDayi::OnCompositionTerminated(TfEditCookie ecWrite, _In_ ITfComposition *pComposition)
 {
+
     // Clear dummy composition
     _RemoveDummyCompositionForComposing(ecWrite, pComposition);
 
