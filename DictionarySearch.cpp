@@ -339,6 +339,7 @@ ReadValue:
 				PWCHAR radicalChar = new (std::nothrow) WCHAR[2];
 				PWCHAR radical = new (std::nothrow) WCHAR[2];
 				*radicalChar=L'0';
+				*radical=L'0';
 				StringCchCopyN(radicalChar,  2, keyword.Get(),1); 
 				StringCchCopyN(radical, 2, valueStrings.GetAt(0)->Get(), 1);
 				Global::radicalMap[towupper(*radicalChar)] = *radical;
