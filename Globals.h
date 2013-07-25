@@ -6,11 +6,11 @@
 
 
 #pragma once
-
+#include <map>
 #include "private.h"
 #include "define.h"
 #include "TSFDayiBaseStructure.h"
-
+using std::map;
 void DllAddRef();
 void DllRelease();
 
@@ -99,6 +99,7 @@ inline BOOL IsTooSimilar(COLORREF cr1, COLORREF cr2)
 //---------------------------------------------------------------------
 extern HINSTANCE dllInstanceHandle;
 
+extern map <WCHAR, WCHAR> radicalMap;
 
 extern BOOL isWindows8; //OS Version
 extern BOOL autoCompose; // show candidates while composing

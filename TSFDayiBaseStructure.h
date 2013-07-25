@@ -12,6 +12,7 @@
 #include "assert.h"
 #include <iostream>
 
+
 using std::cout;
 using std::endl;
 
@@ -104,6 +105,7 @@ BOOL IsSpace(LCID locale, WCHAR wch);
 
 template<class T>
 class CTSFDayiArray
+
 {
     typedef typename std::vector<T> CTSFDayiInnerArray;
     typedef typename std::vector<T>::iterator CTSFDayiInnerIter;
@@ -213,8 +215,8 @@ public:
     const WCHAR *Get() const;
     const DWORD_PTR GetLength() const;
     void Clear();
-    void Set(const WCHAR *pwch, DWORD_PTR dwLength);
-    void Set(CStringRange &sr);
+    CStringRange& Set(const WCHAR *pwch, DWORD_PTR dwLength);
+    CStringRange& Set(CStringRange &sr);
     CStringRange& operator=(const CStringRange& sr);
     void CharNext(_Inout_ CStringRange* pCharNext);
     static int Compare(LCID locale, _In_ CStringRange* pString1, _In_ CStringRange* pString2);

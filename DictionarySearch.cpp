@@ -148,85 +148,69 @@ TryAgain:
 			// read cin control key here.
 			if(ttsControlKeyFound)
 			{	
-				controlKey.Set(L"[Text]", 6);	
-				if (CStringRange::Compare(_locale, &keyword, &controlKey) == CSTR_EQUAL)
+				if (CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"[Text]", 6)) == CSTR_EQUAL)
 				{ // in Text block
 					searchRadical = FALSE;
 					searchMapping = TRUE;
 					Global::hasPhraseSection = FALSE;
 					searchTTSPhrase = FALSE;
-				}else
-				{
-					controlKey.Set(L"[Phrase]", 8);	
-					if (CStringRange::Compare(_locale, &keyword, &controlKey) == CSTR_EQUAL)
-					{ // in Phrase block
-						searchRadical = FALSE;
-						searchMapping = FALSE;
-						Global::hasPhraseSection = TRUE;
-						searchTTSPhrase = TRUE;
-					}
-					else
-					{
-						controlKey.Set(L"[Radical]", 9);	
-						if (CStringRange::Compare(_locale, &keyword, &controlKey) == CSTR_EQUAL)
-						{
-							searchRadical = TRUE; // retrive the [Radical] Mapping Section.
-							searchMapping = FALSE;
-						}
-						else
-						{
-							controlKey.Set(L"[AutoCompose]", 13);	
-							if (CStringRange::Compare(_locale, &keyword, &controlKey) == CSTR_EQUAL)
-								Global::autoCompose = TRUE;// autoCompose is off for TTS table unless see [AutoCompose] control key
-
-							searchRadical = FALSE;
-							searchMapping = FALSE;
-							Global::hasPhraseSection = TRUE;
-							searchTTSPhrase = FALSE;
-						}
-					}
-
-
-
 				}
+				else if (CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"[Phrase]", 8)) == CSTR_EQUAL)
+				{ // in Phrase block
+					searchRadical = FALSE;
+					searchMapping = FALSE;
+					Global::hasPhraseSection = TRUE;
+					searchTTSPhrase = TRUE;
+				}
+				else if (CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"[Radical]", 9)) == CSTR_EQUAL)
+				{
+					searchRadical = TRUE; // retrive the [Radical] Mapping Section.
+					searchMapping = FALSE;
+				}
+				else if (CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"[AutoCompose]", 13)) == CSTR_EQUAL)
+				{
+					Global::autoCompose = TRUE;// autoCompose is off for TTS table unless see [AutoCompose] control key
+
+					searchRadical = FALSE;
+					searchMapping = FALSE;
+					Global::hasPhraseSection = TRUE;
+					searchTTSPhrase = FALSE;
+				}
+				
 				ttsControlKeyFound = FALSE;
 				goto FindNextLine;
 			}
 			else if(cinControlKeyFound)
 			{
-				controlKey.Set(L"%autoCompose*", 13);	
-				if (CStringRange::WildcardCompare(_locale, &controlKey, &keyword))
+				
+				if (CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%autoCompose*", 13), &keyword))
 				{
 					searchRadical = FALSE;
 					searchMapping = TRUE;
 					cinControlKeyFound = TRUE;
 					goto ReadValue;
 				}
-				controlKey.Set(L"%chardef?begin", 14);	
-				if (CStringRange::WildcardCompare(_locale, &controlKey, &keyword))
+				else if (CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%chardef?begin", 14), &keyword))
 				{
 					searchRadical = FALSE;
 					searchMapping = TRUE;
 					cinControlKeyFound = FALSE;
 					goto FindNextLine;
 				}
-				controlKey.Set(L"%chardef?end", 12);	
-				if (CStringRange::WildcardCompare(_locale, &controlKey, &keyword))
+				else if (CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%chardef?end", 12),&keyword))
 				{
 					searchMapping = FALSE;
 					cinControlKeyFound = FALSE;
 					goto FindNextLine;
 				}
-				controlKey.Set(L"%keyname?begin", 14);	
-				if (CStringRange::WildcardCompare(_locale, &controlKey, &keyword))
+				else if (CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%keyname?begin", 14), &keyword))
 				{
 					searchMapping = FALSE;
 					searchRadical = TRUE;
 					cinControlKeyFound = FALSE;
 					goto FindNextLine;
 				}
-				controlKey.Set(L"%keyname?end", 14);	
-				if (CStringRange::WildcardCompare(_locale, &controlKey, &keyword))
+				else if (CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%keyname?end", 14), &keyword))
 				{
 					searchMapping = TRUE;
 					searchRadical = FALSE;
@@ -352,6 +336,12 @@ ReadValue:
 			}
 			if(searchRadical)
 			{
+				PWCHAR radicalChar = new (std::nothrow) WCHAR[2];
+				PWCHAR radical = new (std::nothrow) WCHAR[2];
+				*radicalChar=L'0';
+				StringCchCopyN(radicalChar,  2, keyword.Get(),1); 
+				StringCchCopyN(radical, 2, valueStrings.GetAt(0)->Get(), 1);
+				Global::radicalMap[towupper(*radicalChar)] = *radical;
 				goto FindNextLine;
 			}
 			if(cinControlKeyFound)  // get value of cin control keys

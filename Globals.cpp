@@ -4,17 +4,20 @@
 //
 //
 
-
+#include <map>
 #include "Private.h"
 #include "resource.h"
 #include "BaseWindow.h"
 #include "define.h"
 #include "TSFDayiBaseStructure.h"
+using std::map;
 
 namespace Global {
 HINSTANCE dllInstanceHandle;
 
 LONG dllRefCount = -1;
+
+map <WCHAR, WCHAR> radicalMap;
 
 BOOL isWindows8 = FALSE;
 BOOL autoCompose = TRUE; //set to true to have dictionary file readed in the first keystroke

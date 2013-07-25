@@ -144,15 +144,17 @@ void CStringRange::Clear()
     _pStringBuf = nullptr;
 }
 
-void CStringRange::Set(const WCHAR *pwch, DWORD_PTR dwLength)
+CStringRange& CStringRange::Set(const WCHAR *pwch, DWORD_PTR dwLength)
 {
     _stringBufLen = dwLength;
     _pStringBuf = pwch;
+	return *this;
 }
 
-void CStringRange::Set(CStringRange &sr)
+CStringRange& CStringRange::Set(CStringRange &sr)
 {
     *this = sr;
+	return *this;
 }
 
 CStringRange& CStringRange::operator =(const CStringRange& sr)
