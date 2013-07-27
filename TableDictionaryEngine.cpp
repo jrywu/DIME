@@ -145,4 +145,11 @@ VOID CTableDictionaryEngine::CollectWordFromConvertedString(_In_ CStringRange *p
         delete pdret;
         pdret = nullptr;
     }
+	
+}
+VOID CTableDictionaryEngine::ParseConfig()
+{
+	 CDictionarySearch dshSearch(_locale, _pDictionaryFile, NULL);
+	 dshSearch.ParseConfig();
+
 }

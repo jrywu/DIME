@@ -20,7 +20,8 @@ LONG dllRefCount = -1;
 map <WCHAR, WCHAR> radicalMap;
 
 BOOL isWindows8 = FALSE;
-BOOL autoCompose = TRUE; //set to true to have dictionary file readed in the first keystroke
+BOOL autoCompose = FALSE; 
+
 BOOL hasPhraseSection = FALSE;
 
 CRITICAL_SECTION CS;

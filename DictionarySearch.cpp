@@ -77,13 +77,18 @@ BOOL CDictionarySearch::FindConvertedStringForWildcard(CDictionaryResult **ppdre
 	return FindWorker(TRUE, ppdret, TRUE); // Wildcard
 }
 
+BOOL CDictionarySearch::ParseConfig()
+{
+		return FindWorker(FALSE, NULL, FALSE, TRUE); // parseConfig=TRUE;
+}
+
 //+---------------------------------------------------------------------------
 //
 // FindWorker
 //
 //----------------------------------------------------------------------------
 
-BOOL CDictionarySearch::FindWorker(BOOL isTextSearch, _Out_ CDictionaryResult **ppdret, BOOL isWildcardSearch)
+BOOL CDictionarySearch::FindWorker(BOOL isTextSearch, _Out_ CDictionaryResult **ppdret, BOOL isWildcardSearch, _In_opt_ BOOL parseConfig)
 {
 	DWORD_PTR dwTotalBufLen = GetBufferInWCharLength();        // in char
 	if (dwTotalBufLen == 0)
@@ -94,7 +99,7 @@ BOOL CDictionarySearch::FindWorker(BOOL isTextSearch, _Out_ CDictionaryResult **
 
 	const WCHAR *pwch = GetBufferInWChar();
 	DWORD_PTR indexTrace = 0;     // in char
-	*ppdret = nullptr;
+	if(!parseConfig) *ppdret = nullptr;
 	BOOL cinControlKeyFound = FALSE;
 	BOOL ttsControlKeyFound = FALSE;
 	BOOL isFound = FALSE;
@@ -148,42 +153,46 @@ TryAgain:
 			// read cin control key here.
 			if(ttsControlKeyFound)
 			{	
-				if (CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"[Text]", 6)) == CSTR_EQUAL)
+				if ( CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"[Text]", 6)) == CSTR_EQUAL)
 				{ // in Text block
 					searchRadical = FALSE;
-					searchMapping = TRUE;
-					Global::hasPhraseSection = FALSE;
+					searchMapping = !parseConfig;
 					searchTTSPhrase = FALSE;
 				}
 				else if (CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"[Phrase]", 8)) == CSTR_EQUAL)
 				{ // in Phrase block
 					searchRadical = FALSE;
 					searchMapping = FALSE;
-					Global::hasPhraseSection = TRUE;
-					searchTTSPhrase = TRUE;
+					if(parseConfig)
+						Global::hasPhraseSection = TRUE;
+					searchTTSPhrase = !parseConfig;
 				}
-				else if (CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"[Radical]", 9)) == CSTR_EQUAL)
+				else if (parseConfig && CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"[Radical]", 9)) == CSTR_EQUAL)
 				{
 					searchRadical = TRUE; // retrive the [Radical] Mapping Section.
 					searchMapping = FALSE;
-				}
-				else if (CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"[AutoCompose]", 13)) == CSTR_EQUAL)
-				{
-					Global::autoCompose = TRUE;// autoCompose is off for TTS table unless see [AutoCompose] control key
-
-					searchRadical = FALSE;
-					searchMapping = FALSE;
-					Global::hasPhraseSection = TRUE;
 					searchTTSPhrase = FALSE;
 				}
-				
+				else if (parseConfig && CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"[AutoCompose]", 13)) == CSTR_EQUAL)
+				{
+					Global::autoCompose = TRUE;// autoCompose is off for TTS table unless see [AutoCompose] control key
+					searchRadical = FALSE;
+					searchMapping = FALSE;
+					searchTTSPhrase = FALSE;
+				}
+				else
+				{
+					searchRadical = FALSE;
+					searchMapping = FALSE;
+					searchTTSPhrase = FALSE;
+				}
 				ttsControlKeyFound = FALSE;
 				goto FindNextLine;
 			}
 			else if(cinControlKeyFound)
 			{
 				
-				if (CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%autoCompose*", 13), &keyword))
+				if (parseConfig && CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%autoCompose*", 13), &keyword))
 				{
 					searchRadical = FALSE;
 					searchMapping = TRUE;
@@ -193,44 +202,42 @@ TryAgain:
 				else if (CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%chardef?begin", 14), &keyword))
 				{
 					searchRadical = FALSE;
-					searchMapping = TRUE;
-					cinControlKeyFound = FALSE;
-					goto FindNextLine;
+					searchMapping = !parseConfig;
 				}
 				else if (CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%chardef?end", 12),&keyword))
 				{
+					searchRadical = FALSE;
 					searchMapping = FALSE;
-					cinControlKeyFound = FALSE;
-					goto FindNextLine;
 				}
-				else if (CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%keyname?begin", 14), &keyword))
+				else if (parseConfig && CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%keyname?begin", 14), &keyword))
 				{
 					searchMapping = FALSE;
 					searchRadical = TRUE;
-					cinControlKeyFound = FALSE;
-					goto FindNextLine;
 				}
-				else if (CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%keyname?end", 14), &keyword))
+				else if (parseConfig && CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%keyname?end", 14), &keyword))
 				{
-					searchMapping = TRUE;
+					searchMapping = FALSE;
 					searchRadical = FALSE;
-					cinControlKeyFound = FALSE;
-					goto FindNextLine;
-
 				}
-				searchRadical = FALSE;
-				searchMapping = FALSE;
+				else
+				{
+					searchRadical = FALSE;
+					searchMapping = FALSE;
+				}
+				cinControlKeyFound = FALSE;
 				goto FindNextLine;
 
-			}
+				
 
+			}
+			goto FindNextLine;
 		}
 		else if(searchRadical)
 		{
 			goto ReadValue;
 		}
-		else if (((!isTextSearch) && (searchMapping||searchRadical)) //Oridanary mode
-			|| (isTextSearch && searchTTSPhrase))  // search TTS [Phrase] section mode
+		else if (((!parseConfig) && (!isTextSearch) && (searchMapping||searchRadical)) //Oridanary mode
+			|| ((!parseConfig) && isTextSearch && searchTTSPhrase))  // search TTS [Phrase] section mode
 		{
 			// Compare Dictionary key code and input key code
 			if (!isWildcardSearch)
@@ -257,7 +264,7 @@ TryAgain:
 				}
 			}
 		}
-		else 
+		else if(!parseConfig)
 		{
 			// Compare Dictionary converted string and input string
 			CTSFDayiArray<CParserStringRange> convertedStrings;
@@ -306,6 +313,10 @@ TryAgain:
 				goto FindNextLine;
 			}
 		}
+		else  //bypassing all lines for all lines except the radical section for pars 
+		{
+			goto FindNextLine;
+		}
 
 		if (bufLen)
 		{
@@ -315,10 +326,13 @@ ReadValue:
 		if(searchMapping || searchTTSPhrase || searchRadical)
 		{
 			// Prepare return's CDictionaryResult
-			*ppdret = new (std::nothrow) CDictionaryResult();
-			if (!*ppdret)
+			if(!parseConfig)
 			{
-				return FALSE;
+				*ppdret = new (std::nothrow) CDictionaryResult();
+				if (!*ppdret)
+				{
+					return FALSE;
+				}
 			}
 
 			CTSFDayiArray<CParserStringRange> valueStrings;
@@ -326,7 +340,7 @@ ReadValue:
 			if (!ParseLine(&pwch[indexTrace], bufLenOneLine, &keyword, &valueStrings, searchTTSPhrase,
 				(isTextSearch&&(!(cinControlKeyFound||searchRadical)))?_pSearchKeyCode:NULL))
 			{
-				if (*ppdret)
+				if (!parseConfig && *ppdret)
 				{
 					delete *ppdret;
 					*ppdret = nullptr;
@@ -360,7 +374,7 @@ ReadValue:
 				cinControlKeyFound = FALSE;
 				goto FindNextLine;
 			}
-			else
+			else if(!parseConfig)
 			{
 
 				(*ppdret)->_FindKeyCode = keyword;
@@ -388,7 +402,7 @@ FindNextLine:
 		indexTrace += bufLenOneLine;
 		_charIndex += indexTrace;
 
-		if (!isFound && *ppdret)
+		if ( !parseConfig && !isFound && *ppdret)
 		{
 			delete *ppdret;
 			*ppdret = nullptr;

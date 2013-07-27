@@ -186,7 +186,10 @@ HRESULT CTSFDayi::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine
 			*pwchRadical = L'\0';
 			for(UINT i =0; i < readingStrings.GetAt(index)->GetLength(); i++)
 			{
-				WCHAR* radical = &Global::radicalMap[towupper(*(readingStrings.GetAt(index)->Get()+i))];
+				WCHAR* radicalChar = new (std::nothrow) WCHAR[2];
+				*radicalChar = towupper(*(readingStrings.GetAt(index)->Get()+i));
+				WCHAR* radical = &Global::radicalMap[*radicalChar];
+				if(*radical == L'\0') *radical = *radicalChar;
 				StringCchCatN(pwchRadical,readingStrings.GetAt(index)->GetLength() + 1, radical,1); 
 			}
 			hr = _AddComposingAndChar(ec, pContext, &compRadical.Set(pwchRadical,readingStrings.GetAt(index)->GetLength()));
@@ -206,35 +209,35 @@ HRESULT CTSFDayi::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine
 	if(Global::autoCompose){   // auto composing mode: show candidates while composition updated imeediately.
 
 		CTSFDayiArray<CCandidateListItem> candidateList;
-		Global::autoCompose = FALSE; //turn off autoCompose mode for default unless see [AutoCompose] or get %autoCompose = TRUE
+
 		pCompositionProcessorEngine->GetCandidateList(&candidateList, TRUE, FALSE);
 
-		if(Global::autoCompose) //Check autoCompose key again because the key may update from the dictionary file for the first time.  
+
+
+		if (candidateList.Count())
 		{
-			if (candidateList.Count())
-			{
-				hr = _CreateAndStartCandidate(pCompositionProcessorEngine, ec, pContext);
-				if (SUCCEEDED(hr))
-				{
-					_pCandidateListUIPresenter->_ClearList();
-					_pCandidateListUIPresenter->_SetText(&candidateList, TRUE);
-					_pCandidateListUIPresenter->Show(TRUE); 
-				}
-			}
-			else if (_pCandidateListUIPresenter)
+			hr = _CreateAndStartCandidate(pCompositionProcessorEngine, ec, pContext);
+			if (SUCCEEDED(hr))
 			{
 				_pCandidateListUIPresenter->_ClearList();
-				_pCandidateListUIPresenter->Show(FALSE);  // hide the candidate window if now candidates in autocompose mode
-			}
-			else if (readingStrings.Count() && isWildcardIncluded)
-			{
-				hr = _CreateAndStartCandidate(pCompositionProcessorEngine, ec, pContext);
-				if (SUCCEEDED(hr))
-				{
-					_pCandidateListUIPresenter->_ClearList();
-				}
+				_pCandidateListUIPresenter->_SetText(&candidateList, TRUE);
+				_pCandidateListUIPresenter->Show(TRUE); 
 			}
 		}
+		else if (_pCandidateListUIPresenter)
+		{
+			_pCandidateListUIPresenter->_ClearList();
+			_pCandidateListUIPresenter->Show(FALSE);  // hide the candidate window if now candidates in autocompose mode
+		}
+		else if (readingStrings.Count() && isWildcardIncluded)
+		{
+			hr = _CreateAndStartCandidate(pCompositionProcessorEngine, ec, pContext);
+			if (SUCCEEDED(hr))
+			{
+				_pCandidateListUIPresenter->_ClearList();
+			}
+		}
+
 	}
     return hr;
 }

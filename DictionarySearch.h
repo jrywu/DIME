@@ -30,13 +30,14 @@ public:
     BOOL FindPhraseForWildcard(_Out_ CDictionaryResult **ppdret);
 	BOOL FindConvertedString(CDictionaryResult **ppdret);
     BOOL FindConvertedStringForWildcard(CDictionaryResult **ppdret);
+	BOOL ParseConfig(); 
 
     CStringRange* _pSearchKeyCode;
 
     DWORD_PTR _charIndex;      // in character. Always point start of line in dictionary file.
 
 private:
-    BOOL FindWorker(BOOL isTextSearch, _Out_ CDictionaryResult **ppdret, BOOL isWildcardSearch);
+    BOOL FindWorker(BOOL isTextSearch, _Out_ CDictionaryResult **ppdret, BOOL isWildcardSearch, _In_opt_ BOOL parseConfig = FALSE);
 
     DWORD_PTR GetBufferInWCharLength()
     {
