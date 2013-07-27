@@ -33,7 +33,8 @@ CBaseDictionaryEngine::~CBaseDictionaryEngine()
 
 VOID CBaseDictionaryEngine::SortListItemByFindKeyCode(_Inout_ CTSFDayiArray<CCandidateListItem> *pItemList)
 {
-    MergeSortByFindKeyCode(pItemList, 0, pItemList->Count() - 1);
+	if(pItemList->Count())
+		MergeSortByFindKeyCode(pItemList, 0, pItemList->Count() - 1);
 }
 
 //+---------------------------------------------------------------------------

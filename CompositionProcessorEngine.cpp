@@ -853,9 +853,9 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL *pIsE
             return;
         }
         BOOL isOpen = FALSE;
-		CCompartment CompartmentIMEMOde(pThreadMgr, tfClientId, Global::TSFDayiGuidCompartmentIMEMode);
-        CompartmentIMEMOde._GetCompartmentBOOL(isOpen);
-        CompartmentIMEMOde._SetCompartmentBOOL(isOpen ? FALSE : TRUE);
+		CCompartment CompartmentIMEMode(pThreadMgr, tfClientId, Global::TSFDayiGuidCompartmentIMEMode);
+        CompartmentIMEMode._GetCompartmentBOOL(isOpen);
+        CompartmentIMEMode._SetCompartmentBOOL(isOpen ? FALSE : TRUE);
         
 		if(Global::isWindows8){
 			isOpen = FALSE;
@@ -1109,7 +1109,7 @@ UseCIN:
     {
         goto ErrorExit;
     }
-
+	_pTableDictionaryEngine->ParseConfig(); //parse config first.
     delete []pwszFileName;
     return TRUE;
 ErrorExit:
@@ -1278,7 +1278,7 @@ void CCompositionProcessorEngine::ConversionModeCompartmentUpdated(_In_ ITfThrea
         if (fOpen && !(conversionMode & TF_CONVERSIONMODE_NATIVE))
         {
             CompartmentIMEMode._SetCompartmentBOOL(FALSE);
-			_pTextService->_DeleteCandidateList(TRUE,NULL);
+			_pTextService->clearAndExit();
         }
         else if (!fOpen && (conversionMode & TF_CONVERSIONMODE_NATIVE))
         {
@@ -1398,6 +1398,7 @@ void CCompositionProcessorEngine::KeyboardOpenCompartmentUpdated(_In_ ITfThreadM
         {
             conversionMode &= ~TF_CONVERSIONMODE_NATIVE;
         }
+		if(!isOpen) _pTextService->clearAndExit();
     }
 	if(Global::isWindows8){
 		isOpen = FALSE;
@@ -1413,6 +1414,7 @@ void CCompositionProcessorEngine::KeyboardOpenCompartmentUpdated(_In_ ITfThreadM
 				conversionMode &= ~TF_CONVERSIONMODE_NATIVE;
 			}
 		}
+		if(!isOpen) _pTextService->clearAndExit();
 	}
 	
 

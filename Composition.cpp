@@ -20,28 +20,29 @@
 
 STDAPI CTSFDayi::OnCompositionTerminated(TfEditCookie ecWrite, _In_ ITfComposition *pComposition)
 {
-
-    // Clear dummy composition
-    _RemoveDummyCompositionForComposing(ecWrite, pComposition);
-
-    // Clear display attribute and end composition, _EndComposition will release composition for us
+	HRESULT hr = S_OK;
     ITfContext* pContext = _pContext;
-    if (pContext)
+   
+	// Clear dummy composition
+	_RemoveDummyCompositionForComposing(ecWrite, pComposition);
+	
+    // Clear display attribute and end composition, _EndComposition will release composition for us
+     if (pContext)
     {
         pContext->AddRef();
-    }
-
-    _EndComposition(_pContext);
-
-    //_DeleteCandidateList(FALSE, pContext);
-
-    if (pContext)
-    {
-        pContext->Release();
+	}
+	
+	 if(_candidateMode != CANDIDATE_WITH_NEXT_COMPOSITION)
+	{
+		_EndComposition(pContext);
+		_DeleteCandidateList(FALSE, pContext);
+	}
+	if (pContext)
+	{
+		pContext->Release();
         pContext = nullptr;
     }
-
-    return S_OK;
+    return hr;
 }
 
 //+---------------------------------------------------------------------------

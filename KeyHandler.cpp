@@ -117,7 +117,8 @@ HRESULT CTSFDayi::_HandleCompositionInput(TfEditCookie ec, _In_ ITfContext *pCon
     CCompositionProcessorEngine* pCompositionProcessorEngine = nullptr;
     pCompositionProcessorEngine = _pCompositionProcessorEngine;
 
-    if ((_pCandidateListUIPresenter != nullptr) && _candidateMode != CANDIDATE_INCREMENTAL &&_candidateMode != CANDIDATE_NONE)
+	if ((_pCandidateListUIPresenter != nullptr) 
+		&& _candidateMode != CANDIDATE_INCREMENTAL &&_candidateMode != CANDIDATE_NONE &&_candidateMode != CANDIDATE_WITH_NEXT_COMPOSITION)
     {
         _HandleCompositionFinalize(ec, pContext, FALSE);
     }

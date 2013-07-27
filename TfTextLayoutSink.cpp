@@ -123,7 +123,7 @@ HRESULT CTfTextLayoutSink::_StartLayout(_In_ ITfContext *pContextDocument, TfEdi
     _pContextDocument->AddRef();
 
     _pRangeComposition = pRangeComposition;
-    _pRangeComposition->AddRef();
+    if(_pRangeComposition) _pRangeComposition->AddRef();
 
     _tfEditCookie = ec;
 

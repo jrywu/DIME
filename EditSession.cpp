@@ -19,7 +19,7 @@ CEditSessionBase::CEditSessionBase(_In_ CTSFDayi *pTextService, _In_ ITfContext 
 {
     _refCount = 1;
     _pContext = pContext;
-    _pContext->AddRef();
+    if(_pContext) _pContext->AddRef();
 
     _pTextService = pTextService;
     _pTextService->AddRef();

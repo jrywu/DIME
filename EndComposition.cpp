@@ -54,15 +54,17 @@ void CTSFDayi::_TerminateComposition(TfEditCookie ec, _In_ ITfContext *pContext,
 
     if (_pComposition != nullptr)
     {
+
         // remove the display attribute from the composition range.
         _ClearCompositionDisplayAttributes(ec, pContext);
 
-        if (FAILED(_pComposition->EndComposition(ec)))
-        {
-            // if we fail to EndComposition, then we need to close the reverse reading window.
-            //_DeleteCandidateList(TRUE, pContext);
-        }
-
+		//if (FAILED(_pComposition->EndComposition(ec)) )
+  //      {
+  //          // if we fail to EndComposition, then we need to close the reverse reading window.
+  //          _DeleteCandidateList(TRUE, pContext);
+  //      }
+		_pComposition->EndComposition(ec);
+		_DeleteCandidateList(TRUE, pContext);
         _pComposition->Release();
         _pComposition = nullptr;
 
@@ -90,5 +92,11 @@ void CTSFDayi::_EndComposition(_In_opt_ ITfContext *pContext)
         pContext->RequestEditSession(_tfClientId, pEditSession, TF_ES_ASYNCDONTCARE | TF_ES_READWRITE, &hr);
         pEditSession->Release();
     }
+}
+void CTSFDayi::clearAndExit()
+{
+	// switching to English (native) mode delete the phrase candidate window before exting.
+	_DeleteCandidateList(FALSE, NULL);
+	
 }
 

@@ -134,7 +134,8 @@ public:
     static HRESULT CTSFDayi::CreateInstance(REFCLSID rclsid, REFIID riid, _Outptr_result_maybenull_ LPVOID* ppv, _Out_opt_ HINSTANCE* phInst, BOOL isComLessMode);
     static HRESULT CTSFDayi::ComLessCreateInstance(REFGUID rclsid, REFIID riid, _Outptr_result_maybenull_ void **ppv, _Out_opt_ HINSTANCE *phInst);
     static HRESULT CTSFDayi::GetComModuleName(REFGUID rclsid, _Out_writes_(cchPath)WCHAR* wchPath, DWORD cchPath);
-	VOID _DeleteCandidateList(BOOL fForce, _In_opt_ ITfContext *pContext);
+	
+	void clearAndExit();
 
 private:
     // functions for the composition object.
@@ -200,7 +201,7 @@ private:
     friend LRESULT CALLBACK CTSFDayi_WindowProc(HWND wndHandle, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 	// function for process candidate
-	//HRESULT _FinalizeAndSearchPhrase(cost WCHAR *pwch, 
+	VOID _DeleteCandidateList(BOOL fForce, _In_opt_ ITfContext *pContext);
 
 private:
     ITfThreadMgr* _pThreadMgr;
@@ -249,4 +250,6 @@ private:
 
     // Support the search integration
     ITfFnSearchCandidateProvider* _pITfFnSearchCandidateProvider;
+
+	
 };
