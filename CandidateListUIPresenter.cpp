@@ -53,29 +53,49 @@ HRESULT CTSFDayi::_HandleCandidateConvert(TfEditCookie ec, _In_ ITfContext *pCon
 
 HRESULT CTSFDayi::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext)
 {
-	const WCHAR* pCandidateString = nullptr;
-    HRESULT hr = S_OK;
-    DWORD_PTR candidateLen = 0;    
-    CStringRange commitString;
 	
+    HRESULT hr = S_OK;
+	CStringRange commitString;
 	CTSFDayiArray<CCandidateListItem> candidatePhraseList;	
 	CStringRange candidateString;
-
 	
     if (nullptr == _pCandidateListUIPresenter)
     {
         goto Exit; //should not happen
     }
-    
+
+	UINT candiCount;
+	if(_candidateMode!= CANDIDATE_ORIGINAL && _pCandidateListUIPresenter->GetCount(&candiCount) == 1)
+	{
+		_HandleComplete(ec, pContext);
+		goto Exit;
+	}
+
+	const WCHAR* pCandidateString = nullptr;
+	DWORD_PTR candidateLen = 0;    
+
+	if (!_IsComposing())
+		_StartComposition(pContext);
+
 	candidateLen = _pCandidateListUIPresenter->_GetSelectedCandidateString(&pCandidateString);
 	if (candidateLen == 0)
     {
-        hr = S_FALSE;
-		MessageBeep(MB_ICONASTERISK); //beep for no valid mapping found
-		goto Exit;
+		if(_candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)
+		{
+			_HandleComplete(ec, pContext);
+			goto Exit;
+		}
+		else
+		{
+			hr = S_FALSE;
+			MessageBeep(MB_ICONASTERISK); //beep for no valid mapping found
+			goto Exit;
+		}
     }
 	
+	
 	commitString.Set(pCandidateString , candidateLen );
+	
 	PWCHAR pwch = new (std::nothrow) WCHAR[2];  // pCandidateString will be destroyed after _detelteCanddiateList was called.
 	pwch[1] = L'0';
 	if(candidateLen > 1)
@@ -88,10 +108,6 @@ HRESULT CTSFDayi::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pCont
 	}
 	candidateString.Set(pwch, 1 );
 
-
-	if (!_IsComposing())
-		_StartComposition(pContext);
-	//hr = _AddCharAndFinalize(ec, pContext, &commitString);
 	hr = _AddComposingAndChar(ec, pContext, &commitString);
 	if (FAILED(hr))	return hr;
 	
@@ -160,12 +176,7 @@ HRESULT CTSFDayi::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pCont
 		_pPhraseCandidateListUIPresenter->_SetFillColor((HBRUSH)(COLOR_WINDOW+1));    // Background color is window
 		_pPhraseCandidateListUIPresenter->_SetText(&candidatePhraseList, FALSE);
 
-
-
-		// Add composing character
-		//candidateString.Set(L"_",1);
-		//hr = _AddComposingAndChar(ec, pContext, &candidateString);
-
+		
 		// close candidate list
 		if (_pCandidateListUIPresenter)
 		{

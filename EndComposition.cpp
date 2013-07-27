@@ -54,9 +54,10 @@ void CTSFDayi::_TerminateComposition(TfEditCookie ec, _In_ ITfContext *pContext,
 
     if (_pComposition != nullptr)
     {
-
-        // remove the display attribute from the composition range.
-        _ClearCompositionDisplayAttributes(ec, pContext);
+		if(isCalledFromDeactivate)
+			_RemoveDummyCompositionForComposing(ec, _pComposition);
+		else // remove the display attribute from the composition range.
+			_ClearCompositionDisplayAttributes(ec, pContext);
 
 		//if (FAILED(_pComposition->EndComposition(ec)) )
   //      {
@@ -96,6 +97,8 @@ void CTSFDayi::_EndComposition(_In_opt_ ITfContext *pContext)
 void CTSFDayi::clearAndExit()
 {
 	// switching to English (native) mode delete the phrase candidate window before exting.
+	if(_pContext) 
+		_EndComposition(_pContext);
 	_DeleteCandidateList(FALSE, NULL);
 	
 }

@@ -118,7 +118,7 @@ HRESULT CTSFDayi::_HandleCompositionInput(TfEditCookie ec, _In_ ITfContext *pCon
     pCompositionProcessorEngine = _pCompositionProcessorEngine;
 
 	if ((_pCandidateListUIPresenter != nullptr) 
-		&& _candidateMode != CANDIDATE_INCREMENTAL &&_candidateMode != CANDIDATE_NONE &&_candidateMode != CANDIDATE_WITH_NEXT_COMPOSITION)
+		&& _candidateMode != CANDIDATE_INCREMENTAL &&_candidateMode != CANDIDATE_NONE )// &&_candidateMode != CANDIDATE_WITH_NEXT_COMPOSITION)
     {
         _HandleCompositionFinalize(ec, pContext, FALSE);
     }
@@ -431,6 +431,10 @@ HRESULT CTSFDayi::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pC
             _pCandidateListUIPresenter->_SetText(&candidateList, FALSE);
         }
     }
+	if(nCount==1)
+	{
+		_HandleCandidateFinalize(ec, pContext);
+	}
 
     return hr;
 }
