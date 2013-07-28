@@ -29,7 +29,7 @@ public:
     HRESULT _GetTextExt(_Out_ RECT *lpRect);
     ITfContext* _GetContextDocument() { return _pContextDocument; };
 
-    virtual VOID _LayoutChangeNotification(_In_ RECT *lpRect) = 0;
+	virtual VOID _LayoutChangeNotification(_In_ RECT *lpRect) = 0;
     virtual VOID _LayoutDestroyNotification() = 0;
 
 private:

@@ -8,7 +8,7 @@
 #include "Private.h"
 #include "TSFDayi.h"
 #include "CandidateWindow.h"
-#include "CandidateListUIPresenter.h"
+#include "TSFDayiUIPresenter.h"
 #include "CompositionProcessorEngine.h"
 #include "TSFDayiBaseStructure.h"
 
@@ -59,13 +59,13 @@ HRESULT CTSFDayi::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pCont
 	CTSFDayiArray<CCandidateListItem> candidatePhraseList;	
 	CStringRange candidateString;
 	
-    if (nullptr == _pCandidateListUIPresenter)
+    if (nullptr == _pTSFDayiUIPresenter)
     {
         goto Exit; //should not happen
     }
 
 	UINT candiCount;
-	if(_candidateMode!= CANDIDATE_ORIGINAL && _pCandidateListUIPresenter->GetCount(&candiCount) == 1)
+	if(_candidateMode!= CANDIDATE_ORIGINAL && _pTSFDayiUIPresenter->GetCount(&candiCount) == 1)
 	{
 		_HandleComplete(ec, pContext);
 		goto Exit;
@@ -77,7 +77,7 @@ HRESULT CTSFDayi::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pCont
 	if (!_IsComposing())
 		_StartComposition(pContext);
 
-	candidateLen = _pCandidateListUIPresenter->_GetSelectedCandidateString(&pCandidateString);
+	candidateLen = _pTSFDayiUIPresenter->_GetSelectedCandidateString(&pCandidateString);
 	if (candidateLen == 0)
     {
 		if(_candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)
@@ -121,23 +121,23 @@ HRESULT CTSFDayi::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pCont
 		_pCompositionProcessorEngine->GetCandidateStringInConverted(candidateString, &candidatePhraseList);
 		LCID locale = _pCompositionProcessorEngine->GetLocale();
 
-		_pCandidateListUIPresenter->RemoveSpecificCandidateFromList(locale, candidatePhraseList, candidateString);
+		_pTSFDayiUIPresenter->RemoveSpecificCandidateFromList(locale, candidatePhraseList, candidateString);
 	}
 	
 	// We have a candidate list if candidatePhraseList.Cnt is not 0
-	// If we are showing reverse conversion, use CCandidateListUIPresenter
+	// If we are showing reverse conversion, use CTSFDayiUIPresenter
 	CANDIDATE_MODE tempCandMode = CANDIDATE_NONE;
-	CCandidateListUIPresenter* _pPhraseCandidateListUIPresenter = nullptr;
+	CTSFDayiUIPresenter* _pPhraseTSFDayiUIPresenter = nullptr;
 	
 	if (candidatePhraseList.Count())
 	{
 		tempCandMode = CANDIDATE_WITH_NEXT_COMPOSITION;
 
-		_pPhraseCandidateListUIPresenter = new (std::nothrow) CCandidateListUIPresenter(this, Global::AtomCandidateWindow,
+		_pPhraseTSFDayiUIPresenter = new (std::nothrow) CTSFDayiUIPresenter(this, Global::AtomCandidateWindow,
 			CATEGORY_CANDIDATE,
 			_pCompositionProcessorEngine->GetCandidateListIndexRange(),
 			FALSE);
-		if (nullptr == _pPhraseCandidateListUIPresenter)
+		if (nullptr == _pPhraseTSFDayiUIPresenter)
 		{
 			hr = E_OUTOFMEMORY;
 			goto Exit;
@@ -145,7 +145,7 @@ HRESULT CTSFDayi::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pCont
 	}
 	
 	
-	// call _Start*Line for CCandidateListUIPresenter or CReadingLine
+	// call _Start*Line for CTSFDayiUIPresenter or CReadingLine
 	// we don't cache the document manager object so get it from pContext.
 	ITfDocumentMgr* pDocumentMgr = nullptr;
 	HRESULT hrStartCandidateList = E_FAIL;
@@ -155,14 +155,15 @@ HRESULT CTSFDayi::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pCont
 		_StartComposition(pContext);  //StartCandidateList require a valid selection from a valid pComposition to determine the location to show the candidate window
 		if (_pComposition->GetRange(&pRange) == S_OK)
 		{
-			if (_pPhraseCandidateListUIPresenter)
+			if (_pPhraseTSFDayiUIPresenter)
 			{
-				hrStartCandidateList = _pPhraseCandidateListUIPresenter->_StartCandidateList(_tfClientId, pDocumentMgr, pContext, ec, pRange, _pCompositionProcessorEngine->GetCandidateWindowWidth());
+				hrStartCandidateList = _pPhraseTSFDayiUIPresenter->_StartCandidateList(_tfClientId, pDocumentMgr, pContext, ec, pRange, _pCompositionProcessorEngine->GetCandidateWindowWidth());
 			} 
 
 			pRange->Release();
-			_EndComposition(pContext);
+			
 		}
+		_TerminateComposition(ec, pContext);
 		pDocumentMgr->Release();
 	}
 	
@@ -172,17 +173,17 @@ HRESULT CTSFDayi::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pCont
 	// set up candidate list if it is being shown
 	if (SUCCEEDED(hrStartCandidateList))
 	{
-		_pPhraseCandidateListUIPresenter->_SetTextColor(RGB(0, 0x80, 0), GetSysColor(COLOR_WINDOW));    // Text color is green
-		_pPhraseCandidateListUIPresenter->_SetFillColor((HBRUSH)(COLOR_WINDOW+1));    // Background color is window
-		_pPhraseCandidateListUIPresenter->_SetText(&candidatePhraseList, FALSE);
+		_pPhraseTSFDayiUIPresenter->_SetTextColor(RGB(0, 0x80, 0), GetSysColor(COLOR_WINDOW));    // Text color is green
+		_pPhraseTSFDayiUIPresenter->_SetFillColor((HBRUSH)(COLOR_WINDOW+1));    // Background color is window
+		_pPhraseTSFDayiUIPresenter->_SetText(&candidatePhraseList, FALSE);
 
 		
 		// close candidate list
-		if (_pCandidateListUIPresenter)
+		if (_pTSFDayiUIPresenter)
 		{
-			_pCandidateListUIPresenter->_EndCandidateList();
-			delete _pCandidateListUIPresenter;
-			_pCandidateListUIPresenter = nullptr;
+			_pTSFDayiUIPresenter->_EndCandidateList();
+			delete _pTSFDayiUIPresenter;
+			_pTSFDayiUIPresenter = nullptr;
 
 			_candidateMode = CANDIDATE_NONE;
 			_isCandidateWithWildcard = FALSE;
@@ -191,15 +192,17 @@ HRESULT CTSFDayi::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pCont
 		if (hr == S_OK)
 		{
 			// copy temp candidate
-			_pCandidateListUIPresenter = _pPhraseCandidateListUIPresenter;
-			_pCandidateListUIPresenter->_SetSelection(-1); // set selected index to -1 if showing phrase candidates
+			_pTSFDayiUIPresenter = _pPhraseTSFDayiUIPresenter;
+			_pTSFDayiUIPresenter->_SetSelection(-1); // set selected index to -1 if showing phrase candidates
+
+			_phraseCandShowing = TRUE;
 
 			_candidateMode = tempCandMode;
 			_isCandidateWithWildcard = FALSE;
 		}
 		
 	}
-	_pPhraseCandidateListUIPresenter = nullptr;
+	_pPhraseTSFDayiUIPresenter = nullptr;
 
 	// no next phrase list, exit without doing anything.
 	
@@ -218,7 +221,7 @@ HRESULT CTSFDayi::_HandleCandidateArrowKey(TfEditCookie ec, _In_ ITfContext *pCo
     ec;
     pContext;
 
-    _pCandidateListUIPresenter->AdviseUIChangedByArrowKey(keyFunction);
+    _pTSFDayiUIPresenter->AdviseUIChangedByArrowKey(keyFunction);
 
     return S_OK;
 }
@@ -237,9 +240,9 @@ HRESULT CTSFDayi::_HandleCandidateSelectByNumber(TfEditCookie ec, _In_ ITfContex
         return S_FALSE;
     }
 
-    if (_pCandidateListUIPresenter)
+    if (_pTSFDayiUIPresenter)
     {
-        if (_pCandidateListUIPresenter->_SetSelectionInPage(iSelectAsNumber))
+        if (_pTSFDayiUIPresenter->_SetSelectionInPage(iSelectAsNumber))
         {
             return _HandleCandidateConvert(ec, pContext);
         }
@@ -261,7 +264,7 @@ HRESULT CTSFDayi::_HandlePhraseFinalize(TfEditCookie ec, _In_ ITfContext *pConte
     DWORD phraseLen = 0;
     const WCHAR* pPhraseString = nullptr;
 
-    phraseLen = (DWORD)_pCandidateListUIPresenter->_GetSelectedCandidateString(&pPhraseString);
+    phraseLen = (DWORD)_pTSFDayiUIPresenter->_GetSelectedCandidateString(&pPhraseString);
 
     CStringRange phraseString;
     phraseString.Set(pPhraseString, phraseLen);
@@ -290,7 +293,7 @@ HRESULT CTSFDayi::_HandlePhraseArrowKey(TfEditCookie ec, _In_ ITfContext *pConte
     ec;
     pContext;
 
-    _pCandidateListUIPresenter->AdviseUIChangedByArrowKey(keyFunction);
+    _pTSFDayiUIPresenter->AdviseUIChangedByArrowKey(keyFunction);
 
     return S_OK;
 }
@@ -309,9 +312,9 @@ HRESULT CTSFDayi::_HandlePhraseSelectByNumber(TfEditCookie ec, _In_ ITfContext *
         return S_FALSE;
     }
 
-    if (_pCandidateListUIPresenter)
+    if (_pTSFDayiUIPresenter)
     {
-        if (_pCandidateListUIPresenter->_SetSelectionInPage(iSelectAsNumber))
+        if (_pTSFDayiUIPresenter->_SetSelectionInPage(iSelectAsNumber))
         {
             return _HandlePhraseFinalize(ec, pContext);
         }
@@ -322,7 +325,7 @@ HRESULT CTSFDayi::_HandlePhraseSelectByNumber(TfEditCookie ec, _In_ ITfContext *
 
 //////////////////////////////////////////////////////////////////////
 //
-// CCandidateListUIPresenter class
+// CTSFDayiUIPresenter class
 //
 //////////////////////////////////////////////////////////////////////+---------------------------------------------------------------------------
 //
@@ -330,7 +333,7 @@ HRESULT CTSFDayi::_HandlePhraseSelectByNumber(TfEditCookie ec, _In_ ITfContext *
 //
 //----------------------------------------------------------------------------
 
-CCandidateListUIPresenter::CCandidateListUIPresenter(_In_ CTSFDayi *pTextService, ATOM atom, KEYSTROKE_CATEGORY Category, _In_ CCandidateRange *pIndexRange, BOOL hideWindow) : CTfTextLayoutSink(pTextService)
+CTSFDayiUIPresenter::CTSFDayiUIPresenter(_In_ CTSFDayi *pTextService, ATOM atom, KEYSTROKE_CATEGORY Category, _In_ CCandidateRange *pIndexRange, BOOL hideWindow) : CTfTextLayoutSink(pTextService)
 {
     _atom = atom;
 
@@ -359,7 +362,7 @@ CCandidateListUIPresenter::CCandidateListUIPresenter(_In_ CTSFDayi *pTextService
 //
 //----------------------------------------------------------------------------
 
-CCandidateListUIPresenter::~CCandidateListUIPresenter()
+CTSFDayiUIPresenter::~CTSFDayiUIPresenter()
 {
     _EndCandidateList();
     _pTextService->Release();
@@ -367,11 +370,11 @@ CCandidateListUIPresenter::~CCandidateListUIPresenter()
 
 //+---------------------------------------------------------------------------
 //
-// ITfCandidateListUIElement::IUnknown::QueryInterface
+// ITfTSFDayiUIElement::IUnknown::QueryInterface
 //
 //----------------------------------------------------------------------------
 
-STDAPI CCandidateListUIPresenter::QueryInterface(REFIID riid, _Outptr_ void **ppvObj)
+STDAPI CTSFDayiUIPresenter::QueryInterface(REFIID riid, _Outptr_ void **ppvObj)
 {
     if (CTfTextLayoutSink::QueryInterface(riid, ppvObj) == S_OK)
     {
@@ -411,11 +414,11 @@ STDAPI CCandidateListUIPresenter::QueryInterface(REFIID riid, _Outptr_ void **pp
 
 //+---------------------------------------------------------------------------
 //
-// ITfCandidateListUIElement::IUnknown::AddRef
+// ITfTSFDayiUIElement::IUnknown::AddRef
 //
 //----------------------------------------------------------------------------
 
-STDAPI_(ULONG) CCandidateListUIPresenter::AddRef()
+STDAPI_(ULONG) CTSFDayiUIPresenter::AddRef()
 {
     CTfTextLayoutSink::AddRef();
     return ++_refCount;
@@ -423,11 +426,11 @@ STDAPI_(ULONG) CCandidateListUIPresenter::AddRef()
 
 //+---------------------------------------------------------------------------
 //
-// ITfCandidateListUIElement::IUnknown::Release
+// ITfTSFDayiUIElement::IUnknown::Release
 //
 //----------------------------------------------------------------------------
 
-STDAPI_(ULONG) CCandidateListUIPresenter::Release()
+STDAPI_(ULONG) CTSFDayiUIPresenter::Release()
 {
     CTfTextLayoutSink::Release();
 
@@ -445,11 +448,11 @@ STDAPI_(ULONG) CCandidateListUIPresenter::Release()
 
 //+---------------------------------------------------------------------------
 //
-// ITfCandidateListUIElement::ITfUIElement::GetDescription
+// ITfTSFDayiUIElement::ITfUIElement::GetDescription
 //
 //----------------------------------------------------------------------------
 
-STDAPI CCandidateListUIPresenter::GetDescription(BSTR *pbstr)
+STDAPI CTSFDayiUIPresenter::GetDescription(BSTR *pbstr)
 {
     if (pbstr)
     {
@@ -460,11 +463,11 @@ STDAPI CCandidateListUIPresenter::GetDescription(BSTR *pbstr)
 
 //+---------------------------------------------------------------------------
 //
-// ITfCandidateListUIElement::ITfUIElement::GetGUID
+// ITfTSFDayiUIElement::ITfUIElement::GetGUID
 //
 //----------------------------------------------------------------------------
 
-STDAPI CCandidateListUIPresenter::GetGUID(GUID *pguid)
+STDAPI CTSFDayiUIPresenter::GetGUID(GUID *pguid)
 {
     *pguid = Global::TSFDayiGuidCandUIElement;
     return S_OK;
@@ -472,11 +475,11 @@ STDAPI CCandidateListUIPresenter::GetGUID(GUID *pguid)
 
 //+---------------------------------------------------------------------------
 //
-// ITfCandidateListUIElement::ITfUIElement::Show
+// ITfTSFDayiUIElement::ITfUIElement::Show
 //
 //----------------------------------------------------------------------------
 
-STDAPI CCandidateListUIPresenter::Show(BOOL showCandidateWindow)
+STDAPI CTSFDayiUIPresenter::Show(BOOL showCandidateWindow)
 {
     if (showCandidateWindow)
     {
@@ -489,7 +492,7 @@ STDAPI CCandidateListUIPresenter::Show(BOOL showCandidateWindow)
     return S_OK;
 }
 
-HRESULT CCandidateListUIPresenter::ToShowCandidateWindow()
+HRESULT CTSFDayiUIPresenter::ToShowCandidateWindow()
 {
     if (_hideWindow)
     {
@@ -505,7 +508,7 @@ HRESULT CCandidateListUIPresenter::ToShowCandidateWindow()
     return S_OK;
 }
 
-HRESULT CCandidateListUIPresenter::ToHideCandidateWindow()
+HRESULT CTSFDayiUIPresenter::ToHideCandidateWindow()
 {
 	if (_pCandidateWnd)
 	{
@@ -520,11 +523,11 @@ HRESULT CCandidateListUIPresenter::ToHideCandidateWindow()
 
 //+---------------------------------------------------------------------------
 //
-// ITfCandidateListUIElement::ITfUIElement::IsShown
+// ITfTSFDayiUIElement::ITfUIElement::IsShown
 //
 //----------------------------------------------------------------------------
 
-STDAPI CCandidateListUIPresenter::IsShown(BOOL *pIsShow)
+STDAPI CTSFDayiUIPresenter::IsShown(BOOL *pIsShow)
 {
     *pIsShow = _pCandidateWnd->_IsWindowVisible();
     return S_OK;
@@ -532,11 +535,11 @@ STDAPI CCandidateListUIPresenter::IsShown(BOOL *pIsShow)
 
 //+---------------------------------------------------------------------------
 //
-// ITfCandidateListUIElement::GetUpdatedFlags
+// ITfTSFDayiUIElement::GetUpdatedFlags
 //
 //----------------------------------------------------------------------------
 
-STDAPI CCandidateListUIPresenter::GetUpdatedFlags(DWORD *pdwFlags)
+STDAPI CTSFDayiUIPresenter::GetUpdatedFlags(DWORD *pdwFlags)
 {
     *pdwFlags = _updatedFlags;
     return S_OK;
@@ -544,11 +547,11 @@ STDAPI CCandidateListUIPresenter::GetUpdatedFlags(DWORD *pdwFlags)
 
 //+---------------------------------------------------------------------------
 //
-// ITfCandidateListUIElement::GetDocumentMgr
+// ITfTSFDayiUIElement::GetDocumentMgr
 //
 //----------------------------------------------------------------------------
 
-STDAPI CCandidateListUIPresenter::GetDocumentMgr(ITfDocumentMgr **ppdim)
+STDAPI CTSFDayiUIPresenter::GetDocumentMgr(ITfDocumentMgr **ppdim)
 {
     *ppdim = nullptr;
 
@@ -557,11 +560,11 @@ STDAPI CCandidateListUIPresenter::GetDocumentMgr(ITfDocumentMgr **ppdim)
 
 //+---------------------------------------------------------------------------
 //
-// ITfCandidateListUIElement::GetCount
+// ITfTSFDayiUIElement::GetCount
 //
 //----------------------------------------------------------------------------
 
-STDAPI CCandidateListUIPresenter::GetCount(UINT *pCandidateCount)
+STDAPI CTSFDayiUIPresenter::GetCount(UINT *pCandidateCount)
 {
     if (_pCandidateWnd)
     {
@@ -576,11 +579,11 @@ STDAPI CCandidateListUIPresenter::GetCount(UINT *pCandidateCount)
 
 //+---------------------------------------------------------------------------
 //
-// ITfCandidateListUIElement::GetSelection
+// ITfTSFDayiUIElement::GetSelection
 //
 //----------------------------------------------------------------------------
 
-STDAPI CCandidateListUIPresenter::GetSelection(UINT *pSelectedCandidateIndex)
+STDAPI CTSFDayiUIPresenter::GetSelection(UINT *pSelectedCandidateIndex)
 {
     if (_pCandidateWnd)
     {
@@ -595,11 +598,11 @@ STDAPI CCandidateListUIPresenter::GetSelection(UINT *pSelectedCandidateIndex)
 
 //+---------------------------------------------------------------------------
 //
-// ITfCandidateListUIElement::GetString
+// ITfTSFDayiUIElement::GetString
 //
 //----------------------------------------------------------------------------
 
-STDAPI CCandidateListUIPresenter::GetString(UINT uIndex, BSTR *pbstr)
+STDAPI CTSFDayiUIPresenter::GetString(UINT uIndex, BSTR *pbstr)
 {
     if (!_pCandidateWnd || (uIndex > _pCandidateWnd->_GetCount()))
     {
@@ -618,11 +621,11 @@ STDAPI CCandidateListUIPresenter::GetString(UINT uIndex, BSTR *pbstr)
 
 //+---------------------------------------------------------------------------
 //
-// ITfCandidateListUIElement::GetPageIndex
+// ITfTSFDayiUIElement::GetPageIndex
 //
 //----------------------------------------------------------------------------
 
-STDAPI CCandidateListUIPresenter::GetPageIndex(UINT *pIndex, UINT uSize, UINT *puPageCnt)
+STDAPI CTSFDayiUIPresenter::GetPageIndex(UINT *pIndex, UINT uSize, UINT *puPageCnt)
 {
     if (!_pCandidateWnd)
     {
@@ -638,11 +641,11 @@ STDAPI CCandidateListUIPresenter::GetPageIndex(UINT *pIndex, UINT uSize, UINT *p
 
 //+---------------------------------------------------------------------------
 //
-// ITfCandidateListUIElement::SetPageIndex
+// ITfTSFDayiUIElement::SetPageIndex
 //
 //----------------------------------------------------------------------------
 
-STDAPI CCandidateListUIPresenter::SetPageIndex(UINT *pIndex, UINT uPageCnt)
+STDAPI CTSFDayiUIPresenter::SetPageIndex(UINT *pIndex, UINT uPageCnt)
 {
     if (!_pCandidateWnd)
     {
@@ -653,11 +656,11 @@ STDAPI CCandidateListUIPresenter::SetPageIndex(UINT *pIndex, UINT uPageCnt)
 
 //+---------------------------------------------------------------------------
 //
-// ITfCandidateListUIElement::GetCurrentPage
+// ITfTSFDayiUIElement::GetCurrentPage
 //
 //----------------------------------------------------------------------------
 
-STDAPI CCandidateListUIPresenter::GetCurrentPage(UINT *puPage)
+STDAPI CTSFDayiUIPresenter::GetCurrentPage(UINT *puPage)
 {
     if (!_pCandidateWnd)
     {
@@ -669,11 +672,11 @@ STDAPI CCandidateListUIPresenter::GetCurrentPage(UINT *puPage)
 
 //+---------------------------------------------------------------------------
 //
-// ITfCandidateListUIElementBehavior::SetSelection
+// ITfTSFDayiUIElementBehavior::SetSelection
 // It is related of the mouse clicking behavior upon the suggestion window
 //----------------------------------------------------------------------------
 
-STDAPI CCandidateListUIPresenter::SetSelection(UINT nIndex)
+STDAPI CTSFDayiUIPresenter::SetSelection(UINT nIndex)
 {
     if (_pCandidateWnd)
     {
@@ -685,11 +688,11 @@ STDAPI CCandidateListUIPresenter::SetSelection(UINT nIndex)
 
 //+---------------------------------------------------------------------------
 //
-// ITfCandidateListUIElementBehavior::Finalize
+// ITfTSFDayiUIElementBehavior::Finalize
 // It is related of the mouse clicking behavior upon the suggestion window
 //----------------------------------------------------------------------------
 
-STDAPI CCandidateListUIPresenter::Finalize(void)
+STDAPI CTSFDayiUIPresenter::Finalize(void)
 {
     _CandidateChangeNotification(CAND_ITEM_SELECT);
     return S_OK;
@@ -697,33 +700,33 @@ STDAPI CCandidateListUIPresenter::Finalize(void)
 
 //+---------------------------------------------------------------------------
 //
-// ITfCandidateListUIElementBehavior::Abort
+// ITfTSFDayiUIElementBehavior::Abort
 //
 //----------------------------------------------------------------------------
 
-STDAPI CCandidateListUIPresenter::Abort(void)
+STDAPI CTSFDayiUIPresenter::Abort(void)
 {
     return E_NOTIMPL;
 }
 
 //+---------------------------------------------------------------------------
 //
-// ITfIntegratableCandidateListUIElement::SetIntegrationStyle
+// ITfIntegratableTSFDayiUIElement::SetIntegrationStyle
 // To show candidateNumbers on the suggestion window
 //----------------------------------------------------------------------------
 
-STDAPI CCandidateListUIPresenter::SetIntegrationStyle(GUID guidIntegrationStyle)
+STDAPI CTSFDayiUIPresenter::SetIntegrationStyle(GUID guidIntegrationStyle)
 {
     return (guidIntegrationStyle == GUID_INTEGRATIONSTYLE_SEARCHBOX) ? S_OK : E_NOTIMPL;
 }
 
 //+---------------------------------------------------------------------------
 //
-// ITfIntegratableCandidateListUIElement::GetSelectionStyle
+// ITfIntegratableTSFDayiUIElement::GetSelectionStyle
 //
 //----------------------------------------------------------------------------
 
-STDAPI CCandidateListUIPresenter::GetSelectionStyle(_Out_ TfIntegratableCandidateListSelectionStyle *ptfSelectionStyle)
+STDAPI CTSFDayiUIPresenter::GetSelectionStyle(_Out_ TfIntegratableCandidateListSelectionStyle *ptfSelectionStyle)
 {
     *ptfSelectionStyle = STYLE_ACTIVE_SELECTION;
     return S_OK;
@@ -731,11 +734,11 @@ STDAPI CCandidateListUIPresenter::GetSelectionStyle(_Out_ TfIntegratableCandidat
 
 //+---------------------------------------------------------------------------
 //
-// ITfIntegratableCandidateListUIElement::OnKeyDown
+// ITfIntegratableTSFDayiUIElement::OnKeyDown
 //
 //----------------------------------------------------------------------------
 
-STDAPI CCandidateListUIPresenter::OnKeyDown(_In_ WPARAM wParam, _In_ LPARAM lParam, _Out_ BOOL *pIsEaten)
+STDAPI CTSFDayiUIPresenter::OnKeyDown(_In_ WPARAM wParam, _In_ LPARAM lParam, _Out_ BOOL *pIsEaten)
 {
     wParam;
     lParam;
@@ -746,11 +749,11 @@ STDAPI CCandidateListUIPresenter::OnKeyDown(_In_ WPARAM wParam, _In_ LPARAM lPar
 
 //+---------------------------------------------------------------------------
 //
-// ITfIntegratableCandidateListUIElement::ShowCandidateNumbers
+// ITfIntegratableTSFDayiUIElement::ShowCandidateNumbers
 //
 //----------------------------------------------------------------------------
 
-STDAPI CCandidateListUIPresenter::ShowCandidateNumbers(_Out_ BOOL *pIsShow)
+STDAPI CTSFDayiUIPresenter::ShowCandidateNumbers(_Out_ BOOL *pIsShow)
 {
     *pIsShow = TRUE;
     return S_OK;
@@ -758,11 +761,11 @@ STDAPI CCandidateListUIPresenter::ShowCandidateNumbers(_Out_ BOOL *pIsShow)
 
 //+---------------------------------------------------------------------------
 //
-// ITfIntegratableCandidateListUIElement::FinalizeExactCompositionString
+// ITfIntegratableTSFDayiUIElement::FinalizeExactCompositionString
 //
 //----------------------------------------------------------------------------
 
-STDAPI CCandidateListUIPresenter::FinalizeExactCompositionString()
+STDAPI CTSFDayiUIPresenter::FinalizeExactCompositionString()
 {
     return E_NOTIMPL;
 }
@@ -774,8 +777,9 @@ STDAPI CCandidateListUIPresenter::FinalizeExactCompositionString()
 //
 //----------------------------------------------------------------------------
 
-HRESULT CCandidateListUIPresenter::_StartCandidateList(TfClientId tfClientId, _In_ ITfDocumentMgr *pDocumentMgr, _In_ ITfContext *pContextDocument, TfEditCookie ec, _In_ ITfRange *pRangeComposition, UINT wndWidth)
+HRESULT CTSFDayiUIPresenter::_StartCandidateList(TfClientId tfClientId, _In_ ITfDocumentMgr *pDocumentMgr, _In_ ITfContext *pContextDocument, TfEditCookie ec, _In_ ITfRange *pRangeComposition, UINT wndWidth)
 {
+	OutputDebugString(L"CTSFDayiUIPresenter::_StartCandidateList()\n");
 	pDocumentMgr;tfClientId;
 
     HRESULT hr = E_FAIL;
@@ -815,7 +819,7 @@ Exit:
 //
 //----------------------------------------------------------------------------
 
-void CCandidateListUIPresenter::_EndCandidateList()
+void CTSFDayiUIPresenter::_EndCandidateList()
 {
     EndUIElement();
 
@@ -830,9 +834,9 @@ void CCandidateListUIPresenter::_EndCandidateList()
 //
 //----------------------------------------------------------------------------
 
-void CCandidateListUIPresenter::_SetText(_In_ CTSFDayiArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode)
+void CTSFDayiUIPresenter::_SetText(_In_ CTSFDayiArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode)
 {
-    AddCandidateToCandidateListUI(pCandidateList, isAddFindKeyCode);
+    AddCandidateToTSFDayiUI(pCandidateList, isAddFindKeyCode);
 
     SetPageIndexWithScrollInfo(pCandidateList);
 
@@ -851,7 +855,7 @@ void CCandidateListUIPresenter::_SetText(_In_ CTSFDayiArray<CCandidateListItem> 
     }
 }
 
-void CCandidateListUIPresenter::AddCandidateToCandidateListUI(_In_ CTSFDayiArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode)
+void CTSFDayiUIPresenter::AddCandidateToTSFDayiUI(_In_ CTSFDayiArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode)
 {
     for (UINT index = 0; index < pCandidateList->Count(); index++)
     {
@@ -859,7 +863,7 @@ void CCandidateListUIPresenter::AddCandidateToCandidateListUI(_In_ CTSFDayiArray
     }
 }
 
-void CCandidateListUIPresenter::SetPageIndexWithScrollInfo(_In_ CTSFDayiArray<CCandidateListItem> *pCandidateList)
+void CTSFDayiUIPresenter::SetPageIndexWithScrollInfo(_In_ CTSFDayiArray<CCandidateListItem> *pCandidateList)
 {
     UINT candCntInPage = _pIndexRange->Count();
     UINT bufferSize = pCandidateList->Count() / candCntInPage + 1;
@@ -883,7 +887,7 @@ void CCandidateListUIPresenter::SetPageIndexWithScrollInfo(_In_ CTSFDayiArray<CC
 //
 //----------------------------------------------------------------------------
 
-void CCandidateListUIPresenter::_ClearList()
+void CTSFDayiUIPresenter::_ClearList()
 {
     _pCandidateWnd->_ClearList();
     _pCandidateWnd->_InvalidateRect();
@@ -896,12 +900,12 @@ void CCandidateListUIPresenter::_ClearList()
 //
 //----------------------------------------------------------------------------
 
-void CCandidateListUIPresenter::_SetTextColor(COLORREF crColor, COLORREF crBkColor)
+void CTSFDayiUIPresenter::_SetTextColor(COLORREF crColor, COLORREF crBkColor)
 {
     _pCandidateWnd->_SetTextColor(crColor, crBkColor);
 }
 
-void CCandidateListUIPresenter::_SetFillColor(HBRUSH hBrush)
+void CTSFDayiUIPresenter::_SetFillColor(HBRUSH hBrush)
 {
     _pCandidateWnd->_SetFillColor(hBrush);
 }
@@ -912,7 +916,7 @@ void CCandidateListUIPresenter::_SetFillColor(HBRUSH hBrush)
 //
 //----------------------------------------------------------------------------
 
-DWORD_PTR CCandidateListUIPresenter::_GetSelectedCandidateString(_Outptr_result_maybenull_ const WCHAR **ppwchCandidateString)
+DWORD_PTR CTSFDayiUIPresenter::_GetSelectedCandidateString(_Outptr_result_maybenull_ const WCHAR **ppwchCandidateString)
 {
     return _pCandidateWnd->_GetSelectedCandidateString(ppwchCandidateString);
 }
@@ -923,7 +927,7 @@ DWORD_PTR CCandidateListUIPresenter::_GetSelectedCandidateString(_Outptr_result_
 //
 //----------------------------------------------------------------------------
 
-BOOL CCandidateListUIPresenter::_MoveSelection(_In_ int offSet)
+BOOL CTSFDayiUIPresenter::_MoveSelection(_In_ int offSet)
 {
     BOOL ret = _pCandidateWnd->_MoveSelection(offSet, TRUE);
     if (ret)
@@ -947,7 +951,7 @@ BOOL CCandidateListUIPresenter::_MoveSelection(_In_ int offSet)
 //
 //----------------------------------------------------------------------------
 
-BOOL CCandidateListUIPresenter::_SetSelection(_In_ int selectedIndex)
+BOOL CTSFDayiUIPresenter::_SetSelection(_In_ int selectedIndex)
 {
     BOOL ret = _pCandidateWnd->_SetSelection(selectedIndex, TRUE);
     if (ret)
@@ -972,7 +976,7 @@ BOOL CCandidateListUIPresenter::_SetSelection(_In_ int selectedIndex)
 //
 //----------------------------------------------------------------------------
 
-BOOL CCandidateListUIPresenter::_MovePage(_In_ int offSet)
+BOOL CTSFDayiUIPresenter::_MovePage(_In_ int offSet)
 {
     BOOL ret = _pCandidateWnd->_MovePage(offSet, TRUE);
     if (ret)
@@ -997,7 +1001,7 @@ BOOL CCandidateListUIPresenter::_MovePage(_In_ int offSet)
 //
 //----------------------------------------------------------------------------
 
-void CCandidateListUIPresenter::_MoveWindowToTextExt()
+void CTSFDayiUIPresenter::_MoveWindowToTextExt()
 {
     RECT rc;
 
@@ -1014,14 +1018,24 @@ void CCandidateListUIPresenter::_MoveWindowToTextExt()
 //
 //----------------------------------------------------------------------------
 
-VOID CCandidateListUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
+VOID CTSFDayiUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
 {
+	
+	
     RECT rectCandidate = {0, 0, 0, 0};
     POINT ptCandidate = {0, 0};
 
     _pCandidateWnd->_GetClientRect(&rectCandidate);
     _pCandidateWnd->_GetWindowExtent(lpRect, &rectCandidate, &ptCandidate);
     _pCandidateWnd->_Move(ptCandidate.x, ptCandidate.y);
+	_candLocation.x = ptCandidate.x;
+	_candLocation.y = ptCandidate.y;
+}
+
+void CTSFDayiUIPresenter::GetCandLocation(POINT *lpPoint)
+{
+	lpPoint->x = _candLocation.x;
+	lpPoint->y = _candLocation.y;
 }
 
 //+---------------------------------------------------------------------------
@@ -1030,7 +1044,7 @@ VOID CCandidateListUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
 //
 //----------------------------------------------------------------------------
 
-VOID CCandidateListUIPresenter::_LayoutDestroyNotification()
+VOID CTSFDayiUIPresenter::_LayoutDestroyNotification()
 {
     _EndCandidateList();
 }
@@ -1041,7 +1055,7 @@ VOID CCandidateListUIPresenter::_LayoutDestroyNotification()
 //
 //----------------------------------------------------------------------------
 
-HRESULT CCandidateListUIPresenter::_CandidateChangeNotification(_In_ enum CANDWND_ACTION action)
+HRESULT CTSFDayiUIPresenter::_CandidateChangeNotification(_In_ enum CANDWND_ACTION action)
 {
     HRESULT hr = E_FAIL;
 
@@ -1104,9 +1118,9 @@ Exit:
 //----------------------------------------------------------------------------
 
 // static
-HRESULT CCandidateListUIPresenter::_CandWndCallback(_In_ void *pv, _In_ enum CANDWND_ACTION action)
+HRESULT CTSFDayiUIPresenter::_CandWndCallback(_In_ void *pv, _In_ enum CANDWND_ACTION action)
 {
-    CCandidateListUIPresenter* fakeThis = (CCandidateListUIPresenter*)pv;
+    CTSFDayiUIPresenter* fakeThis = (CTSFDayiUIPresenter*)pv;
 
     return fakeThis->_CandidateChangeNotification(action);
 }
@@ -1117,7 +1131,7 @@ HRESULT CCandidateListUIPresenter::_CandWndCallback(_In_ void *pv, _In_ enum CAN
 //
 //----------------------------------------------------------------------------
 
-HRESULT CCandidateListUIPresenter::_UpdateUIElement()
+HRESULT CTSFDayiUIPresenter::_UpdateUIElement()
 {
     HRESULT hr = S_OK;
 
@@ -1145,7 +1159,7 @@ HRESULT CCandidateListUIPresenter::_UpdateUIElement()
 //
 //----------------------------------------------------------------------------
 
-HRESULT CCandidateListUIPresenter::OnSetThreadFocus()
+HRESULT CTSFDayiUIPresenter::OnSetThreadFocus()
 {
     if (_isShowMode)
     {
@@ -1160,16 +1174,16 @@ HRESULT CCandidateListUIPresenter::OnSetThreadFocus()
 //
 //----------------------------------------------------------------------------
 
-HRESULT CCandidateListUIPresenter::OnKillThreadFocus()
+HRESULT CTSFDayiUIPresenter::OnKillThreadFocus()
 {
     if (_isShowMode)
     {
-      //  Show(FALSE);
+        Show(FALSE);
     }
     return S_OK;
 }
 
-void CCandidateListUIPresenter::RemoveSpecificCandidateFromList(_In_ LCID Locale, _Inout_ CTSFDayiArray<CCandidateListItem> &candidateList, _In_ CStringRange &candidateString)
+void CTSFDayiUIPresenter::RemoveSpecificCandidateFromList(_In_ LCID Locale, _Inout_ CTSFDayiArray<CCandidateListItem> &candidateList, _In_ CStringRange &candidateString)
 {
     for (UINT index = 0; index < candidateList.Count();)
     {
@@ -1185,7 +1199,7 @@ void CCandidateListUIPresenter::RemoveSpecificCandidateFromList(_In_ LCID Locale
     }
 }
 
-void CCandidateListUIPresenter::AdviseUIChangedByArrowKey(_In_ KEYSTROKE_FUNCTION arrowKey)
+void CTSFDayiUIPresenter::AdviseUIChangedByArrowKey(_In_ KEYSTROKE_FUNCTION arrowKey)
 {
     switch (arrowKey)
     {
@@ -1224,7 +1238,7 @@ void CCandidateListUIPresenter::AdviseUIChangedByArrowKey(_In_ KEYSTROKE_FUNCTIO
     }
 }
 
-HRESULT CCandidateListUIPresenter::BeginUIElement()
+HRESULT CTSFDayiUIPresenter::BeginUIElement()
 {
     HRESULT hr = S_OK;
 
@@ -1247,7 +1261,7 @@ Exit:
     return hr;
 }
 
-HRESULT CCandidateListUIPresenter::EndUIElement()
+HRESULT CTSFDayiUIPresenter::EndUIElement()
 {
     HRESULT hr = S_OK;
 
@@ -1270,7 +1284,7 @@ Exit:
     return hr;
 }
 
-HRESULT CCandidateListUIPresenter::MakeCandidateWindow(_In_ ITfContext *pContextDocument, _In_ UINT wndWidth)
+HRESULT CTSFDayiUIPresenter::MakeCandidateWindow(_In_ ITfContext *pContextDocument, _In_ UINT wndWidth)
 {
     HRESULT hr = S_OK;
 
@@ -1303,7 +1317,7 @@ Exit:
     return hr;
 }
 
-void CCandidateListUIPresenter::DisposeCandidateWindow()
+void CTSFDayiUIPresenter::DisposeCandidateWindow()
 {
     if (nullptr == _pCandidateWnd)
     {

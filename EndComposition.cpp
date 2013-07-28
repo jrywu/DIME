@@ -50,6 +50,7 @@ public:
 
 void CTSFDayi::_TerminateComposition(TfEditCookie ec, _In_ ITfContext *pContext, BOOL isCalledFromDeactivate)
 {
+	OutputDebugString(L"CTSFDayi::_TerminateComposition()\n");
 	isCalledFromDeactivate;
 
     if (_pComposition != nullptr)
@@ -85,6 +86,7 @@ void CTSFDayi::_TerminateComposition(TfEditCookie ec, _In_ ITfContext *pContext,
 
 void CTSFDayi::_EndComposition(_In_opt_ ITfContext *pContext)
 {
+	OutputDebugString(L"CTSFDayi::_EndComposition()");
     CEndCompositionEditSession *pEditSession = new (std::nothrow) CEndCompositionEditSession(this, pContext);
     HRESULT hr = S_OK;
 

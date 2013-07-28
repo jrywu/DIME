@@ -96,7 +96,8 @@ BOOL CCandidateWindow::_CreateMainWindow(ATOM atom, _In_opt_ HWND parentWndHandl
     _SetUIWnd(this);
 
     if (!CBaseWindow::_Create(atom,
-        WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
+        WS_EX_TOPMOST |
+		WS_EX_TOOLWINDOW,
         WS_BORDER | WS_POPUP,
         NULL, 0, 0, parentWndHandle))
     {
@@ -115,7 +116,8 @@ BOOL CCandidateWindow::_CreateBackGroundShadowWindow()
     }
 
     if (!_pShadowWnd->_Create(Global::AtomShadowWindow,
-        WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_LAYERED,
+        WS_EX_TOPMOST | 
+		WS_EX_TOOLWINDOW | WS_EX_LAYERED,
         WS_DISABLED | WS_POPUP, this))
     {
         _DeleteShadowWnd();
@@ -141,7 +143,9 @@ BOOL CCandidateWindow::_CreateVScrollWindow()
 
     _pVScrollBarWnd->_SetUIWnd(this);
 
-    if (!_pVScrollBarWnd->_Create(Global::AtomScrollBarWindow, WS_EX_TOPMOST | WS_EX_TOOLWINDOW, WS_CHILD, this))
+    if (!_pVScrollBarWnd->_Create(Global::AtomScrollBarWindow, 
+		WS_EX_TOPMOST | 
+			WS_EX_TOOLWINDOW, WS_POPUP, this))
     {
         _DeleteVScrollBarWnd();
         _DeleteShadowWnd();

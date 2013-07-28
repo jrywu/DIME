@@ -33,6 +33,7 @@ public:
     STDMETHODIMP DoEditSession(TfEditCookie ec);
 
 private:
+	CTSFDayi*  _pTextService;
     ITfContextView* _pContextView;
     ITfRange* _pRangeComposition;
     CTfTextLayoutSink* _pTfTextLayoutSink;

@@ -34,6 +34,8 @@ SetCompressor lzma
 !define MUI_LANGDLL_REGISTRY_KEY "${PRODUCT_UNINST_KEY}"
 !define MUI_LANGDLL_REGISTRY_VALUENAME "NSIS:Language"
 
+
+
 ; Welcome page
 !insertmacro MUI_PAGE_WELCOME
 ; License page
@@ -62,28 +64,36 @@ OutFile "TSFDayi-x86.exe"
 InstallDir "$PROGRAMFILES\TSFDayi"
 ShowInstDetails show
 ShowUnInstDetails show
-/*
-Function uninstOld
-  ExecWait '"$INSTDIR\uninst.exe" /S _?=$INSTDIR'
-  ClearErrors
-  ;Ensure the old IME is deleted
-  IfFileExists "$SYSDIR\TSFDayi.dll" 0 ContinueUnist
-  Call onInstError
-ContinueUnist:      
-FunctionEnd 
 
-Function onInstError
-   MessageBox MB_ICONSTOP|MB_OK "安裝失敗，請確定您有管理員權限。"
-   Abort
-FunctionEnd
-*/
+; Language Strings
+LangString DESC_REMAINING ${LANG_TradChinese} " ( 剩餘 %d %s%s )"
+LangString DESC_PROGRESS ${LANG_TradChinese} "%d.%01dkB" ;"%dkB (%d%%) of %dkB @ %d.%01dkB/s"
+LangString DESC_PLURAL ${LANG_TradChinese} " "
+LangString DESC_HOUR ${LANG_TradChinese} "小時"
+LangString DESC_MINUTE ${LANG_TradChinese} "分鐘"
+LangString DESC_SECOND ${LANG_TradChinese} "秒"
+LangString DESC_CONNECTING ${LANG_TradChinese} "連接中..."
+LangString DESC_DOWNLOADING ${LANG_TradChinese} "下載 %s"
+LangString DESC_INSTALLING ${LANG_TradChinese} "安裝中"
+LangString DESC_DOWNLOADING1 ${LANG_TradChinese} "下載中"
+LangString DESC_DOWNLOADFAILED ${LANG_TradChinese} "下載失敗:"
+
+LangString DESC_VCX86 ${LANG_TradChinese} "Visual C++ 2012 Redistritable Update 3 x86"
+LangString DESC_VCX86_DECISION ${LANG_TradChinese} "安裝此輸入法之前，必須先安裝 $(DESC_VCX86)，若你想繼續安裝 \
+  ，您的電腦必須連接網路。$\n您要繼續這項安裝嗎？"
+
+!define BASE_URL http://download.microsoft.com/download
+!define URL_VC_REDISTX86_2012U3  "${BASE_URL}/1/6/B/16B06F60-3B20-4FF2-B699-5E9B7962F9AE/VSU3/vcredist_x86.exe";
+Var "URL_VCX86"
 
 Function .onInit
   ${If} ${RunningX64}
         MessageBox MB_OK "此安裝檔為32bit版本, 請重新下載64bit版本"
         Abort
   ${EndIf}
-  
+  InitPluginsDir
+  StrCpy $URL_VCX86 "${URL_VC_REDISTX86_2012U3}"
+ 
   ReadRegStr $0 ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayVersion"
   StrCmp $0 "" StartInstall 0
   ;MessageBox MB_OK  "偵測到舊版 $0，必須先移除才能安裝新版。"
@@ -100,17 +110,33 @@ StartInstall:
 
 FunctionEnd
 
-
 Function checkVCRedist
   Push $R0
+  ClearErrors
   ;{3D6AD258-61EA-35F5-812C-B7A02152996E} for x86 VC 2012 Upate3
   ;{2EDC2FA3-1F34-34E5-9085-588C9EFD1CC6} for x64 VC 2012 Upate3
- ClearErrors
   ReadRegDword $R0 HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{3D6AD258-61EA-35F5-812C-B7A02152996E}" "Version"
   IfErrors 0 VCRedistInstalled
-  MessageBox MB_ICONQUESTION|MB_YESNO "需要 MS VC++ 2012 x86 Redistributable，您要繼續這項安裝嗎?" IDNO VCRedistInstalledAbort
-  File "VCRedist\vcredist_x86.exe"
-  ExecWait '"$INSTDIR\vcredist_x86.exe" /q' # silent install
+   ;MessageBox MB_ICONQUESTION|MB_YESNO "需要 MS VC++ 2012 Redistributable，您要繼續這項安裝嗎?" IDNO VCRedistInstalledAbort
+   MessageBox MB_ICONEXCLAMATION|MB_YESNO|MB_DEFBUTTON2 "$(DESC_VCX86_DECISION)" /SD IDNO IDYES +1 IDNO VCRedistInstalledAbort
+    nsisdl::download /TRANSLATE "$(DESC_DOWNLOADING)" "$(DESC_CONNECTING)" \
+       "$(DESC_SECOND)" "$(DESC_MINUTE)" "$(DESC_HOUR)" "$(DESC_PLURAL)" \
+       "$(DESC_PROGRESS)" "$(DESC_REMAINING)" \
+       /TIMEOUT=30000 "$URL_VCX86" "$PLUGINSDIR\vcredist_x86.exe"
+    Pop $0
+    StrCmp "$0" "success" lbl_continue
+    DetailPrint "$(DESC_DOWNLOADFAILED) $0"
+    Abort
+ 
+    lbl_continue:
+      DetailPrint "$(DESC_INSTALLING) $(DESC_VCX86)..."
+      nsExec::ExecToStack "$PLUGINSDIR\vcredist_x86.exe /q"
+      ;pop $DOTNET_RETURN_CODE
+   
+   
+ ; SetOutPath $INSTDIR
+  ;File "VCRedist\vcredist_x86.exe"
+  ;ExecWait '"$INSTDIR\vcredist_x86.exe" /q' # silent install
   Goto VCRedistInstalled
 VCRedistInstalledAbort:
   Quit
@@ -118,9 +144,9 @@ VCRedistInstalled:
   Exch $R0
 FunctionEnd
 
-
-Section "CheckVCRedist" VCR
-  	call checkVCRedist
+Section  "CheckVCRedist" VCR
+	AddSize 7000
+	call checkVCRedist
 SectionEnd
 
 
@@ -136,8 +162,6 @@ SectionEnd
 Section "Modules" SEC02
 SetOutPath $PROGRAMFILES
   SetOVerwrite ifnewer
-  Delete "$INSTDIR\vcredist_x86.exe"
-
 SectionEnd
 
 Section -AdditionalIcons
@@ -154,6 +178,8 @@ Section -Post
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayVersion" "${PRODUCT_VERSION}"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "URLInfoAbout" "${PRODUCT_WEB_SITE}"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "Publisher" "${PRODUCT_PUBLISHER}"
+  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayIcon" "$SYSDIR\TSFDayi.dll"
+  WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "EstimatedSize" 183
 SectionEnd
 
 Function un.onUninstSuccess  
@@ -170,7 +196,7 @@ Section Uninstall
   
   ExecWait '"$SYSDIR\regsvr32.exe" /u /s $SYSDIR\TSFDayi.dll'
   ClearErrors
-  IfFileExists "$SYSDIR\OVIME.ime"  0 lbContinueUninstall
+  IfFileExists "$SYSDIR\TSFDayi.ime"  0 lbContinueUninstall
   Delete "$SYSDIR\TSFDayi.dll"
   IfErrors lbNeedReboot lbContinueUninstall
 

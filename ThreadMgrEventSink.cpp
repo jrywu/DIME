@@ -8,7 +8,7 @@
 #include "Private.h"
 #include "Globals.h"
 #include "TSFDayi.h"
-#include "CandidateListUIPresenter.h"
+#include "TSFDayiUIPresenter.h"
 
 //+---------------------------------------------------------------------------
 //
@@ -59,19 +59,19 @@ STDAPI CTSFDayi::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentM
     // We have to hide/unhide candidate list depending on whether they are 
     // associated with pDocMgrFocus.
     //
-    if (_pCandidateListUIPresenter)
+    if (_pTSFDayiUIPresenter)
     {
         ITfDocumentMgr* pCandidateListDocumentMgr = nullptr;
-        ITfContext* pTfContext = _pCandidateListUIPresenter->_GetContextDocument();
+        ITfContext* pTfContext = _pTSFDayiUIPresenter->_GetContextDocument();
         if ((nullptr != pTfContext) && SUCCEEDED(pTfContext->GetDocumentMgr(&pCandidateListDocumentMgr)))
         {
             if (pCandidateListDocumentMgr != pDocMgrFocus)
             {
-                _pCandidateListUIPresenter->OnKillThreadFocus();
+                _pTSFDayiUIPresenter->OnKillThreadFocus();
             }
             else 
             {
-                _pCandidateListUIPresenter->OnSetThreadFocus();
+                _pTSFDayiUIPresenter->OnSetThreadFocus();
             }
 
             pCandidateListDocumentMgr->Release();

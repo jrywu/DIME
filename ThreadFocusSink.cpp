@@ -7,7 +7,7 @@
 
 #include "Private.h"
 #include "TSFDayi.h"
-#include "CandidateListUIPresenter.h"
+#include "TSFDayiUIPresenter.h"
 
 //+---------------------------------------------------------------------------
 //
@@ -17,16 +17,17 @@
 
 STDAPI CTSFDayi::OnSetThreadFocus()
 {
-    if (_pCandidateListUIPresenter)
+	OutputDebugString(L"CTSFDayi::OnSetThreadFocus()\n");
+    if (_pTSFDayiUIPresenter)
     {
         ITfDocumentMgr* pCandidateListDocumentMgr = nullptr;
-        ITfContext* pTfContext = _pCandidateListUIPresenter->_GetContextDocument();
+        ITfContext* pTfContext = _pTSFDayiUIPresenter->_GetContextDocument();
 
         if ((nullptr != pTfContext) && SUCCEEDED(pTfContext->GetDocumentMgr(&pCandidateListDocumentMgr)))
         {
             if (pCandidateListDocumentMgr == _pDocMgrLastFocused)
             {
-                _pCandidateListUIPresenter->OnSetThreadFocus();
+                _pTSFDayiUIPresenter->OnSetThreadFocus();
             }
 
             pCandidateListDocumentMgr->Release();
@@ -44,10 +45,11 @@ STDAPI CTSFDayi::OnSetThreadFocus()
 
 STDAPI CTSFDayi::OnKillThreadFocus()
 {
-    if (_pCandidateListUIPresenter)
+	OutputDebugString(L"CTSFDayi::OnSetThreadFocus()\n");
+    if (_pTSFDayiUIPresenter)
     {
         ITfDocumentMgr* pCandidateListDocumentMgr = nullptr;
-        ITfContext* pTfContext = _pCandidateListUIPresenter->_GetContextDocument();
+        ITfContext* pTfContext = _pTSFDayiUIPresenter->_GetContextDocument();
 
         if ((nullptr != pTfContext) && SUCCEEDED(pTfContext->GetDocumentMgr(&pCandidateListDocumentMgr)))
         {
@@ -62,7 +64,7 @@ STDAPI CTSFDayi::OnKillThreadFocus()
                 _pDocMgrLastFocused->AddRef();
             }
         }
-        _pCandidateListUIPresenter->OnKillThreadFocus();
+        _pTSFDayiUIPresenter->OnKillThreadFocus();
     }
     return S_OK;
 }

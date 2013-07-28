@@ -18,24 +18,25 @@ class CReadingLine;
 
 //+---------------------------------------------------------------------------
 //
-// CCandidateListUIPresenter
+// CTSFDayiUIPresenter
 //
-// ITfCandidateListUIElement / ITfIntegratableCandidateListUIElement is used for 
+// ITfTSFDayiUIElement / ITfIntegratableCandidateListUIElement is used for 
 // UILess mode support
 // ITfCandidateListUIElementBehavior sends the Selection behavior message to 
 // 3rd party IME.
 //----------------------------------------------------------------------------
 
-class CCandidateListUIPresenter : public CTfTextLayoutSink,
+class CTSFDayiUIPresenter : 
+	public CTfTextLayoutSink,
     public ITfCandidateListUIElementBehavior,
     public ITfIntegratableCandidateListUIElement
 {
 public:
-    CCandidateListUIPresenter(_In_ CTSFDayi *pTextService, ATOM atom,
+    CTSFDayiUIPresenter(_In_ CTSFDayi *pTextService, ATOM atom,
         KEYSTROKE_CATEGORY Category,
         _In_ CCandidateRange *pIndexRange,
         BOOL hideWindow);
-    virtual ~CCandidateListUIPresenter();
+    virtual ~CTSFDayiUIPresenter();
 
     // IUnknown
     STDMETHODIMP QueryInterface(REFIID riid, _Outptr_ void **ppvObj);
@@ -98,6 +99,8 @@ public:
     void RemoveSpecificCandidateFromList(_In_ LCID Locale, _Inout_ CTSFDayiArray<CCandidateListItem> &candidateList, _In_ CStringRange &srgCandidateString);
     void AdviseUIChangedByArrowKey(_In_ KEYSTROKE_FUNCTION arrowKey);
 
+	void GetCandLocation(_Out_ POINT *lpPoint);
+
 private:
     virtual HRESULT CALLBACK _CandidateChangeNotification(_In_ enum CANDWND_ACTION action);
 
@@ -117,7 +120,7 @@ private:
     HRESULT MakeCandidateWindow(_In_ ITfContext *pContextDocument, _In_ UINT wndWidth);
     void DisposeCandidateWindow();
 
-    void AddCandidateToCandidateListUI(_In_ CTSFDayiArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode);
+    void AddCandidateToTSFDayiUI(_In_ CTSFDayiArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode);
 
     void SetPageIndexWithScrollInfo(_In_ CTSFDayiArray<CCandidateListItem> *pCandidateList);
 
@@ -136,4 +139,5 @@ private:
     DWORD _uiElementId;
     CTSFDayi* _pTextService;
     LONG _refCount;
+	POINT _candLocation;
 };

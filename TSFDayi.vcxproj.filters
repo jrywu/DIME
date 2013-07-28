@@ -25,14 +25,20 @@
     <Filter Include="Source Files\Framework\Composition\Display">
       <UniqueIdentifier>{1a80ba50-d93b-4a60-972f-3d7bf4d72fc0}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Framework\Candidate">
-      <UniqueIdentifier>{0fb4053f-2bb9-491d-90b0-47a3b5b41135}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\Framework\LanguageBar">
       <UniqueIdentifier>{b5decd04-2d7f-4134-bbcf-9cb601f78322}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source Files\Framework\Composition\Dictionary">
       <UniqueIdentifier>{1f776a05-57d4-4932-bfd7-bdbd516c8cc6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\UI">
+      <UniqueIdentifier>{4f0b1137-faa2-40de-8bf5-0a32f764b257}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\UI\Candidate">
+      <UniqueIdentifier>{0fb4053f-2bb9-491d-90b0-47a3b5b41135}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\UI\NotifyWindow">
+      <UniqueIdentifier>{6a37624e-fbca-42cc-a414-c390a08e1ff1}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -175,35 +181,20 @@
     <ClCompile Include="DictionarySearch.cpp">
       <Filter>Source Files\Framework\Composition\Dictionary</Filter>
     </ClCompile>
-    <ClCompile Include="BaseWindow.cpp">
-      <Filter>Source Files\Framework\Candidate</Filter>
-    </ClCompile>
-    <ClCompile Include="ButtonWindow.cpp">
-      <Filter>Source Files\Framework\Candidate</Filter>
-    </ClCompile>
-    <ClCompile Include="CandidateListUIPresenter.cpp">
-      <Filter>Source Files\Framework\Candidate</Filter>
-    </ClCompile>
     <ClCompile Include="CandidateWindow.cpp">
-      <Filter>Source Files\Framework\Candidate</Filter>
+      <Filter>Source Files\UI\Candidate</Filter>
     </ClCompile>
     <ClCompile Include="File.cpp">
       <Filter>Source Files\Framework\Composition\Dictionary</Filter>
     </ClCompile>
-    <ClCompile Include="ScrollBarWindow.cpp">
-      <Filter>Source Files\Framework\Candidate</Filter>
-    </ClCompile>
     <ClCompile Include="TipCandidateString.cpp">
-      <Filter>Source Files\Framework\Candidate</Filter>
+      <Filter>Source Files\UI\Candidate</Filter>
     </ClCompile>
     <ClCompile Include="TipCandidateList.cpp">
-      <Filter>Source Files\Framework\Candidate</Filter>
+      <Filter>Source Files\UI\Candidate</Filter>
     </ClCompile>
     <ClCompile Include="TableDictionaryEngine.cpp">
       <Filter>Source Files\Framework\Composition\Dictionary</Filter>
-    </ClCompile>
-    <ClCompile Include="ShadowWindow.cpp">
-      <Filter>Source Files\Framework\Candidate</Filter>
     </ClCompile>
     <ClCompile Include="Compartment.cpp">
       <Filter>Source Files\Framework\LanguageBar</Filter>
@@ -221,10 +212,10 @@
       <Filter>Source Files\DLL</Filter>
     </ClCompile>
     <ClCompile Include="SearchCandidateProvider.cpp">
-      <Filter>Source Files\Framework\Candidate</Filter>
+      <Filter>Source Files\UI\Candidate</Filter>
     </ClCompile>
     <ClCompile Include="EnumTfCandidates.cpp">
-      <Filter>Source Files\Framework\Candidate</Filter>
+      <Filter>Source Files\UI\Candidate</Filter>
     </ClCompile>
     <ClCompile Include="RegKey.cpp">
       <Filter>Source Files\DLL</Filter>
@@ -261,9 +252,6 @@
     </ClCompile>
     <ClCompile Include="TfInputProcessorProfile.cpp">
       <Filter>Source Files\Framework\Composition</Filter>
-    </ClCompile>
-    <ClCompile Include="TfTextLayoutSink.cpp">
-      <Filter>Source Files\Framework\Candidate</Filter>
     </ClCompile>
     <ClCompile Include="ActiveLanguageProfileNotifySink.cpp">
       <Filter>Source Files\Framework</Filter>
@@ -303,6 +291,27 @@
     </ClCompile>
     <ClCompile Include="TSFDayiBaseStructure.cpp">
       <Filter>Source Files\Framework</Filter>
+    </ClCompile>
+    <ClCompile Include="NotifyWindow.cpp">
+      <Filter>Source Files\UI\NotifyWindow</Filter>
+    </ClCompile>
+    <ClCompile Include="TSFDayiUIPresenter.cpp">
+      <Filter>Source Files\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="BaseWindow.cpp">
+      <Filter>Source Files\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="TfTextLayoutSink.cpp">
+      <Filter>Source Files\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="ShadowWindow.cpp">
+      <Filter>Source Files\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="ButtonWindow.cpp">
+      <Filter>Source Files\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="ScrollBarWindow.cpp">
+      <Filter>Source Files\UI</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

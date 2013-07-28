@@ -9,6 +9,7 @@
 #include "Globals.h"
 #include "TSFDayi.h"
 #include "CompositionProcessorEngine.h"
+#include "TSFDayiUIPresenter.h"
 
 //+---------------------------------------------------------------------------
 //
@@ -20,6 +21,7 @@
 
 STDAPI CTSFDayi::OnCompositionTerminated(TfEditCookie ecWrite, _In_ ITfComposition *pComposition)
 {
+	OutputDebugString(L"CTSFDayi::_TerminateComposition()");
 	HRESULT hr = S_OK;
     ITfContext* pContext = _pContext;
    
@@ -32,17 +34,57 @@ STDAPI CTSFDayi::OnCompositionTerminated(TfEditCookie ecWrite, _In_ ITfCompositi
         pContext->AddRef();
 	}
 	
-	 if(_candidateMode != CANDIDATE_WITH_NEXT_COMPOSITION)
-	{
-		_EndComposition(pContext);
-		_DeleteCandidateList(FALSE, pContext);
-	}
+	 //if(_candidateMode != CANDIDATE_WITH_NEXT_COMPOSITION)
+	//{
+	_EndComposition(pContext);
+	_DeleteCandidateList(FALSE, pContext);
+	//}
 	if (pContext)
 	{
 		pContext->Release();
         pContext = nullptr;
     }
     return hr;
+}
+
+HRESULT CTSFDayi::_HandlTextLayoutChange(TfEditCookie ec, _In_ ITfContext *pContext,  _In_ ITfRange *pRangeComposition)
+{
+	ec; pRangeComposition; pContext;
+
+	POINT newCandLocation;
+	_pTSFDayiUIPresenter->GetCandLocation(&newCandLocation);
+	
+	WCHAR wszbuf[256];
+	swprintf(wszbuf,256, L"CTSFDayi::_HandlTextLayouyChange(), candMode = %d, _phraseCandShowing = %d\n" , _candidateMode, _phraseCandShowing);
+	OutputDebugString(wszbuf);
+	swprintf(wszbuf,256, L"CTSFDayi::_HandlTextLayouyChange(), ptCandidate.x = %d, ptCandidate.y = %d\n" , newCandLocation.x, newCandLocation.y);
+	OutputDebugString(wszbuf);
+
+	
+	if( _candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)
+	{
+		
+		OutputDebugString(L"CTSFDayi::_HandlTextLayouyChange() candMode = CANDIDATE_WITH_NEXT_COMPOSITION\n");
+		if(_phraseCandShowing)
+		{
+			OutputDebugString(L"CTSFDayi::_HandlTextLayouyChange() _phraseCand is showing \n");
+			_phraseCandShowing = FALSE; //finishing showing phrase cand
+			_phraseCandLocation.x = newCandLocation.x;
+			_phraseCandLocation.y = newCandLocation.y;
+		}
+		else if( (_phraseCandLocation.x != newCandLocation.x) || (_phraseCandLocation.y != newCandLocation.y))
+		{  //phrase cand moved delete the cand.
+			_DeleteCandidateList(FALSE, pContext);
+		}
+
+
+	}
+
+	
+
+   
+	
+	return S_OK;
 }
 
 //+---------------------------------------------------------------------------

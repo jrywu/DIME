@@ -8,7 +8,7 @@
 #include "Private.h"
 #include "globals.h"
 #include "TSFDayi.h"
-#include "CandidateListUIPresenter.h"
+#include "TSFDayiUIPresenter.h"
 #include "CompositionProcessorEngine.h"
 #include "Compartment.h"
 
@@ -75,7 +75,7 @@ CTSFDayi::CTSFDayi()
     _pCompositionProcessorEngine = nullptr;
 
     _candidateMode = CANDIDATE_NONE;
-    _pCandidateListUIPresenter = nullptr;
+    _pTSFDayiUIPresenter = nullptr;
     _isCandidateWithWildcard = FALSE;
 
     _pDocMgrLastFocused = nullptr;
@@ -87,6 +87,8 @@ CTSFDayi::CTSFDayi()
     _pContext = nullptr;
 
     _refCount = 1;
+	
+	_phraseCandShowing = FALSE;
 }
 
 //+---------------------------------------------------------------------------
@@ -97,10 +99,10 @@ CTSFDayi::CTSFDayi()
 
 CTSFDayi::~CTSFDayi()
 {
-    if (_pCandidateListUIPresenter)
+    if (_pTSFDayiUIPresenter)
     {
-        delete _pCandidateListUIPresenter;
-        _pCandidateListUIPresenter = nullptr;
+        delete _pTSFDayiUIPresenter;
+        _pTSFDayiUIPresenter = nullptr;
     }
     DllRelease();
 }
@@ -295,10 +297,10 @@ STDAPI CTSFDayi::Deactivate()
         _EndComposition(_pContext);
     }
 
-    if (_pCandidateListUIPresenter)
+    if (_pTSFDayiUIPresenter)
     {
-        delete _pCandidateListUIPresenter;
-        _pCandidateListUIPresenter = nullptr;
+        delete _pTSFDayiUIPresenter;
+        _pTSFDayiUIPresenter = nullptr;
 
         if (pContext)
         {

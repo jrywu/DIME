@@ -11,7 +11,7 @@
 #include "TSFDayiBaseStructure.h"
 
 class CLangBarItemButton;
-class CCandidateListUIPresenter;
+class CTSFDayiUIPresenter;
 class CCompositionProcessorEngine;
 
 const DWORD WM_CheckGlobalCompartment = WM_USER;
@@ -112,6 +112,8 @@ public:
     HRESULT _HandleCompositionArrowKey(TfEditCookie ec, _In_ ITfContext *pContext, KEYSTROKE_FUNCTION keyFunction);
     HRESULT _HandleCompositionPunctuation(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch);
     HRESULT _HandleCompositionDoubleSingleByte(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch);
+	// function for textlayoutchange.
+	HRESULT _HandlTextLayoutChange(TfEditCookie ec, _In_ ITfContext *pContext, _In_ ITfRange *pRangeComposition);
 
     // key event handlers for candidate object.
     HRESULT _HandleCandidateFinalize(TfEditCookie ec, _In_ ITfContext *pContext);
@@ -234,7 +236,7 @@ private:
     TfGuidAtom _gaDisplayAttributeConverted;
 
     CANDIDATE_MODE _candidateMode;
-    CCandidateListUIPresenter *_pCandidateListUIPresenter;
+    CTSFDayiUIPresenter *_pTSFDayiUIPresenter;
     BOOL _isCandidateWithWildcard : 1;
 
     ITfDocumentMgr* _pDocMgrLastFocused;
@@ -251,5 +253,6 @@ private:
     // Support the search integration
     ITfFnSearchCandidateProvider* _pITfFnSearchCandidateProvider;
 
-	
+	BOOL _phraseCandShowing;
+	POINT _phraseCandLocation;
 };
