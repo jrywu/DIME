@@ -382,14 +382,12 @@ void CCompositionProcessorEngine::GetReadingStrings(_Inout_ CTSFDayiArray<CStrin
         }
 
 		PWCHAR pwchRadical;
-		if(Global::radicalMap.size()) // if radicalMap is valid (size()>0), then convert the keystroke buffer 
-		{
-			pwchRadical = new (std::nothrow) WCHAR[_keystrokeBuffer.GetLength() + 1];
-			*pwchRadical = L'\0';
-		}
+		pwchRadical = new (std::nothrow) WCHAR[_keystrokeBuffer.GetLength() + 1];
+		*pwchRadical = L'\0';
+		
         for (DWORD index = 0; index < _keystrokeBuffer.GetLength(); index++)
         {
-			if(Global::radicalMap.size())
+			if(Global::radicalMap.size()) // if radicalMap is valid (size()>0), then convert the keystroke buffer 
 			{
 				WCHAR* radicalChar = new (std::nothrow) WCHAR[2];
 				*radicalChar = towupper(*(_keystrokeBuffer.Get() + index));
@@ -408,6 +406,10 @@ void CCompositionProcessorEngine::GetReadingStrings(_Inout_ CTSFDayiArray<CStrin
 		if(Global::radicalMap.size())
 		{
 			pNewString->Set(pwchRadical, _keystrokeBuffer.GetLength());
+		}
+		else
+		{
+			delete [] pwchRadical;
 		}
     }
 

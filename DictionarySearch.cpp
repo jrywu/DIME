@@ -132,7 +132,7 @@ TryAgain:
 		}
 		if (!ParseLine(&pwch[indexTrace], bufLenOneLine, &keyword))
 		{
-			if(controlKeyType == NOT_CONTROLKEY) //Control key may have key without value.
+			if(controlKeyType == NOT_CONTROLKEY && !(searchMode == SEARCH_SYMBOL)) //Control key may have key without value.
 				return FALSE;    // error
 		}
 
@@ -168,6 +168,10 @@ TryAgain:
 				else if (parseConfig && CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"[Radical]", 9)) == CSTR_EQUAL)
 				{
 					searchMode = (parseConfig)?SEARCH_RADICAL:SEARCH_NONE;
+				}
+				else if (CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"[Symbol]", 8)) == CSTR_EQUAL)
+				{
+					searchMode = (!parseConfig && !isTextSearch)?SEARCH_SYMBOL:SEARCH_NONE;
 				}
 				else if (parseConfig && CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"[AutoCompose]", 13)) == CSTR_EQUAL)
 				{
@@ -224,7 +228,7 @@ TryAgain:
 		{
 			goto ReadValue;
 		}
-		else if(searchMode == SEARCH_MAPPING || searchMode == SEARCH_TEXT_TTS_PHRASE) //compare key with searchcode
+		else if(searchMode == SEARCH_MAPPING || searchMode == SEARCH_SYMBOL || searchMode == SEARCH_TEXT_TTS_PHRASE) //compare key with searchcode
 		{
 			// Compare Dictionary key code and input key code
 			if ((!isWildcardSearch) && (CStringRange::Compare(_locale, &keyword, _pSearchKeyCode) != CSTR_EQUAL))	goto FindNextLine;
@@ -252,7 +256,6 @@ TryAgain:
 		else	goto FindNextLine;  //bypassing all lines for all lines except the radical section for pars 
 		
 ReadValue:
-		//if(searchMapping || searchTTSPhrase || searchRadical)
 		if(searchMode != SEARCH_NONE)
 		{
 			// Prepare return's CDictionaryResult
@@ -263,16 +266,16 @@ ReadValue:
 			}
 			
 			CTSFDayiArray<CParserStringRange> valueStrings;
-
-			if (!ParseLine(&pwch[indexTrace], bufLenOneLine, &keyword, &valueStrings, searchMode == SEARCH_TEXT_TTS_PHRASE,
-				( searchMode == SEARCH_TEXT_TTS_PHRASE )?_pSearchKeyCode:NULL))
+			BOOL isPhraseEntry = (searchMode == SEARCH_TEXT_TTS_PHRASE) || (searchMode == SEARCH_SYMBOL);
+			if (!ParseLine(&pwch[indexTrace], bufLenOneLine, &keyword, &valueStrings, isPhraseEntry,
+				(isPhraseEntry)?_pSearchKeyCode:NULL))
 			{
 				if (!parseConfig && *ppdret)
 				{
 					delete *ppdret;
 					*ppdret = nullptr;
 				}
-				if(controlKeyType == NOT_CONTROLKEY) return FALSE;
+				if(controlKeyType == NOT_CONTROLKEY && !(searchMode == SEARCH_SYMBOL)) return FALSE;
 			}
 			if(searchMode == SEARCH_RADICAL)
 			{
