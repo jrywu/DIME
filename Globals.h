@@ -103,6 +103,7 @@ extern map <WCHAR, WCHAR> radicalMap;
 
 extern BOOL isWindows8; //OS Version
 extern BOOL autoCompose; // show candidates while composing
+extern BOOL threeCodeMode;
 extern BOOL hasPhraseSection; // the dictionary file has TTS [Phrase] section
 
 extern ATOM AtomCandidateWindow;

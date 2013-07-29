@@ -381,8 +381,23 @@ void CCompositionProcessorEngine::GetReadingStrings(_Inout_ CTSFDayiArray<CStrin
             *pNewString = _keystrokeBuffer;
         }
 
+		PWCHAR pwchRadical;
+		if(Global::radicalMap.size()) // if radicalMap is valid (size()>0), then convert the keystroke buffer 
+		{
+			pwchRadical = new (std::nothrow) WCHAR[_keystrokeBuffer.GetLength() + 1];
+			*pwchRadical = L'\0';
+		}
         for (DWORD index = 0; index < _keystrokeBuffer.GetLength(); index++)
         {
+			if(Global::radicalMap.size())
+			{
+				WCHAR* radicalChar = new (std::nothrow) WCHAR[2];
+				*radicalChar = towupper(*(_keystrokeBuffer.Get() + index));
+				WCHAR* radical = &Global::radicalMap[*radicalChar];
+				if(*radical == L'\0') *radical = *radicalChar;
+				StringCchCatN(pwchRadical, _keystrokeBuffer.GetLength() + 1, radical,1); 
+			}
+
             oneKeystroke.Set(_keystrokeBuffer.Get() + index, 1);
 
             if (IsWildcard() && IsWildcardChar(*oneKeystroke.Get()))
@@ -390,6 +405,10 @@ void CCompositionProcessorEngine::GetReadingStrings(_Inout_ CTSFDayiArray<CStrin
                 _hasWildcardIncludedInKeystrokeBuffer = TRUE;
             }
         }
+		if(Global::radicalMap.size())
+		{
+			pNewString->Set(pwchRadical, _keystrokeBuffer.GetLength());
+		}
     }
 
     *pIsWildcardIncluded = _hasWildcardIncludedInKeystrokeBuffer;
@@ -491,7 +510,20 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFDayiArray<CCandid
     {
         _pTableDictionaryEngine->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList);
     }
-    else
+	else if (Global::threeCodeMode && _keystrokeBuffer.GetLength() == 3)
+	{
+		CStringRange wildcardSearch;
+        PWCHAR pwch = new (std::nothrow) WCHAR[ 5 ];
+        if (!pwch) return;
+		pwch[0] = *(_keystrokeBuffer.Get());       
+		pwch[1] = *(_keystrokeBuffer.Get()+1);       
+		pwch[2] = L'*';
+		pwch[3] = *(_keystrokeBuffer.Get()+2);       
+		pwch[4] = L'0';
+		wildcardSearch.Set(pwch, 4);
+		_pTableDictionaryEngine->CollectWordForWildcard(&wildcardSearch, pCandidateList);
+	}
+    else 
     {
         _pTableDictionaryEngine->CollectWord(&_keystrokeBuffer, pCandidateList);
     }

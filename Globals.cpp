@@ -21,6 +21,7 @@ map <WCHAR, WCHAR> radicalMap;
 
 BOOL isWindows8 = FALSE;
 BOOL autoCompose = FALSE; 
+BOOL threeCodeMode = FALSE; 
 
 BOOL hasPhraseSection = FALSE;
 

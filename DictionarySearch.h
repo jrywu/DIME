@@ -50,6 +50,7 @@ private:
     }
 
     CFile* _pFile;
+	enum SEARCH_MODE searchMode;
 };
 
 //////////////////////////////////////////////////////////////////////
@@ -74,4 +75,23 @@ public:
     CStringRange _SearchKeyCode;
     CStringRange _FindKeyCode;
     CTSFDayiArray<CStringRange> _FindPhraseList;
+};
+
+enum SEARCH_MODE
+{
+	SEARCH_NONE,
+	SEARCH_MAPPING,
+	SEARCH_MAPPING_WILRDCARD,
+	SEARCH_TEXT,
+	SEARCH_TEXT_WILRDCARD,
+	SEARCH_TEXT_TTS_PHRASE,
+	SEARCH_RADICAL,
+	SEARCH_CONFIG,
+	SEARCH_CONTROLKEY
+};
+enum CONTROLKEY_TYPE
+{
+	NOT_CONTROLKEY,
+	CIN_CONTROLKEY,
+	TTS_CONTROLKEY
 };

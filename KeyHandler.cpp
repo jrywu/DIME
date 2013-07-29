@@ -179,25 +179,8 @@ HRESULT CTSFDayi::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine
 
     for (UINT index = 0; index < readingStrings.Count(); index++)
     {
+		hr = _AddComposingAndChar(ec, pContext, readingStrings.GetAt(index));
 		
-		if(Global::radicalMap.size() )
-		{	
-			CStringRange compRadical;
-			PWCHAR pwchRadical = new (std::nothrow) WCHAR[readingStrings.GetAt(index)->GetLength() + 1];
-			*pwchRadical = L'\0';
-			for(UINT i =0; i < readingStrings.GetAt(index)->GetLength(); i++)
-			{
-				WCHAR* radicalChar = new (std::nothrow) WCHAR[2];
-				*radicalChar = towupper(*(readingStrings.GetAt(index)->Get()+i));
-				WCHAR* radical = &Global::radicalMap[*radicalChar];
-				if(*radical == L'\0') *radical = *radicalChar;
-				StringCchCatN(pwchRadical,readingStrings.GetAt(index)->GetLength() + 1, radical,1); 
-			}
-			hr = _AddComposingAndChar(ec, pContext, &compRadical.Set(pwchRadical,readingStrings.GetAt(index)->GetLength()));
-		}else
-		{
-			hr = _AddComposingAndChar(ec, pContext, readingStrings.GetAt(index));
-		}
         if (FAILED(hr))
         {
             return hr;
