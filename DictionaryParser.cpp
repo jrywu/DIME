@@ -142,16 +142,18 @@ _Ret_maybenull_
 LPCWSTR CDictionaryParser::GetToken(_In_reads_(dwBufLen) LPCWSTR pwszBuffer, DWORD_PTR dwBufLen, _In_ const WCHAR chDelimiter, _Out_ CParserStringRange *psrgValue)
 {
     WCHAR ch = '\0';
+	WCHAR pch = '\0';
 
     psrgValue->Set(pwszBuffer, dwBufLen);
 
     ch = *pwszBuffer;
+	
     while ((ch) && (ch != chDelimiter) && dwBufLen)
     {
         dwBufLen--;
         pwszBuffer++;
-
-        if (ch == Global::StringDelimiter)
+		pch = *(pwszBuffer-1);
+        if ((ch == Global::StringDelimiter) && (pch != L'\\')) // ignore escaped quote \\" which is not a quote acutally
         {
             while (*pwszBuffer && (*pwszBuffer != Global::StringDelimiter) && dwBufLen)
             {

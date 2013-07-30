@@ -132,7 +132,7 @@ TryAgain:
 		}
 		if (!ParseLine(&pwch[indexTrace], bufLenOneLine, &keyword))
 		{
-			if(controlKeyType == NOT_CONTROLKEY && !(searchMode == SEARCH_SYMBOL)) //Control key may have key without value.
+			if(controlKeyType == NOT_CONTROLKEY) //Control key may have key without value.
 				return FALSE;    // error
 		}
 
@@ -223,7 +223,7 @@ TryAgain:
 			}
 			goto FindNextLine;
 		}
-		
+		//start searching keys
 		if(searchMode == SEARCH_RADICAL)
 		{
 			goto ReadValue;
@@ -253,13 +253,13 @@ TryAgain:
 			else goto FindNextLine;
 			
 		}
-		else	goto FindNextLine;  //bypassing all lines for all lines except the radical section for pars 
+		else	goto FindNextLine;  //bypassing all lines else
 		
 ReadValue:
 		if(searchMode != SEARCH_NONE)
 		{
 			// Prepare return's CDictionaryResult
-			if(!parseConfig)
+			if(!parseConfig) // when parseConfig TRUE, no results will be return and **ppdret is NULL
 			{
 				*ppdret = new (std::nothrow) CDictionaryResult();
 				if (!*ppdret)	return FALSE;
@@ -275,7 +275,8 @@ ReadValue:
 					delete *ppdret;
 					*ppdret = nullptr;
 				}
-				if(controlKeyType == NOT_CONTROLKEY && !(searchMode == SEARCH_SYMBOL)) return FALSE;
+				if(controlKeyType == NOT_CONTROLKEY)
+					return FALSE;
 			}
 			if(searchMode == SEARCH_RADICAL)
 			{
@@ -303,7 +304,7 @@ ReadValue:
 				controlKeyType = NOT_CONTROLKEY;
 				goto FindNextLine;
 			}
-			else if(!parseConfig)
+			else if(!parseConfig)  //MAPPING SYMBOL PHRASE all go here.
 			{
 				(*ppdret)->_FindKeyCode = keyword;
 				(*ppdret)->_SearchKeyCode = *_pSearchKeyCode;
