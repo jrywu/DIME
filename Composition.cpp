@@ -36,8 +36,8 @@ STDAPI CTSFDayi::OnCompositionTerminated(TfEditCookie ecWrite, _In_ ITfCompositi
 	
 	//if(_candidateMode != CANDIDATE_WITH_NEXT_COMPOSITION)
 	//{
-	_EndComposition(pContext);
-	_DeleteCandidateList(FALSE, pContext);
+		_EndComposition(pContext);
+		_DeleteCandidateList(FALSE, pContext);
 	//}
 	if (pContext)
 	{
@@ -49,31 +49,40 @@ STDAPI CTSFDayi::OnCompositionTerminated(TfEditCookie ecWrite, _In_ ITfCompositi
 
 HRESULT CTSFDayi::_HandlTextLayoutChange(TfEditCookie ec, _In_ ITfContext *pContext,  _In_ ITfRange *pRangeComposition)
 {
+	OutputDebugString(L"CTSFDayi::_HandlTextLayoutChange()\n");
 	ec; pRangeComposition; pContext;
 
 	POINT newCandLocation;
 	_pTSFDayiUIPresenter->GetCandLocation(&newCandLocation);
+
+	POINT curPos;
+	GetCursorPos(&curPos);
 	
 	WCHAR wszbuf[256];
 	swprintf(wszbuf,256, L"CTSFDayi::_HandlTextLayouyChange(), candMode = %d, _phraseCandShowing = %d\n" , _candidateMode, _phraseCandShowing);
 	OutputDebugString(wszbuf);
-	swprintf(wszbuf,256, L"CTSFDayi::_HandlTextLayouyChange(), ptCandidate.x = %d, ptCandidate.y = %d\n" , newCandLocation.x, newCandLocation.y);
+	swprintf(wszbuf,256, L"CTSFDayi::_HandlTextLayouyChange(), newCandidate.x = %d, newCandidate.y = %d\n" , newCandLocation.x, newCandLocation.y);
+	OutputDebugString(wszbuf);
+	swprintf(wszbuf,256, L"CTSFDayi::_HandlTextLayouyChange(), curPosition.x = %d, curPosition.y = %d\n" , curPos.x, curPos.y);
 	OutputDebugString(wszbuf);
 
 	
-	if( _candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)
+	if( _candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION || _candidateMode == CANDIDATE_PHRASE)
 	{
 		
-		OutputDebugString(L"CTSFDayi::_HandlTextLayouyChange() candMode = CANDIDATE_WITH_NEXT_COMPOSITION\n");
+		OutputDebugString(L"CTSFDayi::_HandlTextLayouyChange() candMode = CANDIDATE_WITH_NEXT_COMPOSITION or CANDIDATE_PHRASE\n");
 		if(_phraseCandShowing)
 		{
 			OutputDebugString(L"CTSFDayi::_HandlTextLayouyChange() _phraseCand is showing \n");
 			_phraseCandShowing = FALSE; //finishing showing phrase cand
 			_phraseCandLocation.x = newCandLocation.x;
 			_phraseCandLocation.y = newCandLocation.y;
+			_cusorPosition.x = curPos.x;
+			_cusorPosition.y = curPos.y;
 		}
-		else if( (_phraseCandLocation.x != newCandLocation.x) || (_phraseCandLocation.y != newCandLocation.y))
+		else if( (_cusorPosition.x != curPos.x) || (_cusorPosition.y != curPos.y))
 		{  //phrase cand moved delete the cand.
+			OutputDebugString(L"CTSFDayi::_HandlTextLayouyChange() cursor moved. kill the cand.\n");
 			_DeleteCandidateList(FALSE, pContext);
 		}
 

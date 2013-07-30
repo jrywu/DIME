@@ -187,6 +187,7 @@ void CCandidateWindow::_ResizeWindow()
 
 void CCandidateWindow::_Move(int x, int y)
 {
+	OutputDebugString(L"CCandidateWindow::_Move()\n");
     CBaseWindow::_Move(x, y);
 }
 

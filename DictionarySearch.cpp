@@ -173,10 +173,10 @@ TryAgain:
 				{
 					searchMode = (!parseConfig && !isTextSearch)?SEARCH_SYMBOL:SEARCH_NONE;
 				}
-				else if (parseConfig && CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"[AutoCompose]", 13)) == CSTR_EQUAL)
+				else if (parseConfig && CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"[Config]", 8)) == CSTR_EQUAL)
 				{
-					Global::autoCompose = TRUE;// autoCompose is off for TTS table unless see [AutoCompose] control key
-					searchMode =  SEARCH_NONE;
+					//Global::autoCompose = TRUE;// autoCompose is off for TTS table unless see [AutoCompose] control key
+					searchMode =  (parseConfig)?SEARCH_CONFIG:SEARCH_NONE;
 				}
 				else
 				{
@@ -224,7 +224,7 @@ TryAgain:
 			goto FindNextLine;
 		}
 		//start searching keys
-		if(searchMode == SEARCH_RADICAL)
+		if(searchMode == SEARCH_RADICAL || searchMode == SEARCH_CONFIG)
 		{
 			goto ReadValue;
 		}
@@ -289,17 +289,21 @@ ReadValue:
 				Global::radicalMap[towupper(*radicalChar)] = *radical;
 				goto FindNextLine;
 			}
+			if(searchMode == SEARCH_CONFIG)
+			{
+				CParserStringRange testKey, value;				
+				if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"AutoCompose", 11)) == CSTR_EQUAL)
+					Global::autoCompose = (CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL);
+				if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ThreeCodeMode", 13)) == CSTR_EQUAL)
+					Global::threeCodeMode = (CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL);
+				goto FindNextLine;
+			}
 			else if(searchMode == SEARCH_CONTROLKEY && controlKeyType == CIN_CONTROLKEY)  // get value of cin control keys
 			{
-				CParserStringRange testKey, value;
-				
-				
-				testKey.Set(L"%autoCompose", 12);
-				if (CStringRange::Compare(_locale, &keyword, &testKey) == CSTR_EQUAL)
-				{
-					value.Set(L"TRUE", 4);
-					Global::autoCompose = (CStringRange::Compare(_locale, valueStrings.GetAt(0), &value) == CSTR_EQUAL);
-				}
+				CParserStringRange testKey, value;				
+				if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"%autoCompose", 12)) == CSTR_EQUAL)
+					Global::autoCompose = (CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"TRUE", 4)) == CSTR_EQUAL);
+
 
 				controlKeyType = NOT_CONTROLKEY;
 				goto FindNextLine;

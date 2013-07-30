@@ -53,7 +53,7 @@ HRESULT CTSFDayi::_HandleCandidateConvert(TfEditCookie ec, _In_ ITfContext *pCon
 
 HRESULT CTSFDayi::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext)
 {
-	
+	OutputDebugString(L"CTSFDayi::_HandleCandidateWorker() \n");
     HRESULT hr = S_OK;
 	CStringRange commitString;
 	CTSFDayiArray<CCandidateListItem> candidatePhraseList;	
@@ -63,14 +63,14 @@ HRESULT CTSFDayi::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pCont
     {
         goto Exit; //should not happen
     }
-
+	/* //should not be here
 	UINT candiCount;
 	if(_candidateMode!= CANDIDATE_ORIGINAL && _pTSFDayiUIPresenter->GetCount(&candiCount) == 1)
 	{
 		_HandleComplete(ec, pContext);
 		goto Exit;
 	}
-
+	*///------------------------------------------------------------------------
 	const WCHAR* pCandidateString = nullptr;
 	DWORD_PTR candidateLen = 0;    
 
@@ -82,7 +82,7 @@ HRESULT CTSFDayi::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pCont
     {
 		if(_candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)
 		{
-			_HandleComplete(ec, pContext);
+			_HandleCancel(ec, pContext);
 			goto Exit;
 		}
 		else
@@ -131,7 +131,7 @@ HRESULT CTSFDayi::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pCont
 	
 	if (candidatePhraseList.Count())
 	{
-		tempCandMode = CANDIDATE_WITH_NEXT_COMPOSITION;
+		tempCandMode =  CANDIDATE_PHRASE; // CANDIDATE_WITH_NEXT_COMPOSITION;
 
 		_pPhraseTSFDayiUIPresenter = new (std::nothrow) CTSFDayiUIPresenter(this, Global::AtomCandidateWindow,
 			CATEGORY_CANDIDATE,
@@ -152,7 +152,12 @@ HRESULT CTSFDayi::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pCont
 	if (pContext->GetDocumentMgr(&pDocumentMgr) == S_OK)
 	{
 		ITfRange* pRange = nullptr;
-		_StartComposition(pContext);  //StartCandidateList require a valid selection from a valid pComposition to determine the location to show the candidate window
+		CStringRange emptyComposition;
+		if (!_IsComposing())
+			_StartComposition(pContext);  //StartCandidateList require a valid selection from a valid pComposition to determine the location to show the candidate window
+		
+		// add a space character to empty composition buffer so as the phrase cand can showed in right position in non TSF award program.
+		_AddComposingAndChar(ec, pContext, &emptyComposition.Set(L" ",1)); 
 		if (_pComposition->GetRange(&pRange) == S_OK)
 		{
 			if (_pPhraseTSFDayiUIPresenter)
@@ -163,7 +168,7 @@ HRESULT CTSFDayi::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pCont
 			pRange->Release();
 			
 		}
-		_TerminateComposition(ec, pContext);
+		//_TerminateComposition(ec, pContext);
 		pDocumentMgr->Release();
 	}
 	
@@ -196,6 +201,7 @@ HRESULT CTSFDayi::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pCont
 			_pTSFDayiUIPresenter->_SetSelection(-1); // set selected index to -1 if showing phrase candidates
 
 			_phraseCandShowing = TRUE;
+			OutputDebugString(L"CTSFDayi::_HandleCandidateWorker(); _phraseCandShowing = TRUE. phrase cand is showing\n");
 
 			_candidateMode = tempCandMode;
 			_isCandidateWithWildcard = FALSE;

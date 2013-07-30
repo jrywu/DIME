@@ -255,4 +255,5 @@ private:
 
 	BOOL _phraseCandShowing;
 	POINT _phraseCandLocation;
+	POINT _cusorPosition;
 };

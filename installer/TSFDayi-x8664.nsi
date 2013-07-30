@@ -85,16 +85,12 @@ Var "URL_VCX86"
 Var "URL_VCX64"
 
 Function .onInit
- ;${If} ${RunningX64}
-  ;      ${EnableX64FSRedirection}
-       ; ${else}
-        ;MessageBox MB_OK "此安裝檔為64bit版本, 請重新下載32bit版本"
-        ;Abort
-  ;${EndIf}
   InitPluginsDir
   StrCpy $URL_VCX86 "${URL_VC_REDISTX86_2012U3}"
   StrCpy $URL_VCX64 "${URL_VC_REDISTX64_2012U3}"
-  
+    ${If} ${RunningX64}
+  	SetRegView 64
+  ${EndIf}
   ReadRegStr $0 ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayVersion"
   StrCmp $0 "" StartInstall 0
   ;MessageBox MB_OK  "偵測到舊版 $0，必須先移除才能安裝新版。"
@@ -182,6 +178,10 @@ Section "MainSection" SEC01
   File "system32.x86\TSFDayi.dll"
   ExecWait '"$SYSDIR\regsvr32.exe" /s $SYSDIR\TSFDayi.dll'
   File "system32.x86\*.dll"
+  SetOutPath "$APPDATA\TSFDayi\"
+  CreateDirectory "$APPDATA\TSFDayi"
+  File "config.ini"
+
   
 SectionEnd
 

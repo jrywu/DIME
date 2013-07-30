@@ -131,6 +131,8 @@ private:
     _KEYSTROKE _keystrokeTable[50];
 
     CTableDictionaryEngine* _pTableDictionaryEngine;
+	CTableDictionaryEngine* _pTTSTableDictionaryEngine;
+	CTableDictionaryEngine* _pCINTableDictionaryEngine;
     CStringRange _keystrokeBuffer;
 
     BOOL _hasWildcardIncludedInKeystrokeBuffer;
@@ -191,8 +193,10 @@ private:
     UINT _candidateListPhraseModifier;
     UINT _candidateWndWidth;
 
-    CFileMapping* _pDictionaryFile;
+    CFileMapping* _pTTSDictionaryFile;
+	CFileMapping* _pCINDictionaryFile;
 
     static const int OUT_OF_FILE_INDEX = -1;
 };
+
 

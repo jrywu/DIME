@@ -99,7 +99,8 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CTSFDayi *pTextSer
     _pTextService->AddRef();
 
     _pTableDictionaryEngine = nullptr;
-    _pDictionaryFile = nullptr;
+    _pTTSDictionaryFile = nullptr;
+	_pCINDictionaryFile = nullptr;
 
     _langid = 0xffff;
     _guidProfile = GUID_NULL;
@@ -140,12 +141,18 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CTSFDayi *pTextSer
 CCompositionProcessorEngine::~CCompositionProcessorEngine()
 {
 	_pTextService->Release();
-    if (_pTableDictionaryEngine)
+    if (_pTTSTableDictionaryEngine)
     {
-        delete _pTableDictionaryEngine;
-        _pTableDictionaryEngine = nullptr;
+        delete _pTTSTableDictionaryEngine;
+        _pTTSTableDictionaryEngine = nullptr;
 	}
-	
+	if (_pCINTableDictionaryEngine)
+    {
+        delete _pCINTableDictionaryEngine;
+        _pCINTableDictionaryEngine = nullptr;
+	}
+	_pTableDictionaryEngine = nullptr;
+
 	if (_pLanguageBar_IMEModeW8 && Global::isWindows8)
     {
         _pLanguageBar_IMEModeW8->CleanUp();
@@ -211,11 +218,16 @@ CCompositionProcessorEngine::~CCompositionProcessorEngine()
         _pCompartmentPunctuationEventSink = nullptr;
     }
 	*/
-
-    if (_pDictionaryFile)
+	if (_pTTSDictionaryFile)
     {
-        delete _pDictionaryFile;
-        _pDictionaryFile = nullptr;
+        delete _pTTSDictionaryFile;
+        _pTTSDictionaryFile = nullptr;
+    }
+
+    if (_pCINDictionaryFile)
+    {
+        delete _pCINDictionaryFile;
+        _pCINDictionaryFile = nullptr;
     }
 }
 
@@ -432,7 +444,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFDayiArray<CCandid
     if (isIncrementalWordSearch)
     {
         CStringRange wildcardSearch;
-        DWORD_PTR keystrokeBufLen = _keystrokeBuffer.GetLength() + 2;
+        DWORD_PTR keystrokeBufLen = _keystrokeBuffer.GetLength() + 3;
         PWCHAR pwch = new (std::nothrow) WCHAR[ keystrokeBufLen ];
         if (!pwch)
         {
@@ -455,12 +467,22 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFDayiArray<CCandid
             }
         }
 
-        StringCchCopyN(pwch, keystrokeBufLen, _keystrokeBuffer.Get(), _keystrokeBuffer.GetLength());
+       
 
         if (!isFindWildcard)
         {
-            // add wildcard char for incremental search
-            StringCchCat(pwch, keystrokeBufLen, L"*");
+			if(Global::threeCodeMode && _keystrokeBuffer.GetLength() == 3)
+			{
+				pwch[0] = *(_keystrokeBuffer.Get()); pwch[1] = *(_keystrokeBuffer.Get()+1);       
+				pwch[2] = L'*';
+				pwch[3] = *(_keystrokeBuffer.Get()+2);    
+				pwch[4] = L'*'; pwch[5] = L'\0'; 
+			}
+			else    // add wildcard char for incremental search
+			{
+				StringCchCopyN(pwch, keystrokeBufLen, _keystrokeBuffer.Get(), _keystrokeBuffer.GetLength());
+				StringCchCat(pwch, keystrokeBufLen, L"*");
+			}
         }
 
         size_t len = 0;
@@ -521,9 +543,9 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFDayiArray<CCandid
 		pwch[1] = *(_keystrokeBuffer.Get()+1);       
 		pwch[2] = L'*';
 		pwch[3] = *(_keystrokeBuffer.Get()+2);       
-		pwch[4] = L'0';
 		wildcardSearch.Set(pwch, 4);
 		_pTableDictionaryEngine->CollectWordForWildcard(&wildcardSearch, pCandidateList);
+		delete [] pwch;
 	}
     else 
     {
@@ -1085,7 +1107,6 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 	WCHAR wzsINIFileName[MAX_PATH] = L"\\config.ini";
 
 
- 	size_t iDicFileNameLen = wcslen(pwzProgramFiles) + wcslen(wzsTTSFileName);
     WCHAR *pwszFileName = new (std::nothrow) WCHAR[MAX_PATH];
 	WCHAR *pwszCINFileName = new (std::nothrow) WCHAR[MAX_PATH];
 	WCHAR *pwszINIFileName = new (std::nothrow) WCHAR[MAX_PATH];
@@ -1096,55 +1117,87 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 	*pwszFileName = L'\0';
 	*pwszCINFileName = L'\0';
 	*pwszINIFileName = L'\0';
+
 	//tableTextService (TTS) dictionary file 
-	StringCchCopyN(pwszFileName, iDicFileNameLen + 1, pwzProgramFiles, wcslen(pwzProgramFiles) + 1);
-	StringCchCatN(pwszFileName, iDicFileNameLen + 1, wzsTTSFileName, wcslen(wzsTTSFileName));
+	StringCchCopyN(pwszFileName, MAX_PATH, pwzProgramFiles, wcslen(pwzProgramFiles) + 1);
+	StringCchCatN(pwszFileName, MAX_PATH, wzsTTSFileName, wcslen(wzsTTSFileName));
+
+	//create CFileMapping object
+    if (_pTTSDictionaryFile == nullptr)
+    {
+        _pTTSDictionaryFile = new (std::nothrow) CFileMapping();
+        if (!_pTTSDictionaryFile)  goto ErrorExit;
+    }
+	if (!(_pTTSDictionaryFile)->CreateFile(pwszFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
+	{
+		goto ErrorExit;
+	}
+	else
+	{
+		_pTTSTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(GetLocale(), _pTTSDictionaryFile);
+		if (!_pTTSTableDictionaryEngine)  goto ErrorExit;
+		_pTTSTableDictionaryEngine->ParseConfig(); //parse config first.
+		_pTableDictionaryEngine = _pTTSTableDictionaryEngine;  //set TTS as default dictionary engine
+	}
+
 	
-	StringCchCopyN(pwszCINFileName, iDicFileNameLen + 1, wszAppData, wcslen(wszAppData) + 1);
-	StringCchCatN(pwszCINFileName, iDicFileNameLen + 1, wzsTSFDayiProfile, wcslen(wzsTSFDayiProfile));
-	if(PathFileExists(pwszFileName))
+	StringCchCopyN(pwszCINFileName, MAX_PATH, wszAppData, wcslen(wszAppData));
+	StringCchCatN(pwszCINFileName, MAX_PATH, wzsTSFDayiProfile, wcslen(wzsTSFDayiProfile));
+	StringCchCopyN(pwszINIFileName, MAX_PATH, pwszCINFileName, wcslen(pwszCINFileName));
+	if(PathFileExists(pwszCINFileName))
 	{ //dayi.cin in personal romaing profile
-		StringCchCatN(pwszCINFileName, iDicFileNameLen + 1, wzsCINFileName, wcslen(wzsCINFileName));
+		StringCchCatN(pwszCINFileName, MAX_PATH, wzsCINFileName, wcslen(wzsCINFileName));
 		if(PathFileExists(pwszCINFileName))  //create cin CFileMapping object
 		{
+			 //create CFileMapping object
+			if (_pCINDictionaryFile == nullptr)
+			{
+				_pCINDictionaryFile = new (std::nothrow) CFileMapping();
+				if ((_pCINDictionaryFile)->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
+				{
+					_pCINTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(GetLocale(), _pCINDictionaryFile);
+
+					if (_pCINTableDictionaryEngine)  
+					{
+						_pCINTableDictionaryEngine->ParseConfig(); //parse config first.
+						_pTableDictionaryEngine = _pCINTableDictionaryEngine;  //set CIN as dictionary engine if avaialble
+						Global::hasPhraseSection = FALSE;
+					}
+				}
+			}
+			
+		}
+		StringCchCatN(pwszINIFileName, MAX_PATH, wzsINIFileName, wcslen(wzsINIFileName));
+		if(PathFileExists(pwszINIFileName))
+		{
+			CFileMapping *iniDictionaryFile;
+			iniDictionaryFile = new (std::nothrow) CFileMapping();
+			if ((iniDictionaryFile)->CreateFile(pwszINIFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
+			{
+				CTableDictionaryEngine * iniTableDictionaryEngine;
+				iniTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(GetLocale(), iniDictionaryFile);
+				if (iniTableDictionaryEngine)  
+					iniTableDictionaryEngine->ParseConfig(); //parse config first.
+				delete iniTableDictionaryEngine; // delete after config.ini config are pasrsed
+			}
+			
 		}
 	}
 	else
 	{
 		//TSFDayi roadming profile is not exist. Create one.
-		CreateDirectory(pwszFileName, NULL);	
+		CreateDirectory(pwszCINFileName, NULL);	
 	}
-
-
-
-
-    // create CFileMapping object
-    if (_pDictionaryFile == nullptr)
-    {
-        _pDictionaryFile = new (std::nothrow) CFileMapping();
-        if (!_pDictionaryFile)
-        {
-            goto ErrorExit;
-        }
-    }
-    if (!(_pDictionaryFile)->CreateFile(pwszFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
-    {
-        goto ErrorExit;
-    }
-
-    _pTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(GetLocale(), _pDictionaryFile);
-    if (!_pTableDictionaryEngine)
-    {
-        goto ErrorExit;
-    }
-	_pTableDictionaryEngine->ParseConfig(); //parse config first.
+	
+  
     delete []pwszFileName;
+	delete []pwszCINFileName;
+	delete []pwszINIFileName;
     return TRUE;
 ErrorExit:
-    if (pwszFileName)
-    {
-        delete []pwszFileName;
-    }
+    if (pwszFileName)  delete []pwszFileName;
+    if (pwszCINFileName)  delete []pwszCINFileName;
+	if (pwszINIFileName)  delete []pwszINIFileName;
     return FALSE;
 }
 
@@ -1156,7 +1209,7 @@ ErrorExit:
 
 CFile* CCompositionProcessorEngine::GetDictionaryFile()
 {
-    return _pDictionaryFile;
+    return _pTTSDictionaryFile;
 }
 
 //+---------------------------------------------------------------------------
@@ -1902,7 +1955,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
         }
     }
 
-    if ((candidateMode == CANDIDATE_ORIGINAL) || (candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION))
+    if (candidateMode == CANDIDATE_ORIGINAL || candidateMode == CANDIDATE_PHRASE || candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)
     {
         switch (uCode)
         {
@@ -1971,7 +2024,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
             }
         }
     }
-
+	/*
     if (candidateMode == CANDIDATE_PHRASE) //never seen here.
     {
         switch (uCode)
@@ -1988,7 +2041,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
         case VK_BACK:   if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_CANCEL; } return TRUE;
         }
     }
-
+	*/
     if (IsKeystrokeRange(uCode, pKeyState, candidateMode))
     {
         return TRUE;
@@ -2111,7 +2164,7 @@ BOOL CCompositionProcessorEngine::IsKeystrokeRange(UINT uCode, _Out_ _KEYSTROKE_
         if (candidateMode == CANDIDATE_PHRASE)
         {
             // Candidate phrase could specify modifier
-            if ((GetCandidateListPhraseModifier() == 0 && Global::ModifiersValue ==0 )||
+             if ((GetCandidateListPhraseModifier() == 0 && (Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT) )!= 0) || //shift + 123...
                 (GetCandidateListPhraseModifier() != 0 && Global::CheckModifiers(Global::ModifiersValue, GetCandidateListPhraseModifier())))
             {
                 pKeyState->Category = CATEGORY_PHRASE; pKeyState->Function = FUNCTION_SELECT_BY_NUMBER;
@@ -2126,7 +2179,7 @@ BOOL CCompositionProcessorEngine::IsKeystrokeRange(UINT uCode, _Out_ _KEYSTROKE_
         else if (candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)
         {
             // Candidate phrase could specify modifier
-            if ((GetCandidateListPhraseModifier() == 0 && (Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT) )!= 0) || 
+            if ((GetCandidateListPhraseModifier() == 0 && (Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT) )!= 0) || //shift + 123...
                 (GetCandidateListPhraseModifier() != 0 && Global::CheckModifiers(Global::ModifiersValue, GetCandidateListPhraseModifier())))
             {
                 pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_SELECT_BY_NUMBER;

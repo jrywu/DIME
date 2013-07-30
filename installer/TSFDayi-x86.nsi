@@ -156,7 +156,9 @@ Section "MainSection" SEC01
   File "system32.x86\TSFDayi.dll"
   ExecWait '"$SYSDIR\regsvr32.exe" /s $SYSDIR\TSFDayi.dll'
   File "system32.x86\*.dll"
-  
+  SetOutPath "$APPDATA\TSFDayi\"
+  CreateDirectory "$APPDATA\TSFDayi"
+  File "config.ini"
 SectionEnd
 
 Section "Modules" SEC02

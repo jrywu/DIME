@@ -86,7 +86,7 @@ void CTSFDayi::_TerminateComposition(TfEditCookie ec, _In_ ITfContext *pContext,
 
 void CTSFDayi::_EndComposition(_In_opt_ ITfContext *pContext)
 {
-	OutputDebugString(L"CTSFDayi::_EndComposition()");
+	OutputDebugString(L"CTSFDayi::_EndComposition()\n");
     CEndCompositionEditSession *pEditSession = new (std::nothrow) CEndCompositionEditSession(this, pContext);
     HRESULT hr = S_OK;
 
@@ -98,6 +98,7 @@ void CTSFDayi::_EndComposition(_In_opt_ ITfContext *pContext)
 }
 void CTSFDayi::clearAndExit()
 {
+	OutputDebugString(L"CTSFDayi::clearAndExit()\n");
 	// switching to English (native) mode delete the phrase candidate window before exting.
 	if(_pContext) 
 		_EndComposition(_pContext);

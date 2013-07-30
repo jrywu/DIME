@@ -243,7 +243,7 @@ CCandidateRange::~CCandidateRange(void)
 
 BOOL CCandidateRange::IsRange(UINT vKey, CANDIDATE_MODE candidateMode)
 {
-	if(candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)// && Global::ModifiersValue==260){
+	if(candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION || candidateMode == CANDIDATE_PHRASE)
 	{
 		for (UINT i = 0; i < _CandidateListIndexRange.Count(); i++)
 		{
@@ -286,9 +286,8 @@ BOOL CCandidateRange::IsRange(UINT vKey, CANDIDATE_MODE candidateMode)
 
 int CCandidateRange::GetIndex(UINT vKey, CANDIDATE_MODE candidateMode)
 {
-	if(candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION){	//(Global::ModifiersValue==260)
-
-
+	if(candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION || candidateMode == CANDIDATE_PHRASE)
+	{
 		DWORD value = vKey - L'0';
 
 		for (UINT i = 0; i < _CandidateListIndexRange.Count(); i++)

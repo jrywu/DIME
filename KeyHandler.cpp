@@ -51,6 +51,7 @@ BOOL CTSFDayi::_IsRangeCovered(TfEditCookie ec, _In_ ITfRange *pRangeTest, _In_ 
 
 VOID CTSFDayi::_DeleteCandidateList(BOOL isForce, _In_opt_ ITfContext *pContext)
 {
+	OutputDebugString(L"CTSFDayi::_DeleteCandidateList()");
     isForce;pContext;
 
     CCompositionProcessorEngine* pCompositionProcessorEngine = nullptr;
@@ -74,6 +75,7 @@ VOID CTSFDayi::_DeleteCandidateList(BOOL isForce, _In_opt_ ITfContext *pContext)
 
 HRESULT CTSFDayi::_HandleComplete(TfEditCookie ec, _In_ ITfContext *pContext)
 {
+	OutputDebugString(L"CTSFDayi::_HandleComplete()\n");
     _DeleteCandidateList(FALSE, pContext);
 
     // just terminate the composition
@@ -90,6 +92,8 @@ HRESULT CTSFDayi::_HandleComplete(TfEditCookie ec, _In_ ITfContext *pContext)
 
 HRESULT CTSFDayi::_HandleCancel(TfEditCookie ec, _In_ ITfContext *pContext)
 {
+	OutputDebugString(L"CTSFDayi::_HandleCancel()\n");
+    _DeleteCandidateList(FALSE, pContext);
     _RemoveDummyCompositionForComposing(ec, _pComposition);
 
     _DeleteCandidateList(FALSE, pContext);
@@ -414,7 +418,7 @@ HRESULT CTSFDayi::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pC
             _pTSFDayiUIPresenter->_SetText(&candidateList, FALSE);
         }
     }
-	if(nCount==1)
+	if(nCount==1)  //finalized with the only candidate without showing cand.
 	{
 		_HandleCandidateFinalize(ec, pContext);
 	}
