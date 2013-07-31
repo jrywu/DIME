@@ -99,6 +99,9 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CTSFDayi *pTextSer
     _pTextService->AddRef();
 
     _pTableDictionaryEngine = nullptr;
+	_pCINTableDictionaryEngine = nullptr;
+	_pTTSTableDictionaryEngine = nullptr;
+
     _pTTSDictionaryFile = nullptr;
 	_pCINDictionaryFile = nullptr;
 
@@ -785,15 +788,15 @@ void CCompositionProcessorEngine::SetupPreserved(_In_ ITfThreadMgr *pThreadMgr, 
     preservedKeyDoubleSingleByte.uVKey = VK_SPACE;
     preservedKeyDoubleSingleByte.uModifiers = TF_MOD_SHIFT;
     SetPreservedKey(Global::TSFDayiGuidDoubleSingleBytePreserveKey, preservedKeyDoubleSingleByte, Global::DoubleSingleByteDescription, &_PreservedKey_DoubleSingleByte);
-
+	/*
     TF_PRESERVEDKEY preservedKeyPunctuation;
     preservedKeyPunctuation.uVKey = VK_OEM_PERIOD;
     preservedKeyPunctuation.uModifiers = TF_MOD_CONTROL;
     SetPreservedKey(Global::TSFDayiGuidPunctuationPreserveKey, preservedKeyPunctuation, Global::PunctuationDescription, &_PreservedKey_Punctuation);
-
+	*/
     InitPreservedKey(&_PreservedKey_IMEMode, pThreadMgr, tfClientId);
     InitPreservedKey(&_PreservedKey_DoubleSingleByte, pThreadMgr, tfClientId);
-    InitPreservedKey(&_PreservedKey_Punctuation, pThreadMgr, tfClientId);
+    //InitPreservedKey(&_PreservedKey_Punctuation, pThreadMgr, tfClientId);
 
     return;
 }
@@ -938,7 +941,7 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL *pIsE
         CompartmentDoubleSingleByte._SetCompartmentBOOL(isDouble ? FALSE : TRUE);
         *pIsEaten = TRUE;
     }
-    else if (IsEqualGUID(rguid, _PreservedKey_Punctuation.Guid))
+    /*else if (IsEqualGUID(rguid, _PreservedKey_Punctuation.Guid))
     {
         if (!CheckShiftKeyOnly(&_PreservedKey_Punctuation.TSFPreservedKeyTable))
         {
@@ -950,7 +953,7 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL *pIsE
         CompartmentPunctuation._GetCompartmentBOOL(isPunctuation);
         CompartmentPunctuation._SetCompartmentBOOL(isPunctuation ? FALSE : TRUE);
         *pIsEaten = TRUE;
-    }
+    }*/
     else
     {
         *pIsEaten = FALSE;
@@ -969,7 +972,7 @@ void CCompositionProcessorEngine::SetupConfiguration()
     _isWildcard = TRUE;
     _isDisableWildcardAtFirst = TRUE;
     _hasMakePhraseFromText = TRUE;
-    _isKeystrokeSort = TRUE;
+    _isKeystrokeSort = FALSE;
     _candidateWndWidth = CAND_WIDTH;
 
     SetInitialCandidateListRange();

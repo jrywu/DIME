@@ -27,7 +27,8 @@ class CTSFDayi : public ITfTextInputProcessorEx,
     public ITfThreadFocusSink,
     public ITfFunctionProvider,
     public ITfFnGetPreferredTouchKeyboardLayout,
-	public ITfFnConfigure //control panel application
+	public ITfFnConfigure,//control panel application
+	public ITfFnShowHelp
 {
 public:
     CTSFDayi();
@@ -90,7 +91,11 @@ public:
     STDMETHODIMP GetLayout(_Out_ TKBLayoutType *ptkblayoutType, _Out_ WORD *pwPreferredLayoutId);
 
 	//ITfFnConfigure 
-	HRESULT Show(_In_  HWND hwndParent, _In_ LANGID langid, _In_ REFGUID rguidProfile);
+	HRESULT __stdcall Show(_In_ HWND hwndParent, _In_ LANGID langid, _In_ REFGUID rguidProfile);
+	// ITfFnShowHelp
+    STDMETHODIMP Show(HWND hwndParent);
+
+
 
     // CClassFactory factory callback
     static HRESULT CreateInstance(_In_ IUnknown *pUnkOuter, REFIID riid, _Outptr_ void **ppvObj);

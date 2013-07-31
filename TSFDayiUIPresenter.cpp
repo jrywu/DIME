@@ -80,7 +80,7 @@ HRESULT CTSFDayi::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pCont
 	candidateLen = _pTSFDayiUIPresenter->_GetSelectedCandidateString(&pCandidateString);
 	if (candidateLen == 0)
     {
-		if(_candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)
+		if(_candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION || _candidateMode == CANDIDATE_PHRASE)
 		{
 			_HandleCancel(ec, pContext);
 			goto Exit;
@@ -143,7 +143,8 @@ HRESULT CTSFDayi::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pCont
 			goto Exit;
 		}
 	}
-	
+	else
+		goto Exit;
 	
 	// call _Start*Line for CTSFDayiUIPresenter or CReadingLine
 	// we don't cache the document manager object so get it from pContext.

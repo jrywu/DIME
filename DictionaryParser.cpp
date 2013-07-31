@@ -148,17 +148,19 @@ LPCWSTR CDictionaryParser::GetToken(_In_reads_(dwBufLen) LPCWSTR pwszBuffer, DWO
 
     ch = *pwszBuffer;
 	
+
     while ((ch) && (ch != chDelimiter) && dwBufLen)
     {
         dwBufLen--;
         pwszBuffer++;
-		pch = *(pwszBuffer-1);
+		
         if ((ch == Global::StringDelimiter) && (pch != L'\\')) // ignore escaped quote \\" which is not a quote acutally
         {
-            while (*pwszBuffer && (*pwszBuffer != Global::StringDelimiter) && dwBufLen)
+            while (*pwszBuffer && (*pwszBuffer != Global::StringDelimiter || (*(pwszBuffer-1) == L'\\')&&(*(pwszBuffer-2) != L'\\')) && dwBufLen)
             {
                 dwBufLen--;
                 pwszBuffer++;
+
             }
             if (*pwszBuffer && dwBufLen)
             {
@@ -171,6 +173,7 @@ LPCWSTR CDictionaryParser::GetToken(_In_reads_(dwBufLen) LPCWSTR pwszBuffer, DWO
             }
         }
         ch = *pwszBuffer;
+		pch = *(pwszBuffer-1);
     }
 
     if (*pwszBuffer && dwBufLen)

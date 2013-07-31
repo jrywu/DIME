@@ -416,13 +416,26 @@ HRESULT CTSFDayi::GetFunction(__RPC__in REFGUID rguid, __RPC__in REFIID riid, __
 //----------------------------------------------------------------------------
 HRESULT CTSFDayi::GetDisplayName(_Out_ BSTR *pbstrDisplayName)
 {
-    HRESULT hr = E_INVALIDARG;
-    if (pbstrDisplayName != nullptr)
-    {
-        *pbstrDisplayName = nullptr;
-        hr = E_NOTIMPL;
-    }
-    return hr;
+	BSTR bstrName;
+
+	if(pbstrDisplayName == NULL)
+	{
+		return E_INVALIDARG;
+	}
+
+	*pbstrDisplayName = NULL;
+
+	bstrName = SysAllocString(L"TSFDayi 1.0");
+
+	if(bstrName == NULL)
+	{
+		return E_OUTOFMEMORY;
+	}
+
+	*pbstrDisplayName = bstrName;
+
+	return S_OK;
+
 }
 
 //+---------------------------------------------------------------------------
@@ -448,8 +461,21 @@ HRESULT CTSFDayi::GetLayout(_Out_ TKBLayoutType *ptkblayoutType, _Out_ WORD *pwP
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFDayi::Show(_In_  HWND hwndParent, _In_ LANGID langid, _In_ REFGUID rguidProfile)
+HRESULT CTSFDayi::Show(_In_ HWND hwndParent, _In_ LANGID langid, _In_ REFGUID rguidProfile)
 {
+	langid;
+	rguidProfile;
 	MessageBox(hwndParent, L"config call", L"TSFDayi", NULL);
 	return S_OK;
+}
+//+---------------------------------------------------------------------------
+//
+// ITfFnShowHelp::Show
+//
+//----------------------------------------------------------------------------
+HRESULT CTSFDayi::Show(_In_ HWND hwndParent)
+{
+        
+	MessageBox(hwndParent, L"Show help call", L"TSFDayi", NULL);
+        return S_OK;
 }
