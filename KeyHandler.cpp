@@ -194,12 +194,13 @@ HRESULT CTSFDayi::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine
     //
     // Get candidate string from composition processor engine
     //
-	if(Global::autoCompose){   // auto composing mode: show candidates while composition updated imeediately.
-
+	if(Global::autoCompose   // auto composing mode: show candidates while composition updated imeediately.
+		||  pCompositionProcessorEngine->IsSymbol())// fetch candidate in symobl mode with composition started with '='
+	{
 		CTSFDayiArray<CCandidateListItem> candidateList;
-
-		pCompositionProcessorEngine->GetCandidateList(&candidateList, TRUE, FALSE);
-
+	
+		pCompositionProcessorEngine->GetCandidateList(&candidateList, !pCompositionProcessorEngine->IsSymbol(), FALSE);
+		
 
 
 		if (candidateList.Count())
@@ -211,6 +212,10 @@ HRESULT CTSFDayi::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine
 				_pTSFDayiUIPresenter->_SetText(&candidateList, TRUE);
 				_pTSFDayiUIPresenter->Show(TRUE); 
 			}
+
+			if(candidateList.Count() ==1)
+				_HandleCandidateFinalize(ec, pContext);
+
 		}
 		else if (_pTSFDayiUIPresenter)
 		{
@@ -534,53 +539,6 @@ Exit:
     return S_OK;
 }
 
-//+---------------------------------------------------------------------------
-//
-// _HandleCompositionPunctuation
-//
-//----------------------------------------------------------------------------
-
-HRESULT CTSFDayi::_HandleCompositionPunctuation(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch)
-{
-    HRESULT hr = S_OK;
-
-    if (_candidateMode != CANDIDATE_NONE && _pTSFDayiUIPresenter)
-    {
-        DWORD_PTR candidateLen = 0;
-        const WCHAR* pCandidateString = nullptr;
-
-        candidateLen = _pTSFDayiUIPresenter->_GetSelectedCandidateString(&pCandidateString);
-
-        CStringRange candidateString;
-        candidateString.Set(pCandidateString, candidateLen);
-
-        if (candidateLen)
-        {
-            _AddComposingAndChar(ec, pContext, &candidateString);
-        }
-    }
-    //
-    // Get punctuation char from composition processor engine
-    //
-    CCompositionProcessorEngine* pCompositionProcessorEngine = nullptr;
-    pCompositionProcessorEngine = _pCompositionProcessorEngine;
-
-    WCHAR punctuation = pCompositionProcessorEngine->GetPunctuation(wch);
-
-    CStringRange punctuationString;
-    punctuationString.Set(&punctuation, 1);
-
-    // Finalize character
-    hr = _AddCharAndFinalize(ec, pContext, &punctuationString);
-    if (FAILED(hr))
-    {
-        return hr;
-    }
-
-    _HandleCancel(ec, pContext);
-
-    return S_OK;
-}
 
 //+---------------------------------------------------------------------------
 //

@@ -63,14 +63,7 @@ HRESULT CTSFDayi::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pCont
     {
         goto Exit; //should not happen
     }
-	/* //should not be here
-	UINT candiCount;
-	if(_candidateMode!= CANDIDATE_ORIGINAL && _pTSFDayiUIPresenter->GetCount(&candiCount) == 1)
-	{
-		_HandleComplete(ec, pContext);
-		goto Exit;
-	}
-	*///------------------------------------------------------------------------
+	
 	const WCHAR* pCandidateString = nullptr;
 	DWORD_PTR candidateLen = 0;    
 
@@ -896,8 +889,11 @@ void CTSFDayiUIPresenter::SetPageIndexWithScrollInfo(_In_ CTSFDayiArray<CCandida
 
 void CTSFDayiUIPresenter::_ClearList()
 {
-    _pCandidateWnd->_ClearList();
-    _pCandidateWnd->_InvalidateRect();
+	if(_pCandidateWnd)
+	{
+		_pCandidateWnd->_ClearList();
+		_pCandidateWnd->_InvalidateRect();
+	}
 }
 
 //+---------------------------------------------------------------------------

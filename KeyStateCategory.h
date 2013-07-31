@@ -140,8 +140,6 @@ protected:
     // HandleKeyDoubleSingleByte
     HRESULT HandleKeyDoubleSingleByte(KeyHandlerEditSessionDTO dto);
 
-    // HandleKeyCompositionPunctuation
-    HRESULT HandleKeyPunctuation(KeyHandlerEditSessionDTO dto);
 };
 
 class CKeyStateCandidate : public CKeyStateCategory

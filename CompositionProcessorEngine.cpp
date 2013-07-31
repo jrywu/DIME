@@ -266,7 +266,6 @@ BOOL CCompositionProcessorEngine::SetupLanguageProfile(LANGID langid, REFGUID gu
 
     SetupPreserved(pThreadMgr, tfClientId);	
 	InitializeTSFDayiCompartment(pThreadMgr, tfClientId);
-    SetupPunctuationPair();
     SetupLanguageBar(pThreadMgr, tfClientId, isSecureMode);
     SetupKeystroke();
     SetupConfiguration();
@@ -402,7 +401,7 @@ void CCompositionProcessorEngine::GetReadingStrings(_Inout_ CTSFDayiArray<CStrin
 		
         for (DWORD index = 0; index < _keystrokeBuffer.GetLength(); index++)
         {
-			if(Global::radicalMap.size()) // if radicalMap is valid (size()>0), then convert the keystroke buffer 
+			if(Global::radicalMap.size() && !IsSymbol()) // if radicalMap is valid (size()>0), then convert the keystroke buffer 
 			{
 				WCHAR* radicalChar = new (std::nothrow) WCHAR[2];
 				*radicalChar = towupper(*(_keystrokeBuffer.Get() + index));
@@ -418,7 +417,7 @@ void CCompositionProcessorEngine::GetReadingStrings(_Inout_ CTSFDayiArray<CStrin
                 _hasWildcardIncludedInKeystrokeBuffer = TRUE;
             }
         }
-		if(Global::radicalMap.size())
+		if(Global::radicalMap.size()&& !IsSymbol())
 		{
 			pNewString->Set(pwchRadical, _keystrokeBuffer.GetLength());
 		}
@@ -617,110 +616,37 @@ void CCompositionProcessorEngine::GetCandidateStringInConverted(CStringRange &se
 
 //+---------------------------------------------------------------------------
 //
-// IsPunctuation
+// IsSymbol
 //
 //----------------------------------------------------------------------------
-
-BOOL CCompositionProcessorEngine::IsPunctuation(WCHAR wch)
+BOOL CCompositionProcessorEngine::IsSymbol()
 {
-    for (int i = 0; i < ARRAYSIZE(Global::PunctuationTable); i++)
-    {
-        if (Global::PunctuationTable[i]._Code == wch)
-        {
-            return TRUE;
-        }
-    }
-
-    for (UINT j = 0; j < _PunctuationPair.Count(); j++)
-    {
-        CPunctuationPair* pPuncPair = _PunctuationPair.GetAt(j);
-
-        if (pPuncPair->_punctuation._Code == wch)
-        {
-            return TRUE;
-        }
-    }
-
-    for (UINT k = 0; k < _PunctuationNestPair.Count(); k++)
-    {
-        CPunctuationNestPair* pPuncNestPair = _PunctuationNestPair.GetAt(k);
-
-        if (pPuncNestPair->_punctuation_begin._Code == wch)
-        {
-            return TRUE;
-        }
-        if (pPuncNestPair->_punctuation_end._Code == wch)
-        {
-            return TRUE;
-        }
-    }
-    return FALSE;
+	return (_keystrokeBuffer.GetLength()<3 && *_keystrokeBuffer.Get()==L'=');	
 }
 
 //+---------------------------------------------------------------------------
 //
-// GetPunctuationPair
+// IsSymbolChar
 //
 //----------------------------------------------------------------------------
-
-WCHAR CCompositionProcessorEngine::GetPunctuation(WCHAR wch)
+BOOL CCompositionProcessorEngine::IsSymbolChar(WCHAR wch)
 {
-    for (int i = 0; i < ARRAYSIZE(Global::PunctuationTable); i++)
-    {
-        if (Global::PunctuationTable[i]._Code == wch)
-        {
-            return Global::PunctuationTable[i]._Punctuation;
-        }
-    }
+	if(_keystrokeBuffer.Get() == nullptr) return FALSE;
+	if((_keystrokeBuffer.GetLength() == 1) && (*_keystrokeBuffer.Get() == L'=') ) 
+	{
+		for (int i = 0; i < ARRAYSIZE(Global::symbolCharTable); i++)
+		{
+			if (Global::symbolCharTable[i] == wch)
+			{
+				return TRUE;
+			}
+		}
 
-    for (UINT j = 0; j < _PunctuationPair.Count(); j++)
-    {
-        CPunctuationPair* pPuncPair = _PunctuationPair.GetAt(j);
-
-        if (pPuncPair->_punctuation._Code == wch)
-        {
-            if (! pPuncPair->_isPairToggle)
-            {
-                pPuncPair->_isPairToggle = TRUE;
-                return pPuncPair->_punctuation._Punctuation;
-            }
-            else
-            {
-                pPuncPair->_isPairToggle = FALSE;
-                return pPuncPair->_pairPunctuation;
-            }
-        }
-    }
-
-    for (UINT k = 0; k < _PunctuationNestPair.Count(); k++)
-    {
-        CPunctuationNestPair* pPuncNestPair = _PunctuationNestPair.GetAt(k);
-
-        if (pPuncNestPair->_punctuation_begin._Code == wch)
-        {
-            if (pPuncNestPair->_nestCount++ == 0)
-            {
-                return pPuncNestPair->_punctuation_begin._Punctuation;
-            }
-            else
-            {
-                return pPuncNestPair->_pairPunctuation_begin;
-            }
-        }
-        if (pPuncNestPair->_punctuation_end._Code == wch)
-        {
-            if (--pPuncNestPair->_nestCount == 0)
-            {
-                return pPuncNestPair->_punctuation_end._Punctuation;
-            }
-            else
-            {
-                return pPuncNestPair->_pairPunctuation_end;
-            }
-        }
-    }
-    return 0;
+	}
+    return FALSE;
 }
+
+
 
 //+---------------------------------------------------------------------------
 //
@@ -788,15 +714,9 @@ void CCompositionProcessorEngine::SetupPreserved(_In_ ITfThreadMgr *pThreadMgr, 
     preservedKeyDoubleSingleByte.uVKey = VK_SPACE;
     preservedKeyDoubleSingleByte.uModifiers = TF_MOD_SHIFT;
     SetPreservedKey(Global::TSFDayiGuidDoubleSingleBytePreserveKey, preservedKeyDoubleSingleByte, Global::DoubleSingleByteDescription, &_PreservedKey_DoubleSingleByte);
-	/*
-    TF_PRESERVEDKEY preservedKeyPunctuation;
-    preservedKeyPunctuation.uVKey = VK_OEM_PERIOD;
-    preservedKeyPunctuation.uModifiers = TF_MOD_CONTROL;
-    SetPreservedKey(Global::TSFDayiGuidPunctuationPreserveKey, preservedKeyPunctuation, Global::PunctuationDescription, &_PreservedKey_Punctuation);
-	*/
+
     InitPreservedKey(&_PreservedKey_IMEMode, pThreadMgr, tfClientId);
     InitPreservedKey(&_PreservedKey_DoubleSingleByte, pThreadMgr, tfClientId);
-    //InitPreservedKey(&_PreservedKey_Punctuation, pThreadMgr, tfClientId);
 
     return;
 }
@@ -1007,7 +927,7 @@ void CCompositionProcessorEngine::SetupLanguageBar(_In_ ITfThreadMgr *pThreadMgr
     
 	InitLanguageBar(_pLanguageBar_IMEMode, pThreadMgr, tfClientId,  Global::TSFDayiGuidCompartmentIMEMode);
     InitLanguageBar(_pLanguageBar_DoubleSingleByte, pThreadMgr, tfClientId, Global::TSFDayiGuidCompartmentDoubleSingleByte);
-    //InitLanguageBar(_pLanguageBar_Punctuation, pThreadMgr, tfClientId, Global::TSFDayiGuidCompartmentPunctuation);
+
 
     _pCompartmentConversion = new (std::nothrow) CCompartment(pThreadMgr, tfClientId, GUID_COMPARTMENT_KEYBOARD_INPUTMODE_CONVERSION);
 	
@@ -1215,36 +1135,6 @@ CFile* CCompositionProcessorEngine::GetDictionaryFile()
     return _pTTSDictionaryFile;
 }
 
-//+---------------------------------------------------------------------------
-//
-// SetupPunctuationPair
-//
-//----------------------------------------------------------------------------
-
-void CCompositionProcessorEngine::SetupPunctuationPair()
-{
-    // Punctuation pair
-    const int pair_count = 2;
-    CPunctuationPair punc_quotation_mark(L'"', 0x201C, 0x201D);
-    CPunctuationPair punc_apostrophe(L'\'', 0x2018, 0x2019);
-
-    CPunctuationPair puncPairs[pair_count] = {
-        punc_quotation_mark,
-        punc_apostrophe,
-    };
-
-    for (int i = 0; i < pair_count; ++i)
-    {
-        CPunctuationPair *pPuncPair = _PunctuationPair.Append();
-        *pPuncPair = puncPairs[i];
-    }
-
-    // Punctuation nest pair
-    CPunctuationNestPair punc_angle_bracket(L'<', 0x300A, 0x3008, L'>', 0x300B, 0x3009);
-
-    CPunctuationNestPair* pPuncNestPair = _PunctuationNestPair.Append();
-    *pPuncNestPair = punc_angle_bracket;
-}
 
 void CCompositionProcessorEngine::InitializeTSFDayiCompartment(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId)
 {

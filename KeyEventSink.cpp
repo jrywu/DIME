@@ -74,10 +74,7 @@ BOOL CTSFDayi::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *p
     CCompartment CompartmentDoubleSingleByte(_pThreadMgr, _tfClientId, Global::TSFDayiGuidCompartmentDoubleSingleByte);
     CompartmentDoubleSingleByte._GetCompartmentBOOL(isDoubleSingleByte);
 
-    BOOL isPunctuation = FALSE;
-    CCompartment CompartmentPunctuation(_pThreadMgr, _tfClientId, Global::TSFDayiGuidCompartmentPunctuation);
-    CompartmentPunctuation._GetCompartmentBOOL(isPunctuation);
-
+  
     if (pKeyState)
     {
         pKeyState->Category = CATEGORY_NONE;
@@ -111,7 +108,7 @@ BOOL CTSFDayi::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *p
     }
 
     // if the keyboard is closed, we don't eat keys, with the exception of the touch keyboard specials keys
-    if (!isOpen && !isDoubleSingleByte && !isPunctuation)
+    if (!isOpen && !isDoubleSingleByte )
     {
         return isTouchKeyboardSpecialKeys;
     }
@@ -127,6 +124,22 @@ BOOL CTSFDayi::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *p
     CCompositionProcessorEngine *pCompositionProcessorEngine;
     pCompositionProcessorEngine = _pCompositionProcessorEngine;
 
+	//
+    // Symbol mode start with L'='
+    //
+	if (pCompositionProcessorEngine->IsSymbolChar(wch))
+	{
+		if (pKeyState)
+		{
+			pKeyState->Category = CATEGORY_COMPOSING;
+			pKeyState->Function = FUNCTION_INPUT;
+		}
+			return TRUE;
+	}
+	
+	//
+	// check if the normal composition  need the key
+	//
     if (isOpen)
     {
         //
@@ -140,21 +153,7 @@ BOOL CTSFDayi::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *p
         }
     }
 
-    //
-    // Punctuation
-    //
-    if (pCompositionProcessorEngine->IsPunctuation(wch))
-    {
-        if ((_candidateMode == CANDIDATE_NONE) && isPunctuation)
-        {
-            if (pKeyState)
-            {
-                pKeyState->Category = CATEGORY_COMPOSING;
-                pKeyState->Function = FUNCTION_INPUT;// FUNCTION_PUNCTUATION;
-            }
-            return TRUE;
-        }
-    }
+    
 
     //
     // Double/Single byte

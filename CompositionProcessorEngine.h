@@ -52,9 +52,9 @@ public:
     // Preserved key handler
     void OnPreservedKey(REFGUID rguid, _Out_ BOOL *pIsEaten, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId);
 
-    // Punctuation
-    BOOL IsPunctuation(WCHAR wch);
-    WCHAR GetPunctuation(WCHAR wch);
+    // Symbol mode
+    BOOL IsSymbolChar(WCHAR wch);
+	BOOL IsSymbol();
 
     BOOL IsDoubleSingleByte(WCHAR wch);
     BOOL IsWildcard() { return _isWildcard; }
@@ -94,7 +94,6 @@ private:
     void SetupConfiguration();
     void SetupLanguageBar(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, BOOL isSecureMode);
     void SetKeystrokeTable(_Inout_ CTSFDayiArray<_KEYSTROKE> *pKeystroke);
-    void SetupPunctuationPair();
     void CreateLanguageBarButton(DWORD dwEnable, GUID guidLangBar, _In_z_ LPCWSTR pwszDescriptionValue, _In_z_ LPCWSTR pwszTooltipValue, DWORD dwOnIconIndex, DWORD dwOffIconIndex, _Outptr_result_maybenull_ CLangBarItemButton **ppLangBarItemButton, BOOL isSecureMode);
     void SetInitialCandidateListRange();
     void SetDefaultCandidateTextFont();
@@ -163,12 +162,7 @@ private:
 
     XPreservedKey _PreservedKey_IMEMode;
     XPreservedKey _PreservedKey_DoubleSingleByte;
-    XPreservedKey _PreservedKey_Punctuation;
-
-    // Punctuation data
-    CTSFDayiArray<CPunctuationPair> _PunctuationPair;
-    CTSFDayiArray<CPunctuationNestPair> _PunctuationNestPair;
-
+ 
     // Language bar data
     CLangBarItemButton* _pLanguageBar_IMEModeW8;
 	CLangBarItemButton* _pLanguageBar_IMEMode;

@@ -174,16 +174,13 @@ extern const WCHAR DoubleSingleByteDescription[] = L"Double/Single byte (Shift+S
 extern const int DoubleSingleByteOnIcoIndex = IME_DOUBLE_ON_INDEX;
 extern const int DoubleSingleByteOffIcoIndex = IME_DOUBLE_OFF_INDEX;
 
-extern const WCHAR PunctuationDescription[] = L"Chinese/English punctuation (Ctrl+.)";
-extern const int PunctuationOnIcoIndex = IME_PUNCTUATION_ON_INDEX;
-extern const int PunctuationOffIcoIndex = IME_PUNCTUATION_OFF_INDEX;
 
 //---------------------------------------------------------------------
 // defined item in setting file table [LanguageBar] section
 //---------------------------------------------------------------------
 extern const WCHAR LangbarImeModeDescription[] = L"Conversion mode";
 extern const WCHAR LangbarDoubleSingleByteDescription[] = L"Character width";
-extern const WCHAR LangbarPunctuationDescription[] = L"Punctuation";
+
 
 //---------------------------------------------------------------------
 // windows class / titile / atom
@@ -233,23 +230,10 @@ extern const WCHAR FullWidthCharTable[] = {
 };
 
 //---------------------------------------------------------------------
-// defined punctuation characters
+// defined symbol characters
 //---------------------------------------------------------------------
-extern const struct _PUNCTUATION PunctuationTable[14] = {
-    {L'!',  0xFF01},
-    {L'$',  0xFFE5},
-    {L'&',  0x2014},
-    {L'(',  0xFF08},
-    {L')',  0xFF09},
-    {L',',  0xFF0C},
-    {L'.',  0x3002},
-    {L':',  0xFF1A},
-    {L';',  0xFF1B},
-    {L'?',  0xFF1F},
-    {L'@',  0x00B7},
-    {L'\\', 0x3001},
-    {L'^',  0x2026},
-    {L'_',  0x2014}
+extern const WCHAR symbolCharTable[25] = {
+	L' ', L'!', L'@', L'\\', L'\"',  L'#', L'$', L'%', L'&', L'\'', L'(', L')',	L'+', L':', L'<', L'>', L'[', L']', L'^', L'_', L'`', L'{', L'}', L'|', L'~'
 };
 
 //+---------------------------------------------------------------------------

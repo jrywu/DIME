@@ -80,6 +80,10 @@ BOOL CDictionaryParser::ParseLine(_In_reads_(dwBufLen) LPCWSTR pwszBuffer, DWORD
 
 						//StringCchCatN(pwch, psrgKeyword->GetLength() + localKeyword.GetLength() + 2, localKeyword.Get(),localKeyword.GetLength()); 
 						StringCchCopyN(pwch, psrgKeyword->GetLength() + localKeyword.GetLength() + 2, localKeyword.Get(),localKeyword.GetLength()); 
+						psrgValue->Set(pwch, wcslen(pwch));
+						RemoveWhiteSpaceFromBegin(psrgValue);
+						RemoveWhiteSpaceFromEnd(psrgValue);
+						RemoveStringDelimiter(psrgValue);
 					}else{ //end of line. append the last item
 
 						localKeyword.Set(pwszBuffer, dwBufLen);
@@ -88,11 +92,10 @@ BOOL CDictionaryParser::ParseLine(_In_reads_(dwBufLen) LPCWSTR pwszBuffer, DWORD
 						RemoveStringDelimiter(&localKeyword);
 						//StringCchCatN(pwch, psrgKeyword->GetLength() + localKeyword.GetLength() + 2, localKeyword.Get(),localKeyword.GetLength()); 
 						StringCchCopyN(pwch, psrgKeyword->GetLength() + localKeyword.GetLength() + 2, localKeyword.Get(),localKeyword.GetLength()); 
+						psrgValue->Set(pwch, wcslen(pwch));
 					}
-					psrgValue->Set(pwch, wcslen(pwch));
-					RemoveWhiteSpaceFromBegin(psrgValue);
-					RemoveWhiteSpaceFromEnd(psrgValue);
-					RemoveStringDelimiter(psrgValue);
+					
+					
 				}while(pwszKeyWordDelimiter);
 			}else
 			{
@@ -217,9 +220,10 @@ BOOL CDictionaryParser::RemoveWhiteSpaceFromBegin(_Inout_opt_ CStringRange *pStr
     {
         return FALSE;
     }
-
-    pString->Set(pString->Get() + dwIndexTrace, pString->GetLength() - dwIndexTrace);
-    return TRUE;
+	
+	pString->Set(pString->Get() + dwIndexTrace, pString->GetLength() - dwIndexTrace);
+	return TRUE;
+	
 }
 
 BOOL CDictionaryParser::RemoveWhiteSpaceFromEnd(_Inout_opt_ CStringRange *pString)
@@ -254,7 +258,41 @@ BOOL CDictionaryParser::RemoveStringDelimiter(_Inout_opt_ CStringRange *pString)
         if ((*pString->Get() == Global::StringDelimiter) && (*(pString->Get()+pString->GetLength()-1) == Global::StringDelimiter))
         {
             pString->Set(pString->Get()+1, pString->GetLength()-2);
-            return TRUE;
+			CParserStringRange localKeyword;
+			LPCWSTR pwszKeyWordDelimiter = nullptr;
+			pwszKeyWordDelimiter = GetToken(pString->Get(), pString->GetLength(),L'\\', &localKeyword);//check for backslash '\\' escape code and remove then.
+			if(pwszKeyWordDelimiter)
+			{	
+				PWCHAR pwchNoEscape = new (std::nothrow) WCHAR[pString->GetLength() + 1];
+				*pwchNoEscape = L'0';
+				const WCHAR *pwch = pString->Get();
+				DWORD_PTR index = 0;
+				for(UINT i=0;i < pString->GetLength(); i++)
+				{
+					if(*pwch == L'\\')
+					{
+						if(i!=0 && (*(pwch-1) == L'\\'))
+						{
+							StringCchCatN(pwchNoEscape, pString->GetLength() + 1, L"\\", 1); 
+							//*(pwchNoEscape) = L'\\';
+							//pwchNoEscape++;
+							index ++;
+						}
+					}
+					else
+					{
+						if(index)
+							StringCchCatN(pwchNoEscape, pString->GetLength() + 1, pwch, 1); 
+						else
+							StringCchCopyN(pwchNoEscape, pString->GetLength() + 1, pwch, 1); 
+						
+						index ++;
+					}
+					pwch++;
+				}
+				pString->Set(pwchNoEscape, index);
+			}
+			return TRUE;
         }
     }
 

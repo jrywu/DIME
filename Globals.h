@@ -137,7 +137,7 @@ extern const GUID TSFDayiGuidCompartmentDoubleSingleByte;
 extern const GUID TSFDayiGuidCompartmentPunctuation;
 
 extern const WCHAR FullWidthCharTable[];
-extern const struct _PUNCTUATION PunctuationTable[14];
+extern const WCHAR symbolCharTable[25];
 
 extern const GUID TSFDayiGuidLangBarIMEMode;
 extern const GUID TSFDayiGuidLangBarDoubleSingleByte;

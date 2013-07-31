@@ -52,8 +52,8 @@ HRESULT CTSFDayi::_HandlTextLayoutChange(TfEditCookie ec, _In_ ITfContext *pCont
 	OutputDebugString(L"CTSFDayi::_HandlTextLayoutChange()\n");
 	ec; pRangeComposition; pContext;
 
-	POINT newCandLocation;
-	_pTSFDayiUIPresenter->GetCandLocation(&newCandLocation);
+	//POINT newCandLocation;
+	//_pTSFDayiUIPresenter->GetCandLocation(&newCandLocation);
 
 	POINT curPos;
 	GetCursorPos(&curPos);
@@ -61,11 +61,9 @@ HRESULT CTSFDayi::_HandlTextLayoutChange(TfEditCookie ec, _In_ ITfContext *pCont
 	WCHAR wszbuf[256];
 	swprintf(wszbuf,256, L"CTSFDayi::_HandlTextLayouyChange(), candMode = %d, _phraseCandShowing = %d\n" , _candidateMode, _phraseCandShowing);
 	OutputDebugString(wszbuf);
-	swprintf(wszbuf,256, L"CTSFDayi::_HandlTextLayouyChange(), newCandidate.x = %d, newCandidate.y = %d\n" , newCandLocation.x, newCandLocation.y);
+	swprintf(wszbuf,256, L"CTSFDayi::_HandlTextLayouyChange(), newCandidate.x = %d, newCandidate.y = %d\n" , curPos.x, curPos.y);
 	OutputDebugString(wszbuf);
-	swprintf(wszbuf,256, L"CTSFDayi::_HandlTextLayouyChange(), curPosition.x = %d, curPosition.y = %d\n" , curPos.x, curPos.y);
-	OutputDebugString(wszbuf);
-
+	
 	
 	if( _candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION || _candidateMode == CANDIDATE_PHRASE)
 	{
@@ -75,12 +73,11 @@ HRESULT CTSFDayi::_HandlTextLayoutChange(TfEditCookie ec, _In_ ITfContext *pCont
 		{
 			OutputDebugString(L"CTSFDayi::_HandlTextLayouyChange() _phraseCand is showing \n");
 			_phraseCandShowing = FALSE; //finishing showing phrase cand
-			_phraseCandLocation.x = newCandLocation.x;
-			_phraseCandLocation.y = newCandLocation.y;
-			_cusorPosition.x = curPos.x;
-			_cusorPosition.y = curPos.y;
+			_phraseCandLocation.x = curPos.x;
+			_phraseCandLocation.y = curPos.y;
+			
 		}
-		else if( (_cusorPosition.x != curPos.x) || (_cusorPosition.y != curPos.y))
+		else if( (_phraseCandLocation.x != curPos.x) || (_phraseCandLocation.y != curPos.y))
 		{  //phrase cand moved delete the cand.
 			OutputDebugString(L"CTSFDayi::_HandlTextLayouyChange() cursor moved. kill the cand.\n");
 			_DeleteCandidateList(FALSE, pContext);
