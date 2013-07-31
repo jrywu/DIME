@@ -163,13 +163,17 @@ STDAPI CTSFDayi::QueryInterface(REFIID riid, _Outptr_ void **ppvObj)
     {
         *ppvObj = (ITfFunctionProvider *)this;
     }
-    else if (IsEqualIID(riid, IID_ITfFunction))
-    {
-        *ppvObj = (ITfFunction *)this;
-    }
+    //else if (IsEqualIID(riid, IID_ITfFunction))
+    //{
+    //    *ppvObj = (ITfFunction *)this;
+    //}
     else if (IsEqualIID(riid, IID_ITfFnGetPreferredTouchKeyboardLayout))
     {
         *ppvObj = (ITfFnGetPreferredTouchKeyboardLayout *)this;
+    }
+	else if (IsEqualIID(riid, IID_ITfFnConfigure))
+    {
+        *ppvObj = (ITfFnConfigure *)this;
     }
 
     if (*ppvObj)
@@ -436,4 +440,16 @@ HRESULT CTSFDayi::GetLayout(_Out_ TKBLayoutType *ptkblayoutType, _Out_ WORD *pwP
         hr = S_OK;
     }
     return hr;
+}
+
+//+---------------------------------------------------------------------------
+//
+// ITfFnConfigure::Show
+//
+//----------------------------------------------------------------------------
+
+HRESULT CTSFDayi::Show(_In_  HWND hwndParent, _In_ LANGID langid, _In_ REFGUID rguidProfile)
+{
+	MessageBox(hwndParent, L"config call", L"TSFDayi", NULL);
+	return S_OK;
 }
