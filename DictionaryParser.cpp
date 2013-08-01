@@ -15,9 +15,10 @@
 //
 //---------------------------------------------------------------------
 
-CDictionaryParser::CDictionaryParser(LCID locale)
+CDictionaryParser::CDictionaryParser(LCID locale, WCHAR keywordDelimiter)
 {
     _locale = locale;
+	_keywordDelimiter = keywordDelimiter;
 }
 
 //---------------------------------------------------------------------
@@ -42,7 +43,7 @@ BOOL CDictionaryParser::ParseLine(_In_reads_(dwBufLen) LPCWSTR pwszBuffer, DWORD
 								  _Inout_opt_ CTSFDayiArray<CParserStringRange> *pValue, _In_opt_ BOOL ttsPhraseSearch, _In_opt_ CStringRange *searchText)
 {
     LPCWSTR pwszKeyWordDelimiter = nullptr;
-    pwszKeyWordDelimiter = GetToken(pwszBuffer, dwBufLen, Global::KeywordDelimiter, psrgKeyword);
+    pwszKeyWordDelimiter = GetToken(pwszBuffer, dwBufLen, _keywordDelimiter, psrgKeyword);
     if (!(pwszKeyWordDelimiter))
     {
         return FALSE;    // End of file

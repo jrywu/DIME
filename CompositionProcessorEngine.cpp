@@ -9,6 +9,7 @@
 #include "Private.h"
 #include "TSFDayi.h"
 #include "CompositionProcessorEngine.h"
+#include "TSFDayiBaseStructure.h"
 #include "TableDictionaryEngine.h"
 #include "DictionarySearch.h"
 #include "TfInputProcessorProfile.h"
@@ -447,11 +448,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFDayiArray<CCandid
     {
         CStringRange wildcardSearch;
         DWORD_PTR keystrokeBufLen = _keystrokeBuffer.GetLength() + 3;
-        PWCHAR pwch = new (std::nothrow) WCHAR[ keystrokeBufLen ];
-        if (!pwch)
-        {
-            return;
-        }
+       
 
         // check keystroke buffer already has wildcard char which end user want wildcard serach
         DWORD wildcardIndex = 0;
@@ -469,35 +466,78 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFDayiArray<CCandid
             }
         }
 
-       
+        PWCHAR pwch = new (std::nothrow) WCHAR[ keystrokeBufLen ];
+        if (!pwch)  return;
+		PWCHAR pwch3code = new (std::nothrow) WCHAR[ 6 ];
+		if (!pwch3code) return;
 
-        if (!isFindWildcard)
+        if (!isFindWildcard  && (Global::threeCodeMode && _keystrokeBuffer.GetLength() == 3))
         {
-			if(Global::threeCodeMode && _keystrokeBuffer.GetLength() == 3)
+			StringCchCopyN(pwch, keystrokeBufLen, _keystrokeBuffer.Get(), _keystrokeBuffer.GetLength());
+			StringCchCat(pwch, keystrokeBufLen, L"*");
+			size_t len = 0;
+			if (StringCchLength(pwch, STRSAFE_MAX_CCH, &len) == S_OK)
+					wildcardSearch.Set(pwch, len);
+			
+
+			pwch3code[0] = *(_keystrokeBuffer.Get()); pwch3code[1] = *(_keystrokeBuffer.Get()+1);       
+			pwch3code[2] = L'*';
+			pwch3code[3] = *(_keystrokeBuffer.Get()+2);    
+			pwch3code[4] = L'*'; pwch3code[5] = L'\0'; 
+			
+			CTSFDayiArray<CCandidateListItem> wCandidateList;
+			CStringRange w3codeMode;			
+			_pTableDictionaryEngine->CollectWordForWildcard(&wildcardSearch, pCandidateList);
+			if(pCandidateList->Count())	
 			{
-				pwch[0] = *(_keystrokeBuffer.Get()); pwch[1] = *(_keystrokeBuffer.Get()+1);       
-				pwch[2] = L'*';
-				pwch[3] = *(_keystrokeBuffer.Get()+2);    
-				pwch[4] = L'*'; pwch[5] = L'\0'; 
+				_pTableDictionaryEngine->CollectWordForWildcard(&w3codeMode.Set(pwch3code,4), &wCandidateList);
+				if(wCandidateList.Count())
+				{   //append the candidate items got with 3codemode wildcard string to the end of exact match items.
+					for(UINT i = 0; i < wCandidateList.Count(); i++)
+					{
+						if(!CStringRange::WildcardCompare(GetLocale(), &wildcardSearch, &(wCandidateList.GetAt(i)->_FindKeyCode)))
+						{
+							CCandidateListItem* pLI = nullptr;
+							pLI = pCandidateList->Append();
+							if (pLI)
+							{
+								pLI->_ItemString.Set(wCandidateList.GetAt(i)->_ItemString);
+								pLI->_FindKeyCode.Set(wCandidateList.GetAt(i)->_FindKeyCode);
+							}
+						}
+					}
+					wCandidateList.Clear();
+				}
 			}
-			else    // add wildcard char for incremental search
+			else
 			{
-				StringCchCopyN(pwch, keystrokeBufLen, _keystrokeBuffer.Get(), _keystrokeBuffer.GetLength());
+				_pTableDictionaryEngine->CollectWordForWildcard(&w3codeMode.Set(pwch3code,4), pCandidateList);
+			}
+
+
+        }
+		else    // add wildcard char for incremental search
+		{
+			StringCchCopyN(pwch, keystrokeBufLen, _keystrokeBuffer.Get(), _keystrokeBuffer.GetLength());
+			if(!isFindWildcard)
+			{
 				StringCchCat(pwch, keystrokeBufLen, L"*");
 			}
-        }
 
-        size_t len = 0;
-        if (StringCchLength(pwch, STRSAFE_MAX_CCH, &len) == S_OK)
-        {
-            wildcardSearch.Set(pwch, len);
-        }
-        else
-        {
-            return;
-        }
+			size_t len = 0;
+			if (StringCchLength(pwch, STRSAFE_MAX_CCH, &len) == S_OK)
+			{
+				wildcardSearch.Set(pwch, len);
+			}
+			else
+			{
+		        return;
+	        }
 
-        _pTableDictionaryEngine->CollectWordForWildcard(&wildcardSearch, pCandidateList);
+			_pTableDictionaryEngine->CollectWordForWildcard(&wildcardSearch, pCandidateList);
+		}
+
+        
 
         if (0 >= pCandidateList->Count())
         {
@@ -531,6 +571,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFDayiArray<CCandid
         }
 
         delete [] pwch;
+		delete [] pwch3code;
     }
     else if (isWildcardSearch)
     {
@@ -538,15 +579,42 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFDayiArray<CCandid
     }
 	else if (Global::threeCodeMode && _keystrokeBuffer.GetLength() == 3)
 	{
+		
+
 		CStringRange wildcardSearch;
         PWCHAR pwch = new (std::nothrow) WCHAR[ 5 ];
         if (!pwch) return;
-		pwch[0] = *(_keystrokeBuffer.Get());       
-		pwch[1] = *(_keystrokeBuffer.Get()+1);       
-		pwch[2] = L'*';
-		pwch[3] = *(_keystrokeBuffer.Get()+2);       
+		pwch[0] = *(_keystrokeBuffer.Get());	pwch[1] = *(_keystrokeBuffer.Get()+1);       
+		pwch[2] = L'?';		pwch[3] = *(_keystrokeBuffer.Get()+2);      
 		wildcardSearch.Set(pwch, 4);
-		_pTableDictionaryEngine->CollectWordForWildcard(&wildcardSearch, pCandidateList);
+		CTSFDayiArray<CCandidateListItem> wCandidateList;
+
+		_pTableDictionaryEngine->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList);
+		if(pCandidateList->Count())
+		{
+			_pTableDictionaryEngine->CollectWordForWildcard(&wildcardSearch, &wCandidateList);
+			if(wCandidateList.Count())
+			{   //append the candidate items got with 3codemode wildcard string to the end of exact match items.
+				for(UINT i = 0; i < wCandidateList.Count(); i++)
+				{
+					if(!(CStringRange::Compare(GetLocale(), &_keystrokeBuffer, &(wCandidateList.GetAt(i)->_FindKeyCode)) == CSTR_EQUAL))
+					{
+						CCandidateListItem* pLI = nullptr;
+						pLI = pCandidateList->Append();
+						if (pLI)
+						{
+							pLI->_ItemString.Set(wCandidateList.GetAt(i)->_ItemString);
+							pLI->_FindKeyCode.Set(wCandidateList.GetAt(i)->_FindKeyCode);
+						}
+					}
+				}
+				wCandidateList.Clear();
+			}
+		}
+		else //if no exact match items found, send the results from 3codemode 
+		{
+			_pTableDictionaryEngine->CollectWordForWildcard(&wildcardSearch, pCandidateList);
+		}
 		delete [] pwch;
 	}
     else 
@@ -590,7 +658,7 @@ void CCompositionProcessorEngine::GetCandidateStringInConverted(CStringRange &se
     }
 
     StringCchCopyN(pwch, srgKeystrokeBufLen, searchString.Get(), searchString.GetLength());
-	if(!Global::hasPhraseSection) StringCchCat(pwch, srgKeystrokeBufLen, L"*");  // do wild search if no TTS [Phrase]section present
+	if(!(Global::hasPhraseSection || Global::hasCINPhraseSection)) StringCchCat(pwch, srgKeystrokeBufLen, L"*");  // do wild search if no TTS [Phrase]section present
 
     // add wildcard char
 	size_t len = 0;
@@ -600,15 +668,17 @@ void CCompositionProcessorEngine::GetCandidateStringInConverted(CStringRange &se
     }
     searchText.Set(pwch, len);
 
-	if(Global::hasPhraseSection) // do wild search if no TTS [Phrase]section present
-		_pTableDictionaryEngine->CollectWordFromConvertedString(&searchText, pCandidateList);
-	else{
+	if(_pCINTableDictionaryEngine && Global::hasCINPhraseSection) // do phrase lookup if CIN file has phrase section
+		_pCINTableDictionaryEngine->CollectWordFromConvertedString(&searchText, pCandidateList);
+	else if(_pTTSTableDictionaryEngine && Global::hasPhraseSection)// do phrase lookup in TTS file if CIN phrase section is not present
+		_pTTSTableDictionaryEngine->CollectWordFromConvertedString(&searchText, pCandidateList);
+	else // no phrase section, do wildcard text search
 		_pTableDictionaryEngine->CollectWordFromConvertedStringForWildcard(&searchText, pCandidateList);
 
-		if (IsKeystrokeSort())
-			_pTableDictionaryEngine->SortListItemByFindKeyCode(pCandidateList);
+	if (IsKeystrokeSort())
+		_pTableDictionaryEngine->SortListItemByFindKeyCode(pCandidateList);
 		
-	}
+	
 
     searchText.Clear();
     delete [] pwch;
@@ -1057,7 +1127,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 	}
 	else
 	{
-		_pTTSTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(GetLocale(), _pTTSDictionaryFile);
+		_pTTSTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(GetLocale(), _pTTSDictionaryFile, L'='); //TTS file use '=' as delimiter
 		if (!_pTTSTableDictionaryEngine)  goto ErrorExit;
 		_pTTSTableDictionaryEngine->ParseConfig(); //parse config first.
 		_pTableDictionaryEngine = _pTTSTableDictionaryEngine;  //set TTS as default dictionary engine
@@ -1078,13 +1148,12 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 				_pCINDictionaryFile = new (std::nothrow) CFileMapping();
 				if ((_pCINDictionaryFile)->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
 				{
-					_pCINTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(GetLocale(), _pCINDictionaryFile);
+					_pCINTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(GetLocale(), _pCINDictionaryFile, L'\t'); //cin files use tab as delimiter
 
 					if (_pCINTableDictionaryEngine)  
 					{
 						_pCINTableDictionaryEngine->ParseConfig(); //parse config first.
 						_pTableDictionaryEngine = _pCINTableDictionaryEngine;  //set CIN as dictionary engine if avaialble
-						Global::hasPhraseSection = FALSE;
 					}
 				}
 			}
@@ -1098,10 +1167,11 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 			if ((iniDictionaryFile)->CreateFile(pwszINIFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
 			{
 				CTableDictionaryEngine * iniTableDictionaryEngine;
-				iniTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(GetLocale(), iniDictionaryFile);
+				iniTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(GetLocale(), iniDictionaryFile,L'=');
 				if (iniTableDictionaryEngine)  
 					iniTableDictionaryEngine->ParseConfig(); //parse config first.
 				delete iniTableDictionaryEngine; // delete after config.ini config are pasrsed
+				delete iniDictionaryFile;
 			}
 			
 		}
@@ -1615,7 +1685,7 @@ void CCompositionProcessorEngine::InitKeyStrokeTable()
 	#define VK_OEM_MINUS      0xBD   // '-' any country
 	#define VK_OEM_PERIOD     0xBE   // '.' any country
 	#define VK_OEM_2          0xBF   // '/?' for US
-	#define VK_OEM_3          0xC0   // '`~' for US
+	#define VK_OEM_3          0xC0   // '`/~' for US
 	#define VK_OEM_PLUS       0xBB   // '+' any country
 	*/
 

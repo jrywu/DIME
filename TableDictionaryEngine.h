@@ -12,7 +12,7 @@
 class CTableDictionaryEngine : public CBaseDictionaryEngine
 {
 public:
-    CTableDictionaryEngine(LCID locale, _In_ CFile *pDictionaryFile) : CBaseDictionaryEngine(locale, pDictionaryFile) { }
+    CTableDictionaryEngine(LCID locale, _In_ CFile *pDictionaryFile, _In_ WCHAR keywordDelimiter) : CBaseDictionaryEngine(locale, pDictionaryFile, keywordDelimiter) { }
     virtual ~CTableDictionaryEngine() { }
 
     // Collect word from phrase string.

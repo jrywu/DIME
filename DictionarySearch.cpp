@@ -15,7 +15,7 @@
 //
 //----------------------------------------------------------------------------
 
-CDictionarySearch::CDictionarySearch(LCID locale, _In_ CFile *pFile, _In_ CStringRange *pSearchKeyCode) : CDictionaryParser(locale)
+CDictionarySearch::CDictionarySearch(LCID locale, _In_ CFile *pFile, _In_ CStringRange *pSearchKeyCode, _In_ WCHAR keywordDelimiter) : CDictionaryParser(locale, keywordDelimiter)
 {
 	_pFile = pFile;
 	_pSearchKeyCode = pSearchKeyCode;
@@ -121,7 +121,6 @@ TryAgain:
 		case (L'#'): // comment lines begins with #
 			goto FindNextLine;
 		case (L'%'): // .cin control key begins with %
-			Global::KeywordDelimiter = L'\t';  // set delimiter to tab for reading .cin files.
 			controlKeyType = CIN_CONTROLKEY;
 			break;
 		case (L'['):
@@ -163,7 +162,7 @@ TryAgain:
 				else if (CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"[Phrase]", 8)) == CSTR_EQUAL)
 				{ // in Phrase block
 					if(parseConfig) Global::hasPhraseSection = TRUE;
-					searchMode = (!parseConfig && isTextSearch && Global::hasPhraseSection)?SEARCH_TEXT_TTS_PHRASE:SEARCH_NONE;
+					searchMode = (!parseConfig && isTextSearch)?SEARCH_PHRASE:SEARCH_NONE;
 				}
 				else if (parseConfig && CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"[Radical]", 9)) == CSTR_EQUAL)
 				{
@@ -175,8 +174,7 @@ TryAgain:
 				}
 				else if (parseConfig && CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"[Config]", 8)) == CSTR_EQUAL)
 				{
-					//Global::autoCompose = TRUE;// autoCompose is off for TTS table unless see [AutoCompose] control key
-					searchMode =  (parseConfig)?SEARCH_CONFIG:SEARCH_NONE;
+					searchMode =  SEARCH_CONFIG;
 				}
 				else
 				{
@@ -196,7 +194,11 @@ TryAgain:
 				{
 					if(!parseConfig)
 					{
-						if(isTextSearch) searchMode = SEARCH_TEXT;
+						if(isTextSearch) 
+						{
+							if(Global::hasCINPhraseSection) searchMode = SEARCH_NONE;
+							else searchMode = SEARCH_TEXT;
+						}
 						else searchMode = SEARCH_MAPPING;
 					}
 					else
@@ -214,6 +216,15 @@ TryAgain:
 				{
 					searchMode = SEARCH_NONE;
 				}
+				else if (CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%phrasedef?begin", 16),&keyword))
+				{
+					if(parseConfig) Global::hasCINPhraseSection = TRUE;
+					searchMode = (!parseConfig && isTextSearch)?SEARCH_PHRASE:SEARCH_NONE;
+				}
+				else if (parseConfig && CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%phrasedef?end", 14), &keyword))
+				{
+					searchMode = SEARCH_NONE;
+				}
 				else
 				{
 					searchMode = SEARCH_NONE;
@@ -228,7 +239,7 @@ TryAgain:
 		{
 			goto ReadValue;
 		}
-		else if(searchMode == SEARCH_MAPPING || searchMode == SEARCH_SYMBOL || searchMode == SEARCH_TEXT_TTS_PHRASE) //compare key with searchcode
+		else if(searchMode == SEARCH_MAPPING || searchMode == SEARCH_SYMBOL || searchMode == SEARCH_PHRASE) //compare key with searchcode
 		{
 			// Compare Dictionary key code and input key code
 			if ((!isWildcardSearch) && (CStringRange::Compare(_locale, &keyword, _pSearchKeyCode) != CSTR_EQUAL))	goto FindNextLine;
@@ -266,7 +277,7 @@ ReadValue:
 			}
 			
 			CTSFDayiArray<CParserStringRange> valueStrings;
-			BOOL isPhraseEntry = (searchMode == SEARCH_TEXT_TTS_PHRASE) || (searchMode == SEARCH_SYMBOL);
+			BOOL isPhraseEntry = (searchMode == SEARCH_PHRASE) || (searchMode == SEARCH_SYMBOL);
 			if (!ParseLine(&pwch[indexTrace], bufLenOneLine, &keyword, &valueStrings, isPhraseEntry,
 				(isPhraseEntry)?_pSearchKeyCode:NULL))
 			{

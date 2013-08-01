@@ -30,7 +30,7 @@ public:
 class CDictionaryParser
 {
 public:
-    CDictionaryParser(LCID locale);
+    CDictionaryParser(LCID locale, _In_ WCHAR keywordDelimiter);
     virtual ~CDictionaryParser();
 
     BOOL ParseLine(_In_reads_(dwBufLen) LPCWSTR pwszBuffer, DWORD_PTR dwBufLen, _Out_ CParserStringRange *psrgKeyword, 
@@ -48,4 +48,6 @@ protected:
     DWORD_PTR GetOneLine(_In_z_ LPCWSTR pwszBuffer, DWORD_PTR dwBufLen);
 
     LCID _locale;   // used for CompareString
+
+	WCHAR _keywordDelimiter;
 };

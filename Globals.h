@@ -105,6 +105,7 @@ extern BOOL isWindows8; //OS Version
 extern BOOL autoCompose; // show candidates while composing
 extern BOOL threeCodeMode;
 extern BOOL hasPhraseSection; // the dictionary file has TTS [Phrase] section
+extern BOOL hasCINPhraseSection; // the dictionary file has CIN %phrasedef section
 
 extern ATOM AtomCandidateWindow;
 extern ATOM AtomShadowWindow;

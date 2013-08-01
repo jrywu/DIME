@@ -23,7 +23,7 @@ class CDictionaryResult;
 class CDictionarySearch : CDictionaryParser
 {
 public:
-    CDictionarySearch(LCID locale, _In_ CFile *pFile, _In_ CStringRange *pSearchKeyCode);
+    CDictionarySearch(LCID locale, _In_ CFile *pFile, _In_ CStringRange *pSearchKeyCode, _In_ WCHAR keywordDelimiter);
     virtual ~CDictionarySearch();
 
     BOOL FindPhrase(_Out_ CDictionaryResult **ppdret);
@@ -51,6 +51,7 @@ private:
 
     CFile* _pFile;
 	enum SEARCH_MODE searchMode;
+
 };
 
 //////////////////////////////////////////////////////////////////////
@@ -82,7 +83,7 @@ enum SEARCH_MODE
 	SEARCH_NONE,
 	SEARCH_MAPPING,
 	SEARCH_TEXT,
-	SEARCH_TEXT_TTS_PHRASE,
+	SEARCH_PHRASE,
 	SEARCH_RADICAL,
 	SEARCH_CONFIG,
 	SEARCH_CONTROLKEY,

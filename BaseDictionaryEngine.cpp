@@ -13,10 +13,11 @@
 // ctor
 //----------------------------------------------------------------------------
 
-CBaseDictionaryEngine::CBaseDictionaryEngine(LCID locale, _In_ CFile *pDictionaryFile)
+CBaseDictionaryEngine::CBaseDictionaryEngine(LCID locale, _In_ CFile *pDictionaryFile, _In_ WCHAR keywordDelimiter)
 {
     _locale = locale;
     _pDictionaryFile = pDictionaryFile;
+	_keywordDelimiter = keywordDelimiter;
 }
 
 //+---------------------------------------------------------------------------
