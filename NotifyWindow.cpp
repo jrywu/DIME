@@ -108,7 +108,7 @@ BOOL CNotifyWindow::_CreateBackGroundShadowWindow()
 
 void CNotifyWindow::_ResizeWindow()
 {
-    SIZE size = {0, 0};
+    //SIZE size = {0, 0};
 
     //_cxTitle = max(_cxTitle, size.cx + 2 * GetSystemMetrics(SM_CXFRAME));
 

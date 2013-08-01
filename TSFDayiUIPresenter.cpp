@@ -1342,7 +1342,7 @@ HRESULT CTSFDayiUIPresenter::ShowNotifyWindow(_In_ ITfContext *pContextDocument,
 		_pNotifyWnd->_SetString(notifyText->Get());
 		_pNotifyWnd->_Show(TRUE);
 	}
-
+	return hr;
     
 }
 HRESULT CTSFDayiUIPresenter::MakeCandidateWindow(_In_ ITfContext *pContextDocument, _In_ UINT wndWidth)
