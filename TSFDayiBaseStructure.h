@@ -26,6 +26,13 @@ struct _DEFINED_KEYWORD
     VALUE _value;
 };
 
+
+struct _AddressDirectInput
+{
+    WCHAR _Code;
+    WCHAR _AddressChar;
+};
+
 //---------------------------------------------------------------------
 // enum
 //---------------------------------------------------------------------
@@ -66,7 +73,7 @@ enum KEYSTROKE_FUNCTION
     FUNCTION_DOUBLE_SINGLE_BYTE,
 
     // Function Punctuation
-    FUNCTION_PUNCTUATION
+    FUNCTION_ADDRESS_DIRECT_INPUT
 };
 
 //---------------------------------------------------------------------

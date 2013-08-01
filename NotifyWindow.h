@@ -18,7 +18,7 @@ enum NOTIFYWND_ACTION
     CLICK_TO_DISMISS
 };
 
-typedef HRESULT (*NOTIFYWNDCALLBACK)(void *pv, enum NOTIFYWND_ACTION action);
+typedef HRESULT (*NOTIFYWNDCALLBACK)(void *pv);
 
 class CNotifyWindow : public CBaseWindow
 {
@@ -26,7 +26,7 @@ public:
     CNotifyWindow(_In_ NOTIFYWNDCALLBACK pfnCallback, _In_ void *pv);
     virtual ~CNotifyWindow();
 
-    BOOL _Create(ATOM atom, _In_ UINT notifyWidth, _In_opt_ HWND parentWndHandle);
+    BOOL _Create(ATOM atom,  _In_opt_ HWND parentWndHandle);
 
     void _Move(int x, int y);
     void _Show(BOOL isShowWnd);

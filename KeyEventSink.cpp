@@ -124,10 +124,24 @@ BOOL CTSFDayi::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *p
     CCompositionProcessorEngine *pCompositionProcessorEngine;
     pCompositionProcessorEngine = _pCompositionProcessorEngine;
 
+
+	//
+    // Address characters direct input mode  '[]-\
+    //
+	if (isOpen && _candidateMode == CANDIDATE_NONE && pCompositionProcessorEngine->IsAddressChar(wch))
+	{
+		if (pKeyState)
+		{
+			pKeyState->Category = CATEGORY_COMPOSING;
+			pKeyState->Function = FUNCTION_ADDRESS_DIRECT_INPUT;
+		}
+			return TRUE;
+	}
+
 	//
     // Symbol mode start with L'='
     //
-	if (pCompositionProcessorEngine->IsSymbolChar(wch))
+	if (isOpen && pCompositionProcessorEngine->IsSymbolChar(wch))
 	{
 		if (pKeyState)
 		{

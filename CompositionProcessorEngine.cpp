@@ -716,6 +716,45 @@ BOOL CCompositionProcessorEngine::IsSymbolChar(WCHAR wch)
     return FALSE;
 }
 
+//+---------------------------------------------------------------------------
+//
+// IsAddressChar
+//
+//----------------------------------------------------------------------------
+BOOL CCompositionProcessorEngine::IsAddressChar(WCHAR wch)
+{
+	if(_keystrokeBuffer.Get() == nullptr || (_keystrokeBuffer.Get() && (_keystrokeBuffer.GetLength() == 0))) 
+	{
+		for (int i = 0; i < ARRAYSIZE(Global::addressCharTable); i++)
+		{
+			if (Global::addressCharTable[i]._Code == wch)
+			{
+				return TRUE;
+			}
+		}
+
+	}
+    return FALSE;
+}
+
+//+---------------------------------------------------------------------------
+//
+// GetAddressChar
+//
+//----------------------------------------------------------------------------
+
+WCHAR CCompositionProcessorEngine::GetAddressChar(WCHAR wch)
+{
+    for (int i = 0; i < ARRAYSIZE(Global::addressCharTable); i++)
+    {
+        if (Global::addressCharTable[i]._Code == wch)
+        {
+			return Global::addressCharTable[i]._AddressChar;
+        }
+    }
+	return 0;
+}
+
 
 
 //+---------------------------------------------------------------------------
@@ -1987,24 +2026,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
             }
         }
     }
-	/*
-    if (candidateMode == CANDIDATE_PHRASE) //never seen here.
-    {
-        switch (uCode)
-        {
-        case VK_UP:     if (pKeyState) { pKeyState->Category = CATEGORY_PHRASE; pKeyState->Function = FUNCTION_MOVE_UP; } return TRUE;
-        case VK_DOWN:   if (pKeyState) { pKeyState->Category = CATEGORY_PHRASE; pKeyState->Function = FUNCTION_MOVE_DOWN; } return TRUE;
-        case VK_PRIOR:  if (pKeyState) { pKeyState->Category = CATEGORY_PHRASE; pKeyState->Function = FUNCTION_MOVE_PAGE_UP; } return TRUE;
-        case VK_NEXT:   if (pKeyState) { pKeyState->Category = CATEGORY_PHRASE; pKeyState->Function = FUNCTION_MOVE_PAGE_DOWN; } return TRUE;
-        case VK_HOME:   if (pKeyState) { pKeyState->Category = CATEGORY_PHRASE; pKeyState->Function = FUNCTION_MOVE_PAGE_TOP; } return TRUE;
-        case VK_END:    if (pKeyState) { pKeyState->Category = CATEGORY_PHRASE; pKeyState->Function = FUNCTION_MOVE_PAGE_BOTTOM; } return TRUE;
-        case VK_RETURN: if (pKeyState) { pKeyState->Category = CATEGORY_PHRASE; pKeyState->Function = FUNCTION_FINALIZE_CANDIDATELIST; } return TRUE;
-        case VK_SPACE:  if (pKeyState) { pKeyState->Category = CATEGORY_PHRASE; pKeyState->Function = FUNCTION_CONVERT; } return TRUE;
-        case VK_ESCAPE: if (pKeyState) { pKeyState->Category = CATEGORY_PHRASE; pKeyState->Function = FUNCTION_CANCEL; } return TRUE;
-        case VK_BACK:   if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_CANCEL; } return TRUE;
-        }
-    }
-	*/
+
     if (IsKeystrokeRange(uCode, pKeyState, candidateMode))
     {
         return TRUE;
@@ -2077,6 +2099,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeComposition(UINT uCode, _
 
 BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeCandidate(UINT uCode, _In_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode, _Out_ BOOL *pfRetCode, _In_ CTSFDayiArray<_KEYSTROKE> *pKeystrokeMetric)
 {
+	candidateMode;
     if (pfRetCode == nullptr)
     {
         return FALSE;
@@ -2094,8 +2117,9 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeCandidate(UINT uCode, _In
             *pfRetCode = TRUE;
             if (pKeyState)
             {
-                pKeyState->Category = (candidateMode == CANDIDATE_ORIGINAL ? CATEGORY_CANDIDATE :
-                    candidateMode == CANDIDATE_PHRASE ? CATEGORY_PHRASE : CATEGORY_CANDIDATE);
+                pKeyState->Category = CATEGORY_CANDIDATE;
+					//(candidateMode == CANDIDATE_ORIGINAL ? CATEGORY_CANDIDATE :
+                    //candidateMode == CANDIDATE_PHRASE ? CATEGORY_PHRASE : CATEGORY_CANDIDATE);
 
                 pKeyState->Function = pKeystroke->Function;
             }
@@ -2130,7 +2154,8 @@ BOOL CCompositionProcessorEngine::IsKeystrokeRange(UINT uCode, _Out_ _KEYSTROKE_
              if ((GetCandidateListPhraseModifier() == 0 && (Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT) )!= 0) || //shift + 123...
                 (GetCandidateListPhraseModifier() != 0 && Global::CheckModifiers(Global::ModifiersValue, GetCandidateListPhraseModifier())))
             {
-                pKeyState->Category = CATEGORY_PHRASE; pKeyState->Function = FUNCTION_SELECT_BY_NUMBER;
+				pKeyState->Category = CATEGORY_CANDIDATE;//CATEGORY_PHRASE; 
+				pKeyState->Function = FUNCTION_SELECT_BY_NUMBER;
                 return TRUE;
             }
             else

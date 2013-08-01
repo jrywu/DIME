@@ -213,8 +213,6 @@ HRESULT CTSFDayi::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine
 				_pTSFDayiUIPresenter->Show(TRUE); 
 			}
 
-			if(candidateList.Count() ==1)
-				_HandleCandidateFinalize(ec, pContext);
 
 		}
 		else if (_pTSFDayiUIPresenter)
@@ -423,7 +421,7 @@ HRESULT CTSFDayi::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pC
             _pTSFDayiUIPresenter->_SetText(&candidateList, FALSE);
         }
     }
-	if(nCount==1)  //finalized with the only candidate without showing cand.
+	if(nCount==1 )  //finalized with the only candidate without showing cand.
 	{
 		_HandleCandidateFinalize(ec, pContext);
 	}
@@ -568,6 +566,38 @@ HRESULT CTSFDayi::_HandleCompositionDoubleSingleByte(TfEditCookie ec, _In_ ITfCo
 }
 
 
+//+---------------------------------------------------------------------------
+//
+// _HandleAddressChar
+//
+//----------------------------------------------------------------------------
+
+HRESULT CTSFDayi::_HandleCompositionAddressChar(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch)
+{
+	HRESULT hr = S_OK;
+
+   //
+    // Get punctuation char from composition processor engine
+    //
+    CCompositionProcessorEngine* pCompositionProcessorEngine = nullptr;
+    pCompositionProcessorEngine = _pCompositionProcessorEngine;
+
+	WCHAR addressChar = pCompositionProcessorEngine->GetAddressChar(wch);
+
+    CStringRange addressCharString;
+    addressCharString.Set(&addressChar, 1);
+
+    // Finalize character
+    hr = _AddCharAndFinalize(ec, pContext, &addressCharString);
+    if (FAILED(hr))
+    {
+        return hr;
+    }
+
+    _HandleCancel(ec, pContext);
+
+    return S_OK;
+}
 
 //+---------------------------------------------------------------------------
 //

@@ -39,8 +39,8 @@
 #define NOTIFYWND_ROW_WIDTH				(30)
 #define NOTIFYWND_BORDER_COLOR			(RGB(0x00, 0x00, 0x00))
 #define NOTIFYWND_BORDER_WIDTH			(2)
-#define NOTIFYWND_TEXT_COLOR		(RGB(0xFF, 0xFF, 0xFF))
-#define NOTIFYWND_TEXT_BK_COLOR		(RGB(0xA6, 0xA6, 0x00))
+#define NOTIFYWND_TEXT_COLOR		(RGB(0x00, 0x00, 0x00))
+#define NOTIFYWND_TEXT_BK_COLOR		(RGB(0xFF, 0xFF, 0xFF))
 
 //---------------------------------------------------------------------
 // defined modifier

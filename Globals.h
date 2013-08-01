@@ -139,6 +139,7 @@ extern const GUID TSFDayiGuidCompartmentPunctuation;
 
 extern const WCHAR FullWidthCharTable[];
 extern const WCHAR symbolCharTable[25];
+extern const _AddressDirectInput addressCharTable[5];
 
 extern const GUID TSFDayiGuidLangBarIMEMode;
 extern const GUID TSFDayiGuidLangBarDoubleSingleByte;

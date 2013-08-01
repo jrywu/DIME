@@ -56,6 +56,10 @@ public:
     BOOL IsSymbolChar(WCHAR wch);
 	BOOL IsSymbol();
 
+	//Address characters direct input
+	BOOL IsAddressChar(WCHAR wch);
+	WCHAR GetAddressChar(WCHAR wch);
+	
     BOOL IsDoubleSingleByte(WCHAR wch);
     BOOL IsWildcard() { return _isWildcard; }
     BOOL IsDisableWildcardAtFirst() { return _isDisableWildcardAtFirst; }

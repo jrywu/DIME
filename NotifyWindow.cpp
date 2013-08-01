@@ -18,17 +18,13 @@
 
 CNotifyWindow::CNotifyWindow(_In_ NOTIFYWNDCALLBACK pfnCallback, _In_ void *pv)
 {
-  
-    _SetTextColor(CANDWND_ITEM_COLOR, GetSysColor(COLOR_WINDOW));    // text color is black
-    _SetFillColor((HBRUSH)(COLOR_WINDOW+1));
-
-  
+   
     _pfnCallback = pfnCallback;
     _pObj = pv;
 
     _pShadowWnd = nullptr;
-	_cxTitle = 0;
-    _wndWidth = 0;
+	_cxTitle = 50;
+    _wndWidth = 50;
 
   
 }
@@ -51,10 +47,9 @@ CNotifyWindow::~CNotifyWindow()
 // CandidateWinow is the top window
 //----------------------------------------------------------------------------
 
-BOOL CNotifyWindow::_Create(ATOM atom, _In_ UINT wndWidth, _In_opt_ HWND parentWndHandle)
+BOOL CNotifyWindow::_Create(ATOM atom, _In_opt_ HWND parentWndHandle)
 {
     BOOL ret = FALSE;
-    _wndWidth = wndWidth;
 
     ret = _CreateMainWindow(atom, parentWndHandle);
     if (FALSE == ret)
@@ -115,7 +110,7 @@ void CNotifyWindow::_ResizeWindow()
 {
     SIZE size = {0, 0};
 
-    _cxTitle = max(_cxTitle, size.cx + 2 * GetSystemMetrics(SM_CXFRAME));
+    //_cxTitle = max(_cxTitle, size.cx + 2 * GetSystemMetrics(SM_CXFRAME));
 
     
 	CBaseWindow::_Resize(0, 0, _cxTitle, _wndWidth);  //x, y, cx, cy
@@ -189,7 +184,7 @@ LRESULT CALLBACK CNotifyWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT uM
                 HFONT hFontOld = (HFONT)SelectObject(dcHandle, Global::defaultlFontHandle);
                 GetTextMetrics(dcHandle, &_TextMetric);
 
-                _cxTitle = _TextMetric.tmMaxCharWidth * _wndWidth;
+                //_cxTitle = _TextMetric.tmMaxCharWidth * _wndWidth;
                 SelectObject(dcHandle, hFontOld);
                 ReleaseDC(wndHandle, dcHandle);
             }
@@ -347,7 +342,6 @@ void CNotifyWindow::_OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pPaintStruct)
 
     FillRect(dcHandle, &pPaintStruct->rcPaint, _brshBkColor);
 
-    
     _DrawText(dcHandle, &pPaintStruct->rcPaint);
 
 //cleanup:
@@ -492,7 +486,8 @@ void CNotifyWindow::_SetString(_Inout_ const WCHAR *pNotifyText)
         {
             return;
         }
-		memcpy((void*)pwchString, notifyText.Get(), notifyTextLen * sizeof(WCHAR)+1);
+		StringCchCopyN(pwchString, notifyTextLen + 1, pNotifyText, notifyTextLen);
+		notifyText.Set(pwchString, notifyTextLen);
     }
 
    

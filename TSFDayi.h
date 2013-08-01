@@ -120,6 +120,7 @@ public:
     HRESULT _HandleCompositionBackspace(TfEditCookie ec, _In_ ITfContext *pContext);
     HRESULT _HandleCompositionArrowKey(TfEditCookie ec, _In_ ITfContext *pContext, KEYSTROKE_FUNCTION keyFunction);
     HRESULT _HandleCompositionDoubleSingleByte(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch);
+	HRESULT _HandleCompositionAddressChar(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch);
 	// function for textlayoutchange.
 	HRESULT _HandlTextLayoutChange(TfEditCookie ec, _In_ ITfContext *pContext, _In_ ITfRange *pRangeComposition);
 

@@ -120,8 +120,8 @@ HRESULT CKeyStateCategory::KeyStateHandler(KEYSTROKE_FUNCTION function, KeyHandl
     case FUNCTION_DOUBLE_SINGLE_BYTE:
         return HandleKeyDoubleSingleByte(dto);
 
-    //case FUNCTION_PUNCTUATION:
-    //    return HandleKeyPunctuation(dto);
+    case FUNCTION_ADDRESS_DIRECT_INPUT:
+        return HandleKeyAddressChar(dto);
 
     case FUNCTION_SELECT_BY_NUMBER:
         return HandleKeySelectByNumber(dto);
@@ -224,6 +224,14 @@ HRESULT CKeyStateCategory::HandleKeySelectByNumber(KeyHandlerEditSessionDTO dto)
     return E_NOTIMPL;
 }
 
+HRESULT CKeyStateCategory::HandleKeyAddressChar(KeyHandlerEditSessionDTO dto)
+{
+	dto;
+    return E_NOTIMPL;
+}
+
+
+
 /*
 class CKeyStateComposing
 */
@@ -288,6 +296,10 @@ HRESULT CKeyStateComposing::HandleKeyDoubleSingleByte(KeyHandlerEditSessionDTO d
     return _pTextService->_HandleCompositionDoubleSingleByte(dto.ec, dto.pContext, dto.wch);
 }
 
+HRESULT CKeyStateComposing::HandleKeyAddressChar(KeyHandlerEditSessionDTO dto)
+{
+	return _pTextService->_HandleCompositionAddressChar(dto.ec, dto.pContext, dto.wch);
+}
 
 
 /*

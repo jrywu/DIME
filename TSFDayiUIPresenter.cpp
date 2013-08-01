@@ -266,12 +266,13 @@ HRESULT CTSFDayi::_HandlePhraseFinalize(TfEditCookie ec, _In_ ITfContext *pConte
 
     phraseLen = (DWORD)_pTSFDayiUIPresenter->_GetSelectedCandidateString(&pPhraseString);
 
-    CStringRange phraseString;
+    CStringRange phraseString, clearString;
     phraseString.Set(pPhraseString, phraseLen);
 
     if (phraseLen)
     {
-        if ((hr = _AddCharAndFinalize(ec, pContext, &phraseString)) != S_OK)
+
+        if ((hr = _AddComposingAndChar(ec, pContext, &phraseString)) != S_OK)
         {
             return hr;
         }
@@ -341,6 +342,7 @@ CTSFDayiUIPresenter::CTSFDayiUIPresenter(_In_ CTSFDayi *pTextService, ATOM atom,
 
     _parentWndHandle = nullptr;
     _pCandidateWnd = nullptr;
+	_pNotifyWnd = nullptr;
 
     _Category = Category;
 
@@ -1054,6 +1056,17 @@ VOID CTSFDayiUIPresenter::_LayoutDestroyNotification()
 
 //+---------------------------------------------------------------------------
 //
+// _NotifyChangeNotifiction
+//
+//----------------------------------------------------------------------------
+
+HRESULT CTSFDayiUIPresenter::_NotifyChangeNotification()
+{
+	return S_OK;
+}
+
+//+---------------------------------------------------------------------------
+//
 // _CandidateChangeNotifiction
 //
 //----------------------------------------------------------------------------
@@ -1126,6 +1139,20 @@ HRESULT CTSFDayiUIPresenter::_CandWndCallback(_In_ void *pv, _In_ enum CANDWND_A
     CTSFDayiUIPresenter* fakeThis = (CTSFDayiUIPresenter*)pv;
 
     return fakeThis->_CandidateChangeNotification(action);
+}
+
+//+---------------------------------------------------------------------------
+//
+// _NotifyWndCallback
+//
+//----------------------------------------------------------------------------
+
+// static
+HRESULT CTSFDayiUIPresenter::_NotifyWndCallback(_In_ void *pv)
+{
+    CTSFDayiUIPresenter* fakeThis = (CTSFDayiUIPresenter*)pv;
+
+    return fakeThis->_NotifyChangeNotification();
 }
 
 //+---------------------------------------------------------------------------
@@ -1287,9 +1314,42 @@ Exit:
     return hr;
 }
 
+HRESULT CTSFDayiUIPresenter::ShowNotifyWindow(_In_ ITfContext *pContextDocument, CStringRange* notifyText)
+{
+	 HRESULT hr = S_OK;
+
+	if (nullptr == _pNotifyWnd)
+    {
+		_pNotifyWnd = new (std::nothrow) CNotifyWindow(_NotifyWndCallback, this);
+	}
+
+    if (nullptr == _pNotifyWnd)
+		return S_FALSE;
+  
+	HWND parentWndHandle = nullptr;
+    ITfContextView* pView = nullptr;
+    if (SUCCEEDED(pContextDocument->GetActiveView(&pView)))
+    {
+        pView->GetWnd(&parentWndHandle);
+    }
+
+    if (!_pNotifyWnd->_Create(_atom, parentWndHandle))
+    {
+        hr = E_OUTOFMEMORY;
+    }
+	else
+	{
+		_pNotifyWnd->_SetString(notifyText->Get());
+		_pNotifyWnd->_Show(TRUE);
+	}
+
+    
+}
 HRESULT CTSFDayiUIPresenter::MakeCandidateWindow(_In_ ITfContext *pContextDocument, _In_ UINT wndWidth)
 {
     HRESULT hr = S_OK;
+	
+	CStringRange notifytext;
 
     if (nullptr != _pCandidateWnd)
     {
@@ -1315,7 +1375,7 @@ HRESULT CTSFDayiUIPresenter::MakeCandidateWindow(_In_ ITfContext *pContextDocume
         hr = E_OUTOFMEMORY;
         goto Exit;
     }
-
+	
 Exit:
     return hr;
 }

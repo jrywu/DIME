@@ -10,6 +10,7 @@
 
 #include "KeyHandlerEditSession.h"
 #include "CandidateWindow.h"
+#include "NotifyWindow.h"
 #include "TfTextLayoutSink.h"
 #include "TSFDayi.h"
 #include "TSFDayiBaseStructure.h"
@@ -103,8 +104,10 @@ public:
 
 private:
     virtual HRESULT CALLBACK _CandidateChangeNotification(_In_ enum CANDWND_ACTION action);
+	virtual HRESULT CALLBACK _NotifyChangeNotification();
 
     static HRESULT _CandWndCallback(_In_ void *pv, _In_ enum CANDWND_ACTION action);
+	static HRESULT _NotifyWndCallback(_In_ void *pv);
 
     friend COLORREF _AdjustTextColor(_In_ COLORREF crColor, _In_ COLORREF crBkColor);
 
@@ -118,6 +121,7 @@ private:
     HRESULT EndUIElement();
 
     HRESULT MakeCandidateWindow(_In_ ITfContext *pContextDocument, _In_ UINT wndWidth);
+	HRESULT ShowNotifyWindow(_In_ ITfContext *pContextDocument, CStringRange* notifyText);
     void DisposeCandidateWindow();
 
     void AddCandidateToTSFDayiUI(_In_ CTSFDayiArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode);
@@ -126,6 +130,7 @@ private:
 
 protected:
     CCandidateWindow *_pCandidateWnd;
+	CNotifyWindow *_pNotifyWnd;
     BOOL _isShowMode;
     BOOL _hideWindow;
 
