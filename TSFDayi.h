@@ -91,9 +91,9 @@ public:
     STDMETHODIMP GetLayout(_Out_ TKBLayoutType *ptkblayoutType, _Out_ WORD *pwPreferredLayoutId);
 
 	//ITfFnConfigure 
-	HRESULT __stdcall Show(_In_ HWND hwndParent, _In_ LANGID langid, _In_ REFGUID rguidProfile);
+	STDMETHODIMP Show(_In_ HWND hwndParent, _In_ LANGID langid, _In_ REFGUID rguidProfile);
 	// ITfFnShowHelp
-    STDMETHODIMP Show(HWND hwndParent);
+    STDMETHODIMP Show(_In_ HWND hwndParent);
 
 
 
