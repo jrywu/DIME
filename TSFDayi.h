@@ -150,6 +150,10 @@ public:
 	//Called by compartment status changed.
 	void OnKeyboardClosed();
 	void OnKeyboardOpen();
+	void OnSwitchedToFullShape();
+	void OnSwitchedToHalfShape();
+
+	HRESULT ShowNotifyText(ITfContext *pContext, CStringRange *pNotifyText);
 
 private:
     // functions for the composition object.

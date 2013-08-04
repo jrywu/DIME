@@ -100,94 +100,26 @@ HRESULT CTSFDayi::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pCont
 	
 	// We have a candidate list if candidatePhraseList.Cnt is not 0
 	// If we are showing reverse conversion, use CTSFDayiUIPresenter
-	CANDIDATE_MODE tempCandMode = CANDIDATE_NONE;
-	CTSFDayiUIPresenter* _pPhraseTSFDayiUIPresenter = nullptr;
 	
 	if (candidatePhraseList.Count())
 	{
-		tempCandMode =  CANDIDATE_PHRASE; 
-
-		_pPhraseTSFDayiUIPresenter = new (std::nothrow) CTSFDayiUIPresenter(this, Global::AtomCandidateWindow,
-			CATEGORY_CANDIDATE,
-			_pCompositionProcessorEngine->GetCandidateListIndexRange(),
-			FALSE,
-			_pCompositionProcessorEngine);
-		if (nullptr == _pPhraseTSFDayiUIPresenter)
-		{
-			hr = E_OUTOFMEMORY;
-			goto Exit;
-		}
-	}
-	else
-		goto Exit;
-	
-	// call _Start*Line for CTSFDayiUIPresenter or CReadingLine
-	// we don't cache the document manager object so get it from pContext.
-	ITfDocumentMgr* pDocumentMgr = nullptr;
-	HRESULT hrStartCandidateList = E_FAIL;
-	if (pContext->GetDocumentMgr(&pDocumentMgr) == S_OK)
-	{
-		ITfRange* pRange = nullptr;
 		CStringRange emptyComposition;
 		if (!_IsComposing())
 			_StartComposition(pContext);  //StartCandidateList require a valid selection from a valid pComposition to determine the location to show the candidate window
-		
-		// add a space character to empty composition buffer so as the phrase cand can showed in right position in non TSF award program.
 		_AddComposingAndChar(ec, pContext, &emptyComposition.Set(L" ",1)); 
-		if (_pComposition->GetRange(&pRange) == S_OK)
-		{
-			if (_pPhraseTSFDayiUIPresenter)
-			{
-				hrStartCandidateList = _pPhraseTSFDayiUIPresenter->_StartCandidateList(_tfClientId, pDocumentMgr, pContext, ec, pRange, _pCompositionProcessorEngine->GetCandidateWindowWidth());
-			} 
-
-			pRange->Release();
-			
-		}
-		
-		//_TerminateComposition(ec, pContext);
-		pDocumentMgr->Release();
-	}
-	
-	
-	
-
-	// set up candidate list if it is being shown
-	if (SUCCEEDED(hrStartCandidateList))
-	{
-		_pPhraseTSFDayiUIPresenter->_SetTextColor(RGB(0, 0x80, 0), GetSysColor(COLOR_WINDOW));    // Text color is green
-		_pPhraseTSFDayiUIPresenter->_SetFillColor((HBRUSH)(COLOR_WINDOW+1));    // Background color is window
-		_pPhraseTSFDayiUIPresenter->_SetText(&candidatePhraseList, FALSE);
-
-		
-		// close candidate list
-		if (_pTSFDayiUIPresenter)
-		{
-			_pTSFDayiUIPresenter->_EndCandidateList();
-			delete _pTSFDayiUIPresenter;
-			_pTSFDayiUIPresenter = nullptr;
-
-			_candidateMode = CANDIDATE_NONE;
-			_isCandidateWithWildcard = FALSE;
-		}
-
-		if (hr == S_OK)
-		{
-			// copy temp candidate
-			_pTSFDayiUIPresenter = _pPhraseTSFDayiUIPresenter;
-			_pTSFDayiUIPresenter->_SetSelection(-1, FALSE); // set selected index to -1 if showing phrase candidates
-
+		if(SUCCEEDED(_CreateAndStartCandidate(_pCompositionProcessorEngine, ec, pContext)))
+		{		
+			_pTSFDayiUIPresenter->_SetCandidateTextColor(RGB(0, 0x80, 0), GetSysColor(COLOR_WINDOW));    // Text color is green
+			_pTSFDayiUIPresenter->_SetCandidateFillColor((HBRUSH)(COLOR_WINDOW+1));    // Background color is window
+			_pTSFDayiUIPresenter->_SetCandidateText(&candidatePhraseList, FALSE);
+			_pTSFDayiUIPresenter->_SetCandidateSelection(-1, FALSE); // set selected index to -1 if showing phrase candidates
 			_phraseCandShowing = TRUE;
 			OutputDebugString(L"CTSFDayi::_HandleCandidateWorker(); _phraseCandShowing = TRUE. phrase cand is showing\n");
 
-			_candidateMode = tempCandMode;
+			_candidateMode = CANDIDATE_PHRASE;
 			_isCandidateWithWildcard = FALSE;
 		}
-		
 	}
-	_pPhraseTSFDayiUIPresenter = nullptr;
-
-	// no next phrase list, exit without doing anything.
 	
 Exit:
     return hr;
@@ -225,7 +157,7 @@ HRESULT CTSFDayi::_HandleCandidateSelectByNumber(TfEditCookie ec, _In_ ITfContex
 
     if (_pTSFDayiUIPresenter)
     {
-        if (_pTSFDayiUIPresenter->_SetSelectionInPage(iSelectAsNumber))
+        if (_pTSFDayiUIPresenter->_SetCandidateSelectionInPage(iSelectAsNumber))
         {
             return _HandleCandidateConvert(ec, pContext);
         }
@@ -298,11 +230,77 @@ HRESULT CTSFDayi::_HandlePhraseSelectByNumber(TfEditCookie ec, _In_ ITfContext *
 
     if (_pTSFDayiUIPresenter)
     {
-        if (_pTSFDayiUIPresenter->_SetSelectionInPage(iSelectAsNumber))
+        if (_pTSFDayiUIPresenter->_SetCandidateSelectionInPage(iSelectAsNumber))
         {
             return _HandlePhraseFinalize(ec, pContext);
         }
     }
 
     return S_FALSE;
+}
+
+//+---------------------------------------------------------------------------
+//
+// _CreateAndStartCandidate
+//
+//----------------------------------------------------------------------------
+
+HRESULT CTSFDayi::_CreateAndStartCandidate(_In_ CCompositionProcessorEngine *pCompositionProcessorEngine, TfEditCookie ec, _In_ ITfContext *pContext)
+{
+    HRESULT hr = S_OK;
+
+
+	if(_pTSFDayiUIPresenter)
+    {
+        // Recreate the candidate list without destroy _pTSFDayiUIPresenter. simply end the original candidatelist
+        _pTSFDayiUIPresenter->_EndCandidateList();
+    }
+	else
+    {
+        _pTSFDayiUIPresenter = new (std::nothrow) CTSFDayiUIPresenter(this, pCompositionProcessorEngine);
+        if (!_pTSFDayiUIPresenter)
+        {
+            return E_OUTOFMEMORY;
+        }	
+    }
+
+	// we don't cache the document manager object. So get it from pContext.
+	ITfDocumentMgr* pDocumentMgr = nullptr;
+	if (SUCCEEDED(pContext->GetDocumentMgr(&pDocumentMgr)))
+	{
+		// get the composition range. the candidate window need the composition range rect to place the window.
+		ITfRange* pRange = nullptr;
+		if (SUCCEEDED(_pComposition->GetRange(&pRange)))
+		{
+			hr = _pTSFDayiUIPresenter->_StartCandidateList(_tfClientId, pDocumentMgr, pContext, ec, pRange, pCompositionProcessorEngine->GetCandidateWindowWidth());
+			pRange->Release();
+		}
+		pDocumentMgr->Release();
+	}
+	return hr;
+}
+
+
+//+---------------------------------------------------------------------------
+//
+// _DeleteCandidateList
+//
+//----------------------------------------------------------------------------
+
+VOID CTSFDayi::_DeleteCandidateList(BOOL isForce, _In_opt_ ITfContext *pContext)
+{
+	OutputDebugString(L"CTSFDayi::_DeleteCandidateList()\n");
+    isForce;pContext;
+
+    CCompositionProcessorEngine* pCompositionProcessorEngine = nullptr;
+    pCompositionProcessorEngine = _pCompositionProcessorEngine;
+    pCompositionProcessorEngine->PurgeVirtualKey();
+
+    if (_pTSFDayiUIPresenter)
+    {
+        _pTSFDayiUIPresenter->_EndCandidateList();
+
+        _candidateMode = CANDIDATE_NONE;
+        _isCandidateWithWildcard = FALSE;
+    }
 }

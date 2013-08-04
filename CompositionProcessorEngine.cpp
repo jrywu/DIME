@@ -129,13 +129,25 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CTSFDayi *pTextSer
 	_doBeep = FALSE;
 	_autoCompose = FALSE;
 	_threeCodeMode = FALSE;
-	_fontHeight = 14;
+	_fontSize = 14;
 	_MaxCodes = 4;
-	_candidateWndWidth = 5;  //3 charaters + 2 trailling space
+	_candidateWndWidth = 5;  //default with =  3 charaters + 2 trailling space
 
     _candidateListPhraseModifier = 0;
 
     
+	// send a shift key for the notify window to catch pContext and showing in current caret position 
+	
+	INPUT ip;
+	ip.type = INPUT_KEYBOARD;
+    ip.ki.wScan = 0x2a; // hardware scan code for key
+    ip.ki.time = 0;
+    ip.ki.dwExtraInfo = 0;
+	ip.ki.wVk = VK_LSHIFT; // virtual-key code for the shift key
+    ip.ki.dwFlags = 0; // 0 for key press
+    SendInput(1, &ip, sizeof(INPUT));
+	ip.ki.dwFlags = KEYEVENTF_KEYUP; // 0 for key press
+	SendInput(1, &ip, sizeof(INPUT));
 
     InitKeyStrokeTable();
 }
@@ -962,15 +974,20 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL *pIsE
             return;
         }
         BOOL isOpen = FALSE;
-		CCompartment CompartmentIMEMode(pThreadMgr, tfClientId, Global::TSFDayiGuidCompartmentIMEMode);
-        CompartmentIMEMode._GetCompartmentBOOL(isOpen);
-        CompartmentIMEMode._SetCompartmentBOOL(isOpen ? FALSE : TRUE);
+		
         
 		if(Global::isWindows8){
 			isOpen = FALSE;
 			CCompartment CompartmentKeyboardOpen(pThreadMgr, tfClientId, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
+			CCompartment CompartmentIMEMode(pThreadMgr, tfClientId, Global::TSFDayiGuidCompartmentIMEMode);
 			CompartmentKeyboardOpen._GetCompartmentBOOL(isOpen);
 			CompartmentKeyboardOpen._SetCompartmentBOOL(isOpen ? FALSE : TRUE);
+		}
+		else
+		{
+			CCompartment CompartmentIMEMode(pThreadMgr, tfClientId, Global::TSFDayiGuidCompartmentIMEMode);
+			CompartmentIMEMode._GetCompartmentBOOL(isOpen);
+			CompartmentIMEMode._SetCompartmentBOOL(isOpen ? FALSE : TRUE);
 		}
 
 		
@@ -1018,7 +1035,7 @@ void CCompositionProcessorEngine::SetupConfiguration()
 
     _candidateWndWidth = 5;
 	_MaxCodes = 4;
-	_fontHeight = 14;
+	_fontSize = 14;
 
 
     SetInitialCandidateListRange();
@@ -1326,7 +1343,6 @@ HRESULT CCompositionProcessorEngine::CompartmentCallback(_In_ void *pv, REFGUID 
     }
 
     if (IsEqualGUID(guidCompartment, Global::TSFDayiGuidCompartmentDoubleSingleByte) )
-        //||IsEqualGUID(guidCompartment, Global::TSFDayiGuidCompartmentPunctuation))
     {
         fakeThis->PrivateCompartmentsUpdated(pThreadMgr);
     }
@@ -1338,7 +1354,7 @@ HRESULT CCompositionProcessorEngine::CompartmentCallback(_In_ void *pv, REFGUID 
     else if (IsEqualGUID(guidCompartment, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE)||
 			 IsEqualGUID(guidCompartment, Global::TSFDayiGuidCompartmentIMEMode))
     {
-        fakeThis->KeyboardOpenCompartmentUpdated(pThreadMgr);
+		fakeThis->KeyboardOpenCompartmentUpdated(pThreadMgr, guidCompartment);
     }
 
     pThreadMgr->Release();
@@ -1379,39 +1395,14 @@ void CCompositionProcessorEngine::ConversionModeCompartmentUpdated(_In_ ITfThrea
         {
             CompartmentDoubleSingleByte._SetCompartmentBOOL(FALSE);
         }
+		if(isDouble)
+			_pTextService->OnSwitchedToFullShape();
+		else
+			_pTextService->OnSwitchedToHalfShape();
     }
-    BOOL isPunctuation = FALSE;
-    CCompartment CompartmentPunctuation(pThreadMgr, _tfClientId, Global::TSFDayiGuidCompartmentPunctuation);
-    if (SUCCEEDED(CompartmentPunctuation._GetCompartmentBOOL(isPunctuation)))
-    {
-        if (!isPunctuation && (conversionMode & TF_CONVERSIONMODE_SYMBOL))
-        {
-            CompartmentPunctuation._SetCompartmentBOOL(TRUE);
-        }
-        else if (isPunctuation && !(conversionMode & TF_CONVERSIONMODE_SYMBOL))
-        {
-            CompartmentPunctuation._SetCompartmentBOOL(FALSE);
-        }
-    }
-
-    BOOL fOpen = FALSE;
-	CCompartment CompartmentIMEMode(pThreadMgr, _tfClientId, Global::TSFDayiGuidCompartmentIMEMode);
-    if (SUCCEEDED(CompartmentIMEMode._GetCompartmentBOOL(fOpen)))
-    {
-        if (fOpen && !(conversionMode & TF_CONVERSIONMODE_NATIVE))
-        {
-            CompartmentIMEMode._SetCompartmentBOOL(FALSE);
-			_pTextService->OnKeyboardClosed();
-        }
-        else if (!fOpen && (conversionMode & TF_CONVERSIONMODE_NATIVE))
-        {
-            CompartmentIMEMode._SetCompartmentBOOL(TRUE);
-			_pTextService->OnKeyboardOpen();
-			loadConfig();
-			SetDefaultCandidateTextFont();
-        }
-    }
-
+  
+   
+	BOOL fOpen = FALSE;
 	if(Global::isWindows8){
 		fOpen = FALSE;
 		CCompartment CompartmentKeyboardOpen(pThreadMgr, _tfClientId, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
@@ -1427,7 +1418,21 @@ void CCompositionProcessorEngine::ConversionModeCompartmentUpdated(_In_ ITfThrea
 			}
 		}
 	}
+		
+	CCompartment CompartmentIMEMode(pThreadMgr, _tfClientId, Global::TSFDayiGuidCompartmentIMEMode);
+	if (SUCCEEDED(CompartmentIMEMode._GetCompartmentBOOL(fOpen)))
+	{
+		if (fOpen && !(conversionMode & TF_CONVERSIONMODE_NATIVE))
+		{
+			CompartmentIMEMode._SetCompartmentBOOL(FALSE);
+		}
+		else if (!fOpen && (conversionMode & TF_CONVERSIONMODE_NATIVE))
+		{
+			CompartmentIMEMode._SetCompartmentBOOL(TRUE);
+		}
+	}
 	
+
     
 	
 
@@ -1481,7 +1486,7 @@ void CCompositionProcessorEngine::PrivateCompartmentsUpdated(_In_ ITfThreadMgr *
 //
 //----------------------------------------------------------------------------
 
-void CCompositionProcessorEngine::KeyboardOpenCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr)
+void CCompositionProcessorEngine::KeyboardOpenCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr, _In_ REFGUID guidCompartment)
 {
 	OutputDebugString(L"CCompositionProcessorEngine::KeyboardOpenCompartmentUpdated()\n");
     if (!_pCompartmentConversion)
@@ -1498,12 +1503,11 @@ void CCompositionProcessorEngine::KeyboardOpenCompartmentUpdated(_In_ ITfThreadM
 
     conversionModePrev = conversionMode;
 
-    BOOL isOpen = FALSE;
-    
+    BOOL isOpen = FALSE;  
     CCompartment CompartmentIMEMode(pThreadMgr, _tfClientId, Global::TSFDayiGuidCompartmentIMEMode);
-    
-	if(Global::isWindows8){// check GUID_COMPARTMENT_KEYBOARD_OPENCLOSE in Windows 8.
-		isOpen = FALSE;
+	if(IsEqualGUID(guidCompartment, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE ))// Global::isWindows8 && check GUID_COMPARTMENT_KEYBOARD_OPENCLOSE in Windows 8.
+	{
+		
 		CCompartment CompartmentKeyboardOpen(pThreadMgr, _tfClientId, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
 		if (SUCCEEDED(CompartmentKeyboardOpen._GetCompartmentBOOL(isOpen)))
 		{
@@ -1516,41 +1520,42 @@ void CCompositionProcessorEngine::KeyboardOpenCompartmentUpdated(_In_ ITfThreadM
 				conversionMode &= ~TF_CONVERSIONMODE_NATIVE;
 			}
 		}
-		if(!isOpen) _pTextService->OnKeyboardClosed();
+		if (conversionMode != conversionModePrev)
+		     _pCompartmentConversion->_SetCompartmentDWORD(conversionMode);
+   	
+	}
+	isOpen = FALSE;
+	if (IsEqualGUID(guidCompartment, Global::TSFDayiGuidCompartmentIMEMode) && SUCCEEDED(CompartmentIMEMode._GetCompartmentBOOL(isOpen)))
+	{
+		if (isOpen && !(conversionMode & TF_CONVERSIONMODE_NATIVE))
+		{
+			conversionMode |= TF_CONVERSIONMODE_NATIVE;
+		}
+		else if (!isOpen && (conversionMode & TF_CONVERSIONMODE_NATIVE))
+		{
+			conversionMode &= ~TF_CONVERSIONMODE_NATIVE;
+		}
+		
+		if (conversionMode != conversionModePrev)
+		     _pCompartmentConversion->_SetCompartmentDWORD(conversionMode);
+    
+
+		if(!isOpen)
+		{
+			_pTextService->OnKeyboardClosed();
+		}
 		else
 		{
 			_pTextService->OnKeyboardOpen();
 			loadConfig();
 			SetDefaultCandidateTextFont();
 		}
+		
 	}
-	else
-	{
-		if (SUCCEEDED(CompartmentIMEMode._GetCompartmentBOOL(isOpen)))
-		{
-			if (isOpen && !(conversionMode & TF_CONVERSIONMODE_NATIVE))
-			{
-				conversionMode |= TF_CONVERSIONMODE_NATIVE;
-			}
-			else if (!isOpen && (conversionMode & TF_CONVERSIONMODE_NATIVE))
-			{
-				conversionMode &= ~TF_CONVERSIONMODE_NATIVE;
-			}
-			if(!isOpen) _pTextService->OnKeyboardClosed();
-			else
-			{
-				_pTextService->OnKeyboardOpen();
-				loadConfig();
-				SetDefaultCandidateTextFont();
-			}
-		}
-	}
-	
 
-    if (conversionMode != conversionModePrev)
-    {
-        _pCompartmentConversion->_SetCompartmentDWORD(conversionMode);
-    }
+
+
+   
 }
 
 
@@ -1834,13 +1839,13 @@ void CCompositionProcessorEngine::SetDefaultCandidateTextFont()
     {
 		WCHAR fontName[50] = {'\0'}; 
 		LoadString(Global::dllInstanceHandle, IDS_DEFAULT_FONT, fontName, 50);
-		Global::defaultlFontHandle = CreateFont(-MulDiv(_fontHeight, GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72), 0, 0, 0, FW_MEDIUM, 0, 0, 0, 0, 0, 0, 0, 0, fontName);
+		Global::defaultlFontHandle = CreateFont(-MulDiv(_fontSize, GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72), 0, 0, 0, FW_MEDIUM, 0, 0, 0, 0, 0, 0, 0, 0, fontName);
         if (!Global::defaultlFontHandle)
         {
 			LOGFONT lf;
 			SystemParametersInfo(SPI_GETICONTITLELOGFONT, sizeof(LOGFONT), &lf, 0);
             // Fall back to the default GUI font on failure.
-            Global::defaultlFontHandle = CreateFont(-MulDiv(_fontHeight, GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72), 0, 0, 0, FW_MEDIUM, 0, 0, 0, 0, 0, 0, 0, 0, lf.lfFaceName);
+            Global::defaultlFontHandle = CreateFont(-MulDiv(_fontSize, GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72), 0, 0, 0, FW_MEDIUM, 0, 0, 0, 0, 0, 0, 0, 0, lf.lfFaceName);
         }
     }
 }
@@ -2262,13 +2267,13 @@ void CCompositionProcessorEngine::SetThreeCodeMode(BOOL threeCodeMode)
 	_threeCodeMode = threeCodeMode;
 }
 
-void CCompositionProcessorEngine::SetFontHeight(UINT fontHeight)
+void CCompositionProcessorEngine::SetFontSize(UINT fontSize)
 {
-	_fontHeight = fontHeight;
+	_fontSize = fontSize;
 }
-UINT CCompositionProcessorEngine::GetFontHeight()
+UINT CCompositionProcessorEngine::GetFontSize()
 {
-	return _fontHeight;
+	return _fontSize;
 }
 
 void CCompositionProcessorEngine::SetMaxCodes(UINT maxCodes)

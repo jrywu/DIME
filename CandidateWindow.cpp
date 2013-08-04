@@ -41,7 +41,7 @@ CCandidateWindow::CCandidateWindow(_In_ CANDWNDCALLBACK pfnCallback, _In_ void *
 
     _isStoreAppMode = isStoreAppMode;
 
-	_fontHeight = _TextMetric.tmHeight;
+	_fontSize = _TextMetric.tmHeight;
 }
 
 //+---------------------------------------------------------------------------
@@ -64,13 +64,13 @@ CCandidateWindow::~CCandidateWindow()
 // CandidateWinow is the top window
 //----------------------------------------------------------------------------
 
-BOOL CCandidateWindow::_Create(ATOM atom, _In_ UINT wndWidth, _In_ UINT fontHeight, _In_opt_ HWND parentWndHandle)
+BOOL CCandidateWindow::_Create(_In_ UINT wndWidth, _In_ UINT fontSize, _In_opt_ HWND parentWndHandle)
 {
     BOOL ret = FALSE;
     _wndWidth = wndWidth;
-	_fontHeight = fontHeight;
+	_fontSize = fontSize;
 
-    ret = _CreateMainWindow(atom, parentWndHandle);
+    ret = _CreateMainWindow(parentWndHandle);
     if (FALSE == ret)
     {
         goto Exit;
@@ -94,11 +94,11 @@ Exit:
     return TRUE;
 }
 
-BOOL CCandidateWindow::_CreateMainWindow(ATOM atom, _In_opt_ HWND parentWndHandle)
+BOOL CCandidateWindow::_CreateMainWindow(_In_opt_ HWND parentWndHandle)
 {
     _SetUIWnd(this);
 
-    if (!CBaseWindow::_Create(atom,
+	if (!CBaseWindow::_Create(Global::AtomCandidateWindow,
         WS_EX_TOPMOST |  WS_EX_LAYERED |
 		WS_EX_TOOLWINDOW, 
         WS_BORDER | WS_POPUP,
@@ -120,7 +120,7 @@ BOOL CCandidateWindow::_CreateBackGroundShadowWindow()
         return FALSE;
     }
 
-    if (!_pShadowWnd->_Create(Global::AtomShadowWindow,
+    if (!_pShadowWnd->_Create(Global::AtomCandidateShadowWindow,
         WS_EX_TOPMOST | 
 		WS_EX_TOOLWINDOW | WS_EX_LAYERED,
         WS_DISABLED | WS_POPUP, this))
@@ -149,7 +149,7 @@ BOOL CCandidateWindow::_CreateVScrollWindow()
 
     _pVScrollBarWnd->_SetUIWnd(this);
 
-    if (!_pVScrollBarWnd->_Create(Global::AtomScrollBarWindow, 
+    if (!_pVScrollBarWnd->_Create(Global::AtomCandidateScrollBarWindow, 
 		WS_EX_TOPMOST | WS_EX_TOOLWINDOW
 		, WS_POPUP , this))
     {
@@ -482,7 +482,7 @@ void CCandidateWindow::_OnLButtonDown(POINT pt)
 
 	RECT rc = {0, 0, 0, 0};
 
-	rc.left = rcWindow.left + PageCountPosition* _fontHeight;
+	rc.left = rcWindow.left + PageCountPosition* _fontSize;
     rc.right = rcWindow.right  - GetSystemMetrics(SM_CXVSCROLL) * 2 - CANDWND_BORDER_WIDTH;
 
     for (UINT pageCount = 0; (index < _candidateList.Count()) && (pageCount < candidateListPageCnt); index++, pageCount++)

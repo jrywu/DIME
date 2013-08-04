@@ -311,8 +311,8 @@ ReadValue:
 					_pCompositionProcessorEngine->SetThreeCodeMode((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"DoBeep", 6)) == CSTR_EQUAL)
 					_pCompositionProcessorEngine->SetDoBeep((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"FontHeight", 10)) == CSTR_EQUAL)
-					_pCompositionProcessorEngine->SetFontHeight(_wtoi(valueStrings.GetAt(0)->Get()));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"FontSize", 10)) == CSTR_EQUAL)
+					_pCompositionProcessorEngine->SetFontSize(_wtoi(valueStrings.GetAt(0)->Get()));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"MaxCodes", 8)) == CSTR_EQUAL)
 					_pCompositionProcessorEngine->SetMaxCodes(_wtoi(valueStrings.GetAt(0)->Get()));
 				goto FindNextLine;

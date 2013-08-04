@@ -25,8 +25,10 @@ CNotifyWindow::CNotifyWindow(_In_ NOTIFYWNDCALLBACK pfnCallback, _In_ void *pv)
     _pShadowWnd = nullptr;
 	_cxTitle = 100;
 	_cyTitle = 100;
+	_x =0;
+	_y =0;
 
-	_fontHeight = 14;
+	_fontSize = 14;
   
 }
 
@@ -48,12 +50,12 @@ CNotifyWindow::~CNotifyWindow()
 // CandidateWinow is the top window
 //----------------------------------------------------------------------------
 
-BOOL CNotifyWindow::_Create(ATOM atom, _In_ UINT fontHeight, _In_opt_ HWND parentWndHandle)
+BOOL CNotifyWindow::_Create(_In_ UINT fontSize, _In_opt_ HWND parentWndHandle)
 {
     BOOL ret = FALSE;
-	_fontHeight = fontHeight;
+	_fontSize = fontSize;
 
-    ret = _CreateMainWindow(atom, parentWndHandle);
+    ret = _CreateMainWindow(parentWndHandle);
     if (FALSE == ret)
     {
         goto Exit;
@@ -71,11 +73,11 @@ Exit:
     return TRUE;
 }
 
-BOOL CNotifyWindow::_CreateMainWindow(ATOM atom, _In_opt_ HWND parentWndHandle)
+BOOL CNotifyWindow::_CreateMainWindow(_In_opt_ HWND parentWndHandle)
 {
     _SetUIWnd(this);
 
-    if (!CBaseWindow::_Create(atom,
+	if (!CBaseWindow::_Create(Global::AtomNotifyWindow,
 		WS_EX_TOPMOST | WS_EX_LAYERED |
 		WS_EX_TOOLWINDOW,
         WS_BORDER | WS_POPUP,
@@ -96,7 +98,7 @@ BOOL CNotifyWindow::_CreateBackGroundShadowWindow()
         return FALSE;
     }
 
-    if (!_pShadowWnd->_Create(Global::AtomShadowWindow,
+    if (!_pShadowWnd->_Create(Global::AtomNotifyShadowWindow,
         WS_EX_TOPMOST | 
 		WS_EX_TOOLWINDOW | WS_EX_LAYERED,
         WS_DISABLED | WS_POPUP, this))
@@ -111,13 +113,7 @@ BOOL CNotifyWindow::_CreateBackGroundShadowWindow()
 
 void CNotifyWindow::_ResizeWindow()
 {
-    //SIZE size = {0, 0};
-
-	//_cxTitle = notifyText.GetLength() * (_fontHeight +2);
-    
-	CBaseWindow::_Resize(0, 0, _cxTitle, _cyTitle);  //x, y, cx, cy
-
-    
+   	CBaseWindow::_Resize(_x, _y, _cxTitle, _cyTitle);  //x, y, cx, cy    
 }
 
 //+---------------------------------------------------------------------------
@@ -128,7 +124,10 @@ void CNotifyWindow::_ResizeWindow()
 
 void CNotifyWindow::_Move(int x, int y)
 {
-    CBaseWindow::_Move(x, y);
+	_x = x;
+	_y = y + _cyTitle;
+    CBaseWindow::_Move(_x, _y);
+	
 }
 
 //+---------------------------------------------------------------------------
@@ -137,13 +136,15 @@ void CNotifyWindow::_Move(int x, int y)
 //
 //----------------------------------------------------------------------------
 
-void CNotifyWindow::_Show(BOOL isShowWnd)
+void CNotifyWindow::_Show(BOOL isShowWnd, int timeToHide)
 {
     if (_pShadowWnd)
     {
         _pShadowWnd->_Show(isShowWnd);
     }
     CBaseWindow::_Show(isShowWnd);
+	if(isShowWnd && timeToHide > 0)
+			_StartTimer(timeToHide);//hide the window after timeToHide
 }
 
 //+---------------------------------------------------------------------------
@@ -186,7 +187,7 @@ LRESULT CALLBACK CNotifyWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT uM
                 HFONT hFontOld = (HFONT)SelectObject(dcHandle, Global::defaultlFontHandle);
                 GetTextMetrics(dcHandle, &_TextMetric);
 				 
-				_cxTitle = _TextMetric.tmAveCharWidth* (int) (notifyText.GetLength() + 5);
+				_cxTitle = _TextMetric.tmAveCharWidth* (int) (_notifyText.GetLength() + 5);
 				_cyTitle = _TextMetric.tmHeight *2;
 
                 SelectObject(dcHandle, hFontOld);
@@ -253,9 +254,12 @@ LRESULT CALLBACK CNotifyWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT uM
             PAINTSTRUCT ps;
 
             dcHandle = BeginPaint(wndHandle, &ps);
+	
             _OnPaint(dcHandle, &ps);
             _DrawBorder(wndHandle, NOTIFYWND_BORDER_WIDTH*2);
             EndPaint(wndHandle, &ps);
+
+            ReleaseDC(wndHandle, dcHandle);
         }
         return 0;
 
@@ -397,26 +401,27 @@ void CNotifyWindow::_OnMouseMove(POINT pt)
 void CNotifyWindow::_DrawText(_In_ HDC dcHandle, _In_ RECT *prc)
 {
     
+	HFONT hFontOld = (HFONT)SelectObject(dcHandle, Global::defaultlFontHandle);
 
-        
-	//SIZE size;
-	//GetTextExtentPoint32(dcHandle, notifyText.Get(), sizeof(size), &size);
- 	//_cxTitle =_TextMetric.tmAveCharWidth * int(notifyText.GetLength()+5);
-	//_cyTitle = _TextMetric.tmHeight *  2;
-
+	SIZE size;
+	GetTextExtentPoint32(dcHandle, _notifyText.Get(), (UINT)_notifyText.GetLength(), &size);
+	_cxTitle = size.cx  + _TextMetric.tmAveCharWidth * 5/2;
+	_cyTitle = size.cy * 3/2;
+ 
+	
     RECT rc;
 	rc.top = prc->top;
     rc.bottom = rc.top + _cyTitle;
 
     rc.left = prc->left;
-	rc.right = prc->left + _cyTitle;
+	rc.right = prc->left + _cxTitle;
 	
     SetTextColor(dcHandle, NOTIFYWND_TEXT_COLOR);
     SetBkColor(dcHandle, NOTIFYWND_TEXT_BK_COLOR);
+    ExtTextOut(dcHandle, _TextMetric.tmAveCharWidth, _cyTitle/5, ETO_OPAQUE, &rc, _notifyText.Get(), (DWORD)_notifyText.GetLength(), NULL);
 
-
-    ExtTextOut(dcHandle, _TextMetric.tmAveCharWidth, _cyTitle/4, ETO_OPAQUE, &rc, notifyText.Get(), (DWORD)notifyText.GetLength(), NULL);
-	//_ResizeWindow();
+	SelectObject(dcHandle, hFontOld);
+	_ResizeWindow();
     
     
 }
@@ -457,20 +462,20 @@ void CNotifyWindow::_DrawBorder(_In_ HWND wndHandle, _In_ int cx)
 //
 //----------------------------------------------------------------------------
 
-void CNotifyWindow::_AddString(_Inout_ const WCHAR *pNotifyText)
+void CNotifyWindow::_AddString(_Inout_ const CStringRange *pNotifyText)
 {
-    size_t notifyTextLen = wcslen(pNotifyText);
+	size_t notifyTextLen = pNotifyText->GetLength();
     WCHAR* pwchString = nullptr;
     if (notifyTextLen)
     {
-		pwchString = new (std::nothrow) WCHAR[ notifyText.GetLength() + notifyTextLen + 2];
+		pwchString = new (std::nothrow) WCHAR[ _notifyText.GetLength() + notifyTextLen + 2];
         if (!pwchString)
         {
             return;
         }
-		StringCchCopyN(pwchString, notifyText.GetLength() + notifyTextLen + 2, notifyText.Get(),notifyText.GetLength()); 
-		StringCchCatN(pwchString,notifyText.GetLength() + notifyTextLen + 2, pNotifyText, notifyTextLen); 
-		notifyText.Set(pwchString, notifyText.GetLength() + notifyTextLen);
+		StringCchCopyN(pwchString, _notifyText.GetLength() + notifyTextLen + 2, _notifyText.Get(),_notifyText.GetLength()); 
+		StringCchCatN(pwchString,_notifyText.GetLength() + notifyTextLen + 2, pNotifyText->Get(), notifyTextLen); 
+		_notifyText.Set(pwchString, _notifyText.GetLength() + notifyTextLen);
     }
 
    
@@ -482,9 +487,9 @@ void CNotifyWindow::_AddString(_Inout_ const WCHAR *pNotifyText)
 //
 //----------------------------------------------------------------------------
 
-void CNotifyWindow::_SetString(_Inout_ const WCHAR *pNotifyText)
+void CNotifyWindow::_SetString(_Inout_ const CStringRange *pNotifyText)
 {
-    size_t notifyTextLen = wcslen(pNotifyText);
+	size_t notifyTextLen = pNotifyText->GetLength();
     WCHAR* pwchString = nullptr;
     if (notifyTextLen)
     {
@@ -493,8 +498,8 @@ void CNotifyWindow::_SetString(_Inout_ const WCHAR *pNotifyText)
         {
             return;
         }
-		StringCchCopyN(pwchString, notifyTextLen + 1, pNotifyText, notifyTextLen);
-		notifyText.Set(pwchString, notifyTextLen);
+		StringCchCopyN(pwchString, notifyTextLen + 1, pNotifyText->Get(), notifyTextLen);
+		_notifyText.Set(pwchString, notifyTextLen);
     }
 
    
@@ -508,7 +513,7 @@ void CNotifyWindow::_SetString(_Inout_ const WCHAR *pNotifyText)
 
 void CNotifyWindow::_Clear()
 {
-	notifyText.Set(L'\0',1);
+	_notifyText.Set(nullptr,0);
 }
 
 
@@ -553,3 +558,12 @@ void CNotifyWindow::_DeleteShadowWnd()
     }
 }
 
+void CNotifyWindow::_OnTimer()
+{
+	_Show(FALSE);
+	if (_IsTimer())
+    {
+        _EndTimer();
+    }
+
+}

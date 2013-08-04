@@ -109,8 +109,10 @@ extern BOOL hasPhraseSection; // the dictionary file has TTS [Phrase] section
 extern BOOL hasCINPhraseSection; // the dictionary file has CIN %phrasedef section
 
 extern ATOM AtomCandidateWindow;
-extern ATOM AtomShadowWindow;
-extern ATOM AtomScrollBarWindow;
+extern ATOM AtomCandidateShadowWindow;
+extern ATOM AtomCandidateScrollBarWindow;
+extern ATOM AtomNotifyWindow;
+extern ATOM AtomNotifyShadowWindow;
 
 BOOL RegisterWindowClass();
 

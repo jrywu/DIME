@@ -94,8 +94,8 @@ public:
 	void SetAutoCompose(BOOL autoCompose);
 	BOOL GetAutoCompose();
 	void SetThreeCodeMode(BOOL threeCodeMode);
-	void SetFontHeight(UINT fontHeight);
-	UINT GetFontHeight();
+	void SetFontSize(UINT fontSize);
+	UINT GetFontSize();
 	void SetMaxCodes(UINT maxCodes);
 	void SetDoBeep(BOOL doBeep);
 
@@ -125,7 +125,7 @@ private:
 
     static HRESULT CompartmentCallback(_In_ void *pv, REFGUID guidCompartment);
     void PrivateCompartmentsUpdated(_In_ ITfThreadMgr *pThreadMgr);
-    void KeyboardOpenCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr);
+    void KeyboardOpenCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr, _In_ REFGUID guidCompartment);
 
     
     BOOL SetupDictionaryFile();
@@ -208,7 +208,7 @@ private:
     CCandidateRange _candidateListIndexRange;
     UINT _candidateListPhraseModifier;
     UINT _candidateWndWidth;
-	UINT _fontHeight;
+	UINT _fontSize;
 	UINT _MaxCodes;
 	BOOL _doBeep;
 

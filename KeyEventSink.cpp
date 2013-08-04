@@ -292,7 +292,7 @@ STDAPI CTSFDayi::OnSetFocus(BOOL fForeground)
 //----------------------------------------------------------------------------
 
 STDAPI CTSFDayi::OnTestKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL *pIsEaten)
-{
+ {
     Global::UpdateModifiers(wParam, lParam);
 
     _KEYSTROKE_STATE KeystrokeState;
@@ -415,7 +415,9 @@ STDAPI CTSFDayi::OnKeyUp(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOO
 
 STDAPI CTSFDayi::OnPreservedKey(ITfContext *pContext, REFGUID rguid, BOOL *pIsEaten)
 {
-	pContext;
+	//pContext;
+	if(_pContext == nullptr)
+		_SaveCompositionContext(pContext); // save the _pContext
 
     CCompositionProcessorEngine *pCompositionProcessorEngine;
     pCompositionProcessorEngine = _pCompositionProcessorEngine;
@@ -425,7 +427,6 @@ STDAPI CTSFDayi::OnPreservedKey(ITfContext *pContext, REFGUID rguid, BOOL *pIsEa
 	BOOL isOpen = FALSE;
 	CCompartment CompartmentKeyboardOpen(_pThreadMgr, _tfClientId, Global::TSFDayiGuidCompartmentIMEMode);
     CompartmentKeyboardOpen._GetCompartmentBOOL(isOpen);
-	//if(!isOpen)	 _DeleteCandidateList(TRUE, pContext);  //Delete phrase candidates when switched to native mode.
 
 
     return S_OK;

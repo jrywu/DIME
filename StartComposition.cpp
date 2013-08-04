@@ -126,7 +126,16 @@ void CTSFDayi::_StartComposition(_In_ ITfContext *pContext)
 
 void CTSFDayi::_SaveCompositionContext(_In_ ITfContext *pContext)
 {
-    assert(_pContext == nullptr);
+    if(_pContext) 
+	{
+		if( _pContext == pContext)
+			return;
+		else
+		{
+			_pContext->Release();
+			_pContext = nullptr;
+		}
+	}
 
     pContext->AddRef();
     _pContext = pContext;

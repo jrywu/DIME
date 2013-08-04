@@ -46,30 +46,6 @@ BOOL CTSFDayi::_IsRangeCovered(TfEditCookie ec, _In_ ITfRange *pRangeTest, _In_ 
 
 //+---------------------------------------------------------------------------
 //
-// _DeleteCandidateList
-//
-//----------------------------------------------------------------------------
-
-VOID CTSFDayi::_DeleteCandidateList(BOOL isForce, _In_opt_ ITfContext *pContext)
-{
-	OutputDebugString(L"CTSFDayi::_DeleteCandidateList()\n");
-    isForce;pContext;
-
-    CCompositionProcessorEngine* pCompositionProcessorEngine = nullptr;
-    pCompositionProcessorEngine = _pCompositionProcessorEngine;
-    pCompositionProcessorEngine->PurgeVirtualKey();
-
-    if (_pTSFDayiUIPresenter)
-    {
-        _pTSFDayiUIPresenter->_EndCandidateList();
-
-        _candidateMode = CANDIDATE_NONE;
-        _isCandidateWithWildcard = FALSE;
-    }
-}
-
-//+---------------------------------------------------------------------------
-//
 // _HandleComplete
 //
 //----------------------------------------------------------------------------
@@ -209,16 +185,19 @@ HRESULT CTSFDayi::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine
 			hr = _CreateAndStartCandidate(pCompositionProcessorEngine, ec, pContext);
 			if (SUCCEEDED(hr))
 			{
-				_pTSFDayiUIPresenter->_ClearList();
-				_pTSFDayiUIPresenter->_SetText(&candidateList, TRUE);
+				_pTSFDayiUIPresenter->_ClearCandidateList();
+				_pTSFDayiUIPresenter->_SetCandidateText(&candidateList, TRUE);
 				_pTSFDayiUIPresenter->Show(TRUE); 
+		        _candidateMode = CANDIDATE_INCREMENTAL;
+				_isCandidateWithWildcard = FALSE;
+
 			}
 
 
 		}
 		else if (_pTSFDayiUIPresenter)
 		{
-			_pTSFDayiUIPresenter->_ClearList();
+			_pTSFDayiUIPresenter->_ClearCandidateList();
 			_pTSFDayiUIPresenter->Show(FALSE);  // hide the candidate window if now candidates in autocompose mode
 		}
 		else if (readingStrings.Count() && isWildcardIncluded)
@@ -226,67 +205,16 @@ HRESULT CTSFDayi::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine
 			hr = _CreateAndStartCandidate(pCompositionProcessorEngine, ec, pContext);
 			if (SUCCEEDED(hr))
 			{
-				_pTSFDayiUIPresenter->_ClearList();
+				_pTSFDayiUIPresenter->_ClearCandidateList();
+				_candidateMode = CANDIDATE_INCREMENTAL;
+				_isCandidateWithWildcard = FALSE;
 			}
 		}
 
 	}
     return hr;
 }
-//+---------------------------------------------------------------------------
-//
-// _CreateAndStartCandidate
-//
-//----------------------------------------------------------------------------
 
-HRESULT CTSFDayi::_CreateAndStartCandidate(_In_ CCompositionProcessorEngine *pCompositionProcessorEngine, TfEditCookie ec, _In_ ITfContext *pContext)
-{
-    HRESULT hr = S_OK;
-
-    //if (((_candidateMode == CANDIDATE_PHRASE) && (_pTSFDayiUIPresenter))|| ((_candidateMode == CANDIDATE_NONE) && (_pTSFDayiUIPresenter)))
-	if(_pTSFDayiUIPresenter)
-    {
-        // Recreate candidate list
-        _pTSFDayiUIPresenter->_EndCandidateList();
-        delete _pTSFDayiUIPresenter;
-        _pTSFDayiUIPresenter = nullptr;
-
-        _candidateMode = CANDIDATE_NONE;
-        _isCandidateWithWildcard = FALSE;
-    }
-
-    if (_pTSFDayiUIPresenter == nullptr)
-    {
-        _pTSFDayiUIPresenter = new (std::nothrow) CTSFDayiUIPresenter(this, Global::AtomCandidateWindow,
-            CATEGORY_CANDIDATE,
-            pCompositionProcessorEngine->GetCandidateListIndexRange(),
-            FALSE,
-			pCompositionProcessorEngine);
-        if (!_pTSFDayiUIPresenter)
-        {
-            return E_OUTOFMEMORY;
-        }	
-
-        _candidateMode = CANDIDATE_INCREMENTAL;
-        _isCandidateWithWildcard = FALSE;
-
-        // we don't cache the document manager object. So get it from pContext.
-        ITfDocumentMgr* pDocumentMgr = nullptr;
-        if (SUCCEEDED(pContext->GetDocumentMgr(&pDocumentMgr)))
-        {
-            // get the composition range.
-            ITfRange* pRange = nullptr;
-            if (SUCCEEDED(_pComposition->GetRange(&pRange)))
-            {
-                hr = _pTSFDayiUIPresenter->_StartCandidateList(_tfClientId, pDocumentMgr, pContext, ec, pRange, pCompositionProcessorEngine->GetCandidateWindowWidth());
-                pRange->Release();
-            }
-            pDocumentMgr->Release();
-        }
-    }
-
-    return hr;
-}
 
 //+---------------------------------------------------------------------------
 //
@@ -380,57 +308,8 @@ HRESULT CTSFDayi::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pC
 		 {
 			_candidateMode = CANDIDATE_ORIGINAL;
 			 _isCandidateWithWildcard = isWildcardSearch;
-			 _pTSFDayiUIPresenter->_SetText(&candidateList, FALSE);
+			 _pTSFDayiUIPresenter->_SetCandidateText(&candidateList, FALSE);
 		 }
-		/*
-        if (_pTSFDayiUIPresenter)
-        {
-            _pTSFDayiUIPresenter->_EndCandidateList();
-            delete _pTSFDayiUIPresenter;
-            _pTSFDayiUIPresenter = nullptr;
-
-            _candidateMode = CANDIDATE_NONE;
-            _isCandidateWithWildcard = FALSE;
-        }
-
-        // 
-        // create an instance of the candidate list class.
-        // 
-        if (_pTSFDayiUIPresenter == nullptr)
-        {
-            _pTSFDayiUIPresenter = new (std::nothrow) CTSFDayiUIPresenter(this, Global::AtomCandidateWindow,
-                CATEGORY_CANDIDATE,
-                pCompositionProcessorEngine->GetCandidateListIndexRange(),
-                FALSE,
-				pCompositionProcessorEngine);
-            if (!_pTSFDayiUIPresenter)
-            {
-                return E_OUTOFMEMORY;
-            }
-
-            _candidateMode = CANDIDATE_ORIGINAL;
-        }
-
-        _isCandidateWithWildcard = isWildcardSearch;
-
-        // we don't cache the document manager object. So get it from pContext.
-        ITfDocumentMgr* pDocumentMgr = nullptr;
-        if (SUCCEEDED(pContext->GetDocumentMgr(&pDocumentMgr)))
-        {
-            // get the composition range.
-            ITfRange* pRange = nullptr;
-            if (SUCCEEDED(_pComposition->GetRange(&pRange)))
-            {
-                hr = _pTSFDayiUIPresenter->_StartCandidateList(_tfClientId, pDocumentMgr, pContext, ec, pRange, pCompositionProcessorEngine->GetCandidateWindowWidth());
-                pRange->Release();
-            }
-            pDocumentMgr->Release();
-        }
-        if (SUCCEEDED(hr))
-        {
-            _pTSFDayiUIPresenter->_SetText(&candidateList, FALSE);
-        }
-		*/
     }
 	if(nCount==1 )  //finalized with the only candidate without showing cand.
 	{

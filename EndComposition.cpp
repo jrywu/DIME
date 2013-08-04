@@ -65,11 +65,13 @@ void CTSFDayi::_TerminateComposition(TfEditCookie ec, _In_ ITfContext *pContext,
         _pComposition->Release();
         _pComposition = nullptr;
 
+		/*
         if (_pContext)
         {
             _pContext->Release();
             _pContext = nullptr;
         }
+		*/
     }
 }
 

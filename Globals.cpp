@@ -188,12 +188,15 @@ extern const WCHAR LangbarDoubleSingleByteDescription[] = L"Character width";
 //---------------------------------------------------------------------
 extern const WCHAR CandidateClassName[] = L"TSFDayi.CandidateWindow";
 ATOM AtomCandidateWindow;
+extern const WCHAR CandidateShadowClassName[] = L"TSFDayi.CandidateShadowWindow";
+ATOM AtomCandidateShadowWindow;
+extern const WCHAR CandidateScrollBarClassName[] = L"TSFDayi.CandidateScrollBarWindow";
+ATOM AtomCandidateScrollBarWindow;
+extern const WCHAR NotifyClassName[] = L"TSFDayi.NotifyWindow";
+ATOM AtomNotifyWindow;
+extern const WCHAR NotifyShadowClassName[] = L"TSFDayi.NotifyShadowWindow";
+ATOM AtomNotifyShadowWindow;
 
-extern const WCHAR ShadowClassName[] = L"TSFDayi.ShadowWindow";
-ATOM AtomShadowWindow;
-
-extern const WCHAR ScrollBarClassName[] = L"TSFDayi.ScrollBarWindow";
-ATOM AtomScrollBarWindow;
 
 BOOL RegisterWindowClass()
 {
@@ -201,14 +204,24 @@ BOOL RegisterWindowClass()
     {
         return FALSE;
     }
-    if (!CBaseWindow::_InitWindowClass(ShadowClassName, &AtomShadowWindow))
+    if (!CBaseWindow::_InitWindowClass(CandidateShadowClassName, &AtomCandidateShadowWindow))
     {
         return FALSE;
     }
-    if (!CBaseWindow::_InitWindowClass(ScrollBarClassName, &AtomScrollBarWindow))
+    if (!CBaseWindow::_InitWindowClass(CandidateScrollBarClassName, &AtomCandidateScrollBarWindow))
     {
         return FALSE;
     }
+	
+    if (!CBaseWindow::_InitWindowClass(NotifyClassName, &AtomNotifyWindow))
+    {
+        return FALSE;
+    }
+    if (!CBaseWindow::_InitWindowClass(NotifyShadowClassName, &AtomNotifyShadowWindow))
+    {
+        return FALSE;
+    }
+
     return TRUE;
 }
 

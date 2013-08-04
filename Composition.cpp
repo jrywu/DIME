@@ -56,7 +56,7 @@ HRESULT CTSFDayi::_HandlTextLayoutChange(TfEditCookie ec, _In_ ITfContext *pCont
 	//_pTSFDayiUIPresenter->GetCandLocation(&newCandLocation);
 
 	POINT curPos;
-	GetCursorPos(&curPos);
+	GetCaretPos(&curPos);
 	
 	WCHAR wszbuf[256];
 	swprintf(wszbuf,256, L"CTSFDayi::_HandlTextLayouyChange(), candMode = %d, _phraseCandShowing = %d\n" , _candidateMode, _phraseCandShowing);

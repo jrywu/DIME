@@ -35,12 +35,7 @@ class CTSFDayiUIPresenter :
     public ITfIntegratableCandidateListUIElement
 {
 public:
-    CTSFDayiUIPresenter(_In_ CTSFDayi *pTextService, ATOM atom,
-        KEYSTROKE_CATEGORY Category,
-        _In_ CCandidateRange *pIndexRange,
-        BOOL hideWindow,
-		_In_ CCompositionProcessorEngine *pCompositionProcessorEngine
-		);
+    CTSFDayiUIPresenter(_In_ CTSFDayi *pTextService, _In_ CCompositionProcessorEngine *pCompositionProcessorEngine);
     virtual ~CTSFDayiUIPresenter();
 
     // IUnknown
@@ -79,17 +74,17 @@ public:
     virtual HRESULT _StartCandidateList(TfClientId tfClientId, _In_ ITfDocumentMgr *pDocumentMgr, _In_ ITfContext *pContextDocument, TfEditCookie ec, _In_ ITfRange *pRangeComposition, UINT wndWidth);
     void _EndCandidateList();
 
-    void _SetText(_In_ CTSFDayiArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode);
-    void _ClearList();
-    VOID _SetTextColor(COLORREF crColor, COLORREF crBkColor);
-    VOID _SetFillColor(HBRUSH hBrush);
+    void _SetCandidateText(_In_ CTSFDayiArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode);
+    void _ClearCandidateList();
+    VOID _SetCandidateTextColor(COLORREF crColor, COLORREF crBkColor);
+    VOID _SetCandidateFillColor(HBRUSH hBrush);
 
     DWORD_PTR _GetSelectedCandidateString(_Outptr_result_maybenull_ const WCHAR **ppwchCandidateString);
-    BOOL _SetSelectionInPage(int nPos) { return _pCandidateWnd->_SetSelectionInPage(nPos); }
+    BOOL _SetCandidateSelectionInPage(int nPos) { return _pCandidateWnd->_SetSelectionInPage(nPos); }
 
-    BOOL _MoveSelection(_In_ int offSet);
-	BOOL _SetSelection(_In_ int selectedIndex, _In_opt_ BOOL isNotify = TRUE);
-    BOOL _MovePage(_In_ int offSet);
+    BOOL _MoveCandidateSelection(_In_ int offSet);
+	BOOL _SetCandidateSelection(_In_ int selectedIndex, _In_opt_ BOOL isNotify = TRUE);
+    BOOL _MoveCandidatePage(_In_ int offSet);
 
     void _MoveWindowToTextExt();
 
@@ -106,7 +101,13 @@ public:
 
 	void GetCandLocation(_Out_ POINT *lpPoint);
 
-	HRESULT ShowNotifyWindow(_In_ ITfContext *pContextDocument, CStringRange* notifyText);
+	// notify window
+	HRESULT MakeNotifyWindow(_In_ ITfContext *pContextDocument);
+	void SetNotifyText(_In_ CStringRange *pNotifyText);
+	void ShowNotify(_In_ BOOL showMode, _In_opt_ int timeToHide = -1);
+	void ClearNotify();
+	void ShowNotifyText(_In_ ITfContext *pContextDocument, _In_ CStringRange *pNotifyText);
+
 
 private:
     virtual HRESULT CALLBACK _CandidateChangeNotification(_In_ enum CANDWND_ACTION action);
@@ -128,7 +129,8 @@ private:
 
     HRESULT MakeCandidateWindow(_In_ ITfContext *pContextDocument, _In_ UINT wndWidth);
 	
-    void DisposeCandidateWindow();
+    void DisposeNotifyWindow();
+	void DisposeCandidateWindow();
 
     void AddCandidateToTSFDayiUI(_In_ CTSFDayiArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode);
 
@@ -138,12 +140,11 @@ protected:
     CCandidateWindow *_pCandidateWnd;
 	CNotifyWindow *_pNotifyWnd;
     BOOL _isShowMode;
-    BOOL _hideWindow;
+    BOOL _hideCandidateWindow;
 
 private:
 	CCompositionProcessorEngine *_pCompositionProcessorEngine;  // to retrieve user settings
     HWND _parentWndHandle;
-    ATOM _atom;
     CCandidateRange* _pIndexRange;
     KEYSTROKE_CATEGORY _Category;
     DWORD _updatedFlags;
@@ -156,7 +157,7 @@ private:
 
 //////////////////////////////////////////////////////////////////////
 //
-// CTSFDayi candidate key handler methods
+// candidate key handler methods
 //
 //////////////////////////////////////////////////////////////////////
 

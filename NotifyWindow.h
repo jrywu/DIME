@@ -26,22 +26,23 @@ public:
     CNotifyWindow(_In_ NOTIFYWNDCALLBACK pfnCallback, _In_ void *pv);
     virtual ~CNotifyWindow();
 
-    BOOL _Create(ATOM atom, _In_ UINT fontHeight,  _In_opt_ HWND parentWndHandle);
+    BOOL _Create(_In_ UINT fontHeight,  _In_opt_ HWND parentWndHandle);
 
     void _Move(int x, int y);
-    void _Show(BOOL isShowWnd);
+    void _Show(BOOL isShowWnd, int timeToHide = -1);
 
     VOID _SetTextColor(_In_ COLORREF crColor, _In_ COLORREF crBkColor);
     VOID _SetFillColor(_In_ HBRUSH hBrush);
 
     LRESULT CALLBACK _WindowProcCallback(_In_ HWND wndHandle, UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam);
     void _OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps);
+	virtual void _OnTimer();
     //void _OnLButtonDown(POINT pt);
     //void _OnLButtonUp(POINT pt);
     //void _OnMouseMove(POINT pt);
     
-    void _AddString(_Inout_ const WCHAR *pNotifyText);
-	void _SetString(_Inout_ const WCHAR *pNotifyText);
+    void _AddString(_Inout_ const CStringRange *pNotifyText);
+	void _SetString(_Inout_ const CStringRange *pNotifyText);
     void _Clear();
     
 private:
@@ -52,7 +53,7 @@ private:
 	// LightDismiss feature support, it will fire messages lightdismiss-related to the light dismiss layout.
     void _FireMessageToLightDismiss(_In_ HWND wndHandle, _In_ WINDOWPOS *pWndPos);
 
-    BOOL _CreateMainWindow(ATOM atom, _In_opt_ HWND parentWndHandle);
+    BOOL _CreateMainWindow(_In_opt_ HWND parentWndHandle);
     BOOL _CreateBackGroundShadowWindow();
     
     void _ResizeWindow();
@@ -71,9 +72,11 @@ private:
     void* _pObj;
 	int _cxTitle;
 	int _cyTitle;
+	int _x;
+	int _y;
 
-	CStringRange notifyText;
-	UINT _fontHeight;
+	CStringRange _notifyText;
+	UINT _fontSize;
 
     CShadowWindow* _pShadowWnd;
 };

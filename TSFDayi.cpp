@@ -485,17 +485,58 @@ void CTSFDayi::OnKeyboardClosed()
 {
 	OutputDebugString(L"CTSFDayi::OnKeyboardClosed()\n");
 	// switching to English (native) mode delete the phrase candidate window before exting.
-	if(_pContext) 
+	if(_IsComposing()) 
 		_EndComposition(_pContext);
 	_DeleteCandidateList(FALSE, NULL);
-	
+	CStringRange notifyText;
+	ShowNotifyText(_pContext,  &notifyText.Set(L"英文", 2));
 }
 
 void CTSFDayi::OnKeyboardOpen()
 {
 	OutputDebugString(L"CTSFDayi::OnKeyboardOpen()\n");
 	// switching to Chinese mode
-	
+	CStringRange notifyText;
+	ShowNotifyText(_pContext, &notifyText.Set(L"中文", 2));
 	
 }
 
+void CTSFDayi::OnSwitchedToFullShape()
+{
+	OutputDebugString(L"CTSFDayi::OnSwitchedToFullShape()\n");
+	if(_IsComposing()) 
+		_EndComposition(_pContext);
+	_DeleteCandidateList(FALSE, NULL);
+	CStringRange notifyText;
+	ShowNotifyText(_pContext, &notifyText.Set(L"全形", 2));
+	
+}
+
+void CTSFDayi::OnSwitchedToHalfShape()
+{
+	OutputDebugString(L"CTSFDayi::OnSwitchedToHalfShape()\n");
+	if(_IsComposing()) 
+		_EndComposition(_pContext);
+	_DeleteCandidateList(FALSE, NULL);
+	CStringRange notifyText;
+	ShowNotifyText(_pContext, &notifyText.Set(L"半形", 2));
+	
+}
+
+
+HRESULT CTSFDayi::ShowNotifyText(ITfContext *pContext, CStringRange *pNotifyText)
+{
+	HRESULT hr = S_OK;
+	
+	
+	if(_pTSFDayiUIPresenter == nullptr)
+    {
+		_pTSFDayiUIPresenter = new (std::nothrow) CTSFDayiUIPresenter(this, _pCompositionProcessorEngine);
+		if (!_pTSFDayiUIPresenter)
+        {
+            return E_OUTOFMEMORY;
+        }	
+    }
+    _pTSFDayiUIPresenter->ShowNotifyText(pContext, pNotifyText);
+	return hr;
+}

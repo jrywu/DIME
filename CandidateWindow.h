@@ -27,7 +27,7 @@ public:
     CCandidateWindow(_In_ CANDWNDCALLBACK pfnCallback, _In_ void *pv, _In_ CCandidateRange *pIndexRange, _In_ BOOL isStoreAppMode);
     virtual ~CCandidateWindow();
 
-    BOOL _Create(ATOM atom, _In_ UINT wndWidth, _In_ UINT fontHeight, _In_opt_ HWND parentWndHandle);
+    BOOL _Create(_In_ UINT wndWidth, _In_ UINT fontSize, _In_opt_ HWND parentWndHandle);
 
     void _Move(int x, int y);
     void _Show(BOOL isShowWnd);
@@ -79,7 +79,7 @@ private:
 	// LightDismiss feature support, it will fire messages lightdismiss-related to the light dismiss layout.
     void _FireMessageToLightDismiss(_In_ HWND wndHandle, _In_ WINDOWPOS *pWndPos);
 
-    BOOL _CreateMainWindow(ATOM atom, _In_opt_ HWND parentWndHandle);
+    BOOL _CreateMainWindow(_In_opt_ HWND parentWndHandle);
     BOOL _CreateBackGroundShadowWindow();
     BOOL _CreateVScrollWindow();
 
@@ -104,7 +104,7 @@ private:
     int _cyRow;
     int _cxTitle;
     UINT _wndWidth;
-	UINT _fontHeight;
+	UINT _fontSize;
 
     CCandidateRange* _pIndexRange;
 
