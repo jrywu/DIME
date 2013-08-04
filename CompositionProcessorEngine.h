@@ -4,11 +4,13 @@
 //
 //
 
-
+#ifndef COMPOSITINPROCESSORENGINE_H
+#define COMPOSITINPROCESSORENGINE_H
 
 #pragma once
 
 #include "sal.h"
+#include "LanguageBar.h"
 #include "TableDictionaryEngine.h"
 #include "KeyHandlerEditSession.h"
 #include "TSFDayiBaseStructure.h"
@@ -21,7 +23,8 @@ class CCompositionProcessorEngine
 public:
     CCompositionProcessorEngine(_In_ CTSFDayi *pTextService);
     ~CCompositionProcessorEngine(void);
-
+	
+	
     BOOL SetupLanguageProfile(LANGID langid, REFGUID guidLanguageProfile, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, BOOL isSecureMode, BOOL isComLessMode);
 
     // Get language profile.
@@ -84,6 +87,18 @@ public:
     inline UINT GetCandidateListPhraseModifier() { return _candidateListPhraseModifier; }
     inline UINT GetCandidateWindowWidth() { return _candidateWndWidth; }
 
+	// Play system warning beep
+	void DoBeep();
+
+	//  configuration set/get
+	void SetAutoCompose(BOOL autoCompose);
+	BOOL GetAutoCompose();
+	void SetThreeCodeMode(BOOL threeCodeMode);
+	void SetFontHeight(UINT fontHeight);
+	UINT GetFontHeight();
+	void SetMaxCodes(UINT maxCodes);
+	void SetDoBeep(BOOL doBeep);
+
 private:
     void InitKeyStrokeTable();
     BOOL InitLanguageBar(_In_ CLangBarItemButton *pLanguageBar, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, REFGUID guidCompartment);
@@ -114,6 +129,7 @@ private:
 
     
     BOOL SetupDictionaryFile();
+	VOID loadConfig();
     CFile* GetDictionaryFile();
 
 private:
@@ -187,14 +203,19 @@ private:
     BOOL _hasMakePhraseFromText : 1;
     BOOL _isKeystrokeSort : 1;
     BOOL _isComLessMode : 1;
+	BOOL _autoCompose : 1;
+	BOOL _threeCodeMode : 1;
     CCandidateRange _candidateListIndexRange;
     UINT _candidateListPhraseModifier;
     UINT _candidateWndWidth;
+	UINT _fontHeight;
+	UINT _MaxCodes;
+	BOOL _doBeep;
 
     CFileMapping* _pTTSDictionaryFile;
 	CFileMapping* _pCINDictionaryFile;
 
     static const int OUT_OF_FILE_INDEX = -1;
 };
-
+#endif
 

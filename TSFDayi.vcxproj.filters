@@ -289,9 +289,6 @@
     <ClCompile Include="Globals.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="TSFDayiBaseStructure.cpp">
-      <Filter>Source Files\Framework</Filter>
-    </ClCompile>
     <ClCompile Include="NotifyWindow.cpp">
       <Filter>Source Files\UI\NotifyWindow</Filter>
     </ClCompile>
@@ -299,9 +296,6 @@
       <Filter>Source Files\UI</Filter>
     </ClCompile>
     <ClCompile Include="BaseWindow.cpp">
-      <Filter>Source Files\UI</Filter>
-    </ClCompile>
-    <ClCompile Include="TfTextLayoutSink.cpp">
       <Filter>Source Files\UI</Filter>
     </ClCompile>
     <ClCompile Include="ShadowWindow.cpp">
@@ -312,6 +306,15 @@
     </ClCompile>
     <ClCompile Include="ScrollBarWindow.cpp">
       <Filter>Source Files\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="CandidateHandler.cpp">
+      <Filter>Source Files\Framework\Composition</Filter>
+    </ClCompile>
+    <ClCompile Include="TfTextLayoutSink.cpp">
+      <Filter>Source Files\Framework</Filter>
+    </ClCompile>
+    <ClCompile Include="TSFDayiBaseStructure.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

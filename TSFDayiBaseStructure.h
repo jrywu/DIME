@@ -3,7 +3,8 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-
+#ifndef TSFDAYIBASESTRUCTURE_H
+#define TSFDAYIBASESTRUCTURE_H
 
 #pragma once
 
@@ -246,4 +247,4 @@ struct CCandidateListItem
 		return *this;
 	}
 };
-
+#endif

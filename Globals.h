@@ -3,7 +3,8 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-
+#ifndef GLOBAL_H
+#define GLOBAL_H
 
 #pragma once
 #include <map>
@@ -118,6 +119,9 @@ extern LONG dllRefCount;
 extern CRITICAL_SECTION CS;
 extern HFONT defaultlFontHandle;  // Global font object we use everywhere
 
+
+
+
 extern const CLSID TSFDayiCLSID;
 extern const CLSID TSFDayiGuidProfile;
 extern const CLSID TSFDayiGuidImeModePreserveKey;
@@ -170,3 +174,6 @@ extern const WCHAR LangbarImeModeDescription[];
 extern const WCHAR LangbarDoubleSingleByteDescription[];
 extern const WCHAR LangbarPunctuationDescription[];
 }
+
+
+#endif

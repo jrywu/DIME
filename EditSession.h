@@ -3,8 +3,10 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-
-
+#ifndef EDITSESSION_H
+#define EDITSESSION_H
+#include "TSFDayiBaseStructure.h"
+#include "Private.h"
 
 #pragma once
 
@@ -31,3 +33,4 @@ protected:
 private:
     LONG _refCount;     // COM ref count
 };
+#endif

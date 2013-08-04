@@ -479,3 +479,23 @@ HRESULT CTSFDayi::Show(_In_ HWND hwndParent)
 	MessageBox(hwndParent, L"Show help call", L"TSFDayi", NULL);
         return S_OK;
 }
+
+
+void CTSFDayi::OnKeyboardClosed()
+{
+	OutputDebugString(L"CTSFDayi::OnKeyboardClosed()\n");
+	// switching to English (native) mode delete the phrase candidate window before exting.
+	if(_pContext) 
+		_EndComposition(_pContext);
+	_DeleteCandidateList(FALSE, NULL);
+	
+}
+
+void CTSFDayi::OnKeyboardOpen()
+{
+	OutputDebugString(L"CTSFDayi::OnKeyboardOpen()\n");
+	// switching to Chinese mode
+	
+	
+}
+

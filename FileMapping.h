@@ -3,6 +3,8 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
+#ifndef FILEMAPPING_H
+#define FILEMAPPING_H
 
 
 #pragma once
@@ -44,3 +46,4 @@ private:
     HANDLE _fileMappingHandle;  // file handle for CreateFileMapping
     const VOID *_pMapBuffer;    // read buffer memory.
 };
+#endif

@@ -3,7 +3,8 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-
+#ifndef LANGUAGEBAR_H
+#define LANGUAGEBAR_H
 
 #pragma once
 
@@ -72,3 +73,4 @@ private:
 
     LONG _refCount;
 };
+#endif

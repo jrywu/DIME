@@ -8,6 +8,7 @@
 #include "Private.h"
 #include "DictionarySearch.h"
 #include "TSFDayiBaseStructure.h"
+#include "CompositionProcessorEngine.h"
 
 //+---------------------------------------------------------------------------
 //
@@ -15,11 +16,12 @@
 //
 //----------------------------------------------------------------------------
 
-CDictionarySearch::CDictionarySearch(LCID locale, _In_ CFile *pFile, _In_ CStringRange *pSearchKeyCode, _In_ WCHAR keywordDelimiter) : CDictionaryParser(locale, keywordDelimiter)
+CDictionarySearch::CDictionarySearch(LCID locale, _In_ CFile *pFile, _In_ CStringRange *pSearchKeyCode, _In_ WCHAR keywordDelimiter, _In_ CCompositionProcessorEngine *pCompositionProcessorEngin) : CDictionaryParser(locale, keywordDelimiter)
 {
 	_pFile = pFile;
 	_pSearchKeyCode = pSearchKeyCode;
 	_charIndex = 0;
+	_pCompositionProcessorEngine = pCompositionProcessorEngin;
 }
 
 //+---------------------------------------------------------------------------
@@ -304,16 +306,22 @@ ReadValue:
 			{
 				CParserStringRange testKey, value;				
 				if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"AutoCompose", 11)) == CSTR_EQUAL)
-					Global::autoCompose = (CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL);
-				if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ThreeCodeMode", 13)) == CSTR_EQUAL)
-					Global::threeCodeMode = (CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL);
+					_pCompositionProcessorEngine->SetAutoCompose((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ThreeCodeMode", 13)) == CSTR_EQUAL)
+					_pCompositionProcessorEngine->SetThreeCodeMode((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"DoBeep", 6)) == CSTR_EQUAL)
+					_pCompositionProcessorEngine->SetDoBeep((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"FontHeight", 10)) == CSTR_EQUAL)
+					_pCompositionProcessorEngine->SetFontHeight(_wtoi(valueStrings.GetAt(0)->Get()));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"MaxCodes", 8)) == CSTR_EQUAL)
+					_pCompositionProcessorEngine->SetMaxCodes(_wtoi(valueStrings.GetAt(0)->Get()));
 				goto FindNextLine;
 			}
 			else if(searchMode == SEARCH_CONTROLKEY && controlKeyType == CIN_CONTROLKEY)  // get value of cin control keys
 			{
 				CParserStringRange testKey, value;				
 				if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"%autoCompose", 12)) == CSTR_EQUAL)
-					Global::autoCompose = (CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"TRUE", 4)) == CSTR_EQUAL);
+					_pCompositionProcessorEngine->SetAutoCompose((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
 
 
 				controlKeyType = NOT_CONTROLKEY;

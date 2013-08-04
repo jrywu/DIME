@@ -4,13 +4,15 @@
 //
 //
 
+#ifndef DEFINE_H
+#define DEFINE_H
 
 #pragma once
 #include "resource.h"
 
 #define TEXTSERVICE_MODEL        L"Apartment"
 #define TEXTSERVICE_LANGID       MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_TRADITIONAL)
-#define TEXTSERVICE_ICON_INDEX   -IDIS_TSFDayi
+#define TEXTSERVICE_DAYI_ICON_INDEX   -IDIS_TSFDayi
 
 
 #define IME_MODE_ON_ICON_INDEX      IDI_IME_MODE_ON
@@ -36,7 +38,6 @@
 //---------------------------------------------------------------------
 // defined Notify Window
 //---------------------------------------------------------------------
-#define NOTIFYWND_ROW_WIDTH				(30)
 #define NOTIFYWND_BORDER_COLOR			(RGB(0x00, 0x00, 0x00))
 #define NOTIFYWND_BORDER_WIDTH			(2)
 #define NOTIFYWND_TEXT_COLOR		(RGB(0x00, 0x00, 0x00))
@@ -49,9 +50,10 @@
 #define _TF_MOD_ON_KEYUP_CONTROL_ONLY  (0x00020000 | TF_MOD_ON_KEYUP)
 #define _TF_MOD_ON_KEYUP_ALT_ONLY      (0x00040000 | TF_MOD_ON_KEYUP)
 
-#define CAND_WIDTH     (13)      // * tmMaxCharWidth
 
 //---------------------------------------------------------------------
 // string length of CLSID
 //---------------------------------------------------------------------
 #define CLSID_STRLEN    (38)  // strlen("{xxxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx}")
+
+#endif

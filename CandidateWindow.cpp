@@ -40,6 +40,8 @@ CCandidateWindow::CCandidateWindow(_In_ CANDWNDCALLBACK pfnCallback, _In_ void *
     _dontAdjustOnEmptyItemPage = FALSE;
 
     _isStoreAppMode = isStoreAppMode;
+
+	_fontHeight = _TextMetric.tmHeight;
 }
 
 //+---------------------------------------------------------------------------
@@ -62,10 +64,11 @@ CCandidateWindow::~CCandidateWindow()
 // CandidateWinow is the top window
 //----------------------------------------------------------------------------
 
-BOOL CCandidateWindow::_Create(ATOM atom, _In_ UINT wndWidth, _In_opt_ HWND parentWndHandle)
+BOOL CCandidateWindow::_Create(ATOM atom, _In_ UINT wndWidth, _In_ UINT fontHeight, _In_opt_ HWND parentWndHandle)
 {
     BOOL ret = FALSE;
     _wndWidth = wndWidth;
+	_fontHeight = fontHeight;
 
     ret = _CreateMainWindow(atom, parentWndHandle);
     if (FALSE == ret)
@@ -96,13 +99,15 @@ BOOL CCandidateWindow::_CreateMainWindow(ATOM atom, _In_opt_ HWND parentWndHandl
     _SetUIWnd(this);
 
     if (!CBaseWindow::_Create(atom,
-        WS_EX_TOPMOST |
-		WS_EX_TOOLWINDOW,
+        WS_EX_TOPMOST |  WS_EX_LAYERED |
+		WS_EX_TOOLWINDOW, 
         WS_BORDER | WS_POPUP,
         NULL, 0, 0, parentWndHandle))
     {
         return FALSE;
     }
+	
+	SetLayeredWindowAttributes(_GetWnd(), 0,  (255 * 85) / 100, LWA_ALPHA);
 
     return TRUE;
 }
@@ -124,6 +129,7 @@ BOOL CCandidateWindow::_CreateBackGroundShadowWindow()
         return FALSE;
     }
 
+
     return TRUE;
 }
 
@@ -144,8 +150,8 @@ BOOL CCandidateWindow::_CreateVScrollWindow()
     _pVScrollBarWnd->_SetUIWnd(this);
 
     if (!_pVScrollBarWnd->_Create(Global::AtomScrollBarWindow, 
-		WS_EX_TOPMOST | 
-			WS_EX_TOOLWINDOW, WS_POPUP, this))
+		WS_EX_TOPMOST | WS_EX_TOOLWINDOW
+		, WS_POPUP , this))
     {
         _DeleteVScrollBarWnd();
         _DeleteShadowWnd();
@@ -166,17 +172,18 @@ void CCandidateWindow::_ResizeWindow()
     _cxTitle = max(_cxTitle, size.cx + 2 * GetSystemMetrics(SM_CXFRAME));
 
     int candidateListPageCnt = _pIndexRange->Count();
-    CBaseWindow::_Resize(0, 0, _cxTitle, _cyRow * candidateListPageCnt);
+	CBaseWindow::_Resize(0, 0, _cxTitle, _cyRow * candidateListPageCnt  + CANDWND_BORDER_WIDTH * 4);
 
     RECT rcCandRect = {0, 0, 0, 0};
     _GetClientRect(&rcCandRect);
 
-    int letf = rcCandRect.right - GetSystemMetrics(SM_CXVSCROLL) * 2 - CANDWND_BORDER_WIDTH;
+
+    int left = rcCandRect.right - GetSystemMetrics(SM_CXVSCROLL) * 2 - CANDWND_BORDER_WIDTH;
     int top = rcCandRect.top + CANDWND_BORDER_WIDTH;
     int width = GetSystemMetrics(SM_CXVSCROLL) * 2;
     int height = rcCandRect.bottom - rcCandRect.top - CANDWND_BORDER_WIDTH * 2;
 
-    _pVScrollBarWnd->_Resize(letf, top, width, height);
+    _pVScrollBarWnd->_Resize(left, top, width, height);
 }
 
 //+---------------------------------------------------------------------------
@@ -232,7 +239,7 @@ VOID CCandidateWindow::_SetFillColor(_In_ HBRUSH hBrush)
 //----------------------------------------------------------------------------
 
 const int PageCountPosition = 1;
-const int StringPosition = 4;
+const int StringPosition = 3;
 
 LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam)
 {
@@ -248,7 +255,8 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
                 HFONT hFontOld = (HFONT)SelectObject(dcHandle, Global::defaultlFontHandle);
                 GetTextMetrics(dcHandle, &_TextMetric);
 
-                _cxTitle = _TextMetric.tmMaxCharWidth * _wndWidth;
+				_cxTitle = _TextMetric.tmMaxCharWidth* _wndWidth;
+				_cyRow = _TextMetric.tmHeight + _TextMetric.tmHeight/4;
                 SelectObject(dcHandle, hFontOld);
                 ReleaseDC(wndHandle, dcHandle);
             }
@@ -305,7 +313,7 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
             {
                 if ((pWndPos->flags & SWP_HIDEWINDOW) != 0)
                 {
-                    _pVScrollBarWnd->_Show(FALSE);
+                    //_pVScrollBarWnd->_Show(FALSE);
                 }
 
                 _pVScrollBarWnd->_OnOwnerWndMoved((pWndPos->flags & SWP_NOSIZE) == 0);
@@ -321,7 +329,7 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
         }
 
         // show/hide v-scroll
-        if (_pVScrollBarWnd)
+		if (_pVScrollBarWnd)
         {
             _pVScrollBarWnd->_Show((BOOL)wParam);
         }
@@ -422,11 +430,14 @@ void CCandidateWindow::_HandleMouseMsg(_In_ UINT mouseMsg, _In_ POINT point)
 
 void CCandidateWindow::_OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pPaintStruct)
 {
+	OutputDebugString(L"CCandidateWindow::_OnPaint()\n");
     SetBkMode(dcHandle, TRANSPARENT);
 
     HFONT hFontOld = (HFONT)SelectObject(dcHandle, Global::defaultlFontHandle);
 
-    FillRect(dcHandle, &pPaintStruct->rcPaint, _brshBkColor);
+	HBRUSH hBrush = GetSysColorBrush(COLOR_3DHIGHLIGHT);
+
+    FillRect(dcHandle, &pPaintStruct->rcPaint, hBrush);
 
     UINT currentPageIndex = 0;
     UINT currentPage = 0;
@@ -469,12 +480,15 @@ void CCandidateWindow::_OnLButtonDown(POINT pt)
     // Hit test on list items
     index = *_PageIndex.GetAt(currentPage);
 
+	RECT rc = {0, 0, 0, 0};
+
+	rc.left = rcWindow.left + PageCountPosition* _fontHeight;
+    rc.right = rcWindow.right  - GetSystemMetrics(SM_CXVSCROLL) * 2 - CANDWND_BORDER_WIDTH;
+
     for (UINT pageCount = 0; (index < _candidateList.Count()) && (pageCount < candidateListPageCnt); index++, pageCount++)
     {
-        RECT rc = {0, 0, 0, 0};
-
-        rc.left = rcWindow.left;
-        rc.right = rcWindow.right - GetSystemMetrics(SM_CXVSCROLL) * 2;
+    
+		
         rc.top = rcWindow.top + (pageCount * cyLine);
         rc.bottom = rcWindow.top + ((pageCount + 1) * cyLine);
 
@@ -611,12 +625,14 @@ void CCandidateWindow::_OnVScroll(DWORD dwSB, _In_ DWORD nPos)
 
 void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT iIndex, _In_ RECT *prc)
 {
+	OutputDebugString(L"CCandidateWindow::_DrawList()\n");
     int pageCount = 0;
     int candidateListPageCnt = _pIndexRange->Count();
 
-    int cxLine = _TextMetric.tmAveCharWidth;
-    int cyLine = max(_cyRow, _TextMetric.tmHeight);
-    int cyOffset = (cyLine == _cyRow ? (cyLine-_TextMetric.tmHeight)/2 : 0);
+	int cxLine = _TextMetric.tmAveCharWidth;
+	int cyLine = _cyRow;
+
+	int cyOffset = _cyRow/4 ;
 
     RECT rc;
 
@@ -628,8 +644,8 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT iIndex, _In_ RECT 
         WCHAR pageCountString[lenOfPageCount] = {'\0'};
         CCandidateListItem* pItemList = nullptr;
 
-        rc.top = prc->top + pageCount * cyLine;
-        rc.bottom = rc.top + cyLine;
+        rc.top = prc->top + pageCount * cyLine + CANDWND_BORDER_WIDTH * 2;;
+        rc.bottom = rc.top + cyLine + CANDWND_BORDER_WIDTH * 2;;
 
         rc.left = prc->left + PageCountPosition * cxLine;
         rc.right = prc->left + StringPosition * cxLine;
@@ -642,7 +658,7 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT iIndex, _In_ RECT 
         ExtTextOut(dcHandle, PageCountPosition * cxLine, pageCount * cyLine + cyOffset, ETO_OPAQUE, &rc, pageCountString, lenOfPageCount, NULL);
 
         rc.left = prc->left + StringPosition * cxLine;
-        rc.right = prc->right;
+        rc.right = prc->right - GetSystemMetrics(SM_CXVSCROLL) * 2 - CANDWND_BORDER_WIDTH;
 
         // Candidate Font Color And BK
         if (_currentSelection != (INT)iIndex)

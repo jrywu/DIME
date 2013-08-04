@@ -61,7 +61,7 @@ BOOL RegisterProfiles()
         static_cast<ULONG>(lenOfDesc),
         achIconFile,
         cchA,
-        (UINT)TEXTSERVICE_ICON_INDEX, NULL, 0, TRUE, 0);
+        (UINT)TEXTSERVICE_DAYI_ICON_INDEX, NULL, 0, TRUE, 0);
 
     if (FAILED(hr))
     {

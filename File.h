@@ -3,7 +3,8 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-
+#ifndef FILE_H
+#define FILE_H
 
 #pragma once
 
@@ -66,3 +67,4 @@ private:
     DWORD_PTR _filePosPointer;  // in byte. Always point start of line.
     LPWSTR _pFileName;
 };
+#endif

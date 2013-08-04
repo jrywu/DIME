@@ -3,7 +3,8 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-
+#ifndef TSFDAYI_H
+#define TSFDAYI_H
 
 #pragma once
 
@@ -137,7 +138,7 @@ public:
 
     BOOL _IsSecureMode(void) { return (_dwActivateFlags & TF_TMAE_SECUREMODE) ? TRUE : FALSE; }
     BOOL _IsComLess(void) { return (_dwActivateFlags & TF_TMAE_COMLESS) ? TRUE : FALSE; }
-    BOOL _IsStoreAppMode(void) { return (_dwActivateFlags & TF_TMF_IMMERSIVEMODE) ? TRUE : FALSE; };
+	BOOL _IsStoreAppMode(void) { return TRUE;};//(_dwActivateFlags & TF_TMF_IMMERSIVEMODE) ? TRUE : FALSE; };
 
     CCompositionProcessorEngine* GetCompositionProcessorEngine() { return (_pCompositionProcessorEngine); };
 
@@ -146,7 +147,9 @@ public:
     static HRESULT CTSFDayi::ComLessCreateInstance(REFGUID rclsid, REFIID riid, _Outptr_result_maybenull_ void **ppv, _Out_opt_ HINSTANCE *phInst);
     static HRESULT CTSFDayi::GetComModuleName(REFGUID rclsid, _Out_writes_(cchPath)WCHAR* wchPath, DWORD cchPath);
 	
-	void clearAndExit();
+	//Called by compartment status changed.
+	void OnKeyboardClosed();
+	void OnKeyboardOpen();
 
 private:
     // functions for the composition object.
@@ -262,7 +265,12 @@ private:
     // Support the search integration
     ITfFnSearchCandidateProvider* _pITfFnSearchCandidateProvider;
 
+	//for phrase cand killing when cursor moved
 	BOOL _phraseCandShowing;
 	POINT _phraseCandLocation;
+	
 
 };
+
+
+#endif

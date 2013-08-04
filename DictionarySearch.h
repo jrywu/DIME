@@ -3,7 +3,8 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-
+#ifndef DICTIONARYSEARCH_H
+#define DICTIONARYSEARCH_H
 
 
 #pragma once
@@ -20,10 +21,11 @@ class CDictionaryResult;
 //
 //////////////////////////////////////////////////////////////////////
 
+class CCompositionProcessorEngine;
 class CDictionarySearch : CDictionaryParser
 {
 public:
-    CDictionarySearch(LCID locale, _In_ CFile *pFile, _In_ CStringRange *pSearchKeyCode, _In_ WCHAR keywordDelimiter);
+    CDictionarySearch(LCID locale, _In_ CFile *pFile, _In_ CStringRange *pSearchKeyCode, _In_ WCHAR keywordDelimiter, _In_ CCompositionProcessorEngine *pCompositionProcessorEngine);
     virtual ~CDictionarySearch();
 
     BOOL FindPhrase(_Out_ CDictionaryResult **ppdret);
@@ -51,6 +53,7 @@ private:
 
     CFile* _pFile;
 	enum SEARCH_MODE searchMode;
+	CCompositionProcessorEngine* _pCompositionProcessorEngine;
 
 };
 
@@ -95,3 +98,4 @@ enum CONTROLKEY_TYPE
 	CIN_CONTROLKEY,
 	TTS_CONTROLKEY
 };
+#endif

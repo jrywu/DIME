@@ -27,7 +27,7 @@ public:
     CCandidateWindow(_In_ CANDWNDCALLBACK pfnCallback, _In_ void *pv, _In_ CCandidateRange *pIndexRange, _In_ BOOL isStoreAppMode);
     virtual ~CCandidateWindow();
 
-    BOOL _Create(ATOM atom, _In_ UINT wndWidth, _In_opt_ HWND parentWndHandle);
+    BOOL _Create(ATOM atom, _In_ UINT wndWidth, _In_ UINT fontHeight, _In_opt_ HWND parentWndHandle);
 
     void _Move(int x, int y);
     void _Show(BOOL isShowWnd);
@@ -104,6 +104,7 @@ private:
     int _cyRow;
     int _cxTitle;
     UINT _wndWidth;
+	UINT _fontHeight;
 
     CCandidateRange* _pIndexRange;
 

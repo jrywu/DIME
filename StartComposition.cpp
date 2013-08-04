@@ -35,6 +35,7 @@ public:
 
 STDAPI CStartCompositionEditSession::DoEditSession(TfEditCookie ec)
 {
+	OutputDebugString(L"CStartCompositionEditSession::DoEditSession()\n");
     ITfInsertAtSelection* pInsertAtSelection = nullptr;
     ITfRange* pRangeInsert = nullptr;
     ITfContextComposition* pContextComposition = nullptr;
@@ -102,6 +103,7 @@ Exit:
 
 void CTSFDayi::_StartComposition(_In_ ITfContext *pContext)
 {
+	OutputDebugString(L"CTSFDayi::_StartComposition()\n");
     CStartCompositionEditSession* pStartCompositionEditSession = new (std::nothrow) CStartCompositionEditSession(this, pContext);
 
     if (nullptr != pStartCompositionEditSession)

@@ -122,7 +122,7 @@ BOOL CScrollBarWindow::_Create(ATOM atom, DWORD dwExStyle, DWORD dwStyle, CBaseW
         return FALSE;
     }
 
-    _pBtnUp->_Create(NULL, 0, 0, this);
+    _pBtnUp->_Create(NULL, WS_EX_LEFTSCROLLBAR, 0, this);
     _pBtnUp->_SetUIWnd(_GetUIWnd());
 
     _pBtnDn = new (std::nothrow) CScrollButtonWindow(dwStyle & WS_HSCROLL ? DFCS_SCROLLRIGHT : DFCS_SCROLLDOWN);
@@ -148,10 +148,12 @@ BOOL CScrollBarWindow::_Create(ATOM atom, DWORD dwExStyle, DWORD dwStyle, CBaseW
 
 LRESULT CALLBACK CScrollBarWindow::_WindowProcCallback(_In_ HWND wndHandle, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam)
 {
+	
     switch (uMsg)
     {
     case WM_PAINT:
         {
+			OutputDebugString(L"CScrollBarWindow::_WindowProcCallback() : WM_PAINT\n");
             HDC dcHandle = nullptr;
             PAINTSTRUCT ps;
 
@@ -180,6 +182,7 @@ LRESULT CALLBACK CScrollBarWindow::_WindowProcCallback(_In_ HWND wndHandle, _In_
 
 void CScrollBarWindow::_OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps)
 {
+	OutputDebugString(L"CScrollBarWindow::_OnPaint()\n");
     HBRUSH hBrush = nullptr;
     CBaseWindow* pUIWnd = _GetUIWnd();
 
@@ -329,10 +332,12 @@ void CScrollBarWindow::_Resize(int x, int y, int cx, int cy)
     RECT rc = {0, 0, 0, 0};
 
     _GetBtnUpRect(&rc);
-    _pBtnUp->_Resize(rc.left, rc.top, rc.right-rc.left, rc.bottom-rc.top);
+    //_pBtnUp->_Resize(x, y+rc.top, rc.right-rc.left, rc.bottom-rc.top);
+	_pBtnUp->_Resize(rc.left, rc.top, rc.right-rc.left, rc.bottom-rc.top);
 
     _GetBtnDnRect(&rc);
-    _pBtnDn->_Resize(rc.left, rc.top, rc.right-rc.left, rc.bottom-rc.top);
+    //_pBtnDn->_Resize(x, y+rc.top, rc.right-rc.left, rc.bottom-rc.top);
+	_pBtnDn->_Resize(rc.left, rc.top, rc.right-rc.left, rc.bottom-rc.top);
 }
 
 //+---------------------------------------------------------------------------
@@ -390,11 +395,12 @@ void CScrollBarWindow::_AdjustWindowPos()
     }
 
     GetWindowRect(pParent->_GetWnd(), &rc);
-    SetWindowPos(_GetWnd(), pParent->_GetWnd(),
-        rc.left,
-        rc.top,
-        rc.right - rc.left,
-        rc.bottom - rc.top,
+	SetWindowPos(_GetWnd(), pParent->_GetWnd(),
+		rc.left + (rc.right - rc.left) - GetSystemMetrics(SM_CXVSCROLL) * 2 - CANDWND_BORDER_WIDTH,
+        rc.top + CANDWND_BORDER_WIDTH,
+        
+		GetSystemMetrics(SM_CXVSCROLL) * 2,
+		rc.bottom - rc.top - CANDWND_BORDER_WIDTH * 2,
         SWP_NOOWNERZORDER | SWP_NOACTIVATE);
 }
 
@@ -470,7 +476,7 @@ BOOL CScrollBarWindow::_GetBtnDnRect(_Out_ RECT *prc)
         return FALSE;
     }
 
-    prc->left = rc.left;
+    prc->left = rc.left; 
     prc->top = rc.bottom - min(_sizeOfScrollBtn.cy, (rc.bottom - rc.top)/2);
     prc->right = rc.right;
     prc->bottom = rc.bottom;
@@ -546,6 +552,7 @@ void CScrollBarWindow::_SetCurPos(int nPos, int dwSB)
 
 void CScrollButtonWindow::_OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps)
 {
+	OutputDebugString(L"CScrollButtonWindow::_OnPaint()\n");
     pps;
 
     RECT rc = {0, 0, 0, 0};

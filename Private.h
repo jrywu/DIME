@@ -3,6 +3,8 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
+#ifndef PRIVATE_H
+#define PRIVATE_H
 
 
 #pragma once
@@ -20,3 +22,4 @@
 #include "initguid.h"
 #include "msctf.h"
 #include "ctffunc.h"
+#endif

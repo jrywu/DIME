@@ -20,14 +20,14 @@ LONG dllRefCount = -1;
 map <WCHAR, WCHAR> radicalMap;
 
 BOOL isWindows8 = FALSE;
-BOOL autoCompose = FALSE; 
-BOOL threeCodeMode = FALSE; 
+
 
 BOOL hasPhraseSection = FALSE;
 BOOL hasCINPhraseSection = FALSE;
 
 CRITICAL_SECTION CS;
 HFONT defaultlFontHandle;				// Global font object we use everywhere
+
 
 //---------------------------------------------------------------------
 // TSFDayi CLSID

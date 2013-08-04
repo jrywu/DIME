@@ -84,10 +84,7 @@ VOID CCompositionProcessorEngine::SetLanguageBarStatus(DWORD status, BOOL isSet)
     if (_pLanguageBar_DoubleSingleByte) {
         _pLanguageBar_DoubleSingleByte->SetStatus(status, isSet);
     }
-	/*
-    if (_pLanguageBar_Punctuation) {
-        _pLanguageBar_Punctuation->SetStatus(status, isSet);
-    }*/
+
 }
 
 //+---------------------------------------------------------------------------
@@ -105,7 +102,7 @@ CLangBarItemButton::CLangBarItemButton(REFGUID guidLangBar, LPCWSTR description,
     // initialize TF_LANGBARITEMINFO structure.
     _tfLangBarItemInfo.clsidService = Global::TSFDayiCLSID;												    // This LangBarItem belongs to this TextService.
     _tfLangBarItemInfo.guidItem = guidLangBar;															        // GUID of this LangBarItem.
-    _tfLangBarItemInfo.dwStyle = (TF_LBI_STYLE_BTN_BUTTON );						    // This LangBar is a button type.
+    _tfLangBarItemInfo.dwStyle = TF_LBI_STYLE_BTN_BUTTON;														// This LangBar is a button type.
     _tfLangBarItemInfo.ulSort = 0;																			    // The position of this LangBar Item is not specified.
     StringCchCopy(_tfLangBarItemInfo.szDescription, ARRAYSIZE(_tfLangBarItemInfo.szDescription), description);  // Set the description of this LangBar Item.
 
@@ -384,11 +381,24 @@ STDAPI CLangBarItemButton::OnClick(TfLBIClick click, POINT pt, _In_ const RECT *
 // InitMenu
 //
 //----------------------------------------------------------------------------
-
+//#define MENUITEM_INDEX_OPENCLOSE 2
 STDAPI CLangBarItemButton::InitMenu(_In_ ITfMenu *pMenu)
 {
-    pMenu;
+	pMenu;
+	/*
+    DWORD dwFlags = 0;
+    dwFlags |= TF_LBMENUF_CHECKED;
 
+    pMenu->AddMenuItem(MENUITEM_INDEX_OPENCLOSE,
+                       dwFlags,
+                       NULL,
+                       NULL,
+                       L"About TSFDayi...",
+                       (ULONG)wcslen( L"About TSFDayi..."),
+                       NULL);
+
+
+	*/
     return S_OK;
 }
 

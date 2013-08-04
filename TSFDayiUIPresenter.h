@@ -3,7 +3,8 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-
+#ifndef TSFDAYIUIPRESENTER_H
+#define TSFDAYIUIPRESENTER_H
 
 
 #pragma once
@@ -16,6 +17,7 @@
 #include "TSFDayiBaseStructure.h"
 
 class CReadingLine;
+class CCompositionProcessorEngine;
 
 //+---------------------------------------------------------------------------
 //
@@ -36,7 +38,9 @@ public:
     CTSFDayiUIPresenter(_In_ CTSFDayi *pTextService, ATOM atom,
         KEYSTROKE_CATEGORY Category,
         _In_ CCandidateRange *pIndexRange,
-        BOOL hideWindow);
+        BOOL hideWindow,
+		_In_ CCompositionProcessorEngine *pCompositionProcessorEngine
+		);
     virtual ~CTSFDayiUIPresenter();
 
     // IUnknown
@@ -84,7 +88,7 @@ public:
     BOOL _SetSelectionInPage(int nPos) { return _pCandidateWnd->_SetSelectionInPage(nPos); }
 
     BOOL _MoveSelection(_In_ int offSet);
-    BOOL _SetSelection(_In_ int selectedIndex);
+	BOOL _SetSelection(_In_ int selectedIndex, _In_opt_ BOOL isNotify = TRUE);
     BOOL _MovePage(_In_ int offSet);
 
     void _MoveWindowToTextExt();
@@ -101,6 +105,8 @@ public:
     void AdviseUIChangedByArrowKey(_In_ KEYSTROKE_FUNCTION arrowKey);
 
 	void GetCandLocation(_Out_ POINT *lpPoint);
+
+	HRESULT ShowNotifyWindow(_In_ ITfContext *pContextDocument, CStringRange* notifyText);
 
 private:
     virtual HRESULT CALLBACK _CandidateChangeNotification(_In_ enum CANDWND_ACTION action);
@@ -121,7 +127,7 @@ private:
     HRESULT EndUIElement();
 
     HRESULT MakeCandidateWindow(_In_ ITfContext *pContextDocument, _In_ UINT wndWidth);
-	HRESULT ShowNotifyWindow(_In_ ITfContext *pContextDocument, CStringRange* notifyText);
+	
     void DisposeCandidateWindow();
 
     void AddCandidateToTSFDayiUI(_In_ CTSFDayiArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode);
@@ -135,7 +141,7 @@ protected:
     BOOL _hideWindow;
 
 private:
-
+	CCompositionProcessorEngine *_pCompositionProcessorEngine;  // to retrieve user settings
     HWND _parentWndHandle;
     ATOM _atom;
     CCandidateRange* _pIndexRange;
@@ -146,3 +152,16 @@ private:
     LONG _refCount;
 	POINT _candLocation;
 };
+
+
+//////////////////////////////////////////////////////////////////////
+//
+// CTSFDayi candidate key handler methods
+//
+//////////////////////////////////////////////////////////////////////
+
+const int MOVEUP_ONE = -1;
+const int MOVEDOWN_ONE = 1;
+const int MOVETO_TOP = 0;
+const int MOVETO_BOTTOM = -1;
+#endif

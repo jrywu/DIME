@@ -11,6 +11,7 @@
 #include "TSFDayi.h"
 #include "TSFDayiUIPresenter.h"
 #include "CompositionProcessorEngine.h"
+#include "TSFDayiBaseStructure.h"
 
 //////////////////////////////////////////////////////////////////////
 //
@@ -51,7 +52,7 @@ BOOL CTSFDayi::_IsRangeCovered(TfEditCookie ec, _In_ ITfRange *pRangeTest, _In_ 
 
 VOID CTSFDayi::_DeleteCandidateList(BOOL isForce, _In_opt_ ITfContext *pContext)
 {
-	OutputDebugString(L"CTSFDayi::_DeleteCandidateList()");
+	OutputDebugString(L"CTSFDayi::_DeleteCandidateList()\n");
     isForce;pContext;
 
     CCompositionProcessorEngine* pCompositionProcessorEngine = nullptr;
@@ -93,7 +94,7 @@ HRESULT CTSFDayi::_HandleComplete(TfEditCookie ec, _In_ ITfContext *pContext)
 HRESULT CTSFDayi::_HandleCancel(TfEditCookie ec, _In_ ITfContext *pContext)
 {
 	OutputDebugString(L"CTSFDayi::_HandleCancel()\n");
-    _DeleteCandidateList(FALSE, pContext);
+
     _RemoveDummyCompositionForComposing(ec, _pComposition);
 
     _DeleteCandidateList(FALSE, pContext);
@@ -122,7 +123,7 @@ HRESULT CTSFDayi::_HandleCompositionInput(TfEditCookie ec, _In_ ITfContext *pCon
     pCompositionProcessorEngine = _pCompositionProcessorEngine;
 
 	if ((_pTSFDayiUIPresenter != nullptr) 
-		&& _candidateMode != CANDIDATE_INCREMENTAL &&_candidateMode != CANDIDATE_NONE )// &&_candidateMode != CANDIDATE_WITH_NEXT_COMPOSITION)
+		&& _candidateMode != CANDIDATE_INCREMENTAL &&_candidateMode != CANDIDATE_NONE )
     {
         _HandleCompositionFinalize(ec, pContext, FALSE);
     }
@@ -194,7 +195,7 @@ HRESULT CTSFDayi::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine
     //
     // Get candidate string from composition processor engine
     //
-	if(Global::autoCompose   // auto composing mode: show candidates while composition updated imeediately.
+	if( _pCompositionProcessorEngine->GetAutoCompose()  // auto composing mode: show candidates while composition updated imeediately.
 		||  pCompositionProcessorEngine->IsSymbol())// fetch candidate in symobl mode with composition started with '='
 	{
 		CTSFDayiArray<CCandidateListItem> candidateList;
@@ -242,8 +243,8 @@ HRESULT CTSFDayi::_CreateAndStartCandidate(_In_ CCompositionProcessorEngine *pCo
 {
     HRESULT hr = S_OK;
 
-    if (((_candidateMode == CANDIDATE_PHRASE) && (_pTSFDayiUIPresenter))
-        || ((_candidateMode == CANDIDATE_NONE) && (_pTSFDayiUIPresenter)))
+    //if (((_candidateMode == CANDIDATE_PHRASE) && (_pTSFDayiUIPresenter))|| ((_candidateMode == CANDIDATE_NONE) && (_pTSFDayiUIPresenter)))
+	if(_pTSFDayiUIPresenter)
     {
         // Recreate candidate list
         _pTSFDayiUIPresenter->_EndCandidateList();
@@ -259,7 +260,8 @@ HRESULT CTSFDayi::_CreateAndStartCandidate(_In_ CCompositionProcessorEngine *pCo
         _pTSFDayiUIPresenter = new (std::nothrow) CTSFDayiUIPresenter(this, Global::AtomCandidateWindow,
             CATEGORY_CANDIDATE,
             pCompositionProcessorEngine->GetCandidateListIndexRange(),
-            FALSE);
+            FALSE,
+			pCompositionProcessorEngine);
         if (!_pTSFDayiUIPresenter)
         {
             return E_OUTOFMEMORY;
@@ -374,6 +376,13 @@ HRESULT CTSFDayi::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pC
     int nCount = candidateList.Count();
     if (nCount)
     {
+		 if (SUCCEEDED(_CreateAndStartCandidate(pCompositionProcessorEngine, ec, pContext)))
+		 {
+			_candidateMode = CANDIDATE_ORIGINAL;
+			 _isCandidateWithWildcard = isWildcardSearch;
+			 _pTSFDayiUIPresenter->_SetText(&candidateList, FALSE);
+		 }
+		/*
         if (_pTSFDayiUIPresenter)
         {
             _pTSFDayiUIPresenter->_EndCandidateList();
@@ -392,7 +401,8 @@ HRESULT CTSFDayi::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pC
             _pTSFDayiUIPresenter = new (std::nothrow) CTSFDayiUIPresenter(this, Global::AtomCandidateWindow,
                 CATEGORY_CANDIDATE,
                 pCompositionProcessorEngine->GetCandidateListIndexRange(),
-                FALSE);
+                FALSE,
+				pCompositionProcessorEngine);
             if (!_pTSFDayiUIPresenter)
             {
                 return E_OUTOFMEMORY;
@@ -420,6 +430,7 @@ HRESULT CTSFDayi::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pC
         {
             _pTSFDayiUIPresenter->_SetText(&candidateList, FALSE);
         }
+		*/
     }
 	if(nCount==1 )  //finalized with the only candidate without showing cand.
 	{

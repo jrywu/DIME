@@ -10,7 +10,6 @@
 #include "TSFDayi.h"
 #include "CompositionProcessorEngine.h"
 #include "TSFDayiBaseStructure.h"
-#include "TableDictionaryEngine.h"
 #include "DictionarySearch.h"
 #include "TfInputProcessorProfile.h"
 #include "Globals.h"
@@ -120,18 +119,23 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CTSFDayi *pTextSer
     _pCompartmentKeyboardOpenEventSink = nullptr;
     _pCompartmentConversionEventSink = nullptr;
     _pCompartmentDoubleSingleByteEventSink = nullptr;
-    //_pCompartmentPunctuationEventSink = nullptr;
-
+ 
     _hasWildcardIncludedInKeystrokeBuffer = FALSE;
 
     _isWildcard = FALSE;
     _isDisableWildcardAtFirst = FALSE;
     _hasMakePhraseFromText = FALSE;
     _isKeystrokeSort = FALSE;
+	_doBeep = FALSE;
+	_autoCompose = FALSE;
+	_threeCodeMode = FALSE;
+	_fontHeight = 14;
+	_MaxCodes = 4;
+	_candidateWndWidth = 5;  //3 charaters + 2 trailling space
 
     _candidateListPhraseModifier = 0;
 
-    _candidateWndWidth = CAND_WIDTH;
+    
 
     InitKeyStrokeTable();
 }
@@ -177,14 +181,7 @@ CCompositionProcessorEngine::~CCompositionProcessorEngine()
         _pLanguageBar_DoubleSingleByte->Release();
         _pLanguageBar_DoubleSingleByte = nullptr;
     }
-	/*
-    if (_pLanguageBar_Punctuation)
-    {
-        _pLanguageBar_Punctuation->CleanUp();
-        _pLanguageBar_Punctuation->Release();
-        _pLanguageBar_Punctuation = nullptr;
-    }
-	*/
+
     if (_pCompartmentConversion)
     {
         delete _pCompartmentConversion;
@@ -271,7 +268,8 @@ BOOL CCompositionProcessorEngine::SetupLanguageProfile(LANGID langid, REFGUID gu
     SetupKeystroke();
     SetupConfiguration();
     SetupDictionaryFile();
-
+	loadConfig();
+    SetDefaultCandidateTextFont();
 Exit:
     return ret;
 }
@@ -292,8 +290,11 @@ BOOL CCompositionProcessorEngine::AddVirtualKey(WCHAR wch)
     {
         return FALSE;
     }
-
-
+	if((UINT)_keystrokeBuffer.GetLength() >= _MaxCodes )  // do not eat the key if keystroke buffer length >= _maxcodes
+	{
+		DoBeep();
+		return FALSE;
+	}
     //
     // append one keystroke in buffer.
     //
@@ -471,7 +472,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFDayiArray<CCandid
 		PWCHAR pwch3code = new (std::nothrow) WCHAR[ 6 ];
 		if (!pwch3code) return;
 
-        if (!isFindWildcard  && (Global::threeCodeMode && _keystrokeBuffer.GetLength() == 3))
+        if (!isFindWildcard  && (_threeCodeMode && _keystrokeBuffer.GetLength() == 3))
         {
 			StringCchCopyN(pwch, keystrokeBufLen, _keystrokeBuffer.Get(), _keystrokeBuffer.GetLength());
 			StringCchCat(pwch, keystrokeBufLen, L"*");
@@ -577,7 +578,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFDayiArray<CCandid
     {
         _pTableDictionaryEngine->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList);
     }
-	else if (Global::threeCodeMode && _keystrokeBuffer.GetLength() == 3)
+	else if (_threeCodeMode && _keystrokeBuffer.GetLength() == 3)
 	{
 		
 
@@ -631,6 +632,15 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFDayiArray<CCandid
         startItemString.Set(pLI->_ItemString.Get(), 1);
         endItemString.Set(pLI->_ItemString.Get() + pLI->_ItemString.GetLength() - 1, 1);
 
+		if(pLI->_ItemString.GetLength() > _candidateWndWidth - 2 )
+		{
+			_candidateWndWidth = (UINT) pLI->_ItemString.GetLength() + 2;
+		}
+		/*
+		WCHAR debugStr[256];
+		StringCchPrintf(debugStr, 256, L"cand item - %d : length: %d \n", index, pLI->_ItemString.GetLength());
+		OutputDebugString(debugStr);
+		*/
         index++;
     }
 }
@@ -678,7 +688,17 @@ void CCompositionProcessorEngine::GetCandidateStringInConverted(CStringRange &se
 	if (IsKeystrokeSort())
 		_pTableDictionaryEngine->SortListItemByFindKeyCode(pCandidateList);
 		
-	
+	for (UINT index = 0; index < pCandidateList->Count();)
+    {
+        CCandidateListItem *pLI = pCandidateList->GetAt(index);
+        
+		if(pLI->_ItemString.GetLength() > _candidateWndWidth - 2 )
+		{
+			_candidateWndWidth = (UINT) pLI->_ItemString.GetLength() + 2;
+		}
+		
+	    index++;
+    }
 
     searchText.Clear();
     delete [] pwch;
@@ -933,6 +953,7 @@ BOOL CCompositionProcessorEngine::CheckShiftKeyOnly(_In_ CTSFDayiArray<TF_PRESER
 
 void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL *pIsEaten, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId)
 {
+	OutputDebugString(L"CCompositionProcessorEngine::OnPreservedKey() \n");
     if (IsEqualGUID(rguid, _PreservedKey_IMEMode.Guid))
     {
         if (!CheckShiftKeyOnly(&_PreservedKey_IMEMode.TSFPreservedKeyTable))
@@ -970,19 +991,7 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL *pIsE
         CompartmentDoubleSingleByte._SetCompartmentBOOL(isDouble ? FALSE : TRUE);
         *pIsEaten = TRUE;
     }
-    /*else if (IsEqualGUID(rguid, _PreservedKey_Punctuation.Guid))
-    {
-        if (!CheckShiftKeyOnly(&_PreservedKey_Punctuation.TSFPreservedKeyTable))
-        {
-            *pIsEaten = FALSE;
-            return;
-        }
-        BOOL isPunctuation = FALSE;
-        CCompartment CompartmentPunctuation(pThreadMgr, tfClientId, Global::TSFDayiGuidCompartmentPunctuation);
-        CompartmentPunctuation._GetCompartmentBOOL(isPunctuation);
-        CompartmentPunctuation._SetCompartmentBOOL(isPunctuation ? FALSE : TRUE);
-        *pIsEaten = TRUE;
-    }*/
+   
     else
     {
         *pIsEaten = FALSE;
@@ -1002,11 +1011,18 @@ void CCompositionProcessorEngine::SetupConfiguration()
     _isDisableWildcardAtFirst = TRUE;
     _hasMakePhraseFromText = TRUE;
     _isKeystrokeSort = FALSE;
-    _candidateWndWidth = CAND_WIDTH;
+
+	_doBeep = TRUE;
+	_autoCompose = FALSE;
+	_threeCodeMode = FALSE;
+
+    _candidateWndWidth = 5;
+	_MaxCodes = 4;
+	_fontHeight = 14;
+
 
     SetInitialCandidateListRange();
 
-    SetDefaultCandidateTextFont();
 
     return;
 }
@@ -1030,7 +1046,6 @@ void CCompositionProcessorEngine::SetupLanguageBar(_In_ ITfThreadMgr *pThreadMgr
 	
     CreateLanguageBarButton(dwEnable, Global::TSFDayiGuidLangBarIMEMode, Global::LangbarImeModeDescription, Global::ImeModeDescription, Global::ImeModeOnIcoIndex, Global::ImeModeOffIcoIndex, &_pLanguageBar_IMEMode, isSecureMode);
     CreateLanguageBarButton(dwEnable, Global::TSFDayiGuidLangBarDoubleSingleByte, Global::LangbarDoubleSingleByteDescription, Global::DoubleSingleByteDescription, Global::DoubleSingleByteOnIcoIndex, Global::DoubleSingleByteOffIcoIndex, &_pLanguageBar_DoubleSingleByte, isSecureMode);
-    //CreateLanguageBarButton(dwEnable, Global::TSFDayiGuidLangBarPunctuation, Global::LangbarPunctuationDescription, Global::PunctuationDescription, Global::PunctuationOnIcoIndex, Global::PunctuationOffIcoIndex, &_pLanguageBar_Punctuation, isSecureMode);
 
 	
     
@@ -1043,7 +1058,6 @@ void CCompositionProcessorEngine::SetupLanguageBar(_In_ ITfThreadMgr *pThreadMgr
 	_pCompartmentIMEModeEventSink = new (std::nothrow) CCompartmentEventSink(CompartmentCallback, this);
     _pCompartmentConversionEventSink = new (std::nothrow) CCompartmentEventSink(CompartmentCallback, this);
     _pCompartmentDoubleSingleByteEventSink = new (std::nothrow) CCompartmentEventSink(CompartmentCallback, this);
-    _pCompartmentPunctuationEventSink = new (std::nothrow) CCompartmentEventSink(CompartmentCallback, this);
 
 	if (_pCompartmentIMEModeEventSink)
     {
@@ -1061,11 +1075,7 @@ void CCompositionProcessorEngine::SetupLanguageBar(_In_ ITfThreadMgr *pThreadMgr
     {
         _pCompartmentDoubleSingleByteEventSink->_Advise(pThreadMgr, Global::TSFDayiGuidCompartmentDoubleSingleByte);
     }
-    /*if (_pCompartmentPunctuationEventSink)
-    {
-        _pCompartmentPunctuationEventSink->_Advise(pThreadMgr, Global::TSFDayiGuidCompartmentPunctuation);
-    }*/
-
+   
     return;
 }
 
@@ -1116,8 +1126,8 @@ BOOL CCompositionProcessorEngine::InitLanguageBar(_In_ CLangBarItemButton *pLang
 
 BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 {	
-    // Not yet registered
-    // Register CFileMapping
+    OutputDebugString(L"CCompositionProcessorEngine::SetupDictionaryFile() \n");
+
 	WCHAR wszSysWOW64[MAX_PATH];
 	WCHAR wszProgramFiles[MAX_PATH];
 	WCHAR wszAppData[MAX_PATH];
@@ -1136,19 +1146,15 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 	WCHAR wzsTTSFileName[MAX_PATH] = L"\\Windows NT\\TableTextService\\TableTextServiceDaYi.txt";
 	WCHAR wzsTSFDayiProfile[MAX_PATH] = L"\\TSFDayi";
 	WCHAR wzsCINFileName[MAX_PATH] = L"\\Dayi.cin";
-	WCHAR wzsINIFileName[MAX_PATH] = L"\\config.ini";
-
 
     WCHAR *pwszFileName = new (std::nothrow) WCHAR[MAX_PATH];
 	WCHAR *pwszCINFileName = new (std::nothrow) WCHAR[MAX_PATH];
-	WCHAR *pwszINIFileName = new (std::nothrow) WCHAR[MAX_PATH];
+	
     if (!pwszFileName)  goto ErrorExit;
 	if (!pwszCINFileName)  goto ErrorExit;
-	if (!pwszINIFileName)  goto ErrorExit;
 
 	*pwszFileName = L'\0';
 	*pwszCINFileName = L'\0';
-	*pwszINIFileName = L'\0';
 
 	//tableTextService (TTS) dictionary file 
 	StringCchCopyN(pwszFileName, MAX_PATH, pwzProgramFiles, wcslen(pwzProgramFiles) + 1);
@@ -1166,7 +1172,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 	}
 	else
 	{
-		_pTTSTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(GetLocale(), _pTTSDictionaryFile, L'='); //TTS file use '=' as delimiter
+		_pTTSTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(GetLocale(), _pTTSDictionaryFile, L'=', this); //TTS file use '=' as delimiter
 		if (!_pTTSTableDictionaryEngine)  goto ErrorExit;
 		_pTTSTableDictionaryEngine->ParseConfig(); //parse config first.
 		_pTableDictionaryEngine = _pTTSTableDictionaryEngine;  //set TTS as default dictionary engine
@@ -1175,7 +1181,6 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 	
 	StringCchCopyN(pwszCINFileName, MAX_PATH, wszAppData, wcslen(wszAppData));
 	StringCchCatN(pwszCINFileName, MAX_PATH, wzsTSFDayiProfile, wcslen(wzsTSFDayiProfile));
-	StringCchCopyN(pwszINIFileName, MAX_PATH, pwszCINFileName, wcslen(pwszCINFileName));
 	if(PathFileExists(pwszCINFileName))
 	{ //dayi.cin in personal romaing profile
 		StringCchCatN(pwszCINFileName, MAX_PATH, wzsCINFileName, wcslen(wzsCINFileName));
@@ -1187,7 +1192,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 				_pCINDictionaryFile = new (std::nothrow) CFileMapping();
 				if ((_pCINDictionaryFile)->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
 				{
-					_pCINTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(GetLocale(), _pCINDictionaryFile, L'\t'); //cin files use tab as delimiter
+					_pCINTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(GetLocale(), _pCINDictionaryFile, L'\t', this); //cin files use tab as delimiter
 
 					if (_pCINTableDictionaryEngine)  
 					{
@@ -1198,6 +1203,49 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 			}
 			
 		}
+		
+	}
+	else
+	{
+		//TSFDayi roadming profile is not exist. Create one.
+		CreateDirectory(pwszCINFileName, NULL);	
+	}
+	
+  
+    delete []pwszFileName;
+	delete []pwszCINFileName;
+    return TRUE;
+ErrorExit:
+    if (pwszFileName)  delete []pwszFileName;
+    if (pwszCINFileName)  delete []pwszCINFileName;
+    return FALSE;
+}
+
+//+---------------------------------------------------------------------------
+//
+// loadConfig
+//
+//----------------------------------------------------------------------------
+
+VOID CCompositionProcessorEngine::loadConfig()
+{	
+	OutputDebugString(L"CCompositionProcessorEngine::loadConfig() \n");
+	WCHAR wszAppData[MAX_PATH];
+	SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);	
+	WCHAR wzsTSFDayiProfile[MAX_PATH] = L"\\TSFDayi";
+	WCHAR wzsINIFileName[MAX_PATH] = L"\\config.ini";
+
+	WCHAR *pwszINIFileName = new (std::nothrow) WCHAR[MAX_PATH];
+    
+	if (!pwszINIFileName)  goto ErrorExit;
+
+	*pwszINIFileName = L'\0';
+
+	
+	StringCchCopyN(pwszINIFileName, MAX_PATH, wszAppData, wcslen(wszAppData));
+	StringCchCatN(pwszINIFileName, MAX_PATH, wzsTSFDayiProfile, wcslen(wzsTSFDayiProfile));
+	if(PathFileExists(pwszINIFileName))
+	{ //dayi.cin in personal romaing profile
 		StringCchCatN(pwszINIFileName, MAX_PATH, wzsINIFileName, wcslen(wzsINIFileName));
 		if(PathFileExists(pwszINIFileName))
 		{
@@ -1206,7 +1254,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 			if ((iniDictionaryFile)->CreateFile(pwszINIFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
 			{
 				CTableDictionaryEngine * iniTableDictionaryEngine;
-				iniTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(GetLocale(), iniDictionaryFile,L'=');
+				iniTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(GetLocale(), iniDictionaryFile,L'=', this);
 				if (iniTableDictionaryEngine)  
 					iniTableDictionaryEngine->ParseConfig(); //parse config first.
 				delete iniTableDictionaryEngine; // delete after config.ini config are pasrsed
@@ -1218,21 +1266,12 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 	else
 	{
 		//TSFDayi roadming profile is not exist. Create one.
-		CreateDirectory(pwszCINFileName, NULL);	
+		CreateDirectory(pwszINIFileName, NULL);	
 	}
-	
-  
-    delete []pwszFileName;
-	delete []pwszCINFileName;
-	delete []pwszINIFileName;
-    return TRUE;
 ErrorExit:
-    if (pwszFileName)  delete []pwszFileName;
-    if (pwszCINFileName)  delete []pwszCINFileName;
-	if (pwszINIFileName)  delete []pwszINIFileName;
-    return FALSE;
-}
+    delete []pwszINIFileName;
 
+}
 //+---------------------------------------------------------------------------
 //
 // GetDictionaryFile
@@ -1316,6 +1355,7 @@ HRESULT CCompositionProcessorEngine::CompartmentCallback(_In_ void *pv, REFGUID 
 
 void CCompositionProcessorEngine::ConversionModeCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr)
 {
+	OutputDebugString(L"CCompositionProcessorEngine::ConversionModeCompartmentUpdated()\n");
     if (!_pCompartmentConversion)
     {
         return;
@@ -1361,11 +1401,14 @@ void CCompositionProcessorEngine::ConversionModeCompartmentUpdated(_In_ ITfThrea
         if (fOpen && !(conversionMode & TF_CONVERSIONMODE_NATIVE))
         {
             CompartmentIMEMode._SetCompartmentBOOL(FALSE);
-			_pTextService->clearAndExit();
+			_pTextService->OnKeyboardClosed();
         }
         else if (!fOpen && (conversionMode & TF_CONVERSIONMODE_NATIVE))
         {
             CompartmentIMEMode._SetCompartmentBOOL(TRUE);
+			_pTextService->OnKeyboardOpen();
+			loadConfig();
+			SetDefaultCandidateTextFont();
         }
     }
 
@@ -1425,21 +1468,7 @@ void CCompositionProcessorEngine::PrivateCompartmentsUpdated(_In_ ITfThreadMgr *
             conversionMode |= TF_CONVERSIONMODE_FULLSHAPE;
         }
     }
-	/*
-    BOOL isPunctuation = FALSE;
-    CCompartment CompartmentPunctuation(pThreadMgr, _tfClientId, Global::TSFDayiGuidCompartmentPunctuation);
-    if (SUCCEEDED(CompartmentPunctuation._GetCompartmentBOOL(isPunctuation)))
-    {
-        if (!isPunctuation && (conversionMode & TF_CONVERSIONMODE_SYMBOL))
-        {
-            conversionMode &= ~TF_CONVERSIONMODE_SYMBOL;
-        }
-        else if (isPunctuation && !(conversionMode & TF_CONVERSIONMODE_SYMBOL))
-        {
-            conversionMode |= TF_CONVERSIONMODE_SYMBOL;
-        }
-    }
-	*/
+	
     if (conversionMode != conversionModePrev)
     {
         _pCompartmentConversion->_SetCompartmentDWORD(conversionMode);
@@ -1454,6 +1483,7 @@ void CCompositionProcessorEngine::PrivateCompartmentsUpdated(_In_ ITfThreadMgr *
 
 void CCompositionProcessorEngine::KeyboardOpenCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr)
 {
+	OutputDebugString(L"CCompositionProcessorEngine::KeyboardOpenCompartmentUpdated()\n");
     if (!_pCompartmentConversion)
     {
         return;
@@ -1471,19 +1501,8 @@ void CCompositionProcessorEngine::KeyboardOpenCompartmentUpdated(_In_ ITfThreadM
     BOOL isOpen = FALSE;
     
     CCompartment CompartmentIMEMode(pThreadMgr, _tfClientId, Global::TSFDayiGuidCompartmentIMEMode);
-    if (SUCCEEDED(CompartmentIMEMode._GetCompartmentBOOL(isOpen)))
-    {
-        if (isOpen && !(conversionMode & TF_CONVERSIONMODE_NATIVE))
-        {
-            conversionMode |= TF_CONVERSIONMODE_NATIVE;
-        }
-        else if (!isOpen && (conversionMode & TF_CONVERSIONMODE_NATIVE))
-        {
-            conversionMode &= ~TF_CONVERSIONMODE_NATIVE;
-        }
-		if(!isOpen) _pTextService->clearAndExit();
-    }
-	if(Global::isWindows8){
+    
+	if(Global::isWindows8){// check GUID_COMPARTMENT_KEYBOARD_OPENCLOSE in Windows 8.
 		isOpen = FALSE;
 		CCompartment CompartmentKeyboardOpen(pThreadMgr, _tfClientId, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
 		if (SUCCEEDED(CompartmentKeyboardOpen._GetCompartmentBOOL(isOpen)))
@@ -1497,7 +1516,34 @@ void CCompositionProcessorEngine::KeyboardOpenCompartmentUpdated(_In_ ITfThreadM
 				conversionMode &= ~TF_CONVERSIONMODE_NATIVE;
 			}
 		}
-		if(!isOpen) _pTextService->clearAndExit();
+		if(!isOpen) _pTextService->OnKeyboardClosed();
+		else
+		{
+			_pTextService->OnKeyboardOpen();
+			loadConfig();
+			SetDefaultCandidateTextFont();
+		}
+	}
+	else
+	{
+		if (SUCCEEDED(CompartmentIMEMode._GetCompartmentBOOL(isOpen)))
+		{
+			if (isOpen && !(conversionMode & TF_CONVERSIONMODE_NATIVE))
+			{
+				conversionMode |= TF_CONVERSIONMODE_NATIVE;
+			}
+			else if (!isOpen && (conversionMode & TF_CONVERSIONMODE_NATIVE))
+			{
+				conversionMode &= ~TF_CONVERSIONMODE_NATIVE;
+			}
+			if(!isOpen) _pTextService->OnKeyboardClosed();
+			else
+			{
+				_pTextService->OnKeyboardOpen();
+				loadConfig();
+				SetDefaultCandidateTextFont();
+			}
+		}
 	}
 	
 
@@ -1779,17 +1825,22 @@ void CCompositionProcessorEngine::SetInitialCandidateListRange()
 void CCompositionProcessorEngine::SetDefaultCandidateTextFont()
 {
     // Candidate Text Font
-    if (Global::defaultlFontHandle == nullptr)
+    if (Global::defaultlFontHandle != nullptr)
+	{
+		DeleteObject ((HGDIOBJ) Global::defaultlFontHandle);
+		Global::defaultlFontHandle = nullptr;
+	}
+	if (Global::defaultlFontHandle == nullptr)
     {
 		WCHAR fontName[50] = {'\0'}; 
 		LoadString(Global::dllInstanceHandle, IDS_DEFAULT_FONT, fontName, 50);
-        Global::defaultlFontHandle = CreateFont(-MulDiv(10, GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72), 0, 0, 0, FW_MEDIUM, 0, 0, 0, 0, 0, 0, 0, 0, fontName);
+		Global::defaultlFontHandle = CreateFont(-MulDiv(_fontHeight, GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72), 0, 0, 0, FW_MEDIUM, 0, 0, 0, 0, 0, 0, 0, 0, fontName);
         if (!Global::defaultlFontHandle)
         {
 			LOGFONT lf;
 			SystemParametersInfo(SPI_GETICONTITLELOGFONT, sizeof(LOGFONT), &lf, 0);
             // Fall back to the default GUI font on failure.
-            Global::defaultlFontHandle = CreateFont(-MulDiv(10, GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72), 0, 0, 0, FW_MEDIUM, 0, 0, 0, 0, 0, 0, 0, 0, lf.lfFaceName);
+            Global::defaultlFontHandle = CreateFont(-MulDiv(_fontHeight, GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72), 0, 0, 0, FW_MEDIUM, 0, 0, 0, 0, 0, 0, 0, 0, lf.lfFaceName);
         }
     }
 }
@@ -2077,13 +2128,13 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeComposition(UINT uCode, _
             {
                 pKeyState->Category = CATEGORY_COMPOSING;
                 pKeyState->Function = pKeystroke->Function;
-                return TRUE;
+				return TRUE;
             }
             else if (function == pKeystroke->Function)
             {
                 pKeyState->Category = CATEGORY_COMPOSING;
                 pKeyState->Function = pKeystroke->Function;
-                return TRUE;
+				return TRUE;
             }
         }
     }
@@ -2182,4 +2233,49 @@ BOOL CCompositionProcessorEngine::IsKeystrokeRange(UINT uCode, _Out_ _KEYSTROKE_
         }
     }
     return FALSE;
+}
+
+//+---------------------------------------------------------------------------
+//
+// CCompositionProcessorEngine::doBeep
+//
+//----------------------------------------------------------------------------
+
+void CCompositionProcessorEngine::DoBeep()
+{
+	if(_doBeep)
+		MessageBeep(MB_ICONASTERISK);
+}
+
+//  configuration set/get
+void CCompositionProcessorEngine::SetAutoCompose(BOOL autoCompose)
+{
+	_autoCompose = autoCompose;
+}
+BOOL CCompositionProcessorEngine::GetAutoCompose()
+{
+	return _autoCompose;
+}
+void CCompositionProcessorEngine::SetThreeCodeMode(BOOL threeCodeMode)
+{
+
+	_threeCodeMode = threeCodeMode;
+}
+
+void CCompositionProcessorEngine::SetFontHeight(UINT fontHeight)
+{
+	_fontHeight = fontHeight;
+}
+UINT CCompositionProcessorEngine::GetFontHeight()
+{
+	return _fontHeight;
+}
+
+void CCompositionProcessorEngine::SetMaxCodes(UINT maxCodes)
+{
+	_MaxCodes = maxCodes;
+}
+void CCompositionProcessorEngine::SetDoBeep(BOOL doBeep)
+{
+	_doBeep = doBeep;
 }

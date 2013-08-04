@@ -23,9 +23,10 @@ CNotifyWindow::CNotifyWindow(_In_ NOTIFYWNDCALLBACK pfnCallback, _In_ void *pv)
     _pObj = pv;
 
     _pShadowWnd = nullptr;
-	_cxTitle = 50;
-    _wndWidth = 50;
+	_cxTitle = 100;
+	_cyTitle = 100;
 
+	_fontHeight = 14;
   
 }
 
@@ -47,9 +48,10 @@ CNotifyWindow::~CNotifyWindow()
 // CandidateWinow is the top window
 //----------------------------------------------------------------------------
 
-BOOL CNotifyWindow::_Create(ATOM atom, _In_opt_ HWND parentWndHandle)
+BOOL CNotifyWindow::_Create(ATOM atom, _In_ UINT fontHeight, _In_opt_ HWND parentWndHandle)
 {
     BOOL ret = FALSE;
+	_fontHeight = fontHeight;
 
     ret = _CreateMainWindow(atom, parentWndHandle);
     if (FALSE == ret)
@@ -74,13 +76,14 @@ BOOL CNotifyWindow::_CreateMainWindow(ATOM atom, _In_opt_ HWND parentWndHandle)
     _SetUIWnd(this);
 
     if (!CBaseWindow::_Create(atom,
-        WS_EX_TOPMOST |
+		WS_EX_TOPMOST | WS_EX_LAYERED |
 		WS_EX_TOOLWINDOW,
         WS_BORDER | WS_POPUP,
         NULL, 0, 0, parentWndHandle))
     {
         return FALSE;
     }
+	SetLayeredWindowAttributes(_GetWnd(), 0,  (255 * 90) / 100, LWA_ALPHA);
 
     return TRUE;
 }
@@ -110,10 +113,9 @@ void CNotifyWindow::_ResizeWindow()
 {
     //SIZE size = {0, 0};
 
-    //_cxTitle = max(_cxTitle, size.cx + 2 * GetSystemMetrics(SM_CXFRAME));
-
+	//_cxTitle = notifyText.GetLength() * (_fontHeight +2);
     
-	CBaseWindow::_Resize(0, 0, _cxTitle, _wndWidth);  //x, y, cx, cy
+	CBaseWindow::_Resize(0, 0, _cxTitle, _cyTitle);  //x, y, cx, cy
 
     
 }
@@ -183,8 +185,10 @@ LRESULT CALLBACK CNotifyWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT uM
             {
                 HFONT hFontOld = (HFONT)SelectObject(dcHandle, Global::defaultlFontHandle);
                 GetTextMetrics(dcHandle, &_TextMetric);
+				 
+				_cxTitle = _TextMetric.tmAveCharWidth* (int) (notifyText.GetLength() + 5);
+				_cyTitle = _TextMetric.tmHeight *2;
 
-                //_cxTitle = _TextMetric.tmMaxCharWidth * _wndWidth;
                 SelectObject(dcHandle, hFontOld);
                 ReleaseDC(wndHandle, dcHandle);
             }
@@ -393,23 +397,26 @@ void CNotifyWindow::_OnMouseMove(POINT pt)
 void CNotifyWindow::_DrawText(_In_ HDC dcHandle, _In_ RECT *prc)
 {
     
-    int cxLine = _TextMetric.tmAveCharWidth;
-    int cyLine = _TextMetric.tmHeight;
-//    int cyOffset = (cyLine-_TextMetric.tmHeight)/2;
+
+        
+	//SIZE size;
+	//GetTextExtentPoint32(dcHandle, notifyText.Get(), sizeof(size), &size);
+ 	//_cxTitle =_TextMetric.tmAveCharWidth * int(notifyText.GetLength()+5);
+	//_cyTitle = _TextMetric.tmHeight *  2;
 
     RECT rc;
-	rc.top = prc->top +  cyLine;
-    rc.bottom = rc.top + cyLine;
+	rc.top = prc->top;
+    rc.bottom = rc.top + _cyTitle;
 
-    rc.left = prc->left + cxLine;
-	rc.right = prc->left +(LONG) notifyText.GetLength()* cxLine;
+    rc.left = prc->left;
+	rc.right = prc->left + _cyTitle;
 	
     SetTextColor(dcHandle, NOTIFYWND_TEXT_COLOR);
     SetBkColor(dcHandle, NOTIFYWND_TEXT_BK_COLOR);
-        
-    
-    ExtTextOut(dcHandle, 0, 0, ETO_OPAQUE, &rc, 
-			notifyText.Get(), (DWORD)notifyText.GetLength(), NULL);
+
+
+    ExtTextOut(dcHandle, _TextMetric.tmAveCharWidth, _cyTitle/4, ETO_OPAQUE, &rc, notifyText.Get(), (DWORD)notifyText.GetLength(), NULL);
+	//_ResizeWindow();
     
     
 }

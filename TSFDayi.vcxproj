@@ -69,6 +69,7 @@
     <ClCompile Include="BaseDictionaryEngine.cpp" />
     <ClCompile Include="BaseWindow.cpp" />
     <ClCompile Include="ButtonWindow.cpp" />
+    <ClCompile Include="CandidateHandler.cpp" />
     <ClCompile Include="CandidateWindow.cpp" />
     <ClCompile Include="Compartment.cpp" />
     <ClCompile Include="Composition.cpp" />
