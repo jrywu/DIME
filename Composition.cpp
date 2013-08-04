@@ -34,11 +34,9 @@ STDAPI CTSFDayi::OnCompositionTerminated(TfEditCookie ecWrite, _In_ ITfCompositi
         pContext->AddRef();
 	}
 	
-	//if(_candidateMode != CANDIDATE_WITH_NEXT_COMPOSITION)
-	//{
-		_EndComposition(pContext);
-		_DeleteCandidateList(FALSE, pContext);
-	//}
+	_EndComposition(pContext);
+	_DeleteCandidateList(FALSE, pContext);
+	
 	if (pContext)
 	{
 		pContext->Release();

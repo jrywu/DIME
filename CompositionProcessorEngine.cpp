@@ -1152,7 +1152,8 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 
 	if(GetSystemWow64Directory(wszSysWOW64, MAX_PATH)>0){ //return 0 indicates x86 system, x64 otherwize.
 	//x64 system.  Use ProgramW6432 environment variable to get %SystemDrive%\Program Filess.
-		GetEnvironmentVariable(L"ProgramW6432", pwzProgramFiles, MAX_PATH);
+		//GetEnvironmentVariable(L"ProgramW6432", pwzProgramFiles, MAX_PATH);  //W6432 does not exist on VISTA
+		GetEnvironmentVariable(L"ProgramFiles", pwzProgramFiles, MAX_PATH);
 	}else
 	{//x86 system. 
 		SHGetKnownFolderPath(FOLDERID_ProgramFiles, 0, NULL, &pwzProgramFiles);

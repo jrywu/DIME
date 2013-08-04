@@ -49,11 +49,34 @@ STDAPI CTSFDayi::OnUninitDocumentMgr(_In_ ITfDocumentMgr *pDocMgr)
 
 STDAPI CTSFDayi::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMgr *pDocMgrPrevFocus)
 {
+	OutputDebugString(L"CTSFDayi::OnSetFocus()\n");
     pDocMgrPrevFocus;
 
     _InitTextEditSink(pDocMgrFocus);
 
     _UpdateLanguageBarOnSetFocus(pDocMgrFocus);
+
+	if(pDocMgrFocus)
+	{
+		ITfContext* pITfContext(NULL);
+		bool isTransitory = false;
+		bool isMultiRegion = false;
+		bool isMultiSelection = false;
+		if (SUCCEEDED(pDocMgrFocus->GetTop(&pITfContext)))
+		{
+			TF_STATUS tfStatus;
+			if (SUCCEEDED(pITfContext->GetStatus(&tfStatus)))
+			{
+				isTransitory = (tfStatus.dwStaticFlags & TS_SS_TRANSITORY) == TS_SS_TRANSITORY;	
+				isMultiRegion = (tfStatus.dwStaticFlags & TF_SS_REGIONS) == TF_SS_REGIONS;	
+				isMultiSelection = (tfStatus.dwStaticFlags & TF_SS_DISJOINTSEL) == TF_SS_DISJOINTSEL;	
+			}
+
+		}
+		if(isTransitory) OutputDebugString(L"TSF in Transitory context\n");
+		if(isMultiRegion) OutputDebugString(L"Support multi region\n");
+		if(isMultiSelection) OutputDebugString(L"Support multi selection\n");
+	}
 
     //
     // We have to hide/unhide candidate list depending on whether they are 
