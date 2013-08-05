@@ -178,4 +178,42 @@ extern const WCHAR LangbarPunctuationDescription[];
 }
 
 
+#ifdef DEBUG_PRINT 
+#include <ShlObj.h>
+#include <Shlwapi.h>
+#include <stdarg.h>
+#include <stdio.h>
+
+inline static void debugPrint(const WCHAR* format,...) 
+{
+	WCHAR wszAppData[MAX_PATH];
+
+	if (SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE))
+	{
+		StringCchPrintf(wszAppData, MAX_PATH, L"%s\\%s", wszAppData, L"TSFDayi\\");
+		if (PathFileExists(wszAppData))
+			CreateDirectory(wszAppData, NULL);
+	} 
+
+	WCHAR wszDebugLogPath[MAX_PATH];
+	StringCchPrintf(wszDebugLogPath, MAX_PATH, L"%s\\%s", wszAppData, L"debug.txt");
+	
+
+	FILE *fp;
+	if (fp=_wfopen(wszDebugLogPath, L"a"))
+	{
+		va_list args;
+		va_start (args, format);
+		vfwprintf (fp, format, args);
+		va_end (args);
+		fwprintf (fp, L"\n");
+		fclose(fp);
+	}
+}
+#else
+    inline static void debugPrint(const WCHAR* format,...) {}
+#endif
+
+
+
 #endif

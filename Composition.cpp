@@ -78,7 +78,7 @@ HRESULT CTSFDayi::_HandlTextLayoutChange(TfEditCookie ec, _In_ ITfContext *pCont
 		else if( (_phraseCandLocation.x != curPos.x) || (_phraseCandLocation.y != curPos.y))
 		{  //phrase cand moved delete the cand.
 			OutputDebugString(L"CTSFDayi::_HandlTextLayouyChange() cursor moved. end composition and kill the cand.\n");
-			_EndComposition(pContext);
+			//_EndComposition(pContext); //leave it alone
 			
 		}
 
