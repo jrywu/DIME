@@ -416,8 +416,8 @@ STDAPI CTSFDayi::OnKeyUp(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOO
 STDAPI CTSFDayi::OnPreservedKey(ITfContext *pContext, REFGUID rguid, BOOL *pIsEaten)
 {
 	//pContext;
-	if(_pContext == nullptr)
-		_SaveCompositionContext(pContext); // save the _pContext
+	//if(_pContext == nullptr)
+		//_SaveCompositionContext(pContext); // save the _pContext
 
     CCompositionProcessorEngine *pCompositionProcessorEngine;
     pCompositionProcessorEngine = _pCompositionProcessorEngine;

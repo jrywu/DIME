@@ -141,7 +141,6 @@ extern BOOL IsAltKeyDownOnly;
 
 extern const GUID TSFDayiGuidCompartmentIMEMode;
 extern const GUID TSFDayiGuidCompartmentDoubleSingleByte;
-extern const GUID TSFDayiGuidCompartmentPunctuation;
 
 extern const WCHAR FullWidthCharTable[];
 extern const WCHAR symbolCharTable[26];
@@ -200,13 +199,13 @@ inline static void debugPrint(const WCHAR* format,...)
 	
 
 	FILE *fp;
-	if (fp=_wfopen(wszDebugLogPath, L"a"))
+	if (fp = _wfopen(wszDebugLogPath, L"a"))
 	{
 		va_list args;
 		va_start (args, format);
 		vfwprintf (fp, format, args);
 		va_end (args);
-		fwprintf (fp, L"\n");
+		fwprintf(fp, L"\n");
 		fclose(fp);
 	}
 }

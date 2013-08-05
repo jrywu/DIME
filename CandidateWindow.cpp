@@ -99,7 +99,7 @@ BOOL CCandidateWindow::_CreateMainWindow(_In_opt_ HWND parentWndHandle)
     _SetUIWnd(this);
 
 	if (!CBaseWindow::_Create(Global::AtomCandidateWindow,
-        WS_EX_TOPMOST |  WS_EX_LAYERED |
+        WS_EX_TOPMOST |//  WS_EX_LAYERED |
 		WS_EX_TOOLWINDOW, 
         WS_BORDER | WS_POPUP,
         NULL, 0, 0, parentWndHandle))
@@ -107,7 +107,7 @@ BOOL CCandidateWindow::_CreateMainWindow(_In_opt_ HWND parentWndHandle)
         return FALSE;
     }
 	
-	SetLayeredWindowAttributes(_GetWnd(), 0,  (255 * 85) / 100, LWA_ALPHA);
+	//SetLayeredWindowAttributes(_GetWnd(), 0,  (255 * 90) / 100, LWA_ALPHA);
 
     return TRUE;
 }
@@ -150,8 +150,7 @@ BOOL CCandidateWindow::_CreateVScrollWindow()
     _pVScrollBarWnd->_SetUIWnd(this);
 
     if (!_pVScrollBarWnd->_Create(Global::AtomCandidateScrollBarWindow, 
-		WS_EX_TOPMOST | WS_EX_TOOLWINDOW
-		, WS_POPUP , this))
+		WS_EX_TOPMOST | WS_EX_TOOLWINDOW , WS_CHILD , this))
     {
         _DeleteVScrollBarWnd();
         _DeleteShadowWnd();
@@ -194,7 +193,7 @@ void CCandidateWindow::_ResizeWindow()
 
 void CCandidateWindow::_Move(int x, int y)
 {
-	OutputDebugString(L"CCandidateWindow::_Move()\n");
+	debugPrint(L"CCandidateWindow::_Move()\n");
     CBaseWindow::_Move(x, y);
 }
 
@@ -430,14 +429,12 @@ void CCandidateWindow::_HandleMouseMsg(_In_ UINT mouseMsg, _In_ POINT point)
 
 void CCandidateWindow::_OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pPaintStruct)
 {
-	OutputDebugString(L"CCandidateWindow::_OnPaint()\n");
+	debugPrint(L"CCandidateWindow::_OnPaint()\n");
     SetBkMode(dcHandle, TRANSPARENT);
 
     HFONT hFontOld = (HFONT)SelectObject(dcHandle, Global::defaultlFontHandle);
 
-	HBRUSH hBrush = GetSysColorBrush(COLOR_3DHIGHLIGHT);
-
-    FillRect(dcHandle, &pPaintStruct->rcPaint, hBrush);
+    FillRect(dcHandle, &pPaintStruct->rcPaint, _brshBkColor);
 
     UINT currentPageIndex = 0;
     UINT currentPage = 0;
@@ -480,15 +477,16 @@ void CCandidateWindow::_OnLButtonDown(POINT pt)
     // Hit test on list items
     index = *_PageIndex.GetAt(currentPage);
 
-	RECT rc = {0, 0, 0, 0};
 
-	rc.left = rcWindow.left + PageCountPosition* _fontSize;
-    rc.right = rcWindow.right  - GetSystemMetrics(SM_CXVSCROLL) * 2 - CANDWND_BORDER_WIDTH;
+
+	//rc.left = rcWindow.left + PageCountPosition* _fontSize;
+    //rc.right = rcWindow.right  - GetSystemMetrics(SM_CXVSCROLL) * 2 - CANDWND_BORDER_WIDTH;
 
     for (UINT pageCount = 0; (index < _candidateList.Count()) && (pageCount < candidateListPageCnt); index++, pageCount++)
     {
-    
-		
+			RECT rc = {0, 0, 0, 0};
+		rc.left = rcWindow.left;
+        rc.right = rcWindow.right - GetSystemMetrics(SM_CXVSCROLL) * 2;
         rc.top = rcWindow.top + (pageCount * cyLine);
         rc.bottom = rcWindow.top + ((pageCount + 1) * cyLine);
 
@@ -625,14 +623,17 @@ void CCandidateWindow::_OnVScroll(DWORD dwSB, _In_ DWORD nPos)
 
 void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT iIndex, _In_ RECT *prc)
 {
-	OutputDebugString(L"CCandidateWindow::_DrawList()\n");
+	debugPrint(L"CCandidateWindow::_DrawList()\n");
     int pageCount = 0;
     int candidateListPageCnt = _pIndexRange->Count();
 
+
 	int cxLine = _TextMetric.tmAveCharWidth;
 	int cyLine = _cyRow;
-
 	int cyOffset = _cyRow/4 ;
+	//int cyLine = max(_cyRow, _TextMetric.tmHeight);
+    //int cyOffset = (cyLine == _cyRow ? (cyLine-_TextMetric.tmHeight)/2 : 0);
+
 
     RECT rc;
 
@@ -647,6 +648,7 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT iIndex, _In_ RECT 
         rc.top = prc->top + pageCount * cyLine + CANDWND_BORDER_WIDTH * 2;;
         rc.bottom = rc.top + cyLine + CANDWND_BORDER_WIDTH * 2;;
 
+
         rc.left = prc->left + PageCountPosition * cxLine;
         rc.right = prc->left + StringPosition * cxLine;
 
@@ -658,7 +660,7 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT iIndex, _In_ RECT 
         ExtTextOut(dcHandle, PageCountPosition * cxLine, pageCount * cyLine + cyOffset, ETO_OPAQUE, &rc, pageCountString, lenOfPageCount, NULL);
 
         rc.left = prc->left + StringPosition * cxLine;
-        rc.right = prc->right - GetSystemMetrics(SM_CXVSCROLL) * 2 - CANDWND_BORDER_WIDTH;
+        rc.right = prc->right;// - GetSystemMetrics(SM_CXVSCROLL) * 2 - CANDWND_BORDER_WIDTH;
 
         // Candidate Font Color And BK
         if (_currentSelection != (INT)iIndex)

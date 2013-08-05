@@ -3,7 +3,7 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-
+#define DEBUG_PRINT
 
 #include "Private.h"
 #include "Globals.h"
@@ -50,28 +50,30 @@ public:
 
 void CTSFDayi::_TerminateComposition(TfEditCookie ec, _In_ ITfContext *pContext, BOOL isCalledFromDeactivate)
 {
-	OutputDebugString(L"CTSFDayi::_TerminateComposition()\n");
+	debugPrint(L"CTSFDayi::_TerminateComposition()\n");
 	isCalledFromDeactivate;
 
     if (_pComposition != nullptr)
     {
-		if(isCalledFromDeactivate)
-			_RemoveDummyCompositionForComposing(ec, _pComposition);
-		else // remove the display attribute from the composition range.
+		//if(isCalledFromDeactivate)
+			//_RemoveDummyCompositionForComposing(ec, _pComposition);
+		//else // remove the display attribute from the composition range.
 			_ClearCompositionDisplayAttributes(ec, pContext);
 
-		_pComposition->EndComposition(ec);
-		_DeleteCandidateList(TRUE, pContext);
+		if (FAILED(_pComposition->EndComposition(ec)))
+        {
+			_DeleteCandidateList(TRUE, pContext);
+		}
         _pComposition->Release();
         _pComposition = nullptr;
 
-		/*
+		
         if (_pContext)
         {
             _pContext->Release();
             _pContext = nullptr;
         }
-		*/
+		
     }
 }
 
@@ -83,7 +85,7 @@ void CTSFDayi::_TerminateComposition(TfEditCookie ec, _In_ ITfContext *pContext,
 
 void CTSFDayi::_EndComposition(_In_opt_ ITfContext *pContext)
 {
-	OutputDebugString(L"CTSFDayi::_EndComposition()\n");
+	debugPrint(L"CTSFDayi::_EndComposition()\n");
     CEndCompositionEditSession *pEditSession = new (std::nothrow) CEndCompositionEditSession(this, pContext);
     HRESULT hr = S_OK;
 

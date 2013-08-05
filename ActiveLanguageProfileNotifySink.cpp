@@ -28,7 +28,7 @@ BOOL CTSFDayi::VerifyTSFDayiCLSID(_In_ REFCLSID clsid)
 
 STDAPI CTSFDayi::OnActivated(_In_ REFCLSID clsid, _In_ REFGUID guidProfile, _In_ BOOL isActivated)
 {
-	OutputDebugString(L"CTSFDayi::OnActivated()\n");
+	debugPrint(L"CTSFDayi::OnActivated()\n");
 	guidProfile;
 
     if (FALSE == VerifyTSFDayiCLSID(clsid))

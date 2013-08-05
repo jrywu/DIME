@@ -33,7 +33,7 @@ CGetTextExtentEditSession::CGetTextExtentEditSession(_In_ CTSFDayi *pTextService
 
 STDAPI CGetTextExtentEditSession::DoEditSession(TfEditCookie ec)
 {
-	OutputDebugString(L"CGetTextExtentEditSession::DoEditSession()\n");
+	debugPrint(L"CGetTextExtentEditSession::DoEditSession()\n");
     RECT rc = {0, 0, 0, 0};
     BOOL isClipped = TRUE;
 	
@@ -41,7 +41,7 @@ STDAPI CGetTextExtentEditSession::DoEditSession(TfEditCookie ec)
     if (SUCCEEDED(_pContextView->GetTextExt(ec, _pRangeComposition, &rc, &isClipped)))
     {
 		_pTfTextLayoutSink->_LayoutChangeNotification(&rc);
-		_pTextService->_HandlTextLayoutChange(ec, _pContext, _pRangeComposition);
+		//_pTextService->_HandlTextLayoutChange(ec, _pContext, _pRangeComposition);
         
     }
 

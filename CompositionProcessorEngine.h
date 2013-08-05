@@ -187,7 +187,6 @@ private:
     CLangBarItemButton* _pLanguageBar_IMEModeW8;
 	CLangBarItemButton* _pLanguageBar_IMEMode;
     CLangBarItemButton* _pLanguageBar_DoubleSingleByte;
-    CLangBarItemButton* _pLanguageBar_Punctuation;
 
     // Compartment
     CCompartment* _pCompartmentConversion;
@@ -195,7 +194,6 @@ private:
     CCompartmentEventSink* _pCompartmentConversionEventSink;
     CCompartmentEventSink* _pCompartmentKeyboardOpenEventSink;
     CCompartmentEventSink* _pCompartmentDoubleSingleByteEventSink;
-    CCompartmentEventSink* _pCompartmentPunctuationEventSink;
 
     // Configuration data
     BOOL _isWildcard : 1;

@@ -3,7 +3,7 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-
+#define DEBUG_PRINT
 
 #include "Private.h"
 #include "Globals.h"
@@ -21,7 +21,7 @@
 
 STDAPI CTSFDayi::OnCompositionTerminated(TfEditCookie ecWrite, _In_ ITfComposition *pComposition)
 {
-	OutputDebugString(L"CTSFDayi::_TerminateComposition()");
+	debugPrint(L"CTSFDayi::_TerminateComposition()");
 	HRESULT hr = S_OK;
     ITfContext* pContext = _pContext;
    
@@ -47,7 +47,7 @@ STDAPI CTSFDayi::OnCompositionTerminated(TfEditCookie ecWrite, _In_ ITfCompositi
 
 HRESULT CTSFDayi::_HandlTextLayoutChange(TfEditCookie ec, _In_ ITfContext *pContext,  _In_ ITfRange *pRangeComposition)
 {
-	OutputDebugString(L"CTSFDayi::_HandlTextLayoutChange()\n");
+	debugPrint(L"CTSFDayi::_HandlTextLayoutChange()");
 	ec; pRangeComposition; pContext;
 
 	//POINT newCandLocation;
@@ -56,20 +56,16 @@ HRESULT CTSFDayi::_HandlTextLayoutChange(TfEditCookie ec, _In_ ITfContext *pCont
 	POINT curPos;
 	GetCaretPos(&curPos);
 	
-	WCHAR wszbuf[256];
-	swprintf(wszbuf,256, L"CTSFDayi::_HandlTextLayouyChange(), candMode = %d, _phraseCandShowing = %d\n" , _candidateMode, _phraseCandShowing);
-	OutputDebugString(wszbuf);
-	swprintf(wszbuf,256, L"CTSFDayi::_HandlTextLayouyChange(), newCandidate.x = %d, newCandidate.y = %d\n" , curPos.x, curPos.y);
-	OutputDebugString(wszbuf);
-	
+	//debugPrint(L"CTSFDayi::_HandlTextLayouyChange(), candMode = %d, _phraseCandShowing = %d" , _candidateMode, _phraseCandShowing);
+	//debugPrint(L"CTSFDayi::_HandlTextLayouyChange(), newCandidate.x = %d, newCandidate.y = %d" , curPos.x, curPos.y);
 	
 	if( _candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION || _candidateMode == CANDIDATE_PHRASE)
 	{
 		
-		OutputDebugString(L"CTSFDayi::_HandlTextLayouyChange() candMode = CANDIDATE_WITH_NEXT_COMPOSITION or CANDIDATE_PHRASE\n");
+		debugPrint(L"CTSFDayi::_HandlTextLayouyChange() candMode = CANDIDATE_WITH_NEXT_COMPOSITION or CANDIDATE_PHRASE");
 		if(_phraseCandShowing)
 		{
-			OutputDebugString(L"CTSFDayi::_HandlTextLayouyChange() _phraseCand is showing \n");
+			debugPrint(L"CTSFDayi::_HandlTextLayouyChange() _phraseCand is showing ");
 			_phraseCandShowing = FALSE; //finishing showing phrase cand
 			_phraseCandLocation.x = curPos.x;
 			_phraseCandLocation.y = curPos.y;
@@ -77,7 +73,7 @@ HRESULT CTSFDayi::_HandlTextLayoutChange(TfEditCookie ec, _In_ ITfContext *pCont
 		}
 		else if( (_phraseCandLocation.x != curPos.x) || (_phraseCandLocation.y != curPos.y))
 		{  //phrase cand moved delete the cand.
-			OutputDebugString(L"CTSFDayi::_HandlTextLayouyChange() cursor moved. end composition and kill the cand.\n");
+			debugPrint(L"CTSFDayi::_HandlTextLayouyChange() cursor moved. end composition and kill the cand.");
 			//_EndComposition(pContext); //leave it alone
 			
 		}
@@ -122,6 +118,7 @@ void CTSFDayi::_SetComposition(_In_ ITfComposition *pComposition)
 
 HRESULT CTSFDayi::_AddComposingAndChar(TfEditCookie ec, _In_ ITfContext *pContext, _In_ CStringRange *pstrAddString)
 {
+	debugPrint(L"CTSFDayi::_AddComposingAndChar()");
     HRESULT hr = S_OK;
 
     ULONG fetched = 0;
@@ -170,6 +167,7 @@ HRESULT CTSFDayi::_AddComposingAndChar(TfEditCookie ec, _In_ ITfContext *pContex
 
 HRESULT CTSFDayi::_AddCharAndFinalize(TfEditCookie ec, _In_ ITfContext *pContext, _In_ CStringRange *pstrAddString)
 {
+	debugPrint(L"CTSFDayi::_AddCharAndFinalize()");
     HRESULT hr = E_FAIL;
 
     ULONG fetched = 0;
@@ -202,6 +200,8 @@ HRESULT CTSFDayi::_AddCharAndFinalize(TfEditCookie ec, _In_ ITfContext *pContext
 
 BOOL CTSFDayi::_FindComposingRange(TfEditCookie ec, _In_ ITfContext *pContext, _In_ ITfRange *pSelection, _Outptr_result_maybenull_ ITfRange **ppRange)
 {
+	debugPrint(L"CTSFDayi::_FindComposingRange()");
+
     if (ppRange == nullptr)
     {
         return FALSE;
@@ -259,6 +259,7 @@ BOOL CTSFDayi::_FindComposingRange(TfEditCookie ec, _In_ ITfContext *pContext, _
 
 HRESULT CTSFDayi::_SetInputString(TfEditCookie ec, _In_ ITfContext *pContext, _Out_opt_ ITfRange *pRange, _In_ CStringRange *pstrAddString, BOOL exist_composing)
 {
+
     ITfRange* pRangeInsert = nullptr;
     if (!exist_composing)
     {
@@ -354,7 +355,7 @@ Exit:
 
 HRESULT CTSFDayi::_RemoveDummyCompositionForComposing(TfEditCookie ec, _In_ ITfComposition *pComposition)
 {
-	OutputDebugString(L"CTSFDayi::_RemoveDummyCompositionForComposing()\n");
+	debugPrint(L"CTSFDayi::_RemoveDummyCompositionForComposing()\n");
     HRESULT hr = S_OK;
 
     ITfRange* pRange = nullptr;

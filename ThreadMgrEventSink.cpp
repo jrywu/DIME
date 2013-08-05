@@ -49,7 +49,7 @@ STDAPI CTSFDayi::OnUninitDocumentMgr(_In_ ITfDocumentMgr *pDocMgr)
 
 STDAPI CTSFDayi::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMgr *pDocMgrPrevFocus)
 {
-	OutputDebugString(L"CTSFDayi::OnSetFocus()\n");
+	debugPrint(L"CTSFDayi::OnSetFocus()\n");
     pDocMgrPrevFocus;
 
     _InitTextEditSink(pDocMgrFocus);
@@ -64,6 +64,7 @@ STDAPI CTSFDayi::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentM
 		bool isMultiSelection = false;
 		if (SUCCEEDED(pDocMgrFocus->GetTop(&pITfContext)))
 		{
+			//_SaveCompositionContext(pITfContext);
 			TF_STATUS tfStatus;
 			if (SUCCEEDED(pITfContext->GetStatus(&tfStatus)))
 			{
@@ -73,9 +74,9 @@ STDAPI CTSFDayi::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentM
 			}
 
 		}
-		if(isTransitory) OutputDebugString(L"TSF in Transitory context\n");
-		if(isMultiRegion) OutputDebugString(L"Support multi region\n");
-		if(isMultiSelection) OutputDebugString(L"Support multi selection\n");
+		if(isTransitory) debugPrint(L"TSF in Transitory context\n");
+		if(isMultiRegion) debugPrint(L"Support multi region\n");
+		if(isMultiSelection) debugPrint(L"Support multi selection\n");
 	}
 
     //

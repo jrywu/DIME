@@ -48,29 +48,13 @@ extern const GUID TSFDayiGuidProfile =
 //---------------------------------------------------------------------
 // PreserveKey GUID
 //---------------------------------------------------------------------
-// {4B62B54B-F828-43B5-9095-A96DF9CBDF38}
-extern const GUID TSFDayiGuidImeModePreserveKey = {
-    0x4b62b54b, 
-    0xf828, 
-    0x43b5, 
-    { 0x90, 0x95, 0xa9, 0x6d, 0xf9, 0xcb, 0xdf, 0x38 } 
-};
+// {3C4173E2-D908-419B-BEE0-89FDF46456A2}
+extern const GUID TSFDayiGuidImeModePreserveKey = 
+{ 0x3c4173e2, 0xd908, 0x419b, { 0xbe, 0xe0, 0x89, 0xfd, 0xf4, 0x64, 0x56, 0xa2 } };
 
-// {5A08D6C4-4563-4E46-8DDB-65E75C4E73A3}
-extern const GUID TSFDayiGuidDoubleSingleBytePreserveKey = {
-    0x5a08d6c4, 
-    0x4563, 
-    0x4e46, 
-    { 0x8d, 0xdb, 0x65, 0xe7, 0x5c, 0x4e, 0x73, 0xa3 } 
-};
-
-// {175F062E-B961-4AED-A3DF-59F78A02862D}
-extern const GUID TSFDayiGuidPunctuationPreserveKey = {
-    0x175f062e, 
-    0xb961, 
-    0x4aed, 
-    { 0xa3, 0xdf, 0x59, 0xf7, 0x8a, 0x2, 0x86, 0x2d } 
-};
+// {B9F1B6BA-CCCF-478F-B7C2-89B0D9442A38}
+extern const GUID TSFDayiGuidDoubleSingleBytePreserveKey = 
+{ 0xb9f1b6ba, 0xcccf, 0x478f, { 0xb7, 0xc2, 0x89, 0xb0, 0xd9, 0x44, 0x2a, 0x38 } };
 
 //---------------------------------------------------------------------
 // Compartments
@@ -78,21 +62,9 @@ extern const GUID TSFDayiGuidPunctuationPreserveKey = {
 // {91FCB13F-0BA5-4D93-846C-E8A706BB5F2B}
 extern const GUID TSFDayiGuidCompartmentIMEMode = 
 { 0x91fcb13f, 0xba5, 0x4d93, { 0x84, 0x6c, 0xe8, 0xa7, 0x6, 0xbb, 0x5f, 0x2b } };
-// {101011C5-CF72-4F0C-A515-153019593F10}
-extern const GUID TSFDayiGuidCompartmentDoubleSingleByte = {
-    0x101011c5,
-    0xcf72,
-    0x4f0c,
-    { 0xa5, 0x15, 0x15, 0x30, 0x19, 0x59, 0x3f, 0x10 }
-};
-
-// {DD321BCC-A7F8-4561-9B61-9B3508C9BA97}
-extern const GUID TSFDayiGuidCompartmentPunctuation = {
-    0xdd321bcc,
-    0xa7f8,
-    0x4561,
-    { 0x9b, 0x61, 0x9b, 0x35, 0x8, 0xc9, 0xba, 0x97 }
-};
+// {176AF217-E72C-4A24-8373-F90581786A5D}
+extern const GUID TSFDayiGuidCompartmentDoubleSingleByte = 
+{ 0x176af217, 0xe72c, 0x4a24, { 0x83, 0x73, 0xf9, 0x5, 0x81, 0x78, 0x6a, 0x5d } };
 
 
 //---------------------------------------------------------------------
@@ -100,58 +72,31 @@ extern const GUID TSFDayiGuidCompartmentPunctuation = {
 //---------------------------------------------------------------------
 
 
-// {89BE500C-9462-4070-9DB0-B467BB051327}
-extern const GUID TSFDayiGuidLangBarIMEMode = {
-    0x89be500c,
-    0x9462,
-    0x4070,
-    { 0x9d, 0xb0, 0xb4, 0x67, 0xbb, 0x5, 0x13, 0x27 }
-};
+// {B9F1B6BA-CCCF-478F-B7C2-89B0D9442A38}
+extern const GUID TSFDayiGuidLangBarIMEMode = 
+{ 0xb9f1b6ba, 0xcccf, 0x478f, { 0xb7, 0xc2, 0x89, 0xb0, 0xd9, 0x44, 0x2a, 0x38 } };
 
-// {6A11D9DE-46DB-455B-A257-2EB615746BF4}
-extern const GUID TSFDayiGuidLangBarDoubleSingleByte = {
-    0x6a11d9de,
-    0x46db,
-    0x455b,
-    { 0xa2, 0x57, 0x2e, 0xb6, 0x15, 0x74, 0x6b, 0xf4 }
-};
+// {FB007925-ACBE-4AF1-A98B-2701EB68A90B}
+extern const GUID TSFDayiGuidLangBarDoubleSingleByte = 
+{ 0xfb007925, 0xacbe, 0x4af1, { 0xa9, 0x8b, 0x27, 0x1, 0xeb, 0x68, 0xa9, 0xb } };
 
-// {F29C731A-A51E-49FB-8A3C-EE51752912E2}
-extern const GUID TSFDayiGuidLangBarPunctuation = {
-    0xf29c731a,
-    0xa51e,
-    0x49fb,
-    { 0x8a, 0x3c, 0xee, 0x51, 0x75, 0x29, 0x12, 0xe2 }
-};
+// {C1AD6968-5F10-4C73-9125-51A3C70F88A0}
+extern const GUID TSFDayiGuidDisplayAttributeInput = 
+{ 0xc1ad6968, 0x5f10, 0x4c73, { 0x91, 0x25, 0x51, 0xa3, 0xc7, 0xf, 0x88, 0xa0 } };
 
-// {4C802E2C-8140-4436-A5E5-F7C544EBC9CD}
-extern const GUID TSFDayiGuidDisplayAttributeInput = {
-    0x4c802e2c,
-    0x8140,
-    0x4436,
-    { 0xa5, 0xe5, 0xf7, 0xc5, 0x44, 0xeb, 0xc9, 0xcd }
-};
 
-// {9A1CC683-F2A7-4701-9C6E-2DA69A5CD474}
-extern const GUID TSFDayiGuidDisplayAttributeConverted = {
-    0x9a1cc683,
-    0xf2a7,
-    0x4701,
-    { 0x9c, 0x6e, 0x2d, 0xa6, 0x9a, 0x5c, 0xd4, 0x74 }
-};
+extern const GUID TSFDayiGuidDisplayAttributeConverted = 
+{ 0x62a68877, 0xc2c1, 0x41ed, { 0x9f, 0x80, 0x54, 0xde, 0xbd, 0x87, 0x9f, 0x74 } };
 
 
 //---------------------------------------------------------------------
 // UI element
 //---------------------------------------------------------------------
 
-// {84B0749F-8DE7-4732-907A-3BCB150A01A8}
-extern const GUID TSFDayiGuidCandUIElement = {
-    0x84b0749f,
-    0x8de7,
-    0x4732,
-    { 0x90, 0x7a, 0x3b, 0xcb, 0x15, 0xa, 0x1, 0xa8 }
-};
+// {87D9FBA0-C152-475B-BD82-0A18DFA616A7}
+extern const GUID TSFDayiGuidCandUIElement = 
+{ 0x87d9fba0, 0xc152, 0x475b, { 0xbd, 0x82, 0xa, 0x18, 0xdf, 0xa6, 0x16, 0xa7 } };
+
 
 //---------------------------------------------------------------------
 // Unicode byte order mark

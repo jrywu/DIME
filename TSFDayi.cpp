@@ -3,7 +3,7 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-
+#define DEBUG_PRINT
 
 #include "Private.h"
 #include "globals.h"
@@ -288,6 +288,7 @@ ExitError:
 
 STDAPI CTSFDayi::Deactivate()
 {
+	debugPrint(L"CTSFDayi::Deactivate");
     if (_pCompositionProcessorEngine)
     {
         delete _pCompositionProcessorEngine;
@@ -336,9 +337,7 @@ STDAPI CTSFDayi::Deactivate()
     CCompartment CompartmentDoubleSingleByte(_pThreadMgr, _tfClientId, Global::TSFDayiGuidCompartmentDoubleSingleByte);
     CompartmentDoubleSingleByte._ClearCompartment();
 
-    CCompartment CompartmentPunctuation(_pThreadMgr, _tfClientId, Global::TSFDayiGuidCompartmentPunctuation);
-    CompartmentDoubleSingleByte._ClearCompartment();
-
+    
     if (_pThreadMgr != nullptr)
     {
         _pThreadMgr->Release();
@@ -483,7 +482,7 @@ HRESULT CTSFDayi::Show(_In_ HWND hwndParent)
 
 void CTSFDayi::OnKeyboardClosed()
 {
-	OutputDebugString(L"CTSFDayi::OnKeyboardClosed()\n");
+	debugPrint(L"CTSFDayi::OnKeyboardClosed()\n");
 	// switching to English (native) mode delete the phrase candidate window before exting.
 	if(_IsComposing()) 
 		_EndComposition(_pContext);
@@ -494,7 +493,7 @@ void CTSFDayi::OnKeyboardClosed()
 
 void CTSFDayi::OnKeyboardOpen()
 {
-	OutputDebugString(L"CTSFDayi::OnKeyboardOpen()\n");
+	debugPrint(L"CTSFDayi::OnKeyboardOpen()\n");
 	// switching to Chinese mode
 	CStringRange notifyText;
 	ShowNotifyText(_pContext, &notifyText.Set(L"¤¤¤å", 2));
@@ -503,7 +502,7 @@ void CTSFDayi::OnKeyboardOpen()
 
 void CTSFDayi::OnSwitchedToFullShape()
 {
-	OutputDebugString(L"CTSFDayi::OnSwitchedToFullShape()\n");
+	debugPrint(L"CTSFDayi::OnSwitchedToFullShape()\n");
 	if(_IsComposing()) 
 		_EndComposition(_pContext);
 	_DeleteCandidateList(FALSE, NULL);
@@ -514,7 +513,7 @@ void CTSFDayi::OnSwitchedToFullShape()
 
 void CTSFDayi::OnSwitchedToHalfShape()
 {
-	OutputDebugString(L"CTSFDayi::OnSwitchedToHalfShape()\n");
+	debugPrint(L"CTSFDayi::OnSwitchedToHalfShape()\n");
 	if(_IsComposing()) 
 		_EndComposition(_pContext);
 	_DeleteCandidateList(FALSE, NULL);
@@ -528,7 +527,7 @@ HRESULT CTSFDayi::ShowNotifyText(ITfContext *pContext, CStringRange *pNotifyText
 {
 	HRESULT hr = S_OK;
 	
-	
+	/*
 	if(_pTSFDayiUIPresenter == nullptr)
     {
 		_pTSFDayiUIPresenter = new (std::nothrow) CTSFDayiUIPresenter(this, _pCompositionProcessorEngine);
@@ -538,5 +537,6 @@ HRESULT CTSFDayi::ShowNotifyText(ITfContext *pContext, CStringRange *pNotifyText
         }	
     }
     _pTSFDayiUIPresenter->ShowNotifyText(pContext, pNotifyText);
+	*/
 	return hr;
 }

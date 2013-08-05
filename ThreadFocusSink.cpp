@@ -17,7 +17,7 @@
 
 STDAPI CTSFDayi::OnSetThreadFocus()
 {
-	OutputDebugString(L"CTSFDayi::OnSetThreadFocus()\n");
+	debugPrint(L"CTSFDayi::OnSetThreadFocus()\n");
     if (_pTSFDayiUIPresenter)
     {
         ITfDocumentMgr* pCandidateListDocumentMgr = nullptr;
@@ -45,7 +45,7 @@ STDAPI CTSFDayi::OnSetThreadFocus()
 
 STDAPI CTSFDayi::OnKillThreadFocus()
 {
-	OutputDebugString(L"CTSFDayi::OnSetThreadFocus()\n");
+	debugPrint(L"CTSFDayi::OnSetThreadFocus()\n");
     if (_pTSFDayiUIPresenter)
     {
         ITfDocumentMgr* pCandidateListDocumentMgr = nullptr;

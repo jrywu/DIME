@@ -3,7 +3,7 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-
+#define DEBUG_PRINT
 #include <Shlobj.h>
 #include <Shlwapi.h>
 #include "Private.h"
@@ -223,14 +223,7 @@ CCompositionProcessorEngine::~CCompositionProcessorEngine()
         delete _pCompartmentDoubleSingleByteEventSink;
         _pCompartmentDoubleSingleByteEventSink = nullptr;
     }
-	/*
-    if (_pCompartmentPunctuationEventSink)
-    {
-        _pCompartmentPunctuationEventSink->_Unadvise();
-        delete _pCompartmentPunctuationEventSink;
-        _pCompartmentPunctuationEventSink = nullptr;
-    }
-	*/
+
 	if (_pTTSDictionaryFile)
     {
         delete _pTTSDictionaryFile;
@@ -651,7 +644,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFDayiArray<CCandid
 		/*
 		WCHAR debugStr[256];
 		StringCchPrintf(debugStr, 256, L"cand item - %d : length: %d \n", index, pLI->_ItemString.GetLength());
-		OutputDebugString(debugStr);
+		debugPrint(debugStr);
 		*/
         index++;
     }
@@ -965,7 +958,7 @@ BOOL CCompositionProcessorEngine::CheckShiftKeyOnly(_In_ CTSFDayiArray<TF_PRESER
 
 void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL *pIsEaten, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId)
 {
-	OutputDebugString(L"CCompositionProcessorEngine::OnPreservedKey() \n");
+	debugPrint(L"CCompositionProcessorEngine::OnPreservedKey() \n");
     if (IsEqualGUID(rguid, _PreservedKey_IMEMode.Guid))
     {
         if (!CheckShiftKeyOnly(&_PreservedKey_IMEMode.TSFPreservedKeyTable))
@@ -1143,13 +1136,15 @@ BOOL CCompositionProcessorEngine::InitLanguageBar(_In_ CLangBarItemButton *pLang
 
 BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 {	
-    OutputDebugString(L"CCompositionProcessorEngine::SetupDictionaryFile() \n");
+    debugPrint(L"CCompositionProcessorEngine::SetupDictionaryFile() \n");
 
-	WCHAR wszSysWOW64[MAX_PATH];
+	
 	WCHAR wszProgramFiles[MAX_PATH];
 	WCHAR wszAppData[MAX_PATH];
-	LPWSTR pwzProgramFiles = wszProgramFiles;
 
+	/*
+	//LPWSTR pwzProgramFiles = wszProgramFiles;
+	WCHAR wszSysWOW64[MAX_PATH];
 	if(GetSystemWow64Directory(wszSysWOW64, MAX_PATH)>0){ //return 0 indicates x86 system, x64 otherwize.
 	//x64 system.  Use ProgramW6432 environment variable to get %SystemDrive%\Program Filess.
 		//GetEnvironmentVariable(L"ProgramW6432", pwzProgramFiles, MAX_PATH);  //W6432 does not exist on VISTA
@@ -1160,6 +1155,9 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 	}
 	//CSIDL_APPDATA  personal roadming application data.
 	SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);
+	*/
+	// the environment variable consistenly get "Program Files" directory in either x64 or x86 system.
+	GetEnvironmentVariable(L"ProgramFiles", wszProgramFiles, MAX_PATH); 
 	
 	WCHAR wzsTTSFileName[MAX_PATH] = L"\\Windows NT\\TableTextService\\TableTextServiceDaYi.txt";
 	WCHAR wzsTSFDayiProfile[MAX_PATH] = L"\\TSFDayi";
@@ -1175,7 +1173,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 	*pwszCINFileName = L'\0';
 
 	//tableTextService (TTS) dictionary file 
-	StringCchCopyN(pwszFileName, MAX_PATH, pwzProgramFiles, wcslen(pwzProgramFiles) + 1);
+	StringCchCopyN(pwszFileName, MAX_PATH, wszProgramFiles, wcslen(wszProgramFiles) + 1);
 	StringCchCatN(pwszFileName, MAX_PATH, wzsTTSFileName, wcslen(wzsTTSFileName));
 
 	//create CFileMapping object
@@ -1247,7 +1245,7 @@ ErrorExit:
 
 VOID CCompositionProcessorEngine::loadConfig()
 {	
-	OutputDebugString(L"CCompositionProcessorEngine::loadConfig() \n");
+	debugPrint(L"CCompositionProcessorEngine::loadConfig() \n");
 	WCHAR wszAppData[MAX_PATH];
 	SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);	
 	WCHAR wzsTSFDayiProfile[MAX_PATH] = L"\\TSFDayi";
@@ -1316,8 +1314,6 @@ void CCompositionProcessorEngine::InitializeTSFDayiCompartment(_In_ ITfThreadMgr
     CCompartment CompartmentDoubleSingleByte(pThreadMgr, tfClientId, Global::TSFDayiGuidCompartmentDoubleSingleByte);
     CompartmentDoubleSingleByte._SetCompartmentBOOL(FALSE);
 
-    CCompartment CompartmentPunctuation(pThreadMgr, tfClientId, Global::TSFDayiGuidCompartmentPunctuation);
-    CompartmentPunctuation._SetCompartmentBOOL(TRUE);
 
     PrivateCompartmentsUpdated(pThreadMgr);
 }
@@ -1372,7 +1368,7 @@ HRESULT CCompositionProcessorEngine::CompartmentCallback(_In_ void *pv, REFGUID 
 
 void CCompositionProcessorEngine::ConversionModeCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr)
 {
-	OutputDebugString(L"CCompositionProcessorEngine::ConversionModeCompartmentUpdated()\n");
+	debugPrint(L"CCompositionProcessorEngine::ConversionModeCompartmentUpdated()\n");
     if (!_pCompartmentConversion)
     {
         return;
@@ -1489,7 +1485,7 @@ void CCompositionProcessorEngine::PrivateCompartmentsUpdated(_In_ ITfThreadMgr *
 
 void CCompositionProcessorEngine::KeyboardOpenCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr, _In_ REFGUID guidCompartment)
 {
-	OutputDebugString(L"CCompositionProcessorEngine::KeyboardOpenCompartmentUpdated()\n");
+	debugPrint(L"CCompositionProcessorEngine::KeyboardOpenCompartmentUpdated()\n");
     if (!_pCompartmentConversion)
     {
         return;

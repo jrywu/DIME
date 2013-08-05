@@ -43,11 +43,13 @@ CScrollBarWindow* CScrollBarWindowFactory::MakeScrollBarWindow(SHELL_MODE shellM
         break;
 
     case DESKTOP:
-        pScrollBarWindow = new (std::nothrow) CScrollBarNullWindow();
+		pScrollBarWindow = new (std::nothrow) CScrollBarWindow();
+        //pScrollBarWindow = new (std::nothrow) CScrollBarNullWindow();
         break;
 
     default:
-        pScrollBarWindow = new (std::nothrow) CScrollBarNullWindow();
+        pScrollBarWindow = new (std::nothrow) CScrollBarWindow();
+		//pScrollBarWindow = new (std::nothrow) CScrollBarNullWindow();
         break;
     }
     return pScrollBarWindow;
@@ -153,7 +155,7 @@ LRESULT CALLBACK CScrollBarWindow::_WindowProcCallback(_In_ HWND wndHandle, _In_
     {
     case WM_PAINT:
         {
-			OutputDebugString(L"CScrollBarWindow::_WindowProcCallback() : WM_PAINT\n");
+			debugPrint(L"CScrollBarWindow::_WindowProcCallback() : WM_PAINT\n");
             HDC dcHandle = nullptr;
             PAINTSTRUCT ps;
 
@@ -182,7 +184,7 @@ LRESULT CALLBACK CScrollBarWindow::_WindowProcCallback(_In_ HWND wndHandle, _In_
 
 void CScrollBarWindow::_OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps)
 {
-	OutputDebugString(L"CScrollBarWindow::_OnPaint()\n");
+	debugPrint(L"CScrollBarWindow::_OnPaint()\n");
     HBRUSH hBrush = nullptr;
     CBaseWindow* pUIWnd = _GetUIWnd();
 
@@ -552,7 +554,7 @@ void CScrollBarWindow::_SetCurPos(int nPos, int dwSB)
 
 void CScrollButtonWindow::_OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps)
 {
-	OutputDebugString(L"CScrollButtonWindow::_OnPaint()\n");
+	debugPrint(L"CScrollButtonWindow::_OnPaint()\n");
     pps;
 
     RECT rc = {0, 0, 0, 0};

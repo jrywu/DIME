@@ -97,7 +97,7 @@ STDAPI CTfTextLayoutSink::OnLayoutChange(_In_ ITfContext *pContext, TfLayoutCode
     {
     case TF_LC_CHANGE:
         {
-			OutputDebugString(L"CTfTextLayoutSink::OnLayoutChange() TF_LC_CHANGE\n");
+			debugPrint(L"CTfTextLayoutSink::OnLayoutChange() TF_LC_CHANGE\n");
             CGetTextExtentEditSession* pEditSession = nullptr;
             pEditSession = new (std::nothrow) CGetTextExtentEditSession(_pTextService, pContext, pContextView, _pRangeComposition, this);
             if (nullptr != (pEditSession))
@@ -111,7 +111,7 @@ STDAPI CTfTextLayoutSink::OnLayoutChange(_In_ ITfContext *pContext, TfLayoutCode
         break;
 
     case TF_LC_DESTROY:
-		OutputDebugString(L"CTfTextLayoutSink::OnLayoutChange() TF_LC_DESTROY\n");
+		debugPrint(L"CTfTextLayoutSink::OnLayoutChange() TF_LC_DESTROY\n");
         _LayoutDestroyNotification();
         break;
 
@@ -121,7 +121,7 @@ STDAPI CTfTextLayoutSink::OnLayoutChange(_In_ ITfContext *pContext, TfLayoutCode
 
 HRESULT CTfTextLayoutSink::_StartLayout(_In_ ITfContext *pContextDocument, TfEditCookie ec, _In_ ITfRange *pRangeComposition)
 {
-	OutputDebugString(L"CTfTextLayoutSink::_StartLayout()\n");
+	debugPrint(L"CTfTextLayoutSink::_StartLayout()\n");
     _pContextDocument = pContextDocument;
     _pContextDocument->AddRef();
 
@@ -135,7 +135,7 @@ HRESULT CTfTextLayoutSink::_StartLayout(_In_ ITfContext *pContextDocument, TfEdi
 
 VOID CTfTextLayoutSink::_EndLayout()
 {
-	OutputDebugString(L"CTfTextLayoutSink::_EndLayout()\n");
+	debugPrint(L"CTfTextLayoutSink::_EndLayout()\n");
     if (_pRangeComposition)
     {
         _pRangeComposition->Release();

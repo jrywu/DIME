@@ -18,7 +18,7 @@
 
 STDAPI CTSFDayi::OnEndEdit(__RPC__in_opt ITfContext *pContext, TfEditCookie ecReadOnly, __RPC__in_opt ITfEditRecord *pEditRecord)
 {
-	OutputDebugString(L"CTSFDayi::OnEndEdit()\n");
+	debugPrint(L"CTSFDayi::OnEndEdit()\n");
     BOOL isSelectionChanged;
 
     //

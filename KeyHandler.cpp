@@ -3,7 +3,7 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-
+#define DEBUG_PRINT
 
 #include "Private.h"
 #include "Globals.h"
@@ -52,7 +52,7 @@ BOOL CTSFDayi::_IsRangeCovered(TfEditCookie ec, _In_ ITfRange *pRangeTest, _In_ 
 
 HRESULT CTSFDayi::_HandleComplete(TfEditCookie ec, _In_ ITfContext *pContext)
 {
-	OutputDebugString(L"CTSFDayi::_HandleComplete()\n");
+	debugPrint(L"CTSFDayi::_HandleComplete()");
     _DeleteCandidateList(FALSE, pContext);
 
     // just terminate the composition
@@ -69,7 +69,7 @@ HRESULT CTSFDayi::_HandleComplete(TfEditCookie ec, _In_ ITfContext *pContext)
 
 HRESULT CTSFDayi::_HandleCancel(TfEditCookie ec, _In_ ITfContext *pContext)
 {
-	OutputDebugString(L"CTSFDayi::_HandleCancel()\n");
+	debugPrint(L"CTSFDayi::_HandleCancel()");
 
     _RemoveDummyCompositionForComposing(ec, _pComposition);
 
@@ -90,6 +90,7 @@ HRESULT CTSFDayi::_HandleCancel(TfEditCookie ec, _In_ ITfContext *pContext)
 
 HRESULT CTSFDayi::_HandleCompositionInput(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch)
 {
+	debugPrint(L"CTSFDayi::_HandleCompositionInput(), _candidateMode = %d", _candidateMode );
     ITfRange* pRangeComposition = nullptr;
     TF_SELECTION tfSelection;
     ULONG fetched = 0;
@@ -101,7 +102,7 @@ HRESULT CTSFDayi::_HandleCompositionInput(TfEditCookie ec, _In_ ITfContext *pCon
 	if ((_pTSFDayiUIPresenter != nullptr) 
 		&& _candidateMode != CANDIDATE_INCREMENTAL &&_candidateMode != CANDIDATE_NONE )
     {
-        _HandleCompositionFinalize(ec, pContext, FALSE);
+        _HandleCompositionFinalize(ec, pContext, TRUE);
     }
 
     // Start the new (std::nothrow) compositon if there is no composition.
@@ -149,6 +150,7 @@ Exit:
 
 HRESULT CTSFDayi::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *pCompositionProcessorEngine, TfEditCookie ec, _In_ ITfContext *pContext)
 {
+	debugPrint(L"CTSFDayi::_HandleCompositionInputWorker()");
     HRESULT hr = S_OK;
     CTSFDayiArray<CStringRange> readingStrings;
     BOOL isWildcardIncluded = TRUE;
@@ -187,10 +189,6 @@ HRESULT CTSFDayi::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine
 			{
 				_pTSFDayiUIPresenter->_ClearCandidateList();
 				_pTSFDayiUIPresenter->_SetCandidateText(&candidateList, TRUE);
-				_pTSFDayiUIPresenter->Show(TRUE); 
-		        _candidateMode = CANDIDATE_INCREMENTAL;
-				_isCandidateWithWildcard = FALSE;
-
 			}
 
 
@@ -206,8 +204,6 @@ HRESULT CTSFDayi::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine
 			if (SUCCEEDED(hr))
 			{
 				_pTSFDayiUIPresenter->_ClearCandidateList();
-				_candidateMode = CANDIDATE_INCREMENTAL;
-				_isCandidateWithWildcard = FALSE;
 			}
 		}
 
@@ -224,6 +220,7 @@ HRESULT CTSFDayi::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine
 
 HRESULT CTSFDayi::_HandleCompositionFinalize(TfEditCookie ec, _In_ ITfContext *pContext, BOOL isCandidateList)
 {
+	debugPrint(L"CTSFDayi::_HandleCompositionFinalize()");
     HRESULT hr = S_OK;
 
     if (isCandidateList && _pTSFDayiUIPresenter)
@@ -246,6 +243,8 @@ HRESULT CTSFDayi::_HandleCompositionFinalize(TfEditCookie ec, _In_ ITfContext *p
                 return hr;
             }
         }
+		else
+			_HandleCancel(ec, pContext);
     }
     else
     {
@@ -304,12 +303,56 @@ HRESULT CTSFDayi::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pC
     int nCount = candidateList.Count();
     if (nCount)
     {
-		 if (SUCCEEDED(_CreateAndStartCandidate(pCompositionProcessorEngine, ec, pContext)))
+	/*	 if (SUCCEEDED(_CreateAndStartCandidate(pCompositionProcessorEngine, ec, pContext)))
 		 {
 			_candidateMode = CANDIDATE_ORIGINAL;
 			 _isCandidateWithWildcard = isWildcardSearch;
 			 _pTSFDayiUIPresenter->_SetCandidateText(&candidateList, FALSE);
 		 }
+		 */
+		if (_pTSFDayiUIPresenter)
+        {
+            _pTSFDayiUIPresenter->_EndCandidateList();
+            delete _pTSFDayiUIPresenter;
+            _pTSFDayiUIPresenter = nullptr;
+
+            _candidateMode = CANDIDATE_NONE;
+            _isCandidateWithWildcard = FALSE;
+        }
+
+        // 
+        // create an instance of the candidate list class.
+        // 
+        if (_pTSFDayiUIPresenter == nullptr)
+        {
+            _pTSFDayiUIPresenter = new (std::nothrow) CTSFDayiUIPresenter(this, pCompositionProcessorEngine);
+            if (!_pTSFDayiUIPresenter)
+            {
+                return E_OUTOFMEMORY;
+            }
+
+            _candidateMode = CANDIDATE_ORIGINAL;
+        }
+
+        _isCandidateWithWildcard = isWildcardSearch;
+
+        // we don't cache the document manager object. So get it from pContext.
+        ITfDocumentMgr* pDocumentMgr = nullptr;
+        if (SUCCEEDED(pContext->GetDocumentMgr(&pDocumentMgr)))
+        {
+            // get the composition range.
+            ITfRange* pRange = nullptr;
+            if (SUCCEEDED(_pComposition->GetRange(&pRange)))
+            {
+                hr = _pTSFDayiUIPresenter->_StartCandidateList(_tfClientId, pDocumentMgr, pContext, ec, pRange, pCompositionProcessorEngine->GetCandidateWindowWidth());
+                pRange->Release();
+            }
+            pDocumentMgr->Release();
+        }
+        if (SUCCEEDED(hr))
+        {
+            _pTSFDayiUIPresenter->_SetCandidateText(&candidateList, FALSE);
+        }
     }
 	if(nCount==1 )  //finalized with the only candidate without showing cand.
 	{

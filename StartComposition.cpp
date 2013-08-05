@@ -4,7 +4,7 @@
 //
 //
 
-
+#define DEBUG_PRINT
 #include "Private.h"
 #include "Globals.h"
 #include "EditSession.h"
@@ -35,7 +35,7 @@ public:
 
 STDAPI CStartCompositionEditSession::DoEditSession(TfEditCookie ec)
 {
-	OutputDebugString(L"CStartCompositionEditSession::DoEditSession()\n");
+	debugPrint(L"CStartCompositionEditSession::DoEditSession()\n");
     ITfInsertAtSelection* pInsertAtSelection = nullptr;
     ITfRange* pRangeInsert = nullptr;
     ITfContextComposition* pContextComposition = nullptr;
@@ -103,7 +103,7 @@ Exit:
 
 void CTSFDayi::_StartComposition(_In_ ITfContext *pContext)
 {
-	OutputDebugString(L"CTSFDayi::_StartComposition()\n");
+	debugPrint(L"CTSFDayi::_StartComposition()\n");
     CStartCompositionEditSession* pStartCompositionEditSession = new (std::nothrow) CStartCompositionEditSession(this, pContext);
 
     if (nullptr != pStartCompositionEditSession)
@@ -126,7 +126,8 @@ void CTSFDayi::_StartComposition(_In_ ITfContext *pContext)
 
 void CTSFDayi::_SaveCompositionContext(_In_ ITfContext *pContext)
 {
-    if(_pContext) 
+	assert(_pContext == nullptr);
+    /*if(_pContext) 
 	{
 		if( _pContext == pContext)
 			return;
@@ -136,7 +137,7 @@ void CTSFDayi::_SaveCompositionContext(_In_ ITfContext *pContext)
 			_pContext = nullptr;
 		}
 	}
-
+	*/
     pContext->AddRef();
     _pContext = pContext;
 } 
