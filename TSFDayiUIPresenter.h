@@ -23,7 +23,7 @@ class CCompositionProcessorEngine;
 //
 // CTSFDayiUIPresenter
 //
-// ITfTSFDayiUIElement / ITfIntegratableCandidateListUIElement is used for 
+// ITfCandidateListUIElement / ITfIntegratableCandidateListUIElement is used for 
 // UILess mode support
 // ITfCandidateListUIElementBehavior sends the Selection behavior message to 
 // 3rd party IME.
@@ -49,7 +49,7 @@ public:
     STDMETHODIMP Show(BOOL showCandidateWindow);
     STDMETHODIMP IsShown(BOOL *pIsShow);
 
-    // ITfCandidateListUIElement
+    // ITfCandidateListUIElement (UI-less)
     STDMETHODIMP GetUpdatedFlags(DWORD *pdwFlags);
     STDMETHODIMP GetDocumentMgr(ITfDocumentMgr **ppdim);
     STDMETHODIMP GetCount(UINT *pCandidateCount);
@@ -59,12 +59,12 @@ public:
     STDMETHODIMP SetPageIndex(UINT *pIndex, UINT uPageCnt);
     STDMETHODIMP GetCurrentPage(UINT *puPage);
 
-    // ITfCandidateListUIElementBehavior methods
-	STDMETHODIMP SetSelection(UINT nIndex);
+    // ITfCandidateListUIElementBehavior methods 
+	STDMETHODIMP SetSelection(UINT nIndex); 
     STDMETHODIMP Finalize(void);
     STDMETHODIMP Abort(void);
 
-    // ITfIntegratableCandidateListUIElement
+    // ITfIntegratableCandidateListUIElement (UI-less)
     STDMETHODIMP SetIntegrationStyle(GUID guidIntegrationStyle);
     STDMETHODIMP GetSelectionStyle(_Out_ TfIntegratableCandidateListSelectionStyle *ptfSelectionStyle);
     STDMETHODIMP OnKeyDown(_In_ WPARAM wParam, _In_ LPARAM lParam, _Out_ BOOL *pIsEaten);

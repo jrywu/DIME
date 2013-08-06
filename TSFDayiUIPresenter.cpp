@@ -33,8 +33,6 @@ CTSFDayiUIPresenter::CTSFDayiUIPresenter(_In_ CTSFDayi *pTextService, CCompositi
     _pCandidateWnd = nullptr;
 	_pNotifyWnd = nullptr;
 
-	_Category = CATEGORY_CANDIDATE;
-
     _updatedFlags = 0;
 
     _uiElementId = (DWORD)-1;
@@ -61,7 +59,7 @@ CTSFDayiUIPresenter::~CTSFDayiUIPresenter()
 
 //+---------------------------------------------------------------------------
 //
-// ITfTSFDayiUIElement::IUnknown::QueryInterface
+// ITfCandidateListUIElement::IUnknown::QueryInterface
 //
 //----------------------------------------------------------------------------
 
@@ -105,7 +103,7 @@ STDAPI CTSFDayiUIPresenter::QueryInterface(REFIID riid, _Outptr_ void **ppvObj)
 
 //+---------------------------------------------------------------------------
 //
-// ITfTSFDayiUIElement::IUnknown::AddRef
+// ITfCandidateListUIElement::IUnknown::AddRef
 //
 //----------------------------------------------------------------------------
 
@@ -117,7 +115,7 @@ STDAPI_(ULONG) CTSFDayiUIPresenter::AddRef()
 
 //+---------------------------------------------------------------------------
 //
-// ITfTSFDayiUIElement::IUnknown::Release
+// ITfCandidateListUIElement::IUnknown::Release
 //
 //----------------------------------------------------------------------------
 
@@ -139,7 +137,7 @@ STDAPI_(ULONG) CTSFDayiUIPresenter::Release()
 
 //+---------------------------------------------------------------------------
 //
-// ITfTSFDayiUIElement::ITfUIElement::GetDescription
+// ITfCandidateListUIElement::ITfUIElement::GetDescription
 //
 //----------------------------------------------------------------------------
 
@@ -154,7 +152,7 @@ STDAPI CTSFDayiUIPresenter::GetDescription(BSTR *pbstr)
 
 //+---------------------------------------------------------------------------
 //
-// ITfTSFDayiUIElement::ITfUIElement::GetGUID
+// ITfCandidateListUIElement::ITfUIElement::GetGUID
 //
 //----------------------------------------------------------------------------
 
@@ -210,7 +208,7 @@ HRESULT CTSFDayiUIPresenter::ToHideCandidateWindow()
 
 //+---------------------------------------------------------------------------
 //
-// ITfTSFDayiUIElement::ITfUIElement::IsShown
+// ITfCandidateListUIElement::ITfUIElement::IsShown
 //
 //----------------------------------------------------------------------------
 
@@ -222,24 +220,26 @@ STDAPI CTSFDayiUIPresenter::IsShown(BOOL *pIsShow)
 
 //+---------------------------------------------------------------------------
 //
-// ITfTSFDayiUIElement::GetUpdatedFlags
+// ITfCandidateListUIElement::GetUpdatedFlags
 //
 //----------------------------------------------------------------------------
 
 STDAPI CTSFDayiUIPresenter::GetUpdatedFlags(DWORD *pdwFlags)
 {
+	debugPrint(L"CTSFDayiUIPresenter::GetUpdatedFlags(), _updatedFlags = %x", _updatedFlags);
     *pdwFlags = _updatedFlags;
     return S_OK;
 }
 
 //+---------------------------------------------------------------------------
 //
-// ITfTSFDayiUIElement::GetDocumentMgr
+// ITfCandidateListUIElement::GetDocumentMgr
 //
 //----------------------------------------------------------------------------
 
 STDAPI CTSFDayiUIPresenter::GetDocumentMgr(ITfDocumentMgr **ppdim)
 {
+	debugPrint(L"CTSFDayiUIPresenter::GetDocumentMgr()");
     *ppdim = nullptr;
 
     return E_NOTIMPL;
@@ -247,7 +247,7 @@ STDAPI CTSFDayiUIPresenter::GetDocumentMgr(ITfDocumentMgr **ppdim)
 
 //+---------------------------------------------------------------------------
 //
-// ITfTSFDayiUIElement::GetCount
+// ITfCandidateListUIElement::GetCount
 //
 //----------------------------------------------------------------------------
 
@@ -261,12 +261,13 @@ STDAPI CTSFDayiUIPresenter::GetCount(UINT *pCandidateCount)
     {
         *pCandidateCount = 0;
     }
+	debugPrint(L"CTSFDayiUIPresenter::GetCount(), *pCandidateCount = %d", *pCandidateCount);
     return S_OK;
 }
 
 //+---------------------------------------------------------------------------
 //
-// ITfUIElement::GetSelection
+// ITfCandidateListUIElement::GetSelection
 //
 //----------------------------------------------------------------------------
 
@@ -280,12 +281,13 @@ STDAPI CTSFDayiUIPresenter::GetSelection(UINT *pSelectedCandidateIndex)
     {
         *pSelectedCandidateIndex = 0;
     }
+	debugPrint(L"CTSFDayiUIPresenter::GetSelection(), *pSelectedCandidateIndex = %d", *pSelectedCandidateIndex);
     return S_OK;
 }
 
 //+---------------------------------------------------------------------------
 //
-// ITfTSFDayiUIElement::GetString
+// ITfCandidateListUIElement::GetString
 //
 //----------------------------------------------------------------------------
 
@@ -302,18 +304,19 @@ STDAPI CTSFDayiUIPresenter::GetString(UINT uIndex, BSTR *pbstr)
     candidateLen = _pCandidateWnd->_GetCandidateString(uIndex, &pCandidateString);
 
     *pbstr = (candidateLen == 0) ? nullptr : SysAllocStringLen(pCandidateString, candidateLen);
-
+	debugPrint(L"CTSFDayiUIPresenter::GetString(), uIndex = %d, pbstr = %s", uIndex, pbstr);
     return S_OK;
 }
 
 //+---------------------------------------------------------------------------
 //
-// ITfTSFDayiUIElement::GetPageIndex
+// ITfCandidateListUIElement::GetPageIndex
 //
 //----------------------------------------------------------------------------
 
 STDAPI CTSFDayiUIPresenter::GetPageIndex(UINT *pIndex, UINT uSize, UINT *puPageCnt)
 {
+	debugPrint(L"CTSFDayiUIPresenter::GetPageIndex()");
     if (!_pCandidateWnd)
     {
         if (pIndex)
@@ -323,6 +326,7 @@ STDAPI CTSFDayiUIPresenter::GetPageIndex(UINT *pIndex, UINT uSize, UINT *puPageC
         *puPageCnt = 0;
         return S_OK;
     }
+	
     return _pCandidateWnd->_GetPageIndex(pIndex, uSize, puPageCnt);
 }
 
@@ -334,6 +338,7 @@ STDAPI CTSFDayiUIPresenter::GetPageIndex(UINT *pIndex, UINT uSize, UINT *puPageC
 
 STDAPI CTSFDayiUIPresenter::SetPageIndex(UINT *pIndex, UINT uPageCnt)
 {
+	debugPrint(L"CTSFDayiUIPresenter::SetPageIndex(), index = %d, page count =%d", *pIndex, uPageCnt  );
     if (!_pCandidateWnd)
     {
         return E_FAIL;
@@ -343,12 +348,13 @@ STDAPI CTSFDayiUIPresenter::SetPageIndex(UINT *pIndex, UINT uPageCnt)
 
 //+---------------------------------------------------------------------------
 //
-// ITfTSFDayiUIElement::GetCurrentPage
+// ITfCandidateListUIElement::GetCurrentPage
 //
 //----------------------------------------------------------------------------
 
 STDAPI CTSFDayiUIPresenter::GetCurrentPage(UINT *puPage)
 {
+	debugPrint(L"CTSFDayiUIPresenter::GetCurrentPage(), puPage =%d", _pCandidateWnd->_GetCurrentPage(puPage) );
     if (!_pCandidateWnd)
     {
         *puPage = 0;
@@ -365,6 +371,7 @@ STDAPI CTSFDayiUIPresenter::GetCurrentPage(UINT *puPage)
 
 STDAPI CTSFDayiUIPresenter::SetSelection(UINT nIndex)
 {
+	debugPrint(L"CTSFDayiUIPresenter::SetSelection(), nIndex =%d", nIndex);
     if (_pCandidateWnd)
     {
         _pCandidateWnd->_SetSelection(nIndex);
@@ -375,35 +382,38 @@ STDAPI CTSFDayiUIPresenter::SetSelection(UINT nIndex)
 
 //+---------------------------------------------------------------------------
 //
-// ITfTSFDayiUIElementBehavior::Finalize
+// ITfCandidateListUIElementBehavior::Finalize
 // It is related of the mouse clicking behavior upon the suggestion window
 //----------------------------------------------------------------------------
 
 STDAPI CTSFDayiUIPresenter::Finalize(void)
 {
+	debugPrint(L"CTSFDayiUIPresenter::Finalize()");
     _CandidateChangeNotification(CAND_ITEM_SELECT);
     return S_OK;
 }
 
 //+---------------------------------------------------------------------------
 //
-// ITfTSFDayiUIElementBehavior::Abort
+// ITfCandidateListUIElementBehavior::Abort
 //
 //----------------------------------------------------------------------------
 
 STDAPI CTSFDayiUIPresenter::Abort(void)
 {
+	debugPrint(L"CTSFDayiUIPresenter::Abort()");
     return E_NOTIMPL;
 }
 
 //+---------------------------------------------------------------------------
 //
-// ITfIntegratableTSFDayiUIElement::SetIntegrationStyle
+// ITfCandidateListUIElementBehavior::SetIntegrationStyle
 // To show candidateNumbers on the suggestion window
 //----------------------------------------------------------------------------
 
 STDAPI CTSFDayiUIPresenter::SetIntegrationStyle(GUID guidIntegrationStyle)
 {
+	debugPrint(L"CTSFDayiUIPresenter::SetIntegrationStyle() ok? = %d", (guidIntegrationStyle == GUID_INTEGRATIONSTYLE_SEARCHBOX));
     return (guidIntegrationStyle == GUID_INTEGRATIONSTYLE_SEARCHBOX) ? S_OK : E_NOTIMPL;
 }
 
@@ -415,18 +425,20 @@ STDAPI CTSFDayiUIPresenter::SetIntegrationStyle(GUID guidIntegrationStyle)
 
 STDAPI CTSFDayiUIPresenter::GetSelectionStyle(_Out_ TfIntegratableCandidateListSelectionStyle *ptfSelectionStyle)
 {
+	debugPrint(L"CTSFDayiUIPresenter::GetSelectionStyle()");
     *ptfSelectionStyle = STYLE_ACTIVE_SELECTION;
     return S_OK;
 }
 
 //+---------------------------------------------------------------------------
 //
-// ITfIntegratableTSFDayiUIElement::OnKeyDown
+// ITfIntegratableCandidateListUIElement::OnKeyDown
 //
 //----------------------------------------------------------------------------
 
 STDAPI CTSFDayiUIPresenter::OnKeyDown(_In_ WPARAM wParam, _In_ LPARAM lParam, _Out_ BOOL *pIsEaten)
 {
+	debugPrint(L"CTSFDayiUIPresenter::OnKeyDown() wParam=%x, lpwaram=%x", wParam, lParam);
     wParam;
     lParam;
 
@@ -436,24 +448,26 @@ STDAPI CTSFDayiUIPresenter::OnKeyDown(_In_ WPARAM wParam, _In_ LPARAM lParam, _O
 
 //+---------------------------------------------------------------------------
 //
-// ITfIntegratableTSFDayiUIElement::ShowCandidateNumbers
+// ITfIntegratableCandidateListUIElement::ShowCandidateNumbers
 //
 //----------------------------------------------------------------------------
 
 STDAPI CTSFDayiUIPresenter::ShowCandidateNumbers(_Out_ BOOL *pIsShow)
 {
+	debugPrint(L"CTSFDayiUIPresenter::ShowCandidateNumbers()");
     *pIsShow = TRUE;
     return S_OK;
 }
 
 //+---------------------------------------------------------------------------
 //
-// ITfIntegratableTSFDayiUIElement::FinalizeExactCompositionString
+// ITfIntegratableCandidateListUIElement::FinalizeExactCompositionString
 //
 //----------------------------------------------------------------------------
 
 STDAPI CTSFDayiUIPresenter::FinalizeExactCompositionString()
 {
+	debugPrint(L"CTSFDayiUIPresenter::FinalizeExactCompositionString()");
     return E_NOTIMPL;
 }
 
@@ -716,7 +730,7 @@ void CTSFDayiUIPresenter::_MoveCandidateWindowToTextExt()
 
 VOID CTSFDayiUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
 {
-	debugPrint(L"CTSFDayiUIPresenter::_LayoutDestroyNotification()");
+	debugPrint(L"CTSFDayiUIPresenter::_LayoutChangeNotification()");
 	
     RECT rectCandidate = {0, 0, 0, 0};
     POINT ptCandidate = {0, 0};
@@ -742,7 +756,8 @@ void CTSFDayiUIPresenter::GetCandLocation(POINT *lpPoint)
 
 VOID CTSFDayiUIPresenter::_LayoutDestroyNotification()
 {
-    _EndCandidateList();
+	debugPrint(L"CTSFDayiUIPresenter::_LayoutDestroyNotification()");
+    //_EndCandidateList();
 }
 
 //+---------------------------------------------------------------------------
