@@ -85,7 +85,7 @@ BOOL CNotifyWindow::_CreateMainWindow(_In_opt_ HWND parentWndHandle)
     {
         return FALSE;
     }
-	SetLayeredWindowAttributes(_GetWnd(), 0,  (255 * 90) / 100, LWA_ALPHA);
+	SetLayeredWindowAttributes(_GetWnd(), 0,  (255 * 95) / 100, LWA_ALPHA);
 
     return TRUE;
 }
