@@ -7,7 +7,7 @@
 
 #include "Private.h"
 #include "globals.h"
-#include "TSFDayi.h"
+#include "TSFTTS.h"
 
 //+---------------------------------------------------------------------------
 //
@@ -16,9 +16,9 @@
 // Called by the system whenever anyone releases a write-access document lock.
 //----------------------------------------------------------------------------
 
-STDAPI CTSFDayi::OnEndEdit(__RPC__in_opt ITfContext *pContext, TfEditCookie ecReadOnly, __RPC__in_opt ITfEditRecord *pEditRecord)
+STDAPI CTSFTTS::OnEndEdit(__RPC__in_opt ITfContext *pContext, TfEditCookie ecReadOnly, __RPC__in_opt ITfEditRecord *pEditRecord)
 {
-	debugPrint(L"CTSFDayi::OnEndEdit()\n");
+	debugPrint(L"CTSFTTS::OnEndEdit()\n");
     BOOL isSelectionChanged;
 
     //
@@ -77,7 +77,7 @@ STDAPI CTSFDayi::OnEndEdit(__RPC__in_opt ITfContext *pContext, TfEditCookie ecRe
 // Always release any previous sink.
 //----------------------------------------------------------------------------
 
-BOOL CTSFDayi::_InitTextEditSink(_In_ ITfDocumentMgr *pDocMgr)
+BOOL CTSFTTS::_InitTextEditSink(_In_ ITfDocumentMgr *pDocMgr)
 {
     ITfSource* pSource = nullptr;
     BOOL ret = TRUE;

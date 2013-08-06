@@ -7,7 +7,7 @@
 
 #include "Private.h"
 #include "EditSession.h"
-#include "TSFDayi.h"
+#include "TSFTTS.h"
 
 //+---------------------------------------------------------------------------
 //
@@ -15,7 +15,7 @@
 //
 //----------------------------------------------------------------------------
 
-CEditSessionBase::CEditSessionBase(_In_ CTSFDayi *pTextService, _In_ ITfContext *pContext)
+CEditSessionBase::CEditSessionBase(_In_ CTSFTTS *pTextService, _In_ ITfContext *pContext)
 {
     _refCount = 1;
     _pContext = pContext;

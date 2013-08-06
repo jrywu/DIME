@@ -32,7 +32,7 @@ CBaseDictionaryEngine::~CBaseDictionaryEngine()
 // SortListItemByFindKeyCode
 //----------------------------------------------------------------------------
 
-VOID CBaseDictionaryEngine::SortListItemByFindKeyCode(_Inout_ CTSFDayiArray<CCandidateListItem> *pItemList)
+VOID CBaseDictionaryEngine::SortListItemByFindKeyCode(_Inout_ CTSFTTSArray<CCandidateListItem> *pItemList)
 {
 	if(pItemList->Count())
 		MergeSortByFindKeyCode(pItemList, 0, pItemList->Count() - 1);
@@ -45,7 +45,7 @@ VOID CBaseDictionaryEngine::SortListItemByFindKeyCode(_Inout_ CTSFDayiArray<CCan
 //
 //----------------------------------------------------------------------------
 
-VOID CBaseDictionaryEngine::MergeSortByFindKeyCode(_Inout_ CTSFDayiArray<CCandidateListItem> *pItemList, int leftRange, int rightRange)
+VOID CBaseDictionaryEngine::MergeSortByFindKeyCode(_Inout_ CTSFTTSArray<CCandidateListItem> *pItemList, int leftRange, int rightRange)
 {
      int candidateCount = CalculateCandidateCount(leftRange, rightRange);
 
@@ -56,7 +56,7 @@ VOID CBaseDictionaryEngine::MergeSortByFindKeyCode(_Inout_ CTSFDayiArray<CCandid
         MergeSortByFindKeyCode(pItemList, leftRange, mid);
         MergeSortByFindKeyCode(pItemList, mid, rightRange);
 
-        CTSFDayiArray<CCandidateListItem> ListItemTemp;
+        CTSFTTSArray<CCandidateListItem> ListItemTemp;
 
         int leftRangeTemp = 0;
         int midTemp = 0;

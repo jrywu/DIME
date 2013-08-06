@@ -1,8 +1,8 @@
 @echo off
 mkdir "..\Installer\system32.x86"
 mkdir "..\Installer\system32.x64
-copy ..\Release\Win32\TSFdayi.dll ..\Installer\system32.x86\
-copy ..\Release\x64\TSFdayi.dll ..\Installer\system32.x64\
+copy ..\Release\Win32\TSFTTS.dll ..\Installer\system32.x86\
+copy ..\Release\x64\TSFTTS.dll ..\Installer\system32.x64\
 echo ===============================================================================
 echo Please download and install Nullosft Sciptable Install System (NSIS) comiler . 
 echo                                  ---http://nsis.sourceforge.net/Download-----

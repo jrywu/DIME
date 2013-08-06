@@ -23,9 +23,7 @@
     <None Include="image\DoubleSingleByteOn.ico" />
     <None Include="image\ImeModeOff.ico" />
     <None Include="image\ImeModeOn.ico" />
-    <None Include="image\PunctuationOff.ico" />
-    <None Include="image\PunctuationOn.ico" />
-    <None Include="TSFDayi.def" />
+    <None Include="TSFTTS.def" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BaseDictionaryEngine.h" />
@@ -36,9 +34,11 @@
     <ClInclude Include="Compartment.h" />
     <ClInclude Include="CompositionProcessorEngine.h" />
     <ClInclude Include="define.h" />
+    <ClInclude Include="DisplayString.h" />
     <ClInclude Include="EnumTfCandidates.h" />
     <ClInclude Include="KeyStateCategory.h" />
-    <ClInclude Include="TSFDayiBaseStructure.h" />
+    <ClInclude Include="BaseStructure.h" />
+    <ClInclude Include="NotifyWindow.h" />
     <ClInclude Include="SearchCandidateProvider.h" />
     <ClInclude Include="DictionaryParser.h" />
     <ClInclude Include="DictionarySearch.h" />
@@ -54,7 +54,7 @@
     <ClInclude Include="Private.h" />
     <ClInclude Include="RegKey.h" />
     <ClInclude Include="resource.h" />
-    <ClInclude Include="TSFDayi.h" />
+    <ClInclude Include="TSFTTS.h" />
     <ClInclude Include="ScrollBarWindow.h" />
     <ClInclude Include="ShadowWindow.h" />
     <ClInclude Include="stdafx.h" />
@@ -63,6 +63,8 @@
     <ClInclude Include="TfTextLayoutSink.h" />
     <ClInclude Include="TipCandidateList.h" />
     <ClInclude Include="TipCandidateString.h" />
+    <ClInclude Include="TSFTTSStructureArray.h" />
+    <ClInclude Include="UIPresenter.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ActiveLanguageProfileNotifySink.cpp" />
@@ -77,7 +79,7 @@
     <ClCompile Include="EnumTfCandidates.cpp" />
     <ClCompile Include="KeyStateCategory.cpp" />
     <ClCompile Include="NotifyWindow.cpp" />
-    <ClCompile Include="TSFDayiBaseStructure.cpp" />
+    <ClCompile Include="BaseStructure.cpp" />
     <ClCompile Include="SearchCandidateProvider.cpp" />
     <ClCompile Include="DictionaryParser.cpp" />
     <ClCompile Include="DictionarySearch.cpp" />
@@ -104,7 +106,7 @@
     <ClCompile Include="ShadowWindow.cpp" />
     <ClCompile Include="StartComposition.cpp" />
     <ClCompile Include="TableDictionaryEngine.cpp" />
-    <ClCompile Include="TSFDayi.cpp" />
+    <ClCompile Include="TSFTTS.cpp" />
     <ClCompile Include="TextEditSink.cpp" />
     <ClCompile Include="TfInputProcessorProfile.cpp" />
     <ClCompile Include="TfTextLayoutSink.cpp" />
@@ -112,10 +114,10 @@
     <ClCompile Include="ThreadMgrEventSink.cpp" />
     <ClCompile Include="TipCandidateList.cpp" />
     <ClCompile Include="TipCandidateString.cpp" />
-    <ClCompile Include="TSFDayiUIPresenter.cpp" />
+    <ClCompile Include="UIPresenter.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="TSFDayi.rc" />
+    <ResourceCompile Include="TSFTTS.rc" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="image\TSFDayi.ico" />
@@ -123,8 +125,8 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{0C8FE010-5146-44D8-AF99-82702C15FEA5}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>TSFDayi</RootNamespace>
-    <ProjectName>TSFDayi</ProjectName>
+    <RootNamespace>TSFTTS</RootNamespace>
+    <ProjectName>TSFTTS</ProjectName>
     <VCTargetsPath Condition="'$(VCTargetsPath11)' != '' and '$(VSVersion)' == '' and $(VisualStudioVersion) == ''">$(VCTargetsPath11)</VCTargetsPath>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -172,7 +174,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>c:\windows\syswow64</OutDir>
+    <OutDir>$(ProjectDir)$(Configuration)\$(Platform)\</OutDir>
     <IntDir>$(Configuration)\$(Platform)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -196,7 +198,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;TSFDayi_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;TSFTTS_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(MSBuildProgramFiles32)\Windows Kits\8.0\Include\um;$(MSBuildProgramFiles32)\Windows Kits\8.0\Include\shared;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <TreatWarningAsError>true</TreatWarningAsError>
@@ -206,7 +208,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(MSBuildProgramFiles32)\Windows Kits\8.0\Lib\win8\um\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>Shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <ModuleDefinitionFile>TSFDayi.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>TSFTTS.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -215,7 +217,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;TSFDayi_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;TSFTTS_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(MSBuildProgramFiles32)\Windows Kits\8.0\Include\um;$(MSBuildProgramFiles32)\Windows Kits\8.0\Include\shared;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
     </ClCompile>
@@ -224,7 +226,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(MSBuildProgramFiles32)\Windows Kits\8.0\Lib\win8\um\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <ModuleDefinitionFile>TSFDayi.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>TSFTTS.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -235,7 +237,7 @@
       <Optimization>Disabled</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;TSFDayi_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;TSFTTS_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(MSBuildProgramFiles32)\Windows Kits\8.0\Include\um;$(MSBuildProgramFiles32)\Windows Kits\8.0\Include\shared;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <BrowseInformation>false</BrowseInformation>
       <TreatWarningAsError>true</TreatWarningAsError>
@@ -247,7 +249,7 @@
       <OptimizeReferences>false</OptimizeReferences>
       <AdditionalLibraryDirectories>$(MSBuildProgramFiles32)\Windows Kits\8.0\Lib\win8\um\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <ModuleDefinitionFile>TSFDayi.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>TSFTTS.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -258,7 +260,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;TSFDayi_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;TSFTTS_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(MSBuildProgramFiles32)\Windows Kits\8.0\Include\um;$(MSBuildProgramFiles32)\Windows Kits\8.0\Include\shared;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <BrowseInformation>false</BrowseInformation>
     </ClCompile>
@@ -269,7 +271,7 @@
       <OptimizeReferences>false</OptimizeReferences>
       <AdditionalLibraryDirectories>$(MSBuildProgramFiles32)\Windows Kits\8.0\Lib\win8\um\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <ModuleDefinitionFile>TSFDayi.def</ModuleDefinitionFile>
+      <ModuleDefinitionFile>TSFTTS.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

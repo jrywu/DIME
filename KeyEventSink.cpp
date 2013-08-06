@@ -7,8 +7,8 @@
 
 #include "Private.h"
 #include "Globals.h"
-#include "TSFDayi.h"
-#include "TSFDayiUIPresenter.h"
+#include "TSFTTS.h"
+#include "UIPresenter.h"
 #include "CompositionProcessorEngine.h"
 #include "KeyHandlerEditSession.h"
 #include "Compartment.h"
@@ -60,18 +60,18 @@ __inline UINT VKeyFromVKPacketAndWchar(UINT vk, WCHAR wch)
 //
 //----------------------------------------------------------------------------
 
-BOOL CTSFDayi::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pCodeOut, _Out_writes_(1) WCHAR *pwch, _Out_opt_ _KEYSTROKE_STATE *pKeyState)
+BOOL CTSFTTS::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pCodeOut, _Out_writes_(1) WCHAR *pwch, _Out_opt_ _KEYSTROKE_STATE *pKeyState)
 {
     pContext;
 
     *pCodeOut = codeIn;
 
     BOOL isOpen = FALSE;
-	CCompartment CompartmentKeyboardOpen(_pThreadMgr, _tfClientId, Global::TSFDayiGuidCompartmentIMEMode);
+	CCompartment CompartmentKeyboardOpen(_pThreadMgr, _tfClientId, Global::TSFTTSGuidCompartmentIMEMode);
     CompartmentKeyboardOpen._GetCompartmentBOOL(isOpen);
 
     BOOL isDoubleSingleByte = FALSE;
-    CCompartment CompartmentDoubleSingleByte(_pThreadMgr, _tfClientId, Global::TSFDayiGuidCompartmentDoubleSingleByte);
+    CCompartment CompartmentDoubleSingleByte(_pThreadMgr, _tfClientId, Global::TSFTTSGuidCompartmentDoubleSingleByte);
     CompartmentDoubleSingleByte._GetCompartmentBOOL(isDoubleSingleByte);
 
   
@@ -194,7 +194,7 @@ BOOL CTSFDayi::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *p
 //
 //----------------------------------------------------------------------------
 
-WCHAR CTSFDayi::ConvertVKey(UINT code)
+WCHAR CTSFTTS::ConvertVKey(UINT code)
 {
     //
     // Map virtual key to scan code
@@ -229,7 +229,7 @@ WCHAR CTSFDayi::ConvertVKey(UINT code)
 //
 //----------------------------------------------------------------------------
 
-BOOL CTSFDayi::_IsKeyboardDisabled()
+BOOL CTSFTTS::_IsKeyboardDisabled()
 {
     ITfDocumentMgr* pDocMgrFocus = nullptr;
     ITfContext* pContext = nullptr;
@@ -277,7 +277,7 @@ BOOL CTSFDayi::_IsKeyboardDisabled()
 // Called by the system whenever this service gets the keystroke device focus.
 //----------------------------------------------------------------------------
 
-STDAPI CTSFDayi::OnSetFocus(BOOL fForeground)
+STDAPI CTSFTTS::OnSetFocus(BOOL fForeground)
 {
 	fForeground;
 
@@ -291,7 +291,7 @@ STDAPI CTSFDayi::OnSetFocus(BOOL fForeground)
 // Called by the system to query this service wants a potential keystroke.
 //----------------------------------------------------------------------------
 
-STDAPI CTSFDayi::OnTestKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL *pIsEaten)
+STDAPI CTSFTTS::OnTestKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL *pIsEaten)
  {
     Global::UpdateModifiers(wParam, lParam);
 
@@ -320,7 +320,7 @@ STDAPI CTSFDayi::OnTestKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lPara
 // on exit, the application will not handle the keystroke.
 //----------------------------------------------------------------------------
 
-STDAPI CTSFDayi::OnKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL *pIsEaten)
+STDAPI CTSFTTS::OnKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL *pIsEaten)
 {
     Global::UpdateModifiers(wParam, lParam);
 
@@ -369,7 +369,7 @@ STDAPI CTSFDayi::OnKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, B
 // Called by the system to query this service wants a potential keystroke.
 //----------------------------------------------------------------------------
 
-STDAPI CTSFDayi::OnTestKeyUp(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL *pIsEaten)
+STDAPI CTSFTTS::OnTestKeyUp(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL *pIsEaten)
 {
     if (pIsEaten == nullptr)
     {
@@ -394,7 +394,7 @@ STDAPI CTSFDayi::OnTestKeyUp(ITfContext *pContext, WPARAM wParam, LPARAM lParam,
 // on exit, the application will not handle the keystroke.
 //----------------------------------------------------------------------------
 
-STDAPI CTSFDayi::OnKeyUp(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL *pIsEaten)
+STDAPI CTSFTTS::OnKeyUp(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL *pIsEaten)
 {
     Global::UpdateModifiers(wParam, lParam);
 
@@ -413,7 +413,7 @@ STDAPI CTSFDayi::OnKeyUp(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOO
 // Called when a hotkey (registered by us, or by the system) is typed.
 //----------------------------------------------------------------------------
 
-STDAPI CTSFDayi::OnPreservedKey(ITfContext *pContext, REFGUID rguid, BOOL *pIsEaten)
+STDAPI CTSFTTS::OnPreservedKey(ITfContext *pContext, REFGUID rguid, BOOL *pIsEaten)
 {
 	pContext;
 	
@@ -423,7 +423,7 @@ STDAPI CTSFDayi::OnPreservedKey(ITfContext *pContext, REFGUID rguid, BOOL *pIsEa
     pCompositionProcessorEngine->OnPreservedKey(rguid, pIsEaten, _GetThreadMgr(), _GetClientId());
 
 	BOOL isOpen = FALSE;
-	CCompartment CompartmentKeyboardOpen(_pThreadMgr, _tfClientId, Global::TSFDayiGuidCompartmentIMEMode);
+	CCompartment CompartmentKeyboardOpen(_pThreadMgr, _tfClientId, Global::TSFTTSGuidCompartmentIMEMode);
     CompartmentKeyboardOpen._GetCompartmentBOOL(isOpen);
 
 
@@ -437,7 +437,7 @@ STDAPI CTSFDayi::OnPreservedKey(ITfContext *pContext, REFGUID rguid, BOOL *pIsEa
 // Advise a keystroke sink.
 //----------------------------------------------------------------------------
 
-BOOL CTSFDayi::_InitKeyEventSink()
+BOOL CTSFTTS::_InitKeyEventSink()
 {
     ITfKeystrokeMgr* pKeystrokeMgr = nullptr;
     HRESULT hr = S_OK;
@@ -461,7 +461,7 @@ BOOL CTSFDayi::_InitKeyEventSink()
 // Unadvise a keystroke sink.  Assumes we have advised one already.
 //----------------------------------------------------------------------------
 
-void CTSFDayi::_UninitKeyEventSink()
+void CTSFTTS::_UninitKeyEventSink()
 {
     ITfKeystrokeMgr* pKeystrokeMgr = nullptr;
 

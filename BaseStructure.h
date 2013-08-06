@@ -3,8 +3,8 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-#ifndef TSFDAYIBASESTRUCTURE_H
-#define TSFDAYIBASESTRUCTURE_H
+#ifndef TSFTTSBASESTRUCTURE_H
+#define TSFTTSBASESTRUCTURE_H
 
 #pragma once
 
@@ -107,22 +107,22 @@ HRESULT FindChar(WCHAR wch, _In_ LPCWSTR pwszBuffer, DWORD_PTR dwBufLen, _Out_ D
 BOOL IsSpace(LCID locale, WCHAR wch);
 
 template<class T>
-class CTSFDayiArray
+class CTSFTTSArray
 
 {
-    typedef typename std::vector<T> CTSFDayiInnerArray;
-    typedef typename std::vector<T>::iterator CTSFDayiInnerIter;
+    typedef typename std::vector<T> CTSFTTSInnerArray;
+    typedef typename std::vector<T>::iterator CTSFTTSInnerIter;
 
 public:
-    CTSFDayiArray(): _innerVect()
+    CTSFTTSArray(): _innerVect()
     {
     }
 
-    explicit CTSFDayiArray(size_t count): _innerVect(count)
+    explicit CTSFTTSArray(size_t count): _innerVect(count)
     {
     }
 
-    virtual ~CTSFDayiArray()
+    virtual ~CTSFTTSArray()
     {
     }
 
@@ -151,7 +151,7 @@ public:
         assert(index >= 0);
         assert(index < _innerVect.size());
 
-        CTSFDayiInnerIter iter = _innerVect.begin();
+        CTSFTTSInnerIter iter = _innerVect.begin();
         _innerVect.erase(iter + index);
     }
 
@@ -180,7 +180,7 @@ public:
     }
 
 private:
-    CTSFDayiInnerArray _innerVect;
+    CTSFTTSInnerArray _innerVect;
 };
 
 class CCandidateRange
@@ -206,7 +206,7 @@ public:
     }
 
 private:
-    CTSFDayiArray<DWORD> _CandidateListIndexRange;
+    CTSFTTSArray<DWORD> _CandidateListIndexRange;
 };
 
 class CStringRange

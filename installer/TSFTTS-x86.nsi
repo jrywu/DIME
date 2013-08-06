@@ -4,10 +4,10 @@
 !include x64.nsh
 
 ; HM NIS Edit Wizard helper defines
-!define PRODUCT_NAME "TSFDayi"
+!define PRODUCT_NAME "TSFTTS"
 !define PRODUCT_VERSION "1.0"
 !define PRODUCT_PUBLISHER "Jeremy Wu"
-!define PRODUCT_WEB_SITE "http://github.com/jrywu/TSFDayi"
+!define PRODUCT_WEB_SITE "http://github.com/jrywu/TSFTTS"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
 ; ## HKLM = HKEY_LOCAL_MACHINE
 !define PRODUCT_UNINST_ROOT_KEY "HKLM"
@@ -60,8 +60,8 @@ SetCompressor lzma
 ; MUI end ------
 
 Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
-OutFile "TSFDayi-x86.exe"
-InstallDir "$PROGRAMFILES\TSFDayi"
+OutFile "TSFTTS-x86.exe"
+InstallDir "$PROGRAMFILES\TSFTTS"
 ShowInstDetails show
 ShowUnInstDetails show
 
@@ -100,7 +100,7 @@ Function .onInit
   MessageBox MB_OKCANCEL|MB_ICONQUESTION "偵測到舊版 $0，必須先移除才能安裝新版。是否要現在進行？" IDOK +2
   	Abort
   ExecWait '"$INSTDIR\uninst.exe" /S _?=$INSTDIR'
-  IfFileExists "$SYSDIR\TSFDayi.dll"  0 RemoveFinished     ;代表反安裝失敗 
+  IfFileExists "$SYSDIR\TSFTTS.dll"  0 RemoveFinished     ;代表反安裝失敗 
         Abort
   RemoveFinished:     
     	MessageBox MB_ICONINFORMATION|MB_OK "舊版已移除。"       
@@ -153,11 +153,11 @@ SectionEnd
 Section "MainSection" SEC01
   SetOutPath "$SYSDIR"
   SetOverwrite ifnewer
-  File "system32.x86\TSFDayi.dll"
-  ExecWait '"$SYSDIR\regsvr32.exe" /s $SYSDIR\TSFDayi.dll'
+  File "system32.x86\TSFTTS.dll"
+  ExecWait '"$SYSDIR\regsvr32.exe" /s $SYSDIR\TSFTTS.dll'
   File "system32.x86\*.dll"
-  SetOutPath "$APPDATA\TSFDayi\"
-  CreateDirectory "$APPDATA\TSFDayi"
+  SetOutPath "$APPDATA\TSFTTS\"
+  CreateDirectory "$APPDATA\TSFTTS"
   File "config.ini"
 SectionEnd
 
@@ -167,20 +167,20 @@ SetOutPath $PROGRAMFILES
 SectionEnd
 
 Section -AdditionalIcons
-  SetOutPath $SMPROGRAMS\TSFDayi
-  CreateDirectory "$SMPROGRAMS\TSFDayi"
-  CreateShortCut "$SMPROGRAMS\TSFDayi\Uninstall.lnk" "$PROGRAMFILES\TSFDayi\uninst.exe"
+  SetOutPath $SMPROGRAMS\TSFTTS
+  CreateDirectory "$SMPROGRAMS\TSFTTS"
+  CreateShortCut "$SMPROGRAMS\TSFTTS\Uninstall.lnk" "$PROGRAMFILES\TSFTTS\uninst.exe"
 SectionEnd
 
 Section -Post
-  CreateDirectory "$PROGRAMFILES\TSFDayi"
-  WriteUninstaller "$PROGRAMFILES\TSFDayi\uninst.exe"
-  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "UninstallString" "$PROGRAMFILES\TSFDayi\uninst.exe"
+  CreateDirectory "$PROGRAMFILES\TSFTTS"
+  WriteUninstaller "$PROGRAMFILES\TSFTTS\uninst.exe"
+  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "UninstallString" "$PROGRAMFILES\TSFTTS\uninst.exe"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayName" "${PRODUCT_NAME}"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayVersion" "${PRODUCT_VERSION}"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "URLInfoAbout" "${PRODUCT_WEB_SITE}"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "Publisher" "${PRODUCT_PUBLISHER}"
-  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayIcon" "$SYSDIR\TSFDayi.dll"
+  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayIcon" "$SYSDIR\TSFTTS.dll"
   WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "EstimatedSize" 183
 SectionEnd
 
@@ -196,10 +196,10 @@ FunctionEnd
 
 Section Uninstall
   
-  ExecWait '"$SYSDIR\regsvr32.exe" /u /s $SYSDIR\TSFDayi.dll'
+  ExecWait '"$SYSDIR\regsvr32.exe" /u /s $SYSDIR\TSFTTS.dll'
   ClearErrors
-  IfFileExists "$SYSDIR\TSFDayi.ime"  0 lbContinueUninstall
-  Delete "$SYSDIR\TSFDayi.dll"
+  IfFileExists "$SYSDIR\TSFTTS.ime"  0 lbContinueUninstall
+  Delete "$SYSDIR\TSFTTS.dll"
   IfErrors lbNeedReboot lbContinueUninstall
 
   lbNeedReboot:
@@ -210,9 +210,9 @@ Section Uninstall
   MessageBox MB_ICONSTOP|MB_OK "請將所有程式關閉，再嘗試執行本安裝程式。若仍看到此畫面，請重新開機。" IDOK +1
   Quit
   lbContinueUninstall:
-  Delete "$PROGRAMFILES\TSFDayi\uninst.exe"
-  RMDir /r "$PROGRAMFILES\TSFDayi"
-  Delete "$SMPROGRAMS\TSFDayi\Uninstall.lnk"
+  Delete "$PROGRAMFILES\TSFTTS\uninst.exe"
+  RMDir /r "$PROGRAMFILES\TSFTTS"
+  Delete "$SMPROGRAMS\TSFTTS\Uninstall.lnk"
   DeleteRegKey ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}"
   SetAutoClose true
 SectionEnd

@@ -6,7 +6,7 @@
 
 
 #include "Private.h"
-#include "TSFDayi.h"
+#include "TSFTTS.h"
 #include "SearchCandidateProvider.h"
 
 //+---------------------------------------------------------------------------
@@ -15,7 +15,7 @@
 //
 //----------------------------------------------------------------------------
 
-BOOL CTSFDayi::_InitFunctionProviderSink()
+BOOL CTSFTTS::_InitFunctionProviderSink()
 {
     ITfSourceSingle* pSourceSingle = nullptr;
     BOOL ret = FALSE;
@@ -44,7 +44,7 @@ BOOL CTSFDayi::_InitFunctionProviderSink()
 //
 //----------------------------------------------------------------------------
 
-void CTSFDayi::_UninitFunctionProviderSink()
+void CTSFTTS::_UninitFunctionProviderSink()
 {
     ITfSourceSingle* pSourceSingle = nullptr;
     if (SUCCEEDED(_pThreadMgr->QueryInterface(IID_ITfSourceSingle, (void **)&pSourceSingle)))

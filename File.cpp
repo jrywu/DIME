@@ -7,7 +7,7 @@
 
 #include "Private.h"
 #include "File.h"
-#include "TSFDayiBaseStructure.h"
+#include "BaseStructure.h"
 
 //---------------------------------------------------------------------
 //

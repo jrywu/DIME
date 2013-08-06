@@ -21,7 +21,7 @@ CTableDictionaryEngine::CTableDictionaryEngine(LCID locale, _In_ CFile *pDiction
 //
 //----------------------------------------------------------------------------
 
-VOID CTableDictionaryEngine::CollectWord(_In_ CStringRange *pKeyCode, _Inout_ CTSFDayiArray<CStringRange> *pWordStrings)
+VOID CTableDictionaryEngine::CollectWord(_In_ CStringRange *pKeyCode, _Inout_ CTSFTTSArray<CStringRange> *pWordStrings)
 {
     CDictionaryResult* pdret = nullptr;
 	CDictionarySearch dshSearch(_locale, _pDictionaryFile, pKeyCode, _keywordDelimiter, _pCompositionProcessorEngine);
@@ -43,7 +43,7 @@ VOID CTableDictionaryEngine::CollectWord(_In_ CStringRange *pKeyCode, _Inout_ CT
     }
 }
 
-VOID CTableDictionaryEngine::CollectWord(_In_ CStringRange *pKeyCode, _Inout_ CTSFDayiArray<CCandidateListItem> *pItemList)
+VOID CTableDictionaryEngine::CollectWord(_In_ CStringRange *pKeyCode, _Inout_ CTSFTTSArray<CCandidateListItem> *pItemList)
 {
     CDictionaryResult* pdret = nullptr;
     CDictionarySearch dshSearch(_locale, _pDictionaryFile, pKeyCode, _keywordDelimiter, _pCompositionProcessorEngine);
@@ -72,7 +72,7 @@ VOID CTableDictionaryEngine::CollectWord(_In_ CStringRange *pKeyCode, _Inout_ CT
 //
 //----------------------------------------------------------------------------
 
-VOID CTableDictionaryEngine::CollectWordForWildcard(_In_ CStringRange *pKeyCode, _Inout_ CTSFDayiArray<CCandidateListItem> *pItemList)
+VOID CTableDictionaryEngine::CollectWordForWildcard(_In_ CStringRange *pKeyCode, _Inout_ CTSFTTSArray<CCandidateListItem> *pItemList)
 {
     CDictionaryResult* pdret = nullptr;
     CDictionarySearch dshSearch(_locale, _pDictionaryFile, pKeyCode, _keywordDelimiter, _pCompositionProcessorEngine);
@@ -101,7 +101,7 @@ VOID CTableDictionaryEngine::CollectWordForWildcard(_In_ CStringRange *pKeyCode,
 //
 //----------------------------------------------------------------------------
 
-VOID CTableDictionaryEngine::CollectWordFromConvertedStringForWildcard(_In_ CStringRange *pString, _Inout_ CTSFDayiArray<CCandidateListItem> *pItemList)
+VOID CTableDictionaryEngine::CollectWordFromConvertedStringForWildcard(_In_ CStringRange *pString, _Inout_ CTSFTTSArray<CCandidateListItem> *pItemList)
 {
     CDictionaryResult* pdret = nullptr;
 	CDictionarySearch dshSearch(_locale, _pDictionaryFile, pString, _keywordDelimiter, _pCompositionProcessorEngine);
@@ -130,7 +130,7 @@ VOID CTableDictionaryEngine::CollectWordFromConvertedStringForWildcard(_In_ CStr
 //
 //----------------------------------------------------------------------------
 
-VOID CTableDictionaryEngine::CollectWordFromConvertedString(_In_ CStringRange *pString, _Inout_ CTSFDayiArray<CCandidateListItem> *pItemList)
+VOID CTableDictionaryEngine::CollectWordFromConvertedString(_In_ CStringRange *pString, _Inout_ CTSFTTSArray<CCandidateListItem> *pItemList)
 {
     CDictionaryResult* pdret = nullptr;
     CDictionarySearch dshSearch(_locale, _pDictionaryFile, pString, _keywordDelimiter, _pCompositionProcessorEngine);

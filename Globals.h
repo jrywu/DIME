@@ -10,7 +10,7 @@
 #include <map>
 #include "private.h"
 #include "define.h"
-#include "TSFDayiBaseStructure.h"
+#include "BaseStructure.h"
 using std::map;
 void DllAddRef();
 void DllRelease();
@@ -124,11 +124,11 @@ extern HFONT defaultlFontHandle;  // Global font object we use everywhere
 
 
 
-extern const CLSID TSFDayiCLSID;
-extern const CLSID TSFDayiGuidProfile;
-extern const CLSID TSFDayiGuidImeModePreserveKey;
-extern const CLSID TSFDayiGuidDoubleSingleBytePreserveKey;
-extern const CLSID TSFDayiGuidPunctuationPreserveKey;
+extern const CLSID TSFTTSCLSID;
+extern const CLSID TSFTTSGuidProfile;
+extern const CLSID TSFTTSGuidImeModePreserveKey;
+extern const CLSID TSFTTSGuidDoubleSingleBytePreserveKey;
+extern const CLSID TSFTTSGuidPunctuationPreserveKey;
 
 LRESULT CALLBACK ThreadKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam);
 BOOL CheckModifiers(UINT uModCurrent, UINT uMod);
@@ -139,21 +139,21 @@ extern BOOL IsShiftKeyDownOnly;
 extern BOOL IsControlKeyDownOnly;
 extern BOOL IsAltKeyDownOnly;
 
-extern const GUID TSFDayiGuidCompartmentIMEMode;
-extern const GUID TSFDayiGuidCompartmentDoubleSingleByte;
+extern const GUID TSFTTSGuidCompartmentIMEMode;
+extern const GUID TSFTTSGuidCompartmentDoubleSingleByte;
 
 extern const WCHAR FullWidthCharTable[];
 extern const WCHAR symbolCharTable[26];
 extern const _AddressDirectInput addressCharTable[5];
 
-extern const GUID TSFDayiGuidLangBarIMEMode;
-extern const GUID TSFDayiGuidLangBarDoubleSingleByte;
-extern const GUID TSFDayiGuidLangBarPunctuation;
+extern const GUID TSFTTSGuidLangBarIMEMode;
+extern const GUID TSFTTSGuidLangBarDoubleSingleByte;
+extern const GUID TSFTTSGuidLangBarPunctuation;
 
-extern const GUID TSFDayiGuidDisplayAttributeInput;
-extern const GUID TSFDayiGuidDisplayAttributeConverted;
+extern const GUID TSFTTSGuidDisplayAttributeInput;
+extern const GUID TSFTTSGuidDisplayAttributeConverted;
 
-extern const GUID TSFDayiGuidCandUIElement;
+extern const GUID TSFTTSGuidCandUIElement;
 
 extern const WCHAR UnicodeByteOrderMark;
 extern WCHAR KeywordDelimiter;
@@ -190,7 +190,7 @@ inline static void debugPrint(const WCHAR* format,...)
 
 	if (SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE))
 	{
-		StringCchPrintf(wszAppData, MAX_PATH, L"%s\\%s", wszAppData, L"TSFDayi\\");
+		StringCchPrintf(wszAppData, MAX_PATH, L"%s\\%s", wszAppData, L"TSFTTS\\");
 		if (PathFileExists(wszAppData))
 			CreateDirectory(wszAppData, NULL);
 	} 

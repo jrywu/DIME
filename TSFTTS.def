@@ -1,4 +1,4 @@
-LIBRARY TSFDayi.dll
+LIBRARY TSFTTS.dll
 
 EXPORTS
         DllGetClassObject    PRIVATE

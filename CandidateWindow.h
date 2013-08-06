@@ -12,7 +12,7 @@
 #include "BaseWindow.h"
 #include "ShadowWindow.h"
 #include "ScrollBarWindow.h"
-#include "TSFDayiBaseStructure.h"
+#include "BaseStructure.h"
 
 enum CANDWND_ACTION
 {
@@ -93,8 +93,8 @@ private:
 
 private:
     INT _currentSelection;
-    CTSFDayiArray<CCandidateListItem> _candidateList;
-    CTSFDayiArray<UINT> _PageIndex;
+    CTSFTTSArray<CCandidateListItem> _candidateList;
+    CTSFTTSArray<UINT> _PageIndex;
 
     COLORREF _crTextColor;
     COLORREF _crBkColor;

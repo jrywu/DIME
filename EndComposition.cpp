@@ -8,7 +8,7 @@
 #include "Private.h"
 #include "Globals.h"
 #include "EditSession.h"
-#include "TSFDayi.h"
+#include "TSFTTS.h"
 
 //////////////////////////////////////////////////////////////////////
 //
@@ -25,7 +25,7 @@
 class CEndCompositionEditSession : public CEditSessionBase
 {
 public:
-    CEndCompositionEditSession(_In_ CTSFDayi *pTextService, _In_ ITfContext *pContext) : CEditSessionBase(pTextService, pContext)
+    CEndCompositionEditSession(_In_ CTSFTTS *pTextService, _In_ ITfContext *pContext) : CEditSessionBase(pTextService, pContext)
     {
     }
 
@@ -40,7 +40,7 @@ public:
 
 //////////////////////////////////////////////////////////////////////
 //
-// CTSFDayi class
+// CTSFTTS class
 //
 //////////////////////////////////////////////////////////////////////+---------------------------------------------------------------------------
 //
@@ -48,9 +48,9 @@ public:
 //
 //----------------------------------------------------------------------------
 
-void CTSFDayi::_TerminateComposition(TfEditCookie ec, _In_ ITfContext *pContext, BOOL isCalledFromDeactivate)
+void CTSFTTS::_TerminateComposition(TfEditCookie ec, _In_ ITfContext *pContext, BOOL isCalledFromDeactivate)
 {
-	debugPrint(L"CTSFDayi::_TerminateComposition()\n");
+	debugPrint(L"CTSFTTS::_TerminateComposition()\n");
 	isCalledFromDeactivate;
 
     if (_pComposition != nullptr)
@@ -83,9 +83,9 @@ void CTSFDayi::_TerminateComposition(TfEditCookie ec, _In_ ITfContext *pContext,
 //
 //----------------------------------------------------------------------------
 
-void CTSFDayi::_EndComposition(_In_opt_ ITfContext *pContext)
+void CTSFTTS::_EndComposition(_In_opt_ ITfContext *pContext)
 {
-	debugPrint(L"CTSFDayi::_EndComposition()\n");
+	debugPrint(L"CTSFTTS::_EndComposition()\n");
     CEndCompositionEditSession *pEditSession = new (std::nothrow) CEndCompositionEditSession(this, pContext);
     HRESULT hr = S_OK;
 

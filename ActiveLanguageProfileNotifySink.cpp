@@ -7,12 +7,12 @@
 
 #include "Private.h"
 #include "Globals.h"
-#include "TSFDayi.h"
+#include "TSFTTS.h"
 #include "CompositionProcessorEngine.h"
 
-BOOL CTSFDayi::VerifyTSFDayiCLSID(_In_ REFCLSID clsid)
+BOOL CTSFTTS::VerifyTSFTTSCLSID(_In_ REFCLSID clsid)
 {
-    if (IsEqualCLSID(clsid, Global::TSFDayiCLSID))
+    if (IsEqualCLSID(clsid, Global::TSFTTSCLSID))
     {
         return TRUE;
     }
@@ -26,12 +26,12 @@ BOOL CTSFDayi::VerifyTSFDayiCLSID(_In_ REFCLSID clsid)
 // Sink called by the framework when changes activate language profile.
 //----------------------------------------------------------------------------
 
-STDAPI CTSFDayi::OnActivated(_In_ REFCLSID clsid, _In_ REFGUID guidProfile, _In_ BOOL isActivated)
+STDAPI CTSFTTS::OnActivated(_In_ REFCLSID clsid, _In_ REFGUID guidProfile, _In_ BOOL isActivated)
 {
-	debugPrint(L"CTSFDayi::OnActivated()\n");
+	debugPrint(L"CTSFTTS::OnActivated()\n");
 	guidProfile;
 
-    if (FALSE == VerifyTSFDayiCLSID(clsid))
+    if (FALSE == VerifyTSFTTSCLSID(clsid))
     {
         return S_OK;
     }
@@ -69,7 +69,7 @@ STDAPI CTSFDayi::OnActivated(_In_ REFCLSID clsid, _In_ REFGUID guidProfile, _In_
 // Advise a active language profile notify sink.
 //----------------------------------------------------------------------------
 
-BOOL CTSFDayi::_InitActiveLanguageProfileNotifySink()
+BOOL CTSFTTS::_InitActiveLanguageProfileNotifySink()
 {
     ITfSource* pSource = nullptr;
     BOOL ret = FALSE;
@@ -99,7 +99,7 @@ Exit:
 // Unadvise a active language profile notify sink.  Assumes we have advised one already.
 //----------------------------------------------------------------------------
 
-void CTSFDayi::_UninitActiveLanguageProfileNotifySink()
+void CTSFTTS::_UninitActiveLanguageProfileNotifySink()
 {
     ITfSource* pSource = nullptr;
 

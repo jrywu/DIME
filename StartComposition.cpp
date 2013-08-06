@@ -8,7 +8,7 @@
 #include "Private.h"
 #include "Globals.h"
 #include "EditSession.h"
-#include "TSFDayi.h"
+#include "TSFTTS.h"
 
 //+---------------------------------------------------------------------------
 //
@@ -19,7 +19,7 @@
 class CStartCompositionEditSession : public CEditSessionBase
 {
 public:
-    CStartCompositionEditSession(_In_ CTSFDayi *pTextService, _In_ ITfContext *pContext) : CEditSessionBase(pTextService, pContext)
+    CStartCompositionEditSession(_In_ CTSFTTS *pTextService, _In_ ITfContext *pContext) : CEditSessionBase(pTextService, pContext)
     {
     }
 
@@ -91,7 +91,7 @@ Exit:
 
 //////////////////////////////////////////////////////////////////////
 //
-// CTSFDayi class
+// CTSFTTS class
 //
 //////////////////////////////////////////////////////////////////////+---------------------------------------------------------------------------
 //
@@ -101,9 +101,9 @@ Exit:
 // focus context.
 //----------------------------------------------------------------------------
 
-void CTSFDayi::_StartComposition(_In_ ITfContext *pContext)
+void CTSFTTS::_StartComposition(_In_ ITfContext *pContext)
 {
-	debugPrint(L"CTSFDayi::_StartComposition()\n");
+	debugPrint(L"CTSFTTS::_StartComposition()\n");
     CStartCompositionEditSession* pStartCompositionEditSession = new (std::nothrow) CStartCompositionEditSession(this, pContext);
 
     if (nullptr != pStartCompositionEditSession)
@@ -124,7 +124,7 @@ void CTSFDayi::_StartComposition(_In_ ITfContext *pContext)
 // deactivation
 //----------------------------------------------------------------------------
 
-void CTSFDayi::_SaveCompositionContext(_In_ ITfContext *pContext)
+void CTSFTTS::_SaveCompositionContext(_In_ ITfContext *pContext)
 {
 	assert(_pContext == nullptr);
 

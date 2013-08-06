@@ -5,17 +5,17 @@
 //
 #ifndef EDITSESSION_H
 #define EDITSESSION_H
-#include "TSFDayiBaseStructure.h"
+#include "BaseStructure.h"
 #include "Private.h"
 
 #pragma once
 
-class CTSFDayi;
+class CTSFTTS;
 
 class CEditSessionBase : public ITfEditSession
 {
 public:
-    CEditSessionBase(_In_ CTSFDayi *pTextService, _In_ ITfContext *pContext);
+    CEditSessionBase(_In_ CTSFTTS *pTextService, _In_ ITfContext *pContext);
     virtual ~CEditSessionBase();
 
     // IUnknown
@@ -28,7 +28,7 @@ public:
 
 protected:
     ITfContext *_pContext;
-    CTSFDayi *_pTextService;
+    CTSFTTS *_pTextService;
 
 private:
     LONG _refCount;     // COM ref count

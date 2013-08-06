@@ -4,10 +4,10 @@
 !include x64.nsh
 
 ; HM NIS Edit Wizard helper defines
-!define PRODUCT_NAME "TSFDayi"
+!define PRODUCT_NAME "TSFTTS"
 !define PRODUCT_VERSION "1.0"
 !define PRODUCT_PUBLISHER "Jeremy Wu"
-!define PRODUCT_WEB_SITE "http://github.com/jrywu/TSFDayi"
+!define PRODUCT_WEB_SITE "http://github.com/jrywu/TSFTTS"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
 ; ## HKLM = HKEY_LOCAL_MACHINE
 !define PRODUCT_UNINST_ROOT_KEY "HKLM"
@@ -55,8 +55,8 @@ SetCompressor lzma
 ; MUI end ------
 
 Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
-OutFile "TSFDayi-x8664.exe"
-InstallDir "$PROGRAMFILES64\TSFDayi"
+OutFile "TSFTTS-x64.exe"
+InstallDir "$PROGRAMFILES64\TSFTTS"
 ShowInstDetails show
 ShowUnInstDetails show
 
@@ -85,26 +85,28 @@ Var "URL_VCX86"
 Var "URL_VCX64"
 
 Function .onInit
+ ${If} ${RunningX64}
+        ${EnableX64FSRedirection}
+        SetRegView 64
+        ${else}
+        MessageBox MB_OK "此安裝檔為64bit版本, 請重新下載32bit版本"
+        Abort
+  ${EndIf}
   InitPluginsDir
   StrCpy $URL_VCX86 "${URL_VC_REDISTX86_2012U3}"
   StrCpy $URL_VCX64 "${URL_VC_REDISTX64_2012U3}"
-    ${If} ${RunningX64}
-  	SetRegView 64
-  ${EndIf}
   ReadRegStr $0 ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayVersion"
   StrCmp $0 "" StartInstall 0
   ;MessageBox MB_OK  "偵測到舊版 $0，必須先移除才能安裝新版。"
   MessageBox MB_OKCANCEL|MB_ICONQUESTION "偵測到舊版 $0，必須先移除才能安裝新版。是否要現在進行？" IDOK +2
   	Abort
   ExecWait '"$INSTDIR\uninst.exe" /S _?=$INSTDIR'
-   ${If} ${RunningX64}
-  	${DisableX64FSRedirection}
-  	IfFileExists "$SYSDIR\TSFDayi.dll"  0 CheckX64     ;代表反安裝失敗 
-  		Abort
+  ${DisableX64FSRedirection}
+  IfFileExists "$SYSDIR\TSFTTS.dll"  0 CheckX64     ;代表反安裝失敗 
+  	Abort
   CheckX64:
- 	${EnableX64FSRedirection}
-  ${EndIf}
-  IfFileExists "$SYSDIR\TSFDayi.dll"  0 RemoveFinished     ;代表反安裝失敗 
+  ${EnableX64FSRedirection}
+  IfFileExists "$SYSDIR\TSFTTS.dll"  0 RemoveFinished     ;代表反安裝失敗 
         Abort
   RemoveFinished:     
     	MessageBox MB_ICONINFORMATION|MB_OK "舊版已移除。"       
@@ -116,34 +118,36 @@ Section "CheckVCRedist" VCR
   Push $R0
   ;{3D6AD258-61EA-35F5-812C-B7A02152996E} for x86 VC 2012 Upate3
   ;{2EDC2FA3-1F34-34E5-9085-588C9EFD1CC6} for x64 VC 2012 Upate3
-  ${If} ${RunningX64}
-  	SetRegView 64
-  	ClearErrors
-  	ReadRegDword $R0 HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{2EDC2FA3-1F34-34E5-9085-588C9EFD1CC6}" "Version"
-  	IfErrors 0 VCx64RedistInstalled
-  	MessageBox MB_ICONEXCLAMATION|MB_YESNO|MB_DEFBUTTON2 "$(DESC_VCX64_DECISION)" /SD IDNO IDYES +1 IDNO VCRedistInstalledAbort
-  	AddSize 7000
-  	nsisdl::download /TRANSLATE "$(DESC_DOWNLOADING)" "$(DESC_CONNECTING)" \
+  SetRegView 64
+  ClearErrors
+  ReadRegDword $R0 HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{2EDC2FA3-1F34-34E5-9085-588C9EFD1CC6}" "Version"
+  IfErrors 0 VCx64RedistInstalled
+  AddSize 14000
+  MessageBox MB_ICONEXCLAMATION|MB_YESNO|MB_DEFBUTTON2 "$(DESC_VCX64_DECISION)" /SD IDNO IDYES +1 IDNO VCRedistInstalledAbort
+  nsisdl::download /TRANSLATE "$(DESC_DOWNLOADING)" "$(DESC_CONNECTING)" \
        "$(DESC_SECOND)" "$(DESC_MINUTE)" "$(DESC_HOUR)" "$(DESC_PLURAL)" \
        "$(DESC_PROGRESS)" "$(DESC_REMAINING)" \
        /TIMEOUT=30000 "$URL_VCX64" "$PLUGINSDIR\vcredist_x64.exe"
-    	Pop $0
-    	StrCmp "$0" "success" lbl_continue64
-    	DetailPrint "$(DESC_DOWNLOADFAILED) $0"
-    	Abort
-     lbl_continue64:
+    Pop $0
+    StrCmp "$0" "success" lbl_continue64
+    DetailPrint "$(DESC_DOWNLOADFAILED) $0"
+    Abort
+ 
+    lbl_continue64:
       DetailPrint "$(DESC_INSTALLING) $(DESC_VCX64)..."
       nsExec::ExecToStack "$PLUGINSDIR\vcredist_x64.exe /q"
       ;pop $DOTNET_RETURN_CODE
+  
+  ;SetOutPath $INSTDIR
+  ;File "VCRedist\vcredist_x64.exe"
+  ;ExecWait '"$INSTDIR\vcredist_x64.exe" /q' # silent install
 VCx64RedistInstalled:
  SetRegView 32
-${EndIf}
  ClearErrors
   ReadRegDword $R0 HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{3D6AD258-61EA-35F5-812C-B7A02152996E}" "Version"
   IfErrors 0 VCRedistInstalled
   ;MessageBox MB_ICONQUESTION|MB_YESNO "需要 MS VC++ 2012 x86 Redistributable，您要繼續這項安裝嗎?" IDNO VCRedistInstalledAbort
   MessageBox MB_ICONEXCLAMATION|MB_YESNO|MB_DEFBUTTON2 "$(DESC_VCX86_DECISION)" /SD IDNO IDYES +1 IDNO VCRedistInstalledAbort
-  AddSize 7000
   nsisdl::download /TRANSLATE "$(DESC_DOWNLOADING)" "$(DESC_CONNECTING)" \
        "$(DESC_SECOND)" "$(DESC_MINUTE)" "$(DESC_HOUR)" "$(DESC_PLURAL)" \
        "$(DESC_PROGRESS)" "$(DESC_REMAINING)" \
@@ -157,6 +161,9 @@ ${EndIf}
       DetailPrint "$(DESC_INSTALLING) $(DESC_VCX86)..."
       nsExec::ExecToStack "$PLUGINSDIR\vcredist_x86.exe /q"
       ;pop $DOTNET_RETURN_CODE
+  
+  ;File "VCRedist\vcredist_x86.exe"
+ ; ExecWait '"$INSTDIR\vcredist_x86.exe" /q' # silent install
   Goto VCRedistInstalled
 VCRedistInstalledAbort:
   Quit
@@ -168,20 +175,17 @@ SectionEnd
 Section "MainSection" SEC01
   SetOutPath "$SYSDIR"
   SetOverwrite ifnewer
-  ${If} ${RunningX64}
-  	${DisableX64FSRedirection}
-  	File "system32.x64\TSFDayi.dll"
-  	ExecWait '"$SYSDIR\regsvr32.exe" /s $SYSDIR\TSFDayi.dll'
-  	File "system32.x64\*.dll"
-  	${EnableX64FSRedirection}
-  ${EndIf}
-  File "system32.x86\TSFDayi.dll"
-  ExecWait '"$SYSDIR\regsvr32.exe" /s $SYSDIR\TSFDayi.dll'
+  ${DisableX64FSRedirection}
+  File "system32.x64\TSFTTS.dll"
+  ExecWait '"$SYSDIR\regsvr32.exe" /s $SYSDIR\TSFTTS.dll'
+  File "system32.x64\*.dll"
+  ${EnableX64FSRedirection}
+  File "system32.x86\TSFTTS.dll"
+  ExecWait '"$SYSDIR\regsvr32.exe" /s $SYSDIR\TSFTTS.dll'
   File "system32.x86\*.dll"
-  SetOutPath "$APPDATA\TSFDayi\"
-  CreateDirectory "$APPDATA\TSFDayi"
+  SetOutPath "$APPDATA\TSFTTS\"
+  CreateDirectory "$APPDATA\TSFTTS"
   File "config.ini"
-
   
 SectionEnd
 
@@ -191,28 +195,24 @@ SetOutPath $PROGRAMFILES64
 SectionEnd
 
 Section -AdditionalIcons
-  SetOutPath $SMPROGRAMS\TSFDayi
-  CreateDirectory "$SMPROGRAMS\TSFDayi"
-  CreateShortCut "$SMPROGRAMS\TSFDayi\Uninstall.lnk" "$INSTDIRi\uninst.exe"
+  SetOutPath $SMPROGRAMS\TSFTTS
+  CreateDirectory "$SMPROGRAMS\TSFTTS"
+  CreateShortCut "$SMPROGRAMS\TSFTTS\Uninstall.lnk" "$PROGRAMFILES64\TSFTTS\uninst.exe"
 SectionEnd
 
 Section -Post
-  CreateDirectory "$INSTDIR"
-  WriteUninstaller "$INSTDIR\uninst.exe"
+  CreateDirectory "$PROGRAMFILES64\TSFTTS"
+  WriteUninstaller "$PROGRAMFILES64\TSFTTS\uninst.exe"
   ${If} ${RunningX64}
   	SetRegView 64
   ${EndIf}
-  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "UninstallString" "$INSTDIR\uninst.exe"
+  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "UninstallString" "$PROGRAMFILES64\TSFTTS\uninst.exe"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayName" "${PRODUCT_NAME}"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayVersion" "${PRODUCT_VERSION}"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "URLInfoAbout" "${PRODUCT_WEB_SITE}"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "Publisher" "${PRODUCT_PUBLISHER}"
-  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayIcon" "$SYSDIR\TSFDayi.dll"
-  ${If} ${RunningX64}
-  	WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "EstimatedSize" 286
-  ${Else}
-  	WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "EstimatedSize" 183
-   ${EndIf}
+  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayIcon" "$SYSDIR\TSFTTS.dll"
+  WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "EstimatedSize" 286
 SectionEnd
 
 Function un.onUninstSuccess  
@@ -226,23 +226,20 @@ Function un.onInit
 FunctionEnd
 
 Section Uninstall
- ${If} ${RunningX64}
+  
   ${DisableX64FSRedirection}
-  ExecWait '"$SYSDIR\regsvr32.exe" /u /s $SYSDIR\TSFDayi.dll'
+  ExecWait '"$SYSDIR\regsvr32.exe" /u /s $SYSDIR\TSFTTS.dll'
   ${EnableX64FSRedirection}
- ${EndIf}
-  ExecWait '"$SYSDIR\regsvr32.exe" /u /s $SYSDIR\TSFDayi.dll'
+  ExecWait '"$SYSDIR\regsvr32.exe" /u /s $SYSDIR\TSFTTS.dll'
   
   ClearErrors
-  ${If} ${RunningX64}
   ${DisableX64FSRedirection}
-  IfFileExists "$SYSDIR\TSFDayi.dll"  0 +3 
-  Delete "$SYSDIR\TSFDayi.dll"
+  IfFileExists "$SYSDIR\TSFTTS.dll"  0 +3 
+  Delete "$SYSDIR\TSFTTS.dll"
   IfErrors lbNeedReboot +1
   ${EnableX64FSRedirection}
-  ${EndIf}
-  IfFileExists "$SYSDIR\TSFDayi.dll"  0  lbContinueUninstall  
-  Delete "$SYSDIR\TSFDayi.dll"
+  IfFileExists "$SYSDIR\TSFTTS.dll"  0  lbContinueUninstall  
+  Delete "$SYSDIR\TSFTTS.dll"
   IfErrors lbNeedReboot lbContinueUninstall
 
   lbNeedReboot:
@@ -253,13 +250,9 @@ Section Uninstall
   MessageBox MB_ICONSTOP|MB_OK "請將所有程式關閉，再嘗試執行本安裝程式。若仍看到此畫面，請重新開機。" IDOK +1
   Quit
   lbContinueUninstall:
-  
-  Delete "$INSTDIR\uninst.exe"
-  RMDir /r "$INSTDIR"
-  Delete "$SMPROGRAMS\TSFDayi\Uninstall.lnk"
-  ${If} ${RunningX64}
-  	SetRegView 64
-  ${EndIf}
+  Delete "$PROGRAMFILES64\TSFTTS\uninst.exe"
+  RMDir /r "$PROGRAMFILES64\TSFTTS"
+  Delete "$SMPROGRAMS\TSFTTS\Uninstall.lnk"
   DeleteRegKey ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}"
   SetAutoClose true
 SectionEnd

@@ -53,7 +53,7 @@ class CDisplayAttributeInfoInput : public CDisplayAttributeInfo
 public:
     CDisplayAttributeInfoInput()
     {
-        _pguid = &Global::TSFDayiGuidDisplayAttributeInput;
+        _pguid = &Global::TSFTTSGuidDisplayAttributeInput;
         _pDisplayAttribute = &_s_DisplayAttribute;
         _pDescription = _s_szDescription;
         _pValueName = _s_szValueName;
@@ -75,7 +75,7 @@ class CDisplayAttributeInfoConverted : public CDisplayAttributeInfo
 public:
     CDisplayAttributeInfoConverted()
     {
-        _pguid = &Global::TSFDayiGuidDisplayAttributeConverted;
+        _pguid = &Global::TSFTTSGuidDisplayAttributeConverted;
         _pDisplayAttribute = &_s_DisplayAttribute;
         _pDescription = _s_szDescription;
         _pValueName = _s_szValueName;

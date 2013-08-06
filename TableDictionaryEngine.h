@@ -23,13 +23,13 @@ public:
     //     [out] pasrgWordString - Specified returns pointer of word as CStringRange.
     // returns
     //     none.
-    VOID CollectWord(_In_ CStringRange *pKeyCode, _Inout_ CTSFDayiArray<CStringRange> *pWordStrings);
-    VOID CollectWord(_In_ CStringRange *pKeyCode, _Inout_ CTSFDayiArray<CCandidateListItem> *pItemList);
+    VOID CollectWord(_In_ CStringRange *pKeyCode, _Inout_ CTSFTTSArray<CStringRange> *pWordStrings);
+    VOID CollectWord(_In_ CStringRange *pKeyCode, _Inout_ CTSFTTSArray<CCandidateListItem> *pItemList);
 
-    VOID CollectWordForWildcard(_In_ CStringRange *psrgKeyCode, _Inout_ CTSFDayiArray<CCandidateListItem> *pItemList);
+    VOID CollectWordForWildcard(_In_ CStringRange *psrgKeyCode, _Inout_ CTSFTTSArray<CCandidateListItem> *pItemList);
 
-	VOID CollectWordFromConvertedString(_In_ CStringRange *pString, _Inout_ CTSFDayiArray<CCandidateListItem> *pItemList);
-    VOID CollectWordFromConvertedStringForWildcard(_In_ CStringRange *pString, _Inout_ CTSFDayiArray<CCandidateListItem> *pItemList);
+	VOID CollectWordFromConvertedString(_In_ CStringRange *pString, _Inout_ CTSFTTSArray<CCandidateListItem> *pItemList);
+    VOID CollectWordFromConvertedStringForWildcard(_In_ CStringRange *pString, _Inout_ CTSFTTSArray<CCandidateListItem> *pItemList);
 	VOID ParseConfig();
 private:
 	CCompositionProcessorEngine *_pCompositionProcessorEngine;

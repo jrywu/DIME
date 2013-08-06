@@ -7,9 +7,9 @@
 #include <Shlobj.h>
 #include <Shlwapi.h>
 #include "Private.h"
-#include "TSFDayi.h"
+#include "TSFTTS.h"
 #include "CompositionProcessorEngine.h"
-#include "TSFDayiBaseStructure.h"
+#include "BaseStructure.h"
 #include "DictionarySearch.h"
 #include "TfInputProcessorProfile.h"
 #include "Globals.h"
@@ -19,7 +19,7 @@
 
 //////////////////////////////////////////////////////////////////////
 //
-// CTSFDayi implementation.
+// CTSFTTS implementation.
 //
 //////////////////////////////////////////////////////////////////////+---------------------------------------------------------------------------
 //
@@ -27,7 +27,7 @@
 //
 //----------------------------------------------------------------------------
 
-BOOL CTSFDayi::_AddTextProcessorEngine()
+BOOL CTSFTTS::_AddTextProcessorEngine()
 {
     LANGID langid = 0;
     CLSID clsid = GUID_NULL;
@@ -93,7 +93,7 @@ BOOL CTSFDayi::_AddTextProcessorEngine()
 //
 //----------------------------------------------------------------------------
 
-CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CTSFDayi *pTextService)
+CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CTSFTTS *pTextService)
 {
 	_pTextService = pTextService;
     _pTextService->AddRef();
@@ -255,7 +255,7 @@ BOOL CCompositionProcessorEngine::SetupLanguageProfile(LANGID langid, REFGUID gu
     _tfClientId = tfClientId;
 
     SetupPreserved(pThreadMgr, tfClientId);	
-	InitializeTSFDayiCompartment(pThreadMgr, tfClientId);
+	InitializeTSFTTSCompartment(pThreadMgr, tfClientId);
     SetupLanguageBar(pThreadMgr, tfClientId, isSecureMode);
     SetupKeystroke();
     SetupConfiguration();
@@ -373,7 +373,7 @@ WCHAR CCompositionProcessorEngine::GetVirtualKey(DWORD_PTR dwIndex)
 //
 //----------------------------------------------------------------------------
 
-void CCompositionProcessorEngine::GetReadingStrings(_Inout_ CTSFDayiArray<CStringRange> *pReadingStrings, _Out_ BOOL *pIsWildcardIncluded)
+void CCompositionProcessorEngine::GetReadingStrings(_Inout_ CTSFTTSArray<CStringRange> *pReadingStrings, _Out_ BOOL *pIsWildcardIncluded)
 {
     CStringRange oneKeystroke;
 
@@ -430,7 +430,7 @@ void CCompositionProcessorEngine::GetReadingStrings(_Inout_ CTSFDayiArray<CStrin
 //
 //----------------------------------------------------------------------------
 
-void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFDayiArray<CCandidateListItem> *pCandidateList, BOOL isIncrementalWordSearch, BOOL isWildcardSearch)
+void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFTTSArray<CCandidateListItem> *pCandidateList, BOOL isIncrementalWordSearch, BOOL isWildcardSearch)
 {
     if (!IsDictionaryAvailable())
     {
@@ -478,7 +478,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFDayiArray<CCandid
 			pwch3code[3] = *(_keystrokeBuffer.Get()+2);    
 			pwch3code[4] = L'*'; pwch3code[5] = L'\0'; 
 			
-			CTSFDayiArray<CCandidateListItem> wCandidateList;
+			CTSFTTSArray<CCandidateListItem> wCandidateList;
 			CStringRange w3codeMode;			
 			_pTableDictionaryEngine->CollectWordForWildcard(&wildcardSearch, pCandidateList);
 			if(pCandidateList->Count())	
@@ -580,7 +580,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFDayiArray<CCandid
 		pwch[0] = *(_keystrokeBuffer.Get());	pwch[1] = *(_keystrokeBuffer.Get()+1);       
 		pwch[2] = L'?';		pwch[3] = *(_keystrokeBuffer.Get()+2);      
 		wildcardSearch.Set(pwch, 4);
-		CTSFDayiArray<CCandidateListItem> wCandidateList;
+		CTSFTTSArray<CCandidateListItem> wCandidateList;
 
 		_pTableDictionaryEngine->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList);
 		if(pCandidateList->Count())
@@ -643,7 +643,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFDayiArray<CCandid
 //
 //----------------------------------------------------------------------------
 
-void CCompositionProcessorEngine::GetCandidateStringInConverted(CStringRange &searchString, _In_ CTSFDayiArray<CCandidateListItem> *pCandidateList)
+void CCompositionProcessorEngine::GetCandidateStringInConverted(CStringRange &searchString, _In_ CTSFTTSArray<CCandidateListItem> *pCandidateList)
 {
     if (!IsDictionaryAvailable())
     {
@@ -802,7 +802,7 @@ void CCompositionProcessorEngine::SetupKeystroke()
 //
 //----------------------------------------------------------------------------
 
-void CCompositionProcessorEngine::SetKeystrokeTable(_Inout_ CTSFDayiArray<_KEYSTROKE> *pKeystroke)
+void CCompositionProcessorEngine::SetKeystrokeTable(_Inout_ CTSFTTSArray<_KEYSTROKE> *pKeystroke)
 {
 
     for (int i = 0; i <  41; i++)
@@ -829,12 +829,12 @@ void CCompositionProcessorEngine::SetupPreserved(_In_ ITfThreadMgr *pThreadMgr, 
     TF_PRESERVEDKEY preservedKeyImeMode;
     preservedKeyImeMode.uVKey = VK_SHIFT;
     preservedKeyImeMode.uModifiers = _TF_MOD_ON_KEYUP_SHIFT_ONLY;
-    SetPreservedKey(Global::TSFDayiGuidImeModePreserveKey, preservedKeyImeMode, Global::ImeModeDescription, &_PreservedKey_IMEMode);
+    SetPreservedKey(Global::TSFTTSGuidImeModePreserveKey, preservedKeyImeMode, Global::ImeModeDescription, &_PreservedKey_IMEMode);
 
     TF_PRESERVEDKEY preservedKeyDoubleSingleByte;
     preservedKeyDoubleSingleByte.uVKey = VK_SPACE;
     preservedKeyDoubleSingleByte.uModifiers = TF_MOD_SHIFT;
-    SetPreservedKey(Global::TSFDayiGuidDoubleSingleBytePreserveKey, preservedKeyDoubleSingleByte, Global::DoubleSingleByteDescription, &_PreservedKey_DoubleSingleByte);
+    SetPreservedKey(Global::TSFTTSGuidDoubleSingleBytePreserveKey, preservedKeyDoubleSingleByte, Global::DoubleSingleByteDescription, &_PreservedKey_DoubleSingleByte);
 
     InitPreservedKey(&_PreservedKey_IMEMode, pThreadMgr, tfClientId);
     InitPreservedKey(&_PreservedKey_DoubleSingleByte, pThreadMgr, tfClientId);
@@ -920,7 +920,7 @@ BOOL CCompositionProcessorEngine::InitPreservedKey(_In_ XPreservedKey *pXPreserv
 //
 //----------------------------------------------------------------------------
 
-BOOL CCompositionProcessorEngine::CheckShiftKeyOnly(_In_ CTSFDayiArray<TF_PRESERVEDKEY> *pTSFPreservedKeyTable)
+BOOL CCompositionProcessorEngine::CheckShiftKeyOnly(_In_ CTSFTTSArray<TF_PRESERVEDKEY> *pTSFPreservedKeyTable)
 {
     for (UINT i = 0; i < pTSFPreservedKeyTable->Count(); i++)
     {
@@ -959,13 +959,13 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL *pIsE
 		if(Global::isWindows8){
 			isOpen = FALSE;
 			CCompartment CompartmentKeyboardOpen(pThreadMgr, tfClientId, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
-			CCompartment CompartmentIMEMode(pThreadMgr, tfClientId, Global::TSFDayiGuidCompartmentIMEMode);
+			CCompartment CompartmentIMEMode(pThreadMgr, tfClientId, Global::TSFTTSGuidCompartmentIMEMode);
 			CompartmentKeyboardOpen._GetCompartmentBOOL(isOpen);
 			CompartmentKeyboardOpen._SetCompartmentBOOL(isOpen ? FALSE : TRUE);
 		}
 		else
 		{
-			CCompartment CompartmentIMEMode(pThreadMgr, tfClientId, Global::TSFDayiGuidCompartmentIMEMode);
+			CCompartment CompartmentIMEMode(pThreadMgr, tfClientId, Global::TSFTTSGuidCompartmentIMEMode);
 			CompartmentIMEMode._GetCompartmentBOOL(isOpen);
 			CompartmentIMEMode._SetCompartmentBOOL(isOpen ? FALSE : TRUE);
 		}
@@ -983,7 +983,7 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL *pIsE
             return;
         }
         BOOL isDouble = FALSE;
-        CCompartment CompartmentDoubleSingleByte(pThreadMgr, tfClientId, Global::TSFDayiGuidCompartmentDoubleSingleByte);
+        CCompartment CompartmentDoubleSingleByte(pThreadMgr, tfClientId, Global::TSFTTSGuidCompartmentDoubleSingleByte);
         CompartmentDoubleSingleByte._GetCompartmentBOOL(isDouble);
         CompartmentDoubleSingleByte._SetCompartmentBOOL(isDouble ? FALSE : TRUE);
         *pIsEaten = TRUE;
@@ -1041,13 +1041,13 @@ void CCompositionProcessorEngine::SetupLanguageBar(_In_ ITfThreadMgr *pThreadMgr
 		
 	}
 	
-    CreateLanguageBarButton(dwEnable, Global::TSFDayiGuidLangBarIMEMode, Global::LangbarImeModeDescription, Global::ImeModeDescription, Global::ImeModeOnIcoIndex, Global::ImeModeOffIcoIndex, &_pLanguageBar_IMEMode, isSecureMode);
-    CreateLanguageBarButton(dwEnable, Global::TSFDayiGuidLangBarDoubleSingleByte, Global::LangbarDoubleSingleByteDescription, Global::DoubleSingleByteDescription, Global::DoubleSingleByteOnIcoIndex, Global::DoubleSingleByteOffIcoIndex, &_pLanguageBar_DoubleSingleByte, isSecureMode);
+    CreateLanguageBarButton(dwEnable, Global::TSFTTSGuidLangBarIMEMode, Global::LangbarImeModeDescription, Global::ImeModeDescription, Global::ImeModeOnIcoIndex, Global::ImeModeOffIcoIndex, &_pLanguageBar_IMEMode, isSecureMode);
+    CreateLanguageBarButton(dwEnable, Global::TSFTTSGuidLangBarDoubleSingleByte, Global::LangbarDoubleSingleByteDescription, Global::DoubleSingleByteDescription, Global::DoubleSingleByteOnIcoIndex, Global::DoubleSingleByteOffIcoIndex, &_pLanguageBar_DoubleSingleByte, isSecureMode);
 
 	
     
-	InitLanguageBar(_pLanguageBar_IMEMode, pThreadMgr, tfClientId,  Global::TSFDayiGuidCompartmentIMEMode);
-    InitLanguageBar(_pLanguageBar_DoubleSingleByte, pThreadMgr, tfClientId, Global::TSFDayiGuidCompartmentDoubleSingleByte);
+	InitLanguageBar(_pLanguageBar_IMEMode, pThreadMgr, tfClientId,  Global::TSFTTSGuidCompartmentIMEMode);
+    InitLanguageBar(_pLanguageBar_DoubleSingleByte, pThreadMgr, tfClientId, Global::TSFTTSGuidCompartmentDoubleSingleByte);
 
 
     _pCompartmentConversion = new (std::nothrow) CCompartment(pThreadMgr, tfClientId, GUID_COMPARTMENT_KEYBOARD_INPUTMODE_CONVERSION);
@@ -1058,7 +1058,7 @@ void CCompositionProcessorEngine::SetupLanguageBar(_In_ ITfThreadMgr *pThreadMgr
 
 	if (_pCompartmentIMEModeEventSink)
     {
-        _pCompartmentIMEModeEventSink->_Advise(pThreadMgr, Global::TSFDayiGuidCompartmentIMEMode);
+        _pCompartmentIMEModeEventSink->_Advise(pThreadMgr, Global::TSFTTSGuidCompartmentIMEMode);
     }
 	if (_pCompartmentKeyboardOpenEventSink && Global::isWindows8)
     {
@@ -1070,7 +1070,7 @@ void CCompositionProcessorEngine::SetupLanguageBar(_In_ ITfThreadMgr *pThreadMgr
     }
     if (_pCompartmentDoubleSingleByteEventSink)
     {
-        _pCompartmentDoubleSingleByteEventSink->_Advise(pThreadMgr, Global::TSFDayiGuidCompartmentDoubleSingleByte);
+        _pCompartmentDoubleSingleByteEventSink->_Advise(pThreadMgr, Global::TSFTTSGuidCompartmentDoubleSingleByte);
     }
    
     return;
@@ -1147,7 +1147,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 	GetEnvironmentVariable(L"ProgramFiles", wszProgramFiles, MAX_PATH); 
 	
 	WCHAR wzsTTSFileName[MAX_PATH] = L"\\Windows NT\\TableTextService\\TableTextServiceDaYi.txt";
-	WCHAR wzsTSFDayiProfile[MAX_PATH] = L"\\TSFDayi";
+	WCHAR wzsTSFTTSProfile[MAX_PATH] = L"\\TSFTTS";
 	WCHAR wzsCINFileName[MAX_PATH] = L"\\Dayi.cin";
 
     WCHAR *pwszFileName = new (std::nothrow) WCHAR[MAX_PATH];
@@ -1183,7 +1183,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 
 	
 	StringCchCopyN(pwszCINFileName, MAX_PATH, wszAppData, wcslen(wszAppData));
-	StringCchCatN(pwszCINFileName, MAX_PATH, wzsTSFDayiProfile, wcslen(wzsTSFDayiProfile));
+	StringCchCatN(pwszCINFileName, MAX_PATH, wzsTSFTTSProfile, wcslen(wzsTSFTTSProfile));
 	if(PathFileExists(pwszCINFileName))
 	{ //dayi.cin in personal romaing profile
 		StringCchCatN(pwszCINFileName, MAX_PATH, wzsCINFileName, wcslen(wzsCINFileName));
@@ -1210,7 +1210,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 	}
 	else
 	{
-		//TSFDayi roadming profile is not exist. Create one.
+		//TSFTTS roadming profile is not exist. Create one.
 		CreateDirectory(pwszCINFileName, NULL);	
 	}
 	
@@ -1235,7 +1235,7 @@ VOID CCompositionProcessorEngine::loadConfig()
 	debugPrint(L"CCompositionProcessorEngine::loadConfig() \n");
 	WCHAR wszAppData[MAX_PATH];
 	SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);	
-	WCHAR wzsTSFDayiProfile[MAX_PATH] = L"\\TSFDayi";
+	WCHAR wzsTSFTTSProfile[MAX_PATH] = L"\\TSFTTS";
 	WCHAR wzsINIFileName[MAX_PATH] = L"\\config.ini";
 
 	WCHAR *pwszINIFileName = new (std::nothrow) WCHAR[MAX_PATH];
@@ -1246,7 +1246,7 @@ VOID CCompositionProcessorEngine::loadConfig()
 
 	
 	StringCchCopyN(pwszINIFileName, MAX_PATH, wszAppData, wcslen(wszAppData));
-	StringCchCatN(pwszINIFileName, MAX_PATH, wzsTSFDayiProfile, wcslen(wzsTSFDayiProfile));
+	StringCchCatN(pwszINIFileName, MAX_PATH, wzsTSFTTSProfile, wcslen(wzsTSFTTSProfile));
 	if(PathFileExists(pwszINIFileName))
 	{ //dayi.cin in personal romaing profile
 		StringCchCatN(pwszINIFileName, MAX_PATH, wzsINIFileName, wcslen(wzsINIFileName));
@@ -1268,7 +1268,7 @@ VOID CCompositionProcessorEngine::loadConfig()
 	}
 	else
 	{
-		//TSFDayi roadming profile is not exist. Create one.
+		//TSFTTS roadming profile is not exist. Create one.
 		CreateDirectory(pwszINIFileName, NULL);	
 	}
 ErrorExit:
@@ -1287,7 +1287,7 @@ CFile* CCompositionProcessorEngine::GetDictionaryFile()
 }
 
 
-void CCompositionProcessorEngine::InitializeTSFDayiCompartment(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId)
+void CCompositionProcessorEngine::InitializeTSFTTSCompartment(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId)
 {
 	// set initial mode
 	if(Global::isWindows8){
@@ -1295,10 +1295,10 @@ void CCompositionProcessorEngine::InitializeTSFDayiCompartment(_In_ ITfThreadMgr
 		CompartmentKeyboardOpen._SetCompartmentBOOL(TRUE);
 	}
 
-	CCompartment CompartmentIMEMode(pThreadMgr, tfClientId, Global::TSFDayiGuidCompartmentIMEMode);
+	CCompartment CompartmentIMEMode(pThreadMgr, tfClientId, Global::TSFTTSGuidCompartmentIMEMode);
     CompartmentIMEMode._SetCompartmentBOOL(TRUE);
 
-    CCompartment CompartmentDoubleSingleByte(pThreadMgr, tfClientId, Global::TSFDayiGuidCompartmentDoubleSingleByte);
+    CCompartment CompartmentDoubleSingleByte(pThreadMgr, tfClientId, Global::TSFTTSGuidCompartmentDoubleSingleByte);
     CompartmentDoubleSingleByte._SetCompartmentBOOL(FALSE);
 
 
@@ -1326,7 +1326,7 @@ HRESULT CCompositionProcessorEngine::CompartmentCallback(_In_ void *pv, REFGUID 
         return E_FAIL;
     }
 
-    if (IsEqualGUID(guidCompartment, Global::TSFDayiGuidCompartmentDoubleSingleByte) )
+    if (IsEqualGUID(guidCompartment, Global::TSFTTSGuidCompartmentDoubleSingleByte) )
     {
         fakeThis->PrivateCompartmentsUpdated(pThreadMgr);
     }
@@ -1336,7 +1336,7 @@ HRESULT CCompositionProcessorEngine::CompartmentCallback(_In_ void *pv, REFGUID 
         fakeThis->ConversionModeCompartmentUpdated(pThreadMgr);
     }
     else if (IsEqualGUID(guidCompartment, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE)||
-			 IsEqualGUID(guidCompartment, Global::TSFDayiGuidCompartmentIMEMode))
+			 IsEqualGUID(guidCompartment, Global::TSFTTSGuidCompartmentIMEMode))
     {
 		fakeThis->KeyboardOpenCompartmentUpdated(pThreadMgr, guidCompartment);
     }
@@ -1368,7 +1368,7 @@ void CCompositionProcessorEngine::ConversionModeCompartmentUpdated(_In_ ITfThrea
     }
 
     BOOL isDouble = FALSE;
-    CCompartment CompartmentDoubleSingleByte(pThreadMgr, _tfClientId, Global::TSFDayiGuidCompartmentDoubleSingleByte);
+    CCompartment CompartmentDoubleSingleByte(pThreadMgr, _tfClientId, Global::TSFTTSGuidCompartmentDoubleSingleByte);
     if (SUCCEEDED(CompartmentDoubleSingleByte._GetCompartmentBOOL(isDouble)))
     {
         if (!isDouble && (conversionMode & TF_CONVERSIONMODE_FULLSHAPE))
@@ -1403,7 +1403,7 @@ void CCompositionProcessorEngine::ConversionModeCompartmentUpdated(_In_ ITfThrea
 		}
 	}
 		
-	CCompartment CompartmentIMEMode(pThreadMgr, _tfClientId, Global::TSFDayiGuidCompartmentIMEMode);
+	CCompartment CompartmentIMEMode(pThreadMgr, _tfClientId, Global::TSFTTSGuidCompartmentIMEMode);
 	if (SUCCEEDED(CompartmentIMEMode._GetCompartmentBOOL(fOpen)))
 	{
 		if (fOpen && !(conversionMode & TF_CONVERSIONMODE_NATIVE))
@@ -1445,7 +1445,7 @@ void CCompositionProcessorEngine::PrivateCompartmentsUpdated(_In_ ITfThreadMgr *
     conversionModePrev = conversionMode;
 
     BOOL isDouble = FALSE;
-    CCompartment CompartmentDoubleSingleByte(pThreadMgr, _tfClientId, Global::TSFDayiGuidCompartmentDoubleSingleByte);
+    CCompartment CompartmentDoubleSingleByte(pThreadMgr, _tfClientId, Global::TSFTTSGuidCompartmentDoubleSingleByte);
     if (SUCCEEDED(CompartmentDoubleSingleByte._GetCompartmentBOOL(isDouble)))
     {
         if (!isDouble && (conversionMode & TF_CONVERSIONMODE_FULLSHAPE))
@@ -1488,7 +1488,7 @@ void CCompositionProcessorEngine::KeyboardOpenCompartmentUpdated(_In_ ITfThreadM
     conversionModePrev = conversionMode;
 
     BOOL isOpen = FALSE;  
-    CCompartment CompartmentIMEMode(pThreadMgr, _tfClientId, Global::TSFDayiGuidCompartmentIMEMode);
+    CCompartment CompartmentIMEMode(pThreadMgr, _tfClientId, Global::TSFTTSGuidCompartmentIMEMode);
 	if(IsEqualGUID(guidCompartment, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE ))// Global::isWindows8 && check GUID_COMPARTMENT_KEYBOARD_OPENCLOSE in Windows 8.
 	{
 		
@@ -1509,7 +1509,7 @@ void CCompositionProcessorEngine::KeyboardOpenCompartmentUpdated(_In_ ITfThreadM
    	
 	}
 	isOpen = FALSE;
-	if (IsEqualGUID(guidCompartment, Global::TSFDayiGuidCompartmentIMEMode) && SUCCEEDED(CompartmentIMEMode._GetCompartmentBOOL(isOpen)))
+	if (IsEqualGUID(guidCompartment, Global::TSFTTSGuidCompartmentIMEMode) && SUCCEEDED(CompartmentIMEMode._GetCompartmentBOOL(isOpen)))
 	{
 		if (isOpen && !(conversionMode & TF_CONVERSIONMODE_NATIVE))
 		{
@@ -1605,11 +1605,11 @@ CCompositionProcessorEngine::XPreservedKey::~XPreservedKey()
 }
 //+---------------------------------------------------------------------------
 //
-// CTSFDayi::CreateInstance 
+// CTSFTTS::CreateInstance 
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFDayi::CreateInstance(REFCLSID rclsid, REFIID riid, _Outptr_result_maybenull_ LPVOID* ppv, _Out_opt_ HINSTANCE* phInst, BOOL isComLessMode)
+HRESULT CTSFTTS::CreateInstance(REFCLSID rclsid, REFIID riid, _Outptr_result_maybenull_ LPVOID* ppv, _Out_opt_ HINSTANCE* phInst, BOOL isComLessMode)
 {
     HRESULT hr = S_OK;
     if (phInst == nullptr)
@@ -1629,7 +1629,7 @@ HRESULT CTSFDayi::CreateInstance(REFCLSID rclsid, REFIID riid, _Outptr_result_ma
     }
     else
     {
-        hr = CTSFDayi::ComLessCreateInstance(rclsid, riid, ppv, phInst);
+        hr = CTSFTTS::ComLessCreateInstance(rclsid, riid, ppv, phInst);
     }
 
     return hr;
@@ -1637,14 +1637,14 @@ HRESULT CTSFDayi::CreateInstance(REFCLSID rclsid, REFIID riid, _Outptr_result_ma
 
 //+---------------------------------------------------------------------------
 //
-// CTSFDayi::ComLessCreateInstance
+// CTSFTTS::ComLessCreateInstance
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFDayi::ComLessCreateInstance(REFGUID rclsid, REFIID riid, _Outptr_result_maybenull_ void **ppv, _Out_opt_ HINSTANCE *phInst)
+HRESULT CTSFTTS::ComLessCreateInstance(REFGUID rclsid, REFIID riid, _Outptr_result_maybenull_ void **ppv, _Out_opt_ HINSTANCE *phInst)
 {
     HRESULT hr = S_OK;
-    HINSTANCE TSFDayiDllHandle = nullptr;
+    HINSTANCE TSFTTSDllHandle = nullptr;
     WCHAR wchPath[MAX_PATH] = {'\0'};
     WCHAR szExpandedPath[MAX_PATH] = {'\0'};
     DWORD dwCnt = 0;
@@ -1654,19 +1654,19 @@ HRESULT CTSFDayi::ComLessCreateInstance(REFGUID rclsid, REFIID riid, _Outptr_res
     if (SUCCEEDED(hr))
     {
         *phInst = nullptr;
-        hr = CTSFDayi::GetComModuleName(rclsid, wchPath, ARRAYSIZE(wchPath));
+        hr = CTSFTTS::GetComModuleName(rclsid, wchPath, ARRAYSIZE(wchPath));
         if (SUCCEEDED(hr))
         {
             dwCnt = ExpandEnvironmentStringsW(wchPath, szExpandedPath, ARRAYSIZE(szExpandedPath));
             hr = (0 < dwCnt && dwCnt <= ARRAYSIZE(szExpandedPath)) ? S_OK : E_FAIL;
             if (SUCCEEDED(hr))
             {
-                TSFDayiDllHandle = LoadLibraryEx(szExpandedPath, NULL, 0);
-                hr = TSFDayiDllHandle ? S_OK : E_FAIL;
+                TSFTTSDllHandle = LoadLibraryEx(szExpandedPath, NULL, 0);
+                hr = TSFTTSDllHandle ? S_OK : E_FAIL;
                 if (SUCCEEDED(hr))
                 {
-                    *phInst = TSFDayiDllHandle;
-                    FARPROC pfn = GetProcAddress(TSFDayiDllHandle, "DllGetClassObject");
+                    *phInst = TSFTTSDllHandle;
+                    FARPROC pfn = GetProcAddress(TSFTTSDllHandle, "DllGetClassObject");
                     hr = pfn ? S_OK : E_FAIL;
                     if (SUCCEEDED(hr))
                     {
@@ -1693,11 +1693,11 @@ HRESULT CTSFDayi::ComLessCreateInstance(REFGUID rclsid, REFIID riid, _Outptr_res
 
 //+---------------------------------------------------------------------------
 //
-// CTSFDayi::GetComModuleName
+// CTSFTTS::GetComModuleName
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFDayi::GetComModuleName(REFGUID rclsid, _Out_writes_(cchPath)WCHAR* wchPath, DWORD cchPath)
+HRESULT CTSFTTS::GetComModuleName(REFGUID rclsid, _Out_writes_(cchPath)WCHAR* wchPath, DWORD cchPath)
 {
     HRESULT hr = S_OK;
 
@@ -2137,7 +2137,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeComposition(UINT uCode, _
 //
 //----------------------------------------------------------------------------
 
-BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeCandidate(UINT uCode, _In_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode, _Out_ BOOL *pfRetCode, _In_ CTSFDayiArray<_KEYSTROKE> *pKeystrokeMetric)
+BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeCandidate(UINT uCode, _In_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode, _Out_ BOOL *pfRetCode, _In_ CTSFTTSArray<_KEYSTROKE> *pKeystrokeMetric)
 {
 	candidateMode;
     if (pfRetCode == nullptr)

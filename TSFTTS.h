@@ -3,22 +3,22 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-#ifndef TSFDAYI_H
-#define TSFDAYI_H
+#ifndef TSFTTS_H
+#define TSFTTS_H
 
 #pragma once
 
 #include "KeyHandlerEditSession.h"
-#include "TSFDayiBaseStructure.h"
+#include "BaseStructure.h"
 
 class CLangBarItemButton;
-class CTSFDayiUIPresenter;
+class UIPresenter;
 class CCompositionProcessorEngine;
 
 const DWORD WM_CheckGlobalCompartment = WM_USER;
-LRESULT CALLBACK CTSFDayi_WindowProc(HWND wndHandle, UINT uMsg, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK CTSFTTS_WindowProc(HWND wndHandle, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
-class CTSFDayi : public ITfTextInputProcessorEx,
+class CTSFTTS : public ITfTextInputProcessorEx,
     public ITfThreadMgrEventSink,
     public ITfTextEditSink,
     public ITfKeyEventSink,
@@ -32,8 +32,8 @@ class CTSFDayi : public ITfTextInputProcessorEx,
 	public ITfFnShowHelp
 {
 public:
-    CTSFDayi();
-    ~CTSFDayi();
+    CTSFTTS();
+    ~CTSFTTS();
 
     // IUnknown
     STDMETHODIMP QueryInterface(REFIID riid, _Outptr_ void **ppvObj);
@@ -143,9 +143,9 @@ public:
     CCompositionProcessorEngine* GetCompositionProcessorEngine() { return (_pCompositionProcessorEngine); };
 
     // comless helpers
-    static HRESULT CTSFDayi::CreateInstance(REFCLSID rclsid, REFIID riid, _Outptr_result_maybenull_ LPVOID* ppv, _Out_opt_ HINSTANCE* phInst, BOOL isComLessMode);
-    static HRESULT CTSFDayi::ComLessCreateInstance(REFGUID rclsid, REFIID riid, _Outptr_result_maybenull_ void **ppv, _Out_opt_ HINSTANCE *phInst);
-    static HRESULT CTSFDayi::GetComModuleName(REFGUID rclsid, _Out_writes_(cchPath)WCHAR* wchPath, DWORD cchPath);
+    static HRESULT CTSFTTS::CreateInstance(REFCLSID rclsid, REFIID riid, _Outptr_result_maybenull_ LPVOID* ppv, _Out_opt_ HINSTANCE* phInst, BOOL isComLessMode);
+    static HRESULT CTSFTTS::ComLessCreateInstance(REFGUID rclsid, REFIID riid, _Outptr_result_maybenull_ void **ppv, _Out_opt_ HINSTANCE *phInst);
+    static HRESULT CTSFTTS::GetComModuleName(REFGUID rclsid, _Out_writes_(cchPath)WCHAR* wchPath, DWORD cchPath);
 	
 	//Called by compartment status changed.
 	void OnKeyboardClosed();
@@ -214,9 +214,9 @@ private:
 
     BOOL _AddTextProcessorEngine();
 
-    BOOL VerifyTSFDayiCLSID(_In_ REFCLSID clsid);
+    BOOL VerifyTSFTTSCLSID(_In_ REFCLSID clsid);
 
-    friend LRESULT CALLBACK CTSFDayi_WindowProc(HWND wndHandle, UINT uMsg, WPARAM wParam, LPARAM lParam);
+    friend LRESULT CALLBACK CTSFTTS_WindowProc(HWND wndHandle, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 	// function for process candidate
 	VOID _DeleteCandidateList(BOOL fForce, _In_opt_ ITfContext *pContext);
@@ -252,7 +252,7 @@ private:
     TfGuidAtom _gaDisplayAttributeConverted;
 
     CANDIDATE_MODE _candidateMode;
-    CTSFDayiUIPresenter *_pTSFDayiUIPresenter;
+    UIPresenter *_pTSFTTSUIPresenter;
     BOOL _isCandidateWithWildcard : 1;
 
     ITfDocumentMgr* _pDocMgrLastFocused;

@@ -3,8 +3,8 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-#ifndef TSFDAYIUIPRESENTER_H
-#define TSFDAYIUIPRESENTER_H
+#ifndef TSFTTSUIPRESENTER_H
+#define TSFTTSUIPRESENTER_H
 
 
 #pragma once
@@ -13,15 +13,15 @@
 #include "CandidateWindow.h"
 #include "NotifyWindow.h"
 #include "TfTextLayoutSink.h"
-#include "TSFDayi.h"
-#include "TSFDayiBaseStructure.h"
+#include "TSFTTS.h"
+#include "BaseStructure.h"
 
 class CReadingLine;
 class CCompositionProcessorEngine;
 
 //+---------------------------------------------------------------------------
 //
-// CTSFDayiUIPresenter
+// UIPresenter
 //
 // ITfCandidateListUIElement / ITfIntegratableCandidateListUIElement is used for 
 // UILess mode support
@@ -29,14 +29,14 @@ class CCompositionProcessorEngine;
 // 3rd party IME.
 //----------------------------------------------------------------------------
 
-class CTSFDayiUIPresenter : 
+class UIPresenter : 
 	public CTfTextLayoutSink,
     public ITfCandidateListUIElementBehavior,
     public ITfIntegratableCandidateListUIElement
 {
 public:
-    CTSFDayiUIPresenter(_In_ CTSFDayi *pTextService, CCompositionProcessorEngine *pCompositionProcessorEngine);
-    virtual ~CTSFDayiUIPresenter();
+    UIPresenter(_In_ CTSFTTS *pTextService, CCompositionProcessorEngine *pCompositionProcessorEngine);
+    virtual ~UIPresenter();
 
     // IUnknown
     STDMETHODIMP QueryInterface(REFIID riid, _Outptr_ void **ppvObj);
@@ -74,7 +74,7 @@ public:
     virtual HRESULT _StartCandidateList(TfClientId tfClientId, _In_ ITfDocumentMgr *pDocumentMgr, _In_ ITfContext *pContextDocument, TfEditCookie ec, _In_ ITfRange *pRangeComposition, UINT wndWidth);
     void _EndCandidateList();
 
-    void _SetCandidateText(_In_ CTSFDayiArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode);
+    void _SetCandidateText(_In_ CTSFTTSArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode);
     void _ClearCandidateList();
     VOID _SetCandidateTextColor(COLORREF crColor, COLORREF crBkColor);
     VOID _SetCandidateFillColor(HBRUSH hBrush);
@@ -96,7 +96,7 @@ public:
     virtual HRESULT OnSetThreadFocus();
     virtual HRESULT OnKillThreadFocus();
 
-    void RemoveSpecificCandidateFromList(_In_ LCID Locale, _Inout_ CTSFDayiArray<CCandidateListItem> &candidateList, _In_ CStringRange &srgCandidateString);
+    void RemoveSpecificCandidateFromList(_In_ LCID Locale, _Inout_ CTSFTTSArray<CCandidateListItem> &candidateList, _In_ CStringRange &srgCandidateString);
     void AdviseUIChangedByArrowKey(_In_ KEYSTROKE_FUNCTION arrowKey);
 
 	void GetCandLocation(_Out_ POINT *lpPoint);
@@ -132,9 +132,9 @@ private:
     void DisposeCandidateWindow();
 	void DisposeNotifyWindow();
 
-    void AddCandidateToTSFDayiUI(_In_ CTSFDayiArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode);
+    void AddCandidateToTSFTTSUI(_In_ CTSFTTSArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode);
 
-    void SetPageIndexWithScrollInfo(_In_ CTSFDayiArray<CCandidateListItem> *pCandidateList);
+    void SetPageIndexWithScrollInfo(_In_ CTSFTTSArray<CCandidateListItem> *pCandidateList);
 
 protected:
     CCandidateWindow *_pCandidateWnd;
@@ -149,7 +149,7 @@ private:
     KEYSTROKE_CATEGORY _Category;
     DWORD _updatedFlags;
     DWORD _uiElementId;
-    CTSFDayi* _pTextService;
+    CTSFTTS* _pTextService;
     LONG _refCount;
 	POINT _candLocation;
 };
@@ -157,7 +157,7 @@ private:
 
 //////////////////////////////////////////////////////////////////////
 //
-// CTSFDayi candidate key handler methods
+// CTSFTTS candidate key handler methods
 //
 //////////////////////////////////////////////////////////////////////
 

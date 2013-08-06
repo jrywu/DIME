@@ -6,8 +6,8 @@
 
 
 #include "Private.h"
-#include "TSFDayi.h"
-#include "TSFDayiUIPresenter.h"
+#include "TSFTTS.h"
+#include "UIPresenter.h"
 
 //+---------------------------------------------------------------------------
 //
@@ -15,19 +15,19 @@
 //
 //----------------------------------------------------------------------------
 
-STDAPI CTSFDayi::OnSetThreadFocus()
+STDAPI CTSFTTS::OnSetThreadFocus()
 {
-	debugPrint(L"CTSFDayi::OnSetThreadFocus()\n");
-    if (_pTSFDayiUIPresenter)
+	debugPrint(L"CTSFTTS::OnSetThreadFocus()\n");
+    if (_pTSFTTSUIPresenter)
     {
         ITfDocumentMgr* pCandidateListDocumentMgr = nullptr;
-        ITfContext* pTfContext = _pTSFDayiUIPresenter->_GetContextDocument();
+        ITfContext* pTfContext = _pTSFTTSUIPresenter->_GetContextDocument();
 
         if ((nullptr != pTfContext) && SUCCEEDED(pTfContext->GetDocumentMgr(&pCandidateListDocumentMgr)))
         {
             if (pCandidateListDocumentMgr == _pDocMgrLastFocused)
             {
-                _pTSFDayiUIPresenter->OnSetThreadFocus();
+                _pTSFTTSUIPresenter->OnSetThreadFocus();
             }
 
             pCandidateListDocumentMgr->Release();
@@ -43,13 +43,13 @@ STDAPI CTSFDayi::OnSetThreadFocus()
 //
 //----------------------------------------------------------------------------
 
-STDAPI CTSFDayi::OnKillThreadFocus()
+STDAPI CTSFTTS::OnKillThreadFocus()
 {
-	debugPrint(L"CTSFDayi::OnSetThreadFocus()\n");
-    if (_pTSFDayiUIPresenter)
+	debugPrint(L"CTSFTTS::OnSetThreadFocus()\n");
+    if (_pTSFTTSUIPresenter)
     {
         ITfDocumentMgr* pCandidateListDocumentMgr = nullptr;
-        ITfContext* pTfContext = _pTSFDayiUIPresenter->_GetContextDocument();
+        ITfContext* pTfContext = _pTSFTTSUIPresenter->_GetContextDocument();
 
         if ((nullptr != pTfContext) && SUCCEEDED(pTfContext->GetDocumentMgr(&pCandidateListDocumentMgr)))
         {
@@ -64,12 +64,12 @@ STDAPI CTSFDayi::OnKillThreadFocus()
                 _pDocMgrLastFocused->AddRef();
             }
         }
-        _pTSFDayiUIPresenter->OnKillThreadFocus();
+        _pTSFTTSUIPresenter->OnKillThreadFocus();
     }
     return S_OK;
 }
 
-BOOL CTSFDayi::_InitThreadFocusSink()
+BOOL CTSFTTS::_InitThreadFocusSink()
 {
     ITfSource* pSource = nullptr;
 
@@ -89,7 +89,7 @@ BOOL CTSFDayi::_InitThreadFocusSink()
     return TRUE;
 }
 
-void CTSFDayi::_UninitThreadFocusSink()
+void CTSFTTS::_UninitThreadFocusSink()
 {
     ITfSource* pSource = nullptr;
 

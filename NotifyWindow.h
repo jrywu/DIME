@@ -11,7 +11,7 @@
 #include "private.h"
 #include "BaseWindow.h"
 #include "ShadowWindow.h"
-#include "TSFDayiBaseStructure.h"
+#include "BaseStructure.h"
 
 enum NOTIFYWND_ACTION
 {

@@ -169,7 +169,7 @@ HRESULT CCompartment::_SetCompartmentDWORD(_In_ DWORD dw)
 HRESULT CCompartment::_ClearCompartment()
 {
     if (IsEqualGUID(_guidCompartment, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE)||
-		 IsEqualGUID(_guidCompartment, Global::TSFDayiGuidCompartmentIMEMode))
+		 IsEqualGUID(_guidCompartment, Global::TSFTTSGuidCompartmentIMEMode))
     {
         return S_FALSE;
     }

@@ -1,11 +1,12 @@
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
-// Used by TSFDayi.rc
+// Used by TSFTTS.rc
 //
 #define SUBLANG_ENGLISH_US              0x01
 #define LANG_ENGLISH                    0x09
-#define IDIS_TSFDayi                      12
+#define IDIS_DAYI                       12
 #define IDS_DEFAULT_FONT                13
+#define IDIS_TSFTTS                     19
 #define IDS_IME_MODE                    20
 #define IDI_IME_MODE_ON                 21
 #define IDI_IME_MODE_OFF                22
@@ -13,8 +14,6 @@
 #define IDI_DOUBLE_SINGLE_BYTE_ON       24
 #define IDI_DOUBLE_SINGLE_BYTE_OFF      25
 #define IDS_PUNCTUATION                 26
-#define IDI_PUNCTUATION_ON              27
-#define IDI_PUNCTUATION_OFF             28
 #define IDR_VERSION2                    107
 
 // Next default values for new objects

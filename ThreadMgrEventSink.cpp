@@ -7,8 +7,8 @@
 
 #include "Private.h"
 #include "Globals.h"
-#include "TSFDayi.h"
-#include "TSFDayiUIPresenter.h"
+#include "TSFTTS.h"
+#include "UIPresenter.h"
 
 //+---------------------------------------------------------------------------
 //
@@ -18,7 +18,7 @@
 // a document.
 //----------------------------------------------------------------------------
 
-STDAPI CTSFDayi::OnInitDocumentMgr(_In_ ITfDocumentMgr *pDocMgr)
+STDAPI CTSFTTS::OnInitDocumentMgr(_In_ ITfDocumentMgr *pDocMgr)
 {
     pDocMgr;
     return E_NOTIMPL;
@@ -32,7 +32,7 @@ STDAPI CTSFDayi::OnInitDocumentMgr(_In_ ITfDocumentMgr *pDocMgr)
 // document.
 //----------------------------------------------------------------------------
 
-STDAPI CTSFDayi::OnUninitDocumentMgr(_In_ ITfDocumentMgr *pDocMgr)
+STDAPI CTSFTTS::OnUninitDocumentMgr(_In_ ITfDocumentMgr *pDocMgr)
 {
     pDocMgr;
     return E_NOTIMPL;
@@ -47,9 +47,9 @@ STDAPI CTSFDayi::OnUninitDocumentMgr(_In_ ITfDocumentMgr *pDocMgr)
 // focus document, or now no document holds the input focus.
 //----------------------------------------------------------------------------
 
-STDAPI CTSFDayi::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMgr *pDocMgrPrevFocus)
+STDAPI CTSFTTS::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMgr *pDocMgrPrevFocus)
 {
-	debugPrint(L"CTSFDayi::OnSetFocus()\n");
+	debugPrint(L"CTSFTTS::OnSetFocus()\n");
     pDocMgrPrevFocus;
 
     _InitTextEditSink(pDocMgrFocus);
@@ -83,19 +83,19 @@ STDAPI CTSFDayi::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentM
     // We have to hide/unhide candidate list depending on whether they are 
     // associated with pDocMgrFocus.
     //
-    if (_pTSFDayiUIPresenter)
+    if (_pTSFTTSUIPresenter)
     {
         ITfDocumentMgr* pCandidateListDocumentMgr = nullptr;
-        ITfContext* pTfContext = _pTSFDayiUIPresenter->_GetContextDocument();
+        ITfContext* pTfContext = _pTSFTTSUIPresenter->_GetContextDocument();
         if ((nullptr != pTfContext) && SUCCEEDED(pTfContext->GetDocumentMgr(&pCandidateListDocumentMgr)))
         {
             if (pCandidateListDocumentMgr != pDocMgrFocus)
             {
-                _pTSFDayiUIPresenter->OnKillThreadFocus();
+                _pTSFTTSUIPresenter->OnKillThreadFocus();
             }
             else 
             {
-                _pTSFDayiUIPresenter->OnSetThreadFocus();
+                _pTSFTTSUIPresenter->OnSetThreadFocus();
             }
 
             pCandidateListDocumentMgr->Release();
@@ -125,7 +125,7 @@ STDAPI CTSFDayi::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentM
 // Sink called by the framework when a context is pushed.
 //----------------------------------------------------------------------------
 
-STDAPI CTSFDayi::OnPushContext(_In_ ITfContext *pContext)
+STDAPI CTSFTTS::OnPushContext(_In_ ITfContext *pContext)
 {
     pContext;
 
@@ -139,7 +139,7 @@ STDAPI CTSFDayi::OnPushContext(_In_ ITfContext *pContext)
 // Sink called by the framework when a context is popped.
 //----------------------------------------------------------------------------
 
-STDAPI CTSFDayi::OnPopContext(_In_ ITfContext *pContext)
+STDAPI CTSFTTS::OnPopContext(_In_ ITfContext *pContext)
 {
     pContext;
 
@@ -153,7 +153,7 @@ STDAPI CTSFDayi::OnPopContext(_In_ ITfContext *pContext)
 // Advise our sink.
 //----------------------------------------------------------------------------
 
-BOOL CTSFDayi::_InitThreadMgrEventSink()
+BOOL CTSFTTS::_InitThreadMgrEventSink()
 {
     ITfSource* pSource = nullptr;
     BOOL ret = FALSE;
@@ -183,7 +183,7 @@ Exit:
 // Unadvise our sink.
 //----------------------------------------------------------------------------
 
-void CTSFDayi::_UninitThreadMgrEventSink()
+void CTSFTTS::_UninitThreadMgrEventSink()
 {
     ITfSource* pSource = nullptr;
 

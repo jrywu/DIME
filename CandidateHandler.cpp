@@ -1,8 +1,8 @@
 //#define DEBUG_PRINT
 
-#include "TSFDayi.h"
-#include "TSFDayiBaseStructure.h"
-#include "TSFDayiUIPresenter.h"
+#include "TSFTTS.h"
+#include "BaseStructure.h"
+#include "UIPresenter.h"
 #include "CompositionProcessorEngine.h"
 
 
@@ -12,7 +12,7 @@
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFDayi::_HandleCandidateFinalize(TfEditCookie ec, _In_ ITfContext *pContext)
+HRESULT CTSFTTS::_HandleCandidateFinalize(TfEditCookie ec, _In_ ITfContext *pContext)
 {
 	return _HandleCandidateWorker(ec, pContext);
 }
@@ -23,7 +23,7 @@ HRESULT CTSFDayi::_HandleCandidateFinalize(TfEditCookie ec, _In_ ITfContext *pCo
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFDayi::_HandleCandidateConvert(TfEditCookie ec, _In_ ITfContext *pContext)
+HRESULT CTSFTTS::_HandleCandidateConvert(TfEditCookie ec, _In_ ITfContext *pContext)
 {
     return _HandleCandidateWorker(ec, pContext);
 	
@@ -35,16 +35,16 @@ HRESULT CTSFDayi::_HandleCandidateConvert(TfEditCookie ec, _In_ ITfContext *pCon
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFDayi::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext)
+HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext)
 {
 
-	debugPrint(L"CTSFDayi::_HandleCandidateWorker() \n");
+	debugPrint(L"CTSFTTS::_HandleCandidateWorker() \n");
     HRESULT hr = S_OK;
 	CStringRange commitString;
-	CTSFDayiArray<CCandidateListItem> candidatePhraseList;	
+	CTSFTTSArray<CCandidateListItem> candidatePhraseList;	
 	CStringRange candidateString;
 	
-    if (nullptr == _pTSFDayiUIPresenter)
+    if (nullptr == _pTSFTTSUIPresenter)
     {
         goto Exit; //should not happen
     }
@@ -55,7 +55,7 @@ HRESULT CTSFDayi::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pCont
 	if (!_IsComposing())
 		_StartComposition(pContext);
 
-	candidateLen = _pTSFDayiUIPresenter->_GetSelectedCandidateString(&pCandidateString);
+	candidateLen = _pTSFTTSUIPresenter->_GetSelectedCandidateString(&pCandidateString);
 	if (candidateLen == 0)
     {
 		if(_candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION || _candidateMode == CANDIDATE_PHRASE)
@@ -99,11 +99,11 @@ HRESULT CTSFDayi::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pCont
 		_pCompositionProcessorEngine->GetCandidateStringInConverted(candidateString, &candidatePhraseList);
 		LCID locale = _pCompositionProcessorEngine->GetLocale();
 
-		_pTSFDayiUIPresenter->RemoveSpecificCandidateFromList(locale, candidatePhraseList, candidateString);
+		_pTSFTTSUIPresenter->RemoveSpecificCandidateFromList(locale, candidatePhraseList, candidateString);
 	}
 	
 	// We have a candidate list if candidatePhraseList.Cnt is not 0
-	// If we are showing reverse conversion, use CTSFDayiUIPresenter
+	// If we are showing reverse conversion, use UIPresenter
 	
 	if (candidatePhraseList.Count())
 	{
@@ -115,11 +115,11 @@ HRESULT CTSFDayi::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pCont
 	
 		if(SUCCEEDED(_CreateAndStartCandidate(_pCompositionProcessorEngine, ec, pContext)))
 		{	
-			_pTSFDayiUIPresenter->_ClearCandidateList();
-			_pTSFDayiUIPresenter->_SetCandidateTextColor(RGB(0, 0x80, 0), GetSysColor(COLOR_WINDOW));    // Text color is green
-			_pTSFDayiUIPresenter->_SetCandidateFillColor((HBRUSH)(COLOR_WINDOW+1));    // Background color is window
-			_pTSFDayiUIPresenter->_SetCandidateText(&candidatePhraseList, TRUE);
-			_pTSFDayiUIPresenter->_SetCandidateSelection(-1, FALSE); // set selected index to -1 if showing phrase candidates
+			_pTSFTTSUIPresenter->_ClearCandidateList();
+			_pTSFTTSUIPresenter->_SetCandidateTextColor(RGB(0, 0x80, 0), GetSysColor(COLOR_WINDOW));    // Text color is green
+			_pTSFTTSUIPresenter->_SetCandidateFillColor((HBRUSH)(COLOR_WINDOW+1));    // Background color is window
+			_pTSFTTSUIPresenter->_SetCandidateText(&candidatePhraseList, TRUE);
+			_pTSFTTSUIPresenter->_SetCandidateSelection(-1, FALSE); // set selected index to -1 if showing phrase candidates
 			_phraseCandShowing = TRUE;  //_phraseCandShowing = TRUE. phrase cand is showing
 			_candidateMode = CANDIDATE_PHRASE;
 			_isCandidateWithWildcard = FALSE;	
@@ -127,8 +127,8 @@ HRESULT CTSFDayi::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pCont
 	}
 	else
 	{
-		if(_pTSFDayiUIPresenter)
-			_pTSFDayiUIPresenter->_EndCandidateList();
+		if(_pTSFTTSUIPresenter)
+			_pTSFTTSUIPresenter->_EndCandidateList();
 	}
 		
 	
@@ -144,12 +144,12 @@ Exit:
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFDayi::_HandleCandidateArrowKey(TfEditCookie ec, _In_ ITfContext *pContext, _In_ KEYSTROKE_FUNCTION keyFunction)
+HRESULT CTSFTTS::_HandleCandidateArrowKey(TfEditCookie ec, _In_ ITfContext *pContext, _In_ KEYSTROKE_FUNCTION keyFunction)
 {
     ec;
     pContext;
 
-    _pTSFDayiUIPresenter->AdviseUIChangedByArrowKey(keyFunction);
+    _pTSFTTSUIPresenter->AdviseUIChangedByArrowKey(keyFunction);
 
     return S_OK;
 }
@@ -160,7 +160,7 @@ HRESULT CTSFDayi::_HandleCandidateArrowKey(TfEditCookie ec, _In_ ITfContext *pCo
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFDayi::_HandleCandidateSelectByNumber(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode)
+HRESULT CTSFTTS::_HandleCandidateSelectByNumber(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode)
 {
 	int iSelectAsNumber = _pCompositionProcessorEngine->GetCandidateListIndexRange()->GetIndex(uCode, _candidateMode);
     if (iSelectAsNumber == -1)
@@ -168,9 +168,9 @@ HRESULT CTSFDayi::_HandleCandidateSelectByNumber(TfEditCookie ec, _In_ ITfContex
         return S_FALSE;
     }
 
-    if (_pTSFDayiUIPresenter)
+    if (_pTSFTTSUIPresenter)
     {
-        if (_pTSFDayiUIPresenter->_SetCandidateSelectionInPage(iSelectAsNumber))
+        if (_pTSFTTSUIPresenter->_SetCandidateSelectionInPage(iSelectAsNumber))
         {
             return _HandleCandidateConvert(ec, pContext);
         }
@@ -185,14 +185,14 @@ HRESULT CTSFDayi::_HandleCandidateSelectByNumber(TfEditCookie ec, _In_ ITfContex
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFDayi::_HandlePhraseFinalize(TfEditCookie ec, _In_ ITfContext *pContext)
+HRESULT CTSFTTS::_HandlePhraseFinalize(TfEditCookie ec, _In_ ITfContext *pContext)
 {
     HRESULT hr = S_OK;
 
     DWORD phraseLen = 0;
     const WCHAR* pPhraseString = nullptr;
 
-    phraseLen = (DWORD)_pTSFDayiUIPresenter->_GetSelectedCandidateString(&pPhraseString);
+    phraseLen = (DWORD)_pTSFTTSUIPresenter->_GetSelectedCandidateString(&pPhraseString);
 
     CStringRange phraseString, clearString;
     phraseString.Set(pPhraseString, phraseLen);
@@ -217,12 +217,12 @@ HRESULT CTSFDayi::_HandlePhraseFinalize(TfEditCookie ec, _In_ ITfContext *pConte
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFDayi::_HandlePhraseArrowKey(TfEditCookie ec, _In_ ITfContext *pContext, _In_ KEYSTROKE_FUNCTION keyFunction)
+HRESULT CTSFTTS::_HandlePhraseArrowKey(TfEditCookie ec, _In_ ITfContext *pContext, _In_ KEYSTROKE_FUNCTION keyFunction)
 {
     ec;
     pContext;
 
-    _pTSFDayiUIPresenter->AdviseUIChangedByArrowKey(keyFunction);
+    _pTSFTTSUIPresenter->AdviseUIChangedByArrowKey(keyFunction);
 
     return S_OK;
 }
@@ -233,7 +233,7 @@ HRESULT CTSFDayi::_HandlePhraseArrowKey(TfEditCookie ec, _In_ ITfContext *pConte
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFDayi::_HandlePhraseSelectByNumber(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode)
+HRESULT CTSFTTS::_HandlePhraseSelectByNumber(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode)
 {
 	int iSelectAsNumber = _pCompositionProcessorEngine->GetCandidateListIndexRange()->GetIndex(uCode, _candidateMode);
     if (iSelectAsNumber == -1)
@@ -241,9 +241,9 @@ HRESULT CTSFDayi::_HandlePhraseSelectByNumber(TfEditCookie ec, _In_ ITfContext *
         return S_FALSE;
     }
 
-    if (_pTSFDayiUIPresenter)
+    if (_pTSFTTSUIPresenter)
     {
-        if (_pTSFDayiUIPresenter->_SetCandidateSelectionInPage(iSelectAsNumber))
+        if (_pTSFTTSUIPresenter->_SetCandidateSelectionInPage(iSelectAsNumber))
         {
             return _HandlePhraseFinalize(ec, pContext);
         }
@@ -258,27 +258,27 @@ HRESULT CTSFDayi::_HandlePhraseSelectByNumber(TfEditCookie ec, _In_ ITfContext *
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFDayi::_CreateAndStartCandidate(_In_ CCompositionProcessorEngine *pCompositionProcessorEngine, TfEditCookie ec, _In_ ITfContext *pContext)
+HRESULT CTSFTTS::_CreateAndStartCandidate(_In_ CCompositionProcessorEngine *pCompositionProcessorEngine, TfEditCookie ec, _In_ ITfContext *pContext)
 {
-	debugPrint(L"CTSFDayi::_CreateAndStartCandidate(), _candidateMode = %d", _candidateMode);
+	debugPrint(L"CTSFTTS::_CreateAndStartCandidate(), _candidateMode = %d", _candidateMode);
     HRESULT hr = S_OK;
 
 	
-	if (_pTSFDayiUIPresenter == nullptr)
+	if (_pTSFTTSUIPresenter == nullptr)
     {
-        _pTSFDayiUIPresenter = new (std::nothrow) CTSFDayiUIPresenter(this, pCompositionProcessorEngine);
-        if (!_pTSFDayiUIPresenter)
+        _pTSFTTSUIPresenter = new (std::nothrow) UIPresenter(this, pCompositionProcessorEngine);
+        if (!_pTSFTTSUIPresenter)
         {
             return E_OUTOFMEMORY;
         }
 	}
 	
-	if (//((_candidateMode == CANDIDATE_PHRASE) && (_pTSFDayiUIPresenter)) ||
-         ((_candidateMode == CANDIDATE_NONE) && (_pTSFDayiUIPresenter))) 
+	if (//((_candidateMode == CANDIDATE_PHRASE) && (_pTSFTTSUIPresenter)) ||
+         ((_candidateMode == CANDIDATE_NONE) && (_pTSFTTSUIPresenter))) 
     {
     /*    // Recreate candidate list
-        delete _pTSFDayiUIPresenter;
-        _pTSFDayiUIPresenter = nullptr;
+        delete _pTSFTTSUIPresenter;
+        _pTSFTTSUIPresenter = nullptr;
 
         _candidateMode = CANDIDATE_NONE;
         _isCandidateWithWildcard = FALSE;
@@ -295,7 +295,7 @@ HRESULT CTSFDayi::_CreateAndStartCandidate(_In_ CCompositionProcessorEngine *pCo
             ITfRange* pRange = nullptr;
             if (SUCCEEDED(_pComposition->GetRange(&pRange)))
             {
-                hr = _pTSFDayiUIPresenter->_StartCandidateList(_tfClientId, pDocumentMgr, pContext, ec, pRange, pCompositionProcessorEngine->GetCandidateWindowWidth());
+                hr = _pTSFTTSUIPresenter->_StartCandidateList(_tfClientId, pDocumentMgr, pContext, ec, pRange, pCompositionProcessorEngine->GetCandidateWindowWidth());
                 pRange->Release();
             }
             pDocumentMgr->Release();
@@ -311,19 +311,19 @@ HRESULT CTSFDayi::_CreateAndStartCandidate(_In_ CCompositionProcessorEngine *pCo
 //
 //----------------------------------------------------------------------------
 
-VOID CTSFDayi::_DeleteCandidateList(BOOL isForce, _In_opt_ ITfContext *pContext)
+VOID CTSFTTS::_DeleteCandidateList(BOOL isForce, _In_opt_ ITfContext *pContext)
 {
 	isForce;pContext;
-	debugPrint(L"CTSFDayi::_DeleteCandidateList()\n");
+	debugPrint(L"CTSFTTS::_DeleteCandidateList()\n");
     
 
     CCompositionProcessorEngine* pCompositionProcessorEngine = nullptr;
     pCompositionProcessorEngine = _pCompositionProcessorEngine;
     pCompositionProcessorEngine->PurgeVirtualKey();
 
-    if (_pTSFDayiUIPresenter)
+    if (_pTSFTTSUIPresenter)
     {
-        _pTSFDayiUIPresenter->_EndCandidateList();
+        _pTSFTTSUIPresenter->_EndCandidateList();
 
         _candidateMode = CANDIDATE_NONE;
         _isCandidateWithWildcard = FALSE;

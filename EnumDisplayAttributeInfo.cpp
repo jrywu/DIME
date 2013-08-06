@@ -7,7 +7,7 @@
 
 #include "Private.h"
 #include "globals.h"
-#include "TSFDayi.h"
+#include "TSFTTS.h"
 #include "DisplayAttributeInfo.h"
 #include "EnumDisplayAttributeInfo.h"
 

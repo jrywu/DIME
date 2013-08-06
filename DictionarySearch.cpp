@@ -7,7 +7,7 @@
 
 #include "Private.h"
 #include "DictionarySearch.h"
-#include "TSFDayiBaseStructure.h"
+#include "BaseStructure.h"
 #include "CompositionProcessorEngine.h"
 
 //+---------------------------------------------------------------------------
@@ -252,7 +252,7 @@ TryAgain:
 		else if(searchMode == SEARCH_TEXT)  //compare value with searchcode
 		{
 			// Compare Dictionary converted string and input string
-			CTSFDayiArray<CParserStringRange> convertedStrings;
+			CTSFTTSArray<CParserStringRange> convertedStrings;
 			if (!ParseLine(&pwch[indexTrace], bufLenOneLine, &keyword, &convertedStrings)) //get value
 				return FALSE;
 			
@@ -278,7 +278,7 @@ ReadValue:
 				if (!*ppdret)	return FALSE;
 			}
 			
-			CTSFDayiArray<CParserStringRange> valueStrings;
+			CTSFTTSArray<CParserStringRange> valueStrings;
 			BOOL isPhraseEntry = (searchMode == SEARCH_PHRASE) || (searchMode == SEARCH_SYMBOL);
 			if (!ParseLine(&pwch[indexTrace], bufLenOneLine, &keyword, &valueStrings, isPhraseEntry,
 				(isPhraseEntry)?_pSearchKeyCode:NULL))

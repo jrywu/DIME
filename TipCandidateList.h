@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "TSFDayiBaseStructure.h"
+#include "BaseStructure.h"
 
 //
 // CTipCandidateList
@@ -38,6 +38,6 @@ public:
 
 protected:
     long _refCount;
-    CTSFDayiArray<ITfCandidateString*> _tfCandStrList;
+    CTSFTTSArray<ITfCandidateString*> _tfCandStrList;
 };
 

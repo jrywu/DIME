@@ -7,8 +7,8 @@
 
 #include "Private.h"
 #include "globals.h"
-#include "TSFDayi.h"
-#include "TSFDayiUIPresenter.h"
+#include "TSFTTS.h"
+#include "UIPresenter.h"
 #include "CompositionProcessorEngine.h"
 #include "Compartment.h"
 
@@ -19,9 +19,9 @@
 //----------------------------------------------------------------------------
 
 /* static */
-HRESULT CTSFDayi::CreateInstance(_In_ IUnknown *pUnkOuter, REFIID riid, _Outptr_ void **ppvObj)
+HRESULT CTSFTTS::CreateInstance(_In_ IUnknown *pUnkOuter, REFIID riid, _Outptr_ void **ppvObj)
 {
-    CTSFDayi* pTSFDayi = nullptr;
+    CTSFTTS* pTSFTTS = nullptr;
     HRESULT hr = S_OK;
 
     if (ppvObj == nullptr)
@@ -36,15 +36,15 @@ HRESULT CTSFDayi::CreateInstance(_In_ IUnknown *pUnkOuter, REFIID riid, _Outptr_
         return CLASS_E_NOAGGREGATION;
     }
 
-    pTSFDayi = new (std::nothrow) CTSFDayi();
-    if (pTSFDayi == nullptr)
+    pTSFTTS = new (std::nothrow) CTSFTTS();
+    if (pTSFTTS == nullptr)
     {
         return E_OUTOFMEMORY;
     }
 
-    hr = pTSFDayi->QueryInterface(riid, ppvObj);
+    hr = pTSFTTS->QueryInterface(riid, ppvObj);
 
-    pTSFDayi->Release();
+    pTSFTTS->Release();
 
     return hr;
 }
@@ -55,7 +55,7 @@ HRESULT CTSFDayi::CreateInstance(_In_ IUnknown *pUnkOuter, REFIID riid, _Outptr_
 //
 //----------------------------------------------------------------------------
 
-CTSFDayi::CTSFDayi()
+CTSFTTS::CTSFTTS()
 {
     DllAddRef();
 
@@ -75,7 +75,7 @@ CTSFDayi::CTSFDayi()
     _pCompositionProcessorEngine = nullptr;
 
     _candidateMode = CANDIDATE_NONE;
-    _pTSFDayiUIPresenter = nullptr;
+    _pTSFTTSUIPresenter = nullptr;
     _isCandidateWithWildcard = FALSE;
 
     _pDocMgrLastFocused = nullptr;
@@ -97,12 +97,12 @@ CTSFDayi::CTSFDayi()
 //
 //----------------------------------------------------------------------------
 
-CTSFDayi::~CTSFDayi()
+CTSFTTS::~CTSFTTS()
 {
-    if (_pTSFDayiUIPresenter)
+    if (_pTSFTTSUIPresenter)
     {
-        delete _pTSFDayiUIPresenter;
-        _pTSFDayiUIPresenter = nullptr;
+        delete _pTSFTTSUIPresenter;
+        _pTSFTTSUIPresenter = nullptr;
     }
     DllRelease();
 }
@@ -113,7 +113,7 @@ CTSFDayi::~CTSFDayi()
 //
 //----------------------------------------------------------------------------
 
-STDAPI CTSFDayi::QueryInterface(REFIID riid, _Outptr_ void **ppvObj)
+STDAPI CTSFTTS::QueryInterface(REFIID riid, _Outptr_ void **ppvObj)
 {
     if (ppvObj == nullptr)
     {
@@ -192,7 +192,7 @@ STDAPI CTSFDayi::QueryInterface(REFIID riid, _Outptr_ void **ppvObj)
 //
 //----------------------------------------------------------------------------
 
-STDAPI_(ULONG) CTSFDayi::AddRef()
+STDAPI_(ULONG) CTSFTTS::AddRef()
 {
     return ++_refCount;
 }
@@ -203,7 +203,7 @@ STDAPI_(ULONG) CTSFDayi::AddRef()
 //
 //----------------------------------------------------------------------------
 
-STDAPI_(ULONG) CTSFDayi::Release()
+STDAPI_(ULONG) CTSFTTS::Release()
 {
     LONG cr = --_refCount;
 
@@ -223,7 +223,7 @@ STDAPI_(ULONG) CTSFDayi::Release()
 //
 //----------------------------------------------------------------------------
 
-STDAPI CTSFDayi::ActivateEx(ITfThreadMgr *pThreadMgr, TfClientId tfClientId, DWORD dwFlags)
+STDAPI CTSFTTS::ActivateEx(ITfThreadMgr *pThreadMgr, TfClientId tfClientId, DWORD dwFlags)
 {
     _pThreadMgr = pThreadMgr;
     _pThreadMgr->AddRef();
@@ -286,9 +286,9 @@ ExitError:
 //
 //----------------------------------------------------------------------------
 
-STDAPI CTSFDayi::Deactivate()
+STDAPI CTSFTTS::Deactivate()
 {
-	debugPrint(L"CTSFDayi::Deactivate");
+	debugPrint(L"CTSFTTS::Deactivate");
     if (_pCompositionProcessorEngine)
     {
         delete _pCompositionProcessorEngine;
@@ -302,10 +302,10 @@ STDAPI CTSFDayi::Deactivate()
         _EndComposition(_pContext);
     }
 
-    if (_pTSFDayiUIPresenter)
+    if (_pTSFTTSUIPresenter)
     {
-        delete _pTSFDayiUIPresenter;
-        _pTSFDayiUIPresenter = nullptr;
+        delete _pTSFTTSUIPresenter;
+        _pTSFTTSUIPresenter = nullptr;
 
         if (pContext)
         {
@@ -331,10 +331,10 @@ STDAPI CTSFDayi::Deactivate()
 		CompartmentKeyboardOpen._ClearCompartment();
 	}
 
-	CCompartment CompartmentIMEMode(_pThreadMgr, _tfClientId, Global::TSFDayiGuidCompartmentIMEMode);
+	CCompartment CompartmentIMEMode(_pThreadMgr, _tfClientId, Global::TSFTTSGuidCompartmentIMEMode);
     CompartmentIMEMode._ClearCompartment();
 
-    CCompartment CompartmentDoubleSingleByte(_pThreadMgr, _tfClientId, Global::TSFDayiGuidCompartmentDoubleSingleByte);
+    CCompartment CompartmentDoubleSingleByte(_pThreadMgr, _tfClientId, Global::TSFTTSGuidCompartmentDoubleSingleByte);
     CompartmentDoubleSingleByte._ClearCompartment();
 
     
@@ -359,12 +359,12 @@ STDAPI CTSFDayi::Deactivate()
 // ITfFunctionProvider::GetType
 //
 //----------------------------------------------------------------------------
-HRESULT CTSFDayi::GetType(__RPC__out GUID *pguid)
+HRESULT CTSFTTS::GetType(__RPC__out GUID *pguid)
 {
     HRESULT hr = E_INVALIDARG;
     if (pguid)
     {
-        *pguid = Global::TSFDayiCLSID;
+        *pguid = Global::TSFTTSCLSID;
         hr = S_OK;
     }
     return hr;
@@ -375,7 +375,7 @@ HRESULT CTSFDayi::GetType(__RPC__out GUID *pguid)
 // ITfFunctionProvider::::GetDescription
 //
 //----------------------------------------------------------------------------
-HRESULT CTSFDayi::GetDescription(__RPC__deref_out_opt BSTR *pbstrDesc)
+HRESULT CTSFTTS::GetDescription(__RPC__deref_out_opt BSTR *pbstrDesc)
 {
     HRESULT hr = E_INVALIDARG;
     if (pbstrDesc != nullptr)
@@ -391,7 +391,7 @@ HRESULT CTSFDayi::GetDescription(__RPC__deref_out_opt BSTR *pbstrDesc)
 // ITfFunctionProvider::::GetFunction
 //
 //----------------------------------------------------------------------------
-HRESULT CTSFDayi::GetFunction(__RPC__in REFGUID rguid, __RPC__in REFIID riid, __RPC__deref_out_opt IUnknown **ppunk)
+HRESULT CTSFTTS::GetFunction(__RPC__in REFGUID rguid, __RPC__in REFIID riid, __RPC__deref_out_opt IUnknown **ppunk)
 {
     HRESULT hr = E_NOINTERFACE;
 
@@ -413,7 +413,7 @@ HRESULT CTSFDayi::GetFunction(__RPC__in REFGUID rguid, __RPC__in REFIID riid, __
 // ITfFunction::GetDisplayName
 //
 //----------------------------------------------------------------------------
-HRESULT CTSFDayi::GetDisplayName(_Out_ BSTR *pbstrDisplayName)
+HRESULT CTSFTTS::GetDisplayName(_Out_ BSTR *pbstrDisplayName)
 {
 	BSTR bstrName;
 
@@ -424,7 +424,7 @@ HRESULT CTSFDayi::GetDisplayName(_Out_ BSTR *pbstrDisplayName)
 
 	*pbstrDisplayName = NULL;
 
-	bstrName = SysAllocString(L"TSFDayi 1.0");
+	bstrName = SysAllocString(L"TSFTTS 1.0");
 
 	if(bstrName == NULL)
 	{
@@ -442,7 +442,7 @@ HRESULT CTSFDayi::GetDisplayName(_Out_ BSTR *pbstrDisplayName)
 // ITfFnGetPreferredTouchKeyboardLayout::GetLayout
 // The tkblayout will be Optimized layout.
 //----------------------------------------------------------------------------
-HRESULT CTSFDayi::GetLayout(_Out_ TKBLayoutType *ptkblayoutType, _Out_ WORD *pwPreferredLayoutId)
+HRESULT CTSFTTS::GetLayout(_Out_ TKBLayoutType *ptkblayoutType, _Out_ WORD *pwPreferredLayoutId)
 {
     HRESULT hr = E_INVALIDARG;
     if ((ptkblayoutType != nullptr) && (pwPreferredLayoutId != nullptr))
@@ -460,11 +460,11 @@ HRESULT CTSFDayi::GetLayout(_Out_ TKBLayoutType *ptkblayoutType, _Out_ WORD *pwP
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFDayi::Show(_In_ HWND hwndParent, _In_ LANGID langid, _In_ REFGUID rguidProfile)
+HRESULT CTSFTTS::Show(_In_ HWND hwndParent, _In_ LANGID langid, _In_ REFGUID rguidProfile)
 {
 	langid;
 	rguidProfile;
-	MessageBox(hwndParent, L"config call", L"TSFDayi", NULL);
+	MessageBox(hwndParent, L"config call", L"TSFTTS", NULL);
 	return S_OK;
 }
 //+---------------------------------------------------------------------------
@@ -472,17 +472,17 @@ HRESULT CTSFDayi::Show(_In_ HWND hwndParent, _In_ LANGID langid, _In_ REFGUID rg
 // ITfFnShowHelp::Show
 //
 //----------------------------------------------------------------------------
-HRESULT CTSFDayi::Show(_In_ HWND hwndParent)
+HRESULT CTSFTTS::Show(_In_ HWND hwndParent)
 {
         
-	MessageBox(hwndParent, L"Show help call", L"TSFDayi", NULL);
+	MessageBox(hwndParent, L"Show help call", L"TSFTTS", NULL);
         return S_OK;
 }
 
 
-void CTSFDayi::OnKeyboardClosed()
+void CTSFTTS::OnKeyboardClosed()
 {
-	debugPrint(L"CTSFDayi::OnKeyboardClosed()\n");
+	debugPrint(L"CTSFTTS::OnKeyboardClosed()\n");
 	// switching to English (native) mode delete the phrase candidate window before exting.
 	if(_IsComposing()) 
 		_EndComposition(_pContext);
@@ -491,18 +491,18 @@ void CTSFDayi::OnKeyboardClosed()
 	ShowNotifyText(&notifyText.Set(L"英文", 2));
 }
 
-void CTSFDayi::OnKeyboardOpen()
+void CTSFTTS::OnKeyboardOpen()
 {
-	debugPrint(L"CTSFDayi::OnKeyboardOpen()\n");
+	debugPrint(L"CTSFTTS::OnKeyboardOpen()\n");
 	// switching to Chinese mode
 	CStringRange notifyText;
 	ShowNotifyText(&notifyText.Set(L"中文", 2));
 	
 }
 
-void CTSFDayi::OnSwitchedToFullShape()
+void CTSFTTS::OnSwitchedToFullShape()
 {
-	debugPrint(L"CTSFDayi::OnSwitchedToFullShape()\n");
+	debugPrint(L"CTSFTTS::OnSwitchedToFullShape()\n");
 	if(_IsComposing()) 
 		_EndComposition(_pContext);
 	_DeleteCandidateList(FALSE, NULL);
@@ -511,9 +511,9 @@ void CTSFDayi::OnSwitchedToFullShape()
 	
 }
 
-void CTSFDayi::OnSwitchedToHalfShape()
+void CTSFTTS::OnSwitchedToHalfShape()
 {
-	debugPrint(L"CTSFDayi::OnSwitchedToHalfShape()\n");
+	debugPrint(L"CTSFTTS::OnSwitchedToHalfShape()\n");
 	if(_IsComposing()) 
 		_EndComposition(_pContext);
 	_DeleteCandidateList(FALSE, NULL);
@@ -523,7 +523,7 @@ void CTSFDayi::OnSwitchedToHalfShape()
 }
 
 
-HRESULT CTSFDayi::ShowNotifyText(CStringRange *pNotifyText)
+HRESULT CTSFTTS::ShowNotifyText(CStringRange *pNotifyText)
 {
 	
 	HRESULT hr = S_OK;
@@ -532,10 +532,10 @@ HRESULT CTSFDayi::ShowNotifyText(CStringRange *pNotifyText)
     ITfDocumentMgr* pDocumentMgr = nullptr;
     ITfContext* pContext = nullptr;
 	
-	if(_pTSFDayiUIPresenter == nullptr)
+	if(_pTSFTTSUIPresenter == nullptr)
     {
-		_pTSFDayiUIPresenter = new (std::nothrow) CTSFDayiUIPresenter(this, _pCompositionProcessorEngine);
-		if (!_pTSFDayiUIPresenter)
+		_pTSFTTSUIPresenter = new (std::nothrow) UIPresenter(this, _pCompositionProcessorEngine);
+		if (!_pTSFTTSUIPresenter)
         {
             return E_OUTOFMEMORY;
         }	
@@ -559,7 +559,7 @@ HRESULT CTSFDayi::ShowNotifyText(CStringRange *pNotifyText)
         goto Exit;
     }
 
-    _pTSFDayiUIPresenter->ShowNotifyText(pContext, pNotifyText);
+    _pTSFTTSUIPresenter->ShowNotifyText(pContext, pNotifyText);
 Exit:
 	return hr;
 }

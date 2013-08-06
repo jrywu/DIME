@@ -54,9 +54,9 @@ BOOL RegisterProfiles()
     {
         goto Exit;
     }
-    hr = pITfInputProcessorProfileMgr->RegisterProfile(Global::TSFDayiCLSID,
+    hr = pITfInputProcessorProfileMgr->RegisterProfile(Global::TSFTTSCLSID,
         TEXTSERVICE_LANGID,
-        Global::TSFDayiGuidProfile,
+        Global::TSFTTSGuidProfile,
         TEXTSERVICE_DESC,
         static_cast<ULONG>(lenOfDesc),
         achIconFile,
@@ -95,7 +95,7 @@ void UnregisterProfiles()
         goto Exit;
     }
 
-    hr = pITfInputProcessorProfileMgr->UnregisterProfile(Global::TSFDayiCLSID, TEXTSERVICE_LANGID, Global::TSFDayiGuidProfile, 0);
+    hr = pITfInputProcessorProfileMgr->UnregisterProfile(Global::TSFTTSCLSID, TEXTSERVICE_LANGID, Global::TSFTTSGuidProfile, 0);
     if (FAILED(hr))
     {
         goto Exit;
@@ -129,7 +129,7 @@ BOOL RegisterCategories()
 
     for each(GUID guid in SupportCategories)
     {
-        hr = pCategoryMgr->RegisterCategory(Global::TSFDayiCLSID, guid, Global::TSFDayiCLSID);
+        hr = pCategoryMgr->RegisterCategory(Global::TSFTTSCLSID, guid, Global::TSFTTSCLSID);
     }
 
     pCategoryMgr->Release();
@@ -156,7 +156,7 @@ void UnregisterCategories()
 
     for each(GUID guid in SupportCategories)
     {
-        pCategoryMgr->UnregisterCategory(Global::TSFDayiCLSID, guid, Global::TSFDayiCLSID);
+        pCategoryMgr->UnregisterCategory(Global::TSFTTSCLSID, guid, Global::TSFTTSCLSID);
     }
   
     pCategoryMgr->Release();
@@ -216,7 +216,7 @@ BOOL RegisterServer()
     WCHAR achIMEKey[ARRAYSIZE(RegInfo_Prefix_CLSID) + CLSID_STRLEN] = {'\0'};
     WCHAR achFileName[MAX_PATH] = {'\0'};
 
-    if (!CLSIDToString(Global::TSFDayiCLSID, achIMEKey + ARRAYSIZE(RegInfo_Prefix_CLSID) - 1))
+    if (!CLSIDToString(Global::TSFTTSCLSID, achIMEKey + ARRAYSIZE(RegInfo_Prefix_CLSID) - 1))
     {
         return FALSE;
     }
@@ -272,7 +272,7 @@ void UnregisterServer()
 {
     WCHAR achIMEKey[ARRAYSIZE(RegInfo_Prefix_CLSID) + CLSID_STRLEN] = {'\0'};
 
-    if (!CLSIDToString(Global::TSFDayiCLSID, achIMEKey + ARRAYSIZE(RegInfo_Prefix_CLSID) - 1))
+    if (!CLSIDToString(Global::TSFTTSCLSID, achIMEKey + ARRAYSIZE(RegInfo_Prefix_CLSID) - 1))
     {
         return;
     }

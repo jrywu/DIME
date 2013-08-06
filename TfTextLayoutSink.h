@@ -7,12 +7,12 @@
 
 #pragma once
 
-class CTSFDayi;
+class CTSFTTS;
 
 class CTfTextLayoutSink : public ITfTextLayoutSink
 {
 public:
-    CTfTextLayoutSink(_In_ CTSFDayi *pTextService);
+    CTfTextLayoutSink(_In_ CTSFTTS *pTextService);
     virtual ~CTfTextLayoutSink();
 
     // IUnknown methods
@@ -40,7 +40,7 @@ private:
     ITfRange* _pRangeComposition;
     ITfContext* _pContextDocument;
     TfEditCookie _tfEditCookie;
-    CTSFDayi* _pTextService;
+    CTSFTTS* _pTextService;
     DWORD _dwCookieTextLayoutSink;
     LONG _refCount;
 };

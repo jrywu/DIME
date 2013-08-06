@@ -1,6 +1,37 @@
 // Microsoft Visual C++ generated resource script.
 //
+#include <windows.h>
 #include "resource.h"
+/////////////////////////////////////////////////////////////////////////////
+// Chinese (Traditional, Taiwan) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_CHT)
+LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_TRADITIONAL
+#pragma code_page(950)
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+
+STRINGTABLE
+BEGIN
+    IDIS_TSFTTS             "TSF TTS 繁中輸入法補完計畫"
+    IDS_IME_MODE            "中/英  (Shift)"
+    IDS_DOUBLE_SINGLE_BYTE  "全形 /半形 (Shift+Space)"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_DEFAULT_FONT        "Microsoft JhengHei"
+END
+
+
+#endif    // Chinese (Traditional, Taiwan) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
 /////////////////////////////////////////////////////////////////////////////
 // English (United States) resources
 
@@ -15,13 +46,11 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
-IDIS_TSFDayi            ICON                    "image\\TSFDayi.ico"
+IDIS_DAYI               ICON                    "image\\TSFDayi.ico"
 IDI_IME_MODE_ON         ICON                    "image\\ImeModeOn.ico"
 IDI_IME_MODE_OFF        ICON                    "image\\ImeModeOff.ico"
 IDI_DOUBLE_SINGLE_BYTE_ON ICON                    "image\\DoubleSingleByteOn.ico"
 IDI_DOUBLE_SINGLE_BYTE_OFF ICON                    "image\\DoubleSingleByteOff.ico"
-IDI_PUNCTUATION_ON      ICON                    "image\\PunctuationOn.ico"
-IDI_PUNCTUATION_OFF     ICON                    "image\\PunctuationOff.ico"
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -46,12 +75,12 @@ BEGIN
         BLOCK "040904b0"
         BEGIN
             VALUE "CompanyName", "Jeremy Wu"
-            VALUE "FileDescription", "Dayi TSF Loader"
+            VALUE "FileDescription", "TSF TTS Input Mehods"
             VALUE "FileVersion", "0.9.0.1"
-            VALUE "InternalName", "TSFDayi.dll"
+            VALUE "InternalName", "TSFTTS.dll"
             VALUE "LegalsearchTextright", "CopyRight Reservd. (C)"
-            VALUE "OriginalFilename", "TSFDayi.dll"
-            VALUE "ProductName", "TSFDayi"
+            VALUE "OriginalFilename", "TSFTTS.dll"
+            VALUE "ProductName", "TSFTTS"
             VALUE "ProductVersion", "0.9.0.1"
         END
     END
@@ -94,15 +123,15 @@ END
 
 STRINGTABLE
 BEGIN
-    IDIS_TSFDayi            "Dayi TSF Loader"
-    IDS_DEFAULT_FONT        "Microsoft JhengHei"
+    IDIS_TSFTTS             "Dayi TSF Loader"
+    IDS_IME_MODE            "Chinese/English input (Shift)"
+    IDS_DOUBLE_SINGLE_BYTE  "Double/Single byte (Shift+Space)"
+    IDS_PUNCTUATION         "Chinese/English punctuation (Ctrl+.)"
 END
 
 STRINGTABLE
 BEGIN
-    IDS_IME_MODE            "Chinese/English input (Shift)"
-    IDS_DOUBLE_SINGLE_BYTE  "Double/Single byte (Shift+Space)"
-    IDS_PUNCTUATION         "Chinese/English punctuation (Ctrl+.)"
+    IDS_DEFAULT_FONT        "Microsoft JhengHei"
 END
 
 #endif    // English (United States) resources

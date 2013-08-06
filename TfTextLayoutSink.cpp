@@ -7,10 +7,10 @@
 
 #include "Private.h"
 #include "TfTextLayoutSink.h"
-#include "TSFDayi.h"
+#include "TSFTTS.h"
 #include "GetTextExtentEditSession.h"
 
-CTfTextLayoutSink::CTfTextLayoutSink(_In_ CTSFDayi *pTextService)
+CTfTextLayoutSink::CTfTextLayoutSink(_In_ CTSFTTS *pTextService)
 {
     _pTextService = pTextService;
     _pTextService->AddRef();

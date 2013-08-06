@@ -2,9 +2,9 @@
 //
 //  Copyright (C) Microsoft Corporation.  All rights reserved.
 //
-//  CTSFDayiTSFDayiStructureArray.h
+//  CTSFTTSTSFTTSStructureArray.h
 //
-//          CTSFDayiStructureArray declaration.
+//          CTSFTTSStructureArray declaration.
 //
 //////////////////////////////////////////////////////////////////////
 
@@ -13,27 +13,27 @@
 #include <vector>
 
 template<class T>
-class CTSFDayiStructureArray
+class CTSFTTSStructureArray
 {
     typedef typename    std::vector<T>         value_type;
     typedef const       T&                     CONST_REF;
-    typedef typename    value_type             CTSFDayiArray;
-    typedef typename    value_type::iterator   CTSFDayiIter;
+    typedef typename    value_type             CTSFTTSArray;
+    typedef typename    value_type::iterator   CTSFTTSIter;
 
 public:
-    CTSFDayiStructureArray(): _imeVector()
+    CTSFTTSStructureArray(): _imeVector()
     {
     }
 
-    explicit CTSFDayiStructureArray(size_t iCount): _imeVector(iCount)
+    explicit CTSFTTSStructureArray(size_t iCount): _imeVector(iCount)
     {
     }
 
-    CTSFDayiStructureArray(size_t iCount, CONST_REF tVal): _imeVector(iCount, tVal)
+    CTSFTTSStructureArray(size_t iCount, CONST_REF tVal): _imeVector(iCount, tVal)
     {
     }
 
-    virtual ~CTSFDayiStructureArray() {}
+    virtual ~CTSFTTSStructureArray() {}
 
     inline CONST_REF GetAt(size_t iIndex) const
     {
@@ -56,8 +56,8 @@ public:
         assert(iIndex <= _imeVector.size());
         assert(_imeVector.size() > 0);
 
-        CTSFDayiIter beginIter = _imeVector.begin() + iIndex;
-        CTSFDayiIter lastIter = beginIter + iElements - 1;
+        CTSFTTSIter beginIter = _imeVector.begin() + iIndex;
+        CTSFTTSIter lastIter = beginIter + iElements - 1;
 
         _imeVector.erase(beginIter, lastIter);
     }
@@ -75,6 +75,6 @@ public:
     }
 
 private:
-    CTSFDayiArray _imeVector;   // the actual array of data
-    CTSFDayiIter  _imeIter;
+    CTSFTTSArray _imeVector;   // the actual array of data
+    CTSFTTSIter  _imeIter;
 };

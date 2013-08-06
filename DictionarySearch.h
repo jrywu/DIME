@@ -11,7 +11,7 @@
 
 #include "File.h"
 #include "DictionaryParser.h"
-#include "TSFDayiBaseStructure.h"
+#include "BaseStructure.h"
 
 class CDictionaryResult;
 
@@ -78,7 +78,7 @@ public:
 
     CStringRange _SearchKeyCode;
     CStringRange _FindKeyCode;
-    CTSFDayiArray<CStringRange> _FindPhraseList;
+    CTSFTTSArray<CStringRange> _FindPhraseList;
 };
 
 enum SEARCH_MODE

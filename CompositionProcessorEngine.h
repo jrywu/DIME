@@ -13,7 +13,7 @@
 #include "LanguageBar.h"
 #include "TableDictionaryEngine.h"
 #include "KeyHandlerEditSession.h"
-#include "TSFDayiBaseStructure.h"
+#include "BaseStructure.h"
 #include "FileMapping.h"
 #include "Compartment.h"
 #include "define.h"
@@ -21,7 +21,7 @@
 class CCompositionProcessorEngine
 {
 public:
-    CCompositionProcessorEngine(_In_ CTSFDayi *pTextService);
+    CCompositionProcessorEngine(_In_ CTSFTTS *pTextService);
     ~CCompositionProcessorEngine(void);
 	
 	
@@ -48,9 +48,9 @@ public:
     DWORD_PTR GetVirtualKeyLength() { return _keystrokeBuffer.GetLength(); }
     WCHAR GetVirtualKey(DWORD_PTR dwIndex);
 
-    void GetReadingStrings(_Inout_ CTSFDayiArray<CStringRange> *pReadingStrings, _Out_ BOOL *pIsWildcardIncluded);
-    void GetCandidateList(_Inout_ CTSFDayiArray<CCandidateListItem> *pCandidateList, BOOL isIncrementalWordSearch, BOOL isWildcardSearch);
-    void GetCandidateStringInConverted(CStringRange &searchString, _In_ CTSFDayiArray<CCandidateListItem> *pCandidateList);
+    void GetReadingStrings(_Inout_ CTSFTTSArray<CStringRange> *pReadingStrings, _Out_ BOOL *pIsWildcardIncluded);
+    void GetCandidateList(_Inout_ CTSFTTSArray<CCandidateListItem> *pCandidateList, BOOL isIncrementalWordSearch, BOOL isWildcardSearch);
+    void GetCandidateStringInConverted(CStringRange &searchString, _In_ CTSFTTSArray<CCandidateListItem> *pCandidateList);
 
     // Preserved key handler
     void OnPreservedKey(REFGUID rguid, _Out_ BOOL *pIsEaten, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId);
@@ -105,23 +105,23 @@ private:
 
     struct _KEYSTROKE;
     BOOL IsVirtualKeyKeystrokeComposition(UINT uCode, _Out_opt_ _KEYSTROKE_STATE *pKeyState, KEYSTROKE_FUNCTION function);
-    BOOL IsVirtualKeyKeystrokeCandidate(UINT uCode, _In_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode, _Out_ BOOL *pfRetCode, _In_ CTSFDayiArray<_KEYSTROKE> *pKeystrokeMetric);
+    BOOL IsVirtualKeyKeystrokeCandidate(UINT uCode, _In_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode, _Out_ BOOL *pfRetCode, _In_ CTSFTTSArray<_KEYSTROKE> *pKeystrokeMetric);
     BOOL IsKeystrokeRange(UINT uCode, _Out_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode);
 
     void SetupKeystroke();
     void SetupPreserved(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId);
     void SetupConfiguration();
     void SetupLanguageBar(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, BOOL isSecureMode);
-    void SetKeystrokeTable(_Inout_ CTSFDayiArray<_KEYSTROKE> *pKeystroke);
+    void SetKeystrokeTable(_Inout_ CTSFTTSArray<_KEYSTROKE> *pKeystroke);
     void CreateLanguageBarButton(DWORD dwEnable, GUID guidLangBar, _In_z_ LPCWSTR pwszDescriptionValue, _In_z_ LPCWSTR pwszTooltipValue, DWORD dwOnIconIndex, DWORD dwOffIconIndex, _Outptr_result_maybenull_ CLangBarItemButton **ppLangBarItemButton, BOOL isSecureMode);
     void SetInitialCandidateListRange();
     void SetDefaultCandidateTextFont();
-	void InitializeTSFDayiCompartment(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId);
+	void InitializeTSFTTSCompartment(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId);
 
     class XPreservedKey;
     void SetPreservedKey(const CLSID clsid, TF_PRESERVEDKEY & tfPreservedKey, _In_z_ LPCWSTR pwszDescription, _Out_ XPreservedKey *pXPreservedKey);
     BOOL InitPreservedKey(_In_ XPreservedKey *pXPreservedKey, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId);
-    BOOL CheckShiftKeyOnly(_In_ CTSFDayiArray<TF_PRESERVEDKEY> *pTSFPreservedKeyTable);
+    BOOL CheckShiftKeyOnly(_In_ CTSFTTSArray<TF_PRESERVEDKEY> *pTSFPreservedKeyTable);
 
     static HRESULT CompartmentCallback(_In_ void *pv, REFGUID guidCompartment);
     void PrivateCompartmentsUpdated(_In_ ITfThreadMgr *pThreadMgr);
@@ -133,7 +133,7 @@ private:
     CFile* GetDictionaryFile();
 
 private:
-	CTSFDayi* _pTextService;
+	CTSFTTS* _pTextService;
     struct _KEYSTROKE
     {
         UINT VirtualKey;
@@ -160,11 +160,11 @@ private:
     GUID _guidProfile;
     TfClientId  _tfClientId;
 
-    CTSFDayiArray<_KEYSTROKE> _KeystrokeComposition;
-    CTSFDayiArray<_KEYSTROKE> _KeystrokeCandidate;
-    CTSFDayiArray<_KEYSTROKE> _KeystrokeCandidateWildcard;
-    CTSFDayiArray<_KEYSTROKE> _KeystrokeCandidateSymbol;
-    CTSFDayiArray<_KEYSTROKE> _KeystrokeSymbol;
+    CTSFTTSArray<_KEYSTROKE> _KeystrokeComposition;
+    CTSFTTSArray<_KEYSTROKE> _KeystrokeCandidate;
+    CTSFTTSArray<_KEYSTROKE> _KeystrokeCandidateWildcard;
+    CTSFTTSArray<_KEYSTROKE> _KeystrokeCandidateSymbol;
+    CTSFTTSArray<_KEYSTROKE> _KeystrokeSymbol;
 
     // Preserved key data
     class XPreservedKey
@@ -175,7 +175,7 @@ private:
         BOOL UninitPreservedKey(_In_ ITfThreadMgr *pThreadMgr);
 
     public:
-        CTSFDayiArray<TF_PRESERVEDKEY> TSFPreservedKeyTable;
+        CTSFTTSArray<TF_PRESERVEDKEY> TSFPreservedKeyTable;
         GUID Guid;
         LPCWSTR Description;
     };

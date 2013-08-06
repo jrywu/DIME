@@ -9,7 +9,7 @@
 #include "resource.h"
 #include "BaseWindow.h"
 #include "define.h"
-#include "TSFDayiBaseStructure.h"
+#include "BaseStructure.h"
 using std::map;
 
 namespace Global {
@@ -30,10 +30,10 @@ HFONT defaultlFontHandle;				// Global font object we use everywhere
 
 
 //---------------------------------------------------------------------
-// TSFDayi CLSID
+// TSFTTS CLSID
 //---------------------------------------------------------------------
 // {1DE68A87-FF3B-46A0-8F80-46730B2491B1}
-extern const CLSID TSFDayiCLSID = 
+extern const CLSID TSFTTSCLSID = 
 { 0x1de68a87, 0xff3b, 0x46a0, { 0x8f, 0x80, 0x46, 0x73, 0xb, 0x24, 0x91, 0xb1 } };
 
 
@@ -41,7 +41,7 @@ extern const CLSID TSFDayiCLSID =
 // Profile GUID
 //---------------------------------------------------------------------
 // {36851834-92AD-4397-9F50-800384D5C24C}
-extern const GUID TSFDayiGuidProfile = 
+extern const GUID TSFTTSGuidProfile = 
 { 0x36851834, 0x92ad, 0x4397, { 0x9f, 0x50, 0x80, 0x3, 0x84, 0xd5, 0xc2, 0x4c } };
 
 
@@ -49,21 +49,21 @@ extern const GUID TSFDayiGuidProfile =
 // PreserveKey GUID
 //---------------------------------------------------------------------
 // {3C4173E2-D908-419B-BEE0-89FDF46456A2}
-extern const GUID TSFDayiGuidImeModePreserveKey = 
+extern const GUID TSFTTSGuidImeModePreserveKey = 
 { 0x3c4173e2, 0xd908, 0x419b, { 0xbe, 0xe0, 0x89, 0xfd, 0xf4, 0x64, 0x56, 0xa2 } };
 
 // {B9F1B6BA-CCCF-478F-B7C2-89B0D9442A38}
-extern const GUID TSFDayiGuidDoubleSingleBytePreserveKey = 
+extern const GUID TSFTTSGuidDoubleSingleBytePreserveKey = 
 { 0xb9f1b6ba, 0xcccf, 0x478f, { 0xb7, 0xc2, 0x89, 0xb0, 0xd9, 0x44, 0x2a, 0x38 } };
 
 //---------------------------------------------------------------------
 // Compartments
 //---------------------------------------------------------------------
 // {91FCB13F-0BA5-4D93-846C-E8A706BB5F2B}
-extern const GUID TSFDayiGuidCompartmentIMEMode = 
+extern const GUID TSFTTSGuidCompartmentIMEMode = 
 { 0x91fcb13f, 0xba5, 0x4d93, { 0x84, 0x6c, 0xe8, 0xa7, 0x6, 0xbb, 0x5f, 0x2b } };
 // {176AF217-E72C-4A24-8373-F90581786A5D}
-extern const GUID TSFDayiGuidCompartmentDoubleSingleByte = 
+extern const GUID TSFTTSGuidCompartmentDoubleSingleByte = 
 { 0x176af217, 0xe72c, 0x4a24, { 0x83, 0x73, 0xf9, 0x5, 0x81, 0x78, 0x6a, 0x5d } };
 
 
@@ -73,19 +73,19 @@ extern const GUID TSFDayiGuidCompartmentDoubleSingleByte =
 
 
 // {B9F1B6BA-CCCF-478F-B7C2-89B0D9442A38}
-extern const GUID TSFDayiGuidLangBarIMEMode = 
+extern const GUID TSFTTSGuidLangBarIMEMode = 
 { 0xb9f1b6ba, 0xcccf, 0x478f, { 0xb7, 0xc2, 0x89, 0xb0, 0xd9, 0x44, 0x2a, 0x38 } };
 
 // {FB007925-ACBE-4AF1-A98B-2701EB68A90B}
-extern const GUID TSFDayiGuidLangBarDoubleSingleByte = 
+extern const GUID TSFTTSGuidLangBarDoubleSingleByte = 
 { 0xfb007925, 0xacbe, 0x4af1, { 0xa9, 0x8b, 0x27, 0x1, 0xeb, 0x68, 0xa9, 0xb } };
 
 // {C1AD6968-5F10-4C73-9125-51A3C70F88A0}
-extern const GUID TSFDayiGuidDisplayAttributeInput = 
+extern const GUID TSFTTSGuidDisplayAttributeInput = 
 { 0xc1ad6968, 0x5f10, 0x4c73, { 0x91, 0x25, 0x51, 0xa3, 0xc7, 0xf, 0x88, 0xa0 } };
 
 
-extern const GUID TSFDayiGuidDisplayAttributeConverted = 
+extern const GUID TSFTTSGuidDisplayAttributeConverted = 
 { 0x62a68877, 0xc2c1, 0x41ed, { 0x9f, 0x80, 0x54, 0xde, 0xbd, 0x87, 0x9f, 0x74 } };
 
 
@@ -94,7 +94,7 @@ extern const GUID TSFDayiGuidDisplayAttributeConverted =
 //---------------------------------------------------------------------
 
 // {87D9FBA0-C152-475B-BD82-0A18DFA616A7}
-extern const GUID TSFDayiGuidCandUIElement = 
+extern const GUID TSFTTSGuidCandUIElement = 
 { 0x87d9fba0, 0xc152, 0x475b, { 0xbd, 0x82, 0xa, 0x18, 0xdf, 0xa6, 0x16, 0xa7 } };
 
 
@@ -131,15 +131,15 @@ extern const WCHAR LangbarDoubleSingleByteDescription[] = L"Character width";
 //---------------------------------------------------------------------
 // windows class / titile / atom
 //---------------------------------------------------------------------
-extern const WCHAR CandidateClassName[] = L"TSFDayi.CandidateWindow";
+extern const WCHAR CandidateClassName[] = L"TSFTTS.CandidateWindow";
 ATOM AtomCandidateWindow;
-extern const WCHAR CandidateShadowClassName[] = L"TSFDayi.CandidateShadowWindow";
+extern const WCHAR CandidateShadowClassName[] = L"TSFTTS.CandidateShadowWindow";
 ATOM AtomCandidateShadowWindow;
-extern const WCHAR CandidateScrollBarClassName[] = L"TSFDayi.CandidateScrollBarWindow";
+extern const WCHAR CandidateScrollBarClassName[] = L"TSFTTS.CandidateScrollBarWindow";
 ATOM AtomCandidateScrollBarWindow;
-extern const WCHAR NotifyClassName[] = L"TSFDayi.NotifyWindow";
+extern const WCHAR NotifyClassName[] = L"TSFTTS.NotifyWindow";
 ATOM AtomNotifyWindow;
-extern const WCHAR NotifyShadowClassName[] = L"TSFDayi.NotifyShadowWindow";
+extern const WCHAR NotifyShadowClassName[] = L"TSFTTS.NotifyShadowWindow";
 ATOM AtomNotifyShadowWindow;
 
 

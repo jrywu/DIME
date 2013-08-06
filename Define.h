@@ -12,17 +12,16 @@
 
 #define TEXTSERVICE_MODEL        L"Apartment"
 #define TEXTSERVICE_LANGID       MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_TRADITIONAL)
-#define TEXTSERVICE_DAYI_ICON_INDEX   -IDIS_TSFDayi
+#define TEXTSERVICE_DAYI_ICON_INDEX   -IDIS_DAYI
 
 
 #define IME_MODE_ON_ICON_INDEX      IDI_IME_MODE_ON
 #define IME_MODE_OFF_ICON_INDEX     IDI_IME_MODE_OFF
 #define IME_DOUBLE_ON_INDEX         IDI_DOUBLE_SINGLE_BYTE_ON
 #define IME_DOUBLE_OFF_INDEX        IDI_DOUBLE_SINGLE_BYTE_OFF
-#define IME_PUNCTUATION_ON_INDEX    IDI_PUNCTUATION_ON
-#define IME_PUNCTUATION_OFF_INDEX   IDI_PUNCTUATION_OFF
 
-#define TSFDayi_FONT_DEFAULT L"Microsoft JhengHei"
+
+#define TSFTTS_FONT_DEFAULT L"Microsoft JhengHei"
 
 //---------------------------------------------------------------------
 // defined Candidated Window
