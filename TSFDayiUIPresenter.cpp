@@ -21,29 +21,27 @@
 //
 //----------------------------------------------------------------------------
 
-CTSFDayiUIPresenter::CTSFDayiUIPresenter(_In_ CTSFDayi *pTextService, _In_ CCompositionProcessorEngine *pCompositionProcessorEngine) 
+CTSFDayiUIPresenter::CTSFDayiUIPresenter(_In_ CTSFDayi *pTextService, CCompositionProcessorEngine *pCompositionProcessorEngine) 
 	: CTfTextLayoutSink(pTextService)
 {
 
 	_pCompositionProcessorEngine = pCompositionProcessorEngine;
 
-    _pIndexRange = pCompositionProcessorEngine->GetCandidateListIndexRange();
+	_pIndexRange = pCompositionProcessorEngine->GetCandidateListIndexRange();
 
     _parentWndHandle = nullptr;
     _pCandidateWnd = nullptr;
 	_pNotifyWnd = nullptr;
 
-    _Category = CATEGORY_CANDIDATE; //Category;
+	_Category = CATEGORY_CANDIDATE;
 
     _updatedFlags = 0;
 
     _uiElementId = (DWORD)-1;
     _isShowMode = TRUE;   // store return value from BeginUIElement
-    _hideCandidateWindow = FALSE;     // Hide window flag from [Configuration] CandidateList.Phrase.HideWindow
 
     _pTextService = pTextService;
     _pTextService->AddRef();
-
 
     _refCount = 1;
 }
@@ -189,16 +187,9 @@ STDAPI CTSFDayiUIPresenter::Show(BOOL showCandidateWindow)
 HRESULT CTSFDayiUIPresenter::ToShowCandidateWindow()
 {
 	debugPrint(L"CTSFDayiUIPresenter::ToShowCandidateWindow()");
-    if (_hideCandidateWindow)
-    {
-        _pCandidateWnd->_Show(FALSE);
-    }
-    else
-    {
-        _MoveWindowToTextExt();
+    _MoveCandidateWindowToTextExt();
+    _pCandidateWnd->_Show(TRUE);
 
-        _pCandidateWnd->_Show(TRUE);
-    }
 
     return S_OK;
 }
@@ -631,7 +622,6 @@ DWORD_PTR CTSFDayiUIPresenter::_GetSelectedCandidateString(_Outptr_result_mayben
 
 BOOL CTSFDayiUIPresenter::_MoveCandidateSelection(_In_ int offSet)
 {
-	debugPrint(L"CTSFDayiUIPresenter::_MoveCandidateSelection(), offset = %d, offset");
     BOOL ret = _pCandidateWnd->_MoveSelection(offSet, TRUE);
     if (ret)
     {
@@ -706,16 +696,16 @@ BOOL CTSFDayiUIPresenter::_MoveCandidatePage(_In_ int offSet)
 //
 //----------------------------------------------------------------------------
 
-void CTSFDayiUIPresenter::_MoveWindowToTextExt()
+void CTSFDayiUIPresenter::_MoveCandidateWindowToTextExt()
 {
-
+	
     RECT rc;
 
     if (FAILED(_GetTextExt(&rc)))
     {
         return;
     }
-	debugPrint(L"CTSFDayiUIPresenter::_MoveWindowToTextExt(), rc.left = %d, rc.bottom = %d",rc.left, rc.bottom);
+
     _pCandidateWnd->_Move(rc.left, rc.bottom);
 }
 //+---------------------------------------------------------------------------
@@ -726,6 +716,8 @@ void CTSFDayiUIPresenter::_MoveWindowToTextExt()
 
 VOID CTSFDayiUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
 {
+	debugPrint(L"CTSFDayiUIPresenter::_LayoutDestroyNotification()");
+	
     RECT rectCandidate = {0, 0, 0, 0};
     POINT ptCandidate = {0, 0};
 
@@ -734,7 +726,6 @@ VOID CTSFDayiUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
     _pCandidateWnd->_Move(ptCandidate.x, ptCandidate.y);
 	_candLocation.x = ptCandidate.x;
 	_candLocation.y = ptCandidate.y;
-	debugPrint(L"CTSFDayiUIPresenter::_LayoutChangeNotification(), ptCandidate.x = %d, ptCandidate.y = %d", ptCandidate.x, ptCandidate.y);	
 }
 
 void CTSFDayiUIPresenter::GetCandLocation(POINT *lpPoint)
@@ -751,7 +742,6 @@ void CTSFDayiUIPresenter::GetCandLocation(POINT *lpPoint)
 
 VOID CTSFDayiUIPresenter::_LayoutDestroyNotification()
 {
-	debugPrint(L"CTSFDayiUIPresenter::_LayoutDestroyNotification()");
     _EndCandidateList();
 }
 
@@ -763,7 +753,6 @@ VOID CTSFDayiUIPresenter::_LayoutDestroyNotification()
 
 HRESULT CTSFDayiUIPresenter::_NotifyChangeNotification()
 {
-	debugPrint(L"CTSFDayiUIPresenter::_NotifyChangeNotification()");
 	return S_OK;
 }
 
@@ -775,7 +764,6 @@ HRESULT CTSFDayiUIPresenter::_NotifyChangeNotification()
 
 HRESULT CTSFDayiUIPresenter::_CandidateChangeNotification(_In_ enum CANDWND_ACTION action)
 {
-	debugPrint(L"CTSFDayiUIPresenter::_CandidateChangeNotification(), cand action = %d", action);
     HRESULT hr = E_FAIL;
 
     TfClientId tfClientId = _pTextService->_GetClientId();
@@ -895,7 +883,6 @@ HRESULT CTSFDayiUIPresenter::_UpdateUIElement()
 
 HRESULT CTSFDayiUIPresenter::OnSetThreadFocus()
 {
-	debugPrint(L"CTSFDayiUIPresenter::OnSetThreadFocus(), _isShowMode = %d ", _isShowMode);
     if (_isShowMode)
     {
         Show(TRUE);
@@ -911,7 +898,6 @@ HRESULT CTSFDayiUIPresenter::OnSetThreadFocus()
 
 HRESULT CTSFDayiUIPresenter::OnKillThreadFocus()
 {
-	debugPrint(L"CTSFDayiUIPresenter::OnKillThreadFocus(), _isShowMode = %d ", _isShowMode);
     if (_isShowMode)
     {
         Show(FALSE);
@@ -976,8 +962,7 @@ void CTSFDayiUIPresenter::AdviseUIChangedByArrowKey(_In_ KEYSTROKE_FUNCTION arro
 
 HRESULT CTSFDayiUIPresenter::BeginUIElement()
 {
-	
-
+	debugPrint(L"CTSFDayiUIPresenter::BeginUIElement(), _isShowMode = %d, _uiElementId = %d ", _isShowMode, _uiElementId);
     HRESULT hr = S_OK;
 
     ITfThreadMgr* pThreadMgr = _pTextService->_GetThreadMgr();
@@ -995,7 +980,6 @@ HRESULT CTSFDayiUIPresenter::BeginUIElement()
         pUIElementMgr->Release();
     }
 
-	debugPrint(L"CTSFDayiUIPresenter::BeginUIElement(), _isShowMode = %d, _uiElementId = %d ", _isShowMode, _uiElementId);
 Exit:
     return hr;
 }
@@ -1026,7 +1010,7 @@ Exit:
 
 HRESULT CTSFDayiUIPresenter::MakeNotifyWindow(_In_ ITfContext *pContextDocument)
 {
-	 HRESULT hr = S_OK;
+	HRESULT hr = S_OK;
 
 	if (nullptr == _pNotifyWnd)
     {
@@ -1038,17 +1022,13 @@ HRESULT CTSFDayiUIPresenter::MakeNotifyWindow(_In_ ITfContext *pContextDocument)
   
 	HWND parentWndHandle = nullptr;
     ITfContextView* pView = nullptr;
-    
+    if (SUCCEEDED(pContextDocument->GetActiveView(&pView)))
+    {
+        pView->GetWnd(&parentWndHandle);
+    }
+	
 	if (_pNotifyWnd->_GetUIWnd() == nullptr)
 	{
-		if(pContextDocument)
-		{
-			if (SUCCEEDED(pContextDocument->GetActiveView(&pView)))
-			{
-				pView->GetWnd(&parentWndHandle);
-			}
-		}
-		
 		if( !_pNotifyWnd->_Create(_pCompositionProcessorEngine->GetFontSize(), parentWndHandle))
 		{
 			hr = E_OUTOFMEMORY;
@@ -1060,51 +1040,55 @@ HRESULT CTSFDayiUIPresenter::MakeNotifyWindow(_In_ ITfContext *pContextDocument)
     
 }
 
-void CTSFDayiUIPresenter::SetNotifyText(_In_ CStringRange *pNotifyText)
-{
-	if (_pNotifyWnd)
-		_pNotifyWnd->_SetString(pNotifyText);
-}
-void CTSFDayiUIPresenter::ShowNotify(_In_ BOOL showMode, _In_opt_ int timeToHide)
-{
-	if (_pNotifyWnd)
-		_pNotifyWnd->_Show(showMode, timeToHide);
-}
-void CTSFDayiUIPresenter::ClearNotify()
-{
-	if (_pNotifyWnd)
+	
+	void CTSFDayiUIPresenter::SetNotifyText(_In_ CStringRange *pNotifyText)
 	{
-		_pNotifyWnd->_Clear();
-		_pNotifyWnd->_Show(FALSE);
+		if (_pNotifyWnd)
+			_pNotifyWnd->_SetString(pNotifyText);
 	}
-}
-void CTSFDayiUIPresenter::ShowNotifyText(_In_ ITfContext *pContextDocument, _In_ CStringRange *pNotifyText)
-{
-	if(SUCCEEDED(MakeNotifyWindow(pContextDocument)))
+	void CTSFDayiUIPresenter::ShowNotify(_In_ BOOL showMode, _In_opt_ int timeToHide)
 	{
-		ClearNotify();
-		SetNotifyText(pNotifyText);
-
-		
-		HWND parentWndHandle = nullptr;
-		ITfContextView* pView = nullptr;
-    
-		if(pContextDocument)
+		if (_pNotifyWnd)
+			_pNotifyWnd->_Show(showMode, timeToHide);
+	}
+	void CTSFDayiUIPresenter::ClearNotify()
+	{
+		if (_pNotifyWnd)
 		{
-			if (SUCCEEDED(pContextDocument->GetActiveView(&pView)))
-			{
-				pView->GetWnd(&parentWndHandle);
-			}
+			_pNotifyWnd->_Clear();
+			_pNotifyWnd->_Show(FALSE);
 		}
-		
-		POINT cursorPoint;
-		GetCaretPos(&cursorPoint);
-		MapWindowPoints(parentWndHandle, NULL, &cursorPoint, 1);
-		ShowNotify(TRUE, 1500);	//hide after 1.5 secconds
-		_pNotifyWnd->_Move(cursorPoint.x, cursorPoint.y);
-
 	}
-}
+	void CTSFDayiUIPresenter::ShowNotifyText(_In_ ITfContext *pContextDocument, _In_ CStringRange *pNotifyText)
+	{
+		if(SUCCEEDED(MakeNotifyWindow(pContextDocument)))
+		{
+			ClearNotify();
+			SetNotifyText(pNotifyText);
+	
+			
+			HWND parentWndHandle = nullptr;
+			ITfContextView* pView = nullptr;
+	    
+			if(pContextDocument)
+			{
+				if (SUCCEEDED(pContextDocument->GetActiveView(&pView)))
+				{
+					pView->GetWnd(&parentWndHandle);
+				}
+			}
+			
+			POINT cursorPoint;
+			GetCaretPos(&cursorPoint);
+			MapWindowPoints(parentWndHandle, NULL, &cursorPoint, 1);
+			ShowNotify(TRUE, 1500);	//hide after 1.5 secconds
+			_pNotifyWnd->_Move(cursorPoint.x, cursorPoint.y);
+	
+		}
+	}
+	
+	
+	
 
 
 
@@ -1126,13 +1110,13 @@ HRESULT CTSFDayiUIPresenter::MakeCandidateWindow(_In_ ITfContext *pContextDocume
 
     HWND parentWndHandle = nullptr;
     ITfContextView* pView = nullptr;
-    
-	if (!_pCandidateWnd->_Create( wndWidth, _pCompositionProcessorEngine->GetFontSize(), parentWndHandle))
+    if (SUCCEEDED(pContextDocument->GetActiveView(&pView)))
     {
-		if (SUCCEEDED(pContextDocument->GetActiveView(&pView)))
-		{
-			pView->GetWnd(&parentWndHandle);
-		}
+        pView->GetWnd(&parentWndHandle);
+    }
+
+	if (!_pCandidateWnd->_Create(wndWidth, _pCompositionProcessorEngine->GetFontSize(), parentWndHandle))
+    {
         hr = E_OUTOFMEMORY;
         goto Exit;
     }
@@ -1148,16 +1132,14 @@ void CTSFDayiUIPresenter::DisposeCandidateWindow()
         _pCandidateWnd->_Destroy();
 		 delete _pCandidateWnd;
 		 _pCandidateWnd = nullptr;
-	}
+    }
 }
 void CTSFDayiUIPresenter::DisposeNotifyWindow()
 {
-	
 	if (nullptr != _pNotifyWnd)
 	{
 		_pNotifyWnd->_Destroy();
 		delete _pNotifyWnd;
 		_pNotifyWnd = nullptr;
 	}
-	
 }

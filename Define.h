@@ -32,7 +32,7 @@
 #define CANDWND_BORDER_WIDTH			(2)
 #define CANDWND_NUM_COLOR				(RGB(0xB4, 0xB4, 0xB4))
 #define CANDWND_SELECTED_ITEM_COLOR		(RGB(0xFF, 0xFF, 0xFF))
-#define CANDWND_SELECTED_BK_COLOR		(RGB(0xA6, 0xA6, 0x00))
+#define CANDWND_SELECTED_BK_COLOR		(RGB(0x63, 0xB4, 0xFB)) //sky blue
 #define CANDWND_ITEM_COLOR				(RGB(0x00, 0x00, 0x00))
 
 //---------------------------------------------------------------------

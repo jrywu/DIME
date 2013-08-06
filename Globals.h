@@ -185,6 +185,7 @@ extern const WCHAR LangbarPunctuationDescription[];
 
 inline static void debugPrint(const WCHAR* format,...) 
 {
+
 	WCHAR wszAppData[MAX_PATH];
 
 	if (SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE))
@@ -199,7 +200,8 @@ inline static void debugPrint(const WCHAR* format,...)
 	
 
 	FILE *fp;
-	if (fp = _wfopen(wszDebugLogPath, L"a"))
+	_wfopen_s(&fp, wszDebugLogPath, L"a");
+	if(fp)
 	{
 		va_list args;
 		va_start (args, format);

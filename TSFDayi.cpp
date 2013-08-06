@@ -488,7 +488,7 @@ void CTSFDayi::OnKeyboardClosed()
 		_EndComposition(_pContext);
 	_DeleteCandidateList(FALSE, NULL);
 	CStringRange notifyText;
-	ShowNotifyText(_pContext,  &notifyText.Set(L"英文", 2));
+	ShowNotifyText(&notifyText.Set(L"英文", 2));
 }
 
 void CTSFDayi::OnKeyboardOpen()
@@ -496,7 +496,7 @@ void CTSFDayi::OnKeyboardOpen()
 	debugPrint(L"CTSFDayi::OnKeyboardOpen()\n");
 	// switching to Chinese mode
 	CStringRange notifyText;
-	ShowNotifyText(_pContext, &notifyText.Set(L"中文", 2));
+	ShowNotifyText(&notifyText.Set(L"中文", 2));
 	
 }
 
@@ -507,7 +507,7 @@ void CTSFDayi::OnSwitchedToFullShape()
 		_EndComposition(_pContext);
 	_DeleteCandidateList(FALSE, NULL);
 	CStringRange notifyText;
-	ShowNotifyText(_pContext, &notifyText.Set(L"全形", 2));
+	ShowNotifyText(&notifyText.Set(L"全形", 2));
 	
 }
 
@@ -518,16 +518,20 @@ void CTSFDayi::OnSwitchedToHalfShape()
 		_EndComposition(_pContext);
 	_DeleteCandidateList(FALSE, NULL);
 	CStringRange notifyText;
-	ShowNotifyText(_pContext, &notifyText.Set(L"半形", 2));
+	ShowNotifyText(&notifyText.Set(L"半形", 2));
 	
 }
 
 
-HRESULT CTSFDayi::ShowNotifyText(ITfContext *pContext, CStringRange *pNotifyText)
+HRESULT CTSFDayi::ShowNotifyText(CStringRange *pNotifyText)
 {
-	HRESULT hr = S_OK;
 	
-	/*
+	HRESULT hr = S_OK;
+
+	ITfThreadMgr* pThreadMgr = nullptr;
+    ITfDocumentMgr* pDocumentMgr = nullptr;
+    ITfContext* pContext = nullptr;
+	
 	if(_pTSFDayiUIPresenter == nullptr)
     {
 		_pTSFDayiUIPresenter = new (std::nothrow) CTSFDayiUIPresenter(this, _pCompositionProcessorEngine);
@@ -536,7 +540,26 @@ HRESULT CTSFDayi::ShowNotifyText(ITfContext *pContext, CStringRange *pNotifyText
             return E_OUTOFMEMORY;
         }	
     }
+	pThreadMgr = _GetThreadMgr();
+    if (nullptr == pThreadMgr)
+    {
+        goto Exit;
+    }
+
+    hr = pThreadMgr->GetFocus(&pDocumentMgr);
+    if (FAILED(hr))
+    {
+        goto Exit;
+    }
+
+    hr = pDocumentMgr->GetTop(&pContext);
+    if (FAILED(hr))
+    {
+        pDocumentMgr->Release();
+        goto Exit;
+    }
+
     _pTSFDayiUIPresenter->ShowNotifyText(pContext, pNotifyText);
-	*/
+Exit:
 	return hr;
 }

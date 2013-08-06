@@ -35,7 +35,7 @@ class CTSFDayiUIPresenter :
     public ITfIntegratableCandidateListUIElement
 {
 public:
-    CTSFDayiUIPresenter(_In_ CTSFDayi *pTextService, _In_ CCompositionProcessorEngine *pCompositionProcessorEngine);
+    CTSFDayiUIPresenter(_In_ CTSFDayi *pTextService, CCompositionProcessorEngine *pCompositionProcessorEngine);
     virtual ~CTSFDayiUIPresenter();
 
     // IUnknown
@@ -86,7 +86,7 @@ public:
 	BOOL _SetCandidateSelection(_In_ int selectedIndex, _In_opt_ BOOL isNotify = TRUE);
     BOOL _MoveCandidatePage(_In_ int offSet);
 
-    void _MoveWindowToTextExt();
+    void _MoveCandidateWindowToTextExt();
 
     // CTfTextLayoutSink
     virtual VOID _LayoutChangeNotification(_In_ RECT *lpRect);
@@ -101,7 +101,6 @@ public:
 
 	void GetCandLocation(_Out_ POINT *lpPoint);
 
-	// notify window
 	HRESULT MakeNotifyWindow(_In_ ITfContext *pContextDocument);
 	void SetNotifyText(_In_ CStringRange *pNotifyText);
 	void ShowNotify(_In_ BOOL showMode, _In_opt_ int timeToHide = -1);
@@ -119,6 +118,7 @@ private:
     friend COLORREF _AdjustTextColor(_In_ COLORREF crColor, _In_ COLORREF crBkColor);
 
     HRESULT _UpdateUIElement();
+	
 
     HRESULT ToShowCandidateWindow();
 
@@ -129,8 +129,8 @@ private:
 
     HRESULT MakeCandidateWindow(_In_ ITfContext *pContextDocument, _In_ UINT wndWidth);
 	
-    void DisposeNotifyWindow();
-	void DisposeCandidateWindow();
+    void DisposeCandidateWindow();
+	void DisposeNotifyWindow();
 
     void AddCandidateToTSFDayiUI(_In_ CTSFDayiArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode);
 
@@ -140,7 +140,7 @@ protected:
     CCandidateWindow *_pCandidateWnd;
 	CNotifyWindow *_pNotifyWnd;
     BOOL _isShowMode;
-    BOOL _hideCandidateWindow;
+
 
 private:
 	CCompositionProcessorEngine *_pCompositionProcessorEngine;  // to retrieve user settings
@@ -157,7 +157,7 @@ private:
 
 //////////////////////////////////////////////////////////////////////
 //
-// candidate key handler methods
+// CTSFDayi candidate key handler methods
 //
 //////////////////////////////////////////////////////////////////////
 

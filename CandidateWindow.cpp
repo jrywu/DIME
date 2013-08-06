@@ -99,7 +99,7 @@ BOOL CCandidateWindow::_CreateMainWindow(_In_opt_ HWND parentWndHandle)
     _SetUIWnd(this);
 
 	if (!CBaseWindow::_Create(Global::AtomCandidateWindow,
-        WS_EX_TOPMOST |//  WS_EX_LAYERED |
+        WS_EX_TOPMOST |  WS_EX_LAYERED |
 		WS_EX_TOOLWINDOW, 
         WS_BORDER | WS_POPUP,
         NULL, 0, 0, parentWndHandle))
@@ -107,7 +107,7 @@ BOOL CCandidateWindow::_CreateMainWindow(_In_opt_ HWND parentWndHandle)
         return FALSE;
     }
 	
-	//SetLayeredWindowAttributes(_GetWnd(), 0,  (255 * 90) / 100, LWA_ALPHA);
+	SetLayeredWindowAttributes(_GetWnd(), 0,  (255 * 90) / 100, LWA_ALPHA);
 
     return TRUE;
 }

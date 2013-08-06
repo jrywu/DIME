@@ -135,21 +135,8 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CTSFDayi *pTextSer
 
     _candidateListPhraseModifier = 0;
 
-    
-	// send a shift key for the notify window to catch pContext and showing in current caret position 
-	
-	INPUT ip;
-	ip.type = INPUT_KEYBOARD;
-    ip.ki.wScan = 0x2a; // hardware scan code for key
-    ip.ki.time = 0;
-    ip.ki.dwExtraInfo = 0;
-	ip.ki.wVk = VK_LSHIFT; // virtual-key code for the shift key
-    ip.ki.dwFlags = 0; // 0 for key press
-    SendInput(1, &ip, sizeof(INPUT));
-	ip.ki.dwFlags = KEYEVENTF_KEYUP; // 0 for key press
-	SendInput(1, &ip, sizeof(INPUT));
+	InitKeyStrokeTable();
 
-    InitKeyStrokeTable();
 }
 
 //+---------------------------------------------------------------------------

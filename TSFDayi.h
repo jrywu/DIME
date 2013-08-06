@@ -153,7 +153,7 @@ public:
 	void OnSwitchedToFullShape();
 	void OnSwitchedToHalfShape();
 
-	HRESULT ShowNotifyText(ITfContext *pContext, CStringRange *pNotifyText);
+	HRESULT ShowNotifyText(CStringRange *pNotifyText);
 
 private:
     // functions for the composition object.
