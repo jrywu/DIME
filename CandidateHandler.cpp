@@ -1,4 +1,4 @@
-#define DEBUG_PRINT
+//#define DEBUG_PRINT
 
 #include "TSFDayi.h"
 #include "TSFDayiBaseStructure.h"
@@ -89,6 +89,7 @@ HRESULT CTSFDayi::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pCont
 	if (FAILED(hr))	return hr;
 	
 	_HandleComplete(ec, pContext);
+	//_TerminateComposition(ec, pContext);
 	
 	
 
@@ -110,19 +111,27 @@ HRESULT CTSFDayi::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pCont
 		if (!_IsComposing())
 			_StartComposition(pContext);  //StartCandidateList require a valid selection from a valid pComposition to determine the location to show the candidate window
 		_AddComposingAndChar(ec, pContext, &emptyComposition.Set(L" ",1)); 
-			if(SUCCEEDED(_CreateAndStartCandidate(_pCompositionProcessorEngine, ec, pContext)))
-		{		
+		
+	
+		if(SUCCEEDED(_CreateAndStartCandidate(_pCompositionProcessorEngine, ec, pContext)))
+		{	
+			_pTSFDayiUIPresenter->_ClearCandidateList();
 			_pTSFDayiUIPresenter->_SetCandidateTextColor(RGB(0, 0x80, 0), GetSysColor(COLOR_WINDOW));    // Text color is green
 			_pTSFDayiUIPresenter->_SetCandidateFillColor((HBRUSH)(COLOR_WINDOW+1));    // Background color is window
 			_pTSFDayiUIPresenter->_SetCandidateText(&candidatePhraseList, TRUE);
 			_pTSFDayiUIPresenter->_SetCandidateSelection(-1, FALSE); // set selected index to -1 if showing phrase candidates
-			_phraseCandShowing = TRUE;
-			debugPrint(L"CTSFDayi::_HandleCandidateWorker(); _phraseCandShowing = TRUE. phrase cand is showing\n");
-
+			_phraseCandShowing = TRUE;  //_phraseCandShowing = TRUE. phrase cand is showing
+			_candidateMode = CANDIDATE_PHRASE;
+			_isCandidateWithWildcard = FALSE;	
 		}
 	}
-	_candidateMode = CANDIDATE_PHRASE;
-	_isCandidateWithWildcard = FALSE;
+	else
+	{
+		if(_pTSFDayiUIPresenter)
+			_pTSFDayiUIPresenter->_EndCandidateList();
+	}
+		
+	
 	
 	
 Exit:
@@ -254,30 +263,30 @@ HRESULT CTSFDayi::_CreateAndStartCandidate(_In_ CCompositionProcessorEngine *pCo
 	debugPrint(L"CTSFDayi::_CreateAndStartCandidate(), _candidateMode = %d", _candidateMode);
     HRESULT hr = S_OK;
 
-	if (((_candidateMode == CANDIDATE_PHRASE) && (_pTSFDayiUIPresenter))
-        || ((_candidateMode == CANDIDATE_NONE) && (_pTSFDayiUIPresenter)))
-    {
-        // Recreate candidate list
-        _pTSFDayiUIPresenter->_EndCandidateList();
-        delete _pTSFDayiUIPresenter;
-        _pTSFDayiUIPresenter = nullptr;
-
-        _candidateMode = CANDIDATE_NONE;
-        _isCandidateWithWildcard = FALSE;
-
-    }
-
-    if (_pTSFDayiUIPresenter == nullptr)
+	
+	if (_pTSFDayiUIPresenter == nullptr)
     {
         _pTSFDayiUIPresenter = new (std::nothrow) CTSFDayiUIPresenter(this, pCompositionProcessorEngine);
         if (!_pTSFDayiUIPresenter)
         {
             return E_OUTOFMEMORY;
         }
+	}
+	
+	if (//((_candidateMode == CANDIDATE_PHRASE) && (_pTSFDayiUIPresenter)) ||
+         ((_candidateMode == CANDIDATE_NONE) && (_pTSFDayiUIPresenter))) 
+    {
+    /*    // Recreate candidate list
+        delete _pTSFDayiUIPresenter;
+        _pTSFDayiUIPresenter = nullptr;
 
-		_candidateMode = CANDIDATE_INCREMENTAL;
+        _candidateMode = CANDIDATE_NONE;
         _isCandidateWithWildcard = FALSE;
+	}*/
 
+	
+    
+	
         // we don't cache the document manager object. So get it from pContext.
         ITfDocumentMgr* pDocumentMgr = nullptr;
         if (SUCCEEDED(pContext->GetDocumentMgr(&pDocumentMgr)))

@@ -3,7 +3,7 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-#define DEBUG_PRINT
+//#define DEBUG_PRINT
 
 #include "Private.h"
 #include "TfTextLayoutSink.h"
@@ -97,7 +97,7 @@ STDAPI CTfTextLayoutSink::OnLayoutChange(_In_ ITfContext *pContext, TfLayoutCode
     {
     case TF_LC_CHANGE:
         {
-			debugPrint(L"CTfTextLayoutSink::OnLayoutChange() TF_LC_CHANGE\n");
+			debugPrint(L"CTfTextLayoutSink::OnLayoutChange() TF_LC_CHANGE");
             CGetTextExtentEditSession* pEditSession = nullptr;
             pEditSession = new (std::nothrow) CGetTextExtentEditSession(_pTextService, pContext, pContextView, _pRangeComposition, this);
             if (nullptr != (pEditSession))
@@ -111,7 +111,7 @@ STDAPI CTfTextLayoutSink::OnLayoutChange(_In_ ITfContext *pContext, TfLayoutCode
         break;
 
     case TF_LC_DESTROY:
-		debugPrint(L"CTfTextLayoutSink::OnLayoutChange() TF_LC_DESTROY\n");
+		debugPrint(L"CTfTextLayoutSink::OnLayoutChange() TF_LC_DESTROY");
         _LayoutDestroyNotification();
         break;
 

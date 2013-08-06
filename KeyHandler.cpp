@@ -3,7 +3,7 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-#define DEBUG_PRINT
+//#define DEBUG_PRINT
 
 #include "Private.h"
 #include "Globals.h"
@@ -184,11 +184,14 @@ HRESULT CTSFDayi::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine
 
 		if (candidateList.Count())
 		{
+			
 			hr = _CreateAndStartCandidate(pCompositionProcessorEngine, ec, pContext);
 			if (SUCCEEDED(hr))
 			{
 				_pTSFDayiUIPresenter->_ClearCandidateList();
 				_pTSFDayiUIPresenter->_SetCandidateText(&candidateList, TRUE);
+				_candidateMode = CANDIDATE_INCREMENTAL;
+				_isCandidateWithWildcard = FALSE;
 			}
 
 
@@ -200,10 +203,13 @@ HRESULT CTSFDayi::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine
 		}
 		else if (readingStrings.Count() && isWildcardIncluded)
 		{
+			
 			hr = _CreateAndStartCandidate(pCompositionProcessorEngine, ec, pContext);
 			if (SUCCEEDED(hr))
 			{
 				_pTSFDayiUIPresenter->_ClearCandidateList();
+				_candidateMode = CANDIDATE_INCREMENTAL;
+				_isCandidateWithWildcard = FALSE;
 			}
 		}
 
@@ -303,13 +309,14 @@ HRESULT CTSFDayi::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pC
     int nCount = candidateList.Count();
     if (nCount)
     {
-	/*	 if (SUCCEEDED(_CreateAndStartCandidate(pCompositionProcessorEngine, ec, pContext)))
+		 if (SUCCEEDED(_CreateAndStartCandidate(pCompositionProcessorEngine, ec, pContext)))
 		 {
 			_candidateMode = CANDIDATE_ORIGINAL;
 			 _isCandidateWithWildcard = isWildcardSearch;
+			 _pTSFDayiUIPresenter->_ClearCandidateList();
 			 _pTSFDayiUIPresenter->_SetCandidateText(&candidateList, FALSE);
 		 }
-		 */
+		 /*
 		if (_pTSFDayiUIPresenter)
         {
             _pTSFDayiUIPresenter->_EndCandidateList();
@@ -353,6 +360,7 @@ HRESULT CTSFDayi::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pC
         {
             _pTSFDayiUIPresenter->_SetCandidateText(&candidateList, FALSE);
         }
+		*/
     }
 	if(nCount==1 )  //finalized with the only candidate without showing cand.
 	{

@@ -212,7 +212,7 @@ inline static void debugPrint(const WCHAR* format,...)
 	}
 }
 #else
-    inline static void debugPrint(const WCHAR* format,...) {}
+    inline static void debugPrint(const WCHAR* format,...) {format;}
 #endif
 
 

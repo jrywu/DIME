@@ -3,7 +3,7 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-#define DEBUG_PRINT
+//#define DEBUG_PRINT
 #include <Shlobj.h>
 #include <Shlwapi.h>
 #include "Private.h"

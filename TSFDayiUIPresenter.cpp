@@ -3,7 +3,7 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-#define DEBUG_PRINT
+//#define DEBUG_PRINT
 
 #include "Private.h"
 #include "CandidateWindow.h"
@@ -42,6 +42,7 @@ CTSFDayiUIPresenter::CTSFDayiUIPresenter(_In_ CTSFDayi *pTextService, CCompositi
     _pTextService->AddRef();
 
     _refCount = 1;
+
 }
 
 //+---------------------------------------------------------------------------
@@ -304,7 +305,7 @@ STDAPI CTSFDayiUIPresenter::GetString(UINT uIndex, BSTR *pbstr)
     candidateLen = _pCandidateWnd->_GetCandidateString(uIndex, &pCandidateString);
 
     *pbstr = (candidateLen == 0) ? nullptr : SysAllocStringLen(pCandidateString, candidateLen);
-	debugPrint(L"CTSFDayiUIPresenter::GetString(), uIndex = %d, pbstr = %s", uIndex, pbstr);
+	//debugPrint(L"CTSFDayiUIPresenter::GetString(), uIndex = %d, pbstr = %s", uIndex, pbstr);  
     return S_OK;
 }
 
@@ -480,7 +481,7 @@ STDAPI CTSFDayiUIPresenter::FinalizeExactCompositionString()
 
 HRESULT CTSFDayiUIPresenter::_StartCandidateList(TfClientId tfClientId, _In_ ITfDocumentMgr *pDocumentMgr, _In_ ITfContext *pContextDocument, TfEditCookie ec, _In_ ITfRange *pRangeComposition, UINT wndWidth)
 {
-	debugPrint(L"CTSFDayiUIPresenter::_StartCandidateList()\n");
+	debugPrint(L"\nCTSFDayiUIPresenter::_StartCandidateList()");
 	pDocumentMgr;tfClientId;
     HRESULT hr = E_FAIL;
 	CStringRange notify;
@@ -512,6 +513,7 @@ Exit:
     {
         _EndCandidateList();
     }
+	debugPrint(L"CTSFDayiUIPresenter::_StartCandidateList(), hresult = %d/n", hr);
     return hr;
 }
 
@@ -524,11 +526,15 @@ Exit:
 void CTSFDayiUIPresenter::_EndCandidateList()
 {
 	debugPrint(L"CTSFDayiUIPresenter::_EndCandidateList()");
-    EndUIElement();
+    
+	EndUIElement();
+	_ClearCandidateList();
+	_UpdateUIElement();
 
     DisposeCandidateWindow();
 
     _EndLayout();
+
 }
 
 //+---------------------------------------------------------------------------
@@ -757,7 +763,7 @@ void CTSFDayiUIPresenter::GetCandLocation(POINT *lpPoint)
 VOID CTSFDayiUIPresenter::_LayoutDestroyNotification()
 {
 	debugPrint(L"CTSFDayiUIPresenter::_LayoutDestroyNotification()");
-    //_EndCandidateList();
+    _EndCandidateList();
 }
 
 //+---------------------------------------------------------------------------
@@ -869,7 +875,7 @@ HRESULT CTSFDayiUIPresenter::_NotifyWndCallback(_In_ void *pv)
 
 HRESULT CTSFDayiUIPresenter::_UpdateUIElement()
 {
-	debugPrint(L"CTSFDayiUIPresenter::_UpdateUIElement()");
+	
     HRESULT hr = S_OK;
 
     ITfThreadMgr* pThreadMgr = _pTextService->_GetThreadMgr();
@@ -886,8 +892,8 @@ HRESULT CTSFDayiUIPresenter::_UpdateUIElement()
         pUIElementMgr->UpdateUIElement(_uiElementId);
         pUIElementMgr->Release();
     }
-
-    return S_OK;
+	debugPrint(L"CTSFDayiUIPresenter::_UpdateUIElement(), hresult = %d", hr);
+    return hr;
 }
 
 //+---------------------------------------------------------------------------
@@ -898,6 +904,7 @@ HRESULT CTSFDayiUIPresenter::_UpdateUIElement()
 
 HRESULT CTSFDayiUIPresenter::OnSetThreadFocus()
 {
+	debugPrint(L"CTSFDayiUIPresenter::OnSetThreadFocus()");
     if (_isShowMode)
     {
         Show(TRUE);
@@ -913,10 +920,12 @@ HRESULT CTSFDayiUIPresenter::OnSetThreadFocus()
 
 HRESULT CTSFDayiUIPresenter::OnKillThreadFocus()
 {
+	debugPrint(L"CTSFDayiUIPresenter::OnSetThreadFocus()");
     if (_isShowMode)
     {
         Show(FALSE);
     }
+
     return S_OK;
 }
 
@@ -977,8 +986,7 @@ void CTSFDayiUIPresenter::AdviseUIChangedByArrowKey(_In_ KEYSTROKE_FUNCTION arro
 
 HRESULT CTSFDayiUIPresenter::BeginUIElement()
 {
-	debugPrint(L"CTSFDayiUIPresenter::BeginUIElement(), _isShowMode = %d, _uiElementId = %d ", _isShowMode, _uiElementId);
-    HRESULT hr = S_OK;
+	HRESULT hr = S_OK;
 
     ITfThreadMgr* pThreadMgr = _pTextService->_GetThreadMgr();
     if (nullptr ==pThreadMgr)
@@ -996,12 +1004,14 @@ HRESULT CTSFDayiUIPresenter::BeginUIElement()
     }
 
 Exit:
+	debugPrint(L"CTSFDayiUIPresenter::BeginUIElement(), _isShowMode = %d, _uiElementId = %d, hresult = %d"
+		, _isShowMode, _uiElementId, hr);
     return hr;
 }
 
 HRESULT CTSFDayiUIPresenter::EndUIElement()
 {
-	debugPrint(L"CTSFDayiUIPresenter::EndUIElement()");
+	debugPrint(L"CTSFDayiUIPresenter::EndUIElement(), _uiElementId = %d ", _uiElementId);
     HRESULT hr = S_OK;
 
     ITfThreadMgr* pThreadMgr = _pTextService->_GetThreadMgr();
@@ -1020,6 +1030,7 @@ HRESULT CTSFDayiUIPresenter::EndUIElement()
     }
 
 Exit:
+	debugPrint(L"CTSFDayiUIPresenter::EndUIElement(), hresult = %d ", hr);
     return hr;
 }
 
