@@ -39,20 +39,10 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CTSFTTS *pTextServ
     _pTTSDictionaryFile = nullptr;
 	_pCINDictionaryFile = nullptr;
 
-    _langid = 0xffff;
-    _guidProfile = GUID_NULL;
+   
     _tfClientId = TF_CLIENTID_NULL;
 
-	_pLanguageBar_IMEModeW8 = nullptr;
-    _pLanguageBar_IMEMode = nullptr;
-    _pLanguageBar_DoubleSingleByte = nullptr;
-
-
-    _pCompartmentConversion = nullptr;
-	_pCompartmentIMEModeEventSink = nullptr;
-    _pCompartmentKeyboardOpenEventSink = nullptr;
-    _pCompartmentConversionEventSink = nullptr;
-    _pCompartmentDoubleSingleByteEventSink = nullptr;
+	
  
     _hasWildcardIncludedInKeystrokeBuffer = FALSE;
 
@@ -94,56 +84,7 @@ CCompositionProcessorEngine::~CCompositionProcessorEngine()
 	}
 	_pTableDictionaryEngine = nullptr;
 
-	if (_pLanguageBar_IMEModeW8 && Global::isWindows8)
-    {
-        _pLanguageBar_IMEModeW8->CleanUp();
-        _pLanguageBar_IMEModeW8->Release();
-        _pLanguageBar_IMEModeW8 = nullptr;
-    }
-
-
-    if (_pLanguageBar_IMEMode)
-    {
-        _pLanguageBar_IMEMode->CleanUp();
-        _pLanguageBar_IMEMode->Release();
-        _pLanguageBar_IMEMode = nullptr;
-    }
-    if (_pLanguageBar_DoubleSingleByte)
-    {
-        _pLanguageBar_DoubleSingleByte->CleanUp();
-        _pLanguageBar_DoubleSingleByte->Release();
-        _pLanguageBar_DoubleSingleByte = nullptr;
-    }
-
-    if (_pCompartmentConversion)
-    {
-        delete _pCompartmentConversion;
-        _pCompartmentConversion = nullptr;
-    }
-	if (_pCompartmentKeyboardOpenEventSink && Global::isWindows8)
-    {
-        _pCompartmentKeyboardOpenEventSink->_Unadvise();
-        delete _pCompartmentKeyboardOpenEventSink;
-        _pCompartmentKeyboardOpenEventSink = nullptr;
-    }
-	if (_pCompartmentIMEModeEventSink)
-    {
-        _pCompartmentIMEModeEventSink->_Unadvise();
-        delete _pCompartmentIMEModeEventSink;
-        _pCompartmentIMEModeEventSink = nullptr;
-    }
-    if (_pCompartmentConversionEventSink)
-    {
-        _pCompartmentConversionEventSink->_Unadvise();
-        delete _pCompartmentConversionEventSink;
-        _pCompartmentConversionEventSink = nullptr;
-    }
-    if (_pCompartmentDoubleSingleByteEventSink)
-    {
-        _pCompartmentDoubleSingleByteEventSink->_Unadvise();
-        delete _pCompartmentDoubleSingleByteEventSink;
-        _pCompartmentDoubleSingleByteEventSink = nullptr;
-    }
+	
 
 	if (_pTTSDictionaryFile)
     {
@@ -158,47 +99,6 @@ CCompositionProcessorEngine::~CCompositionProcessorEngine()
     }
 }
 
-//+---------------------------------------------------------------------------
-//
-// SetupLanguageProfile
-//
-// Setup language profile for Composition Processor Engine.
-// param
-//     [in] LANGID langid = Specify language ID
-//     [in] GUID guidLanguageProfile - Specify GUID language profile which GUID is as same as Text Service Framework language profile.
-//     [in] ITfThreadMgr - pointer ITfThreadMgr.
-//     [in] tfClientId - TfClientId value.
-//     [in] isSecureMode - secure mode
-// returns
-//     If setup succeeded, returns true. Otherwise returns false.
-// N.B. For reverse conversion, ITfThreadMgr is NULL, TfClientId is 0 and isSecureMode is ignored.
-//+---------------------------------------------------------------------------
-
-BOOL CCompositionProcessorEngine::SetupLanguageProfile(LANGID langid, REFGUID guidLanguageProfile, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, BOOL isSecureMode, BOOL isComLessMode)
-{
-    BOOL ret = TRUE;
-    if ((tfClientId == 0) && (pThreadMgr == nullptr))
-    {
-        ret = FALSE;
-        goto Exit;
-    }
-
-    _isComLessMode = isComLessMode;
-    _langid = langid;
-    _guidProfile = guidLanguageProfile;
-    _tfClientId = tfClientId;
-
-    SetupPreserved(pThreadMgr, tfClientId);	
-	InitializeTSFTTSCompartment(pThreadMgr, tfClientId);
-    SetupLanguageBar(pThreadMgr, tfClientId, isSecureMode);
-    SetupKeystroke();
-    SetupConfiguration();
-    SetupDictionaryFile();
-	loadConfig();
-    SetDefaultCandidateTextFont();
-Exit:
-    return ret;
-}
 
 //+---------------------------------------------------------------------------
 //
@@ -422,7 +322,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFTTSArray<CCandida
 				{   //append the candidate items got with 3codemode wildcard string to the end of exact match items.
 					for(UINT i = 0; i < wCandidateList.Count(); i++)
 					{
-						if(!CStringRange::WildcardCompare(GetLocale(), &wildcardSearch, &(wCandidateList.GetAt(i)->_FindKeyCode)))
+						if(!CStringRange::WildcardCompare(_pTextService->GetLocale(), &wildcardSearch, &(wCandidateList.GetAt(i)->_FindKeyCode)))
 						{
 							CCandidateListItem* pLI = nullptr;
 							pLI = pCandidateList->Append();
@@ -524,7 +424,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFTTSArray<CCandida
 			{   //append the candidate items got with 3codemode wildcard string to the end of exact match items.
 				for(UINT i = 0; i < wCandidateList.Count(); i++)
 				{
-					if(!(CStringRange::Compare(GetLocale(), &_keystrokeBuffer, &(wCandidateList.GetAt(i)->_FindKeyCode)) == CSTR_EQUAL))
+					if(!(CStringRange::Compare(_pTextService->GetLocale(), &_keystrokeBuffer, &(wCandidateList.GetAt(i)->_FindKeyCode)) == CSTR_EQUAL))
 					{
 						CCandidateListItem* pLI = nullptr;
 						pLI = pCandidateList->Append();
@@ -1019,7 +919,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 	}
 	else
 	{
-		_pTTSTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(GetLocale(), _pTTSDictionaryFile, L'=', this); //TTS file use '=' as delimiter
+		_pTTSTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pTTSDictionaryFile, L'=', this); //TTS file use '=' as delimiter
 		if (!_pTTSTableDictionaryEngine)  goto ErrorExit;
 		_pTTSTableDictionaryEngine->ParseConfig(); //parse config first.
 		_pTableDictionaryEngine = _pTTSTableDictionaryEngine;  //set TTS as default dictionary engine
@@ -1039,7 +939,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 				_pCINDictionaryFile = new (std::nothrow) CFileMapping();
 				if ((_pCINDictionaryFile)->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
 				{
-					_pCINTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(GetLocale(), _pCINDictionaryFile, L'\t', this); //cin files use tab as delimiter
+					_pCINTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pCINDictionaryFile, L'\t', this); //cin files use tab as delimiter
 
 					if (_pCINTableDictionaryEngine)  
 					{
@@ -1101,7 +1001,7 @@ VOID CCompositionProcessorEngine::loadConfig()
 			if ((iniDictionaryFile)->CreateFile(pwszINIFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
 			{
 				CTableDictionaryEngine * iniTableDictionaryEngine;
-				iniTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(GetLocale(), iniDictionaryFile,L'=', this);
+				iniTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), iniDictionaryFile,L'=', this);
 				if (iniTableDictionaryEngine)  
 					iniTableDictionaryEngine->ParseConfig(); //parse config first.
 				delete iniTableDictionaryEngine; // delete after config.ini config are pasrsed
@@ -1259,28 +1159,7 @@ void CCompositionProcessorEngine::SetInitialCandidateListRange()
     }
 }
 
-void CCompositionProcessorEngine::SetDefaultCandidateTextFont()
-{
-    // Candidate Text Font
-    if (Global::defaultlFontHandle != nullptr)
-	{
-		DeleteObject ((HGDIOBJ) Global::defaultlFontHandle);
-		Global::defaultlFontHandle = nullptr;
-	}
-	if (Global::defaultlFontHandle == nullptr)
-    {
-		WCHAR fontName[50] = {'\0'}; 
-		LoadString(Global::dllInstanceHandle, IDS_DEFAULT_FONT, fontName, 50);
-		Global::defaultlFontHandle = CreateFont(-MulDiv(_fontSize, GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72), 0, 0, 0, FW_MEDIUM, 0, 0, 0, 0, 0, 0, 0, 0, fontName);
-        if (!Global::defaultlFontHandle)
-        {
-			LOGFONT lf;
-			SystemParametersInfo(SPI_GETICONTITLELOGFONT, sizeof(LOGFONT), &lf, 0);
-            // Fall back to the default GUI font on failure.
-            Global::defaultlFontHandle = CreateFont(-MulDiv(_fontSize, GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72), 0, 0, 0, FW_MEDIUM, 0, 0, 0, 0, 0, 0, 0, 0, lf.lfFaceName);
-        }
-    }
-}
+
 
 //////////////////////////////////////////////////////////////////////
 //

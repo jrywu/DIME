@@ -48,15 +48,15 @@ STDAPI CTSFTTS::OnActivated(_In_ REFCLSID clsid, _In_ REFGUID guidProfile, _In_ 
 
     if (isActivated)
     {
-        _pCompositionProcessorEngine->ShowAllLanguageBarIcons();
+        ShowAllLanguageBarIcons();
 
-        _pCompositionProcessorEngine->ConversionModeCompartmentUpdated(_pThreadMgr);
+        ConversionModeCompartmentUpdated(_pThreadMgr);
     }
     else
     {
         _DeleteCandidateList(FALSE, nullptr);
 
-        _pCompositionProcessorEngine->HideAllLanguageBarIcons();
+        HideAllLanguageBarIcons();
     }
 
     return S_OK;

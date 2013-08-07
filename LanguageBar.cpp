@@ -64,7 +64,7 @@ void CTSFTTS::_UpdateLanguageBarOnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus)
     CCompositionProcessorEngine* pCompositionProcessorEngine = nullptr;
     pCompositionProcessorEngine = _pCompositionProcessorEngine;
 
-    pCompositionProcessorEngine->SetLanguageBarStatus(TF_LBI_STATUS_DISABLED, needDisableButtons);
+    SetLanguageBarStatus(TF_LBI_STATUS_DISABLED, needDisableButtons);
 }
 
 //+---------------------------------------------------------------------------
@@ -73,7 +73,7 @@ void CTSFTTS::_UpdateLanguageBarOnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus)
 //
 //----------------------------------------------------------------------------
 
-BOOL CCompositionProcessorEngine::InitLanguageBar(_In_ CLangBarItemButton *pLangBarItemButton, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, REFGUID guidCompartment)
+BOOL CTSFTTS::InitLanguageBar(_In_ CLangBarItemButton *pLangBarItemButton, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, REFGUID guidCompartment)
 {
     if (pLangBarItemButton)
     {
@@ -94,7 +94,7 @@ BOOL CCompositionProcessorEngine::InitLanguageBar(_In_ CLangBarItemButton *pLang
 //
 //----------------------------------------------------------------------------
 
-void CCompositionProcessorEngine::SetupLanguageBar(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, BOOL isSecureMode)
+void CTSFTTS::SetupLanguageBar(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, BOOL isSecureMode)
 {
     DWORD dwEnable = 1;
 	//win8 only to show IME
@@ -146,7 +146,7 @@ void CCompositionProcessorEngine::SetupLanguageBar(_In_ ITfThreadMgr *pThreadMgr
 //
 //----------------------------------------------------------------------------
 
-void CCompositionProcessorEngine::CreateLanguageBarButton(DWORD dwEnable, GUID guidLangBar, _In_z_ LPCWSTR pwszDescriptionValue, _In_z_ LPCWSTR pwszTooltipValue, DWORD dwOnIconIndex, DWORD dwOffIconIndex, _Outptr_result_maybenull_ CLangBarItemButton **ppLangBarItemButton, BOOL isSecureMode)
+void CTSFTTS::CreateLanguageBarButton(DWORD dwEnable, GUID guidLangBar, _In_z_ LPCWSTR pwszDescriptionValue, _In_z_ LPCWSTR pwszTooltipValue, DWORD dwOnIconIndex, DWORD dwOffIconIndex, _Outptr_result_maybenull_ CLangBarItemButton **ppLangBarItemButton, BOOL isSecureMode)
 {
 	dwEnable;
 
@@ -161,11 +161,11 @@ void CCompositionProcessorEngine::CreateLanguageBarButton(DWORD dwEnable, GUID g
 
 //+---------------------------------------------------------------------------
 //
-// CCompositionProcessorEngine::SetLanguageBarStatus
+// CTSFTTS::SetLanguageBarStatus
 //
 //----------------------------------------------------------------------------
 
-VOID CCompositionProcessorEngine::SetLanguageBarStatus(DWORD status, BOOL isSet)
+VOID CTSFTTS::SetLanguageBarStatus(DWORD status, BOOL isSet)
 {
     if (_pLanguageBar_IMEMode) {
         _pLanguageBar_IMEMode->SetStatus(status, isSet);
@@ -768,7 +768,7 @@ HRESULT CLangBarItemButton::_CompartmentCallback(_In_ void *pv, REFGUID guidComp
     return S_OK;
 }
 
-void CCompositionProcessorEngine::InitializeTSFTTSCompartment(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId)
+void CTSFTTS::InitializeTSFTTSCompartment(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId)
 {
 	// set initial mode
 	if(Global::isWindows8){
@@ -792,9 +792,9 @@ void CCompositionProcessorEngine::InitializeTSFTTSCompartment(_In_ ITfThreadMgr 
 //----------------------------------------------------------------------------
 
 // static
-HRESULT CCompositionProcessorEngine::CompartmentCallback(_In_ void *pv, REFGUID guidCompartment)
+HRESULT CTSFTTS::CompartmentCallback(_In_ void *pv, REFGUID guidCompartment)
 {
-    CCompositionProcessorEngine* fakeThis = (CCompositionProcessorEngine*)pv;
+    CTSFTTS* fakeThis = (CTSFTTS*)pv;
     if (nullptr == fakeThis)
     {
         return E_INVALIDARG;
@@ -828,12 +828,12 @@ HRESULT CCompositionProcessorEngine::CompartmentCallback(_In_ void *pv, REFGUID 
     return S_OK;
 }
 
-void CCompositionProcessorEngine::ShowAllLanguageBarIcons()
+void CTSFTTS::ShowAllLanguageBarIcons()
 {
     SetLanguageBarStatus(TF_LBI_STATUS_HIDDEN, FALSE);
 }
 
-void CCompositionProcessorEngine::HideAllLanguageBarIcons()
+void CTSFTTS::HideAllLanguageBarIcons()
 {
     SetLanguageBarStatus(TF_LBI_STATUS_HIDDEN, TRUE);
 }
@@ -844,9 +844,9 @@ void CCompositionProcessorEngine::HideAllLanguageBarIcons()
 //
 //----------------------------------------------------------------------------
 
-void CCompositionProcessorEngine::ConversionModeCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr)
+void CTSFTTS::ConversionModeCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr)
 {
-	debugPrint(L"CCompositionProcessorEngine::ConversionModeCompartmentUpdated()\n");
+	debugPrint(L"CTSFTTS::ConversionModeCompartmentUpdated()\n");
     if (!_pCompartmentConversion)
     {
         return;
@@ -871,9 +871,9 @@ void CCompositionProcessorEngine::ConversionModeCompartmentUpdated(_In_ ITfThrea
             CompartmentDoubleSingleByte._SetCompartmentBOOL(FALSE);
         }
 		if(isDouble)
-			_pTextService->OnSwitchedToFullShape();
+			OnSwitchedToFullShape();
 		else
-			_pTextService->OnSwitchedToHalfShape();
+			OnSwitchedToHalfShape();
     }
   
    
@@ -919,7 +919,7 @@ void CCompositionProcessorEngine::ConversionModeCompartmentUpdated(_In_ ITfThrea
 //
 //----------------------------------------------------------------------------
 
-void CCompositionProcessorEngine::PrivateCompartmentsUpdated(_In_ ITfThreadMgr *pThreadMgr)
+void CTSFTTS::PrivateCompartmentsUpdated(_In_ ITfThreadMgr *pThreadMgr)
 {
     if (!_pCompartmentConversion)
     {
@@ -961,9 +961,9 @@ void CCompositionProcessorEngine::PrivateCompartmentsUpdated(_In_ ITfThreadMgr *
 //
 //----------------------------------------------------------------------------
 
-void CCompositionProcessorEngine::KeyboardOpenCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr, _In_ REFGUID guidCompartment)
+void CTSFTTS::KeyboardOpenCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr, _In_ REFGUID guidCompartment)
 {
-	debugPrint(L"CCompositionProcessorEngine::KeyboardOpenCompartmentUpdated()\n");
+	debugPrint(L"CTSFTTS::KeyboardOpenCompartmentUpdated()\n");
     if (!_pCompartmentConversion)
     {
         return;
@@ -1017,13 +1017,13 @@ void CCompositionProcessorEngine::KeyboardOpenCompartmentUpdated(_In_ ITfThreadM
 
 		if(!isOpen)
 		{
-			_pTextService->OnKeyboardClosed();
+			OnKeyboardClosed();
 		}
 		else
 		{
-			_pTextService->OnKeyboardOpen();
-			loadConfig();
-			SetDefaultCandidateTextFont();
+			OnKeyboardOpen();
+			_pCompositionProcessorEngine->loadConfig();
+			SetDefaultTextFont();
 		}
 		
 	}

@@ -387,8 +387,8 @@ BOOL CTSFTTS::_SetCompositionLanguage(TfEditCookie ec, _In_ ITfContext *pContext
     CCompositionProcessorEngine* pCompositionProcessorEngine = nullptr;
     pCompositionProcessorEngine = _pCompositionProcessorEngine;
 
-    LANGID langidProfile = 0;
-    pCompositionProcessorEngine->GetLanguageProfile(&langidProfile);
+    //LANGID langidProfile = 0;
+    //GetLanguageProfile(&langidProfile);
 
     ITfRange* pRangeComposition = nullptr;
     ITfProperty* pLanguageProperty = nullptr;
@@ -411,7 +411,7 @@ BOOL CTSFTTS::_SetCompositionLanguage(TfEditCookie ec, _In_ ITfContext *pContext
 
     VARIANT var;
     var.vt = VT_I4;   // we're going to set DWORD
-    var.lVal = langidProfile; 
+    var.lVal = _langid; 
 
     hr = pLanguageProperty->SetValue(ec, pRangeComposition, &var);
     if (FAILED(hr))

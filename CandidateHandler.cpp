@@ -97,7 +97,7 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 	if (fMakePhraseFromText)
 	{
 		_pCompositionProcessorEngine->GetCandidateStringInConverted(candidateString, &candidatePhraseList);
-		LCID locale = _pCompositionProcessorEngine->GetLocale();
+		LCID locale = GetLocale();
 
 		_pTSFTTSUIPresenter->RemoveSpecificCandidateFromList(locale, candidatePhraseList, candidateString);
 	}

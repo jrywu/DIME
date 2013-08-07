@@ -10,6 +10,8 @@
 
 #include "KeyHandlerEditSession.h"
 #include "BaseStructure.h"
+#include "Compartment.h"
+#include "LanguageBar.h"
 
 class CLangBarItemButton;
 class UIPresenter;
@@ -96,7 +98,11 @@ public:
 	// ITfFnShowHelp
     STDMETHODIMP Show(_In_ HWND hwndParent);
 
-
+	 // Get language profile.
+    //GUID GetLanguageProfile(LANGID *plangid){ *plangid = _langid;  return _guidProfile;}
+    // Get locale
+    LCID GetLocale(){return MAKELCID(_langid, SORT_DEFAULT);}
+    
 
     // CClassFactory factory callback
     static HRESULT CreateInstance(_In_ IUnknown *pUnkOuter, REFIID riid, _Outptr_ void **ppvObj);
@@ -222,12 +228,40 @@ private:
 	// function for process candidate
 	VOID _DeleteCandidateList(BOOL fForce, _In_opt_ ITfContext *pContext);
 
+	//language bar private
+    BOOL InitLanguageBar(_In_ CLangBarItemButton *pLanguageBar, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, REFGUID guidCompartment);
+    void SetupLanguageBar(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, BOOL isSecureMode);
+	void InitializeTSFTTSCompartment(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId);
+    void CreateLanguageBarButton(DWORD dwEnable, GUID guidLangBar, _In_z_ LPCWSTR pwszDescriptionValue, _In_z_ LPCWSTR pwszTooltipValue, DWORD dwOnIconIndex, DWORD dwOffIconIndex, _Outptr_result_maybenull_ CLangBarItemButton **ppLangBarItemButton, BOOL isSecureMode);
+    static HRESULT CompartmentCallback(_In_ void *pv, REFGUID guidCompartment);
+    void PrivateCompartmentsUpdated(_In_ ITfThreadMgr *pThreadMgr);
+    void KeyboardOpenCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr, _In_ REFGUID guidCompartment);
+	// Language bar control
+    BOOL SetupLanguageProfile(LANGID langid, REFGUID guidLanguageProfile, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, BOOL isSecureMode);
+    void SetLanguageBarStatus(DWORD status, BOOL isSet);
+    void ConversionModeCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr);
+    void ShowAllLanguageBarIcons();
+    void HideAllLanguageBarIcons();
 
 
+	void SetDefaultTextFont();
 
 private:
-
 	
+	LANGID _langid;
+    GUID _guidProfile;
+	// Language bar data
+    CLangBarItemButton* _pLanguageBar_IMEModeW8;
+	CLangBarItemButton* _pLanguageBar_IMEMode;
+    CLangBarItemButton* _pLanguageBar_DoubleSingleByte;
+
+    // Compartment
+    CCompartment* _pCompartmentConversion;
+	CCompartmentEventSink* _pCompartmentIMEModeEventSink;
+    CCompartmentEventSink* _pCompartmentConversionEventSink;
+    CCompartmentEventSink* _pCompartmentKeyboardOpenEventSink;
+    CCompartmentEventSink* _pCompartmentDoubleSingleByteEventSink;
+
 
     ITfThreadMgr* _pThreadMgr;
     TfClientId _tfClientId;

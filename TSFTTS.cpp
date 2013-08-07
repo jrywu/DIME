@@ -50,11 +50,11 @@ BOOL CTSFTTS::_AddTextProcessorEngine()
     // Is this already added?
     if (_pCompositionProcessorEngine != nullptr)
     {
-        LANGID langidProfile = 0;
-        GUID guidLanguageProfile = GUID_NULL;
+        //LANGID langidProfile = 0;
+        //GUID guidLanguageProfile = GUID_NULL;
 
-        guidLanguageProfile = _pCompositionProcessorEngine->GetLanguageProfile(&langidProfile);
-        if ((langid == langidProfile) && IsEqualGUID(guidProfile, guidLanguageProfile))
+        //guidLanguageProfile = GetLanguageProfile(&langidProfile);
+        if ((langid == _langid) && IsEqualGUID(guidProfile, _guidProfile))
         {
             return TRUE;
         }
@@ -71,7 +71,7 @@ BOOL CTSFTTS::_AddTextProcessorEngine()
     }
 
     // setup composition processor engine
-    if (FALSE == _pCompositionProcessorEngine->SetupLanguageProfile(langid, guidProfile, _GetThreadMgr(), _GetClientId(), _IsSecureMode(), _IsComLess()))
+    if (FALSE == SetupLanguageProfile(langid, guidProfile, _GetThreadMgr(), _GetClientId(), _IsSecureMode()))
     {
         return FALSE;
     }
@@ -156,6 +156,17 @@ CTSFTTS::CTSFTTS()
     _refCount = 1;
 	
 	_phraseCandShowing = FALSE;
+
+	_pLanguageBar_IMEModeW8 = nullptr;
+    _pLanguageBar_IMEMode = nullptr;
+    _pLanguageBar_DoubleSingleByte = nullptr;
+
+
+    _pCompartmentConversion = nullptr;
+	_pCompartmentIMEModeEventSink = nullptr;
+    _pCompartmentKeyboardOpenEventSink = nullptr;
+    _pCompartmentConversionEventSink = nullptr;
+    _pCompartmentDoubleSingleByteEventSink = nullptr;
 }
 
 //+---------------------------------------------------------------------------
@@ -171,6 +182,58 @@ CTSFTTS::~CTSFTTS()
         delete _pTSFTTSUIPresenter;
         _pTSFTTSUIPresenter = nullptr;
     }
+
+	if (_pLanguageBar_IMEModeW8 && Global::isWindows8)
+    {
+        _pLanguageBar_IMEModeW8->CleanUp();
+        _pLanguageBar_IMEModeW8->Release();
+        _pLanguageBar_IMEModeW8 = nullptr;
+    }
+
+
+    if (_pLanguageBar_IMEMode)
+    {
+        _pLanguageBar_IMEMode->CleanUp();
+        _pLanguageBar_IMEMode->Release();
+        _pLanguageBar_IMEMode = nullptr;
+    }
+    if (_pLanguageBar_DoubleSingleByte)
+    {
+        _pLanguageBar_DoubleSingleByte->CleanUp();
+        _pLanguageBar_DoubleSingleByte->Release();
+        _pLanguageBar_DoubleSingleByte = nullptr;
+    }
+
+    if (_pCompartmentConversion)
+    {
+        delete _pCompartmentConversion;
+        _pCompartmentConversion = nullptr;
+    }
+	if (_pCompartmentKeyboardOpenEventSink && Global::isWindows8)
+    {
+        _pCompartmentKeyboardOpenEventSink->_Unadvise();
+        delete _pCompartmentKeyboardOpenEventSink;
+        _pCompartmentKeyboardOpenEventSink = nullptr;
+    }
+	if (_pCompartmentIMEModeEventSink)
+    {
+        _pCompartmentIMEModeEventSink->_Unadvise();
+        delete _pCompartmentIMEModeEventSink;
+        _pCompartmentIMEModeEventSink = nullptr;
+    }
+    if (_pCompartmentConversionEventSink)
+    {
+        _pCompartmentConversionEventSink->_Unadvise();
+        delete _pCompartmentConversionEventSink;
+        _pCompartmentConversionEventSink = nullptr;
+    }
+    if (_pCompartmentDoubleSingleByteEventSink)
+    {
+        _pCompartmentDoubleSingleByteEventSink->_Unadvise();
+        delete _pCompartmentDoubleSingleByteEventSink;
+        _pCompartmentDoubleSingleByteEventSink = nullptr;
+    }
+
     DllRelease();
 }
 
@@ -764,4 +827,70 @@ HRESULT CTSFTTS::GetComModuleName(REFGUID rclsid, _Out_writes_(cchPath)WCHAR* wc
     }
 
     return hr;
+}
+
+void CTSFTTS::SetDefaultTextFont()
+{
+    // Candidate Text Font
+    if (Global::defaultlFontHandle != nullptr)
+	{
+		DeleteObject ((HGDIOBJ) Global::defaultlFontHandle);
+		Global::defaultlFontHandle = nullptr;
+	}
+	if (Global::defaultlFontHandle == nullptr)
+    {
+		WCHAR fontName[50] = {'\0'}; 
+		LoadString(Global::dllInstanceHandle, IDS_DEFAULT_FONT, fontName, 50);
+		Global::defaultlFontHandle = CreateFont(-MulDiv(_pCompositionProcessorEngine->GetFontSize(), GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72), 0, 0, 0, FW_MEDIUM, 0, 0, 0, 0, 0, 0, 0, 0, fontName);
+        if (!Global::defaultlFontHandle)
+        {
+			LOGFONT lf;
+			SystemParametersInfo(SPI_GETICONTITLELOGFONT, sizeof(LOGFONT), &lf, 0);
+            // Fall back to the default GUI font on failure.
+            Global::defaultlFontHandle = CreateFont(-MulDiv(_pCompositionProcessorEngine->GetFontSize(), GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72), 0, 0, 0, FW_MEDIUM, 0, 0, 0, 0, 0, 0, 0, 0, lf.lfFaceName);
+        }
+    }
+}
+
+//+---------------------------------------------------------------------------
+//
+// SetupLanguageProfile
+//
+// Setup language profile for Composition Processor Engine.
+// param
+//     [in] LANGID langid = Specify language ID
+//     [in] GUID guidLanguageProfile - Specify GUID language profile which GUID is as same as Text Service Framework language profile.
+//     [in] ITfThreadMgr - pointer ITfThreadMgr.
+//     [in] tfClientId - TfClientId value.
+//     [in] isSecureMode - secure mode
+// returns
+//     If setup succeeded, returns true. Otherwise returns false.
+// N.B. For reverse conversion, ITfThreadMgr is NULL, TfClientId is 0 and isSecureMode is ignored.
+//+---------------------------------------------------------------------------
+
+BOOL CTSFTTS::SetupLanguageProfile(LANGID langid, REFGUID guidLanguageProfile, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, BOOL isSecureMode)
+{
+
+    BOOL ret = TRUE;
+    if ((tfClientId == 0) && (pThreadMgr == nullptr))
+    {
+        ret = FALSE;
+        goto Exit;
+    }
+
+    _langid = langid;
+    _guidProfile = guidLanguageProfile;
+    
+	InitializeTSFTTSCompartment(pThreadMgr, tfClientId);
+    SetupLanguageBar(pThreadMgr, tfClientId, isSecureMode);
+	SetDefaultTextFont();
+
+	_pCompositionProcessorEngine->SetupPreserved(pThreadMgr, tfClientId);	
+    _pCompositionProcessorEngine->SetupKeystroke();
+    _pCompositionProcessorEngine->SetupConfiguration();
+    _pCompositionProcessorEngine->SetupDictionaryFile();
+	_pCompositionProcessorEngine->loadConfig();
+    
+Exit:
+    return ret;
 }
