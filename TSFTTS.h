@@ -147,7 +147,8 @@ public:
     static HRESULT CTSFTTS::ComLessCreateInstance(REFGUID rclsid, REFIID riid, _Outptr_result_maybenull_ void **ppv, _Out_opt_ HINSTANCE *phInst);
     static HRESULT CTSFTTS::GetComModuleName(REFGUID rclsid, _Out_writes_(cchPath)WCHAR* wchPath, DWORD cchPath);
 	
-	//Called by compartment status changed.
+	
+	//Called when compartment status changed.
 	void OnKeyboardClosed();
 	void OnKeyboardOpen();
 	void OnSwitchedToFullShape();
@@ -221,7 +222,13 @@ private:
 	// function for process candidate
 	VOID _DeleteCandidateList(BOOL fForce, _In_opt_ ITfContext *pContext);
 
+
+
+
 private:
+
+	
+
     ITfThreadMgr* _pThreadMgr;
     TfClientId _tfClientId;
     DWORD _dwActivateFlags;

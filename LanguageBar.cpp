@@ -69,6 +69,98 @@ void CTSFTTS::_UpdateLanguageBarOnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus)
 
 //+---------------------------------------------------------------------------
 //
+// InitLanguageBar
+//
+//----------------------------------------------------------------------------
+
+BOOL CCompositionProcessorEngine::InitLanguageBar(_In_ CLangBarItemButton *pLangBarItemButton, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, REFGUID guidCompartment)
+{
+    if (pLangBarItemButton)
+    {
+        if (pLangBarItemButton->_AddItem(pThreadMgr) == S_OK)
+        {
+            if (pLangBarItemButton->_RegisterCompartment(pThreadMgr, tfClientId, guidCompartment))
+            {
+                return TRUE;
+            }
+        }
+    }
+    return FALSE;
+}
+
+//+---------------------------------------------------------------------------
+//
+// SetupLanguageBar
+//
+//----------------------------------------------------------------------------
+
+void CCompositionProcessorEngine::SetupLanguageBar(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, BOOL isSecureMode)
+{
+    DWORD dwEnable = 1;
+	//win8 only to show IME
+	if(Global::isWindows8){
+		CreateLanguageBarButton(dwEnable, GUID_LBI_INPUTMODE, Global::LangbarImeModeDescription, Global::ImeModeDescription, Global::ImeModeOnIcoIndex, Global::ImeModeOffIcoIndex, &_pLanguageBar_IMEModeW8, isSecureMode);
+		InitLanguageBar(_pLanguageBar_IMEModeW8, pThreadMgr, tfClientId, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
+		_pCompartmentKeyboardOpenEventSink = new (std::nothrow) CCompartmentEventSink(CompartmentCallback, this);
+		
+	}
+	
+    CreateLanguageBarButton(dwEnable, Global::TSFTTSGuidLangBarIMEMode, Global::LangbarImeModeDescription, Global::ImeModeDescription, Global::ImeModeOnIcoIndex, Global::ImeModeOffIcoIndex, &_pLanguageBar_IMEMode, isSecureMode);
+    CreateLanguageBarButton(dwEnable, Global::TSFTTSGuidLangBarDoubleSingleByte, Global::LangbarDoubleSingleByteDescription, Global::DoubleSingleByteDescription, Global::DoubleSingleByteOnIcoIndex, Global::DoubleSingleByteOffIcoIndex, &_pLanguageBar_DoubleSingleByte, isSecureMode);
+
+	
+    
+	InitLanguageBar(_pLanguageBar_IMEMode, pThreadMgr, tfClientId,  Global::TSFTTSGuidCompartmentIMEMode);
+    InitLanguageBar(_pLanguageBar_DoubleSingleByte, pThreadMgr, tfClientId, Global::TSFTTSGuidCompartmentDoubleSingleByte);
+
+
+    _pCompartmentConversion = new (std::nothrow) CCompartment(pThreadMgr, tfClientId, GUID_COMPARTMENT_KEYBOARD_INPUTMODE_CONVERSION);
+	
+	_pCompartmentIMEModeEventSink = new (std::nothrow) CCompartmentEventSink(CompartmentCallback, this);
+    _pCompartmentConversionEventSink = new (std::nothrow) CCompartmentEventSink(CompartmentCallback, this);
+    _pCompartmentDoubleSingleByteEventSink = new (std::nothrow) CCompartmentEventSink(CompartmentCallback, this);
+
+	if (_pCompartmentIMEModeEventSink)
+    {
+        _pCompartmentIMEModeEventSink->_Advise(pThreadMgr, Global::TSFTTSGuidCompartmentIMEMode);
+    }
+	if (_pCompartmentKeyboardOpenEventSink && Global::isWindows8)
+    {
+        _pCompartmentKeyboardOpenEventSink->_Advise(pThreadMgr, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
+    }
+    if (_pCompartmentConversionEventSink)
+    {
+        _pCompartmentConversionEventSink->_Advise(pThreadMgr, GUID_COMPARTMENT_KEYBOARD_INPUTMODE_CONVERSION);
+    }
+    if (_pCompartmentDoubleSingleByteEventSink)
+    {
+        _pCompartmentDoubleSingleByteEventSink->_Advise(pThreadMgr, Global::TSFTTSGuidCompartmentDoubleSingleByte);
+    }
+   
+    return;
+}
+
+//+---------------------------------------------------------------------------
+//
+// CreateLanguageBarButton
+//
+//----------------------------------------------------------------------------
+
+void CCompositionProcessorEngine::CreateLanguageBarButton(DWORD dwEnable, GUID guidLangBar, _In_z_ LPCWSTR pwszDescriptionValue, _In_z_ LPCWSTR pwszTooltipValue, DWORD dwOnIconIndex, DWORD dwOffIconIndex, _Outptr_result_maybenull_ CLangBarItemButton **ppLangBarItemButton, BOOL isSecureMode)
+{
+	dwEnable;
+
+    if (ppLangBarItemButton)
+    {
+        *ppLangBarItemButton = new (std::nothrow) CLangBarItemButton(guidLangBar, pwszDescriptionValue, pwszTooltipValue, dwOnIconIndex, dwOffIconIndex, isSecureMode);
+    }
+
+    return;
+}
+
+
+//+---------------------------------------------------------------------------
+//
 // CCompositionProcessorEngine::SetLanguageBarStatus
 //
 //----------------------------------------------------------------------------
@@ -674,4 +766,269 @@ HRESULT CLangBarItemButton::_CompartmentCallback(_In_ void *pv, REFGUID guidComp
     }
 
     return S_OK;
+}
+
+void CCompositionProcessorEngine::InitializeTSFTTSCompartment(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId)
+{
+	// set initial mode
+	if(Global::isWindows8){
+		CCompartment CompartmentKeyboardOpen(pThreadMgr, tfClientId, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
+		CompartmentKeyboardOpen._SetCompartmentBOOL(TRUE);
+	}
+
+	CCompartment CompartmentIMEMode(pThreadMgr, tfClientId, Global::TSFTTSGuidCompartmentIMEMode);
+    CompartmentIMEMode._SetCompartmentBOOL(TRUE);
+
+    CCompartment CompartmentDoubleSingleByte(pThreadMgr, tfClientId, Global::TSFTTSGuidCompartmentDoubleSingleByte);
+    CompartmentDoubleSingleByte._SetCompartmentBOOL(FALSE);
+
+
+    PrivateCompartmentsUpdated(pThreadMgr);
+}
+//+---------------------------------------------------------------------------
+//
+// CompartmentCallback
+//
+//----------------------------------------------------------------------------
+
+// static
+HRESULT CCompositionProcessorEngine::CompartmentCallback(_In_ void *pv, REFGUID guidCompartment)
+{
+    CCompositionProcessorEngine* fakeThis = (CCompositionProcessorEngine*)pv;
+    if (nullptr == fakeThis)
+    {
+        return E_INVALIDARG;
+    }
+
+    ITfThreadMgr* pThreadMgr = nullptr;
+    HRESULT hr = CoCreateInstance(CLSID_TF_ThreadMgr, nullptr, CLSCTX_INPROC_SERVER, IID_ITfThreadMgr, (void**)&pThreadMgr);
+    if (FAILED(hr))
+    {
+        return E_FAIL;
+    }
+
+    if (IsEqualGUID(guidCompartment, Global::TSFTTSGuidCompartmentDoubleSingleByte) )
+    {
+        fakeThis->PrivateCompartmentsUpdated(pThreadMgr);
+    }
+    else if (IsEqualGUID(guidCompartment, GUID_COMPARTMENT_KEYBOARD_INPUTMODE_CONVERSION) ||
+        IsEqualGUID(guidCompartment, GUID_COMPARTMENT_KEYBOARD_INPUTMODE_SENTENCE))
+    {
+        fakeThis->ConversionModeCompartmentUpdated(pThreadMgr);
+    }
+    else if (IsEqualGUID(guidCompartment, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE)||
+			 IsEqualGUID(guidCompartment, Global::TSFTTSGuidCompartmentIMEMode))
+    {
+		fakeThis->KeyboardOpenCompartmentUpdated(pThreadMgr, guidCompartment);
+    }
+
+    pThreadMgr->Release();
+    pThreadMgr = nullptr;
+
+    return S_OK;
+}
+
+void CCompositionProcessorEngine::ShowAllLanguageBarIcons()
+{
+    SetLanguageBarStatus(TF_LBI_STATUS_HIDDEN, FALSE);
+}
+
+void CCompositionProcessorEngine::HideAllLanguageBarIcons()
+{
+    SetLanguageBarStatus(TF_LBI_STATUS_HIDDEN, TRUE);
+}
+
+//+---------------------------------------------------------------------------
+//
+// UpdatePrivateCompartments
+//
+//----------------------------------------------------------------------------
+
+void CCompositionProcessorEngine::ConversionModeCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr)
+{
+	debugPrint(L"CCompositionProcessorEngine::ConversionModeCompartmentUpdated()\n");
+    if (!_pCompartmentConversion)
+    {
+        return;
+    }
+
+    DWORD conversionMode = 0;
+    if (FAILED(_pCompartmentConversion->_GetCompartmentDWORD(conversionMode)))
+    {
+        return;
+    }
+
+    BOOL isDouble = FALSE;
+    CCompartment CompartmentDoubleSingleByte(pThreadMgr, _tfClientId, Global::TSFTTSGuidCompartmentDoubleSingleByte);
+    if (SUCCEEDED(CompartmentDoubleSingleByte._GetCompartmentBOOL(isDouble)))
+    {
+        if (!isDouble && (conversionMode & TF_CONVERSIONMODE_FULLSHAPE))
+        {
+            CompartmentDoubleSingleByte._SetCompartmentBOOL(TRUE);
+        }
+        else if (isDouble && !(conversionMode & TF_CONVERSIONMODE_FULLSHAPE))
+        {
+            CompartmentDoubleSingleByte._SetCompartmentBOOL(FALSE);
+        }
+		if(isDouble)
+			_pTextService->OnSwitchedToFullShape();
+		else
+			_pTextService->OnSwitchedToHalfShape();
+    }
+  
+   
+	BOOL fOpen = FALSE;
+	if(Global::isWindows8){
+		fOpen = FALSE;
+		CCompartment CompartmentKeyboardOpen(pThreadMgr, _tfClientId, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
+		if (SUCCEEDED(CompartmentKeyboardOpen._GetCompartmentBOOL(fOpen)))
+		{
+			if (fOpen && !(conversionMode & TF_CONVERSIONMODE_NATIVE))
+			{
+				CompartmentKeyboardOpen._SetCompartmentBOOL(FALSE);
+			}
+			else if (!fOpen && (conversionMode & TF_CONVERSIONMODE_NATIVE))
+			{
+				CompartmentKeyboardOpen._SetCompartmentBOOL(TRUE);
+			}
+		}
+	}
+		
+	CCompartment CompartmentIMEMode(pThreadMgr, _tfClientId, Global::TSFTTSGuidCompartmentIMEMode);
+	if (SUCCEEDED(CompartmentIMEMode._GetCompartmentBOOL(fOpen)))
+	{
+		if (fOpen && !(conversionMode & TF_CONVERSIONMODE_NATIVE))
+		{
+			CompartmentIMEMode._SetCompartmentBOOL(FALSE);
+		}
+		else if (!fOpen && (conversionMode & TF_CONVERSIONMODE_NATIVE))
+		{
+			CompartmentIMEMode._SetCompartmentBOOL(TRUE);
+		}
+	}
+	
+
+    
+	
+
+}
+
+//+---------------------------------------------------------------------------
+//
+// PrivateCompartmentsUpdated()
+//
+//----------------------------------------------------------------------------
+
+void CCompositionProcessorEngine::PrivateCompartmentsUpdated(_In_ ITfThreadMgr *pThreadMgr)
+{
+    if (!_pCompartmentConversion)
+    {
+        return;
+    }
+
+    DWORD conversionMode = 0;
+    DWORD conversionModePrev = 0;
+    if (FAILED(_pCompartmentConversion->_GetCompartmentDWORD(conversionMode)))
+    {
+        return;
+    }
+
+    conversionModePrev = conversionMode;
+
+    BOOL isDouble = FALSE;
+    CCompartment CompartmentDoubleSingleByte(pThreadMgr, _tfClientId, Global::TSFTTSGuidCompartmentDoubleSingleByte);
+    if (SUCCEEDED(CompartmentDoubleSingleByte._GetCompartmentBOOL(isDouble)))
+    {
+        if (!isDouble && (conversionMode & TF_CONVERSIONMODE_FULLSHAPE))
+        {
+            conversionMode &= ~TF_CONVERSIONMODE_FULLSHAPE;
+        }
+        else if (isDouble && !(conversionMode & TF_CONVERSIONMODE_FULLSHAPE))
+        {
+            conversionMode |= TF_CONVERSIONMODE_FULLSHAPE;
+        }
+    }
+	
+    if (conversionMode != conversionModePrev)
+    {
+        _pCompartmentConversion->_SetCompartmentDWORD(conversionMode);
+    }
+}
+
+//+---------------------------------------------------------------------------
+//
+// KeyboardOpenCompartmentUpdated
+//
+//----------------------------------------------------------------------------
+
+void CCompositionProcessorEngine::KeyboardOpenCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr, _In_ REFGUID guidCompartment)
+{
+	debugPrint(L"CCompositionProcessorEngine::KeyboardOpenCompartmentUpdated()\n");
+    if (!_pCompartmentConversion)
+    {
+        return;
+    }
+
+    DWORD conversionMode = 0;
+    DWORD conversionModePrev = 0;
+    if (FAILED(_pCompartmentConversion->_GetCompartmentDWORD(conversionMode)))
+    {
+        return;
+    }
+
+    conversionModePrev = conversionMode;
+
+    BOOL isOpen = FALSE;  
+    CCompartment CompartmentIMEMode(pThreadMgr, _tfClientId, Global::TSFTTSGuidCompartmentIMEMode);
+	if(IsEqualGUID(guidCompartment, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE ))// Global::isWindows8 && check GUID_COMPARTMENT_KEYBOARD_OPENCLOSE in Windows 8.
+	{
+		
+		CCompartment CompartmentKeyboardOpen(pThreadMgr, _tfClientId, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
+		if (SUCCEEDED(CompartmentKeyboardOpen._GetCompartmentBOOL(isOpen)))
+		{
+			if (isOpen && !(conversionMode & TF_CONVERSIONMODE_NATIVE))
+			{
+				conversionMode |= TF_CONVERSIONMODE_NATIVE;
+			}
+			else if (!isOpen && (conversionMode & TF_CONVERSIONMODE_NATIVE))
+			{
+				conversionMode &= ~TF_CONVERSIONMODE_NATIVE;
+			}
+		}
+		if (conversionMode != conversionModePrev)
+		     _pCompartmentConversion->_SetCompartmentDWORD(conversionMode);
+   	
+	}
+	isOpen = FALSE;
+	if (IsEqualGUID(guidCompartment, Global::TSFTTSGuidCompartmentIMEMode) && SUCCEEDED(CompartmentIMEMode._GetCompartmentBOOL(isOpen)))
+	{
+		if (isOpen && !(conversionMode & TF_CONVERSIONMODE_NATIVE))
+		{
+			conversionMode |= TF_CONVERSIONMODE_NATIVE;
+		}
+		else if (!isOpen && (conversionMode & TF_CONVERSIONMODE_NATIVE))
+		{
+			conversionMode &= ~TF_CONVERSIONMODE_NATIVE;
+		}
+		
+		if (conversionMode != conversionModePrev)
+		     _pCompartmentConversion->_SetCompartmentDWORD(conversionMode);
+    
+
+		if(!isOpen)
+		{
+			_pTextService->OnKeyboardClosed();
+		}
+		else
+		{
+			_pTextService->OnKeyboardOpen();
+			loadConfig();
+			SetDefaultCandidateTextFont();
+		}
+		
+	}
+
+
+
+   
 }

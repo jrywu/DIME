@@ -11,6 +11,73 @@
 #include "UIPresenter.h"
 #include "CompositionProcessorEngine.h"
 #include "Compartment.h"
+#include "RegKey.h"
+#include "TfInputProcessorProfile.h"
+//////////////////////////////////////////////////////////////////////
+//
+// CTSFTTS implementation.
+//
+//////////////////////////////////////////////////////////////////////+---------------------------------------------------------------------------
+//
+// _AddTextProcessorEngine
+//
+//----------------------------------------------------------------------------
+
+BOOL CTSFTTS::_AddTextProcessorEngine()
+{
+    LANGID langid = 0;
+    CLSID clsid = GUID_NULL;
+    GUID guidProfile = GUID_NULL;
+
+    // Get default profile.
+    CTfInputProcessorProfile profile;
+
+    if (FAILED(profile.CreateInstance()))
+    {
+        return FALSE;
+    }
+
+    if (FAILED(profile.GetCurrentLanguage(&langid)))
+    {
+        return FALSE;
+    }
+
+    if (FAILED(profile.GetDefaultLanguageProfile(langid, GUID_TFCAT_TIP_KEYBOARD, &clsid, &guidProfile)))
+    {
+        return FALSE;
+    }
+
+    // Is this already added?
+    if (_pCompositionProcessorEngine != nullptr)
+    {
+        LANGID langidProfile = 0;
+        GUID guidLanguageProfile = GUID_NULL;
+
+        guidLanguageProfile = _pCompositionProcessorEngine->GetLanguageProfile(&langidProfile);
+        if ((langid == langidProfile) && IsEqualGUID(guidProfile, guidLanguageProfile))
+        {
+            return TRUE;
+        }
+    }
+
+    // Create composition processor engine
+    if (_pCompositionProcessorEngine == nullptr)
+    {
+        _pCompositionProcessorEngine = new (std::nothrow) CCompositionProcessorEngine(this);
+    }
+    if (!_pCompositionProcessorEngine)
+    {
+        return FALSE;
+    }
+
+    // setup composition processor engine
+    if (FALSE == _pCompositionProcessorEngine->SetupLanguageProfile(langid, guidProfile, _GetThreadMgr(), _GetClientId(), _IsSecureMode(), _IsComLess()))
+    {
+        return FALSE;
+    }
+
+    return TRUE;
+}
 
 //+---------------------------------------------------------------------------
 //
@@ -562,4 +629,139 @@ HRESULT CTSFTTS::ShowNotifyText(CStringRange *pNotifyText)
     _pTSFTTSUIPresenter->ShowNotifyText(pContext, pNotifyText);
 Exit:
 	return hr;
+}
+
+//+---------------------------------------------------------------------------
+//
+// CTSFTTS::CreateInstance 
+//
+//----------------------------------------------------------------------------
+
+HRESULT CTSFTTS::CreateInstance(REFCLSID rclsid, REFIID riid, _Outptr_result_maybenull_ LPVOID* ppv, _Out_opt_ HINSTANCE* phInst, BOOL isComLessMode)
+{
+    HRESULT hr = S_OK;
+    if (phInst == nullptr)
+    {
+        return E_INVALIDARG;
+    }
+
+    *phInst = nullptr;
+
+    if (!isComLessMode)
+    {
+        hr = ::CoCreateInstance(rclsid, 
+            NULL, 
+            CLSCTX_INPROC_SERVER,
+            riid,
+            ppv);
+    }
+    else
+    {
+        hr = CTSFTTS::ComLessCreateInstance(rclsid, riid, ppv, phInst);
+    }
+
+    return hr;
+}
+
+//+---------------------------------------------------------------------------
+//
+// CTSFTTS::ComLessCreateInstance
+//
+//----------------------------------------------------------------------------
+
+HRESULT CTSFTTS::ComLessCreateInstance(REFGUID rclsid, REFIID riid, _Outptr_result_maybenull_ void **ppv, _Out_opt_ HINSTANCE *phInst)
+{
+    HRESULT hr = S_OK;
+    HINSTANCE TSFTTSDllHandle = nullptr;
+    WCHAR wchPath[MAX_PATH] = {'\0'};
+    WCHAR szExpandedPath[MAX_PATH] = {'\0'};
+    DWORD dwCnt = 0;
+    *ppv = nullptr;
+
+    hr = phInst ? S_OK : E_FAIL;
+    if (SUCCEEDED(hr))
+    {
+        *phInst = nullptr;
+        hr = CTSFTTS::GetComModuleName(rclsid, wchPath, ARRAYSIZE(wchPath));
+        if (SUCCEEDED(hr))
+        {
+            dwCnt = ExpandEnvironmentStringsW(wchPath, szExpandedPath, ARRAYSIZE(szExpandedPath));
+            hr = (0 < dwCnt && dwCnt <= ARRAYSIZE(szExpandedPath)) ? S_OK : E_FAIL;
+            if (SUCCEEDED(hr))
+            {
+                TSFTTSDllHandle = LoadLibraryEx(szExpandedPath, NULL, 0);
+                hr = TSFTTSDllHandle ? S_OK : E_FAIL;
+                if (SUCCEEDED(hr))
+                {
+                    *phInst = TSFTTSDllHandle;
+                    FARPROC pfn = GetProcAddress(TSFTTSDllHandle, "DllGetClassObject");
+                    hr = pfn ? S_OK : E_FAIL;
+                    if (SUCCEEDED(hr))
+                    {
+                        IClassFactory *pClassFactory = nullptr;
+                        hr = ((HRESULT (STDAPICALLTYPE *)(REFCLSID rclsid, REFIID riid, LPVOID *ppv))(pfn))(rclsid, IID_IClassFactory, (void **)&pClassFactory);
+                        if (SUCCEEDED(hr) && pClassFactory)
+                        {
+                            hr = pClassFactory->CreateInstance(NULL, riid, ppv);
+                            pClassFactory->Release();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (!SUCCEEDED(hr) && phInst && *phInst)
+    {
+        FreeLibrary(*phInst);
+        *phInst = 0;
+    }
+    return hr;
+}
+
+//+---------------------------------------------------------------------------
+//
+// CTSFTTS::GetComModuleName
+//
+//----------------------------------------------------------------------------
+
+HRESULT CTSFTTS::GetComModuleName(REFGUID rclsid, _Out_writes_(cchPath)WCHAR* wchPath, DWORD cchPath)
+{
+    HRESULT hr = S_OK;
+
+    CRegKey key;
+    WCHAR wchClsid[CLSID_STRLEN + 1];
+    hr = CLSIDToString(rclsid, wchClsid) ? S_OK : E_FAIL;
+    if (SUCCEEDED(hr))
+    {
+        WCHAR wchKey[MAX_PATH];
+        hr = StringCchPrintfW(wchKey, ARRAYSIZE(wchKey), L"CLSID\\%s\\InProcServer32", wchClsid);
+        if (SUCCEEDED(hr))
+        {
+            hr = (key.Open(HKEY_CLASSES_ROOT, wchKey, KEY_READ) == ERROR_SUCCESS) ? S_OK : E_FAIL;
+            if (SUCCEEDED(hr))
+            {
+                WCHAR wszModel[MAX_PATH];
+                ULONG cch = ARRAYSIZE(wszModel);
+                hr = (key.QueryStringValue(L"ThreadingModel", wszModel, &cch) == ERROR_SUCCESS) ? S_OK : E_FAIL;
+                if (SUCCEEDED(hr))
+                {
+                    if (CompareStringOrdinal(wszModel, 
+                        -1, 
+                        L"Apartment", 
+                        -1,
+                        TRUE) == CSTR_EQUAL)
+                    {
+                        hr = (key.QueryStringValue(NULL, wchPath, &cchPath) == ERROR_SUCCESS) ? S_OK : E_FAIL;
+                    }
+                    else
+                    {
+                        hr = E_FAIL;
+                    }
+                }
+            }
+        }
+    }
+
+    return hr;
 }

@@ -25,19 +25,6 @@ public:
     ~CCompositionProcessorEngine(void);
 	
 	
-    BOOL SetupLanguageProfile(LANGID langid, REFGUID guidLanguageProfile, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, BOOL isSecureMode, BOOL isComLessMode);
-
-    // Get language profile.
-    GUID GetLanguageProfile(LANGID *plangid)
-    {
-        *plangid = _langid;
-        return _guidProfile;
-    }
-    // Get locale
-    LCID GetLocale()
-    {
-        return MAKELCID(_langid, SORT_DEFAULT);
-    }
 
     BOOL IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCHAR *pwch, BOOL fComposing, CANDIDATE_MODE candidateMode, BOOL hasCandidateWithWildcard, _Out_opt_ _KEYSTROKE_STATE *pKeyState);
 
@@ -75,11 +62,14 @@ public:
     // Dictionary engine
     BOOL IsDictionaryAvailable() { return (_pTableDictionaryEngine ? TRUE : FALSE); }
 
+   // Get language profile.
+    GUID GetLanguageProfile(LANGID *plangid){ *plangid = _langid;  return _guidProfile;}
+    // Get locale
+    LCID GetLocale(){return MAKELCID(_langid, SORT_DEFAULT);}
     // Language bar control
+    BOOL SetupLanguageProfile(LANGID langid, REFGUID guidLanguageProfile, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, BOOL isSecureMode, BOOL isComLessMode);
     void SetLanguageBarStatus(DWORD status, BOOL isSet);
-
     void ConversionModeCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr);
-
     void ShowAllLanguageBarIcons();
     void HideAllLanguageBarIcons();
 
@@ -100,10 +90,19 @@ public:
 	void SetDoBeep(BOOL doBeep);
 
 private:
-    void InitKeyStrokeTable();
+	void InitKeyStrokeTable();
+	
+	//language bar private
     BOOL InitLanguageBar(_In_ CLangBarItemButton *pLanguageBar, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, REFGUID guidCompartment);
+    void SetupLanguageBar(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, BOOL isSecureMode);
+	void InitializeTSFTTSCompartment(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId);
+    void CreateLanguageBarButton(DWORD dwEnable, GUID guidLangBar, _In_z_ LPCWSTR pwszDescriptionValue, _In_z_ LPCWSTR pwszTooltipValue, DWORD dwOnIconIndex, DWORD dwOffIconIndex, _Outptr_result_maybenull_ CLangBarItemButton **ppLangBarItemButton, BOOL isSecureMode);
+    static HRESULT CompartmentCallback(_In_ void *pv, REFGUID guidCompartment);
+    void PrivateCompartmentsUpdated(_In_ ITfThreadMgr *pThreadMgr);
+    void KeyboardOpenCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr, _In_ REFGUID guidCompartment);
 
-    struct _KEYSTROKE;
+
+	struct _KEYSTROKE;
     BOOL IsVirtualKeyKeystrokeComposition(UINT uCode, _Out_opt_ _KEYSTROKE_STATE *pKeyState, KEYSTROKE_FUNCTION function);
     BOOL IsVirtualKeyKeystrokeCandidate(UINT uCode, _In_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode, _Out_ BOOL *pfRetCode, _In_ CTSFTTSArray<_KEYSTROKE> *pKeystrokeMetric);
     BOOL IsKeystrokeRange(UINT uCode, _Out_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode);
@@ -111,28 +110,35 @@ private:
     void SetupKeystroke();
     void SetupPreserved(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId);
     void SetupConfiguration();
-    void SetupLanguageBar(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, BOOL isSecureMode);
     void SetKeystrokeTable(_Inout_ CTSFTTSArray<_KEYSTROKE> *pKeystroke);
-    void CreateLanguageBarButton(DWORD dwEnable, GUID guidLangBar, _In_z_ LPCWSTR pwszDescriptionValue, _In_z_ LPCWSTR pwszTooltipValue, DWORD dwOnIconIndex, DWORD dwOffIconIndex, _Outptr_result_maybenull_ CLangBarItemButton **ppLangBarItemButton, BOOL isSecureMode);
     void SetInitialCandidateListRange();
     void SetDefaultCandidateTextFont();
-	void InitializeTSFTTSCompartment(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId);
 
     class XPreservedKey;
     void SetPreservedKey(const CLSID clsid, TF_PRESERVEDKEY & tfPreservedKey, _In_z_ LPCWSTR pwszDescription, _Out_ XPreservedKey *pXPreservedKey);
     BOOL InitPreservedKey(_In_ XPreservedKey *pXPreservedKey, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId);
     BOOL CheckShiftKeyOnly(_In_ CTSFTTSArray<TF_PRESERVEDKEY> *pTSFPreservedKeyTable);
-
-    static HRESULT CompartmentCallback(_In_ void *pv, REFGUID guidCompartment);
-    void PrivateCompartmentsUpdated(_In_ ITfThreadMgr *pThreadMgr);
-    void KeyboardOpenCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr, _In_ REFGUID guidCompartment);
-
-    
+  
     BOOL SetupDictionaryFile();
 	VOID loadConfig();
     CFile* GetDictionaryFile();
 
 private:
+
+	LANGID _langid;
+    GUID _guidProfile;
+	    // Language bar data
+    CLangBarItemButton* _pLanguageBar_IMEModeW8;
+	CLangBarItemButton* _pLanguageBar_IMEMode;
+    CLangBarItemButton* _pLanguageBar_DoubleSingleByte;
+
+    // Compartment
+    CCompartment* _pCompartmentConversion;
+	CCompartmentEventSink* _pCompartmentIMEModeEventSink;
+    CCompartmentEventSink* _pCompartmentConversionEventSink;
+    CCompartmentEventSink* _pCompartmentKeyboardOpenEventSink;
+    CCompartmentEventSink* _pCompartmentDoubleSingleByteEventSink;
+
 	CTSFTTS* _pTextService;
     struct _KEYSTROKE
     {
@@ -156,8 +162,6 @@ private:
 
     BOOL _hasWildcardIncludedInKeystrokeBuffer;
 
-    LANGID _langid;
-    GUID _guidProfile;
     TfClientId  _tfClientId;
 
     CTSFTTSArray<_KEYSTROKE> _KeystrokeComposition;
@@ -183,17 +187,7 @@ private:
     XPreservedKey _PreservedKey_IMEMode;
     XPreservedKey _PreservedKey_DoubleSingleByte;
  
-    // Language bar data
-    CLangBarItemButton* _pLanguageBar_IMEModeW8;
-	CLangBarItemButton* _pLanguageBar_IMEMode;
-    CLangBarItemButton* _pLanguageBar_DoubleSingleByte;
 
-    // Compartment
-    CCompartment* _pCompartmentConversion;
-	CCompartmentEventSink* _pCompartmentIMEModeEventSink;
-    CCompartmentEventSink* _pCompartmentConversionEventSink;
-    CCompartmentEventSink* _pCompartmentKeyboardOpenEventSink;
-    CCompartmentEventSink* _pCompartmentDoubleSingleByteEventSink;
 
     // Configuration data
     BOOL _isWildcard : 1;

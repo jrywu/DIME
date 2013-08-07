@@ -320,7 +320,7 @@
       <Filter>Source Files\UI</Filter>
     </ClCompile>
     <ClCompile Include="TSFTTS.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Framework</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

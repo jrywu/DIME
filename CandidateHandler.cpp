@@ -273,34 +273,23 @@ HRESULT CTSFTTS::_CreateAndStartCandidate(_In_ CCompositionProcessorEngine *pCom
         }
 	}
 	
-	if (//((_candidateMode == CANDIDATE_PHRASE) && (_pTSFTTSUIPresenter)) ||
-         ((_candidateMode == CANDIDATE_NONE) && (_pTSFTTSUIPresenter))) 
+	if ((_candidateMode == CANDIDATE_NONE) && (_pTSFTTSUIPresenter))
     {
-    /*    // Recreate candidate list
-        delete _pTSFTTSUIPresenter;
-        _pTSFTTSUIPresenter = nullptr;
-
-        _candidateMode = CANDIDATE_NONE;
-        _isCandidateWithWildcard = FALSE;
-	}*/
-
-	
-    
-	
-        // we don't cache the document manager object. So get it from pContext.
-        ITfDocumentMgr* pDocumentMgr = nullptr;
-        if (SUCCEEDED(pContext->GetDocumentMgr(&pDocumentMgr)))
-        {
-            // get the composition range.
-            ITfRange* pRange = nullptr;
-            if (SUCCEEDED(_pComposition->GetRange(&pRange)))
-            {
-                hr = _pTSFTTSUIPresenter->_StartCandidateList(_tfClientId, pDocumentMgr, pContext, ec, pRange, pCompositionProcessorEngine->GetCandidateWindowWidth());
-                pRange->Release();
-            }
-            pDocumentMgr->Release();
-        }
-    }
+ 
+		// we don't cache the document manager object. So get it from pContext.
+		ITfDocumentMgr* pDocumentMgr = nullptr;
+		if (SUCCEEDED(pContext->GetDocumentMgr(&pDocumentMgr)))
+		{
+			// get the composition range.
+			ITfRange* pRange = nullptr;
+			if (SUCCEEDED(_pComposition->GetRange(&pRange)))
+			{
+				hr = _pTSFTTSUIPresenter->_StartCandidateList(_tfClientId, pDocumentMgr, pContext, ec, pRange, pCompositionProcessorEngine->GetCandidateWindowWidth());
+				pRange->Release();
+			}
+			pDocumentMgr->Release();
+		}
+	}
 	return hr;
 }
 
