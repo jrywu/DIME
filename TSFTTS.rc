@@ -1,7 +1,36 @@
 // Microsoft Visual C++ generated resource script.
 //
-#include <windows.h>
+#include "windows.h"
 #include "resource.h"
+/////////////////////////////////////////////////////////////////////////////
+// Neutral (Default) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_NEUD)
+LANGUAGE LANG_NEUTRAL, SUBLANG_DEFAULT
+#pragma code_page(950)
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE
+BEGIN
+    IDIS_TSFTTS             "Dayi TSF Loader"
+	IDS_DAYI_DESCRIPTION	"Dayi (TSF)"
+    IDS_IME_MODE            "Chinese/English input (Shift)"
+    IDS_DOUBLE_SINGLE_BYTE  "Double/Single byte (Shift+Space)"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_DEFAULT_FONT        "Microsoft JhengHei"
+END
+
+#endif    // Neutral (Default) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
 /////////////////////////////////////////////////////////////////////////////
 // Chinese (Traditional, Taiwan) resources
 
@@ -14,10 +43,10 @@ LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_TRADITIONAL
 // String Table
 //
 
-
 STRINGTABLE
 BEGIN
     IDIS_TSFTTS             "TSF TTS 繁中輸入法補完計畫"
+	IDS_DAYI_DESCRIPTION	"大易 (TSF)"
     IDS_IME_MODE            "中/英  (Shift)"
     IDS_DOUBLE_SINGLE_BYTE  "全形 /半形 (Shift+Space)"
 END
@@ -27,16 +56,15 @@ BEGIN
     IDS_DEFAULT_FONT        "Microsoft JhengHei"
 END
 
-
 #endif    // Chinese (Traditional, Taiwan) resources
 /////////////////////////////////////////////////////////////////////////////
 
 
 /////////////////////////////////////////////////////////////////////////////
-// English (United States) resources
+// English resources
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
-LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+LANGUAGE LANG_ENGLISH, SUBLANG_NEUTRAL
 #pragma code_page(1252)
 
 /////////////////////////////////////////////////////////////////////////////
@@ -46,7 +74,7 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
-IDIS_DAYI               ICON                    "image\\TSFDayi.ico"
+IDI_DAYI                ICON                    "image\\TSFDayi.ico"
 IDI_IME_MODE_ON         ICON                    "image\\ImeModeOn.ico"
 IDI_IME_MODE_OFF        ICON                    "image\\ImeModeOff.ico"
 IDI_DOUBLE_SINGLE_BYTE_ON ICON                    "image\\DoubleSingleByteOn.ico"
@@ -115,26 +143,7 @@ END
 
 #endif    // APSTUDIO_INVOKED
 
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// String Table
-//
-
-STRINGTABLE
-BEGIN
-    IDIS_TSFTTS             "Dayi TSF Loader"
-    IDS_IME_MODE            "Chinese/English input (Shift)"
-    IDS_DOUBLE_SINGLE_BYTE  "Double/Single byte (Shift+Space)"
-    IDS_PUNCTUATION         "Chinese/English punctuation (Ctrl+.)"
-END
-
-STRINGTABLE
-BEGIN
-    IDS_DEFAULT_FONT        "Microsoft JhengHei"
-END
-
-#endif    // English (United States) resources
+#endif    // English resources
 /////////////////////////////////////////////////////////////////////////////
 
 

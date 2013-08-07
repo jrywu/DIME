@@ -304,16 +304,14 @@ VOID CTSFTTS::_DeleteCandidateList(BOOL isForce, _In_opt_ ITfContext *pContext)
 {
 	isForce;pContext;
 	debugPrint(L"CTSFTTS::_DeleteCandidateList()\n");
-    
-
-    CCompositionProcessorEngine* pCompositionProcessorEngine = nullptr;
-    pCompositionProcessorEngine = _pCompositionProcessorEngine;
-    pCompositionProcessorEngine->PurgeVirtualKey();
+	if(_pCompositionProcessorEngine) 
+	{
+	    _pCompositionProcessorEngine->PurgeVirtualKey();
+	}
 
     if (_pTSFTTSUIPresenter)
     {
         _pTSFTTSUIPresenter->_EndCandidateList();
-
         _candidateMode = CANDIDATE_NONE;
         _isCandidateWithWildcard = FALSE;
     }

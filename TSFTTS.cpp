@@ -831,6 +831,7 @@ HRESULT CTSFTTS::GetComModuleName(REFGUID rclsid, _Out_writes_(cchPath)WCHAR* wc
 
 void CTSFTTS::SetDefaultTextFont()
 {
+	if(_pCompositionProcessorEngine == nullptr) return;
     // Candidate Text Font
     if (Global::defaultlFontHandle != nullptr)
 	{
@@ -889,7 +890,7 @@ BOOL CTSFTTS::SetupLanguageProfile(LANGID langid, REFGUID guidLanguageProfile, _
     _pCompositionProcessorEngine->SetupKeystroke();
     _pCompositionProcessorEngine->SetupConfiguration();
     _pCompositionProcessorEngine->SetupDictionaryFile();
-	_pCompositionProcessorEngine->loadConfig();
+	_pCompositionProcessorEngine->LoadConfig();
     
 Exit:
     return ret;

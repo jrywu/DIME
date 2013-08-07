@@ -1038,13 +1038,14 @@ HRESULT UIPresenter::MakeNotifyWindow(_In_ ITfContext *pContextDocument)
 {
 	HRESULT hr = S_OK;
 
+	if(_pCompositionProcessorEngine == nullptr) return S_FALSE;
+
 	if (nullptr == _pNotifyWnd)
     {
 		_pNotifyWnd = new (std::nothrow) CNotifyWindow(_NotifyWndCallback, this);
 	}
 
-    if (nullptr == _pNotifyWnd)
-		return S_FALSE;
+    if (nullptr == _pNotifyWnd)	return S_FALSE;
   
 	HWND parentWndHandle = nullptr;
     ITfContextView* pView = nullptr;
@@ -1087,7 +1088,7 @@ HRESULT UIPresenter::MakeNotifyWindow(_In_ ITfContext *pContextDocument)
 	}
 	void UIPresenter::ShowNotifyText(_In_ ITfContext *pContextDocument, _In_ CStringRange *pNotifyText)
 	{
-		if(SUCCEEDED(MakeNotifyWindow(pContextDocument)))
+		if(MakeNotifyWindow(pContextDocument)== S_OK)
 		{
 			ClearNotify();
 			SetNotifyText(pNotifyText);

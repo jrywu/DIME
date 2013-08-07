@@ -70,14 +70,20 @@ public:
 	void DoBeep();
 
 	//  configuration set/get
-	void SetAutoCompose(BOOL autoCompose);
-	BOOL GetAutoCompose();
-	void SetThreeCodeMode(BOOL threeCodeMode);
-	void SetFontSize(UINT fontSize);
-	UINT GetFontSize();
-	void SetMaxCodes(UINT maxCodes);
-	void SetDoBeep(BOOL doBeep);
-	
+	void SetAutoCompose(BOOL autoCompose) {_autoCompose = autoCompose;}
+	BOOL GetAutoCompose() {return _autoCompose;}
+	void SetThreeCodeMode(BOOL threeCodeMode) {_threeCodeMode = threeCodeMode;}
+	BOOL GetThreeCodeMode() {return _threeCodeMode;}
+	void SetFontSize(UINT fontSize) {_fontSize = fontSize;}
+	UINT GetFontSize() {return _fontSize;}
+	void SetMaxCodes(UINT maxCodes) { _maxCodes = maxCodes;}
+	UINT GetMaxCodes(){return _maxCodes;}
+	void SetDoBeep(BOOL doBeep) { _doBeep = doBeep;}
+	BOOL GetDoBeep() {return _doBeep;}
+	void SetAppPermissionSet(BOOL appPermissionSet) { _appPermissionSet = appPermissionSet;}
+	BOOL GetAppPermissionSet() {return _appPermissionSet;}
+
+
 	struct _KEYSTROKE
     {
         UINT VirtualKey;
@@ -98,7 +104,8 @@ public:
     void SetKeystrokeTable(_Inout_ CTSFTTSArray<_KEYSTROKE> *pKeystroke);
 	BOOL SetupDictionaryFile();
 
-	VOID loadConfig();
+	VOID LoadConfig();
+	VOID WriteConfig();
 private:
 	void InitKeyStrokeTable();
 	
@@ -163,14 +170,18 @@ private:
     BOOL _isDisableWildcardAtFirst : 1;
     BOOL _hasMakePhraseFromText : 1;
     BOOL _isKeystrokeSort : 1;
-	BOOL _autoCompose : 1;
-	BOOL _threeCodeMode : 1;
-    CCandidateRange _candidateListIndexRange;
+	CCandidateRange _candidateListIndexRange;
     UINT _candidateListPhraseModifier;
     UINT _candidateWndWidth;
-	UINT _fontSize;
-	UINT _MaxCodes;
-	BOOL _doBeep;
+
+	//user setting variables
+	BOOL _autoCompose : 1;
+	BOOL _threeCodeMode : 1;
+	BOOL _doBeep : 1;
+	BOOL _appPermissionSet : 1;
+    UINT _fontSize;
+	UINT _maxCodes;
+	
 
     CFileMapping* _pTTSDictionaryFile;
 	CFileMapping* _pCINDictionaryFile;

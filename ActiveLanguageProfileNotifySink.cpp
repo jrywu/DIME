@@ -9,6 +9,7 @@
 #include "Globals.h"
 #include "TSFTTS.h"
 #include "CompositionProcessorEngine.h"
+#include "UIPresenter.h"
 
 BOOL CTSFTTS::VerifyTSFTTSCLSID(_In_ REFCLSID clsid)
 {
@@ -42,6 +43,15 @@ STDAPI CTSFTTS::OnActivated(_In_ REFCLSID clsid, _In_ REFGUID guidProfile, _In_ 
     }
 
     if (nullptr == _pCompositionProcessorEngine)
+    {
+        return S_OK;
+    }
+
+	 if (isActivated)
+    {
+		_pTSFTTSUIPresenter = new (std::nothrow) UIPresenter(this, _pCompositionProcessorEngine);
+	}
+    if (!_pTSFTTSUIPresenter)
     {
         return S_OK;
     }

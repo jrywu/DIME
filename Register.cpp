@@ -12,8 +12,6 @@ static const WCHAR RegInfo_Prefix_CLSID[] = L"CLSID\\";
 static const WCHAR RegInfo_Key_InProSvr32[] = L"InProcServer32";
 static const WCHAR RegInfo_Key_ThreadModel[] = L"ThreadingModel";
 
-static const WCHAR TEXTSERVICE_DESC[] = L"TSF Dayi";
-
 static const GUID SupportCategories[] = {
     GUID_TFCAT_TIP_KEYBOARD,
     GUID_TFCAT_DISPLAYATTRIBUTEPROVIDER,
@@ -49,7 +47,9 @@ BOOL RegisterProfiles()
     achIconFile[cchA] = '\0';
 
     size_t lenOfDesc = 0;
-    hr = StringCchLength(TEXTSERVICE_DESC, STRSAFE_MAX_CCH, &lenOfDesc);
+	WCHAR serviceDescripion[50]={'\0'};;
+	LoadString(Global::dllInstanceHandle, IDS_DAYI_DESCRIPTION, serviceDescripion, 50);
+    hr = StringCchLength(serviceDescripion, STRSAFE_MAX_CCH, &lenOfDesc);
     if (hr != S_OK)
     {
         goto Exit;
@@ -57,7 +57,7 @@ BOOL RegisterProfiles()
     hr = pITfInputProcessorProfileMgr->RegisterProfile(Global::TSFTTSCLSID,
         TEXTSERVICE_LANGID,
         Global::TSFTTSGuidProfile,
-        TEXTSERVICE_DESC,
+        serviceDescripion,
         static_cast<ULONG>(lenOfDesc),
         achIconFile,
         cchA,
@@ -222,10 +222,12 @@ BOOL RegisterServer()
     }
 
     memcpy(achIMEKey, RegInfo_Prefix_CLSID, sizeof(RegInfo_Prefix_CLSID) - sizeof(WCHAR));
+	WCHAR serviceDescripion[50]={'\0'};
+	LoadString(Global::dllInstanceHandle, IDS_DAYI_DESCRIPTION, serviceDescripion, 50);
 
     if (RegCreateKeyEx(HKEY_CLASSES_ROOT, achIMEKey, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_WRITE, NULL, &regKeyHandle, &copiedStringLen) == ERROR_SUCCESS)
     {
-        if (RegSetValueEx(regKeyHandle, NULL, 0, REG_SZ, (const BYTE *)TEXTSERVICE_DESC, (_countof(TEXTSERVICE_DESC))*sizeof(WCHAR)) != ERROR_SUCCESS)
+        if (RegSetValueEx(regKeyHandle, NULL, 0, REG_SZ, (const BYTE *)serviceDescripion, (_countof(serviceDescripion))*sizeof(WCHAR)) != ERROR_SUCCESS)
         {
             goto Exit;
         }

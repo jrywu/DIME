@@ -14,7 +14,8 @@
 #include "Globals.h"
 #include "Compartment.h"
 #include "LanguageBar.h"
-
+#include "sddl.h"
+#include "Aclapi.h"
 
 
 //////////////////////////////////////////////////////////////////////
@@ -50,11 +51,15 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CTSFTTS *pTextServ
     _isDisableWildcardAtFirst = FALSE;
     _hasMakePhraseFromText = FALSE;
     _isKeystrokeSort = FALSE;
+
+	//configuration settings
 	_doBeep = FALSE;
 	_autoCompose = FALSE;
 	_threeCodeMode = FALSE;
 	_fontSize = 14;
-	_MaxCodes = 4;
+	_maxCodes = 4;
+	_appPermissionSet = FALSE;
+
 	_candidateWndWidth = 5;  //default with =  3 charaters + 2 trailling space
 
     _candidateListPhraseModifier = 0;
@@ -116,7 +121,7 @@ BOOL CCompositionProcessorEngine::AddVirtualKey(WCHAR wch)
     {
         return FALSE;
     }
-	if((UINT)_keystrokeBuffer.GetLength() >= _MaxCodes )  // do not eat the key if keystroke buffer length >= _maxcodes
+	if((UINT)_keystrokeBuffer.GetLength() >= _maxCodes )  // do not eat the key if keystroke buffer length >= _maxcodes
 	{
 		DoBeep();
 		return FALSE;
@@ -181,7 +186,7 @@ void CCompositionProcessorEngine::RemoveVirtualKey(DWORD_PTR dwIndex)
 
 void CCompositionProcessorEngine::PurgeVirtualKey()
 {
-    if (_keystrokeBuffer.Get())
+    if ( _keystrokeBuffer.Get())
     {
         delete [] _keystrokeBuffer.Get();
         _keystrokeBuffer.Set(NULL, 0);
@@ -663,6 +668,8 @@ void CCompositionProcessorEngine::SetupPreserved(_In_ ITfThreadMgr *pThreadMgr, 
     TF_PRESERVEDKEY preservedKeyImeMode;
     preservedKeyImeMode.uVKey = VK_SHIFT;
     preservedKeyImeMode.uModifiers = _TF_MOD_ON_KEYUP_SHIFT_ONLY;
+
+	
     SetPreservedKey(Global::TSFTTSGuidImeModePreserveKey, preservedKeyImeMode, Global::ImeModeDescription, &_PreservedKey_IMEMode);
 
     TF_PRESERVEDKEY preservedKeyDoubleSingleByte;
@@ -846,12 +853,11 @@ void CCompositionProcessorEngine::SetupConfiguration()
 	_doBeep = TRUE;
 	_autoCompose = FALSE;
 	_threeCodeMode = FALSE;
+	_maxCodes = 4;
+	_fontSize = 14;
+	_appPermissionSet = FALSE;
 
     _candidateWndWidth = 5;
-	_MaxCodes = 4;
-	_fontSize = 14;
-
-
     SetInitialCandidateListRange();
 
 
@@ -974,13 +980,14 @@ ErrorExit:
 //
 //----------------------------------------------------------------------------
 
-VOID CCompositionProcessorEngine::loadConfig()
+VOID CCompositionProcessorEngine::LoadConfig()
 {	
 	debugPrint(L"CCompositionProcessorEngine::loadConfig() \n");
-	WCHAR wszAppData[MAX_PATH];
+	WCHAR wszAppData[MAX_PATH] = {'\0'};
 	SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);	
-	WCHAR wzsTSFTTSProfile[MAX_PATH] = L"\\TSFTTS";
-	WCHAR wzsINIFileName[MAX_PATH] = L"\\config.ini";
+	WCHAR wzsTSFTTSProfile[MAX_PATH] = {'\0'};//L"\\TSFTTS";
+	PACL pOldDACL = NULL, pNewDACL = NULL;
+	PSECURITY_DESCRIPTOR pSD = NULL;
 
 	WCHAR *pwszINIFileName = new (std::nothrow) WCHAR[MAX_PATH];
     
@@ -988,12 +995,10 @@ VOID CCompositionProcessorEngine::loadConfig()
 
 	*pwszINIFileName = L'\0';
 
-	
-	StringCchCopyN(pwszINIFileName, MAX_PATH, wszAppData, wcslen(wszAppData));
-	StringCchCatN(pwszINIFileName, MAX_PATH, wzsTSFTTSProfile, wcslen(wzsTSFTTSProfile));
-	if(PathFileExists(pwszINIFileName))
-	{ //dayi.cin in personal romaing profile
-		StringCchCatN(pwszINIFileName, MAX_PATH, wzsINIFileName, wcslen(wzsINIFileName));
+	StringCchPrintf(wzsTSFTTSProfile, MAX_PATH, L"%s\\TSFTTS", wszAppData);
+	if(PathFileExists(wzsTSFTTSProfile))
+	{ 
+		StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\config.ini", wzsTSFTTSProfile);
 		if(PathFileExists(pwszINIFileName))
 		{
 			CFileMapping *iniDictionaryFile;
@@ -1009,16 +1014,102 @@ VOID CCompositionProcessorEngine::loadConfig()
 			}
 			
 		}
+		else
+		{
+			WriteConfig(); // config.ini is not there. create one.
+		}
 	}
 	else
 	{
 		//TSFTTS roadming profile is not exist. Create one.
-		CreateDirectory(pwszINIFileName, NULL);	
+		if(CreateDirectory(wzsTSFTTSProfile, NULL)==0) goto ErrorExit;
+	}
+
+	// In store app mode, the dll is loaded into app container which does not even have read right for IME profile in APPDATA.
+	// Here, the read right is granted once to "ALL APPLICATION PACKAGES" when loaded in desktop mode for all metro apps can at least read the user settings in config.ini.
+	if(Global::isWindows8 && !_pTextService->_IsStoreAppMode() && !_appPermissionSet ) 
+	{
+		EXPLICIT_ACCESS ea;
+		SECURITY_INFORMATION si = DACL_SECURITY_INFORMATION;
+		// Get a pointer to the existing DACL (Conditionaly).
+		DWORD dwRes = GetNamedSecurityInfo(wzsTSFTTSProfile, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, &pOldDACL, NULL, &pSD);
+		if(ERROR_SUCCESS != dwRes) goto ErrorExit;
+		// Initialize an EXPLICIT_ACCESS structure for the new ACE. 
+		ZeroMemory(&ea, sizeof(EXPLICIT_ACCESS));
+		ea.grfAccessPermissions = GENERIC_READ;
+		ea.grfAccessMode = GRANT_ACCESS;
+		ea.grfInheritance= SUB_CONTAINERS_AND_OBJECTS_INHERIT;
+		ea.Trustee.TrusteeForm = TRUSTEE_IS_NAME;
+		ea.Trustee.TrusteeType = TRUSTEE_IS_WELL_KNOWN_GROUP;
+		ea.Trustee.ptstrName = L"ALL APPLICATION PACKAGES";	
+
+		// Create a new ACL that merges the new ACE into the existing DACL.
+		dwRes = SetEntriesInAcl(1, &ea, pOldDACL, &pNewDACL);
+		if(ERROR_SUCCESS != dwRes) goto ErrorExit;
+		if(pNewDACL)
+			SetNamedSecurityInfo(wzsTSFTTSProfile, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, pNewDACL, NULL);
+		
+		_appPermissionSet = TRUE;
+		WriteConfig(); // update the config file.
+
 	}
 ErrorExit:
+	if(pNewDACL != NULL) 
+		LocalFree(pNewDACL);
+	if(pSD != NULL)
+		LocalFree(pSD);
     delete []pwszINIFileName;
 
 }
+
+//+---------------------------------------------------------------------------
+//
+// writeConfig
+//
+//----------------------------------------------------------------------------
+
+VOID CCompositionProcessorEngine::WriteConfig()
+{
+	debugPrint(L"CCompositionProcessorEngine::updateConfig() \n");
+	WCHAR wszAppData[MAX_PATH] = {'\0'};
+	SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);	
+	WCHAR wzsTSFTTSProfile[MAX_PATH] = {'\0'};
+	
+	WCHAR *pwszINIFileName = new (std::nothrow) WCHAR[MAX_PATH];
+    
+	if (!pwszINIFileName)  goto ErrorExit;
+
+	*pwszINIFileName = L'\0';
+
+	StringCchPrintf(wzsTSFTTSProfile, MAX_PATH, L"%s\\TSFTTS", wszAppData);
+	if(!PathFileExists(wzsTSFTTSProfile))
+	{
+		if(CreateDirectory(wzsTSFTTSProfile, NULL)==0) goto ErrorExit;
+	}
+	else
+	{
+		StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\config.ini", wzsTSFTTSProfile);
+		FILE *fp;
+		_wfopen_s(&fp, pwszINIFileName, L"w, ccs=UTF-16LE"); // overwrite the file
+	if(fp)
+	{
+		fwprintf_s(fp, L"[Config]\n");
+		fwprintf_s(fp, L"AutoCompose = %d\n", _autoCompose?1:0);
+		fwprintf_s(fp, L"ThreeCodeMode = %d\n", _threeCodeMode?1:0);
+		fwprintf_s(fp, L"DoBeep = %d\n", _doBeep?1:0);
+		fwprintf_s(fp, L"MaxCodes = %d\n", _maxCodes);
+		fwprintf_s(fp, L"FontSize = %d\n", _fontSize);
+		if(Global::isWindows8)
+			fwprintf_s(fp, L"AppPermissionSet = %d\n", _appPermissionSet?1:0);
+
+		fclose(fp);
+	}
+	}
+
+ErrorExit:
+    delete []pwszINIFileName;
+}
+
 //+---------------------------------------------------------------------------
 //
 // GetDictionaryFile
@@ -1561,37 +1652,4 @@ void CCompositionProcessorEngine::DoBeep()
 {
 	if(_doBeep)
 		MessageBeep(MB_ICONASTERISK);
-}
-
-//  configuration set/get
-void CCompositionProcessorEngine::SetAutoCompose(BOOL autoCompose)
-{
-	_autoCompose = autoCompose;
-}
-BOOL CCompositionProcessorEngine::GetAutoCompose()
-{
-	return _autoCompose;
-}
-void CCompositionProcessorEngine::SetThreeCodeMode(BOOL threeCodeMode)
-{
-
-	_threeCodeMode = threeCodeMode;
-}
-
-void CCompositionProcessorEngine::SetFontSize(UINT fontSize)
-{
-	_fontSize = fontSize;
-}
-UINT CCompositionProcessorEngine::GetFontSize()
-{
-	return _fontSize;
-}
-
-void CCompositionProcessorEngine::SetMaxCodes(UINT maxCodes)
-{
-	_MaxCodes = maxCodes;
-}
-void CCompositionProcessorEngine::SetDoBeep(BOOL doBeep)
-{
-	_doBeep = doBeep;
 }

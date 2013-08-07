@@ -159,17 +159,13 @@ extern const WCHAR UnicodeByteOrderMark;
 extern WCHAR KeywordDelimiter;
 extern const WCHAR StringDelimiter;
 
-extern const WCHAR ImeModeDescription[];
+extern WCHAR ImeModeDescription[50];
 extern const int ImeModeOnIcoIndex;
 extern const int ImeModeOffIcoIndex;
 
-extern const WCHAR DoubleSingleByteDescription[];
+extern WCHAR DoubleSingleByteDescription[50];
 extern const int DoubleSingleByteOnIcoIndex;
 extern const int DoubleSingleByteOffIcoIndex;
-
-extern const WCHAR PunctuationDescription[];
-extern const int PunctuationOnIcoIndex;
-extern const int PunctuationOffIcoIndex;
 
 extern const WCHAR LangbarImeModeDescription[];
 extern const WCHAR LangbarDoubleSingleByteDescription[];
@@ -205,9 +201,9 @@ inline static void debugPrint(const WCHAR* format,...)
 	{
 		va_list args;
 		va_start (args, format);
-		vfwprintf (fp, format, args);
+		vfwprintf_s (fp, format, args);
 		va_end (args);
-		fwprintf(fp, L"\n");
+		fwprintf_s(fp, L"\n");
 		fclose(fp);
 	}
 }

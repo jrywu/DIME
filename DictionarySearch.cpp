@@ -315,6 +315,8 @@ ReadValue:
 					_pCompositionProcessorEngine->SetFontSize(_wtoi(valueStrings.GetAt(0)->Get()));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"MaxCodes", 8)) == CSTR_EQUAL)
 					_pCompositionProcessorEngine->SetMaxCodes(_wtoi(valueStrings.GetAt(0)->Get()));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"AppPermissionSet", 16)) == CSTR_EQUAL)
+					_pCompositionProcessorEngine->SetAppPermissionSet(_wtoi(valueStrings.GetAt(0)->Get()));
 				goto FindNextLine;
 			}
 			else if(searchMode == SEARCH_CONTROLKEY && controlKeyType == CIN_CONTROLKEY)  // get value of cin control keys

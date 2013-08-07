@@ -112,11 +112,13 @@ extern const WCHAR StringDelimiter  = L'\"';
 //---------------------------------------------------------------------
 // defined item in setting file table [PreservedKey] section
 //---------------------------------------------------------------------
-extern const WCHAR ImeModeDescription[] = L"Chinese/English input (Shift)";
+
+
+extern WCHAR ImeModeDescription[50] = {'\0'};
 extern const int ImeModeOnIcoIndex = IME_MODE_ON_ICON_INDEX;
 extern const int ImeModeOffIcoIndex = IME_MODE_OFF_ICON_INDEX;
 
-extern const WCHAR DoubleSingleByteDescription[] = L"Double/Single byte (Shift+Space)";
+extern WCHAR DoubleSingleByteDescription[50] = {'\0'};
 extern const int DoubleSingleByteOnIcoIndex = IME_DOUBLE_ON_INDEX;
 extern const int DoubleSingleByteOffIcoIndex = IME_DOUBLE_OFF_INDEX;
 
