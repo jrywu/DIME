@@ -73,6 +73,7 @@
     <ClCompile Include="ButtonWindow.cpp" />
     <ClCompile Include="CandidateHandler.cpp" />
     <ClCompile Include="CandidateWindow.cpp" />
+    <ClCompile Include="ConfigDialog.cpp" />
     <ClCompile Include="Compartment.cpp" />
     <ClCompile Include="Composition.cpp" />
     <ClCompile Include="CompositionProcessorEngine.cpp" />
@@ -225,7 +226,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>$(MSBuildProgramFiles32)\Windows Kits\8.0\Lib\win8\um\x64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>shlwapi.lib;Comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>TSFTTS.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>

@@ -1,6 +1,7 @@
 // Microsoft Visual C++ generated resource script.
 //
-#include "windows.h"
+#include <windows.h>
+#include <commctrl.h>
 #include "resource.h"
 /////////////////////////////////////////////////////////////////////////////
 // Neutral (Default) resources
@@ -59,7 +60,51 @@ END
 #endif    // Chinese (Traditional, Taiwan) resources
 /////////////////////////////////////////////////////////////////////////////
 
-
+//
+// Dialog resources
+//
+LANGUAGE LANG_NEUTRAL, SUBLANG_DEFAULT
+IDD_DIALOG_BEHAVIOR DIALOG 0, 0, 268, 244
+STYLE DS_3DLOOK | DS_CENTER | DS_SHELLFONT | WS_VISIBLE | WS_CHILDWINDOW
+FONT 10, "MS Gothic"
+{
+    GROUPBOX        "共同設定", IDC_STATIC, 4, 4, 258, 236, BS_FLAT
+    LTEXT           "字型", IDC_STATIC, 24, 20, 17, 8, SS_LEFT
+    EDITTEXT        IDC_EDIT_FONTNAME, 128, 18, 80, 12, ES_AUTOHSCROLL | ES_READONLY
+    EDITTEXT        IDC_EDIT_FONTPOINT, 210, 17, 16, 12, ES_AUTOHSCROLL | ES_READONLY
+    PUSHBUTTON      "...", IDC_BUTTON_CHOOSEFONT, 230, 17, 16, 14, BS_CENTER
+    LTEXT           "組字區最大長度", IDC_STATIC, 24, 35, 57, 8, SS_LEFT
+    EDITTEXT        IDC_EDIT_MAXWIDTH, 128, 33, 32, 12, ES_AUTOHSCROLL
+    LTEXT           "color", IDC_STATIC, 24, 50, 50, 8, SS_LEFT
+    LTEXT           "bk", IDC_STATIC, 90, 50, 18, 8, SS_LEFT
+    CONTROL         "", IDC_COL_BG, WC_STATIC, SS_BLACKFRAME, 110, 48, 12, 12
+    LTEXT           "xxx", IDC_STATIC, 130, 50, 18, 8, SS_LEFT
+    CONTROL         "", IDC_COL_FR, WC_STATIC, SS_BLACKFRAME, 150, 48, 12, 12
+    LTEXT           "select", IDC_STATIC, 175, 50, 18, 8, SS_LEFT
+    CONTROL         "", IDC_COL_SE, WC_STATIC, SS_BLACKFRAME, 195, 48, 12, 12
+    LTEXT           ":", IDC_STATIC, 215, 50, 18, 8, SS_LEFT
+    CONTROL         "", IDC_COL_CO, WC_STATIC, SS_BLACKFRAME, 235, 48, 12, 12
+    LTEXT           "backup", IDC_STATIC, 90, 65, 18, 8, SS_LEFT
+    CONTROL         "", IDC_COL_CA, WC_STATIC, SS_BLACKFRAME, 110, 63, 12, 12
+    LTEXT           ";", IDC_STATIC, 130, 65, 18, 8, SS_LEFT
+    CONTROL         "", IDC_COL_SC, WC_STATIC, SS_BLACKFRAME, 150, 63, 12, 12
+    LTEXT           "comment", IDC_STATIC, 175, 65, 18, 8, SS_LEFT
+    CONTROL         "", IDC_COL_AN, WC_STATIC, SS_BLACKFRAME, 195, 63, 12, 12
+    LTEXT           "no", IDC_STATIC, 215, 65, 18, 8, SS_LEFT
+    CONTROL         "", IDC_COL_NO, WC_STATIC, SS_BLACKFRAME, 235, 63, 12, 12
+    LTEXT           "static", IDC_STATIC, 24, 80, 180, 8, SS_LEFT
+    COMBOBOX        IDC_COMBO_UNTILCANDLIST, 218, 78, 28, 14, WS_TABSTOP | CBS_DROPDOWNLIST
+    AUTOCHECKBOX    "ddf", IDC_CHECKBOX_DISPCANDNO, 24, 95, 180, 8
+    AUTOCHECKBOX    "fdfd", IDC_CHECKBOX_ANNOTATION, 24, 110, 80, 8
+    AUTORADIOBUTTON "fd", IDC_RADIO_ANNOTATALL, 174, 128, 40, 8, WS_GROUP | WS_TABSTOP
+    AUTORADIOBUTTON "fd", IDC_RADIO_ANNOTATLST, 172, 110, 40, 8, WS_TABSTOP
+    AUTOCHECKBOX    "fdsf", IDC_CHECKBOX_NOMODEMARK, 24, 125, 137, 8, WS_GROUP
+    AUTOCHECKBOX    "xad", IDC_CHECKBOX_NOOKURICONV, 24, 140, 180, 8
+    AUTOCHECKBOX    "fdsafds", IDC_CHECKBOX_DELOKURICNCL, 24, 155, 180, 8
+    AUTOCHECKBOX    "fdafds", IDC_CHECKBOX_BACKINCENTER, 24, 170, 180, 8
+    AUTOCHECKBOX    "fdsfdsa", IDC_CHECKBOX_ADDCANDKTKN, 24, 185, 180, 8
+    AUTOCHECKBOX    "fdafdsa", IDC_CHECKBOX_SHOWMODEIMM, 24, 200, 180, 8
+}
 /////////////////////////////////////////////////////////////////////////////
 // English resources
 

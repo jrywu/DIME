@@ -40,6 +40,9 @@
     <Filter Include="Source Files\UI\NotifyWindow">
       <UniqueIdentifier>{6a37624e-fbca-42cc-a414-c390a08e1ff1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Configuration">
+      <UniqueIdentifier>{48586160-0527-48f2-aedd-ea9cd7773da9}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="image\ImeModeOn.ico">
@@ -321,6 +324,9 @@
     </ClCompile>
     <ClCompile Include="TSFTTS.cpp">
       <Filter>Source Files\Framework</Filter>
+    </ClCompile>
+    <ClCompile Include="ConfigDialog.cpp">
+      <Filter>Source Files\Configuration</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

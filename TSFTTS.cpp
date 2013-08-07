@@ -13,6 +13,7 @@
 #include "Compartment.h"
 #include "RegKey.h"
 #include "TfInputProcessorProfile.h"
+#include <Prsht.h>
 //////////////////////////////////////////////////////////////////////
 //
 // CTSFTTS implementation.
@@ -589,12 +590,53 @@ HRESULT CTSFTTS::GetLayout(_Out_ TKBLayoutType *ptkblayoutType, _Out_ WORD *pwPr
 // ITfFnConfigure::Show
 //
 //----------------------------------------------------------------------------
+// static dialog procedure
 
 HRESULT CTSFTTS::Show(_In_ HWND hwndParent, _In_ LANGID langid, _In_ REFGUID rguidProfile)
 {
 	langid;
 	rguidProfile;
-	MessageBox(hwndParent, L"config call", L"TSFTTS", NULL);
+
+	PROPSHEETPAGEW psp;
+	PROPSHEETHEADERW psh;
+	struct {
+		int id;
+		DLGPROC DlgProc;
+	} DlgPage[] = {
+		{IDD_DIALOG_BEHAVIOR,	CommonPropertyPageWndProc},
+		//{IDD_DIALOG_DICTIONARY,	DlgProcDictionary},
+		
+	};
+	HPROPSHEETPAGE hpsp[_countof(DlgPage)];
+	int i;
+
+	ZeroMemory(&psp, sizeof(PROPSHEETPAGEW));
+	psp.dwSize = sizeof(PROPSHEETPAGEW);
+	psp.dwFlags = PSP_PREMATURE;
+	psp.hInstance = Global::dllInstanceHandle;
+
+	for(i=0; i<_countof(DlgPage); i++)
+	{
+		psp.pszTemplate = MAKEINTRESOURCE(DlgPage[i].id);
+		psp.pfnDlgProc = DlgPage[i].DlgProc;
+		hpsp[i] = CreatePropertySheetPage(&psp);
+	}
+
+	ZeroMemory(&psh, sizeof(PROPSHEETHEADERW));
+	psh.dwSize = sizeof(PROPSHEETHEADERW);
+	psh.dwFlags = PSH_DEFAULT | PSH_NOCONTEXTHELP;
+	psh.hInstance = Global::dllInstanceHandle;
+	psh.hwndParent = NULL;
+	psh.nPages = _countof(DlgPage);
+	psh.phpage = hpsp;
+	psh.pszCaption = L"TSFTT User Settings";
+	
+	PropertySheet(&psh);
+
+
+
+
+
 	return S_OK;
 }
 //+---------------------------------------------------------------------------

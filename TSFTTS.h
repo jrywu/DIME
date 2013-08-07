@@ -162,6 +162,11 @@ public:
 
 	HRESULT ShowNotifyText(CStringRange *pNotifyText);
 
+
+	//configuration propertysheet dialog
+	static INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
+	friend void DrawColor(HWND hwnd, HDC hdc, COLORREF col);
+
 private:
     // functions for the composition object.
     HRESULT _HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *pCompositionProcessorEngine, TfEditCookie ec, _In_ ITfContext *pContext);
