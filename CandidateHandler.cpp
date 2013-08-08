@@ -97,9 +97,7 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 	if (fMakePhraseFromText)
 	{
 		_pCompositionProcessorEngine->GetCandidateStringInConverted(candidateString, &candidatePhraseList);
-		LCID locale = GetLocale();
-
-		_pTSFTTSUIPresenter->RemoveSpecificCandidateFromList(locale, candidatePhraseList, candidateString);
+		//_pTSFTTSUIPresenter->RemoveSpecificCandidateFromList(GetLocale(), candidatePhraseList, candidateString); //for text search. not necessary for phrase entries lookup
 	}
 	
 	// We have a candidate list if candidatePhraseList.Cnt is not 0
