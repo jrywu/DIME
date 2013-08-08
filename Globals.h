@@ -143,7 +143,7 @@ extern const GUID TSFTTSGuidCompartmentIMEMode;
 extern const GUID TSFTTSGuidCompartmentDoubleSingleByte;
 
 extern const WCHAR FullWidthCharTable[];
-extern const WCHAR symbolCharTable[26];
+extern const WCHAR symbolCharTable[27];
 extern const _AddressDirectInput addressCharTable[5];
 
 extern const GUID TSFTTSGuidLangBarIMEMode;

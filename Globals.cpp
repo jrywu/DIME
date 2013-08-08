@@ -193,8 +193,8 @@ extern const WCHAR FullWidthCharTable[] = {
 //---------------------------------------------------------------------
 // defined symbol characters
 //---------------------------------------------------------------------
-extern const WCHAR symbolCharTable[26] = {
-	L' ', L'!', L'@', L'\\', L'\"',  L'#', L'$', L'%', L'&', L'\'', L'(', L')',	L'+', L':', L'<', L'>', L'[', L']', L'^', L'-', L'_', L'`', L'{', L'}', L'|', L'~'
+extern const WCHAR symbolCharTable[27] = {
+	L' ', L'!', L'@', L'\\', L'\"',  L'#', L'$', L'%', L'&', L'\'', L'(', L')',	L'+', L':', L'<', L'>', L'[', L']', L'^', L'-', L'_', L'`', L'{', L'}', L'|', L'~', L'?'
 };
 //---------------------------------------------------------------------
 // defined directly input address characters

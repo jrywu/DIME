@@ -1030,7 +1030,6 @@ VOID CCompositionProcessorEngine::LoadConfig()
 	if(Global::isWindows8 && !_pTextService->_IsStoreAppMode() && !_appPermissionSet ) 
 	{
 		EXPLICIT_ACCESS ea;
-		SECURITY_INFORMATION si = DACL_SECURITY_INFORMATION;
 		// Get a pointer to the existing DACL (Conditionaly).
 		DWORD dwRes = GetNamedSecurityInfo(wzsTSFTTSProfile, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, &pOldDACL, NULL, &pSD);
 		if(ERROR_SUCCESS != dwRes) goto ErrorExit;

@@ -619,6 +619,7 @@ HRESULT CTSFTTS::Show(_In_ HWND hwndParent, _In_ LANGID langid, _In_ REFGUID rgu
 	{
 		psp.pszTemplate = MAKEINTRESOURCE(DlgPage[i].id);
 		psp.pfnDlgProc = DlgPage[i].DlgProc;
+		psp.pszTitle = L"General";
 		hpsp[i] = CreatePropertySheetPage(&psp);
 	}
 
@@ -626,10 +627,10 @@ HRESULT CTSFTTS::Show(_In_ HWND hwndParent, _In_ LANGID langid, _In_ REFGUID rgu
 	psh.dwSize = sizeof(PROPSHEETHEADERW);
 	psh.dwFlags = PSH_DEFAULT | PSH_NOCONTEXTHELP;
 	psh.hInstance = Global::dllInstanceHandle;
-	psh.hwndParent = NULL;
+	psh.hwndParent = hwndParent;
 	psh.nPages = _countof(DlgPage);
 	psh.phpage = hpsp;
-	psh.pszCaption = L"TSFTT User Settings";
+	psh.pszCaption = L"TSFTTS User Settings";
 	
 	PropertySheet(&psh);
 

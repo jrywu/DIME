@@ -26,15 +26,15 @@ INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 	size_t i;
 	WCHAR num[16];
 	WCHAR fontname[LF_FACESIZE];
-	int fontpoint, fontweight, x, y;
-	BOOL fontitalic;
+	int fontpoint =14, fontweight = FW_NORMAL, x, y;
+	BOOL fontitalic = FALSE;
 	CHOOSEFONTW cf;
 	LOGFONT lf;
 	HDC hdc;
 	HFONT hFont;
 	RECT rect;
 	POINT pt;
-	LONG w;
+	LONG w=0;
 
 
 	CHOOSECOLORW cc;
@@ -51,7 +51,7 @@ INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 
 		if(fontpoint < 8 || fontpoint > 72)
 		{
-			fontpoint = 12;
+			fontpoint = 14;
 		}
 		if(fontweight < 0 || fontweight > 1000)
 		{
