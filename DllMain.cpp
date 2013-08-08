@@ -4,7 +4,7 @@
 //
 //
 
-
+#define DEBUG_PRINT
 #include "Private.h"
 #include "Globals.h"
 
@@ -21,7 +21,7 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID pvReserved)
     switch (dwReason)
     {
     case DLL_PROCESS_ATTACH:
-
+		debugPrint(L"DllMain() DLL_PROCESS_ATTACH");
         Global::dllInstanceHandle = hInstance;
 
         if (!InitializeCriticalSectionAndSpinCount(&Global::CS, 0))

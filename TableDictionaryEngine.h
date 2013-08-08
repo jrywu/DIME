@@ -10,12 +10,11 @@
 
 #include "BaseDictionaryEngine.h"
 
-class CCompositionProcessorEngine;
+class CTSFTTS;
 class CTableDictionaryEngine : public CBaseDictionaryEngine
 {
 public:
-	CTableDictionaryEngine(LCID locale, _In_ CFile *pDictionaryFile, _In_ WCHAR keywordDelimiter, CCompositionProcessorEngine *pCompositionProcessorEngine);
-		//:CBaseDictionaryEngine(locale, pDictionaryFile, keywordDelimiter){}
+	CTableDictionaryEngine(LCID locale, _In_ CFile *pDictionaryFile, _In_ WCHAR keywordDelimiter, CTSFTTS *pTextService);
 	virtual ~CTableDictionaryEngine(){}
     // Collect word from phrase string.
     // param
@@ -32,6 +31,6 @@ public:
     VOID CollectWordFromConvertedStringForWildcard(_In_ CStringRange *pString, _Inout_ CTSFTTSArray<CCandidateListItem> *pItemList);
 	VOID ParseConfig();
 private:
-	CCompositionProcessorEngine *_pCompositionProcessorEngine;
+	CTSFTTS *_pTextService;
 };
 #endif

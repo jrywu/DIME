@@ -1024,7 +1024,7 @@ void CTSFTTS::KeyboardOpenCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr, _In_
 			OnKeyboardOpen();
 			if(_pCompositionProcessorEngine)
 			{
-				_pCompositionProcessorEngine->LoadConfig();
+				LoadConfig();
 				SetDefaultTextFont();
 			}
 		}

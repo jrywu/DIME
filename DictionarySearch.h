@@ -21,11 +21,11 @@ class CDictionaryResult;
 //
 //////////////////////////////////////////////////////////////////////
 
-class CCompositionProcessorEngine;
+class CTSFTTS;
 class CDictionarySearch : CDictionaryParser
 {
 public:
-    CDictionarySearch(LCID locale, _In_ CFile *pFile, _In_ CStringRange *pSearchKeyCode, _In_ WCHAR keywordDelimiter, _In_ CCompositionProcessorEngine *pCompositionProcessorEngine);
+    CDictionarySearch(LCID locale, _In_ CFile *pFile, _In_ CStringRange *pSearchKeyCode, _In_ WCHAR keywordDelimiter, _In_ CTSFTTS *pTextService);
     virtual ~CDictionarySearch();
 
     BOOL FindPhrase(_Out_ CDictionaryResult **ppdret);
@@ -53,7 +53,7 @@ private:
 
     CFile* _pFile;
 	enum SEARCH_MODE searchMode;
-	CCompositionProcessorEngine* _pCompositionProcessorEngine;
+	CTSFTTS *_pTextService;
 
 };
 

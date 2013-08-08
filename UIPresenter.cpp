@@ -543,12 +543,14 @@ void UIPresenter::_EndCandidateList()
 //
 //----------------------------------------------------------------------------
 
-void UIPresenter::_SetCandidateText(_In_ CTSFTTSArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode)
+void UIPresenter::_SetCandidateText(_In_ CTSFTTSArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode, UINT candWidth)
 {
 	debugPrint(L"UIPresenter::_SetCandidateText()");
     AddCandidateToTSFTTSUI(pCandidateList, isAddFindKeyCode);
 
     SetPageIndexWithScrollInfo(pCandidateList);
+
+	_pCandidateWnd->_SetWidth(candWidth);
 
     if (_isShowMode)
     {
@@ -1056,7 +1058,7 @@ HRESULT UIPresenter::MakeNotifyWindow(_In_ ITfContext *pContextDocument)
 	
 	if (_pNotifyWnd->_GetUIWnd() == nullptr)
 	{
-		if( !_pNotifyWnd->_Create(_pCompositionProcessorEngine->GetFontSize(), parentWndHandle))
+		if( !_pNotifyWnd->_Create(_pTextService->GetFontSize(), parentWndHandle))
 		{
 			hr = E_OUTOFMEMORY;
 			return hr;
@@ -1142,7 +1144,7 @@ HRESULT UIPresenter::MakeCandidateWindow(_In_ ITfContext *pContextDocument, _In_
         pView->GetWnd(&parentWndHandle);
     }
 
-	if (!_pCandidateWnd->_Create(wndWidth, _pCompositionProcessorEngine->GetFontSize(), parentWndHandle))
+	if (!_pCandidateWnd->_Create(wndWidth, _pTextService->GetFontSize(), parentWndHandle))
     {
         hr = E_OUTOFMEMORY;
         goto Exit;

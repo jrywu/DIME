@@ -3,7 +3,7 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-//#define DEBUG_PRINT
+#define DEBUG_PRINT
 
 #include "Private.h"
 #include "globals.h"
@@ -23,6 +23,7 @@
 // _AddTextProcessorEngine
 //
 //----------------------------------------------------------------------------
+
 
 BOOL CTSFTTS::_AddTextProcessorEngine()
 {
@@ -162,6 +163,7 @@ CTSFTTS::CTSFTTS()
     _pLanguageBar_IMEMode = nullptr;
     _pLanguageBar_DoubleSingleByte = nullptr;
 
+	_langid = 1028; // CHT
 
     _pCompartmentConversion = nullptr;
 	_pCompartmentIMEModeEventSink = nullptr;
@@ -356,6 +358,7 @@ STDAPI_(ULONG) CTSFTTS::Release()
 
 STDAPI CTSFTTS::ActivateEx(ITfThreadMgr *pThreadMgr, TfClientId tfClientId, DWORD dwFlags)
 {
+	debugPrint(L"CTSFTTS::ActivateEx(); ITfTextInputProcessorEx::ActivateEx()");
     _pThreadMgr = pThreadMgr;
     _pThreadMgr->AddRef();
 
@@ -594,11 +597,16 @@ HRESULT CTSFTTS::GetLayout(_Out_ TKBLayoutType *ptkblayoutType, _Out_ WORD *pwPr
 
 HRESULT CTSFTTS::Show(_In_ HWND hwndParent, _In_ LANGID langid, _In_ REFGUID rguidProfile)
 {
+	
 	langid;
 	rguidProfile;
 
-	PROPSHEETPAGEW psp;
-	PROPSHEETHEADERW psh;
+	LoadConfig();
+
+	debugPrint(L"CTSFTTS::Show() ,  ITfFnConfigure::Show(), _autoCompose = %d, _threeCodeMode = %d, _doBeep = %d", _autoCompose, _threeCodeMode, _doBeep);
+
+	PROPSHEETPAGE psp;
+	PROPSHEETHEADER psh;
 	struct {
 		int id;
 		DLGPROC DlgProc;
@@ -610,8 +618,8 @@ HRESULT CTSFTTS::Show(_In_ HWND hwndParent, _In_ LANGID langid, _In_ REFGUID rgu
 	HPROPSHEETPAGE hpsp[_countof(DlgPage)];
 	int i;
 
-	ZeroMemory(&psp, sizeof(PROPSHEETPAGEW));
-	psp.dwSize = sizeof(PROPSHEETPAGEW);
+	ZeroMemory(&psp, sizeof(PROPSHEETPAGE));
+	psp.dwSize = sizeof(PROPSHEETPAGE);
 	psp.dwFlags = PSP_PREMATURE;
 	psp.hInstance = Global::dllInstanceHandle;
 
@@ -619,12 +627,11 @@ HRESULT CTSFTTS::Show(_In_ HWND hwndParent, _In_ LANGID langid, _In_ REFGUID rgu
 	{
 		psp.pszTemplate = MAKEINTRESOURCE(DlgPage[i].id);
 		psp.pfnDlgProc = DlgPage[i].DlgProc;
-		psp.pszTitle = L"General";
 		hpsp[i] = CreatePropertySheetPage(&psp);
 	}
 
-	ZeroMemory(&psh, sizeof(PROPSHEETHEADERW));
-	psh.dwSize = sizeof(PROPSHEETHEADERW);
+	ZeroMemory(&psh, sizeof(PROPSHEETHEADER));
+	psh.dwSize = sizeof(PROPSHEETHEADER);
 	psh.dwFlags = PSH_DEFAULT | PSH_NOCONTEXTHELP;
 	psh.hInstance = Global::dllInstanceHandle;
 	psh.hwndParent = hwndParent;
@@ -885,13 +892,13 @@ void CTSFTTS::SetDefaultTextFont()
     {
 		WCHAR fontName[50] = {'\0'}; 
 		LoadString(Global::dllInstanceHandle, IDS_DEFAULT_FONT, fontName, 50);
-		Global::defaultlFontHandle = CreateFont(-MulDiv(_pCompositionProcessorEngine->GetFontSize(), GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72), 0, 0, 0, FW_MEDIUM, 0, 0, 0, 0, 0, 0, 0, 0, fontName);
+		Global::defaultlFontHandle = CreateFont(-MulDiv(_fontSize, GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72), 0, 0, 0, FW_MEDIUM, 0, 0, 0, 0, 0, 0, 0, 0, fontName);
         if (!Global::defaultlFontHandle)
         {
 			LOGFONT lf;
 			SystemParametersInfo(SPI_GETICONTITLELOGFONT, sizeof(LOGFONT), &lf, 0);
             // Fall back to the default GUI font on failure.
-            Global::defaultlFontHandle = CreateFont(-MulDiv(_pCompositionProcessorEngine->GetFontSize(), GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72), 0, 0, 0, FW_MEDIUM, 0, 0, 0, 0, 0, 0, 0, 0, lf.lfFaceName);
+            Global::defaultlFontHandle = CreateFont(-MulDiv(_fontSize, GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72), 0, 0, 0, FW_MEDIUM, 0, 0, 0, 0, 0, 0, 0, 0, lf.lfFaceName);
         }
     }
 }
@@ -933,7 +940,7 @@ BOOL CTSFTTS::SetupLanguageProfile(LANGID langid, REFGUID guidLanguageProfile, _
     _pCompositionProcessorEngine->SetupKeystroke();
     _pCompositionProcessorEngine->SetupConfiguration();
     _pCompositionProcessorEngine->SetupDictionaryFile();
-	_pCompositionProcessorEngine->LoadConfig();
+	LoadConfig();
     
 Exit:
     return ret;

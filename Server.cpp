@@ -3,7 +3,7 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-
+#define DEBUG_PRINT
 
 #include "Private.h"
 #include "Globals.h"
@@ -169,6 +169,7 @@ STDAPI CClassFactory::LockServer(BOOL fLock)
 
 void BuildGlobalObjects(void)
 {
+	debugPrint(L"BuildGlobalObjects()");
     classFactoryObjects[0] = new (std::nothrow) CClassFactory(Global::TSFTTSCLSID, CTSFTTS::CreateInstance);
 }
 
@@ -203,6 +204,7 @@ STDAPI  DllGetClassObject(
 	_In_ REFIID riid, 
 	_Outptr_ void** ppv)
 {
+	debugPrint(L"DllGetClassObject()");
     if (classFactoryObjects[0] == nullptr)
     {
         EnterCriticalSection(&Global::CS);

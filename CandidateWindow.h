@@ -29,6 +29,8 @@ public:
 
     BOOL _Create(_In_ UINT wndWidth, _In_ UINT fontSize, _In_opt_ HWND parentWndHandle);
 
+	void _SetWidth(_In_ UINT wndWidth) { _wndWidth = wndWidth; }
+
     void _Move(int x, int y);
     void _Show(BOOL isShowWnd);
 
@@ -44,14 +46,8 @@ public:
 
     void _AddString(_Inout_ CCandidateListItem *pCandidateItem, _In_ BOOL isAddFindKeyCode);
     void _ClearList();
-    UINT _GetCount()
-    {
-        return _candidateList.Count();
-    }
-    UINT _GetSelection()
-    {
-        return _currentSelection;
-    }
+    UINT _GetCount() { return _candidateList.Count(); }
+    UINT _GetSelection()  { return _currentSelection;}
     void _SetScrollInfo(_In_ int nMax, _In_ int nPage);
 
     DWORD _GetCandidateString(_In_ int iIndex, _Outptr_result_maybenull_z_ const WCHAR **ppwchCandidateString);

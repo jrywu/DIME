@@ -118,7 +118,7 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 			_pTSFTTSUIPresenter->_ClearCandidateList();
 			_pTSFTTSUIPresenter->_SetCandidateTextColor(RGB(0, 0x80, 0), GetSysColor(COLOR_WINDOW));    // Text color is green
 			_pTSFTTSUIPresenter->_SetCandidateFillColor((HBRUSH)(COLOR_WINDOW+1));    // Background color is window
-			_pTSFTTSUIPresenter->_SetCandidateText(&candidatePhraseList, TRUE);
+			_pTSFTTSUIPresenter->_SetCandidateText(&candidatePhraseList, TRUE, _pCompositionProcessorEngine->GetCandidateWindowWidth());
 			_pTSFTTSUIPresenter->_SetCandidateSelection(-1, FALSE); // set selected index to -1 if showing phrase candidates
 			_phraseCandShowing = TRUE;  //_phraseCandShowing = TRUE. phrase cand is showing
 			_candidateMode = CANDIDATE_PHRASE;

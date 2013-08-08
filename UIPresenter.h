@@ -74,7 +74,7 @@ public:
     virtual HRESULT _StartCandidateList(TfClientId tfClientId, _In_ ITfDocumentMgr *pDocumentMgr, _In_ ITfContext *pContextDocument, TfEditCookie ec, _In_ ITfRange *pRangeComposition, UINT wndWidth);
     void _EndCandidateList();
 
-    void _SetCandidateText(_In_ CTSFTTSArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode);
+    void _SetCandidateText(_In_ CTSFTTSArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode, UINT candWidth);
     void _ClearCandidateList();
     VOID _SetCandidateTextColor(COLORREF crColor, COLORREF crBkColor);
     VOID _SetCandidateFillColor(HBRUSH hBrush);

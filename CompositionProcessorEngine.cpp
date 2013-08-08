@@ -15,7 +15,7 @@
 #include "Compartment.h"
 #include "LanguageBar.h"
 #include "sddl.h"
-#include "Aclapi.h"
+
 
 
 //////////////////////////////////////////////////////////////////////
@@ -52,13 +52,7 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CTSFTTS *pTextServ
     _hasMakePhraseFromText = FALSE;
     _isKeystrokeSort = FALSE;
 
-	//configuration settings
-	_doBeep = FALSE;
-	_autoCompose = FALSE;
-	_threeCodeMode = FALSE;
-	_fontSize = 14;
-	_maxCodes = 4;
-	_appPermissionSet = FALSE;
+	
 
 	_candidateWndWidth = 5;  //default with =  3 charaters + 2 trailling space
 
@@ -121,7 +115,7 @@ BOOL CCompositionProcessorEngine::AddVirtualKey(WCHAR wch)
     {
         return FALSE;
     }
-	if((UINT)_keystrokeBuffer.GetLength() >= _maxCodes )  // do not eat the key if keystroke buffer length >= _maxcodes
+	if((UINT)_keystrokeBuffer.GetLength() >= _pTextService->GetMaxCodes() )  // do not eat the key if keystroke buffer length >= _maxcodes
 	{
 		DoBeep();
 		return FALSE;
@@ -303,7 +297,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFTTSArray<CCandida
 		PWCHAR pwch3code = new (std::nothrow) WCHAR[ 6 ];
 		if (!pwch3code) return;
 
-        if (!isFindWildcard  && (_threeCodeMode && _keystrokeBuffer.GetLength() == 3))
+		if (!isFindWildcard  && (_pTextService->GetThreeCodeMode() && _keystrokeBuffer.GetLength() == 3))
         {
 			StringCchCopyN(pwch, keystrokeBufLen, _keystrokeBuffer.Get(), _keystrokeBuffer.GetLength());
 			StringCchCat(pwch, keystrokeBufLen, L"*");
@@ -409,7 +403,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFTTSArray<CCandida
     {
         _pTableDictionaryEngine->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList);
     }
-	else if (_threeCodeMode && _keystrokeBuffer.GetLength() == 3)
+	else if (_pTextService->GetThreeCodeMode() && _keystrokeBuffer.GetLength() == 3)
 	{
 		
 
@@ -850,14 +844,7 @@ void CCompositionProcessorEngine::SetupConfiguration()
     _hasMakePhraseFromText = TRUE;
     _isKeystrokeSort = FALSE;
 
-	_doBeep = TRUE;
-	_autoCompose = FALSE;
-	_threeCodeMode = FALSE;
-	_maxCodes = 4;
-	_fontSize = 14;
-	_appPermissionSet = FALSE;
-
-    _candidateWndWidth = 5;
+   _candidateWndWidth = 5;
     SetInitialCandidateListRange();
 
 
@@ -925,7 +912,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 	}
 	else
 	{
-		_pTTSTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pTTSDictionaryFile, L'=', this); //TTS file use '=' as delimiter
+		_pTTSTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pTTSDictionaryFile, L'=', _pTextService); //TTS file use '=' as delimiter
 		if (!_pTTSTableDictionaryEngine)  goto ErrorExit;
 		_pTTSTableDictionaryEngine->ParseConfig(); //parse config first.
 		_pTableDictionaryEngine = _pTTSTableDictionaryEngine;  //set TTS as default dictionary engine
@@ -945,7 +932,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 				_pCINDictionaryFile = new (std::nothrow) CFileMapping();
 				if ((_pCINDictionaryFile)->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
 				{
-					_pCINTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pCINDictionaryFile, L'\t', this); //cin files use tab as delimiter
+					_pCINTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pCINDictionaryFile, L'\t', _pTextService); //cin files use tab as delimiter
 
 					if (_pCINTableDictionaryEngine)  
 					{
@@ -974,140 +961,8 @@ ErrorExit:
     return FALSE;
 }
 
-//+---------------------------------------------------------------------------
-//
-// loadConfig
-//
-//----------------------------------------------------------------------------
 
-VOID CCompositionProcessorEngine::LoadConfig()
-{	
-	debugPrint(L"CCompositionProcessorEngine::loadConfig() \n");
-	WCHAR wszAppData[MAX_PATH] = {'\0'};
-	SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);	
-	WCHAR wzsTSFTTSProfile[MAX_PATH] = {'\0'};//L"\\TSFTTS";
-	PACL pOldDACL = NULL, pNewDACL = NULL;
-	PSECURITY_DESCRIPTOR pSD = NULL;
 
-	WCHAR *pwszINIFileName = new (std::nothrow) WCHAR[MAX_PATH];
-    
-	if (!pwszINIFileName)  goto ErrorExit;
-
-	*pwszINIFileName = L'\0';
-
-	StringCchPrintf(wzsTSFTTSProfile, MAX_PATH, L"%s\\TSFTTS", wszAppData);
-	if(PathFileExists(wzsTSFTTSProfile))
-	{ 
-		StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\config.ini", wzsTSFTTSProfile);
-		if(PathFileExists(pwszINIFileName))
-		{
-			CFileMapping *iniDictionaryFile;
-			iniDictionaryFile = new (std::nothrow) CFileMapping();
-			if ((iniDictionaryFile)->CreateFile(pwszINIFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
-			{
-				CTableDictionaryEngine * iniTableDictionaryEngine;
-				iniTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), iniDictionaryFile,L'=', this);
-				if (iniTableDictionaryEngine)  
-					iniTableDictionaryEngine->ParseConfig(); //parse config first.
-				delete iniTableDictionaryEngine; // delete after config.ini config are pasrsed
-				delete iniDictionaryFile;
-			}
-			
-		}
-		else
-		{
-			WriteConfig(); // config.ini is not there. create one.
-		}
-	}
-	else
-	{
-		//TSFTTS roadming profile is not exist. Create one.
-		if(CreateDirectory(wzsTSFTTSProfile, NULL)==0) goto ErrorExit;
-	}
-
-	// In store app mode, the dll is loaded into app container which does not even have read right for IME profile in APPDATA.
-	// Here, the read right is granted once to "ALL APPLICATION PACKAGES" when loaded in desktop mode for all metro apps can at least read the user settings in config.ini.
-	if(Global::isWindows8 && !_pTextService->_IsStoreAppMode() && !_appPermissionSet ) 
-	{
-		EXPLICIT_ACCESS ea;
-		// Get a pointer to the existing DACL (Conditionaly).
-		DWORD dwRes = GetNamedSecurityInfo(wzsTSFTTSProfile, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, &pOldDACL, NULL, &pSD);
-		if(ERROR_SUCCESS != dwRes) goto ErrorExit;
-		// Initialize an EXPLICIT_ACCESS structure for the new ACE. 
-		ZeroMemory(&ea, sizeof(EXPLICIT_ACCESS));
-		ea.grfAccessPermissions = GENERIC_READ;
-		ea.grfAccessMode = GRANT_ACCESS;
-		ea.grfInheritance= SUB_CONTAINERS_AND_OBJECTS_INHERIT;
-		ea.Trustee.TrusteeForm = TRUSTEE_IS_NAME;
-		ea.Trustee.TrusteeType = TRUSTEE_IS_WELL_KNOWN_GROUP;
-		ea.Trustee.ptstrName = L"ALL APPLICATION PACKAGES";	
-
-		// Create a new ACL that merges the new ACE into the existing DACL.
-		dwRes = SetEntriesInAcl(1, &ea, pOldDACL, &pNewDACL);
-		if(ERROR_SUCCESS != dwRes) goto ErrorExit;
-		if(pNewDACL)
-			SetNamedSecurityInfo(wzsTSFTTSProfile, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, pNewDACL, NULL);
-		
-		_appPermissionSet = TRUE;
-		WriteConfig(); // update the config file.
-
-	}
-ErrorExit:
-	if(pNewDACL != NULL) 
-		LocalFree(pNewDACL);
-	if(pSD != NULL)
-		LocalFree(pSD);
-    delete []pwszINIFileName;
-
-}
-
-//+---------------------------------------------------------------------------
-//
-// writeConfig
-//
-//----------------------------------------------------------------------------
-
-VOID CCompositionProcessorEngine::WriteConfig()
-{
-	debugPrint(L"CCompositionProcessorEngine::updateConfig() \n");
-	WCHAR wszAppData[MAX_PATH] = {'\0'};
-	SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);	
-	WCHAR wzsTSFTTSProfile[MAX_PATH] = {'\0'};
-	
-	WCHAR *pwszINIFileName = new (std::nothrow) WCHAR[MAX_PATH];
-    
-	if (!pwszINIFileName)  goto ErrorExit;
-
-	*pwszINIFileName = L'\0';
-
-	StringCchPrintf(wzsTSFTTSProfile, MAX_PATH, L"%s\\TSFTTS", wszAppData);
-	if(!PathFileExists(wzsTSFTTSProfile))
-	{
-		if(CreateDirectory(wzsTSFTTSProfile, NULL)==0) goto ErrorExit;
-	}
-	else
-	{
-		StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\config.ini", wzsTSFTTSProfile);
-		FILE *fp;
-		_wfopen_s(&fp, pwszINIFileName, L"w, ccs=UTF-16LE"); // overwrite the file
-	if(fp)
-	{
-		fwprintf_s(fp, L"[Config]\n");
-		fwprintf_s(fp, L"AutoCompose = %d\n", _autoCompose?1:0);
-		fwprintf_s(fp, L"ThreeCodeMode = %d\n", _threeCodeMode?1:0);
-		fwprintf_s(fp, L"DoBeep = %d\n", _doBeep?1:0);
-		fwprintf_s(fp, L"MaxCodes = %d\n", _maxCodes);
-		fwprintf_s(fp, L"FontSize = %d\n", _fontSize);
-		if(Global::isWindows8)
-			fwprintf_s(fp, L"AppPermissionSet = %d\n", _appPermissionSet?1:0);
-
-		fclose(fp);
-	}
-	}
-
-ErrorExit:
-    delete []pwszINIFileName;
-}
 
 //+---------------------------------------------------------------------------
 //
@@ -1649,6 +1504,6 @@ BOOL CCompositionProcessorEngine::IsKeystrokeRange(UINT uCode, _Out_ _KEYSTROKE_
 
 void CCompositionProcessorEngine::DoBeep()
 {
-	if(_doBeep)
+	if(_pTextService->GetDoBeep())
 		MessageBeep(MB_ICONASTERISK);
 }

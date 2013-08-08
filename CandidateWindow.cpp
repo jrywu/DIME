@@ -95,6 +95,7 @@ Exit:
     return TRUE;
 }
 
+
 BOOL CCandidateWindow::_CreateMainWindow(_In_opt_ HWND parentWndHandle)
 {
     _SetUIWnd(this);

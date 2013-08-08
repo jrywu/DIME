@@ -173,7 +173,7 @@ HRESULT CTSFTTS::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine 
     //
     // Get candidate string from composition processor engine
     //
-	if( _pCompositionProcessorEngine->GetAutoCompose()  // auto composing mode: show candidates while composition updated imeediately.
+	if(_autoCompose // auto composing mode: show candidates while composition updated imeediately.
 		||  pCompositionProcessorEngine->IsSymbol())// fetch candidate in symobl mode with composition started with '='
 	{
 		CTSFTTSArray<CCandidateListItem> candidateList;
@@ -189,7 +189,7 @@ HRESULT CTSFTTS::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine 
 			if (SUCCEEDED(hr))
 			{
 				_pTSFTTSUIPresenter->_ClearCandidateList();
-				_pTSFTTSUIPresenter->_SetCandidateText(&candidateList, TRUE);
+				_pTSFTTSUIPresenter->_SetCandidateText(&candidateList, TRUE, pCompositionProcessorEngine->GetCandidateWindowWidth());
 				_candidateMode = CANDIDATE_INCREMENTAL;
 				_isCandidateWithWildcard = FALSE;
 			}
@@ -314,53 +314,9 @@ HRESULT CTSFTTS::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pCo
 			_candidateMode = CANDIDATE_ORIGINAL;
 			 _isCandidateWithWildcard = isWildcardSearch;
 			 _pTSFTTSUIPresenter->_ClearCandidateList();
-			 _pTSFTTSUIPresenter->_SetCandidateText(&candidateList, FALSE);
+			 _pTSFTTSUIPresenter->_SetCandidateText(&candidateList, FALSE, pCompositionProcessorEngine->GetCandidateWindowWidth());
 		 }
-		 /*
-		if (_pTSFTTSUIPresenter)
-        {
-            _pTSFTTSUIPresenter->_EndCandidateList();
-            delete _pTSFTTSUIPresenter;
-            _pTSFTTSUIPresenter = nullptr;
-
-            _candidateMode = CANDIDATE_NONE;
-            _isCandidateWithWildcard = FALSE;
-        }
-
-        // 
-        // create an instance of the candidate list class.
-        // 
-        if (_pTSFTTSUIPresenter == nullptr)
-        {
-            _pTSFTTSUIPresenter = new (std::nothrow) UIPresenter(this, pCompositionProcessorEngine);
-            if (!_pTSFTTSUIPresenter)
-            {
-                return E_OUTOFMEMORY;
-            }
-
-            _candidateMode = CANDIDATE_ORIGINAL;
-        }
-
-        _isCandidateWithWildcard = isWildcardSearch;
-
-        // we don't cache the document manager object. So get it from pContext.
-        ITfDocumentMgr* pDocumentMgr = nullptr;
-        if (SUCCEEDED(pContext->GetDocumentMgr(&pDocumentMgr)))
-        {
-            // get the composition range.
-            ITfRange* pRange = nullptr;
-            if (SUCCEEDED(_pComposition->GetRange(&pRange)))
-            {
-                hr = _pTSFTTSUIPresenter->_StartCandidateList(_tfClientId, pDocumentMgr, pContext, ec, pRange, pCompositionProcessorEngine->GetCandidateWindowWidth());
-                pRange->Release();
-            }
-            pDocumentMgr->Release();
-        }
-        if (SUCCEEDED(hr))
-        {
-            _pTSFTTSUIPresenter->_SetCandidateText(&candidateList, FALSE);
-        }
-		*/
+		
     }
 	if(nCount==1 )  //finalized with the only candidate without showing cand.
 	{

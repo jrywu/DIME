@@ -13,6 +13,7 @@
 #include "Compartment.h"
 #include "LanguageBar.h"
 
+
 class CLangBarItemButton;
 class UIPresenter;
 class CCompositionProcessorEngine;
@@ -149,9 +150,9 @@ public:
     CCompositionProcessorEngine* GetCompositionProcessorEngine() { return (_pCompositionProcessorEngine); };
 
     // comless helpers
-    static HRESULT CTSFTTS::CreateInstance(REFCLSID rclsid, REFIID riid, _Outptr_result_maybenull_ LPVOID* ppv, _Out_opt_ HINSTANCE* phInst, BOOL isComLessMode);
-    static HRESULT CTSFTTS::ComLessCreateInstance(REFGUID rclsid, REFIID riid, _Outptr_result_maybenull_ void **ppv, _Out_opt_ HINSTANCE *phInst);
-    static HRESULT CTSFTTS::GetComModuleName(REFGUID rclsid, _Out_writes_(cchPath)WCHAR* wchPath, DWORD cchPath);
+    static HRESULT CreateInstance(REFCLSID rclsid, REFIID riid, _Outptr_result_maybenull_ LPVOID* ppv, _Out_opt_ HINSTANCE* phInst, BOOL isComLessMode);
+    static HRESULT ComLessCreateInstance(REFGUID rclsid, REFIID riid, _Outptr_result_maybenull_ void **ppv, _Out_opt_ HINSTANCE *phInst);
+    static HRESULT GetComModuleName(REFGUID rclsid, _Out_writes_(cchPath)WCHAR* wchPath, DWORD cchPath);
 	
 	
 	//Called when compartment status changed.
@@ -166,7 +167,23 @@ public:
 	//configuration propertysheet dialog
 	static INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 	friend void DrawColor(HWND hwnd, HDC hdc, COLORREF col);
-
+	
+	//  configuration set/get
+	static void SetAutoCompose(BOOL autoCompose) {_autoCompose = autoCompose;}
+	static BOOL GetAutoCompose() {return _autoCompose;}
+	static void SetThreeCodeMode(BOOL threeCodeMode) {_threeCodeMode = threeCodeMode;}
+	static BOOL GetThreeCodeMode() {return _threeCodeMode;}
+	static void SetFontSize(UINT fontSize) {_fontSize = fontSize;}
+	static UINT GetFontSize() {return _fontSize;}
+	static void SetMaxCodes(UINT maxCodes) { _maxCodes = maxCodes;}
+	static UINT GetMaxCodes(){return _maxCodes;}
+	static void SetDoBeep(BOOL doBeep) { _doBeep = doBeep;}
+	static BOOL GetDoBeep() {return _doBeep;}
+	static void SetAppPermissionSet(BOOL appPermissionSet) { _appPermissionSet = appPermissionSet;}
+	static BOOL GetAppPermissionSet() {return _appPermissionSet;}
+	
+	static VOID WriteConfig();
+	VOID LoadConfig();
 private:
     // functions for the composition object.
     HRESULT _HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *pCompositionProcessorEngine, TfEditCookie ec, _In_ ITfContext *pContext);
@@ -249,6 +266,8 @@ private:
     void HideAllLanguageBarIcons();
 
 
+
+
 	void SetDefaultTextFont();
 
 private:
@@ -318,6 +337,15 @@ private:
 	//for phrase cand killing when cursor moved
 	BOOL _phraseCandShowing;
 	POINT _phraseCandLocation;
+	
+	
+	//user setting variables
+	static BOOL _autoCompose;
+	static BOOL _threeCodeMode;
+	static BOOL _doBeep;
+	static BOOL _appPermissionSet;
+    static UINT _fontSize;
+	static UINT _maxCodes;
 	
 
 };

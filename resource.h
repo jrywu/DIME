@@ -35,12 +35,12 @@
 #define IDC_COL_NO                              1111
 #define IDC_EDIT_MAXWIDTH                       1112
 #define IDC_COMBO_UNTILCANDLIST                 1113
-#define IDC_CHECKBOX_DISPCANDNO                 1114
-#define IDC_CHECKBOX_ANNOTATION                 1115
+#define IDC_CHECKBOX_AUTOCOMPOSE                1114
+#define IDC_CHECKBOX_DOBEEP						1115
 #define IDC_RADIO_ANNOTATALL                    1116
 #define IDC_RADIO_ANNOTATLST                    1117
-#define IDC_CHECKBOX_NOMODEMARK                 1118
-#define IDC_CHECKBOX_NOOKURICONV                1119
+#define IDC_CHECKBOX_THREECODEMODE              1118
+#define IDC_CHECKBOX_PHRASE		                1119
 #define IDC_CHECKBOX_DELOKURICNCL               1120
 #define IDC_CHECKBOX_BACKINCENTER               1121
 #define IDC_CHECKBOX_ADDCANDKTKN                1122

@@ -1,8 +1,26 @@
+#define DEBUG_PRINT
+
 #include <windowsx.h>
+#include <Shlobj.h>
+#include <Shlwapi.h>
 #include "Globals.h"
 #include "Private.h"
 #include "resource.h"
 #include "TSFTTS.h"
+#include "DictionarySearch.h"
+#include "FileMapping.h"
+#include "TableDictionaryEngine.h"
+#include "Aclapi.h"
+
+//static configuration settings initilization
+BOOL CTSFTTS::_doBeep = FALSE;
+BOOL CTSFTTS::_autoCompose = FALSE;
+BOOL CTSFTTS::_threeCodeMode = FALSE;
+UINT CTSFTTS::_fontSize = 14;
+UINT CTSFTTS::_maxCodes = 4;
+BOOL CTSFTTS::_appPermissionSet = FALSE;
+
+
 
 static struct {
 	int id;
@@ -28,7 +46,7 @@ INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 	WCHAR fontname[LF_FACESIZE];
 	int fontpoint =14, fontweight = FW_NORMAL, x, y;
 	BOOL fontitalic = FALSE;
-	CHOOSEFONTW cf;
+	CHOOSEFONT cf;
 	LOGFONT lf;
 	HDC hdc;
 	HFONT hFont;
@@ -47,7 +65,7 @@ INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		
 		wcsncpy_s(fontname, L"Microsoft JhengHei" , _TRUNCATE);
 
-	
+		fontpoint = _fontSize;
 
 		if(fontpoint < 8 || fontpoint > 72)
 		{
@@ -62,7 +80,7 @@ INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			fontitalic = FALSE;
 		}
 
-		SetDlgItemTextW(hDlg, IDC_EDIT_FONTNAME, fontname);
+		SetDlgItemText(hDlg, IDC_EDIT_FONTNAME, fontname);
 		hdc = GetDC(hDlg);
 		hFont = CreateFontW(-MulDiv(10, GetDeviceCaps(hdc, LOGPIXELSY), 72), 0, 0, 0,
 			fontweight, fontitalic, FALSE, FALSE, SHIFTJIS_CHARSET,
@@ -78,7 +96,7 @@ INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			w = rect.right;
 		}
 		_snwprintf_s(num, _TRUNCATE, L"%d", w);
-		SetDlgItemTextW(hDlg, IDC_EDIT_MAXWIDTH, num);
+		SetDlgItemText(hDlg, IDC_EDIT_MAXWIDTH, num);
 
 		ZeroMemory(&colCust, sizeof(colCust));
 
@@ -96,15 +114,19 @@ INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		}
 		SendMessage(hwnd, CB_SETCURSEL, (WPARAM)i, 0);
 
-		CheckDlgButton(hDlg, IDC_CHECKBOX_DISPCANDNO, BST_CHECKED);
-		CheckDlgButton(hDlg, IDC_CHECKBOX_ANNOTATION, BST_CHECKED);
+		_snwprintf_s(num, _TRUNCATE, L"%d", _maxCodes);
+		SetDlgItemTextW(hDlg, IDC_EDIT_MAXWIDTH, num);
+		CheckDlgButton(hDlg, IDC_CHECKBOX_AUTOCOMPOSE, (_autoCompose)?BST_CHECKED:BST_UNCHECKED);
+		CheckDlgButton(hDlg, IDC_CHECKBOX_DOBEEP, (_doBeep)?BST_CHECKED:BST_UNCHECKED);
+		CheckDlgButton(hDlg, IDC_CHECKBOX_THREECODEMODE,(_threeCodeMode)?BST_CHECKED:BST_UNCHECKED);
+		CheckDlgButton(hDlg, IDC_CHECKBOX_PHRASE, (_autoCompose)?BST_CHECKED:BST_UNCHECKED);
+		
+		
 		CheckDlgButton(hDlg, IDC_RADIO_ANNOTATLST, BST_CHECKED);
 		if(!IsDlgButtonChecked(hDlg, IDC_RADIO_ANNOTATLST))
 		{
 			CheckDlgButton(hDlg, IDC_RADIO_ANNOTATALL, BST_CHECKED);
 		}
-		CheckDlgButton(hDlg, IDC_CHECKBOX_NOMODEMARK,BST_CHECKED);
-		CheckDlgButton(hDlg, IDC_CHECKBOX_NOOKURICONV, BST_CHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_DELOKURICNCL, BST_CHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_BACKINCENTER, BST_CHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_ADDCANDKTKN, BST_CHECKED);
@@ -123,12 +145,12 @@ INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			lf.lfCharSet = CHINESEBIG5_CHARSET;
 
 			ZeroMemory(&cf, sizeof(cf));
-			cf.lStructSize = sizeof(CHOOSEFONTW);
+			cf.lStructSize = sizeof(CHOOSEFONT);
 			cf.hwndOwner = hDlg;
 			cf.lpLogFont = &lf;
-			cf.Flags = CF_INITTOLOGFONTSTRUCT | CF_NOVERTFONTS | CF_SCREENFONTS | CF_SELECTSCRIPT;
+			cf.Flags = CF_INITTOLOGFONTSTRUCT | CF_NOVERTFONTS | CF_SELECTSCRIPT;
 
-			if(ChooseFontW(&cf) == TRUE)
+			if(ChooseFont(&cf) == TRUE)
 			{
 				PropSheet_Changed(GetParent(hDlg), hDlg);
 
@@ -164,12 +186,12 @@ INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			}
 			break;
 
-		case IDC_CHECKBOX_DISPCANDNO:
-		case IDC_CHECKBOX_ANNOTATION:
+		case IDC_CHECKBOX_AUTOCOMPOSE:
+		case IDC_CHECKBOX_DOBEEP:
 		case IDC_RADIO_ANNOTATALL:
 		case IDC_RADIO_ANNOTATLST:
-		case IDC_CHECKBOX_NOMODEMARK:
-		case IDC_CHECKBOX_NOOKURICONV:
+		case IDC_CHECKBOX_THREECODEMODE:
+		case IDC_CHECKBOX_PHRASE:
 		case IDC_CHECKBOX_DELOKURICNCL:
 		case IDC_CHECKBOX_BACKINCENTER:
 		case IDC_CHECKBOX_ADDCANDKTKN:
@@ -230,9 +252,15 @@ INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 	case WM_NOTIFY:
 		switch(((LPNMHDR)lParam)->code)
 		{
-		case PSN_APPLY:
-			
-
+		case PSN_APPLY:	
+			_autoCompose = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_AUTOCOMPOSE) == BST_CHECKED;
+			_threeCodeMode = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_THREECODEMODE) == BST_CHECKED;
+			_doBeep = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_DOBEEP) == BST_CHECKED;
+			GetDlgItemTextW(hDlg, IDC_EDIT_MAXWIDTH, num, _countof(num));
+			_maxCodes = _wtol(num);
+			GetDlgItemTextW(hDlg, IDC_EDIT_FONTPOINT, num, _countof(num));
+			_fontSize = _wtol(num);
+			WriteConfig();
 			return TRUE;
 
 		default:
@@ -260,4 +288,143 @@ void DrawColor(HWND hwnd, HDC hdc, COLORREF col)
 	GetClientRect(hwnd, &rect);
 	Rectangle(hdc, rect.left, rect.top, rect.right, rect.bottom);
 	ReleaseDC(hwnd, hdc);
+}
+
+//+---------------------------------------------------------------------------
+//
+// writeConfig
+//
+//----------------------------------------------------------------------------
+
+VOID CTSFTTS::WriteConfig()
+{
+	debugPrint(L"CTSFTTS::updateConfig() \n");
+	WCHAR wszAppData[MAX_PATH] = {'\0'};
+	SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);	
+	WCHAR wzsTSFTTSProfile[MAX_PATH] = {'\0'};
+	
+	WCHAR *pwszINIFileName = new (std::nothrow) WCHAR[MAX_PATH];
+    
+	if (!pwszINIFileName)  goto ErrorExit;
+
+	*pwszINIFileName = L'\0';
+
+	StringCchPrintf(wzsTSFTTSProfile, MAX_PATH, L"%s\\TSFTTS", wszAppData);
+	if(!PathFileExists(wzsTSFTTSProfile))
+	{
+		if(CreateDirectory(wzsTSFTTSProfile, NULL)==0) goto ErrorExit;
+	}
+	else
+	{
+		StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\config.ini", wzsTSFTTSProfile);
+		FILE *fp;
+		_wfopen_s(&fp, pwszINIFileName, L"w, ccs=UTF-16LE"); // overwrite the file
+	if(fp)
+	{
+		fwprintf_s(fp, L"[Config]\n");
+		fwprintf_s(fp, L"AutoCompose = %d\n", _autoCompose?1:0);
+		fwprintf_s(fp, L"ThreeCodeMode = %d\n", _threeCodeMode?1:0);
+		fwprintf_s(fp, L"DoBeep = %d\n", _doBeep?1:0);
+		fwprintf_s(fp, L"MaxCodes = %d\n", _maxCodes);
+		fwprintf_s(fp, L"FontSize = %d\n", _fontSize);
+		if(Global::isWindows8)
+			fwprintf_s(fp, L"AppPermissionSet = %d\n", _appPermissionSet?1:0);
+
+		fclose(fp);
+	}
+	}
+
+ErrorExit:
+    delete []pwszINIFileName;
+}
+
+//+---------------------------------------------------------------------------
+//
+// loadConfig
+//
+//----------------------------------------------------------------------------
+
+VOID CTSFTTS::LoadConfig()
+{	
+	debugPrint(L"CTSFTTS::loadConfig() \n");
+	WCHAR wszAppData[MAX_PATH] = {'\0'};
+	SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);	
+	WCHAR wzsTSFTTSProfile[MAX_PATH] = {'\0'};//L"\\TSFTTS";
+	PACL pOldDACL = NULL, pNewDACL = NULL;
+	PSECURITY_DESCRIPTOR pSD = NULL;
+
+	WCHAR *pwszINIFileName = new (std::nothrow) WCHAR[MAX_PATH];
+    
+	if (!pwszINIFileName)  goto ErrorExit;
+
+	*pwszINIFileName = L'\0';
+
+	StringCchPrintf(wzsTSFTTSProfile, MAX_PATH, L"%s\\TSFTTS", wszAppData);
+	if(PathFileExists(wzsTSFTTSProfile))
+	{ 
+		StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\config.ini", wzsTSFTTSProfile);
+		if(PathFileExists(pwszINIFileName))
+		{
+			CFileMapping *iniDictionaryFile;
+			iniDictionaryFile = new (std::nothrow) CFileMapping();
+			if ((iniDictionaryFile)->CreateFile(pwszINIFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
+			{
+				CTableDictionaryEngine * iniTableDictionaryEngine;
+				iniTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(GetLocale(), iniDictionaryFile,L'=', this);
+				if (iniTableDictionaryEngine)
+				{
+					debugPrint(L"CTSFTTS::loadConfig() config.ini found. parse config now. \n");
+					iniTableDictionaryEngine->ParseConfig(); //parse config first.
+					debugPrint(L"CTSFTTS::loadConfig() , _autoCompose = %d, _threeCodeMode = %d, _doBeep = %d", _autoCompose, _threeCodeMode, _doBeep);
+				}
+				delete iniTableDictionaryEngine; // delete after config.ini config are pasrsed
+				delete iniDictionaryFile;
+			}
+			
+		}
+		else
+		{
+			WriteConfig(); // config.ini is not there. create one.
+		}
+	}
+	else
+	{
+		//TSFTTS roadming profile is not exist. Create one.
+		if(CreateDirectory(wzsTSFTTSProfile, NULL)==0) goto ErrorExit;
+	}
+
+	// In store app mode, the dll is loaded into app container which does not even have read right for IME profile in APPDATA.
+	// Here, the read right is granted once to "ALL APPLICATION PACKAGES" when loaded in desktop mode for all metro apps can at least read the user settings in config.ini.
+	if(Global::isWindows8 && !_IsStoreAppMode() && ! _appPermissionSet ) 
+	{
+		EXPLICIT_ACCESS ea;
+		// Get a pointer to the existing DACL (Conditionaly).
+		DWORD dwRes = GetNamedSecurityInfo(wzsTSFTTSProfile, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, &pOldDACL, NULL, &pSD);
+		if(ERROR_SUCCESS != dwRes) goto ErrorExit;
+		// Initialize an EXPLICIT_ACCESS structure for the new ACE. 
+		ZeroMemory(&ea, sizeof(EXPLICIT_ACCESS));
+		ea.grfAccessPermissions = GENERIC_READ;
+		ea.grfAccessMode = GRANT_ACCESS;
+		ea.grfInheritance= SUB_CONTAINERS_AND_OBJECTS_INHERIT;
+		ea.Trustee.TrusteeForm = TRUSTEE_IS_NAME;
+		ea.Trustee.TrusteeType = TRUSTEE_IS_WELL_KNOWN_GROUP;
+		ea.Trustee.ptstrName = L"ALL APPLICATION PACKAGES";	
+
+		// Create a new ACL that merges the new ACE into the existing DACL.
+		dwRes = SetEntriesInAcl(1, &ea, pOldDACL, &pNewDACL);
+		if(ERROR_SUCCESS != dwRes) goto ErrorExit;
+		if(pNewDACL)
+			SetNamedSecurityInfo(wzsTSFTTSProfile, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, pNewDACL, NULL);
+		
+		_appPermissionSet = TRUE;
+		WriteConfig(); // update the config file.
+
+	}
+ErrorExit:
+	if(pNewDACL != NULL) 
+		LocalFree(pNewDACL);
+	if(pSD != NULL)
+		LocalFree(pSD);
+    delete []pwszINIFileName;
+
 }

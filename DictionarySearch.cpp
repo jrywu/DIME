@@ -3,12 +3,12 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-
+#define DEBUG_PRING
 
 #include "Private.h"
 #include "DictionarySearch.h"
 #include "BaseStructure.h"
-#include "CompositionProcessorEngine.h"
+#include "TSFTTS.h"
 
 //+---------------------------------------------------------------------------
 //
@@ -16,12 +16,12 @@
 //
 //----------------------------------------------------------------------------
 
-CDictionarySearch::CDictionarySearch(LCID locale, _In_ CFile *pFile, _In_ CStringRange *pSearchKeyCode, _In_ WCHAR keywordDelimiter, _In_ CCompositionProcessorEngine *pCompositionProcessorEngin) : CDictionaryParser(locale, keywordDelimiter)
+CDictionarySearch::CDictionarySearch(LCID locale, _In_ CFile *pFile, _In_ CStringRange *pSearchKeyCode, _In_ WCHAR keywordDelimiter, _In_ CTSFTTS *pTextService) : CDictionaryParser(locale, keywordDelimiter)
 {
 	_pFile = pFile;
 	_pSearchKeyCode = pSearchKeyCode;
 	_charIndex = 0;
-	_pCompositionProcessorEngine = pCompositionProcessorEngin;
+	_pTextService = pTextService;
 }
 
 //+---------------------------------------------------------------------------
@@ -81,6 +81,7 @@ BOOL CDictionarySearch::FindConvertedStringForWildcard(CDictionaryResult **ppdre
 
 BOOL CDictionarySearch::ParseConfig()
 {
+	debugPrint(L"CDictionarySearch::ParseConfig()");
 	return FindWorker(FALSE, NULL, FALSE, TRUE); // parseConfig=TRUE;
 }
 
@@ -306,24 +307,27 @@ ReadValue:
 			{
 				CParserStringRange testKey, value;				
 				if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"AutoCompose", 11)) == CSTR_EQUAL)
-					_pCompositionProcessorEngine->SetAutoCompose((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
+					_pTextService->SetAutoCompose((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ThreeCodeMode", 13)) == CSTR_EQUAL)
-					_pCompositionProcessorEngine->SetThreeCodeMode((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
+					_pTextService->SetThreeCodeMode((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"DoBeep", 6)) == CSTR_EQUAL)
-					_pCompositionProcessorEngine->SetDoBeep((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
+				{
+					debugPrint(L"CDictionarySearch::FindWorker() doBeep = %d \n", UINT(CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
+					_pTextService->SetDoBeep((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
+				}
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"FontSize", 10)) == CSTR_EQUAL)
-					_pCompositionProcessorEngine->SetFontSize(_wtoi(valueStrings.GetAt(0)->Get()));
+					_pTextService->SetFontSize(_wtoi(valueStrings.GetAt(0)->Get()));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"MaxCodes", 8)) == CSTR_EQUAL)
-					_pCompositionProcessorEngine->SetMaxCodes(_wtoi(valueStrings.GetAt(0)->Get()));
+					_pTextService->SetMaxCodes(_wtoi(valueStrings.GetAt(0)->Get()));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"AppPermissionSet", 16)) == CSTR_EQUAL)
-					_pCompositionProcessorEngine->SetAppPermissionSet(_wtoi(valueStrings.GetAt(0)->Get()));
+					_pTextService->SetAppPermissionSet(_wtoi(valueStrings.GetAt(0)->Get()));
 				goto FindNextLine;
 			}
 			else if(searchMode == SEARCH_CONTROLKEY && controlKeyType == CIN_CONTROLKEY)  // get value of cin control keys
 			{
 				CParserStringRange testKey, value;				
 				if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"%autoCompose", 12)) == CSTR_EQUAL)
-					_pCompositionProcessorEngine->SetAutoCompose((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
+					_pTextService->SetAutoCompose((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
 
 
 				controlKeyType = NOT_CONTROLKEY;
