@@ -175,10 +175,21 @@ public:
 	static BOOL GetThreeCodeMode() {return _threeCodeMode;}
 	static void SetFontSize(UINT fontSize) {_fontSize = fontSize;}
 	static UINT GetFontSize() {return _fontSize;}
+	static void SetFontWeight(UINT fontWeight) {_fontWeight = fontWeight;}
+	static UINT GetFontWeight() {return _fontWeight;}
+	static BOOL GetFontItalic() {return _fontItalic;}
+	static void SetFontItalic(BOOL fontItalic) {_fontItalic = fontItalic;}
 	static void SetMaxCodes(UINT maxCodes) { _maxCodes = maxCodes;}
 	static UINT GetMaxCodes(){return _maxCodes;}
 	static void SetDoBeep(BOOL doBeep) { _doBeep = doBeep;}
 	static BOOL GetDoBeep() {return _doBeep;}
+	static void SetMakePhrase(BOOL makePhrase) { _makePhrase = makePhrase;}
+	static BOOL GetMakePhrase() {return _makePhrase;}
+	static void SetFontFaceName(WCHAR *pFontFaceName) {_pFontFaceName = pFontFaceName;}
+	static WCHAR* GetFontFaceName(){ return _pFontFaceName;}
+	
+	static void SetActivatedKeyboardMode(BOOL activatedKeyboardMode) { _activatedKeyboardMode = activatedKeyboardMode;}
+	static BOOL GetActivatedKeyboardMode() {return _activatedKeyboardMode;}
 	static void SetAppPermissionSet(BOOL appPermissionSet) { _appPermissionSet = appPermissionSet;}
 	static BOOL GetAppPermissionSet() {return _appPermissionSet;}
 	
@@ -261,7 +272,7 @@ private:
 	// Language bar control
     BOOL SetupLanguageProfile(LANGID langid, REFGUID guidLanguageProfile, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, BOOL isSecureMode);
     void SetLanguageBarStatus(DWORD status, BOOL isSet);
-    void ConversionModeCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr);
+    void ConversionModeCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr, BOOL *setKeyboardOpenClose = NULL);
     void ShowAllLanguageBarIcons();
     void HideAllLanguageBarIcons();
 
@@ -344,10 +355,13 @@ private:
 	static BOOL _threeCodeMode;
 	static BOOL _doBeep;
 	static BOOL _appPermissionSet;
+	static BOOL _activatedKeyboardMode;
+	static BOOL _makePhrase;
     static UINT _fontSize;
+	static UINT _fontWeight;
+	static BOOL _fontItalic;
 	static UINT _maxCodes;
-	
-
+	static WCHAR* _pFontFaceName;
 };
 
 

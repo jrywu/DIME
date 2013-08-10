@@ -43,6 +43,9 @@ CCandidateWindow::CCandidateWindow(_In_ CANDWNDCALLBACK pfnCallback, _In_ void *
     _isStoreAppMode = isStoreAppMode;
 
 	_fontSize = _TextMetric.tmHeight;
+
+	_x = 0;
+	_y = 0;
 }
 
 //+---------------------------------------------------------------------------
@@ -168,20 +171,21 @@ Exit:
 
 void CCandidateWindow::_ResizeWindow()
 {
-    SIZE size = {0, 0};
+	//_cxTitle = max(_cxTitle, _cxTitle + GetSystemMetrics(SM_CXFRAME) * 2 +  CANDWND_BORDER_WIDTH);
 
-    _cxTitle = max(_cxTitle, size.cx + 2 * GetSystemMetrics(SM_CXFRAME));
+	debugPrint(L"CCandidateWindow::_ResizeWindow() _cxTitle = %d", _cxTitle);
 
     int candidateListPageCnt = _pIndexRange->Count();
-	CBaseWindow::_Resize(0, 0, _cxTitle, _cyRow * candidateListPageCnt  + CANDWND_BORDER_WIDTH * 4);
+	CBaseWindow::_Resize(_x, _y, _cxTitle + GetSystemMetrics(SM_CXVSCROLL) * 3/2 +  CANDWND_BORDER_WIDTH, 
+		_cyRow * candidateListPageCnt  + CANDWND_BORDER_WIDTH * 4);
 
     RECT rcCandRect = {0, 0, 0, 0};
     _GetClientRect(&rcCandRect);
 
 
-    int left = rcCandRect.right - GetSystemMetrics(SM_CXVSCROLL) * 2 - CANDWND_BORDER_WIDTH;
+    int left = rcCandRect.right - GetSystemMetrics(SM_CXVSCROLL) * 3/2 - CANDWND_BORDER_WIDTH;
     int top = rcCandRect.top + CANDWND_BORDER_WIDTH;
-    int width = GetSystemMetrics(SM_CXVSCROLL) * 2;
+    int width = GetSystemMetrics(SM_CXVSCROLL) * 3/ 2;
     int height = rcCandRect.bottom - rcCandRect.top - CANDWND_BORDER_WIDTH * 2;
 
     _pVScrollBarWnd->_Resize(left, top, width, height);
@@ -195,8 +199,10 @@ void CCandidateWindow::_ResizeWindow()
 
 void CCandidateWindow::_Move(int x, int y)
 {
-	debugPrint(L"CCandidateWindow::_Move()\n");
+	debugPrint(L"CCandidateWindow::_Move() x =%d, y=%d", x,y);
     CBaseWindow::_Move(x, y);
+	_x = x;
+	_y = y;
 }
 
 //+---------------------------------------------------------------------------
@@ -256,7 +262,7 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
                 HFONT hFontOld = (HFONT)SelectObject(dcHandle, Global::defaultlFontHandle);
                 GetTextMetrics(dcHandle, &_TextMetric);
 
-				_cxTitle = _TextMetric.tmMaxCharWidth* _wndWidth;
+				_cxTitle = _TextMetric.tmMaxCharWidth* (_wndWidth);
 				_cyRow = _TextMetric.tmHeight + _TextMetric.tmHeight/4;
                 SelectObject(dcHandle, hFontOld);
                 ReleaseDC(wndHandle, dcHandle);
@@ -392,7 +398,6 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
 
     case WM_POINTERACTIVATE:
         return PA_NOACTIVATE;
-
     case WM_VSCROLL:
         _OnVScroll(LOWORD(wParam), HIWORD(wParam));
         return 0;
@@ -480,15 +485,14 @@ void CCandidateWindow::_OnLButtonDown(POINT pt)
     index = *_PageIndex.GetAt(currentPage);
 
 
-
-	//rc.left = rcWindow.left + PageCountPosition* _fontSize;
-    //rc.right = rcWindow.right  - GetSystemMetrics(SM_CXVSCROLL) * 2 - CANDWND_BORDER_WIDTH;
+	RECT rc = {0, 0, 0, 0};
+	rc.left = rcWindow.left + PageCountPosition* _TextMetric.tmAveCharWidth;
+    rc.right = rcWindow.right  - GetSystemMetrics(SM_CXVSCROLL) * 3/2 - CANDWND_BORDER_WIDTH;
 
     for (UINT pageCount = 0; (index < _candidateList.Count()) && (pageCount < candidateListPageCnt); index++, pageCount++)
-    {
-			RECT rc = {0, 0, 0, 0};
-		rc.left = rcWindow.left;
-        rc.right = rcWindow.right - GetSystemMetrics(SM_CXVSCROLL) * 2;
+    {	
+		//rc.left = rcWindow.left;
+        //rc.right = rcWindow.right - GetSystemMetrics(SM_CXVSCROLL) * 2;
         rc.top = rcWindow.top + (pageCount * cyLine);
         rc.bottom = rcWindow.top + ((pageCount + 1) * cyLine);
 
@@ -625,21 +629,28 @@ void CCandidateWindow::_OnVScroll(DWORD dwSB, _In_ DWORD nPos)
 
 void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT iIndex, _In_ RECT *prc)
 {
-	debugPrint(L"CCandidateWindow::_DrawList()\n");
+	debugPrint(L"CCandidateWindow::_DrawList(), _wndWidth = %d", _wndWidth);
+
+	
     int pageCount = 0;
     int candidateListPageCnt = _pIndexRange->Count();
 
+    RECT rc;
+	const size_t lenOfPageCount = 16;
+
+	HFONT hFontOld = (HFONT)SelectObject(dcHandle, Global::defaultlFontHandle);
+	GetTextMetrics(dcHandle, &_TextMetric);
 
 	int cxLine = _TextMetric.tmAveCharWidth;
 	int cyLine = _cyRow;
 	int cyOffset = _cyRow/4 ;
-	//int cyLine = max(_cyRow, _TextMetric.tmHeight);
-    //int cyOffset = (cyLine == _cyRow ? (cyLine-_TextMetric.tmHeight)/2 : 0);
+
+	_cxTitle = _TextMetric.tmMaxCharWidth*_wndWidth   + cxLine *3;
+	_cyRow = _TextMetric.tmHeight + _TextMetric.tmHeight/4;
+	
+	int oldCxTitle = _cxTitle;
 
 
-    RECT rc;
-
-	const size_t lenOfPageCount = 16;
     for (;
         (iIndex < _candidateList.Count()) && (pageCount < candidateListPageCnt);
         iIndex++, pageCount++)
@@ -676,8 +687,16 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT iIndex, _In_ RECT 
             SetBkColor(dcHandle, CANDWND_SELECTED_BK_COLOR);
         }
 
-        pItemList = _candidateList.GetAt(iIndex);
-        ExtTextOut(dcHandle, StringPosition * cxLine, pageCount * cyLine + cyOffset, ETO_OPAQUE, &rc, pItemList->_ItemString.Get(), (DWORD)pItemList->_ItemString.GetLength(), NULL);
+		pItemList = _candidateList.GetAt(iIndex);
+
+		SIZE size;
+		GetTextExtentPoint32(dcHandle,pItemList->_ItemString.Get(), (int)pItemList->_ItemString.GetLength(), &size);
+		//debugPrint(L"_cxTitle = %d, size.cx = %d, cxline =%d, size.cx  + cxLine * 3 +  _TextMetric.tmMaxCharWidth * 2", _cxTitle, size.cx, cxLine, size.cx  + cxLine * 3 +  _TextMetric.tmMaxCharWidth * 2);
+		_cxTitle = max(_cxTitle, size.cx  + cxLine * 3 +  _TextMetric.tmMaxCharWidth * 2);
+		
+
+        ExtTextOut(dcHandle, StringPosition * cxLine, pageCount * cyLine + cyOffset, 
+			ETO_OPAQUE, &rc, pItemList->_ItemString.Get(), (DWORD)pItemList->_ItemString.GetLength(), NULL);
     }
     for (; (pageCount < candidateListPageCnt); pageCount++)
     {
@@ -689,6 +708,10 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT iIndex, _In_ RECT 
 
         FillRect(dcHandle, &rc, (HBRUSH)(COLOR_3DHIGHLIGHT+1));
     }
+
+	SelectObject(dcHandle, hFontOld);
+
+	if(_cxTitle !=oldCxTitle) _ResizeWindow();
 }
 
 //+---------------------------------------------------------------------------
@@ -729,6 +752,7 @@ void CCandidateWindow::_DrawBorder(_In_ HWND wndHandle, _In_ int cx)
 
 void CCandidateWindow::_AddString(_Inout_ CCandidateListItem *pCandidateItem, _In_ BOOL isAddFindKeyCode)
 {
+	debugPrint(L"CCandidateWindow::_AddString()");
     DWORD_PTR dwItemString = pCandidateItem->_ItemString.GetLength();
     const WCHAR* pwchString = nullptr;
     if (dwItemString)

@@ -545,7 +545,7 @@ void UIPresenter::_EndCandidateList()
 
 void UIPresenter::_SetCandidateText(_In_ CTSFTTSArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode, UINT candWidth)
 {
-	debugPrint(L"UIPresenter::_SetCandidateText()");
+	debugPrint(L"UIPresenter::_SetCandidateText() candWidth = %d", candWidth);
     AddCandidateToTSFTTSUI(pCandidateList, isAddFindKeyCode);
 
     SetPageIndexWithScrollInfo(pCandidateList);
@@ -720,7 +720,7 @@ BOOL UIPresenter::_MoveCandidatePage(_In_ int offSet)
 
 void UIPresenter::_MoveCandidateWindowToTextExt()
 {
-	
+	debugPrint(L"UIPresenter::_MoveCandidateWindowToTextExt()");
     RECT rc;
 
     if (FAILED(_GetTextExt(&rc)))
@@ -795,7 +795,7 @@ HRESULT UIPresenter::_CandidateChangeNotification(_In_ enum CANDWND_ACTION actio
     ITfContext* pContext = nullptr;
 
     _KEYSTROKE_STATE KeyState;
-    KeyState.Category = _Category;
+	KeyState.Category = CATEGORY_CANDIDATE;
     KeyState.Function = FUNCTION_FINALIZE_CANDIDATELIST; // select from the UI. send FUNCTION_FINALIZE_CANDIDATELIST to the keyhandler
 
     if (CAND_ITEM_SELECT != action)

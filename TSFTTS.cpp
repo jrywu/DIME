@@ -3,7 +3,7 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-#define DEBUG_PRINT
+//#define DEBUG_PRINT
 
 #include "Private.h"
 #include "globals.h"
@@ -52,10 +52,7 @@ BOOL CTSFTTS::_AddTextProcessorEngine()
     // Is this already added?
     if (_pCompositionProcessorEngine != nullptr)
     {
-        //LANGID langidProfile = 0;
-        //GUID guidLanguageProfile = GUID_NULL;
-
-        //guidLanguageProfile = GetLanguageProfile(&langidProfile);
+       
         if ((langid == _langid) && IsEqualGUID(guidProfile, _guidProfile))
         {
             return TRUE;
@@ -186,57 +183,7 @@ CTSFTTS::~CTSFTTS()
         _pTSFTTSUIPresenter = nullptr;
     }
 
-	if (_pLanguageBar_IMEModeW8 && Global::isWindows8)
-    {
-        _pLanguageBar_IMEModeW8->CleanUp();
-        _pLanguageBar_IMEModeW8->Release();
-        _pLanguageBar_IMEModeW8 = nullptr;
-    }
-
-
-    if (_pLanguageBar_IMEMode)
-    {
-        _pLanguageBar_IMEMode->CleanUp();
-        _pLanguageBar_IMEMode->Release();
-        _pLanguageBar_IMEMode = nullptr;
-    }
-    if (_pLanguageBar_DoubleSingleByte)
-    {
-        _pLanguageBar_DoubleSingleByte->CleanUp();
-        _pLanguageBar_DoubleSingleByte->Release();
-        _pLanguageBar_DoubleSingleByte = nullptr;
-    }
-
-    if (_pCompartmentConversion)
-    {
-        delete _pCompartmentConversion;
-        _pCompartmentConversion = nullptr;
-    }
-	if (_pCompartmentKeyboardOpenEventSink && Global::isWindows8)
-    {
-        _pCompartmentKeyboardOpenEventSink->_Unadvise();
-        delete _pCompartmentKeyboardOpenEventSink;
-        _pCompartmentKeyboardOpenEventSink = nullptr;
-    }
-	if (_pCompartmentIMEModeEventSink)
-    {
-        _pCompartmentIMEModeEventSink->_Unadvise();
-        delete _pCompartmentIMEModeEventSink;
-        _pCompartmentIMEModeEventSink = nullptr;
-    }
-    if (_pCompartmentConversionEventSink)
-    {
-        _pCompartmentConversionEventSink->_Unadvise();
-        delete _pCompartmentConversionEventSink;
-        _pCompartmentConversionEventSink = nullptr;
-    }
-    if (_pCompartmentDoubleSingleByteEventSink)
-    {
-        _pCompartmentDoubleSingleByteEventSink->_Unadvise();
-        delete _pCompartmentDoubleSingleByteEventSink;
-        _pCompartmentDoubleSingleByteEventSink = nullptr;
-    }
-
+	
     DllRelease();
 }
 
@@ -422,12 +369,66 @@ ExitError:
 
 STDAPI CTSFTTS::Deactivate()
 {
-	debugPrint(L"CTSFTTS::Deactivate");
+	debugPrint(L"CTSFTTS::Deactivate()");
     if (_pCompositionProcessorEngine)
     {
         delete _pCompositionProcessorEngine;
-        _pCompositionProcessorEngine = nullptr;
-    }
+		_pCompositionProcessorEngine = nullptr;
+
+		//originall do this in deconstructor of compositionprocessorengine
+		if (_pLanguageBar_IMEModeW8 && Global::isWindows8)
+		{
+			_pLanguageBar_IMEModeW8->CleanUp();
+			_pLanguageBar_IMEModeW8->Release();
+			_pLanguageBar_IMEModeW8 = nullptr;
+		}
+
+
+		if (_pLanguageBar_IMEMode)
+		{
+			_pLanguageBar_IMEMode->CleanUp();
+			_pLanguageBar_IMEMode->Release();
+			_pLanguageBar_IMEMode = nullptr;
+		}
+		if (_pLanguageBar_DoubleSingleByte)
+		{
+			_pLanguageBar_DoubleSingleByte->CleanUp();
+			_pLanguageBar_DoubleSingleByte->Release();
+			_pLanguageBar_DoubleSingleByte = nullptr;
+		}
+
+		if (_pCompartmentConversion)
+		{
+			delete _pCompartmentConversion;
+			_pCompartmentConversion = nullptr;
+		}
+		if (_pCompartmentKeyboardOpenEventSink && Global::isWindows8)
+		{
+			_pCompartmentKeyboardOpenEventSink->_Unadvise();
+			delete _pCompartmentKeyboardOpenEventSink;
+			_pCompartmentKeyboardOpenEventSink = nullptr;
+		}
+		if (_pCompartmentIMEModeEventSink)
+		{
+			_pCompartmentIMEModeEventSink->_Unadvise();
+			delete _pCompartmentIMEModeEventSink;
+			_pCompartmentIMEModeEventSink = nullptr;
+		}
+		if (_pCompartmentConversionEventSink)
+		{
+			_pCompartmentConversionEventSink->_Unadvise();
+			delete _pCompartmentConversionEventSink;
+			_pCompartmentConversionEventSink = nullptr;
+		}
+		if (_pCompartmentDoubleSingleByteEventSink)
+		{
+			_pCompartmentDoubleSingleByteEventSink->_Unadvise();
+			delete _pCompartmentDoubleSingleByteEventSink;
+			_pCompartmentDoubleSingleByteEventSink = nullptr;
+		}
+
+
+	}
 
     ITfContext* pContext = _pContext;
     if (_pContext)
@@ -460,17 +461,15 @@ STDAPI CTSFTTS::Deactivate()
 
     _UninitThreadMgrEventSink();
 
-	if(Global::isWindows8){
-		CCompartment CompartmentKeyboardOpen(_pThreadMgr, _tfClientId, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
-		CompartmentKeyboardOpen._ClearCompartment();
-	}
+	HideAllLanguageBarIcons();
 
 	CCompartment CompartmentIMEMode(_pThreadMgr, _tfClientId, Global::TSFTTSGuidCompartmentIMEMode);
     CompartmentIMEMode._ClearCompartment();
 
+
     CCompartment CompartmentDoubleSingleByte(_pThreadMgr, _tfClientId, Global::TSFTTSGuidCompartmentDoubleSingleByte);
     CompartmentDoubleSingleByte._ClearCompartment();
-
+	
     
     if (_pThreadMgr != nullptr)
     {
@@ -558,13 +557,12 @@ HRESULT CTSFTTS::GetDisplayName(_Out_ BSTR *pbstrDisplayName)
 
 	*pbstrDisplayName = NULL;
 
-	bstrName = SysAllocString(L"TSFTTS 1.0");
+	
+	bstrName = new (std::nothrow) WCHAR[50];
+	LoadString(Global::dllInstanceHandle, IDS_DAYI_DESCRIPTION, bstrName, 50);
 
-	if(bstrName == NULL)
-	{
-		return E_OUTOFMEMORY;
-	}
-
+	if(bstrName == NULL)	return E_OUTOFMEMORY;
+	
 	*pbstrDisplayName = bstrName;
 
 	return S_OK;
@@ -622,7 +620,7 @@ HRESULT CTSFTTS::Show(_In_ HWND hwndParent, _In_ LANGID langid, _In_ REFGUID rgu
 	psp.dwSize = sizeof(PROPSHEETPAGE);
 	psp.dwFlags = PSP_PREMATURE;
 	psp.hInstance = Global::dllInstanceHandle;
-
+	
 	for(i=0; i<_countof(DlgPage); i++)
 	{
 		psp.pszTemplate = MAKEINTRESOURCE(DlgPage[i].id);
@@ -659,48 +657,6 @@ HRESULT CTSFTTS::Show(_In_ HWND hwndParent)
         return S_OK;
 }
 
-
-void CTSFTTS::OnKeyboardClosed()
-{
-	debugPrint(L"CTSFTTS::OnKeyboardClosed()\n");
-	// switching to English (native) mode delete the phrase candidate window before exting.
-	if(_IsComposing()) 
-		_EndComposition(_pContext);
-	_DeleteCandidateList(FALSE, NULL);
-	CStringRange notifyText;
-	ShowNotifyText(&notifyText.Set(L"英文", 2));
-}
-
-void CTSFTTS::OnKeyboardOpen()
-{
-	debugPrint(L"CTSFTTS::OnKeyboardOpen()\n");
-	// switching to Chinese mode
-	CStringRange notifyText;
-	ShowNotifyText(&notifyText.Set(L"中文", 2));
-	
-}
-
-void CTSFTTS::OnSwitchedToFullShape()
-{
-	debugPrint(L"CTSFTTS::OnSwitchedToFullShape()\n");
-	if(_IsComposing()) 
-		_EndComposition(_pContext);
-	_DeleteCandidateList(FALSE, NULL);
-	CStringRange notifyText;
-	ShowNotifyText(&notifyText.Set(L"全形", 2));
-	
-}
-
-void CTSFTTS::OnSwitchedToHalfShape()
-{
-	debugPrint(L"CTSFTTS::OnSwitchedToHalfShape()\n");
-	if(_IsComposing()) 
-		_EndComposition(_pContext);
-	_DeleteCandidateList(FALSE, NULL);
-	CStringRange notifyText;
-	ShowNotifyText(&notifyText.Set(L"半形", 2));
-	
-}
 
 
 HRESULT CTSFTTS::ShowNotifyText(CStringRange *pNotifyText)
@@ -879,30 +835,6 @@ HRESULT CTSFTTS::GetComModuleName(REFGUID rclsid, _Out_writes_(cchPath)WCHAR* wc
     return hr;
 }
 
-void CTSFTTS::SetDefaultTextFont()
-{
-	if(_pCompositionProcessorEngine == nullptr) return;
-    // Candidate Text Font
-    if (Global::defaultlFontHandle != nullptr)
-	{
-		DeleteObject ((HGDIOBJ) Global::defaultlFontHandle);
-		Global::defaultlFontHandle = nullptr;
-	}
-	if (Global::defaultlFontHandle == nullptr)
-    {
-		WCHAR fontName[50] = {'\0'}; 
-		LoadString(Global::dllInstanceHandle, IDS_DEFAULT_FONT, fontName, 50);
-		Global::defaultlFontHandle = CreateFont(-MulDiv(_fontSize, GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72), 0, 0, 0, FW_MEDIUM, 0, 0, 0, 0, 0, 0, 0, 0, fontName);
-        if (!Global::defaultlFontHandle)
-        {
-			LOGFONT lf;
-			SystemParametersInfo(SPI_GETICONTITLELOGFONT, sizeof(LOGFONT), &lf, 0);
-            // Fall back to the default GUI font on failure.
-            Global::defaultlFontHandle = CreateFont(-MulDiv(_fontSize, GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72), 0, 0, 0, FW_MEDIUM, 0, 0, 0, 0, 0, 0, 0, 0, lf.lfFaceName);
-        }
-    }
-}
-
 //+---------------------------------------------------------------------------
 //
 // SetupLanguageProfile
@@ -921,6 +853,7 @@ void CTSFTTS::SetDefaultTextFont()
 
 BOOL CTSFTTS::SetupLanguageProfile(LANGID langid, REFGUID guidLanguageProfile, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, BOOL isSecureMode)
 {
+	debugPrint(L"CTSFTTS::SetupLanguageProfile()\n");
 
     BOOL ret = TRUE;
     if ((tfClientId == 0) && (pThreadMgr == nullptr))
@@ -934,12 +867,13 @@ BOOL CTSFTTS::SetupLanguageProfile(LANGID langid, REFGUID guidLanguageProfile, _
     
 	InitializeTSFTTSCompartment(pThreadMgr, tfClientId);
     SetupLanguageBar(pThreadMgr, tfClientId, isSecureMode);
-	SetDefaultTextFont();
+
 
 	_pCompositionProcessorEngine->SetupPreserved(pThreadMgr, tfClientId);	
     _pCompositionProcessorEngine->SetupKeystroke();
     _pCompositionProcessorEngine->SetupConfiguration();
     _pCompositionProcessorEngine->SetupDictionaryFile();
+	
 	LoadConfig();
     
 Exit:

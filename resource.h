@@ -37,12 +37,12 @@
 #define IDC_COMBO_UNTILCANDLIST                 1113
 #define IDC_CHECKBOX_AUTOCOMPOSE                1114
 #define IDC_CHECKBOX_DOBEEP						1115
-#define IDC_RADIO_ANNOTATALL                    1116
-#define IDC_RADIO_ANNOTATLST                    1117
+#define IDC_RADIO_KEYBOARD_OPEN                 1116
+#define IDC_RADIO_KEYBOARD_CLOSE                1117
 #define IDC_CHECKBOX_THREECODEMODE              1118
 #define IDC_CHECKBOX_PHRASE		                1119
-#define IDC_CHECKBOX_DELOKURICNCL               1120
-#define IDC_CHECKBOX_BACKINCENTER               1121
+#define IDC_CHECKBOX_SPACEASPAGEDOWN            1120
+#define IDC_CHECKBOX_ARROWKEYSWPAGES            1121
 #define IDC_CHECKBOX_ADDCANDKTKN                1122
 #define IDC_CHECKBOX_SHOWMODEIMM                1123
 // Next default values for new objects

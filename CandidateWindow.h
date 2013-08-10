@@ -112,4 +112,7 @@ private:
 
     BOOL _dontAdjustOnEmptyItemPage;
     BOOL _isStoreAppMode;
+
+	int _x;
+	int _y;
 };

@@ -54,7 +54,6 @@ public:
     BOOL IsWildcardChar(WCHAR wch) { return ((IsWildcardOneChar(wch) || IsWildcardAllChar(wch)) ? TRUE : FALSE); }
     BOOL IsWildcardOneChar(WCHAR wch) { return (wch==L'?' ? TRUE : FALSE); }
     BOOL IsWildcardAllChar(WCHAR wch) { return (wch==L'*' ? TRUE : FALSE); }
-    BOOL IsMakePhraseFromText() { return _hasMakePhraseFromText; }
     BOOL IsKeystrokeSort() { return _isKeystrokeSort; }
 
     // Dictionary engine
@@ -153,7 +152,6 @@ private:
     // Configuration data
     BOOL _isWildcard : 1;
     BOOL _isDisableWildcardAtFirst : 1;
-    BOOL _hasMakePhraseFromText : 1;
     BOOL _isKeystrokeSort : 1;
 	CCandidateRange _candidateListIndexRange;
     UINT _candidateListPhraseModifier;

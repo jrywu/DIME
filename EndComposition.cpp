@@ -55,9 +55,9 @@ void CTSFTTS::_TerminateComposition(TfEditCookie ec, _In_ ITfContext *pContext, 
 
     if (_pComposition != nullptr)
     {
-		//if(isCalledFromDeactivate)
-			//_RemoveDummyCompositionForComposing(ec, _pComposition);
-		//else // remove the display attribute from the composition range.
+		if(isCalledFromDeactivate)
+			_RemoveDummyCompositionForComposing(ec, _pComposition);
+		else // remove the display attribute from the composition range.
 			_ClearCompositionDisplayAttributes(ec, pContext);
 
 		if (FAILED(_pComposition->EndComposition(ec)))

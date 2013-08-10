@@ -93,11 +93,10 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 	
 	
 
-	BOOL fMakePhraseFromText = _pCompositionProcessorEngine->IsMakePhraseFromText();
-	if (fMakePhraseFromText)
+
+	if (_makePhrase)
 	{
 		_pCompositionProcessorEngine->GetCandidateStringInConverted(candidateString, &candidatePhraseList);
-		//_pTSFTTSUIPresenter->RemoveSpecificCandidateFromList(GetLocale(), candidatePhraseList, candidateString); //for text search. not necessary for phrase entries lookup
 	}
 	
 	// We have a candidate list if candidatePhraseList.Cnt is not 0

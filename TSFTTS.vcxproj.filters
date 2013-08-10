@@ -325,7 +325,7 @@
     <ClCompile Include="TSFTTS.cpp">
       <Filter>Source Files\Framework</Filter>
     </ClCompile>
-    <ClCompile Include="ConfigDialog.cpp">
+    <ClCompile Include="Configuration.cpp">
       <Filter>Source Files\Configuration</Filter>
     </ClCompile>
   </ItemGroup>

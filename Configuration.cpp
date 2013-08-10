@@ -1,4 +1,4 @@
-#define DEBUG_PRINT
+//#define DEBUG_PRINT
 
 #include <windowsx.h>
 #include <Shlobj.h>
@@ -17,9 +17,13 @@ BOOL CTSFTTS::_doBeep = FALSE;
 BOOL CTSFTTS::_autoCompose = FALSE;
 BOOL CTSFTTS::_threeCodeMode = FALSE;
 UINT CTSFTTS::_fontSize = 14;
+UINT CTSFTTS::_fontWeight = FW_NORMAL;
+BOOL CTSFTTS::_fontItalic = FALSE;
 UINT CTSFTTS::_maxCodes = 4;
 BOOL CTSFTTS::_appPermissionSet = FALSE;
-
+BOOL CTSFTTS::_activatedKeyboardMode = TRUE;
+BOOL CTSFTTS::_makePhrase = TRUE;
+WCHAR* CTSFTTS::_pFontFaceName = L"Microsoft JhengHei";
 
 
 static struct {
@@ -53,7 +57,7 @@ INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 	RECT rect;
 	POINT pt;
 	LONG w=0;
-
+	WCHAR *pwszFontFaceName;
 
 	CHOOSECOLORW cc;
 	static COLORREF colCust[16];
@@ -62,10 +66,15 @@ INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 	switch(message)
 	{
 	case WM_INITDIALOG:
-		
-		wcsncpy_s(fontname, L"Microsoft JhengHei" , _TRUNCATE);
+
+		if(_pFontFaceName == nullptr)
+			wcsncpy_s(fontname, L"Microsoft JhengHei" , _TRUNCATE);
+		else
+			wcsncpy_s(fontname, _pFontFaceName , _TRUNCATE);
 
 		fontpoint = _fontSize;
+		fontweight = _fontWeight;
+		fontitalic = _fontItalic;
 
 		if(fontpoint < 8 || fontpoint > 72)
 		{
@@ -82,8 +91,8 @@ INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 
 		SetDlgItemText(hDlg, IDC_EDIT_FONTNAME, fontname);
 		hdc = GetDC(hDlg);
-		hFont = CreateFontW(-MulDiv(10, GetDeviceCaps(hdc, LOGPIXELSY), 72), 0, 0, 0,
-			fontweight, fontitalic, FALSE, FALSE, SHIFTJIS_CHARSET,
+		hFont = CreateFont(-MulDiv(10, GetDeviceCaps(hdc, LOGPIXELSY), 72), 0, 0, 0,
+			fontweight, fontitalic, FALSE, FALSE, CHINESEBIG5_CHARSET,
 			OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH, fontname);
 		SendMessage(GetDlgItem(hDlg, IDC_EDIT_FONTNAME), WM_SETFONT, (WPARAM)hFont, 0);
 		ReleaseDC(hDlg, hdc);
@@ -119,16 +128,16 @@ INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		CheckDlgButton(hDlg, IDC_CHECKBOX_AUTOCOMPOSE, (_autoCompose)?BST_CHECKED:BST_UNCHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_DOBEEP, (_doBeep)?BST_CHECKED:BST_UNCHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_THREECODEMODE,(_threeCodeMode)?BST_CHECKED:BST_UNCHECKED);
-		CheckDlgButton(hDlg, IDC_CHECKBOX_PHRASE, (_autoCompose)?BST_CHECKED:BST_UNCHECKED);
+		CheckDlgButton(hDlg, IDC_CHECKBOX_PHRASE, (_makePhrase)?BST_CHECKED:BST_UNCHECKED);
 		
 		
-		CheckDlgButton(hDlg, IDC_RADIO_ANNOTATLST, BST_CHECKED);
-		if(!IsDlgButtonChecked(hDlg, IDC_RADIO_ANNOTATLST))
+		CheckDlgButton(hDlg, IDC_RADIO_KEYBOARD_OPEN, (_activatedKeyboardMode)?BST_CHECKED:BST_UNCHECKED);
+		if(!IsDlgButtonChecked(hDlg, IDC_RADIO_KEYBOARD_OPEN))
 		{
-			CheckDlgButton(hDlg, IDC_RADIO_ANNOTATALL, BST_CHECKED);
+			CheckDlgButton(hDlg, IDC_RADIO_KEYBOARD_CLOSE, BST_CHECKED);
 		}
-		CheckDlgButton(hDlg, IDC_CHECKBOX_DELOKURICNCL, BST_CHECKED);
-		CheckDlgButton(hDlg, IDC_CHECKBOX_BACKINCENTER, BST_CHECKED);
+		CheckDlgButton(hDlg, IDC_CHECKBOX_SPACEASPAGEDOWN, BST_CHECKED);
+		CheckDlgButton(hDlg, IDC_CHECKBOX_ARROWKEYSWPAGES, BST_CHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_ADDCANDKTKN, BST_CHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_SHOWMODEIMM, BST_CHECKED);
 		return TRUE;
@@ -155,7 +164,9 @@ INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 				PropSheet_Changed(GetParent(hDlg), hDlg);
 
 				SetDlgItemText(hDlg, IDC_EDIT_FONTNAME, lf.lfFaceName);
-				lf.lfHeight = -MulDiv(10, GetDeviceCaps(hdc, LOGPIXELSY), 72);
+				lf.lfHeight = -MulDiv(10,  GetDeviceCaps(hdc, LOGPIXELSY), 72);
+				fontweight = lf.lfWeight;
+				fontitalic = lf.lfItalic;
 				hFont = CreateFontIndirect(&lf);
 				SendMessage(GetDlgItem(hDlg, IDC_EDIT_FONTNAME), WM_SETFONT, (WPARAM)hFont, 0);
 				SetDlgItemInt(hDlg, IDC_EDIT_FONTPOINT, cf.iPointSize / 10, FALSE);
@@ -188,12 +199,12 @@ INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 
 		case IDC_CHECKBOX_AUTOCOMPOSE:
 		case IDC_CHECKBOX_DOBEEP:
-		case IDC_RADIO_ANNOTATALL:
-		case IDC_RADIO_ANNOTATLST:
+		case IDC_RADIO_KEYBOARD_OPEN:
+		case IDC_RADIO_KEYBOARD_CLOSE:
 		case IDC_CHECKBOX_THREECODEMODE:
 		case IDC_CHECKBOX_PHRASE:
-		case IDC_CHECKBOX_DELOKURICNCL:
-		case IDC_CHECKBOX_BACKINCENTER:
+		case IDC_CHECKBOX_ARROWKEYSWPAGES:
+		case IDC_CHECKBOX_SPACEASPAGEDOWN:
 		case IDC_CHECKBOX_ADDCANDKTKN:
 		case IDC_CHECKBOX_SHOWMODEIMM:
 			PropSheet_Changed(GetParent(hDlg), hDlg);
@@ -256,10 +267,24 @@ INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			_autoCompose = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_AUTOCOMPOSE) == BST_CHECKED;
 			_threeCodeMode = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_THREECODEMODE) == BST_CHECKED;
 			_doBeep = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_DOBEEP) == BST_CHECKED;
-			GetDlgItemTextW(hDlg, IDC_EDIT_MAXWIDTH, num, _countof(num));
+			_makePhrase = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_PHRASE) == BST_CHECKED;
+			_activatedKeyboardMode = IsDlgButtonChecked(hDlg, IDC_RADIO_KEYBOARD_OPEN) == BST_CHECKED;
+
+			GetDlgItemText(hDlg, IDC_EDIT_MAXWIDTH, num, _countof(num));
 			_maxCodes = _wtol(num);
-			GetDlgItemTextW(hDlg, IDC_EDIT_FONTPOINT, num, _countof(num));
+			
+			GetDlgItemText(hDlg, IDC_EDIT_FONTPOINT, num, _countof(num));
 			_fontSize = _wtol(num);
+			
+			hFont = (HFONT)SendMessage(GetDlgItem(hDlg, IDC_EDIT_FONTNAME), WM_GETFONT, 0, 0);
+			GetObject(hFont, sizeof(LOGFONT), &lf);
+			_fontWeight = lf.lfWeight;
+			_fontItalic = lf.lfItalic;
+
+			pwszFontFaceName = new (std::nothrow) WCHAR[LF_FACESIZE];
+			GetDlgItemText(hDlg, IDC_EDIT_FONTNAME, pwszFontFaceName, LF_FACESIZE);
+			_pFontFaceName = pwszFontFaceName;
+
 			WriteConfig();
 			return TRUE;
 
@@ -325,8 +350,13 @@ VOID CTSFTTS::WriteConfig()
 		fwprintf_s(fp, L"AutoCompose = %d\n", _autoCompose?1:0);
 		fwprintf_s(fp, L"ThreeCodeMode = %d\n", _threeCodeMode?1:0);
 		fwprintf_s(fp, L"DoBeep = %d\n", _doBeep?1:0);
+		fwprintf_s(fp, L"ActivatedKeyboardMode = %d\n", _activatedKeyboardMode?1:0);
+		fwprintf_s(fp, L"MakePhrase = %d\n", _makePhrase?1:0);
 		fwprintf_s(fp, L"MaxCodes = %d\n", _maxCodes);
 		fwprintf_s(fp, L"FontSize = %d\n", _fontSize);
+		fwprintf_s(fp, L"FontItalic = %d\n", _fontItalic?1:0);
+		fwprintf_s(fp, L"FontWeight = %d\n", _fontWeight);
+		fwprintf_s(fp, L"FontFaceName = %s\n", _pFontFaceName);
 		if(Global::isWindows8)
 			fwprintf_s(fp, L"AppPermissionSet = %d\n", _appPermissionSet?1:0);
 
@@ -349,7 +379,7 @@ VOID CTSFTTS::LoadConfig()
 	debugPrint(L"CTSFTTS::loadConfig() \n");
 	WCHAR wszAppData[MAX_PATH] = {'\0'};
 	SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);	
-	WCHAR wzsTSFTTSProfile[MAX_PATH] = {'\0'};//L"\\TSFTTS";
+	WCHAR wzsTSFTTSProfile[MAX_PATH] = {'\0'};
 	PACL pOldDACL = NULL, pNewDACL = NULL;
 	PSECURITY_DESCRIPTOR pSD = NULL;
 
@@ -373,9 +403,7 @@ VOID CTSFTTS::LoadConfig()
 				iniTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(GetLocale(), iniDictionaryFile,L'=', this);
 				if (iniTableDictionaryEngine)
 				{
-					debugPrint(L"CTSFTTS::loadConfig() config.ini found. parse config now. \n");
 					iniTableDictionaryEngine->ParseConfig(); //parse config first.
-					debugPrint(L"CTSFTTS::loadConfig() , _autoCompose = %d, _threeCodeMode = %d, _doBeep = %d", _autoCompose, _threeCodeMode, _doBeep);
 				}
 				delete iniTableDictionaryEngine; // delete after config.ini config are pasrsed
 				delete iniDictionaryFile;
@@ -420,6 +448,7 @@ VOID CTSFTTS::LoadConfig()
 		WriteConfig(); // update the config file.
 
 	}
+	SetDefaultTextFont();
 ErrorExit:
 	if(pNewDACL != NULL) 
 		LocalFree(pNewDACL);
@@ -427,4 +456,29 @@ ErrorExit:
 		LocalFree(pSD);
     delete []pwszINIFileName;
 
+}
+
+void CTSFTTS::SetDefaultTextFont()
+{
+	if(_pCompositionProcessorEngine == nullptr) return;
+    // Candidate Text Font
+    if (Global::defaultlFontHandle != nullptr)
+	{
+		DeleteObject ((HGDIOBJ) Global::defaultlFontHandle);
+		Global::defaultlFontHandle = nullptr;
+	}
+	if (Global::defaultlFontHandle == nullptr)
+    {
+		//WCHAR fontName[50] = {'\0'}; 
+		//LoadString(Global::dllInstanceHandle, IDS_DEFAULT_FONT, fontName, 50);
+		Global::defaultlFontHandle = CreateFont(-MulDiv(_fontSize, GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72), 
+			0, 0, 0, _fontWeight, _fontItalic, 0, 0, CHINESEBIG5_CHARSET, 0, 0, 0, 0, _pFontFaceName);
+        if (!Global::defaultlFontHandle)
+        {
+			LOGFONT lf;
+			SystemParametersInfo(SPI_GETICONTITLELOGFONT, sizeof(LOGFONT), &lf, 0);
+            // Fall back to the default GUI font on failure.
+            Global::defaultlFontHandle = CreateFont(-MulDiv(_fontSize, GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72), 0, 0, 0, FW_MEDIUM, 0, 0, 0, CHINESEBIG5_CHARSET, 0, 0, 0, 0, lf.lfFaceName);
+        }
+    }
 }

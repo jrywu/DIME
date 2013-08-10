@@ -3,7 +3,7 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-
+//#define DEBUG_PRINT
 
 #include "Private.h"
 #include "Globals.h"
@@ -29,7 +29,7 @@ BOOL CTSFTTS::VerifyTSFTTSCLSID(_In_ REFCLSID clsid)
 
 STDAPI CTSFTTS::OnActivated(_In_ REFCLSID clsid, _In_ REFGUID guidProfile, _In_ BOOL isActivated)
 {
-	debugPrint(L"CTSFTTS::OnActivated()\n");
+	debugPrint(L"CTSFTTS::OnActivated() isActivated = %d", isActivated);
 	guidProfile;
 
     if (FALSE == VerifyTSFTTSCLSID(clsid))
@@ -39,28 +39,15 @@ STDAPI CTSFTTS::OnActivated(_In_ REFCLSID clsid, _In_ REFGUID guidProfile, _In_ 
 
     if (isActivated)
     {
-        _AddTextProcessorEngine();
-    }
+		if(!_AddTextProcessorEngine())  return S_OK;
+		
+		if(_pTSFTTSUIPresenter == nullptr)
+			_pTSFTTSUIPresenter = new (std::nothrow) UIPresenter(this, _pCompositionProcessorEngine);
+		if (_pTSFTTSUIPresenter == nullptr) return S_OK;
+    
+		ShowAllLanguageBarIcons();
 
-    if (nullptr == _pCompositionProcessorEngine)
-    {
-        return S_OK;
-    }
-
-	 if (isActivated)
-    {
-		_pTSFTTSUIPresenter = new (std::nothrow) UIPresenter(this, _pCompositionProcessorEngine);
-	}
-    if (!_pTSFTTSUIPresenter)
-    {
-        return S_OK;
-    }
-
-    if (isActivated)
-    {
-        ShowAllLanguageBarIcons();
-
-        ConversionModeCompartmentUpdated(_pThreadMgr);
+		ConversionModeCompartmentUpdated(_pThreadMgr, &_activatedKeyboardMode);
     }
     else
     {

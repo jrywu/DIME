@@ -96,6 +96,7 @@ BOOL CTSFTTS::InitLanguageBar(_In_ CLangBarItemButton *pLangBarItemButton, _In_ 
 
 void CTSFTTS::SetupLanguageBar(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, BOOL isSecureMode)
 {
+	debugPrint(L"SetupLanguageBar()");
     DWORD dwEnable = 1;
 	//win8 only to show IME
 	if(Global::isWindows8){
@@ -148,6 +149,7 @@ void CTSFTTS::SetupLanguageBar(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClien
 
 void CTSFTTS::CreateLanguageBarButton(DWORD dwEnable, GUID guidLangBar, _In_z_ LPCWSTR pwszDescriptionValue, _In_z_ LPCWSTR pwszTooltipValue, DWORD dwOnIconIndex, DWORD dwOffIconIndex, _Outptr_result_maybenull_ CLangBarItemButton **ppLangBarItemButton, BOOL isSecureMode)
 {
+	debugPrint(L"CTSFTTS::CreateLanguageBarButton()");
 	dwEnable;
 
     if (ppLangBarItemButton)
@@ -167,6 +169,7 @@ void CTSFTTS::CreateLanguageBarButton(DWORD dwEnable, GUID guidLangBar, _In_z_ L
 
 VOID CTSFTTS::SetLanguageBarStatus(DWORD status, BOOL isSet)
 {
+	debugPrint(L"CTSFTTS::SetLanguageBarStatus(), status = %d, isSet = %d", status, isSet);
     if (_pLanguageBar_IMEMode) {
         _pLanguageBar_IMEMode->SetStatus(status, isSet);
     }
@@ -700,6 +703,7 @@ HRESULT CLangBarItemButton::_RemoveItem(_In_ ITfThreadMgr *pThreadMgr)
 
 BOOL CLangBarItemButton::_RegisterCompartment(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, REFGUID guidCompartment)
 {
+	debugPrint(L"CLangBarItemButton::_RegisterCompartment()");
     _pCompartment = new (std::nothrow) CCompartment(pThreadMgr, tfClientId, guidCompartment);
     if (_pCompartment)
     {
@@ -727,6 +731,7 @@ BOOL CLangBarItemButton::_RegisterCompartment(_In_ ITfThreadMgr *pThreadMgr, TfC
 
 BOOL CLangBarItemButton::_UnregisterCompartment(_In_ ITfThreadMgr *pThreadMgr)
 {
+	debugPrint(L"CLangBarItemButton::_UnregisterCompartmen()");
 	pThreadMgr;
     if (_pCompartment)
     {
@@ -830,11 +835,13 @@ HRESULT CTSFTTS::CompartmentCallback(_In_ void *pv, REFGUID guidCompartment)
 
 void CTSFTTS::ShowAllLanguageBarIcons()
 {
+	debugPrint(L"CTSFTTS::ShowAllLanguageBarIcons()\n");
     SetLanguageBarStatus(TF_LBI_STATUS_HIDDEN, FALSE);
 }
 
 void CTSFTTS::HideAllLanguageBarIcons()
 {
+	debugPrint(L"CTSFTTS::HideAllLanguageBarIcons()\n");
     SetLanguageBarStatus(TF_LBI_STATUS_HIDDEN, TRUE);
 }
 
@@ -844,7 +851,7 @@ void CTSFTTS::HideAllLanguageBarIcons()
 //
 //----------------------------------------------------------------------------
 
-void CTSFTTS::ConversionModeCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr)
+void CTSFTTS::ConversionModeCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr, BOOL *setKeyboardOpenClose)
 {
 	debugPrint(L"CTSFTTS::ConversionModeCompartmentUpdated()\n");
     if (!_pCompartmentConversion)
@@ -870,18 +877,18 @@ void CTSFTTS::ConversionModeCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr)
         {
             CompartmentDoubleSingleByte._SetCompartmentBOOL(FALSE);
         }
-		if(isDouble)
-			OnSwitchedToFullShape();
-		else
-			OnSwitchedToHalfShape();
+		
     }
   
    
 	BOOL fOpen = FALSE;
 	if(Global::isWindows8){
-		fOpen = FALSE;
 		CCompartment CompartmentKeyboardOpen(pThreadMgr, _tfClientId, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
-		if (SUCCEEDED(CompartmentKeyboardOpen._GetCompartmentBOOL(fOpen)))
+		if (setKeyboardOpenClose != nullptr )
+		{
+			CompartmentKeyboardOpen._SetCompartmentBOOL(*setKeyboardOpenClose);
+		}
+		else if(SUCCEEDED(CompartmentKeyboardOpen._GetCompartmentBOOL(fOpen)))
 		{
 			if (fOpen && !(conversionMode & TF_CONVERSIONMODE_NATIVE))
 			{
@@ -893,9 +900,13 @@ void CTSFTTS::ConversionModeCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr)
 			}
 		}
 	}
-		
+	fOpen = FALSE;
 	CCompartment CompartmentIMEMode(pThreadMgr, _tfClientId, Global::TSFTTSGuidCompartmentIMEMode);
-	if (SUCCEEDED(CompartmentIMEMode._GetCompartmentBOOL(fOpen)))
+	if (setKeyboardOpenClose != nullptr )
+	{
+		CompartmentIMEMode._SetCompartmentBOOL(*setKeyboardOpenClose);
+	}
+	else if(SUCCEEDED(CompartmentIMEMode._GetCompartmentBOOL(fOpen)))
 	{
 		if (fOpen && !(conversionMode & TF_CONVERSIONMODE_NATIVE))
 		{
@@ -921,6 +932,7 @@ void CTSFTTS::ConversionModeCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr)
 
 void CTSFTTS::PrivateCompartmentsUpdated(_In_ ITfThreadMgr *pThreadMgr)
 {
+	debugPrint(L"CTSFTTS::PrivateCompartmentsUpdated()");
     if (!_pCompartmentConversion)
     {
         return;
@@ -952,6 +964,8 @@ void CTSFTTS::PrivateCompartmentsUpdated(_In_ ITfThreadMgr *pThreadMgr)
     if (conversionMode != conversionModePrev)
     {
         _pCompartmentConversion->_SetCompartmentDWORD(conversionMode);
+		if(isDouble) OnSwitchedToFullShape();
+		else OnSwitchedToHalfShape();
     }
 }
 
@@ -996,8 +1010,11 @@ void CTSFTTS::KeyboardOpenCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr, _In_
 			}
 		}
 		if (conversionMode != conversionModePrev)
+		{
 		     _pCompartmentConversion->_SetCompartmentDWORD(conversionMode);
-   	
+   			if(isOpen) OnKeyboardOpen();
+			else OnKeyboardClosed();
+		}
 	}
 	isOpen = FALSE;
 	if (IsEqualGUID(guidCompartment, Global::TSFTTSGuidCompartmentIMEMode) && SUCCEEDED(CompartmentIMEMode._GetCompartmentBOOL(isOpen)))
@@ -1005,33 +1022,68 @@ void CTSFTTS::KeyboardOpenCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr, _In_
 		if (isOpen && !(conversionMode & TF_CONVERSIONMODE_NATIVE))
 		{
 			conversionMode |= TF_CONVERSIONMODE_NATIVE;
+			
 		}
 		else if (!isOpen && (conversionMode & TF_CONVERSIONMODE_NATIVE))
 		{
 			conversionMode &= ~TF_CONVERSIONMODE_NATIVE;
+			
 		}
-		
 		if (conversionMode != conversionModePrev)
-		     _pCompartmentConversion->_SetCompartmentDWORD(conversionMode);
-    
-
-		if(!isOpen)
 		{
-			OnKeyboardClosed();
+			_pCompartmentConversion->_SetCompartmentDWORD(conversionMode);
+			if(isOpen) OnKeyboardOpen();
+			else OnKeyboardClosed();
 		}
-		else
-		{
-			OnKeyboardOpen();
-			if(_pCompositionProcessorEngine)
-			{
-				LoadConfig();
-				SetDefaultTextFont();
-			}
-		}
-		
+	
 	}
+	
 
 
 
    
+}
+
+void CTSFTTS::OnKeyboardClosed()
+{
+	debugPrint(L"CTSFTTS::OnKeyboardClosed()\n");
+	// switching to English (native) mode delete the phrase candidate window before exting.
+	if(_IsComposing()) 
+		_EndComposition(_pContext);
+	_DeleteCandidateList(FALSE, NULL);
+	CStringRange notifyText;
+	ShowNotifyText(&notifyText.Set(L"英文", 2));
+}
+
+void CTSFTTS::OnKeyboardOpen()
+{
+	debugPrint(L"CTSFTTS::OnKeyboardOpen()\n");
+	// switching to Chinese mode
+	CStringRange notifyText;
+	ShowNotifyText(&notifyText.Set(L"中文", 2));
+	LoadConfig();
+	
+	
+}
+
+void CTSFTTS::OnSwitchedToFullShape()
+{
+	debugPrint(L"CTSFTTS::OnSwitchedToFullShape()\n");
+	if(_IsComposing()) 
+		_EndComposition(_pContext);
+	_DeleteCandidateList(FALSE, NULL);
+	CStringRange notifyText;
+	ShowNotifyText(&notifyText.Set(L"全形", 2));
+	
+}
+
+void CTSFTTS::OnSwitchedToHalfShape()
+{
+	debugPrint(L"CTSFTTS::OnSwitchedToHalfShape()\n");
+	if(_IsComposing()) 
+		_EndComposition(_pContext);
+	_DeleteCandidateList(FALSE, NULL);
+	CStringRange notifyText;
+	ShowNotifyText(&notifyText.Set(L"半形", 2));
+	
 }

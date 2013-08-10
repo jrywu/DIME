@@ -16,7 +16,7 @@
 #include "LanguageBar.h"
 #include "sddl.h"
 
-
+#define TRAILING_SPACE 3
 
 //////////////////////////////////////////////////////////////////////
 //
@@ -49,12 +49,11 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CTSFTTS *pTextServ
 
     _isWildcard = FALSE;
     _isDisableWildcardAtFirst = FALSE;
-    _hasMakePhraseFromText = FALSE;
     _isKeystrokeSort = FALSE;
 
 	
 
-	_candidateWndWidth = 5;  //default with =  3 charaters + 2 trailling space
+	_candidateWndWidth = 3 + TRAILING_SPACE;  //default with =  3 charaters +  trailling space
 
     _candidateListPhraseModifier = 0;
 
@@ -457,9 +456,9 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFTTSArray<CCandida
         startItemString.Set(pLI->_ItemString.Get(), 1);
         endItemString.Set(pLI->_ItemString.Get() + pLI->_ItemString.GetLength() - 1, 1);
 
-		if(pLI->_ItemString.GetLength() > _candidateWndWidth - 2 )
+		if(pLI->_ItemString.GetLength() > _candidateWndWidth - TRAILING_SPACE )
 		{
-			_candidateWndWidth = (UINT) pLI->_ItemString.GetLength() + 2;
+			_candidateWndWidth = (UINT) pLI->_ItemString.GetLength() + TRAILING_SPACE;
 		}
 		/*
 		WCHAR debugStr[256];
@@ -517,9 +516,9 @@ void CCompositionProcessorEngine::GetCandidateStringInConverted(CStringRange &se
     {
         CCandidateListItem *pLI = pCandidateList->GetAt(index);
         
-		if(pLI->_ItemString.GetLength() > _candidateWndWidth - 2 )
+		if(pLI->_ItemString.GetLength() > _candidateWndWidth - TRAILING_SPACE )
 		{
-			_candidateWndWidth = (UINT) pLI->_ItemString.GetLength() + 2;
+			_candidateWndWidth = (UINT) pLI->_ItemString.GetLength() + TRAILING_SPACE;
 		}
 		
 	    index++;
@@ -841,10 +840,8 @@ void CCompositionProcessorEngine::SetupConfiguration()
 {
     _isWildcard = TRUE;
     _isDisableWildcardAtFirst = TRUE;
-    _hasMakePhraseFromText = TRUE;
     _isKeystrokeSort = FALSE;
 
-   _candidateWndWidth = 5;
     SetInitialCandidateListRange();
 
 
