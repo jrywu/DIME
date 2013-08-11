@@ -16,7 +16,8 @@
 #include "LanguageBar.h"
 #include "sddl.h"
 
-#define TRAILING_SPACE 3
+#define DEFAULT_CAND_ITEM_LENGTH 3
+#define TRAILING_SPACE 1
 
 //////////////////////////////////////////////////////////////////////
 //
@@ -53,7 +54,7 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CTSFTTS *pTextServ
 
 	
 
-	_candidateWndWidth = 3 + TRAILING_SPACE;  //default with =  3 charaters +  trailling space
+	_candidateWndWidth = DEFAULT_CAND_ITEM_LENGTH + TRAILING_SPACE;  //default with =  3 charaters +  trailling space
 
     _candidateListPhraseModifier = 0;
 
@@ -447,6 +448,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFTTSArray<CCandida
         _pTableDictionaryEngine->CollectWord(&_keystrokeBuffer, pCandidateList);
     }
 
+	_candidateWndWidth = DEFAULT_CAND_ITEM_LENGTH + TRAILING_SPACE;
     for (UINT index = 0; index < pCandidateList->Count();)
     {
         CCandidateListItem *pLI = pCandidateList->GetAt(index);
@@ -511,7 +513,8 @@ void CCompositionProcessorEngine::GetCandidateStringInConverted(CStringRange &se
 
 	if (IsKeystrokeSort())
 		_pTableDictionaryEngine->SortListItemByFindKeyCode(pCandidateList);
-		
+	
+	_candidateWndWidth = DEFAULT_CAND_ITEM_LENGTH + TRAILING_SPACE;
 	for (UINT index = 0; index < pCandidateList->Count();)
     {
         CCandidateListItem *pLI = pCandidateList->GetAt(index);
