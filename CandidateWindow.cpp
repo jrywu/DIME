@@ -22,7 +22,7 @@ CCandidateWindow::CCandidateWindow(_In_ CANDWNDCALLBACK pfnCallback, _In_ void *
     _currentSelection = 0;
 
     _SetTextColor(CANDWND_ITEM_COLOR, GetSysColor(COLOR_WINDOW));    // text color is black
-    _SetFillColor((HBRUSH)(COLOR_WINDOW+1));
+    _SetFillColor(GetSysColor(COLOR_3DHIGHLIGHT));
 
     _pIndexRange = pIndexRange;
 
@@ -227,15 +227,29 @@ void CCandidateWindow::_Show(BOOL isShowWnd)
 //
 //----------------------------------------------------------------------------
 
+VOID CCandidateWindow::_SetNumberColor(_In_ COLORREF crColor, _In_ COLORREF crBkColor)
+{
+    _crNumberColor = _AdjustTextColor(crColor, crBkColor);
+    _crNumberBkColor = crBkColor;
+}
+
+
 VOID CCandidateWindow::_SetTextColor(_In_ COLORREF crColor, _In_ COLORREF crBkColor)
 {
     _crTextColor = _AdjustTextColor(crColor, crBkColor);
     _crBkColor = crBkColor;
 }
 
-VOID CCandidateWindow::_SetFillColor(_In_ HBRUSH hBrush)
+VOID CCandidateWindow::_SetSelectedTextColor(_In_ COLORREF crColor, _In_ COLORREF crBkColor)
 {
-    _brshBkColor = hBrush;
+    _crSelectedTextColor = _AdjustTextColor(crColor, crBkColor);
+    _crSelectedBkColor = crBkColor;
+}
+
+
+VOID CCandidateWindow::_SetFillColor(_In_ COLORREF fiColor)
+{
+    _brshBkColor = CreateSolidBrush( fiColor);
 }
 
 //+---------------------------------------------------------------------------
@@ -666,8 +680,8 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT iIndex, _In_ RECT 
         rc.right = prc->left + StringPosition * cxLine;
 
         // Number Font Color And BK
-        SetTextColor(dcHandle, CANDWND_NUM_COLOR);
-        SetBkColor(dcHandle, GetSysColor(COLOR_3DHIGHLIGHT));
+        SetTextColor(dcHandle, _crNumberColor);// CANDWND_NUM_COLOR);
+        SetBkColor(dcHandle, _crNumberBkColor);// GetSysColor(COLOR_3DHIGHLIGHT));
 
         StringCchPrintf(pageCountString, ARRAYSIZE(pageCountString), L"%d", (LONG)*_pIndexRange->GetAt(pageCount));
         ExtTextOut(dcHandle, PageCountPosition * cxLine, pageCount * cyLine + cyOffset, ETO_OPAQUE, &rc, pageCountString, lenOfPageCount, NULL);
@@ -679,12 +693,12 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT iIndex, _In_ RECT 
         if (_currentSelection != (INT)iIndex)
         {
             SetTextColor(dcHandle, _crTextColor);
-            SetBkColor(dcHandle, GetSysColor(COLOR_3DHIGHLIGHT));
+            SetBkColor(dcHandle, _crBkColor); //GetSysColor(COLOR_3DHIGHLIGHT));
         }
         else
         {
-            SetTextColor(dcHandle, CANDWND_SELECTED_ITEM_COLOR);
-            SetBkColor(dcHandle, CANDWND_SELECTED_BK_COLOR);
+            SetTextColor(dcHandle, _crSelectedTextColor);//CANDWND_SELECTED_ITEM_COLOR);
+            SetBkColor(dcHandle, _crSelectedBkColor);// CANDWND_SELECTED_BK_COLOR);
         }
 
 		pItemList = _candidateList.GetAt(iIndex);
@@ -706,7 +720,7 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT iIndex, _In_ RECT 
         rc.left   = prc->left + PageCountPosition * cxLine;
         rc.right  = prc->left + StringPosition * cxLine;
 
-        FillRect(dcHandle, &rc, (HBRUSH)(COLOR_3DHIGHLIGHT+1));
+        FillRect(dcHandle, &rc, _brshBkColor);
     }
 
 	SelectObject(dcHandle, hFontOld);

@@ -21,7 +21,7 @@
 //
 //----------------------------------------------------------------------------
 
-UIPresenter::UIPresenter(_In_ CTSFTTS *pTextService, CCompositionProcessorEngine *pCompositionProcessorEngine) 
+CUIPresenter::CUIPresenter(_In_ CTSFTTS *pTextService, CCompositionProcessorEngine *pCompositionProcessorEngine) 
 	: CTfTextLayoutSink(pTextService)
 {
 
@@ -51,7 +51,7 @@ UIPresenter::UIPresenter(_In_ CTSFTTS *pTextService, CCompositionProcessorEngine
 //
 //----------------------------------------------------------------------------
 
-UIPresenter::~UIPresenter()
+CUIPresenter::~CUIPresenter()
 {
     _EndCandidateList();
 	DisposeNotifyWindow();
@@ -64,7 +64,7 @@ UIPresenter::~UIPresenter()
 //
 //----------------------------------------------------------------------------
 
-STDAPI UIPresenter::QueryInterface(REFIID riid, _Outptr_ void **ppvObj)
+STDAPI CUIPresenter::QueryInterface(REFIID riid, _Outptr_ void **ppvObj)
 {
     if (CTfTextLayoutSink::QueryInterface(riid, ppvObj) == S_OK)
     {
@@ -108,7 +108,7 @@ STDAPI UIPresenter::QueryInterface(REFIID riid, _Outptr_ void **ppvObj)
 //
 //----------------------------------------------------------------------------
 
-STDAPI_(ULONG) UIPresenter::AddRef()
+STDAPI_(ULONG) CUIPresenter::AddRef()
 {
     CTfTextLayoutSink::AddRef();
     return ++_refCount;
@@ -120,7 +120,7 @@ STDAPI_(ULONG) UIPresenter::AddRef()
 //
 //----------------------------------------------------------------------------
 
-STDAPI_(ULONG) UIPresenter::Release()
+STDAPI_(ULONG) CUIPresenter::Release()
 {
     CTfTextLayoutSink::Release();
 
@@ -142,7 +142,7 @@ STDAPI_(ULONG) UIPresenter::Release()
 //
 //----------------------------------------------------------------------------
 
-STDAPI UIPresenter::GetDescription(BSTR *pbstr)
+STDAPI CUIPresenter::GetDescription(BSTR *pbstr)
 {
     if (pbstr)
     {
@@ -157,7 +157,7 @@ STDAPI UIPresenter::GetDescription(BSTR *pbstr)
 //
 //----------------------------------------------------------------------------
 
-STDAPI UIPresenter::GetGUID(GUID *pguid)
+STDAPI CUIPresenter::GetGUID(GUID *pguid)
 {
     *pguid = Global::TSFTTSGuidCandUIElement;
     return S_OK;
@@ -169,9 +169,9 @@ STDAPI UIPresenter::GetGUID(GUID *pguid)
 //
 //----------------------------------------------------------------------------
 
-STDAPI UIPresenter::Show(BOOL showCandidateWindow)
+STDAPI CUIPresenter::Show(BOOL showCandidateWindow)
 {
-	debugPrint(L"UIPresenter::Show(), showCandidateWindow=%d", showCandidateWindow);
+	debugPrint(L"CUIPresenter::Show(), showCandidateWindow=%d", showCandidateWindow);
     if (showCandidateWindow)
     {
         ToShowCandidateWindow();
@@ -183,9 +183,9 @@ STDAPI UIPresenter::Show(BOOL showCandidateWindow)
     return S_OK;
 }
 
-HRESULT UIPresenter::ToShowCandidateWindow()
+HRESULT CUIPresenter::ToShowCandidateWindow()
 {
-	debugPrint(L"UIPresenter::ToShowCandidateWindow()");
+	debugPrint(L"CUIPresenter::ToShowCandidateWindow()");
     _MoveCandidateWindowToTextExt();
     _pCandidateWnd->_Show(TRUE);
 
@@ -193,9 +193,9 @@ HRESULT UIPresenter::ToShowCandidateWindow()
     return S_OK;
 }
 
-HRESULT UIPresenter::ToHideCandidateWindow()
+HRESULT CUIPresenter::ToHideCandidateWindow()
 {
-	debugPrint(L"UIPresenter::ToHideCandidateWindow()");
+	debugPrint(L"CUIPresenter::ToHideCandidateWindow()");
 	if (_pCandidateWnd)
 	{
 		_pCandidateWnd->_Show(FALSE);
@@ -213,7 +213,7 @@ HRESULT UIPresenter::ToHideCandidateWindow()
 //
 //----------------------------------------------------------------------------
 
-STDAPI UIPresenter::IsShown(BOOL *pIsShow)
+STDAPI CUIPresenter::IsShown(BOOL *pIsShow)
 {
     *pIsShow = _pCandidateWnd->_IsWindowVisible();
     return S_OK;
@@ -225,9 +225,9 @@ STDAPI UIPresenter::IsShown(BOOL *pIsShow)
 //
 //----------------------------------------------------------------------------
 
-STDAPI UIPresenter::GetUpdatedFlags(DWORD *pdwFlags)
+STDAPI CUIPresenter::GetUpdatedFlags(DWORD *pdwFlags)
 {
-	debugPrint(L"UIPresenter::GetUpdatedFlags(), _updatedFlags = %x", _updatedFlags);
+	debugPrint(L"CUIPresenter::GetUpdatedFlags(), _updatedFlags = %x", _updatedFlags);
     *pdwFlags = _updatedFlags;
     return S_OK;
 }
@@ -238,9 +238,9 @@ STDAPI UIPresenter::GetUpdatedFlags(DWORD *pdwFlags)
 //
 //----------------------------------------------------------------------------
 
-STDAPI UIPresenter::GetDocumentMgr(ITfDocumentMgr **ppdim)
+STDAPI CUIPresenter::GetDocumentMgr(ITfDocumentMgr **ppdim)
 {
-	debugPrint(L"UIPresenter::GetDocumentMgr()");
+	debugPrint(L"CUIPresenter::GetDocumentMgr()");
     *ppdim = nullptr;
 
     return E_NOTIMPL;
@@ -252,7 +252,7 @@ STDAPI UIPresenter::GetDocumentMgr(ITfDocumentMgr **ppdim)
 //
 //----------------------------------------------------------------------------
 
-STDAPI UIPresenter::GetCount(UINT *pCandidateCount)
+STDAPI CUIPresenter::GetCount(UINT *pCandidateCount)
 {
     if (_pCandidateWnd)
     {
@@ -262,7 +262,7 @@ STDAPI UIPresenter::GetCount(UINT *pCandidateCount)
     {
         *pCandidateCount = 0;
     }
-	debugPrint(L"UIPresenter::GetCount(), *pCandidateCount = %d", *pCandidateCount);
+	debugPrint(L"CUIPresenter::GetCount(), *pCandidateCount = %d", *pCandidateCount);
     return S_OK;
 }
 
@@ -272,7 +272,7 @@ STDAPI UIPresenter::GetCount(UINT *pCandidateCount)
 //
 //----------------------------------------------------------------------------
 
-STDAPI UIPresenter::GetSelection(UINT *pSelectedCandidateIndex)
+STDAPI CUIPresenter::GetSelection(UINT *pSelectedCandidateIndex)
 {
     if (_pCandidateWnd)
     {
@@ -282,7 +282,7 @@ STDAPI UIPresenter::GetSelection(UINT *pSelectedCandidateIndex)
     {
         *pSelectedCandidateIndex = 0;
     }
-	debugPrint(L"UIPresenter::GetSelection(), *pSelectedCandidateIndex = %d", *pSelectedCandidateIndex);
+	debugPrint(L"CUIPresenter::GetSelection(), *pSelectedCandidateIndex = %d", *pSelectedCandidateIndex);
     return S_OK;
 }
 
@@ -292,7 +292,7 @@ STDAPI UIPresenter::GetSelection(UINT *pSelectedCandidateIndex)
 //
 //----------------------------------------------------------------------------
 
-STDAPI UIPresenter::GetString(UINT uIndex, BSTR *pbstr)
+STDAPI CUIPresenter::GetString(UINT uIndex, BSTR *pbstr)
 {
     if (!_pCandidateWnd || (uIndex > _pCandidateWnd->_GetCount()))
     {
@@ -305,7 +305,7 @@ STDAPI UIPresenter::GetString(UINT uIndex, BSTR *pbstr)
     candidateLen = _pCandidateWnd->_GetCandidateString(uIndex, &pCandidateString);
 
     *pbstr = (candidateLen == 0) ? nullptr : SysAllocStringLen(pCandidateString, candidateLen);
-	//debugPrint(L"UIPresenter::GetString(), uIndex = %d, pbstr = %s", uIndex, pbstr);  
+	//debugPrint(L"CUIPresenter::GetString(), uIndex = %d, pbstr = %s", uIndex, pbstr);  
     return S_OK;
 }
 
@@ -315,9 +315,9 @@ STDAPI UIPresenter::GetString(UINT uIndex, BSTR *pbstr)
 //
 //----------------------------------------------------------------------------
 
-STDAPI UIPresenter::GetPageIndex(UINT *pIndex, UINT uSize, UINT *puPageCnt)
+STDAPI CUIPresenter::GetPageIndex(UINT *pIndex, UINT uSize, UINT *puPageCnt)
 {
-	debugPrint(L"UIPresenter::GetPageIndex()");
+	debugPrint(L"CUIPresenter::GetPageIndex()");
     if (!_pCandidateWnd)
     {
         if (pIndex)
@@ -337,9 +337,9 @@ STDAPI UIPresenter::GetPageIndex(UINT *pIndex, UINT uSize, UINT *puPageCnt)
 //
 //----------------------------------------------------------------------------
 
-STDAPI UIPresenter::SetPageIndex(UINT *pIndex, UINT uPageCnt)
+STDAPI CUIPresenter::SetPageIndex(UINT *pIndex, UINT uPageCnt)
 {
-	debugPrint(L"UIPresenter::SetPageIndex(), index = %d, page count =%d", *pIndex, uPageCnt  );
+	debugPrint(L"CUIPresenter::SetPageIndex(), index = %d, page count =%d", *pIndex, uPageCnt  );
     if (!_pCandidateWnd)
     {
         return E_FAIL;
@@ -353,9 +353,9 @@ STDAPI UIPresenter::SetPageIndex(UINT *pIndex, UINT uPageCnt)
 //
 //----------------------------------------------------------------------------
 
-STDAPI UIPresenter::GetCurrentPage(UINT *puPage)
+STDAPI CUIPresenter::GetCurrentPage(UINT *puPage)
 {
-	debugPrint(L"UIPresenter::GetCurrentPage(), puPage =%d", _pCandidateWnd->_GetCurrentPage(puPage) );
+	debugPrint(L"CUIPresenter::GetCurrentPage(), puPage =%d", _pCandidateWnd->_GetCurrentPage(puPage) );
     if (!_pCandidateWnd)
     {
         *puPage = 0;
@@ -370,9 +370,9 @@ STDAPI UIPresenter::GetCurrentPage(UINT *puPage)
 // It is related of the mouse clicking behavior upon the suggestion window
 //----------------------------------------------------------------------------
 
-STDAPI UIPresenter::SetSelection(UINT nIndex)
+STDAPI CUIPresenter::SetSelection(UINT nIndex)
 {
-	debugPrint(L"UIPresenter::SetSelection(), nIndex =%d", nIndex);
+	debugPrint(L"CUIPresenter::SetSelection(), nIndex =%d", nIndex);
     if (_pCandidateWnd)
     {
         _pCandidateWnd->_SetSelection(nIndex);
@@ -387,9 +387,9 @@ STDAPI UIPresenter::SetSelection(UINT nIndex)
 // It is related of the mouse clicking behavior upon the suggestion window
 //----------------------------------------------------------------------------
 
-STDAPI UIPresenter::Finalize(void)
+STDAPI CUIPresenter::Finalize(void)
 {
-	debugPrint(L"UIPresenter::Finalize()");
+	debugPrint(L"CUIPresenter::Finalize()");
     _CandidateChangeNotification(CAND_ITEM_SELECT);
     return S_OK;
 }
@@ -400,9 +400,9 @@ STDAPI UIPresenter::Finalize(void)
 //
 //----------------------------------------------------------------------------
 
-STDAPI UIPresenter::Abort(void)
+STDAPI CUIPresenter::Abort(void)
 {
-	debugPrint(L"UIPresenter::Abort()");
+	debugPrint(L"CUIPresenter::Abort()");
     return E_NOTIMPL;
 }
 
@@ -412,9 +412,9 @@ STDAPI UIPresenter::Abort(void)
 // To show candidateNumbers on the suggestion window
 //----------------------------------------------------------------------------
 
-STDAPI UIPresenter::SetIntegrationStyle(GUID guidIntegrationStyle)
+STDAPI CUIPresenter::SetIntegrationStyle(GUID guidIntegrationStyle)
 {
-	debugPrint(L"UIPresenter::SetIntegrationStyle() ok? = %d", (guidIntegrationStyle == GUID_INTEGRATIONSTYLE_SEARCHBOX));
+	debugPrint(L"CUIPresenter::SetIntegrationStyle() ok? = %d", (guidIntegrationStyle == GUID_INTEGRATIONSTYLE_SEARCHBOX));
     return (guidIntegrationStyle == GUID_INTEGRATIONSTYLE_SEARCHBOX) ? S_OK : E_NOTIMPL;
 }
 
@@ -424,9 +424,9 @@ STDAPI UIPresenter::SetIntegrationStyle(GUID guidIntegrationStyle)
 //
 //----------------------------------------------------------------------------
 
-STDAPI UIPresenter::GetSelectionStyle(_Out_ TfIntegratableCandidateListSelectionStyle *ptfSelectionStyle)
+STDAPI CUIPresenter::GetSelectionStyle(_Out_ TfIntegratableCandidateListSelectionStyle *ptfSelectionStyle)
 {
-	debugPrint(L"UIPresenter::GetSelectionStyle()");
+	debugPrint(L"CUIPresenter::GetSelectionStyle()");
     *ptfSelectionStyle = STYLE_ACTIVE_SELECTION;
     return S_OK;
 }
@@ -437,9 +437,9 @@ STDAPI UIPresenter::GetSelectionStyle(_Out_ TfIntegratableCandidateListSelection
 //
 //----------------------------------------------------------------------------
 
-STDAPI UIPresenter::OnKeyDown(_In_ WPARAM wParam, _In_ LPARAM lParam, _Out_ BOOL *pIsEaten)
+STDAPI CUIPresenter::OnKeyDown(_In_ WPARAM wParam, _In_ LPARAM lParam, _Out_ BOOL *pIsEaten)
 {
-	debugPrint(L"UIPresenter::OnKeyDown() wParam=%x, lpwaram=%x", wParam, lParam);
+	debugPrint(L"CUIPresenter::OnKeyDown() wParam=%x, lpwaram=%x", wParam, lParam);
     wParam;
     lParam;
 
@@ -453,9 +453,9 @@ STDAPI UIPresenter::OnKeyDown(_In_ WPARAM wParam, _In_ LPARAM lParam, _Out_ BOOL
 //
 //----------------------------------------------------------------------------
 
-STDAPI UIPresenter::ShowCandidateNumbers(_Out_ BOOL *pIsShow)
+STDAPI CUIPresenter::ShowCandidateNumbers(_Out_ BOOL *pIsShow)
 {
-	debugPrint(L"UIPresenter::ShowCandidateNumbers()");
+	debugPrint(L"CUIPresenter::ShowCandidateNumbers()");
     *pIsShow = TRUE;
     return S_OK;
 }
@@ -466,9 +466,9 @@ STDAPI UIPresenter::ShowCandidateNumbers(_Out_ BOOL *pIsShow)
 //
 //----------------------------------------------------------------------------
 
-STDAPI UIPresenter::FinalizeExactCompositionString()
+STDAPI CUIPresenter::FinalizeExactCompositionString()
 {
-	debugPrint(L"UIPresenter::FinalizeExactCompositionString()");
+	debugPrint(L"CUIPresenter::FinalizeExactCompositionString()");
     return E_NOTIMPL;
 }
 
@@ -479,9 +479,9 @@ STDAPI UIPresenter::FinalizeExactCompositionString()
 //
 //----------------------------------------------------------------------------
 
-HRESULT UIPresenter::_StartCandidateList(TfClientId tfClientId, _In_ ITfDocumentMgr *pDocumentMgr, _In_ ITfContext *pContextDocument, TfEditCookie ec, _In_ ITfRange *pRangeComposition, UINT wndWidth)
+HRESULT CUIPresenter::_StartCandidateList(TfClientId tfClientId, _In_ ITfDocumentMgr *pDocumentMgr, _In_ ITfContext *pContextDocument, TfEditCookie ec, _In_ ITfRange *pRangeComposition, UINT wndWidth)
 {
-	debugPrint(L"\nUIPresenter::_StartCandidateList()");
+	debugPrint(L"\nCUIPresenter::_StartCandidateList()");
 	pDocumentMgr;tfClientId;
     HRESULT hr = E_FAIL;
 	CStringRange notify;
@@ -513,7 +513,7 @@ Exit:
     {
         _EndCandidateList();
     }
-	debugPrint(L"UIPresenter::_StartCandidateList(), hresult = %d/n", hr);
+	debugPrint(L"CUIPresenter::_StartCandidateList(), hresult = %d/n", hr);
     return hr;
 }
 
@@ -523,9 +523,9 @@ Exit:
 //
 //----------------------------------------------------------------------------
 
-void UIPresenter::_EndCandidateList()
+void CUIPresenter::_EndCandidateList()
 {
-	debugPrint(L"UIPresenter::_EndCandidateList()");
+	debugPrint(L"CUIPresenter::_EndCandidateList()");
     
 	EndUIElement();
 	_ClearCandidateList();
@@ -543,9 +543,9 @@ void UIPresenter::_EndCandidateList()
 //
 //----------------------------------------------------------------------------
 
-void UIPresenter::_SetCandidateText(_In_ CTSFTTSArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode, UINT candWidth)
+void CUIPresenter::_SetCandidateText(_In_ CTSFTTSArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode, UINT candWidth)
 {
-	debugPrint(L"UIPresenter::_SetCandidateText() candWidth = %d", candWidth);
+	debugPrint(L"CUIPresenter::_SetCandidateText() candWidth = %d", candWidth);
     AddCandidateToTSFTTSUI(pCandidateList, isAddFindKeyCode);
 
     SetPageIndexWithScrollInfo(pCandidateList);
@@ -567,7 +567,7 @@ void UIPresenter::_SetCandidateText(_In_ CTSFTTSArray<CCandidateListItem> *pCand
     }
 }
 
-void UIPresenter::AddCandidateToTSFTTSUI(_In_ CTSFTTSArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode)
+void CUIPresenter::AddCandidateToTSFTTSUI(_In_ CTSFTTSArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode)
 {
     for (UINT index = 0; index < pCandidateList->Count(); index++)
     {
@@ -575,7 +575,7 @@ void UIPresenter::AddCandidateToTSFTTSUI(_In_ CTSFTTSArray<CCandidateListItem> *
     }
 }
 
-void UIPresenter::SetPageIndexWithScrollInfo(_In_ CTSFTTSArray<CCandidateListItem> *pCandidateList)
+void CUIPresenter::SetPageIndexWithScrollInfo(_In_ CTSFTTSArray<CCandidateListItem> *pCandidateList)
 {
     UINT candCntInPage = _pIndexRange->Count();
     UINT bufferSize = pCandidateList->Count() / candCntInPage + 1;
@@ -599,7 +599,7 @@ void UIPresenter::SetPageIndexWithScrollInfo(_In_ CTSFTTSArray<CCandidateListIte
 //
 //----------------------------------------------------------------------------
 
-void UIPresenter::_ClearCandidateList()
+void CUIPresenter::_ClearCandidateList()
 {
 	if(_pCandidateWnd)
 	{
@@ -614,15 +614,36 @@ void UIPresenter::_ClearCandidateList()
 // _SetFillColor
 //
 //----------------------------------------------------------------------------
+void CUIPresenter::_SetNotifyTextColor(COLORREF crColor, COLORREF crBkColor)
+{
+	if(_pNotifyWnd)
+	{
+	    _pNotifyWnd->_SetTextColor(crColor, crBkColor);
+		_pNotifyWnd->_SetFillColor(crBkColor);
+	}
+}
 
-void UIPresenter::_SetCandidateTextColor(COLORREF crColor, COLORREF crBkColor)
+
+void CUIPresenter::_SetCandidateNumberColor(COLORREF crColor, COLORREF crBkColor)
+{
+    _pCandidateWnd->_SetNumberColor(crColor, crBkColor);
+}
+
+
+void CUIPresenter::_SetCandidateTextColor(COLORREF crColor, COLORREF crBkColor)
 {
     _pCandidateWnd->_SetTextColor(crColor, crBkColor);
 }
 
-void UIPresenter::_SetCandidateFillColor(HBRUSH hBrush)
+void CUIPresenter::_SetCandidateSelectedTextColor(COLORREF crColor, COLORREF crBkColor)
 {
-    _pCandidateWnd->_SetFillColor(hBrush);
+    _pCandidateWnd->_SetSelectedTextColor(crColor, crBkColor);
+}
+
+
+void CUIPresenter::_SetCandidateFillColor(COLORREF fiColor)
+{
+    _pCandidateWnd->_SetFillColor(fiColor);
 }
 
 //+---------------------------------------------------------------------------
@@ -631,7 +652,7 @@ void UIPresenter::_SetCandidateFillColor(HBRUSH hBrush)
 //
 //----------------------------------------------------------------------------
 
-DWORD_PTR UIPresenter::_GetSelectedCandidateString(_Outptr_result_maybenull_ const WCHAR **ppwchCandidateString)
+DWORD_PTR CUIPresenter::_GetSelectedCandidateString(_Outptr_result_maybenull_ const WCHAR **ppwchCandidateString)
 {
     return _pCandidateWnd->_GetSelectedCandidateString(ppwchCandidateString);
 }
@@ -642,7 +663,7 @@ DWORD_PTR UIPresenter::_GetSelectedCandidateString(_Outptr_result_maybenull_ con
 //
 //----------------------------------------------------------------------------
 
-BOOL UIPresenter::_MoveCandidateSelection(_In_ int offSet)
+BOOL CUIPresenter::_MoveCandidateSelection(_In_ int offSet)
 {
     BOOL ret = _pCandidateWnd->_MoveSelection(offSet, TRUE);
     if (ret)
@@ -666,9 +687,9 @@ BOOL UIPresenter::_MoveCandidateSelection(_In_ int offSet)
 //
 //----------------------------------------------------------------------------
 
-BOOL UIPresenter::_SetCandidateSelection(_In_ int selectedIndex, _In_opt_ BOOL isNotify)
+BOOL CUIPresenter::_SetCandidateSelection(_In_ int selectedIndex, _In_opt_ BOOL isNotify)
 {
-	debugPrint(L"UIPresenter::_SetCandidateSelection(), selectedIndex = %d, iSnotify = %d", selectedIndex, isNotify);
+	debugPrint(L"CUIPresenter::_SetCandidateSelection(), selectedIndex = %d, iSnotify = %d", selectedIndex, isNotify);
     BOOL ret = _pCandidateWnd->_SetSelection(selectedIndex, isNotify);
     if (ret)
     {
@@ -692,9 +713,9 @@ BOOL UIPresenter::_SetCandidateSelection(_In_ int selectedIndex, _In_opt_ BOOL i
 //
 //----------------------------------------------------------------------------
 
-BOOL UIPresenter::_MoveCandidatePage(_In_ int offSet)
+BOOL CUIPresenter::_MoveCandidatePage(_In_ int offSet)
 {
-	debugPrint(L"UIPresenter::_MoveCandidatePage(), offSet = %d", offSet);
+	debugPrint(L"CUIPresenter::_MoveCandidatePage(), offSet = %d", offSet);
     BOOL ret = _pCandidateWnd->_MovePage(offSet, TRUE);
     if (ret)
     {
@@ -718,9 +739,9 @@ BOOL UIPresenter::_MoveCandidatePage(_In_ int offSet)
 //
 //----------------------------------------------------------------------------
 
-void UIPresenter::_MoveCandidateWindowToTextExt()
+void CUIPresenter::_MoveCandidateWindowToTextExt()
 {
-	debugPrint(L"UIPresenter::_MoveCandidateWindowToTextExt()");
+	debugPrint(L"CUIPresenter::_MoveCandidateWindowToTextExt()");
     RECT rc;
 
     if (FAILED(_GetTextExt(&rc)))
@@ -736,9 +757,9 @@ void UIPresenter::_MoveCandidateWindowToTextExt()
 //
 //----------------------------------------------------------------------------
 
-VOID UIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
+VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
 {
-	debugPrint(L"UIPresenter::_LayoutChangeNotification()");
+	debugPrint(L"CUIPresenter::_LayoutChangeNotification()");
 	
     RECT rectCandidate = {0, 0, 0, 0};
     POINT ptCandidate = {0, 0};
@@ -750,7 +771,7 @@ VOID UIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
 	_candLocation.y = ptCandidate.y;
 }
 
-void UIPresenter::GetCandLocation(POINT *lpPoint)
+void CUIPresenter::GetCandLocation(POINT *lpPoint)
 {
 	lpPoint->x = _candLocation.x;
 	lpPoint->y = _candLocation.y;
@@ -762,9 +783,9 @@ void UIPresenter::GetCandLocation(POINT *lpPoint)
 //
 //----------------------------------------------------------------------------
 
-VOID UIPresenter::_LayoutDestroyNotification()
+VOID CUIPresenter::_LayoutDestroyNotification()
 {
-	debugPrint(L"UIPresenter::_LayoutDestroyNotification()");
+	debugPrint(L"CUIPresenter::_LayoutDestroyNotification()");
     _EndCandidateList();
 }
 
@@ -774,7 +795,7 @@ VOID UIPresenter::_LayoutDestroyNotification()
 //
 //----------------------------------------------------------------------------
 
-HRESULT UIPresenter::_NotifyChangeNotification()
+HRESULT CUIPresenter::_NotifyChangeNotification()
 {
 	return S_OK;
 }
@@ -785,7 +806,7 @@ HRESULT UIPresenter::_NotifyChangeNotification()
 //
 //----------------------------------------------------------------------------
 
-HRESULT UIPresenter::_CandidateChangeNotification(_In_ enum CANDWND_ACTION action)
+HRESULT CUIPresenter::_CandidateChangeNotification(_In_ enum CANDWND_ACTION action)
 {
     HRESULT hr = E_FAIL;
 
@@ -848,9 +869,9 @@ Exit:
 //----------------------------------------------------------------------------
 
 // static
-HRESULT UIPresenter::_CandWndCallback(_In_ void *pv, _In_ enum CANDWND_ACTION action)
+HRESULT CUIPresenter::_CandWndCallback(_In_ void *pv, _In_ enum CANDWND_ACTION action)
 {
-    UIPresenter* fakeThis = (UIPresenter*)pv;
+    CUIPresenter* fakeThis = (CUIPresenter*)pv;
 
     return fakeThis->_CandidateChangeNotification(action);
 }
@@ -862,9 +883,9 @@ HRESULT UIPresenter::_CandWndCallback(_In_ void *pv, _In_ enum CANDWND_ACTION ac
 //----------------------------------------------------------------------------
 
 // static
-HRESULT UIPresenter::_NotifyWndCallback(_In_ void *pv)
+HRESULT CUIPresenter::_NotifyWndCallback(_In_ void *pv)
 {
-    UIPresenter* fakeThis = (UIPresenter*)pv;
+    CUIPresenter* fakeThis = (CUIPresenter*)pv;
 
     return fakeThis->_NotifyChangeNotification();
 }
@@ -875,7 +896,7 @@ HRESULT UIPresenter::_NotifyWndCallback(_In_ void *pv)
 //
 //----------------------------------------------------------------------------
 
-HRESULT UIPresenter::_UpdateUIElement()
+HRESULT CUIPresenter::_UpdateUIElement()
 {
 	
     HRESULT hr = S_OK;
@@ -894,7 +915,7 @@ HRESULT UIPresenter::_UpdateUIElement()
         pUIElementMgr->UpdateUIElement(_uiElementId);
         pUIElementMgr->Release();
     }
-	debugPrint(L"UIPresenter::_UpdateUIElement(), hresult = %d", hr);
+	debugPrint(L"CUIPresenter::_UpdateUIElement(), hresult = %d", hr);
     return hr;
 }
 
@@ -904,9 +925,9 @@ HRESULT UIPresenter::_UpdateUIElement()
 //
 //----------------------------------------------------------------------------
 
-HRESULT UIPresenter::OnSetThreadFocus()
+HRESULT CUIPresenter::OnSetThreadFocus()
 {
-	debugPrint(L"UIPresenter::OnSetThreadFocus()");
+	debugPrint(L"CUIPresenter::OnSetThreadFocus()");
     if (_isShowMode)
     {
         Show(TRUE);
@@ -920,9 +941,9 @@ HRESULT UIPresenter::OnSetThreadFocus()
 //
 //----------------------------------------------------------------------------
 
-HRESULT UIPresenter::OnKillThreadFocus()
+HRESULT CUIPresenter::OnKillThreadFocus()
 {
-	debugPrint(L"UIPresenter::OnSetThreadFocus()");
+	debugPrint(L"CUIPresenter::OnSetThreadFocus()");
     if (_isShowMode)
     {
         Show(FALSE);
@@ -931,7 +952,7 @@ HRESULT UIPresenter::OnKillThreadFocus()
     return S_OK;
 }
 
-void UIPresenter::RemoveSpecificCandidateFromList(_In_ LCID Locale, _Inout_ CTSFTTSArray<CCandidateListItem> &candidateList, _In_ CStringRange &candidateString)
+void CUIPresenter::RemoveSpecificCandidateFromList(_In_ LCID Locale, _Inout_ CTSFTTSArray<CCandidateListItem> &candidateList, _In_ CStringRange &candidateString)
 {
     for (UINT index = 0; index < candidateList.Count();)
     {
@@ -947,18 +968,28 @@ void UIPresenter::RemoveSpecificCandidateFromList(_In_ LCID Locale, _Inout_ CTSF
     }
 }
 
-void UIPresenter::AdviseUIChangedByArrowKey(_In_ KEYSTROKE_FUNCTION arrowKey)
+void CUIPresenter::AdviseUIChangedByArrowKey(_In_ KEYSTROKE_FUNCTION arrowKey)
 {
     switch (arrowKey)
     {
     case FUNCTION_MOVE_UP:
         {
-            _MoveCandidateSelection(MOVEUP_ONE);
+            if(!isUILessMode())_MoveCandidateSelection(MOVEUP_ONE);
             break;
         }
     case FUNCTION_MOVE_DOWN:
         {
-            _MoveCandidateSelection(MOVEDOWN_ONE);
+            if(!isUILessMode()) _MoveCandidateSelection(MOVEDOWN_ONE);
+            break;
+        }
+	case FUNCTION_MOVE_LEFT:
+        {
+            if(isUILessMode()) _MoveCandidateSelection(MOVEUP_ONE);
+            break;
+        }
+    case FUNCTION_MOVE_RIGHT:
+        {
+			if(isUILessMode()) _MoveCandidateSelection(MOVEDOWN_ONE);  //UI less mode is horizontal layout
             break;
         }
     case FUNCTION_MOVE_PAGE_UP:
@@ -986,7 +1017,7 @@ void UIPresenter::AdviseUIChangedByArrowKey(_In_ KEYSTROKE_FUNCTION arrowKey)
     }
 }
 
-HRESULT UIPresenter::BeginUIElement()
+HRESULT CUIPresenter::BeginUIElement()
 {
 	HRESULT hr = S_OK;
 
@@ -1006,14 +1037,14 @@ HRESULT UIPresenter::BeginUIElement()
     }
 
 Exit:
-	debugPrint(L"UIPresenter::BeginUIElement(), _isShowMode = %d, _uiElementId = %d, hresult = %d"
+	debugPrint(L"CUIPresenter::BeginUIElement(), _isShowMode = %d, _uiElementId = %d, hresult = %d"
 		, _isShowMode, _uiElementId, hr);
     return hr;
 }
 
-HRESULT UIPresenter::EndUIElement()
+HRESULT CUIPresenter::EndUIElement()
 {
-	debugPrint(L"UIPresenter::EndUIElement(), _uiElementId = %d ", _uiElementId);
+	debugPrint(L"CUIPresenter::EndUIElement(), _uiElementId = %d ", _uiElementId);
     HRESULT hr = S_OK;
 
     ITfThreadMgr* pThreadMgr = _pTextService->_GetThreadMgr();
@@ -1032,11 +1063,11 @@ HRESULT UIPresenter::EndUIElement()
     }
 
 Exit:
-	debugPrint(L"UIPresenter::EndUIElement(), hresult = %d ", hr);
+	debugPrint(L"CUIPresenter::EndUIElement(), hresult = %d ", hr);
     return hr;
 }
 
-HRESULT UIPresenter::MakeNotifyWindow(_In_ ITfContext *pContextDocument)
+HRESULT CUIPresenter::MakeNotifyWindow(_In_ ITfContext *pContextDocument)
 {
 	HRESULT hr = S_OK;
 
@@ -1051,7 +1082,7 @@ HRESULT UIPresenter::MakeNotifyWindow(_In_ ITfContext *pContextDocument)
   
 	HWND parentWndHandle = nullptr;
     ITfContextView* pView = nullptr;
-    if (SUCCEEDED(pContextDocument->GetActiveView(&pView)))
+    if (pContextDocument && SUCCEEDED(pContextDocument->GetActiveView(&pView)))
     {
         pView->GetWnd(&parentWndHandle);
     }
@@ -1070,17 +1101,17 @@ HRESULT UIPresenter::MakeNotifyWindow(_In_ ITfContext *pContextDocument)
 }
 
 	
-	void UIPresenter::SetNotifyText(_In_ CStringRange *pNotifyText)
+	void CUIPresenter::SetNotifyText(_In_ CStringRange *pNotifyText)
 	{
 		if (_pNotifyWnd)
 			_pNotifyWnd->_SetString(pNotifyText);
 	}
-	void UIPresenter::ShowNotify(_In_ BOOL showMode, _In_opt_ int timeToHide)
+	void CUIPresenter::ShowNotify(_In_ BOOL showMode, _In_opt_ int timeToHide)
 	{
 		if (_pNotifyWnd)
 			_pNotifyWnd->_Show(showMode, timeToHide);
 	}
-	void UIPresenter::ClearNotify()
+	void CUIPresenter::ClearNotify()
 	{
 		if (_pNotifyWnd)
 		{
@@ -1088,11 +1119,12 @@ HRESULT UIPresenter::MakeNotifyWindow(_In_ ITfContext *pContextDocument)
 			_pNotifyWnd->_Show(FALSE);
 		}
 	}
-	void UIPresenter::ShowNotifyText(_In_ ITfContext *pContextDocument, _In_ CStringRange *pNotifyText)
+	void CUIPresenter::ShowNotifyText(_In_ ITfContext *pContextDocument, _In_ CStringRange *pNotifyText)
 	{
 		if(MakeNotifyWindow(pContextDocument)== S_OK)
 		{
 			ClearNotify();
+			_SetNotifyTextColor(_pTextService->GetItemColor(), _pTextService->GetItemBGColor());
 			SetNotifyText(pNotifyText);
 	
 			
@@ -1121,7 +1153,7 @@ HRESULT UIPresenter::MakeNotifyWindow(_In_ ITfContext *pContextDocument)
 
 
 
-HRESULT UIPresenter::MakeCandidateWindow(_In_ ITfContext *pContextDocument, _In_ UINT wndWidth)
+HRESULT CUIPresenter::MakeCandidateWindow(_In_ ITfContext *pContextDocument, _In_ UINT wndWidth)
 {
     HRESULT hr = S_OK;
 
@@ -1154,7 +1186,7 @@ Exit:
     return hr;
 }
 
-void UIPresenter::DisposeCandidateWindow()
+void CUIPresenter::DisposeCandidateWindow()
 {
     if (nullptr != _pCandidateWnd)
     {
@@ -1163,7 +1195,7 @@ void UIPresenter::DisposeCandidateWindow()
 		 _pCandidateWnd = nullptr;
     }
 }
-void UIPresenter::DisposeNotifyWindow()
+void CUIPresenter::DisposeNotifyWindow()
 {
 	if (nullptr != _pNotifyWnd)
 	{

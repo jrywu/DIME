@@ -4,7 +4,7 @@
 //
 //
 
-//#define DEBUG_PRINT
+#define DEBUG_PRINT
 #include "Private.h"
 #include "Globals.h"
 

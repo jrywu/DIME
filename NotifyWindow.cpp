@@ -160,9 +160,9 @@ VOID CNotifyWindow::_SetTextColor(_In_ COLORREF crColor, _In_ COLORREF crBkColor
     _crBkColor = crBkColor;
 }
 
-VOID CNotifyWindow::_SetFillColor(_In_ HBRUSH hBrush)
+VOID CNotifyWindow::_SetFillColor(_In_ COLORREF crBkColor)
 {
-    _brshBkColor = hBrush;
+    _brshBkColor = CreateSolidBrush(crBkColor);
 }
 
 //+---------------------------------------------------------------------------
@@ -416,8 +416,8 @@ void CNotifyWindow::_DrawText(_In_ HDC dcHandle, _In_ RECT *prc)
     rc.left = prc->left;
 	rc.right = prc->left + _cxTitle;
 	
-    SetTextColor(dcHandle, NOTIFYWND_TEXT_COLOR);
-    SetBkColor(dcHandle, NOTIFYWND_TEXT_BK_COLOR);
+    SetTextColor(dcHandle, _crTextColor);// NOTIFYWND_TEXT_COLOR);
+    SetBkColor(dcHandle, _crBkColor);//NOTIFYWND_TEXT_BK_COLOR);
     ExtTextOut(dcHandle, _TextMetric.tmAveCharWidth, _cyTitle/5, ETO_OPAQUE, &rc, _notifyText.Get(), (DWORD)_notifyText.GetLength(), NULL);
 
 	SelectObject(dcHandle, hFontOld);

@@ -27,12 +27,10 @@
 #define IDC_BUTTON_CHOOSEFONT                   1103
 #define IDC_COL_BG                              1104
 #define IDC_COL_FR                              1105
-#define IDC_COL_SE                              1106
-#define IDC_COL_CO                              1107
-#define IDC_COL_CA                              1108
-#define IDC_COL_SC                              1109
-#define IDC_COL_AN                              1110
-#define IDC_COL_NO                              1111
+#define IDC_COL_NU	                            1106
+#define IDC_COL_PHRASE                          1107
+#define IDC_COL_SEBG                            1108
+#define IDC_COL_SEFR                            1109
 #define IDC_EDIT_MAXWIDTH                       1112
 #define IDC_COMBO_UNTILCANDLIST                 1113
 #define IDC_CHECKBOX_AUTOCOMPOSE                1114

@@ -44,7 +44,7 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 	CTSFTTSArray<CCandidateListItem> candidatePhraseList;	
 	CStringRange candidateString;
 	
-    if (nullptr == _pTSFTTSUIPresenter)
+    if (nullptr == _pUIPresenter)
     {
         goto Exit; //should not happen
     }
@@ -55,7 +55,7 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 	if (!_IsComposing())
 		_StartComposition(pContext);
 
-	candidateLen = _pTSFTTSUIPresenter->_GetSelectedCandidateString(&pCandidateString);
+	candidateLen = _pUIPresenter->_GetSelectedCandidateString(&pCandidateString);
 	if (candidateLen == 0)
     {
 		if(_candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION || _candidateMode == CANDIDATE_PHRASE)
@@ -112,11 +112,13 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 	
 		if(SUCCEEDED(_CreateAndStartCandidate(_pCompositionProcessorEngine, ec, pContext)))
 		{	
-			_pTSFTTSUIPresenter->_ClearCandidateList();
-			_pTSFTTSUIPresenter->_SetCandidateTextColor(RGB(0, 0x80, 0), GetSysColor(COLOR_WINDOW));    // Text color is green
-			_pTSFTTSUIPresenter->_SetCandidateFillColor((HBRUSH)(COLOR_WINDOW+1));    // Background color is window
-			_pTSFTTSUIPresenter->_SetCandidateText(&candidatePhraseList, TRUE, _pCompositionProcessorEngine->GetCandidateWindowWidth());
-			_pTSFTTSUIPresenter->_SetCandidateSelection(-1, FALSE); // set selected index to -1 if showing phrase candidates
+			_pUIPresenter->_ClearCandidateList();
+			_pUIPresenter->_SetCandidateTextColor(_phraseColor, _itemBGColor);    // Text color is green
+			_pUIPresenter->_SetCandidateSelectedTextColor(_selectedColor, _selectedBGColor);    
+			_pUIPresenter->_SetCandidateNumberColor(_numberColor, _itemBGColor);    
+			_pUIPresenter->_SetCandidateFillColor(_itemBGColor);//(HBRUSH)(COLOR_WINDOW+1));    // Background color is window
+			_pUIPresenter->_SetCandidateText(&candidatePhraseList, TRUE, _pCompositionProcessorEngine->GetCandidateWindowWidth());
+			_pUIPresenter->_SetCandidateSelection(-1, FALSE); // set selected index to -1 if showing phrase candidates
 			_phraseCandShowing = TRUE;  //_phraseCandShowing = TRUE. phrase cand is showing
 			_candidateMode = CANDIDATE_PHRASE;
 			_isCandidateWithWildcard = FALSE;	
@@ -124,8 +126,8 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 	}
 	else
 	{
-		if(_pTSFTTSUIPresenter)
-			_pTSFTTSUIPresenter->_EndCandidateList();
+		if(_pUIPresenter)
+			_pUIPresenter->_EndCandidateList();
 	}
 		
 	
@@ -146,7 +148,7 @@ HRESULT CTSFTTS::_HandleCandidateArrowKey(TfEditCookie ec, _In_ ITfContext *pCon
     ec;
     pContext;
 
-    _pTSFTTSUIPresenter->AdviseUIChangedByArrowKey(keyFunction);
+    _pUIPresenter->AdviseUIChangedByArrowKey(keyFunction);
 
     return S_OK;
 }
@@ -165,9 +167,9 @@ HRESULT CTSFTTS::_HandleCandidateSelectByNumber(TfEditCookie ec, _In_ ITfContext
         return S_FALSE;
     }
 
-    if (_pTSFTTSUIPresenter)
+    if (_pUIPresenter)
     {
-        if (_pTSFTTSUIPresenter->_SetCandidateSelectionInPage(iSelectAsNumber))
+        if (_pUIPresenter->_SetCandidateSelectionInPage(iSelectAsNumber))
         {
             return _HandleCandidateConvert(ec, pContext);
         }
@@ -189,7 +191,7 @@ HRESULT CTSFTTS::_HandlePhraseFinalize(TfEditCookie ec, _In_ ITfContext *pContex
     DWORD phraseLen = 0;
     const WCHAR* pPhraseString = nullptr;
 
-    phraseLen = (DWORD)_pTSFTTSUIPresenter->_GetSelectedCandidateString(&pPhraseString);
+    phraseLen = (DWORD)_pUIPresenter->_GetSelectedCandidateString(&pPhraseString);
 
     CStringRange phraseString, clearString;
     phraseString.Set(pPhraseString, phraseLen);
@@ -219,7 +221,7 @@ HRESULT CTSFTTS::_HandlePhraseArrowKey(TfEditCookie ec, _In_ ITfContext *pContex
     ec;
     pContext;
 
-    _pTSFTTSUIPresenter->AdviseUIChangedByArrowKey(keyFunction);
+    _pUIPresenter->AdviseUIChangedByArrowKey(keyFunction);
 
     return S_OK;
 }
@@ -238,9 +240,9 @@ HRESULT CTSFTTS::_HandlePhraseSelectByNumber(TfEditCookie ec, _In_ ITfContext *p
         return S_FALSE;
     }
 
-    if (_pTSFTTSUIPresenter)
+    if (_pUIPresenter)
     {
-        if (_pTSFTTSUIPresenter->_SetCandidateSelectionInPage(iSelectAsNumber))
+        if (_pUIPresenter->_SetCandidateSelectionInPage(iSelectAsNumber))
         {
             return _HandlePhraseFinalize(ec, pContext);
         }
@@ -261,16 +263,7 @@ HRESULT CTSFTTS::_CreateAndStartCandidate(_In_ CCompositionProcessorEngine *pCom
     HRESULT hr = S_OK;
 
 	
-	if (_pTSFTTSUIPresenter == nullptr)
-    {
-        _pTSFTTSUIPresenter = new (std::nothrow) UIPresenter(this, pCompositionProcessorEngine);
-        if (!_pTSFTTSUIPresenter)
-        {
-            return E_OUTOFMEMORY;
-        }
-	}
-	
-	if ((_candidateMode == CANDIDATE_NONE) && (_pTSFTTSUIPresenter))
+	if ((_candidateMode == CANDIDATE_NONE) && (_pUIPresenter))
     {
  
 		// we don't cache the document manager object. So get it from pContext.
@@ -281,7 +274,7 @@ HRESULT CTSFTTS::_CreateAndStartCandidate(_In_ CCompositionProcessorEngine *pCom
 			ITfRange* pRange = nullptr;
 			if (SUCCEEDED(_pComposition->GetRange(&pRange)))
 			{
-				hr = _pTSFTTSUIPresenter->_StartCandidateList(_tfClientId, pDocumentMgr, pContext, ec, pRange, pCompositionProcessorEngine->GetCandidateWindowWidth());
+				hr = _pUIPresenter->_StartCandidateList(_tfClientId, pDocumentMgr, pContext, ec, pRange, pCompositionProcessorEngine->GetCandidateWindowWidth());
 				pRange->Release();
 			}
 			pDocumentMgr->Release();
@@ -306,9 +299,9 @@ VOID CTSFTTS::_DeleteCandidateList(BOOL isForce, _In_opt_ ITfContext *pContext)
 	    _pCompositionProcessorEngine->PurgeVirtualKey();
 	}
 
-    if (_pTSFTTSUIPresenter)
+    if (_pUIPresenter)
     {
-        _pTSFTTSUIPresenter->_EndCandidateList();
+        _pUIPresenter->_EndCandidateList();
         _candidateMode = CANDIDATE_NONE;
         _isCandidateWithWildcard = FALSE;
     }

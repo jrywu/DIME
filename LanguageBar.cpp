@@ -3,7 +3,7 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-//#define DEBUG_PRINT
+#define DEBUG_PRINT
 
 #include "Private.h"
 #include "TSFTTS.h"
@@ -1059,9 +1059,10 @@ void CTSFTTS::OnKeyboardOpen()
 {
 	debugPrint(L"CTSFTTS::OnKeyboardOpen()\n");
 	// switching to Chinese mode
+	LoadConfig();
 	CStringRange notifyText;
 	ShowNotifyText(&notifyText.Set(L"¤¤¤å", 2));
-	LoadConfig();
+	
 	
 	
 }

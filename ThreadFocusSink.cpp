@@ -18,16 +18,16 @@
 STDAPI CTSFTTS::OnSetThreadFocus()
 {
 	debugPrint(L"CTSFTTS::OnSetThreadFocus()\n");
-    if (_pTSFTTSUIPresenter)
+    if (_pUIPresenter)
     {
         ITfDocumentMgr* pCandidateListDocumentMgr = nullptr;
-        ITfContext* pTfContext = _pTSFTTSUIPresenter->_GetContextDocument();
+        ITfContext* pTfContext = _pUIPresenter->_GetContextDocument();
 
         if ((nullptr != pTfContext) && SUCCEEDED(pTfContext->GetDocumentMgr(&pCandidateListDocumentMgr)))
         {
             if (pCandidateListDocumentMgr == _pDocMgrLastFocused)
             {
-                _pTSFTTSUIPresenter->OnSetThreadFocus();
+                _pUIPresenter->OnSetThreadFocus();
             }
 
             pCandidateListDocumentMgr->Release();
@@ -46,10 +46,10 @@ STDAPI CTSFTTS::OnSetThreadFocus()
 STDAPI CTSFTTS::OnKillThreadFocus()
 {
 	debugPrint(L"CTSFTTS::OnSetThreadFocus()\n");
-    if (_pTSFTTSUIPresenter)
+    if (_pUIPresenter)
     {
         ITfDocumentMgr* pCandidateListDocumentMgr = nullptr;
-        ITfContext* pTfContext = _pTSFTTSUIPresenter->_GetContextDocument();
+        ITfContext* pTfContext = _pUIPresenter->_GetContextDocument();
 
         if ((nullptr != pTfContext) && SUCCEEDED(pTfContext->GetDocumentMgr(&pCandidateListDocumentMgr)))
         {
@@ -64,7 +64,7 @@ STDAPI CTSFTTS::OnKillThreadFocus()
                 _pDocMgrLastFocused->AddRef();
             }
         }
-        _pTSFTTSUIPresenter->OnKillThreadFocus();
+        _pUIPresenter->OnKillThreadFocus();
     }
     return S_OK;
 }

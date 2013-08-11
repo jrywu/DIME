@@ -34,8 +34,10 @@ public:
     void _Move(int x, int y);
     void _Show(BOOL isShowWnd);
 
+	VOID _SetNumberColor(_In_ COLORREF crColor, _In_ COLORREF crBkColor);
     VOID _SetTextColor(_In_ COLORREF crColor, _In_ COLORREF crBkColor);
-    VOID _SetFillColor(_In_ HBRUSH hBrush);
+	VOID _SetSelectedTextColor(_In_ COLORREF crColor, _In_ COLORREF crBkColor);
+    VOID _SetFillColor(_In_ COLORREF fiColor);
 
     LRESULT CALLBACK _WindowProcCallback(_In_ HWND wndHandle, UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam);
     void _OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps);
@@ -92,8 +94,12 @@ private:
     CTSFTTSArray<CCandidateListItem> _candidateList;
     CTSFTTSArray<UINT> _PageIndex;
 
+	COLORREF _crNumberColor;
+    COLORREF _crNumberBkColor;
     COLORREF _crTextColor;
     COLORREF _crBkColor;
+	COLORREF _crSelectedTextColor;
+    COLORREF _crSelectedBkColor;
     HBRUSH _brshBkColor;
 
     TEXTMETRIC _TextMetric;

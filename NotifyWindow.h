@@ -32,7 +32,7 @@ public:
     void _Show(BOOL isShowWnd, int timeToHide = -1);
 
     VOID _SetTextColor(_In_ COLORREF crColor, _In_ COLORREF crBkColor);
-    VOID _SetFillColor(_In_ HBRUSH hBrush);
+    VOID _SetFillColor(_In_ COLORREF crBkColor);
 
     LRESULT CALLBACK _WindowProcCallback(_In_ HWND wndHandle, UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam);
     void _OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps);

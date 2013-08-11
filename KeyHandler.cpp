@@ -99,7 +99,7 @@ HRESULT CTSFTTS::_HandleCompositionInput(TfEditCookie ec, _In_ ITfContext *pCont
     CCompositionProcessorEngine* pCompositionProcessorEngine = nullptr;
     pCompositionProcessorEngine = _pCompositionProcessorEngine;
 
-	if ((_pTSFTTSUIPresenter != nullptr) 
+	if ((_pUIPresenter != nullptr) 
 		&& _candidateMode != CANDIDATE_INCREMENTAL &&_candidateMode != CANDIDATE_NONE )
     {
         _HandleCompositionFinalize(ec, pContext, TRUE);
@@ -188,18 +188,22 @@ HRESULT CTSFTTS::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine 
 			hr = _CreateAndStartCandidate(pCompositionProcessorEngine, ec, pContext);
 			if (SUCCEEDED(hr))
 			{
-				_pTSFTTSUIPresenter->_ClearCandidateList();
-				_pTSFTTSUIPresenter->_SetCandidateText(&candidateList, TRUE, pCompositionProcessorEngine->GetCandidateWindowWidth());
+				_pUIPresenter->_ClearCandidateList();
+				_pUIPresenter->_SetCandidateTextColor(_itemColor, _itemBGColor); 
+				_pUIPresenter->_SetCandidateSelectedTextColor(_selectedColor, _selectedBGColor);    
+				_pUIPresenter->_SetCandidateNumberColor(_numberColor, _itemBGColor);    
+				_pUIPresenter->_SetCandidateFillColor(_itemBGColor);
+				_pUIPresenter->_SetCandidateText(&candidateList, TRUE, pCompositionProcessorEngine->GetCandidateWindowWidth());
 				_candidateMode = CANDIDATE_INCREMENTAL;
 				_isCandidateWithWildcard = FALSE;
 			}
 
 
 		}
-		else if (_pTSFTTSUIPresenter)
+		else if (_pUIPresenter)
 		{
-			_pTSFTTSUIPresenter->_ClearCandidateList();
-			_pTSFTTSUIPresenter->Show(FALSE);  // hide the candidate window if now candidates in autocompose mode
+			_pUIPresenter->_ClearCandidateList();
+			_pUIPresenter->Show(FALSE);  // hide the candidate window if now candidates in autocompose mode
 		}
 		else if (readingStrings.Count() && isWildcardIncluded)
 		{
@@ -207,7 +211,7 @@ HRESULT CTSFTTS::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine 
 			hr = _CreateAndStartCandidate(pCompositionProcessorEngine, ec, pContext);
 			if (SUCCEEDED(hr))
 			{
-				_pTSFTTSUIPresenter->_ClearCandidateList();
+				_pUIPresenter->_ClearCandidateList();
 				_candidateMode = CANDIDATE_INCREMENTAL;
 				_isCandidateWithWildcard = FALSE;
 			}
@@ -229,13 +233,13 @@ HRESULT CTSFTTS::_HandleCompositionFinalize(TfEditCookie ec, _In_ ITfContext *pC
 	debugPrint(L"CTSFTTS::_HandleCompositionFinalize()");
     HRESULT hr = S_OK;
 
-    if (isCandidateList && _pTSFTTSUIPresenter)
+    if (isCandidateList && _pUIPresenter)
     {
         // Finalize selected candidate string from UIPresenter
         DWORD_PTR candidateLen = 0;
         const WCHAR *pCandidateString = nullptr;
 
-        candidateLen = _pTSFTTSUIPresenter->_GetSelectedCandidateString(&pCandidateString);
+        candidateLen = _pUIPresenter->_GetSelectedCandidateString(&pCandidateString);
 
         CStringRange candidateString;
         candidateString.Set(pCandidateString, candidateLen);
@@ -313,8 +317,12 @@ HRESULT CTSFTTS::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pCo
 		 {
 			_candidateMode = CANDIDATE_ORIGINAL;
 			 _isCandidateWithWildcard = isWildcardSearch;
-			 _pTSFTTSUIPresenter->_ClearCandidateList();
-			 _pTSFTTSUIPresenter->_SetCandidateText(&candidateList, FALSE, pCompositionProcessorEngine->GetCandidateWindowWidth());
+			 _pUIPresenter->_ClearCandidateList();
+			 _pUIPresenter->_SetCandidateTextColor(_itemColor, _itemBGColor);    
+			 _pUIPresenter->_SetCandidateSelectedTextColor(_selectedColor, _selectedBGColor);    
+			 _pUIPresenter->_SetCandidateNumberColor(_numberColor, _itemBGColor);    
+			 _pUIPresenter->_SetCandidateFillColor(_itemBGColor);
+			 _pUIPresenter->_SetCandidateText(&candidateList, FALSE, pCompositionProcessorEngine->GetCandidateWindowWidth());
 		 }
 		
     }
@@ -420,9 +428,9 @@ HRESULT CTSFTTS::_HandleCompositionArrowKey(TfEditCookie ec, _In_ ITfContext *pC
     }
 
     // For incremental candidate list
-    if (_pTSFTTSUIPresenter)
+    if (_pUIPresenter)
     {
-        _pTSFTTSUIPresenter->AdviseUIChangedByArrowKey(keyFunction);
+        _pUIPresenter->AdviseUIChangedByArrowKey(keyFunction);
     }
 
     pContext->SetSelection(ec, 1, &tfSelection);

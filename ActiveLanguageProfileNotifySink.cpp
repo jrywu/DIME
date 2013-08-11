@@ -41,10 +41,12 @@ STDAPI CTSFTTS::OnActivated(_In_ REFCLSID clsid, _In_ REFGUID guidProfile, _In_ 
     {
 		if(!_AddTextProcessorEngine())  return S_OK;
 		
-		if(_pTSFTTSUIPresenter == nullptr)
-			_pTSFTTSUIPresenter = new (std::nothrow) UIPresenter(this, _pCompositionProcessorEngine);
-		if (_pTSFTTSUIPresenter == nullptr) return S_OK;
+		if(_pUIPresenter == nullptr)
+			_pUIPresenter = new (std::nothrow) CUIPresenter(this, _pCompositionProcessorEngine);
+		if (_pUIPresenter == nullptr) return S_OK;
     
+		LoadConfig();
+
 		ShowAllLanguageBarIcons();
 
 		ConversionModeCompartmentUpdated(_pThreadMgr, &_activatedKeyboardMode);

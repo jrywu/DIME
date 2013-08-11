@@ -107,10 +107,10 @@ HRESULT CKeyStateCategory::KeyStateHandler(KEYSTROKE_FUNCTION function, KeyHandl
 
     case FUNCTION_MOVE_LEFT:
     case FUNCTION_MOVE_RIGHT:
-        return HandleKeyArrow(dto);
-
-    case FUNCTION_MOVE_UP:
+	case FUNCTION_MOVE_UP:
     case FUNCTION_MOVE_DOWN:
+        return HandleKeyArrow(dto);
+ 
     case FUNCTION_MOVE_PAGE_UP:
     case FUNCTION_MOVE_PAGE_DOWN:
     case FUNCTION_MOVE_PAGE_TOP:

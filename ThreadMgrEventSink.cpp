@@ -83,19 +83,19 @@ STDAPI CTSFTTS::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMg
     // We have to hide/unhide candidate list depending on whether they are 
     // associated with pDocMgrFocus.
     //
-    if (_pTSFTTSUIPresenter)
+    if (_pUIPresenter)
     {
         ITfDocumentMgr* pCandidateListDocumentMgr = nullptr;
-        ITfContext* pTfContext = _pTSFTTSUIPresenter->_GetContextDocument();
+        ITfContext* pTfContext = _pUIPresenter->_GetContextDocument();
         if ((nullptr != pTfContext) && SUCCEEDED(pTfContext->GetDocumentMgr(&pCandidateListDocumentMgr)))
         {
             if (pCandidateListDocumentMgr != pDocMgrFocus)
             {
-                _pTSFTTSUIPresenter->OnKillThreadFocus();
+                _pUIPresenter->OnKillThreadFocus();
             }
             else 
             {
-                _pTSFTTSUIPresenter->OnSetThreadFocus();
+                _pUIPresenter->OnSetThreadFocus();
             }
 
             pCandidateListDocumentMgr->Release();

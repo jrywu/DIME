@@ -326,6 +326,19 @@ ReadValue:
 					_pTextService->SetMakePhrase((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"AppPermissionSet", 16)) == CSTR_EQUAL)
 					_pTextService->SetAppPermissionSet((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ItemColor", 10)) == CSTR_EQUAL)
+					_pTextService->SetItemColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"PhraseColor", 12)) == CSTR_EQUAL)
+					_pTextService->SetPhraseColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"NumberColor", 12)) == CSTR_EQUAL)
+					_pTextService->SetNumberColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ItemBGColor", 12)) == CSTR_EQUAL)
+					_pTextService->SetItemBGColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"SelectedItemColor", 18)) == CSTR_EQUAL)
+					_pTextService->SetSelectedColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"SelectedBGItemColor", 20)) == CSTR_EQUAL)
+					_pTextService->SetSelectedBGColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
+				
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"FontFaceName", 12)) == CSTR_EQUAL)
 				{
 					WCHAR *pwszFontFaceName = new (std::nothrow) WCHAR[32];

@@ -24,20 +24,24 @@ BOOL CTSFTTS::_appPermissionSet = FALSE;
 BOOL CTSFTTS::_activatedKeyboardMode = TRUE;
 BOOL CTSFTTS::_makePhrase = TRUE;
 WCHAR* CTSFTTS::_pFontFaceName = L"Microsoft JhengHei";
+COLORREF CTSFTTS::_itemColor = CANDWND_ITEM_COLOR;
+COLORREF CTSFTTS::_itemBGColor = GetSysColor(COLOR_3DHIGHLIGHT);
+COLORREF CTSFTTS::_selectedColor = CANDWND_SELECTED_ITEM_COLOR;
+COLORREF CTSFTTS::_selectedBGColor = CANDWND_SELECTED_BK_COLOR;
+COLORREF CTSFTTS::_phraseColor = CANDWND_PHRASE_COLOR;
+COLORREF CTSFTTS::_numberColor = CANDWND_NUM_COLOR;
 
 
 static struct {
 	int id;
 	COLORREF color;
-} colors[8] = {
-	{IDC_COL_BG,  RGB(0xFF,0xFF,0xFF)},
-	{IDC_COL_FR,  RGB(0x00,0x00,0x00)},
-	{IDC_COL_SE,  RGB(0x00,0x00,0xFF)},
-	{IDC_COL_CO,  RGB(0x80,0x80,0x80)},
-	{IDC_COL_CA,  RGB(0x00,0x00,0x00)},
-	{IDC_COL_SC,  RGB(0x80,0x80,0x80)},
-	{IDC_COL_AN,  RGB(0x80,0x80,0x80)},
-	{IDC_COL_NO,  RGB(0x00,0x00,0x00)}
+} colors[6] = {
+	{IDC_COL_FR,  CANDWND_ITEM_COLOR},
+	{IDC_COL_SEFR, CANDWND_SELECTED_ITEM_COLOR},
+	{IDC_COL_BG,   GetSysColor(COLOR_3DHIGHLIGHT)},
+	{IDC_COL_PHRASE, CANDWND_PHRASE_COLOR},
+	{IDC_COL_NU, CANDWND_NUM_COLOR},
+	{IDC_COL_SEBG, CANDWND_SELECTED_BK_COLOR}
 };
 
 
@@ -109,10 +113,12 @@ INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 
 		ZeroMemory(&colCust, sizeof(colCust));
 
-		for(i=0; i<_countof(colors); i++)
-		{
-		
-		}
+		colors[0].color = _itemColor;
+		colors[1].color = _selectedColor;
+		colors[2].color = _itemBGColor;
+		colors[3].color = _phraseColor;
+		colors[4].color = _numberColor;
+		colors[5].color = _selectedBGColor;
 
 		hwnd = GetDlgItem(hDlg, IDC_COMBO_UNTILCANDLIST);
 		num[1] = L'\0';
@@ -284,6 +290,13 @@ INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			pwszFontFaceName = new (std::nothrow) WCHAR[LF_FACESIZE];
 			GetDlgItemText(hDlg, IDC_EDIT_FONTNAME, pwszFontFaceName, LF_FACESIZE);
 			_pFontFaceName = pwszFontFaceName;
+				
+			_itemColor = colors[0].color ;
+			_selectedColor = colors[1].color;
+			_itemBGColor = colors[2].color;
+			_phraseColor = colors[3].color;
+			_numberColor = colors[4].color;
+			_selectedBGColor = colors[5].color;
 
 			WriteConfig();
 			return TRUE;
@@ -357,6 +370,12 @@ VOID CTSFTTS::WriteConfig()
 		fwprintf_s(fp, L"FontItalic = %d\n", _fontItalic?1:0);
 		fwprintf_s(fp, L"FontWeight = %d\n", _fontWeight);
 		fwprintf_s(fp, L"FontFaceName = %s\n", _pFontFaceName);
+		fwprintf_s(fp, L"ItemColor = 0x%06X\n", _itemColor);
+		fwprintf_s(fp, L"PhraseColor = 0x%06X\n", _phraseColor);
+		fwprintf_s(fp, L"NumberColor = 0x%06X\n", _numberColor);
+		fwprintf_s(fp, L"ItemBGColor = 0x%06X\n", _itemBGColor);
+		fwprintf_s(fp, L"SelectedItemColor = 0x%06X\n", _selectedColor);
+		fwprintf_s(fp, L"SelectedBGItemColor = 0x%06X\n", _selectedBGColor);
 		if(Global::isWindows8)
 			fwprintf_s(fp, L"AppPermissionSet = %d\n", _appPermissionSet?1:0);
 

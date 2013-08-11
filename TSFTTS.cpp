@@ -3,7 +3,7 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-//#define DEBUG_PRINT
+#define DEBUG_PRINT
 
 #include "Private.h"
 #include "globals.h"
@@ -27,6 +27,7 @@
 
 BOOL CTSFTTS::_AddTextProcessorEngine()
 {
+	debugPrint(L"CTSFTTS::_AddTextProcessorEngine()");
     LANGID langid = 0;
     CLSID clsid = GUID_NULL;
     GUID guidProfile = GUID_NULL;
@@ -141,7 +142,7 @@ CTSFTTS::CTSFTTS()
     _pCompositionProcessorEngine = nullptr;
 
     _candidateMode = CANDIDATE_NONE;
-    _pTSFTTSUIPresenter = nullptr;
+    _pUIPresenter = nullptr;
     _isCandidateWithWildcard = FALSE;
 
     _pDocMgrLastFocused = nullptr;
@@ -177,10 +178,10 @@ CTSFTTS::CTSFTTS()
 
 CTSFTTS::~CTSFTTS()
 {
-    if (_pTSFTTSUIPresenter)
+    if (_pUIPresenter)
     {
-        delete _pTSFTTSUIPresenter;
-        _pTSFTTSUIPresenter = nullptr;
+        delete _pUIPresenter;
+        _pUIPresenter = nullptr;
     }
 
 	
@@ -437,10 +438,10 @@ STDAPI CTSFTTS::Deactivate()
         _EndComposition(_pContext);
     }
 
-    if (_pTSFTTSUIPresenter)
+    if (_pUIPresenter)
     {
-        delete _pTSFTTSUIPresenter;
-        _pTSFTTSUIPresenter = nullptr;
+        delete _pUIPresenter;
+        _pUIPresenter = nullptr;
 
         if (pContext)
         {
@@ -668,14 +669,6 @@ HRESULT CTSFTTS::ShowNotifyText(CStringRange *pNotifyText)
     ITfDocumentMgr* pDocumentMgr = nullptr;
     ITfContext* pContext = nullptr;
 	
-	if(_pTSFTTSUIPresenter == nullptr)
-    {
-		_pTSFTTSUIPresenter = new (std::nothrow) UIPresenter(this, _pCompositionProcessorEngine);
-		if (!_pTSFTTSUIPresenter)
-        {
-            return E_OUTOFMEMORY;
-        }	
-    }
 	pThreadMgr = _GetThreadMgr();
     if (nullptr == pThreadMgr)
     {
@@ -683,19 +676,19 @@ HRESULT CTSFTTS::ShowNotifyText(CStringRange *pNotifyText)
     }
 
     hr = pThreadMgr->GetFocus(&pDocumentMgr);
-    if (FAILED(hr))
+    if (FAILED(hr) || (pDocumentMgr == nullptr))
     {
         goto Exit;
     }
 
-    hr = pDocumentMgr->GetTop(&pContext);
-    if (FAILED(hr))
-    {
-        pDocumentMgr->Release();
-        goto Exit;
-    }
+	hr = pDocumentMgr->GetTop(&pContext);
+	if (FAILED(hr))
+	{
+	   pDocumentMgr->Release();
+	   goto Exit;
+	}
 
-    _pTSFTTSUIPresenter->ShowNotifyText(pContext, pNotifyText);
+    _pUIPresenter->ShowNotifyText(pContext, pNotifyText);
 Exit:
 	return hr;
 }
@@ -873,9 +866,16 @@ BOOL CTSFTTS::SetupLanguageProfile(LANGID langid, REFGUID guidLanguageProfile, _
     _pCompositionProcessorEngine->SetupKeystroke();
     _pCompositionProcessorEngine->SetupConfiguration();
     _pCompositionProcessorEngine->SetupDictionaryFile();
-	
-	LoadConfig();
+
     
 Exit:
     return ret;
+}
+
+BOOL CTSFTTS::_IsUILessMode()
+{
+	if(_pUIPresenter)
+		return _pUIPresenter->isUILessMode();
+	else
+		return FALSE;
 }

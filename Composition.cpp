@@ -51,7 +51,7 @@ HRESULT CTSFTTS::_HandlTextLayoutChange(TfEditCookie ec, _In_ ITfContext *pConte
 	ec; pRangeComposition; pContext;
 
 	//POINT newCandLocation;
-	//_pTSFTTSUIPresenter->GetCandLocation(&newCandLocation);
+	//_pUIPresenter->GetCandLocation(&newCandLocation);
 
 	POINT curPos;
 	GetCaretPos(&curPos);

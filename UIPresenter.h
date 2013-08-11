@@ -18,10 +18,11 @@
 
 class CReadingLine;
 class CCompositionProcessorEngine;
+class CTSFTTS;
 
 //+---------------------------------------------------------------------------
 //
-// UIPresenter
+// CUIPresenter
 //
 // ITfCandidateListUIElement / ITfIntegratableCandidateListUIElement is used for 
 // UILess mode support
@@ -29,14 +30,14 @@ class CCompositionProcessorEngine;
 // 3rd party IME.
 //----------------------------------------------------------------------------
 
-class UIPresenter : 
+class CUIPresenter : 
 	public CTfTextLayoutSink,
     public ITfCandidateListUIElementBehavior,
     public ITfIntegratableCandidateListUIElement
 {
 public:
-    UIPresenter(_In_ CTSFTTS *pTextService, CCompositionProcessorEngine *pCompositionProcessorEngine);
-    virtual ~UIPresenter();
+    CUIPresenter(_In_ CTSFTTS *pTextService, CCompositionProcessorEngine *pCompositionProcessorEngine);
+    virtual ~CUIPresenter();
 
     // IUnknown
     STDMETHODIMP QueryInterface(REFIID riid, _Outptr_ void **ppvObj);
@@ -76,8 +77,12 @@ public:
 
     void _SetCandidateText(_In_ CTSFTTSArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode, UINT candWidth);
     void _ClearCandidateList();
+	VOID _SetNotifyTextColor(COLORREF crColor, COLORREF crBkColor);
+	VOID _SetCandidateNumberColor(COLORREF crColor, COLORREF crBkColor);
     VOID _SetCandidateTextColor(COLORREF crColor, COLORREF crBkColor);
-    VOID _SetCandidateFillColor(HBRUSH hBrush);
+	VOID _SetCandidateSelectedTextColor(COLORREF crColor, COLORREF crBkColor);
+    VOID _SetCandidateFillColor(COLORREF fiColor);
+	VOID _SetCandidateNotifyColor(COLORREF crColor, COLORREF crBkColor);
 
     DWORD_PTR _GetSelectedCandidateString(_Outptr_result_maybenull_ const WCHAR **ppwchCandidateString);
     BOOL _SetCandidateSelectionInPage(int nPos) { return _pCandidateWnd->_SetSelectionInPage(nPos); }
@@ -107,7 +112,7 @@ public:
 	void ClearNotify();
 	void ShowNotifyText(_In_ ITfContext *pContextDocument, _In_ CStringRange *pNotifyText);
 
-
+	BOOL isUILessMode() {return !_isShowMode;}
 private:
     virtual HRESULT CALLBACK _CandidateChangeNotification(_In_ enum CANDWND_ACTION action);
 	virtual HRESULT CALLBACK _NotifyChangeNotification();

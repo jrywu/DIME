@@ -15,7 +15,7 @@
 
 
 class CLangBarItemButton;
-class UIPresenter;
+class CUIPresenter;
 class CCompositionProcessorEngine;
 
 const DWORD WM_CheckGlobalCompartment = WM_USER;
@@ -145,9 +145,10 @@ public:
 
     BOOL _IsSecureMode(void) { return (_dwActivateFlags & TF_TMAE_SECUREMODE) ? TRUE : FALSE; }
     BOOL _IsComLess(void) { return (_dwActivateFlags & TF_TMAE_COMLESS) ? TRUE : FALSE; }
-	BOOL _IsStoreAppMode(void) { return (_dwActivateFlags & TF_TMF_IMMERSIVEMODE) ? TRUE : FALSE; };
+	BOOL _IsStoreAppMode(void) { return (_dwActivateFlags & TF_TMF_IMMERSIVEMODE) ? TRUE : FALSE; }
+	BOOL _IsUILessMode(void);
 
-    CCompositionProcessorEngine* GetCompositionProcessorEngine() { return (_pCompositionProcessorEngine); };
+    CCompositionProcessorEngine* GetCompositionProcessorEngine() { return (_pCompositionProcessorEngine); }
 
     // comless helpers
     static HRESULT CreateInstance(REFCLSID rclsid, REFIID riid, _Outptr_result_maybenull_ LPVOID* ppv, _Out_opt_ HINSTANCE* phInst, BOOL isComLessMode);
@@ -187,6 +188,20 @@ public:
 	static BOOL GetMakePhrase() {return _makePhrase;}
 	static void SetFontFaceName(WCHAR *pFontFaceName) {_pFontFaceName = pFontFaceName;}
 	static WCHAR* GetFontFaceName(){ return _pFontFaceName;}
+	//colors
+	static void SetItemColor(UINT itemColor) { _itemColor = itemColor;}
+	static COLORREF GetItemColor(){return _itemColor;}
+	static void SetPhraseColor(UINT phraseColor) { _phraseColor = phraseColor;}
+	static COLORREF GetPhraseColor(){return _phraseColor;}
+	static void SetNumberColor(UINT numberColor) { _numberColor = numberColor;}
+	static COLORREF GetNumberColor(){return _numberColor;}
+	static void SetItemBGColor(UINT itemBGColor) { _itemBGColor = itemBGColor;}
+	static COLORREF GetItemBGColor(){return _itemBGColor;}
+	static void SetSelectedColor(UINT selectedColor) { _selectedColor = selectedColor;}
+	static COLORREF GetSelectedColor(){return _selectedColor;}
+	static void SetSelectedBGColor(UINT selectedBGColor) { _selectedBGColor = selectedBGColor;}
+	static COLORREF GetSelectedBGColor(){return _selectedBGColor;}
+	
 	
 	static void SetActivatedKeyboardMode(BOOL activatedKeyboardMode) { _activatedKeyboardMode = activatedKeyboardMode;}
 	static BOOL GetActivatedKeyboardMode() {return _activatedKeyboardMode;}
@@ -328,7 +343,7 @@ private:
     TfGuidAtom _gaDisplayAttributeConverted;
 
     CANDIDATE_MODE _candidateMode;
-    UIPresenter *_pTSFTTSUIPresenter;
+    CUIPresenter *_pUIPresenter;
     BOOL _isCandidateWithWildcard : 1;
 
     ITfDocumentMgr* _pDocMgrLastFocused;
@@ -362,6 +377,12 @@ private:
 	static BOOL _fontItalic;
 	static UINT _maxCodes;
 	static WCHAR* _pFontFaceName;
+	static COLORREF _itemColor;
+	static COLORREF _phraseColor;
+	static COLORREF _numberColor;
+	static COLORREF _itemBGColor;
+	static COLORREF _selectedColor;
+	static COLORREF _selectedBGColor;
 };
 
 
