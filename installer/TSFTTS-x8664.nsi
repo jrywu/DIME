@@ -181,7 +181,6 @@ Section "MainSection" SEC01
   SetOutPath "$APPDATA\TSFTTS\"
   CreateDirectory "$APPDATA\TSFTTS"
   File "config.ini"
-  ExecWait '"$SYSDIR\CACLS.exe" "$APPDATA\TSFTTS" /e /g /t "ALL APPLICATION PACKAGES":R '
   
 SectionEnd
 

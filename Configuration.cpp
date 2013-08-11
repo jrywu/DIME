@@ -44,10 +44,12 @@ static struct {
 	{IDC_COL_SEBG, CANDWND_SELECTED_BK_COLOR}
 };
 
+typedef BOOL (__stdcall * _T_ChooseColor)(_Inout_  LPCHOOSECOLOR lpcc);
+typedef BOOL (__stdcall * _T_ChooseFont)(_Inout_  LPCHOOSEFONT lpcf);
 
 INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	
+	BOOL ret = FALSE;
 	HWND hwnd;
 	size_t i;
 	WCHAR num[16];
@@ -66,6 +68,16 @@ INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 	CHOOSECOLORW cc;
 	static COLORREF colCust[16];
 	PAINTSTRUCT ps;
+
+	HINSTANCE dllDlgHandle = NULL;       
+	dllDlgHandle = LoadLibrary(L"comdlg32.dll");
+	_T_ChooseColor _ChooseColor = NULL;
+	_T_ChooseFont _ChooseFont = NULL;
+	if(dllDlgHandle)
+	{
+		_ChooseColor = reinterpret_cast<_T_ChooseColor> ( GetProcAddress(dllDlgHandle, "ChooseColorW"));
+		_ChooseFont = reinterpret_cast<_T_ChooseFont> ( GetProcAddress(dllDlgHandle, "ChooseFontW"));
+	}
 
 	switch(message)
 	{
@@ -146,12 +158,14 @@ INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		CheckDlgButton(hDlg, IDC_CHECKBOX_ARROWKEYSWPAGES, BST_CHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_ADDCANDKTKN, BST_CHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_SHOWMODEIMM, BST_CHECKED);
-		return TRUE;
+		ret = TRUE;
+		break;
 
 	case WM_COMMAND:
 		switch(LOWORD(wParam))
 		{
 		case IDC_BUTTON_CHOOSEFONT:
+
 			hdc = GetDC(hDlg);
 
 			hFont = (HFONT)SendMessage(GetDlgItem(hDlg, IDC_EDIT_FONTNAME), WM_GETFONT, 0, 0);
@@ -164,8 +178,9 @@ INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			cf.hwndOwner = hDlg;
 			cf.lpLogFont = &lf;
 			cf.Flags = CF_INITTOLOGFONTSTRUCT | CF_NOVERTFONTS | CF_SELECTSCRIPT;
-
-			if(ChooseFont(&cf) == TRUE)
+			
+			//if(ChooseFont(&cf) == TRUE)
+			if(_ChooseFont && ( (*_ChooseFont)(&cf) == TRUE))
 			{
 				PropSheet_Changed(GetParent(hDlg), hDlg);
 
@@ -179,14 +194,16 @@ INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			}
 
 			ReleaseDC(hDlg, hdc);
-			return TRUE;
+			ret = TRUE;
+			break;
 
 		case IDC_EDIT_MAXWIDTH:
 			switch(HIWORD(wParam))
 			{
 			case EN_CHANGE:
 				PropSheet_Changed(GetParent(hDlg), hDlg);
-				return TRUE;
+				ret = TRUE;
+				break;
 			default:
 				break;
 			}
@@ -197,7 +214,8 @@ INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			{
 			case CBN_SELCHANGE:
 				PropSheet_Changed(GetParent(hDlg), hDlg);
-				return TRUE;
+				ret = TRUE;
+				break;
 			default:
 				break;
 			}
@@ -214,7 +232,8 @@ INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		case IDC_CHECKBOX_ADDCANDKTKN:
 		case IDC_CHECKBOX_SHOWMODEIMM:
 			PropSheet_Changed(GetParent(hDlg), hDlg);
-			return TRUE;
+			ret = TRUE;
+			break;
 
 		default:
 			break;
@@ -242,14 +261,16 @@ INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 				cc.lCustData = NULL;
 				cc.lpfnHook = NULL;
 				cc.lpTemplateName = NULL;
-				if(ChooseColorW(&cc))
+				
+				//if(ChooseColor(&cc))
+				if(_ChooseColor && ( (*_ChooseColor)(&cc)))
 				{
 					hdc = GetDC(hDlg);
 					DrawColor(hwnd, hdc, cc.rgbResult);
 					ReleaseDC(hDlg, hdc);
 					colors[i].color = cc.rgbResult;
 					PropSheet_Changed(GetParent(hDlg), hDlg);
-					return TRUE;
+					ret = TRUE;
 				}
 				break;
 			}
@@ -263,7 +284,7 @@ INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			DrawColor(GetDlgItem(hDlg, colors[i].id), hdc, colors[i].color);
 		}
 		EndPaint(hDlg, &ps);
-		return TRUE;
+		ret = TRUE;
 		break;
 
 	case WM_NOTIFY:
@@ -299,7 +320,8 @@ INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			_selectedBGColor = colors[5].color;
 
 			WriteConfig();
-			return TRUE;
+			ret = TRUE;
+			break;
 
 		default:
 			break;
@@ -309,8 +331,9 @@ INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 	default:
 		break;
 	}
-	
-	return FALSE;
+
+	FreeLibrary(dllDlgHandle);
+	return ret;
 	
 	
 }

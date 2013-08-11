@@ -176,8 +176,8 @@ void CCandidateWindow::_ResizeWindow()
 	debugPrint(L"CCandidateWindow::_ResizeWindow() _cxTitle = %d", _cxTitle);
 
     int candidateListPageCnt = _pIndexRange->Count();
-	CBaseWindow::_Resize(_x, _y, _cxTitle + GetSystemMetrics(SM_CXVSCROLL) * 3/2 +  CANDWND_BORDER_WIDTH, 
-		_cyRow * candidateListPageCnt  + CANDWND_BORDER_WIDTH * 4);
+	CBaseWindow::_Resize(_x, _y, _cxTitle + GetSystemMetrics(SM_CXVSCROLL) * 3/2 +  CANDWND_BORDER_WIDTH *2, 
+		_cyRow * candidateListPageCnt + _cyRow/3  + CANDWND_BORDER_WIDTH *2);
 
     RECT rcCandRect = {0, 0, 0, 0};
     _GetClientRect(&rcCandRect);

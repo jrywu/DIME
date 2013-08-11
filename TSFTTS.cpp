@@ -3,7 +3,7 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-#define DEBUG_PRINT
+//#define DEBUG_PRINT
 
 #include "Private.h"
 #include "globals.h"
@@ -587,6 +587,11 @@ HRESULT CTSFTTS::GetLayout(_Out_ TKBLayoutType *ptkblayoutType, _Out_ WORD *pwPr
     return hr;
 }
 
+
+typedef HPROPSHEETPAGE (__stdcall *_T_CreatePropertySheetPage)( LPCPROPSHEETPAGE lppsp );
+typedef INT_PTR (__stdcall * _T_PropertySheet)(LPCPROPSHEETHEADER lppsph );
+
+
 //+---------------------------------------------------------------------------
 //
 // ITfFnConfigure::Show
@@ -599,6 +604,20 @@ HRESULT CTSFTTS::Show(_In_ HWND hwndParent, _In_ LANGID langid, _In_ REFGUID rgu
 	
 	langid;
 	rguidProfile;
+
+	// comctl32.dll and comdlg32.dll can't be loaded into immersivemode (app container), thus use late binding here.
+	HINSTANCE dllCtlHandle = NULL;       
+	dllCtlHandle = LoadLibrary(L"comctl32.dll");
+	
+	_T_CreatePropertySheetPage _CreatePropertySheetPage = NULL;
+	_T_PropertySheet _PropertySheet = NULL;
+
+    if(dllCtlHandle)
+    {
+        _CreatePropertySheetPage = reinterpret_cast<_T_CreatePropertySheetPage> ( GetProcAddress(dllCtlHandle, "CreatePropertySheetPageW"));
+		_PropertySheet =  reinterpret_cast<_T_PropertySheet> (GetProcAddress(dllCtlHandle, "PropertySheetW"));
+    }
+
 
 	LoadConfig();
 
@@ -626,7 +645,9 @@ HRESULT CTSFTTS::Show(_In_ HWND hwndParent, _In_ LANGID langid, _In_ REFGUID rgu
 	{
 		psp.pszTemplate = MAKEINTRESOURCE(DlgPage[i].id);
 		psp.pfnDlgProc = DlgPage[i].DlgProc;
-		hpsp[i] = CreatePropertySheetPage(&psp);
+		//hpsp[i] = CreatePropertySheetPage(&psp);
+		if(_CreatePropertySheetPage)
+			hpsp[i] = (*_CreatePropertySheetPage)(&psp);
 	}
 
 	ZeroMemory(&psh, sizeof(PROPSHEETHEADER));
@@ -638,9 +659,11 @@ HRESULT CTSFTTS::Show(_In_ HWND hwndParent, _In_ LANGID langid, _In_ REFGUID rgu
 	psh.phpage = hpsp;
 	psh.pszCaption = L"TSFTTS User Settings";
 	
-	PropertySheet(&psh);
+	//PropertySheet(&psh);
+	if(_PropertySheet)
+		(*_PropertySheet)(&psh);
 
-
+	FreeLibrary(dllCtlHandle);
 
 
 

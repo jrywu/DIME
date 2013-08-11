@@ -28,7 +28,7 @@
 //---------------------------------------------------------------------
 #define CANDWND_ROW_WIDTH				(30)
 #define CANDWND_BORDER_COLOR			(RGB(0x00, 0x00, 0x00))
-#define CANDWND_BORDER_WIDTH			(2)
+#define CANDWND_BORDER_WIDTH			(1)
 #define CANDWND_PHRASE_COLOR				(RGB(0x00, 0x80, 0x00))
 #define CANDWND_NUM_COLOR				(RGB(0xB4, 0xB4, 0xB4))
 #define CANDWND_SELECTED_ITEM_COLOR		(RGB(0xFF, 0xFF, 0xFF))
@@ -39,7 +39,7 @@
 // defined Notify Window
 //---------------------------------------------------------------------
 #define NOTIFYWND_BORDER_COLOR			(RGB(0x00, 0x00, 0x00))
-#define NOTIFYWND_BORDER_WIDTH			(2)
+#define NOTIFYWND_BORDER_WIDTH			(1)
 #define NOTIFYWND_TEXT_COLOR		(RGB(0x00, 0x00, 0x00))
 #define NOTIFYWND_TEXT_BK_COLOR		(RGB(0xFF, 0xFF, 0xFF))
 
