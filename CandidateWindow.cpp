@@ -574,10 +574,22 @@ void CCandidateWindow::_OnMouseMove(POINT pt)
 
     _GetClientRect(&rcWindow);
 
-    RECT rc = {0, 0, 0, 0};
+    if (_pVScrollBarWnd && PtInRect(&rcWindow, pt))
+	{
+		SetCapture(_GetWnd());
+		_pVScrollBarWnd->_Show(TRUE);
+	}
+	else
+	{
+		ReleaseCapture();
+		_pVScrollBarWnd->_Show(FALSE);
+		_InvalidateRect();
+	}
+	
+	RECT rc = {0, 0, 0, 0};
 
     rc.left   = rcWindow.left;
-    rc.right  = rcWindow.right - GetSystemMetrics(SM_CXVSCROLL) * 2;
+    rc.right  = rcWindow.right  - GetSystemMetrics(SM_CXVSCROLL) * 3/2 - CANDWND_BORDER_WIDTH;
 
     rc.top    = rcWindow.top;
     rc.bottom = rcWindow.bottom;
@@ -687,7 +699,7 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT iIndex, _In_ RECT 
         ExtTextOut(dcHandle, PageCountPosition * cxLine, pageCount * cyLine + cyOffset, ETO_OPAQUE, &rc, pageCountString, lenOfPageCount, NULL);
 
         rc.left = prc->left + StringPosition * cxLine;
-        rc.right = prc->right;// - GetSystemMetrics(SM_CXVSCROLL) * 2 - CANDWND_BORDER_WIDTH;
+        rc.right = prc->right - GetSystemMetrics(SM_CXVSCROLL) *3/2 - CANDWND_BORDER_WIDTH;
 
         // Candidate Font Color And BK
         if (_currentSelection != (INT)iIndex)
@@ -820,6 +832,7 @@ void CCandidateWindow::_AddString(_Inout_ CCandidateListItem *pCandidateItem, _I
     {
         pLI->_FindKeyCode.Set(pwchWildcard, itemWildcard);
     }
+	if(_pVScrollBarWnd) _pVScrollBarWnd->_Show(FALSE); // hide the scrollbar in the beginning
 
     return;
 }
