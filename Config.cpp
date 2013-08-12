@@ -4,7 +4,6 @@
 #include <Shlobj.h>
 #include <Shlwapi.h>
 #include "Globals.h"
-#include "Private.h"
 #include "resource.h"
 #include "TSFTTS.h"
 #include "DictionarySearch.h"
@@ -13,23 +12,28 @@
 #include "Aclapi.h"
 
 //static configuration settings initilization
-BOOL CTSFTTS::_doBeep = FALSE;
-BOOL CTSFTTS::_autoCompose = FALSE;
-BOOL CTSFTTS::_threeCodeMode = FALSE;
-UINT CTSFTTS::_fontSize = 14;
-UINT CTSFTTS::_fontWeight = FW_NORMAL;
-BOOL CTSFTTS::_fontItalic = FALSE;
-UINT CTSFTTS::_maxCodes = 4;
-BOOL CTSFTTS::_appPermissionSet = FALSE;
-BOOL CTSFTTS::_activatedKeyboardMode = TRUE;
-BOOL CTSFTTS::_makePhrase = TRUE;
-WCHAR* CTSFTTS::_pFontFaceName = L"Microsoft JhengHei";
-COLORREF CTSFTTS::_itemColor = CANDWND_ITEM_COLOR;
-COLORREF CTSFTTS::_itemBGColor = GetSysColor(COLOR_3DHIGHLIGHT);
-COLORREF CTSFTTS::_selectedColor = CANDWND_SELECTED_ITEM_COLOR;
-COLORREF CTSFTTS::_selectedBGColor = CANDWND_SELECTED_BK_COLOR;
-COLORREF CTSFTTS::_phraseColor = CANDWND_PHRASE_COLOR;
-COLORREF CTSFTTS::_numberColor = CANDWND_NUM_COLOR;
+BOOL CConfig::_doBeep = FALSE;
+BOOL CConfig::_autoCompose = FALSE;
+BOOL CConfig::_threeCodeMode = FALSE;
+BOOL CConfig::_arrowKeySWPages = FALSE;
+BOOL CConfig::_spaceAsPageDown = FALSE;
+UINT CConfig::_fontSize = 14;
+UINT CConfig::_fontWeight = FW_NORMAL;
+BOOL CConfig::_fontItalic = FALSE;
+UINT CConfig::_maxCodes = 4;
+BOOL CConfig::_appPermissionSet = FALSE;
+BOOL CConfig::_activatedKeyboardMode = TRUE;
+BOOL CConfig::_makePhrase = TRUE;
+BOOL CConfig::_showNotifyDesktop = TRUE;
+WCHAR* CConfig::_pFontFaceName = L"Microsoft JhengHei";
+COLORREF CConfig::_itemColor = CANDWND_ITEM_COLOR;
+COLORREF CConfig::_itemBGColor = GetSysColor(COLOR_3DHIGHLIGHT);
+COLORREF CConfig::_selectedColor = CANDWND_SELECTED_ITEM_COLOR;
+COLORREF CConfig::_selectedBGColor = CANDWND_SELECTED_BK_COLOR;
+COLORREF CConfig::_phraseColor = CANDWND_PHRASE_COLOR;
+COLORREF CConfig::_numberColor = CANDWND_NUM_COLOR;
+
+_stat CConfig::_initTimeStamp = {0,0,0,0,0,0,0,0,0,0,0}; //zero the timestamp
 
 
 static struct {
@@ -47,7 +51,7 @@ static struct {
 typedef BOOL (__stdcall * _T_ChooseColor)(_Inout_  LPCHOOSECOLOR lpcc);
 typedef BOOL (__stdcall * _T_ChooseFont)(_Inout_  LPCHOOSEFONT lpcf);
 
-INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	BOOL ret = FALSE;
 	HWND hwnd;
@@ -82,11 +86,8 @@ INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 	switch(message)
 	{
 	case WM_INITDIALOG:
-
-		if(_pFontFaceName == nullptr)
-			wcsncpy_s(fontname, L"Microsoft JhengHei" , _TRUNCATE);
-		else
-			wcsncpy_s(fontname, _pFontFaceName , _TRUNCATE);
+		
+		wcsncpy_s(fontname, _pFontFaceName , _TRUNCATE);
 
 		fontpoint = _fontSize;
 		fontweight = _fontWeight;
@@ -143,21 +144,21 @@ INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 
 		_snwprintf_s(num, _TRUNCATE, L"%d", _maxCodes);
 		SetDlgItemTextW(hDlg, IDC_EDIT_MAXWIDTH, num);
+		CheckDlgButton(hDlg, IDC_CHECKBOX_SHOWNOTIFY, (_showNotifyDesktop)?BST_CHECKED:BST_UNCHECKED);
+
 		CheckDlgButton(hDlg, IDC_CHECKBOX_AUTOCOMPOSE, (_autoCompose)?BST_CHECKED:BST_UNCHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_DOBEEP, (_doBeep)?BST_CHECKED:BST_UNCHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_THREECODEMODE,(_threeCodeMode)?BST_CHECKED:BST_UNCHECKED);
-		CheckDlgButton(hDlg, IDC_CHECKBOX_PHRASE, (_makePhrase)?BST_CHECKED:BST_UNCHECKED);
-		
+		CheckDlgButton(hDlg, IDC_CHECKBOX_PHRASE, (_makePhrase)?BST_CHECKED:BST_UNCHECKED);	
 		
 		CheckDlgButton(hDlg, IDC_RADIO_KEYBOARD_OPEN, (_activatedKeyboardMode)?BST_CHECKED:BST_UNCHECKED);
 		if(!IsDlgButtonChecked(hDlg, IDC_RADIO_KEYBOARD_OPEN))
 		{
 			CheckDlgButton(hDlg, IDC_RADIO_KEYBOARD_CLOSE, BST_CHECKED);
 		}
-		CheckDlgButton(hDlg, IDC_CHECKBOX_SPACEASPAGEDOWN, BST_CHECKED);
-		CheckDlgButton(hDlg, IDC_CHECKBOX_ARROWKEYSWPAGES, BST_CHECKED);
-		CheckDlgButton(hDlg, IDC_CHECKBOX_ADDCANDKTKN, BST_CHECKED);
-		CheckDlgButton(hDlg, IDC_CHECKBOX_SHOWMODEIMM, BST_CHECKED);
+		CheckDlgButton(hDlg, IDC_CHECKBOX_SPACEASPAGEDOWN, (_spaceAsPageDown)?BST_CHECKED:BST_UNCHECKED);
+		CheckDlgButton(hDlg, IDC_CHECKBOX_ARROWKEYSWPAGES, (_arrowKeySWPages)?BST_CHECKED:BST_UNCHECKED);
+		
 		ret = TRUE;
 		break;
 
@@ -229,8 +230,7 @@ INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		case IDC_CHECKBOX_PHRASE:
 		case IDC_CHECKBOX_ARROWKEYSWPAGES:
 		case IDC_CHECKBOX_SPACEASPAGEDOWN:
-		case IDC_CHECKBOX_ADDCANDKTKN:
-		case IDC_CHECKBOX_SHOWMODEIMM:
+		case IDC_CHECKBOX_SHOWNOTIFY:
 			PropSheet_Changed(GetParent(hDlg), hDlg);
 			ret = TRUE;
 			break;
@@ -296,6 +296,11 @@ INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			_doBeep = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_DOBEEP) == BST_CHECKED;
 			_makePhrase = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_PHRASE) == BST_CHECKED;
 			_activatedKeyboardMode = IsDlgButtonChecked(hDlg, IDC_RADIO_KEYBOARD_OPEN) == BST_CHECKED;
+			_showNotifyDesktop = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_SHOWNOTIFY) == BST_CHECKED;
+			_spaceAsPageDown = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_SPACEASPAGEDOWN) == BST_CHECKED;
+			_arrowKeySWPages = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_ARROWKEYSWPAGES) == BST_CHECKED;
+
+
 
 			GetDlgItemText(hDlg, IDC_EDIT_MAXWIDTH, num, _countof(num));
 			_maxCodes = _wtol(num);
@@ -319,7 +324,7 @@ INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			_numberColor = colors[4].color;
 			_selectedBGColor = colors[5].color;
 
-			WriteConfig();
+			CConfig::WriteConfig();
 			ret = TRUE;
 			break;
 
@@ -357,7 +362,7 @@ void DrawColor(HWND hwnd, HDC hdc, COLORREF col)
 //
 //----------------------------------------------------------------------------
 
-VOID CTSFTTS::WriteConfig()
+VOID CConfig::WriteConfig()
 {
 	debugPrint(L"CTSFTTS::updateConfig() \n");
 	WCHAR wszAppData[MAX_PATH] = {'\0'};
@@ -385,10 +390,13 @@ VOID CTSFTTS::WriteConfig()
 		fwprintf_s(fp, L"[Config]\n");
 		fwprintf_s(fp, L"AutoCompose = %d\n", _autoCompose?1:0);
 		fwprintf_s(fp, L"ThreeCodeMode = %d\n", _threeCodeMode?1:0);
+		fwprintf_s(fp, L"SpaceAsPageDown = %d\n", _spaceAsPageDown?1:0);
+		fwprintf_s(fp, L"ArrowKeySWPages = %d\n", _arrowKeySWPages?1:0);
 		fwprintf_s(fp, L"DoBeep = %d\n", _doBeep?1:0);
 		fwprintf_s(fp, L"ActivatedKeyboardMode = %d\n", _activatedKeyboardMode?1:0);
 		fwprintf_s(fp, L"MakePhrase = %d\n", _makePhrase?1:0);
 		fwprintf_s(fp, L"MaxCodes = %d\n", _maxCodes);
+		fwprintf_s(fp, L"ShowNotifyDesktop = %d\n", _showNotifyDesktop?1:0);
 		fwprintf_s(fp, L"FontSize = %d\n", _fontSize);
 		fwprintf_s(fp, L"FontItalic = %d\n", _fontItalic?1:0);
 		fwprintf_s(fp, L"FontWeight = %d\n", _fontWeight);
@@ -416,7 +424,7 @@ ErrorExit:
 //
 //----------------------------------------------------------------------------
 
-VOID CTSFTTS::LoadConfig()
+VOID CConfig::LoadConfig()
 {	
 	debugPrint(L"CTSFTTS::loadConfig() \n");
 	WCHAR wszAppData[MAX_PATH] = {'\0'};
@@ -437,18 +445,56 @@ VOID CTSFTTS::LoadConfig()
 		StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\config.ini", wzsTSFTTSProfile);
 		if(PathFileExists(pwszINIFileName))
 		{
-			CFileMapping *iniDictionaryFile;
-			iniDictionaryFile = new (std::nothrow) CFileMapping();
-			if ((iniDictionaryFile)->CreateFile(pwszINIFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
+			struct _stat initTimeStamp;
+			if (_wstat(pwszINIFileName, &initTimeStamp) || //error for retrieving timestamp
+				(long(initTimeStamp.st_mtime>>32) != long(_initTimeStamp.st_mtime>>32)) ||  // or the timestamp not match previous saved one.
+				(long(initTimeStamp.st_mtime) != long(_initTimeStamp.st_mtime)) )			// then load the config. skip otherwise
 			{
-				CTableDictionaryEngine * iniTableDictionaryEngine;
-				iniTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(GetLocale(), iniDictionaryFile,L'=', this);
-				if (iniTableDictionaryEngine)
+				_initTimeStamp.st_mtime = initTimeStamp.st_mtime;
+
+				CFileMapping *iniDictionaryFile;
+				iniDictionaryFile = new (std::nothrow) CFileMapping();
+				if ((iniDictionaryFile)->CreateFile(pwszINIFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
 				{
-					iniTableDictionaryEngine->ParseConfig(); //parse config first.
+					CTableDictionaryEngine * iniTableDictionaryEngine;
+					iniTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(MAKELCID(1028, SORT_DEFAULT), iniDictionaryFile,L'=');//CHT:1028
+					if (iniTableDictionaryEngine)
+					{
+						iniTableDictionaryEngine->ParseConfig(); //parse config first.
+					}
+					delete iniTableDictionaryEngine; // delete after config.ini config are pasrsed
+					delete iniDictionaryFile;
+					SetDefaultTextFont();
 				}
-				delete iniTableDictionaryEngine; // delete after config.ini config are pasrsed
-				delete iniDictionaryFile;
+
+				// In store app mode, the dll is loaded into app container which does not even have read right for IME profile in APPDATA.
+				// Here, the read right is granted once to "ALL APPLICATION PACKAGES" when loaded in desktop mode for all metro apps can at least read the user settings in config.ini.
+				if(Global::isWindows8 && ! CTSFTTS::_IsStoreAppMode() && ! _appPermissionSet ) 
+				{
+					EXPLICIT_ACCESS ea;
+					// Get a pointer to the existing DACL (Conditionaly).
+					DWORD dwRes = GetNamedSecurityInfo(wzsTSFTTSProfile, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, &pOldDACL, NULL, &pSD);
+					if(ERROR_SUCCESS != dwRes) goto ErrorExit;
+					// Initialize an EXPLICIT_ACCESS structure for the new ACE. 
+					ZeroMemory(&ea, sizeof(EXPLICIT_ACCESS));
+					ea.grfAccessPermissions = GENERIC_READ;
+					ea.grfAccessMode = GRANT_ACCESS;
+					ea.grfInheritance= SUB_CONTAINERS_AND_OBJECTS_INHERIT;
+					ea.Trustee.TrusteeForm = TRUSTEE_IS_NAME;
+					ea.Trustee.TrusteeType = TRUSTEE_IS_WELL_KNOWN_GROUP;
+					ea.Trustee.ptstrName = L"ALL APPLICATION PACKAGES";	
+
+					// Create a new ACL that merges the new ACE into the existing DACL.
+					dwRes = SetEntriesInAcl(1, &ea, pOldDACL, &pNewDACL);
+					if(ERROR_SUCCESS != dwRes) goto ErrorExit;
+					if(pNewDACL)
+						SetNamedSecurityInfo(wzsTSFTTSProfile, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, pNewDACL, NULL);
+
+					_appPermissionSet = TRUE;
+					WriteConfig(); // update the config file.
+
+				}
+
 			}
 			
 		}
@@ -463,34 +509,8 @@ VOID CTSFTTS::LoadConfig()
 		if(CreateDirectory(wzsTSFTTSProfile, NULL)==0) goto ErrorExit;
 	}
 
-	// In store app mode, the dll is loaded into app container which does not even have read right for IME profile in APPDATA.
-	// Here, the read right is granted once to "ALL APPLICATION PACKAGES" when loaded in desktop mode for all metro apps can at least read the user settings in config.ini.
-	if(Global::isWindows8 && !_IsStoreAppMode() && ! _appPermissionSet ) 
-	{
-		EXPLICIT_ACCESS ea;
-		// Get a pointer to the existing DACL (Conditionaly).
-		DWORD dwRes = GetNamedSecurityInfo(wzsTSFTTSProfile, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, &pOldDACL, NULL, &pSD);
-		if(ERROR_SUCCESS != dwRes) goto ErrorExit;
-		// Initialize an EXPLICIT_ACCESS structure for the new ACE. 
-		ZeroMemory(&ea, sizeof(EXPLICIT_ACCESS));
-		ea.grfAccessPermissions = GENERIC_READ;
-		ea.grfAccessMode = GRANT_ACCESS;
-		ea.grfInheritance= SUB_CONTAINERS_AND_OBJECTS_INHERIT;
-		ea.Trustee.TrusteeForm = TRUSTEE_IS_NAME;
-		ea.Trustee.TrusteeType = TRUSTEE_IS_WELL_KNOWN_GROUP;
-		ea.Trustee.ptstrName = L"ALL APPLICATION PACKAGES";	
+	
 
-		// Create a new ACL that merges the new ACE into the existing DACL.
-		dwRes = SetEntriesInAcl(1, &ea, pOldDACL, &pNewDACL);
-		if(ERROR_SUCCESS != dwRes) goto ErrorExit;
-		if(pNewDACL)
-			SetNamedSecurityInfo(wzsTSFTTSProfile, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, pNewDACL, NULL);
-		
-		_appPermissionSet = TRUE;
-		WriteConfig(); // update the config file.
-
-	}
-	SetDefaultTextFont();
 ErrorExit:
 	if(pNewDACL != NULL) 
 		LocalFree(pNewDACL);
@@ -500,9 +520,9 @@ ErrorExit:
 
 }
 
-void CTSFTTS::SetDefaultTextFont()
+void CConfig::SetDefaultTextFont()
 {
-	if(_pCompositionProcessorEngine == nullptr) return;
+	//if(_pCompositionProcessorEngine == nullptr) return;
     // Candidate Text Font
     if (Global::defaultlFontHandle != nullptr)
 	{
@@ -511,9 +531,7 @@ void CTSFTTS::SetDefaultTextFont()
 	}
 	if (Global::defaultlFontHandle == nullptr)
     {
-		//WCHAR fontName[50] = {'\0'}; 
-		//LoadString(Global::dllInstanceHandle, IDS_DEFAULT_FONT, fontName, 50);
-		Global::defaultlFontHandle = CreateFont(-MulDiv(_fontSize, GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72), 
+			Global::defaultlFontHandle = CreateFont(-MulDiv(_fontSize, GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72), 
 			0, 0, 0, _fontWeight, _fontItalic, 0, 0, CHINESEBIG5_CHARSET, 0, 0, 0, 0, _pFontFaceName);
         if (!Global::defaultlFontHandle)
         {

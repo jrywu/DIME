@@ -14,7 +14,7 @@ class CTSFTTS;
 class CTableDictionaryEngine : public CBaseDictionaryEngine
 {
 public:
-	CTableDictionaryEngine(LCID locale, _In_ CFile *pDictionaryFile, _In_ WCHAR keywordDelimiter, CTSFTTS *pTextService);
+	CTableDictionaryEngine(LCID locale, _In_ CFile *pDictionaryFile, _In_ WCHAR keywordDelimiter);
 	virtual ~CTableDictionaryEngine(){}
     // Collect word from phrase string.
     // param

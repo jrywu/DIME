@@ -179,6 +179,9 @@
     <ClInclude Include="TSFTTSStructureArray.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Config.h">
+      <Filter>Source Files\Configuration</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BaseDictionaryEngine.cpp">
@@ -325,7 +328,7 @@
     <ClCompile Include="TSFTTS.cpp">
       <Filter>Source Files\Framework</Filter>
     </ClCompile>
-    <ClCompile Include="Configuration.cpp">
+    <ClCompile Include="Config.cpp">
       <Filter>Source Files\Configuration</Filter>
     </ClCompile>
   </ItemGroup>

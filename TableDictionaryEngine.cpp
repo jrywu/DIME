@@ -10,10 +10,9 @@
 #include "DictionarySearch.h"
 #include "TSFTTS.h"
 
-CTableDictionaryEngine::CTableDictionaryEngine(LCID locale, _In_ CFile *pDictionaryFile, _In_ WCHAR keywordDelimiter, CTSFTTS *pTextService)
+CTableDictionaryEngine::CTableDictionaryEngine(LCID locale, _In_ CFile *pDictionaryFile, _In_ WCHAR keywordDelimiter)
 	:CBaseDictionaryEngine(locale, pDictionaryFile, keywordDelimiter)
 {
-	_pTextService = pTextService;
 }
 
 //+---------------------------------------------------------------------------
@@ -25,7 +24,7 @@ CTableDictionaryEngine::CTableDictionaryEngine(LCID locale, _In_ CFile *pDiction
 VOID CTableDictionaryEngine::CollectWord(_In_ CStringRange *pKeyCode, _Inout_ CTSFTTSArray<CStringRange> *pWordStrings)
 {
     CDictionaryResult* pdret = nullptr;
-	CDictionarySearch dshSearch(_locale, _pDictionaryFile, pKeyCode, _keywordDelimiter, _pTextService);
+	CDictionarySearch dshSearch(_locale, _pDictionaryFile, pKeyCode, _keywordDelimiter);
 
     while (dshSearch.FindPhrase(&pdret))
     {
@@ -47,7 +46,7 @@ VOID CTableDictionaryEngine::CollectWord(_In_ CStringRange *pKeyCode, _Inout_ CT
 VOID CTableDictionaryEngine::CollectWord(_In_ CStringRange *pKeyCode, _Inout_ CTSFTTSArray<CCandidateListItem> *pItemList)
 {
     CDictionaryResult* pdret = nullptr;
-    CDictionarySearch dshSearch(_locale, _pDictionaryFile, pKeyCode, _keywordDelimiter, _pTextService);
+    CDictionarySearch dshSearch(_locale, _pDictionaryFile, pKeyCode, _keywordDelimiter);
 
     while (dshSearch.FindPhrase(&pdret))
     {
@@ -76,7 +75,7 @@ VOID CTableDictionaryEngine::CollectWord(_In_ CStringRange *pKeyCode, _Inout_ CT
 VOID CTableDictionaryEngine::CollectWordForWildcard(_In_ CStringRange *pKeyCode, _Inout_ CTSFTTSArray<CCandidateListItem> *pItemList)
 {
     CDictionaryResult* pdret = nullptr;
-    CDictionarySearch dshSearch(_locale, _pDictionaryFile, pKeyCode, _keywordDelimiter, _pTextService);
+    CDictionarySearch dshSearch(_locale, _pDictionaryFile, pKeyCode, _keywordDelimiter);
 
     while (dshSearch.FindPhraseForWildcard(&pdret))
     {
@@ -105,7 +104,7 @@ VOID CTableDictionaryEngine::CollectWordForWildcard(_In_ CStringRange *pKeyCode,
 VOID CTableDictionaryEngine::CollectWordFromConvertedStringForWildcard(_In_ CStringRange *pString, _Inout_ CTSFTTSArray<CCandidateListItem> *pItemList)
 {
     CDictionaryResult* pdret = nullptr;
-	CDictionarySearch dshSearch(_locale, _pDictionaryFile, pString, _keywordDelimiter, _pTextService);
+	CDictionarySearch dshSearch(_locale, _pDictionaryFile, pString, _keywordDelimiter);
 
     while (dshSearch.FindConvertedStringForWildcard(&pdret)) // TAIL ALL CHAR MATCH
     {
@@ -134,7 +133,7 @@ VOID CTableDictionaryEngine::CollectWordFromConvertedStringForWildcard(_In_ CStr
 VOID CTableDictionaryEngine::CollectWordFromConvertedString(_In_ CStringRange *pString, _Inout_ CTSFTTSArray<CCandidateListItem> *pItemList)
 {
     CDictionaryResult* pdret = nullptr;
-    CDictionarySearch dshSearch(_locale, _pDictionaryFile, pString, _keywordDelimiter, _pTextService);
+    CDictionarySearch dshSearch(_locale, _pDictionaryFile, pString, _keywordDelimiter);
 
     while (dshSearch.FindConvertedString(&pdret)) // TAIL ALL CHAR MATCH
     {
@@ -156,7 +155,7 @@ VOID CTableDictionaryEngine::CollectWordFromConvertedString(_In_ CStringRange *p
 }
 VOID CTableDictionaryEngine::ParseConfig()
 {
-	 CDictionarySearch dshSearch(_locale, _pDictionaryFile, NULL, _keywordDelimiter, _pTextService);
+	 CDictionarySearch dshSearch(_locale, _pDictionaryFile, NULL, _keywordDelimiter);
 	 dshSearch.ParseConfig();
 
 }

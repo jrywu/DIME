@@ -1057,10 +1057,17 @@ BOOL CCandidateWindow::_MovePage(_In_ int offSet, _In_ BOOL isNotify)
     }
 
     newPage = currentPage + offSet;
-    if ((newPage < 0) || (newPage >= static_cast<int>(_PageIndex.Count())))
+    if (newPage < 0)
+	{
+		_currentSelection = 0;
+		_InvalidateRect();
+		return FALSE;
+	}
+	else if(newPage >= static_cast<int>(_PageIndex.Count()))
     {
         return FALSE;
     }
+	if(_currentSelection <0 ) _currentSelection = 0;//reset the selection postition for phrase cand (_currentselection is -1);
 
     // If current selection is at the top of the page AND 
     // we are on the "default" page border, then we don't

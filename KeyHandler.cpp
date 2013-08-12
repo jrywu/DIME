@@ -173,7 +173,7 @@ HRESULT CTSFTTS::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine 
     //
     // Get candidate string from composition processor engine
     //
-	if(_autoCompose // auto composing mode: show candidates while composition updated imeediately.
+	if(CConfig::GetAutoCompose() // auto composing mode: show candidates while composition updated imeediately.
 		||  pCompositionProcessorEngine->IsSymbol())// fetch candidate in symobl mode with composition started with '='
 	{
 		CTSFTTSArray<CCandidateListItem> candidateList;
@@ -189,10 +189,10 @@ HRESULT CTSFTTS::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine 
 			if (SUCCEEDED(hr))
 			{
 				_pUIPresenter->_ClearCandidateList();
-				_pUIPresenter->_SetCandidateTextColor(_itemColor, _itemBGColor); 
-				_pUIPresenter->_SetCandidateSelectedTextColor(_selectedColor, _selectedBGColor);    
-				_pUIPresenter->_SetCandidateNumberColor(_numberColor, _itemBGColor);    
-				_pUIPresenter->_SetCandidateFillColor(_itemBGColor);
+				_pUIPresenter->_SetCandidateTextColor(CConfig::GetItemColor(), CConfig::GetItemBGColor()); 
+				_pUIPresenter->_SetCandidateSelectedTextColor(CConfig::GetSelectedColor(), CConfig::GetSelectedBGColor());    
+				_pUIPresenter->_SetCandidateNumberColor(CConfig::GetNumberColor(), CConfig::GetItemBGColor());    
+				_pUIPresenter->_SetCandidateFillColor(CConfig::GetItemBGColor());
 				_pUIPresenter->_SetCandidateText(&candidateList, TRUE, pCompositionProcessorEngine->GetCandidateWindowWidth());
 				_candidateMode = CANDIDATE_INCREMENTAL;
 				_isCandidateWithWildcard = FALSE;
@@ -318,10 +318,10 @@ HRESULT CTSFTTS::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pCo
 			_candidateMode = CANDIDATE_ORIGINAL;
 			 _isCandidateWithWildcard = isWildcardSearch;
 			 _pUIPresenter->_ClearCandidateList();
-			 _pUIPresenter->_SetCandidateTextColor(_itemColor, _itemBGColor);    
-			 _pUIPresenter->_SetCandidateSelectedTextColor(_selectedColor, _selectedBGColor);    
-			 _pUIPresenter->_SetCandidateNumberColor(_numberColor, _itemBGColor);    
-			 _pUIPresenter->_SetCandidateFillColor(_itemBGColor);
+			 _pUIPresenter->_SetCandidateTextColor(CConfig::GetItemColor(), CConfig::GetItemBGColor());    
+			 _pUIPresenter->_SetCandidateSelectedTextColor(CConfig::GetSelectedColor(), CConfig::GetSelectedBGColor());    
+			 _pUIPresenter->_SetCandidateNumberColor(CConfig::GetNumberColor(), CConfig::GetItemBGColor());    
+			 _pUIPresenter->_SetCandidateFillColor(CConfig::GetItemBGColor());
 			 _pUIPresenter->_SetCandidateText(&candidateList, FALSE, pCompositionProcessorEngine->GetCandidateWindowWidth());
 		 }
 		

@@ -33,6 +33,7 @@
     <ClInclude Include="CandidateWindow.h" />
     <ClInclude Include="Compartment.h" />
     <ClInclude Include="CompositionProcessorEngine.h" />
+    <ClInclude Include="Config.h" />
     <ClInclude Include="define.h" />
     <ClInclude Include="DisplayString.h" />
     <ClInclude Include="EnumTfCandidates.h" />
@@ -73,7 +74,7 @@
     <ClCompile Include="ButtonWindow.cpp" />
     <ClCompile Include="CandidateHandler.cpp" />
     <ClCompile Include="CandidateWindow.cpp" />
-    <ClCompile Include="Configuration.cpp" />
+    <ClCompile Include="Config.cpp" />
     <ClCompile Include="Compartment.cpp" />
     <ClCompile Include="Composition.cpp" />
     <ClCompile Include="CompositionProcessorEngine.cpp" />

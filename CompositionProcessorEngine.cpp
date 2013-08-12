@@ -115,7 +115,7 @@ BOOL CCompositionProcessorEngine::AddVirtualKey(WCHAR wch)
     {
         return FALSE;
     }
-	if((UINT)_keystrokeBuffer.GetLength() >= _pTextService->GetMaxCodes() )  // do not eat the key if keystroke buffer length >= _maxcodes
+	if((UINT)_keystrokeBuffer.GetLength() >= CConfig::GetMaxCodes() )  // do not eat the key if keystroke buffer length >= _maxcodes
 	{
 		DoBeep();
 		return FALSE;
@@ -297,7 +297,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFTTSArray<CCandida
 		PWCHAR pwch3code = new (std::nothrow) WCHAR[ 6 ];
 		if (!pwch3code) return;
 
-		if (!isFindWildcard  && (_pTextService->GetThreeCodeMode() && _keystrokeBuffer.GetLength() == 3))
+		if (!isFindWildcard  && (CConfig::GetThreeCodeMode() && _keystrokeBuffer.GetLength() == 3))
         {
 			StringCchCopyN(pwch, keystrokeBufLen, _keystrokeBuffer.Get(), _keystrokeBuffer.GetLength());
 			StringCchCat(pwch, keystrokeBufLen, L"*");
@@ -403,7 +403,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFTTSArray<CCandida
     {
         _pTableDictionaryEngine->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList);
     }
-	else if (_pTextService->GetThreeCodeMode() && _keystrokeBuffer.GetLength() == 3)
+	else if (CConfig::GetThreeCodeMode() && _keystrokeBuffer.GetLength() == 3)
 	{
 		
 
@@ -912,7 +912,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 	}
 	else
 	{
-		_pTTSTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pTTSDictionaryFile, L'=', _pTextService); //TTS file use '=' as delimiter
+		_pTTSTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pTTSDictionaryFile, L'='); //TTS file use '=' as delimiter
 		if (!_pTTSTableDictionaryEngine)  goto ErrorExit;
 		_pTTSTableDictionaryEngine->ParseConfig(); //parse config first.
 		_pTableDictionaryEngine = _pTTSTableDictionaryEngine;  //set TTS as default dictionary engine
@@ -932,7 +932,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 				_pCINDictionaryFile = new (std::nothrow) CFileMapping();
 				if ((_pCINDictionaryFile)->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
 				{
-					_pCINTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pCINDictionaryFile, L'\t', _pTextService); //cin files use tab as delimiter
+					_pCINTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pCINDictionaryFile, L'\t'); //cin files use tab as delimiter
 
 					if (_pCINTableDictionaryEngine)  
 					{
@@ -1277,8 +1277,8 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
         case VK_NEXT:   if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_MOVE_PAGE_DOWN; } return TRUE;
         case VK_HOME:   if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_MOVE_PAGE_TOP; } return TRUE;
         case VK_END:    if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_MOVE_PAGE_BOTTOM; } return TRUE;
-		case VK_LEFT:   if (pKeyState) { pKeyState->Category = CATEGORY_COMPOSING; pKeyState->Function = FUNCTION_MOVE_LEFT; } return TRUE;
-        case VK_RIGHT:  if (pKeyState) { pKeyState->Category = CATEGORY_COMPOSING; pKeyState->Function = FUNCTION_MOVE_RIGHT; } return TRUE;
+		case VK_LEFT:   if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_MOVE_LEFT; } return TRUE;
+        case VK_RIGHT:  if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_MOVE_RIGHT; } return TRUE;
         /*   
 		case VK_LEFT:
         case VK_RIGHT:
@@ -1301,6 +1301,9 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 									pKeyState->Category = CATEGORY_CANDIDATE;
 									pKeyState->Function = FUNCTION_FINALIZE_CANDIDATELIST;
 								}
+							}else if(uCode == VK_SPACE && CConfig::GetSpaceAsPageDown()){
+								pKeyState->Category = CATEGORY_CANDIDATE; 
+								pKeyState->Function = FUNCTION_MOVE_PAGE_DOWN; 
 							}else{
 								pKeyState->Category = CATEGORY_CANDIDATE; 
 								pKeyState->Function = FUNCTION_CONVERT; 
@@ -1507,6 +1510,6 @@ BOOL CCompositionProcessorEngine::IsKeystrokeRange(UINT uCode, _Out_ _KEYSTROKE_
 
 void CCompositionProcessorEngine::DoBeep()
 {
-	if(_pTextService->GetDoBeep())
+	if(CConfig::GetDoBeep())
 		MessageBeep(MB_ICONASTERISK);
 }

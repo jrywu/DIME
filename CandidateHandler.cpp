@@ -94,7 +94,7 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 	
 
 
-	if (_makePhrase)
+	if (CConfig::GetMakePhrase())
 	{
 		_pCompositionProcessorEngine->GetCandidateStringInConverted(candidateString, &candidatePhraseList);
 	}
@@ -113,10 +113,10 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 		if(SUCCEEDED(_CreateAndStartCandidate(_pCompositionProcessorEngine, ec, pContext)))
 		{	
 			_pUIPresenter->_ClearCandidateList();
-			_pUIPresenter->_SetCandidateTextColor(_phraseColor, _itemBGColor);    // Text color is green
-			_pUIPresenter->_SetCandidateSelectedTextColor(_selectedColor, _selectedBGColor);    
-			_pUIPresenter->_SetCandidateNumberColor(_numberColor, _itemBGColor);    
-			_pUIPresenter->_SetCandidateFillColor(_itemBGColor);//(HBRUSH)(COLOR_WINDOW+1));    // Background color is window
+			_pUIPresenter->_SetCandidateTextColor(CConfig::GetPhraseColor(), CConfig::GetItemBGColor());    // Text color is green
+			_pUIPresenter->_SetCandidateSelectedTextColor(CConfig::GetSelectedColor(), CConfig::GetSelectedBGColor());    
+			_pUIPresenter->_SetCandidateNumberColor(CConfig::GetNumberColor(), CConfig::GetItemBGColor());    
+			_pUIPresenter->_SetCandidateFillColor(CConfig::GetItemBGColor());//(HBRUSH)(COLOR_WINDOW+1));    // Background color is window
 			_pUIPresenter->_SetCandidateText(&candidatePhraseList, TRUE, _pCompositionProcessorEngine->GetCandidateWindowWidth());
 			_pUIPresenter->_SetCandidateSelection(-1, FALSE); // set selected index to -1 if showing phrase candidates
 			_phraseCandShowing = TRUE;  //_phraseCandShowing = TRUE. phrase cand is showing

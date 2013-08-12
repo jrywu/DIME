@@ -1052,19 +1052,18 @@ void CTSFTTS::OnKeyboardClosed()
 		_EndComposition(_pContext);
 	_DeleteCandidateList(FALSE, NULL);
 	CStringRange notifyText;
-	ShowNotifyText(&notifyText.Set(L"英文", 2));
+	if(CConfig::GetShowNotifyDesktop())
+		ShowNotifyText(&notifyText.Set(L"英文", 2));
 }
 
 void CTSFTTS::OnKeyboardOpen()
 {
 	debugPrint(L"CTSFTTS::OnKeyboardOpen()\n");
 	// switching to Chinese mode
-	LoadConfig();
+	CConfig::LoadConfig();
 	CStringRange notifyText;
-	ShowNotifyText(&notifyText.Set(L"中文", 2));
-	
-	
-	
+	if(CConfig::GetShowNotifyDesktop())
+		ShowNotifyText(&notifyText.Set(L"中文", 2));	
 }
 
 void CTSFTTS::OnSwitchedToFullShape()
@@ -1074,8 +1073,8 @@ void CTSFTTS::OnSwitchedToFullShape()
 		_EndComposition(_pContext);
 	_DeleteCandidateList(FALSE, NULL);
 	CStringRange notifyText;
-	ShowNotifyText(&notifyText.Set(L"全形", 2));
-	
+	if(CConfig::GetShowNotifyDesktop())
+		ShowNotifyText(&notifyText.Set(L"全形", 2));
 }
 
 void CTSFTTS::OnSwitchedToHalfShape()
@@ -1085,6 +1084,6 @@ void CTSFTTS::OnSwitchedToHalfShape()
 		_EndComposition(_pContext);
 	_DeleteCandidateList(FALSE, NULL);
 	CStringRange notifyText;
-	ShowNotifyText(&notifyText.Set(L"半形", 2));
-	
+	if(CConfig::GetShowNotifyDesktop())
+		ShowNotifyText(&notifyText.Set(L"半形", 2));
 }

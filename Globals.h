@@ -11,6 +11,9 @@
 #include "private.h"
 #include "define.h"
 #include "BaseStructure.h"
+#include "Config.h"
+
+
 using std::map;
 void DllAddRef();
 void DllRelease();

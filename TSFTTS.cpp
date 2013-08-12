@@ -24,6 +24,7 @@
 //
 //----------------------------------------------------------------------------
 
+DWORD CTSFTTS::_dwActivateFlags =0;
 
 BOOL CTSFTTS::_AddTextProcessorEngine()
 {
@@ -168,6 +169,7 @@ CTSFTTS::CTSFTTS()
     _pCompartmentKeyboardOpenEventSink = nullptr;
     _pCompartmentConversionEventSink = nullptr;
     _pCompartmentDoubleSingleByteEventSink = nullptr;
+
 }
 
 //+---------------------------------------------------------------------------
@@ -618,10 +620,9 @@ HRESULT CTSFTTS::Show(_In_ HWND hwndParent, _In_ LANGID langid, _In_ REFGUID rgu
 		_PropertySheet =  reinterpret_cast<_T_PropertySheet> (GetProcAddress(dllCtlHandle, "PropertySheetW"));
     }
 
+	CConfig::LoadConfig();
 
-	LoadConfig();
-
-	debugPrint(L"CTSFTTS::Show() ,  ITfFnConfigure::Show(), _autoCompose = %d, _threeCodeMode = %d, _doBeep = %d", _autoCompose, _threeCodeMode, _doBeep);
+	debugPrint(L"CTSFTTS::Show() ,  ITfFnConfigure::Show(), _autoCompose = %d, _threeCodeMode = %d, _doBeep = %d", CConfig::GetAutoCompose(), CConfig::GetThreeCodeMode(), CConfig::GetDoBeep());
 
 	PROPSHEETPAGE psp;
 	PROPSHEETHEADER psh;
@@ -629,7 +630,7 @@ HRESULT CTSFTTS::Show(_In_ HWND hwndParent, _In_ LANGID langid, _In_ REFGUID rgu
 		int id;
 		DLGPROC DlgProc;
 	} DlgPage[] = {
-		{IDD_DIALOG_BEHAVIOR,	CommonPropertyPageWndProc},
+		{IDD_DIALOG_BEHAVIOR,	CConfig::CommonPropertyPageWndProc},
 		//{IDD_DIALOG_DICTIONARY,	DlgProcDictionary},
 		
 	};

@@ -41,8 +41,7 @@
 #define IDC_CHECKBOX_PHRASE		                1119
 #define IDC_CHECKBOX_SPACEASPAGEDOWN            1120
 #define IDC_CHECKBOX_ARROWKEYSWPAGES            1121
-#define IDC_CHECKBOX_ADDCANDKTKN                1122
-#define IDC_CHECKBOX_SHOWMODEIMM                1123
+#define IDC_CHECKBOX_SHOWNOTIFY                 1122
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED

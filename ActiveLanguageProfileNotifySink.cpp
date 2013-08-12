@@ -11,6 +11,7 @@
 #include "CompositionProcessorEngine.h"
 #include "UIPresenter.h"
 
+
 BOOL CTSFTTS::VerifyTSFTTSCLSID(_In_ REFCLSID clsid)
 {
     if (IsEqualCLSID(clsid, Global::TSFTTSCLSID))
@@ -45,11 +46,11 @@ STDAPI CTSFTTS::OnActivated(_In_ REFCLSID clsid, _In_ REFGUID guidProfile, _In_ 
 			_pUIPresenter = new (std::nothrow) CUIPresenter(this, _pCompositionProcessorEngine);
 		if (_pUIPresenter == nullptr) return S_OK;
     
-		LoadConfig();
+		CConfig::LoadConfig();
 
 		ShowAllLanguageBarIcons();
-
-		ConversionModeCompartmentUpdated(_pThreadMgr, &_activatedKeyboardMode);
+		BOOL activatedKeyboardMode = CConfig::GetActivatedKeyboardMode();
+		ConversionModeCompartmentUpdated(_pThreadMgr, &activatedKeyboardMode );
     }
     else
     {

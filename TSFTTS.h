@@ -143,9 +143,9 @@ public:
     HRESULT _HandlePhraseArrowKey(TfEditCookie ec, _In_ ITfContext *pContext, _In_ KEYSTROKE_FUNCTION keyFunction);
     HRESULT _HandlePhraseSelectByNumber(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode);
 
-    BOOL _IsSecureMode(void) { return (_dwActivateFlags & TF_TMAE_SECUREMODE) ? TRUE : FALSE; }
-    BOOL _IsComLess(void) { return (_dwActivateFlags & TF_TMAE_COMLESS) ? TRUE : FALSE; }
-	BOOL _IsStoreAppMode(void) { return (_dwActivateFlags & TF_TMF_IMMERSIVEMODE) ? TRUE : FALSE; }
+    static BOOL _IsSecureMode(void) { return (_dwActivateFlags & TF_TMAE_SECUREMODE) ? TRUE : FALSE; }
+    static BOOL _IsComLess(void) { return (_dwActivateFlags & TF_TMAE_COMLESS) ? TRUE : FALSE; }
+	static BOOL _IsStoreAppMode(void) { return (_dwActivateFlags & TF_TMF_IMMERSIVEMODE) ? TRUE : FALSE; }
 	BOOL _IsUILessMode(void);
 
     CCompositionProcessorEngine* GetCompositionProcessorEngine() { return (_pCompositionProcessorEngine); }
@@ -164,52 +164,6 @@ public:
 
 	HRESULT ShowNotifyText(CStringRange *pNotifyText);
 
-
-	//configuration propertysheet dialog
-	static INT_PTR CALLBACK CTSFTTS::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
-	friend void DrawColor(HWND hwnd, HDC hdc, COLORREF col);
-	
-	//  configuration set/get
-	static void SetAutoCompose(BOOL autoCompose) {_autoCompose = autoCompose;}
-	static BOOL GetAutoCompose() {return _autoCompose;}
-	static void SetThreeCodeMode(BOOL threeCodeMode) {_threeCodeMode = threeCodeMode;}
-	static BOOL GetThreeCodeMode() {return _threeCodeMode;}
-	static void SetFontSize(UINT fontSize) {_fontSize = fontSize;}
-	static UINT GetFontSize() {return _fontSize;}
-	static void SetFontWeight(UINT fontWeight) {_fontWeight = fontWeight;}
-	static UINT GetFontWeight() {return _fontWeight;}
-	static BOOL GetFontItalic() {return _fontItalic;}
-	static void SetFontItalic(BOOL fontItalic) {_fontItalic = fontItalic;}
-	static void SetMaxCodes(UINT maxCodes) { _maxCodes = maxCodes;}
-	static UINT GetMaxCodes(){return _maxCodes;}
-	static void SetDoBeep(BOOL doBeep) { _doBeep = doBeep;}
-	static BOOL GetDoBeep() {return _doBeep;}
-	static void SetMakePhrase(BOOL makePhrase) { _makePhrase = makePhrase;}
-	static BOOL GetMakePhrase() {return _makePhrase;}
-	static void SetFontFaceName(WCHAR *pFontFaceName) {_pFontFaceName = pFontFaceName;}
-	static WCHAR* GetFontFaceName(){ return _pFontFaceName;}
-	//colors
-	static void SetItemColor(UINT itemColor) { _itemColor = itemColor;}
-	static COLORREF GetItemColor(){return _itemColor;}
-	static void SetPhraseColor(UINT phraseColor) { _phraseColor = phraseColor;}
-	static COLORREF GetPhraseColor(){return _phraseColor;}
-	static void SetNumberColor(UINT numberColor) { _numberColor = numberColor;}
-	static COLORREF GetNumberColor(){return _numberColor;}
-	static void SetItemBGColor(UINT itemBGColor) { _itemBGColor = itemBGColor;}
-	static COLORREF GetItemBGColor(){return _itemBGColor;}
-	static void SetSelectedColor(UINT selectedColor) { _selectedColor = selectedColor;}
-	static COLORREF GetSelectedColor(){return _selectedColor;}
-	static void SetSelectedBGColor(UINT selectedBGColor) { _selectedBGColor = selectedBGColor;}
-	static COLORREF GetSelectedBGColor(){return _selectedBGColor;}
-	
-	
-	static void SetActivatedKeyboardMode(BOOL activatedKeyboardMode) { _activatedKeyboardMode = activatedKeyboardMode;}
-	static BOOL GetActivatedKeyboardMode() {return _activatedKeyboardMode;}
-	static void SetAppPermissionSet(BOOL appPermissionSet) { _appPermissionSet = appPermissionSet;}
-	static BOOL GetAppPermissionSet() {return _appPermissionSet;}
-	
-	static VOID WriteConfig();
-	VOID LoadConfig();
 private:
     // functions for the composition object.
     HRESULT _HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *pCompositionProcessorEngine, TfEditCookie ec, _In_ ITfContext *pContext);
@@ -292,10 +246,6 @@ private:
     void HideAllLanguageBarIcons();
 
 
-
-
-	void SetDefaultTextFont();
-
 private:
 	
 	LANGID _langid;
@@ -315,7 +265,7 @@ private:
 
     ITfThreadMgr* _pThreadMgr;
     TfClientId _tfClientId;
-    DWORD _dwActivateFlags;
+    static DWORD _dwActivateFlags;
 
     // The cookie of ThreadMgrEventSink
     DWORD _threadMgrEventSinkCookie;
@@ -365,24 +315,7 @@ private:
 	POINT _phraseCandLocation;
 	
 	
-	//user setting variables
-	static BOOL _autoCompose;
-	static BOOL _threeCodeMode;
-	static BOOL _doBeep;
-	static BOOL _appPermissionSet;
-	static BOOL _activatedKeyboardMode;
-	static BOOL _makePhrase;
-    static UINT _fontSize;
-	static UINT _fontWeight;
-	static BOOL _fontItalic;
-	static UINT _maxCodes;
-	static WCHAR* _pFontFaceName;
-	static COLORREF _itemColor;
-	static COLORREF _phraseColor;
-	static COLORREF _numberColor;
-	static COLORREF _itemBGColor;
-	static COLORREF _selectedColor;
-	static COLORREF _selectedBGColor;
+
 };
 
 
