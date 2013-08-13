@@ -88,30 +88,28 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 	hr = _AddComposingAndChar(ec, pContext, &commitString);
 	if (FAILED(hr))	return hr;
 	
-	_HandleComplete(ec, pContext);
-	//_TerminateComposition(ec, pContext);
-	
+	// Do not send _endcandidatelist here to avoid cand dissapear in win8
+	_TerminateComposition(ec, pContext);
+	_candidateMode = CANDIDATE_NONE;
+	_isCandidateWithWildcard = FALSE;	
 	
 
 
 	if (CConfig::GetMakePhrase())
 	{
 		_pCompositionProcessorEngine->GetCandidateStringInConverted(candidateString, &candidatePhraseList);
-	}
-	
-	// We have a candidate list if candidatePhraseList.Cnt is not 0
-	// If we are showing reverse conversion, use UIPresenter
-	
-	if (candidatePhraseList.Count())
-	{
-		CStringRange emptyComposition;
-		if (!_IsComposing())
-			_StartComposition(pContext);  //StartCandidateList require a valid selection from a valid pComposition to determine the location to show the candidate window
-		_AddComposingAndChar(ec, pContext, &emptyComposition.Set(L" ",1)); 
-		
-	
-		if(SUCCEEDED(_CreateAndStartCandidate(_pCompositionProcessorEngine, ec, pContext)))
-		{	
+
+
+		// We have a candidate list if candidatePhraseList.Cnt is not 0
+		// If we are showing reverse conversion, use UIPresenter
+
+		if (candidatePhraseList.Count())
+		{
+			CStringRange emptyComposition;
+			if (!_IsComposing())
+				_StartComposition(pContext);  //StartCandidateList require a valid selection from a valid pComposition to determine the location to show the candidate window
+			_AddComposingAndChar(ec, pContext, &emptyComposition.Set(L" ",1)); 
+
 			_pUIPresenter->_ClearCandidateList();
 			_pUIPresenter->_SetCandidateTextColor(CConfig::GetPhraseColor(), CConfig::GetItemBGColor());    // Text color is green
 			_pUIPresenter->_SetCandidateSelectedTextColor(CConfig::GetSelectedColor(), CConfig::GetSelectedBGColor());    
@@ -123,13 +121,14 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 			_candidateMode = CANDIDATE_PHRASE;
 			_isCandidateWithWildcard = FALSE;	
 		}
+		else
+		{   //_endcandidatelist only if the phrase lookup return 0 results
+			if(_pUIPresenter)
+				_pUIPresenter->_EndCandidateList();
+		}
+
+
 	}
-	else
-	{
-		if(_pUIPresenter)
-			_pUIPresenter->_EndCandidateList();
-	}
-		
 	
 	
 	
@@ -301,8 +300,9 @@ VOID CTSFTTS::_DeleteCandidateList(BOOL isForce, _In_opt_ ITfContext *pContext)
 
     if (_pUIPresenter)
     {
-        _pUIPresenter->_EndCandidateList();
-        _candidateMode = CANDIDATE_NONE;
-        _isCandidateWithWildcard = FALSE;
+		//_pUIPresenter->_ClearCandidateList();
+		_pUIPresenter->_EndCandidateList();
     }
+	_candidateMode = CANDIDATE_NONE;
+    _isCandidateWithWildcard = FALSE;
 }
