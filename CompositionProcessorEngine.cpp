@@ -664,17 +664,22 @@ void CCompositionProcessorEngine::SetupPreserved(_In_ ITfThreadMgr *pThreadMgr, 
     TF_PRESERVEDKEY preservedKeyImeMode;
     preservedKeyImeMode.uVKey = VK_SHIFT;
     preservedKeyImeMode.uModifiers = _TF_MOD_ON_KEYUP_SHIFT_ONLY;
-
-	
     SetPreservedKey(Global::TSFTTSGuidImeModePreserveKey, preservedKeyImeMode, Global::ImeModeDescription, &_PreservedKey_IMEMode);
 
     TF_PRESERVEDKEY preservedKeyDoubleSingleByte;
     preservedKeyDoubleSingleByte.uVKey = VK_SPACE;
     preservedKeyDoubleSingleByte.uModifiers = TF_MOD_SHIFT;
     SetPreservedKey(Global::TSFTTSGuidDoubleSingleBytePreserveKey, preservedKeyDoubleSingleByte, Global::DoubleSingleByteDescription, &_PreservedKey_DoubleSingleByte);
+	
+	TF_PRESERVEDKEY preservedKeyConfig;
+    preservedKeyConfig.uVKey = VK_OEM_5; // '\\'
+    preservedKeyConfig.uModifiers = TF_MOD_CONTROL;
+    SetPreservedKey(Global::TSFTTSGuidConfigPreserveKey, preservedKeyConfig, L"Show Config Pages", &_PreservedKey_Config);
+
 
     InitPreservedKey(&_PreservedKey_IMEMode, pThreadMgr, tfClientId);
     InitPreservedKey(&_PreservedKey_DoubleSingleByte, pThreadMgr, tfClientId);
+	InitPreservedKey(&_PreservedKey_Config, pThreadMgr, tfClientId);
 
     return;
 }
@@ -825,6 +830,10 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL *pIsE
         CompartmentDoubleSingleByte._SetCompartmentBOOL(isDouble ? FALSE : TRUE);
         *pIsEaten = TRUE;
     }
+	else if (IsEqualGUID(rguid, _PreservedKey_Config.Guid))
+	{
+		_pTextService->Show(NULL, 0,  _PreservedKey_Config.Guid);
+	}
    
     else
     {

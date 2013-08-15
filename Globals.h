@@ -125,13 +125,13 @@ extern CRITICAL_SECTION CS;
 extern HFONT defaultlFontHandle;  // Global font object we use everywhere
 
 
-
-
 extern const CLSID TSFTTSCLSID;
-extern const CLSID TSFTTSGuidProfile;
-extern const CLSID TSFTTSGuidImeModePreserveKey;
-extern const CLSID TSFTTSGuidDoubleSingleBytePreserveKey;
-extern const CLSID TSFTTSGuidPunctuationPreserveKey;
+
+extern const GUID TSFTTSGuidProfile;
+
+extern const GUID TSFTTSGuidImeModePreserveKey;
+extern const GUID TSFTTSGuidDoubleSingleBytePreserveKey;
+extern const GUID TSFTTSGuidConfigPreserveKey;
 
 LRESULT CALLBACK ThreadKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam);
 BOOL CheckModifiers(UINT uModCurrent, UINT uMod);
@@ -151,7 +151,6 @@ extern const _AddressDirectInput addressCharTable[5];
 
 extern const GUID TSFTTSGuidLangBarIMEMode;
 extern const GUID TSFTTSGuidLangBarDoubleSingleByte;
-extern const GUID TSFTTSGuidLangBarPunctuation;
 
 extern const GUID TSFTTSGuidDisplayAttributeInput;
 extern const GUID TSFTTSGuidDisplayAttributeConverted;

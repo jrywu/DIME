@@ -56,6 +56,10 @@ extern const GUID TSFTTSGuidImeModePreserveKey =
 extern const GUID TSFTTSGuidDoubleSingleBytePreserveKey = 
 { 0xb9f1b6ba, 0xcccf, 0x478f, { 0xb7, 0xc2, 0x89, 0xb0, 0xd9, 0x44, 0x2a, 0x38 } };
 
+// {6EA68D83-9FC2-40A6-BB30-52E77FABDEC7}
+extern const GUID TSFTTSGuidConfigPreserveKey = 
+{ 0x6ea68d83, 0x9fc2, 0x40a6, { 0xbb, 0x30, 0x52, 0xe7, 0x7f, 0xab, 0xde, 0xc7 } };
+
 //---------------------------------------------------------------------
 // Compartments
 //---------------------------------------------------------------------
