@@ -41,7 +41,7 @@ STDAPI CGetTextExtentEditSession::DoEditSession(TfEditCookie ec)
     if (SUCCEEDED(_pContextView->GetTextExt(ec, _pRangeComposition, &rc, &isClipped)))
     {
 		_pTfTextLayoutSink->_LayoutChangeNotification(&rc);
-		//_pTextService->_HandlTextLayoutChange(ec, _pContext, _pRangeComposition);
+		_pTextService->_HandlTextLayoutChange(ec, _pContext, _pRangeComposition);
         
     }
 
