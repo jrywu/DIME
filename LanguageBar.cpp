@@ -11,6 +11,7 @@
 #include "LanguageBar.h"
 #include "Globals.h"
 #include "Compartment.h"
+#include "UIPresenter.h"
 
 //+---------------------------------------------------------------------------
 //
@@ -1050,10 +1051,13 @@ void CTSFTTS::OnKeyboardClosed()
 	// switching to English (native) mode delete the phrase candidate window before exting.
 	if(_IsComposing()) 
 		_EndComposition(_pContext);
-	_DeleteCandidateList(FALSE, NULL);
+	
+	if(_candidateMode != CANDIDATE_NONE)
+		_DeleteCandidateList(FALSE, NULL);
+
 	CStringRange notifyText;
 	if(CConfig::GetShowNotifyDesktop())
-		ShowNotifyText(&notifyText.Set(L"英文", 2));
+		 _pUIPresenter->ShowNotifyText(&notifyText.Set(L"英文", 2));
 }
 
 void CTSFTTS::OnKeyboardOpen()
@@ -1063,7 +1067,7 @@ void CTSFTTS::OnKeyboardOpen()
 	CConfig::LoadConfig();
 	CStringRange notifyText;
 	if(CConfig::GetShowNotifyDesktop())
-		ShowNotifyText(&notifyText.Set(L"中文", 2));	
+		 _pUIPresenter->ShowNotifyText(&notifyText.Set(L"中文", 2));	
 }
 
 void CTSFTTS::OnSwitchedToFullShape()
@@ -1074,7 +1078,7 @@ void CTSFTTS::OnSwitchedToFullShape()
 	_DeleteCandidateList(FALSE, NULL);
 	CStringRange notifyText;
 	if(CConfig::GetShowNotifyDesktop())
-		ShowNotifyText(&notifyText.Set(L"全形", 2));
+		 _pUIPresenter->ShowNotifyText(&notifyText.Set(L"全形", 2));
 }
 
 void CTSFTTS::OnSwitchedToHalfShape()
@@ -1085,5 +1089,5 @@ void CTSFTTS::OnSwitchedToHalfShape()
 	_DeleteCandidateList(FALSE, NULL);
 	CStringRange notifyText;
 	if(CConfig::GetShowNotifyDesktop())
-		ShowNotifyText(&notifyText.Set(L"半形", 2));
+		 _pUIPresenter->ShowNotifyText(&notifyText.Set(L"半形", 2));
 }

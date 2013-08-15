@@ -300,7 +300,6 @@ VOID CTSFTTS::_DeleteCandidateList(BOOL isForce, _In_opt_ ITfContext *pContext)
 
     if (_pUIPresenter)
     {
-		//_pUIPresenter->_ClearCandidateList();
 		_pUIPresenter->_EndCandidateList();
     }
 	_candidateMode = CANDIDATE_NONE;

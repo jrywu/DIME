@@ -50,15 +50,9 @@ HRESULT CTSFTTS::_HandlTextLayoutChange(TfEditCookie ec, _In_ ITfContext *pConte
 	debugPrint(L"CTSFTTS::_HandlTextLayoutChange()");
 	ec; pRangeComposition; pContext;
 
-	//POINT newCandLocation;
-	//_pUIPresenter->GetCandLocation(&newCandLocation);
-
 	POINT curPos;
 	GetCaretPos(&curPos);
-	
-	//debugPrint(L"CTSFTTS::_HandlTextLayouyChange(), candMode = %d, _phraseCandShowing = %d" , _candidateMode, _phraseCandShowing);
-	//debugPrint(L"CTSFTTS::_HandlTextLayouyChange(), newCandidate.x = %d, newCandidate.y = %d" , curPos.x, curPos.y);
-	
+		
 	if( _candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION || _candidateMode == CANDIDATE_PHRASE)
 	{
 		
@@ -74,7 +68,8 @@ HRESULT CTSFTTS::_HandlTextLayoutChange(TfEditCookie ec, _In_ ITfContext *pConte
 		else if( (_phraseCandLocation.x != curPos.x) || (_phraseCandLocation.y != curPos.y))
 		{  //phrase cand moved delete the cand.
 			debugPrint(L"CTSFTTS::_HandlTextLayouyChange() cursor moved. end composition and kill the cand.");
-			//_EndComposition(pContext); //leave it alone
+			//_EndComposition(pContext); 
+			_HandleCancel(ec, pContext);
 			
 		}
 

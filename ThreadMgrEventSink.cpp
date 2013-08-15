@@ -3,7 +3,7 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-
+//#define DEBUG_PRINT
 
 #include "Private.h"
 #include "Globals.h"
@@ -58,15 +58,16 @@ STDAPI CTSFTTS::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMg
 
 	if(pDocMgrFocus)
 	{
-		ITfContext* pITfContext(NULL);
+		ITfContext* pContext(NULL);
 		bool isTransitory = false;
 		bool isMultiRegion = false;
 		bool isMultiSelection = false;
-		if (SUCCEEDED(pDocMgrFocus->GetTop(&pITfContext)))
+		if (SUCCEEDED(pDocMgrFocus->GetTop(&pContext)))
 		{
-			//_SaveCompositionContext(pITfContext);
+			//if(_pContext == nullptr)
+				//_SaveCompositionContext(pContext);
 			TF_STATUS tfStatus;
-			if (SUCCEEDED(pITfContext->GetStatus(&tfStatus)))
+			if (SUCCEEDED(pContext->GetStatus(&tfStatus)))
 			{
 				isTransitory = (tfStatus.dwStaticFlags & TS_SS_TRANSITORY) == TS_SS_TRANSITORY;	
 				isMultiRegion = (tfStatus.dwStaticFlags & TF_SS_REGIONS) == TF_SS_REGIONS;	

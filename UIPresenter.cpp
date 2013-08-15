@@ -1105,55 +1105,83 @@ HRESULT CUIPresenter::MakeNotifyWindow(_In_ ITfContext *pContextDocument)
 }
 
 	
-	void CUIPresenter::SetNotifyText(_In_ CStringRange *pNotifyText)
+void CUIPresenter::SetNotifyText(_In_ CStringRange *pNotifyText)
+{
+	if (_pNotifyWnd)
+		_pNotifyWnd->_SetString(pNotifyText);
+}
+void CUIPresenter::ShowNotify(_In_ BOOL showMode, _In_opt_ int timeToHide)
+{
+	if (_pNotifyWnd)
+		_pNotifyWnd->_Show(showMode, timeToHide);
+}
+void CUIPresenter::ClearNotify()
+{
+	if (_pNotifyWnd)
 	{
-		if (_pNotifyWnd)
-			_pNotifyWnd->_SetString(pNotifyText);
+		_pNotifyWnd->_Clear();
+		DisposeNotifyWindow(); //recreate the window so as the ITfContext is always from the latest one.
+		//_pNotifyWnd->_Show(FALSE);
 	}
-	void CUIPresenter::ShowNotify(_In_ BOOL showMode, _In_opt_ int timeToHide)
+}
+void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText)
+{
+
+	ITfThreadMgr* pThreadMgr = nullptr;
+	ITfDocumentMgr* pDocumentMgr = nullptr;
+	ITfContext* pContext = nullptr;
+
+	if (_pNotifyWnd)  ClearNotify();
+
+	pContext = _GetContextDocument();
+	if(pContext == nullptr)
 	{
-		if (_pNotifyWnd)
-			_pNotifyWnd->_Show(showMode, timeToHide);
-	}
-	void CUIPresenter::ClearNotify()
-	{
-		if (_pNotifyWnd)
+
+		pThreadMgr = _pTextService->_GetThreadMgr();
+		if (nullptr != pThreadMgr)
 		{
-			_pNotifyWnd->_Clear();
-			_pNotifyWnd->_Show(FALSE);
-		}
-	}
-	void CUIPresenter::ShowNotifyText(_In_ ITfContext *pContextDocument, _In_ CStringRange *pNotifyText)
-	{
-		if(MakeNotifyWindow(pContextDocument)== S_OK)
-		{
-			ClearNotify();
-			_SetNotifyTextColor(CConfig::GetItemColor(), CConfig::GetItemBGColor());
-			SetNotifyText(pNotifyText);
-	
-			
-			HWND parentWndHandle = nullptr;
-			ITfContextView* pView = nullptr;
-	    
-			if(pContextDocument)
+			if (SUCCEEDED(pThreadMgr->GetFocus(&pDocumentMgr)) && pDocumentMgr != nullptr)
 			{
-				if (SUCCEEDED(pContextDocument->GetActiveView(&pView)))
+
+				if (SUCCEEDED(pDocumentMgr->GetTop(&pContext)) && pContext != nullptr)
 				{
-					pView->GetWnd(&parentWndHandle);
+					if(MakeNotifyWindow(pContext)== S_OK)
+					{
+
+						_SetNotifyTextColor(CConfig::GetItemColor(), CConfig::GetItemBGColor());
+						SetNotifyText(pNotifyText);
+
+
+						HWND parentWndHandle = nullptr;
+						ITfContextView* pView = nullptr;
+
+						if(pContext)
+						{
+							if (SUCCEEDED(pContext->GetActiveView(&pView)))
+							{
+								pView->GetWnd(&parentWndHandle);
+							}
+						}
+
+						POINT cursorPoint;
+						GetCaretPos(&cursorPoint);
+						MapWindowPoints(parentWndHandle, NULL, &cursorPoint, 1);
+						ShowNotify(TRUE, 1500);	//hide after 1.5 secconds
+						_pNotifyWnd->_Move(cursorPoint.x, cursorPoint.y);
+
+					}
 				}
 			}
-			
-			POINT cursorPoint;
-			GetCaretPos(&cursorPoint);
-			MapWindowPoints(parentWndHandle, NULL, &cursorPoint, 1);
-			ShowNotify(TRUE, 1500);	//hide after 1.5 secconds
-			_pNotifyWnd->_Move(cursorPoint.x, cursorPoint.y);
-	
 		}
+
+
+
+
 	}
-	
-	
-	
+
+
+}
+
 
 
 

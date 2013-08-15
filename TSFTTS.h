@@ -162,8 +162,6 @@ public:
 	void OnSwitchedToFullShape();
 	void OnSwitchedToHalfShape();
 
-	HRESULT ShowNotifyText(CStringRange *pNotifyText);
-
 private:
     // functions for the composition object.
     HRESULT _HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *pCompositionProcessorEngine, TfEditCookie ec, _In_ ITfContext *pContext);

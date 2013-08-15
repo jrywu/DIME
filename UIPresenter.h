@@ -110,7 +110,7 @@ public:
 	void SetNotifyText(_In_ CStringRange *pNotifyText);
 	void ShowNotify(_In_ BOOL showMode, _In_opt_ int timeToHide = -1);
 	void ClearNotify();
-	void ShowNotifyText(_In_ ITfContext *pContextDocument, _In_ CStringRange *pNotifyText);
+	void ShowNotifyText(_In_ CStringRange *pNotifyText);
 
 	BOOL isUILessMode() {return !_isShowMode;}
 private:

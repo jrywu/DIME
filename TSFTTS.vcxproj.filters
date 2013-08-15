@@ -316,9 +316,6 @@
     <ClCompile Include="CandidateHandler.cpp">
       <Filter>Source Files\Framework\Composition</Filter>
     </ClCompile>
-    <ClCompile Include="TfTextLayoutSink.cpp">
-      <Filter>Source Files\Framework</Filter>
-    </ClCompile>
     <ClCompile Include="BaseStructure.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -330,6 +327,9 @@
     </ClCompile>
     <ClCompile Include="Config.cpp">
       <Filter>Source Files\Configuration</Filter>
+    </ClCompile>
+    <ClCompile Include="TfTextLayoutSink.cpp">
+      <Filter>Source Files\UI</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

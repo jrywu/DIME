@@ -684,38 +684,6 @@ HRESULT CTSFTTS::Show(_In_ HWND hwndParent)
 
 
 
-HRESULT CTSFTTS::ShowNotifyText(CStringRange *pNotifyText)
-{
-	
-	HRESULT hr = S_OK;
-
-	ITfThreadMgr* pThreadMgr = nullptr;
-    ITfDocumentMgr* pDocumentMgr = nullptr;
-    ITfContext* pContext = nullptr;
-	
-	pThreadMgr = _GetThreadMgr();
-    if (nullptr == pThreadMgr)
-    {
-        goto Exit;
-    }
-
-    hr = pThreadMgr->GetFocus(&pDocumentMgr);
-    if (FAILED(hr) || (pDocumentMgr == nullptr))
-    {
-        goto Exit;
-    }
-
-	hr = pDocumentMgr->GetTop(&pContext);
-	if (FAILED(hr))
-	{
-	   pDocumentMgr->Release();
-	   goto Exit;
-	}
-
-    _pUIPresenter->ShowNotifyText(pContext, pNotifyText);
-Exit:
-	return hr;
-}
 
 //+---------------------------------------------------------------------------
 //
