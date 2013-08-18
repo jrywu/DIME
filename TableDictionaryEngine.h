@@ -30,7 +30,9 @@ public:
 	VOID CollectWordFromConvertedString(_In_ CStringRange *pString, _Inout_ CTSFTTSArray<CCandidateListItem> *pItemList);
     VOID CollectWordFromConvertedStringForWildcard(_In_ CStringRange *pString, _Inout_ CTSFTTSArray<CCandidateListItem> *pItemList);
 	VOID ParseConfig();
+	VOID SetSearchSection(SEARCH_SECTION searchSection) { _searchSection =searchSection;}
 private:
 	CTSFTTS *_pTextService;
+	SEARCH_SECTION _searchSection;
 };
 #endif

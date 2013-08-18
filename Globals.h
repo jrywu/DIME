@@ -98,10 +98,14 @@ inline BOOL IsTooSimilar(COLORREF cr1, COLORREF cr2)
     return DeltaR + DeltaG + DeltaB < 80;
 }
 
+
+
 //---------------------------------------------------------------------
 // extern
 //---------------------------------------------------------------------
 extern HINSTANCE dllInstanceHandle;
+
+extern IME_MODE imeMode;
 
 extern map <WCHAR, WCHAR> radicalMap;
 
@@ -126,8 +130,11 @@ extern HFONT defaultlFontHandle;  // Global font object we use everywhere
 
 
 extern const CLSID TSFTTSCLSID;
-
-extern const GUID TSFTTSGuidProfile;
+extern const CLSID TSFARRAYCLSID;
+extern const CLSID TSFPHONETICCLSID;
+extern const GUID TSFDayiGuidProfile;
+extern const GUID TSFArrayGuidProfile;
+extern const GUID TSFPhoneticGuidProfile;
 
 extern const GUID TSFTTSGuidImeModePreserveKey;
 extern const GUID TSFTTSGuidDoubleSingleBytePreserveKey;

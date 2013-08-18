@@ -128,7 +128,7 @@ BOOL CTSFTTS::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pC
 	//
     // Address characters direct input mode  '[]-\
     //
-	if (isOpen && _candidateMode == CANDIDATE_NONE && pCompositionProcessorEngine->IsAddressChar(wch))
+	if (isOpen && _candidateMode == CANDIDATE_NONE && pCompositionProcessorEngine->IsDayiAddressChar(wch))
 	{
 		if (pKeyState)
 		{

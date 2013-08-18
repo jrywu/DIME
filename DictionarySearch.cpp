@@ -21,6 +21,7 @@ CDictionarySearch::CDictionarySearch(LCID locale, _In_ CFile *pFile, _In_ CStrin
 	_pFile = pFile;
 	_pSearchKeyCode = pSearchKeyCode;
 	_charIndex = 0;
+	_searchSection = SEARCH_SECTION_TEXT;
 }
 
 //+---------------------------------------------------------------------------
@@ -157,7 +158,8 @@ TryAgain:
 							if(Global::hasPhraseSection) searchMode = SEARCH_NONE;  // use TTS phrase section in text search, thus set SERACH_NONE here.
 							else searchMode = SEARCH_TEXT;
 						}
-						else searchMode = SEARCH_MAPPING;
+						else if(_searchSection == SEARCH_SECTION_TEXT) searchMode = SEARCH_MAPPING;
+						else searchMode = SEARCH_NONE;
 					}
 					else searchMode = SEARCH_NONE;
 				}
@@ -172,7 +174,11 @@ TryAgain:
 				}
 				else if (CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"[Symbol]", 8)) == CSTR_EQUAL)
 				{
-					searchMode = (!parseConfig && !isTextSearch)?SEARCH_SYMBOL:SEARCH_NONE;
+					searchMode = (!parseConfig && !isTextSearch && _searchSection == SEARCH_SECTION_SYMBOL)?SEARCH_SYMBOL:SEARCH_NONE;
+				}
+				else if (CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"[PhraseFromKeystroke]", 21)) == CSTR_EQUAL)
+				{
+					searchMode = (!parseConfig && !isTextSearch && _searchSection == SEARCH_SECTION_PRHASE_FROM_KEYSTROKE)?SEARCH_PRHASE_FROM_KEYSTROKE:SEARCH_NONE;
 				}
 				else if (parseConfig && CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"[Config]", 8)) == CSTR_EQUAL)
 				{
@@ -241,7 +247,7 @@ TryAgain:
 		{
 			goto ReadValue;
 		}
-		else if(searchMode == SEARCH_MAPPING || searchMode == SEARCH_SYMBOL || searchMode == SEARCH_PHRASE) //compare key with searchcode
+		else if(searchMode == SEARCH_MAPPING || searchMode == SEARCH_SYMBOL || searchMode == SEARCH_PHRASE || searchMode == SEARCH_PRHASE_FROM_KEYSTROKE) //compare key with searchcode
 		{
 			// Compare Dictionary key code and input key code
 			if ((!isWildcardSearch) && (CStringRange::Compare(_locale, &keyword, _pSearchKeyCode) != CSTR_EQUAL))	goto FindNextLine;
@@ -279,7 +285,7 @@ ReadValue:
 			}
 			
 			CTSFTTSArray<CParserStringRange> valueStrings;
-			BOOL isPhraseEntry = (searchMode == SEARCH_PHRASE) || (searchMode == SEARCH_SYMBOL);
+			BOOL isPhraseEntry = (searchMode == SEARCH_PHRASE) || (searchMode == SEARCH_SYMBOL) || (searchMode == SEARCH_PRHASE_FROM_KEYSTROKE);
 			if (!ParseLine(&pwch[indexTrace], bufLenOneLine, &keyword, &valueStrings, isPhraseEntry,
 				(isPhraseEntry)?_pSearchKeyCode:NULL))
 			{

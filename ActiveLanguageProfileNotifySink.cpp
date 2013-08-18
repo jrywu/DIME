@@ -18,7 +18,7 @@ BOOL CTSFTTS::VerifyTSFTTSCLSID(_In_ REFCLSID clsid)
     {
         return TRUE;
     }
-    return FALSE;
+	return FALSE;
 }
 
 //+---------------------------------------------------------------------------
@@ -31,21 +31,27 @@ BOOL CTSFTTS::VerifyTSFTTSCLSID(_In_ REFCLSID clsid)
 STDAPI CTSFTTS::OnActivated(_In_ REFCLSID clsid, _In_ REFGUID guidProfile, _In_ BOOL isActivated)
 {
 	debugPrint(L"CTSFTTS::OnActivated() isActivated = %d", isActivated);
-	guidProfile;
+
 
     if (FALSE == VerifyTSFTTSCLSID(clsid))
     {
         return S_OK;
     }
 
+	if(guidProfile == Global::TSFDayiGuidProfile)
+	{
+		Global::imeMode = IME_MODE_DAYI;
+	}
+	else if(guidProfile == Global::TSFArrayGuidProfile)
+	{
+		Global::imeMode = IME_MODE_ARRAY;
+	}
+
     if (isActivated)
     {
 		if(!_AddTextProcessorEngine())  return S_OK;
 		
-		if(_pUIPresenter == nullptr)
-			_pUIPresenter = new (std::nothrow) CUIPresenter(this, _pCompositionProcessorEngine);
-		if (_pUIPresenter == nullptr) return S_OK;
-    
+		
 		CConfig::LoadConfig();
 
 		ShowAllLanguageBarIcons();

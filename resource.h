@@ -4,9 +4,13 @@
 //
 #define SUBLANG_ENGLISH_US              0x01
 #define LANG_ENGLISH                    0x09
-#define IDI_DAYI                       12
-#define IDS_DEFAULT_FONT                13
+#define IDI_DAYI						11
+#define IDI_ARRAY						12
+#define IDI_PHONETIC					13
 #define IDS_DAYI_DESCRIPTION			14
+#define	IDS_ARRAY_DESCRIPTION			15
+#define	IDS_PHONETIC_DESCRIPTION		16
+
 #define IDIS_TSFTTS                     19
 #define IDS_IME_MODE                    20
 #define IDI_IME_MODE_ON                 21

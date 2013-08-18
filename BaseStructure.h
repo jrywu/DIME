@@ -90,6 +90,28 @@ enum CANDIDATE_MODE
 };
 
 //---------------------------------------------------------------------
+// IME MODE
+//---------------------------------------------------------------------
+enum IME_MODE
+{
+    IME_MODE_DAYI = 0,
+	IME_MODE_ARRAY,
+	IME_MODE_PHONETIC
+};
+
+//---------------------------------------------------------------------
+// SEARCH SECTION
+//---------------------------------------------------------------------
+enum SEARCH_SECTION
+{
+    SEARCH_SECTION_TEXT = 0,
+	SEARCH_SECTION_SYMBOL,
+	SEARCH_SECTION_PHRASE,
+	SEARCH_SECTION_PRHASE_FROM_KEYSTROKE
+};
+
+
+//---------------------------------------------------------------------
 // structure
 //---------------------------------------------------------------------
 struct _KEYSTROKE_STATE

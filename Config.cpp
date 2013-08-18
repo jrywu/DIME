@@ -12,10 +12,10 @@
 #include "Aclapi.h"
 
 //static configuration settings initilization
-BOOL CConfig::_doBeep = FALSE;
+BOOL CConfig::_doBeep = TRUE;
 BOOL CConfig::_autoCompose = FALSE;
 BOOL CConfig::_threeCodeMode = FALSE;
-BOOL CConfig::_arrowKeySWPages = FALSE;
+BOOL CConfig::_arrowKeySWPages = TRUE;
 BOOL CConfig::_spaceAsPageDown = FALSE;
 UINT CConfig::_fontSize = 14;
 UINT CConfig::_fontWeight = FW_NORMAL;
@@ -159,8 +159,16 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		CheckDlgButton(hDlg, IDC_CHECKBOX_SPACEASPAGEDOWN, (_spaceAsPageDown)?BST_CHECKED:BST_UNCHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_ARROWKEYSWPAGES, (_arrowKeySWPages)?BST_CHECKED:BST_UNCHECKED);
 		// hide autocompose and space as pagedown option in DAYI.
-		ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_SPACEASPAGEDOWN), SW_HIDE);
-		ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_AUTOCOMPOSE), SW_HIDE);
+			
+		if(Global::imeMode==IME_MODE_DAYI)
+		{
+			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_AUTOCOMPOSE), SW_HIDE);
+			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_SPACEASPAGEDOWN), SW_HIDE);
+		}
+		if(Global::imeMode!=IME_MODE_DAYI)
+		{
+			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_THREECODEMODE), SW_HIDE);
+		}
 
 		ret = TRUE;
 		break;
@@ -385,7 +393,13 @@ VOID CConfig::WriteConfig()
 	}
 	else
 	{
-		StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\config.ini", wzsTSFTTSProfile);
+		if(Global::imeMode == IME_MODE_DAYI)
+			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\DayiConfig.ini", wzsTSFTTSProfile);
+		else if(Global::imeMode == IME_MODE_ARRAY)
+			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\ArrayConfig.ini", wzsTSFTTSProfile);
+		else
+			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\config.ini", wzsTSFTTSProfile);
+
 		FILE *fp;
 		_wfopen_s(&fp, pwszINIFileName, L"w, ccs=UTF-16LE"); // overwrite the file
 	if(fp)
@@ -445,7 +459,14 @@ VOID CConfig::LoadConfig()
 	StringCchPrintf(wzsTSFTTSProfile, MAX_PATH, L"%s\\TSFTTS", wszAppData);
 	if(PathFileExists(wzsTSFTTSProfile))
 	{ 
-		StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\config.ini", wzsTSFTTSProfile);
+		
+		if(Global::imeMode == IME_MODE_DAYI)
+			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\DayiConfig.ini", wzsTSFTTSProfile);
+		else if(Global::imeMode == IME_MODE_ARRAY)
+			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\ArrayConfig.ini", wzsTSFTTSProfile);
+		else
+			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\config.ini", wzsTSFTTSProfile);
+
 		if(PathFileExists(pwszINIFileName))
 		{
 			struct _stat initTimeStamp;

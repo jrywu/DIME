@@ -56,12 +56,55 @@ BOOL RegisterProfiles()
     }
     hr = pITfInputProcessorProfileMgr->RegisterProfile(Global::TSFTTSCLSID,
         TEXTSERVICE_LANGID,
-        Global::TSFTTSGuidProfile,
+        Global::TSFDayiGuidProfile,
         serviceDescripion,
         static_cast<ULONG>(lenOfDesc),
         achIconFile,
         cchA,
         (UINT)TEXTSERVICE_DAYI_ICON_INDEX, NULL, 0, TRUE, 0);
+
+    if (FAILED(hr))
+    {
+        goto Exit;
+    }
+	*serviceDescripion=L'\0';
+	//Dayi profile registration
+	LoadString(Global::dllInstanceHandle, IDS_DAYI_DESCRIPTION, serviceDescripion, 50);
+    hr = StringCchLength(serviceDescripion, STRSAFE_MAX_CCH, &lenOfDesc);
+    if (hr != S_OK)
+    {
+        goto Exit;
+    }
+    hr = pITfInputProcessorProfileMgr->RegisterProfile(Global::TSFTTSCLSID,
+        TEXTSERVICE_LANGID,
+        Global::TSFDayiGuidProfile,
+        serviceDescripion,
+        static_cast<ULONG>(lenOfDesc),
+        achIconFile,
+        cchA,
+        (UINT)TEXTSERVICE_DAYI_ICON_INDEX, NULL, 0, TRUE, 0);
+
+    if (FAILED(hr))
+    {
+        goto Exit;
+    }
+
+	//Array profile registration
+	*serviceDescripion=L'\0';
+	LoadString(Global::dllInstanceHandle, IDS_ARRAY_DESCRIPTION, serviceDescripion, 50);
+    hr = StringCchLength(serviceDescripion, STRSAFE_MAX_CCH, &lenOfDesc);
+    if (hr != S_OK)
+    {
+        goto Exit;
+    }
+	hr = pITfInputProcessorProfileMgr->RegisterProfile(Global::TSFTTSCLSID,
+        TEXTSERVICE_LANGID,
+		Global::TSFArrayGuidProfile,
+        serviceDescripion,
+        static_cast<ULONG>(lenOfDesc),
+        achIconFile,
+        cchA,
+        (UINT)TEXTSERVICE_ARRAY_ICON_INDEX, NULL, 0, TRUE, 0);
 
     if (FAILED(hr))
     {
@@ -94,13 +137,18 @@ void UnregisterProfiles()
     {
         goto Exit;
     }
-
-    hr = pITfInputProcessorProfileMgr->UnregisterProfile(Global::TSFTTSCLSID, TEXTSERVICE_LANGID, Global::TSFTTSGuidProfile, 0);
+	//Dayi profile 
+    hr = pITfInputProcessorProfileMgr->UnregisterProfile(Global::TSFTTSCLSID, TEXTSERVICE_LANGID, Global::TSFDayiGuidProfile, 0);
     if (FAILED(hr))
     {
         goto Exit;
     }
-
+	//Array profile 
+    hr = pITfInputProcessorProfileMgr->UnregisterProfile(Global::TSFTTSCLSID, TEXTSERVICE_LANGID, Global::TSFArrayGuidProfile, 0);
+    if (FAILED(hr))
+    {
+        goto Exit;
+    }
 Exit:
     if (pITfInputProcessorProfileMgr)
     {
@@ -132,6 +180,7 @@ BOOL RegisterCategories()
         hr = pCategoryMgr->RegisterCategory(Global::TSFTTSCLSID, guid, Global::TSFTTSCLSID);
     }
 
+
     pCategoryMgr->Release();
 
     return (hr == S_OK);
@@ -158,6 +207,7 @@ void UnregisterCategories()
     {
         pCategoryMgr->UnregisterCategory(Global::TSFTTSCLSID, guid, Global::TSFTTSCLSID);
     }
+
   
     pCategoryMgr->Release();
 
@@ -223,7 +273,7 @@ BOOL RegisterServer()
 
     memcpy(achIMEKey, RegInfo_Prefix_CLSID, sizeof(RegInfo_Prefix_CLSID) - sizeof(WCHAR));
 	WCHAR serviceDescripion[50]={'\0'};
-	LoadString(Global::dllInstanceHandle, IDS_DAYI_DESCRIPTION, serviceDescripion, 50);
+	LoadString(Global::dllInstanceHandle, IDIS_TSFTTS, serviceDescripion, 50);
 
     if (RegCreateKeyEx(HKEY_CLASSES_ROOT, achIMEKey, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_WRITE, NULL, &regKeyHandle, &copiedStringLen) == ERROR_SUCCESS)
     {
@@ -248,7 +298,7 @@ BOOL RegisterServer()
             ret = TRUE;
         }
     }
-
+	
 Exit:
     if (regSubkeyHandle)
     {
@@ -273,7 +323,7 @@ Exit:
 void UnregisterServer()
 {
     WCHAR achIMEKey[ARRAYSIZE(RegInfo_Prefix_CLSID) + CLSID_STRLEN] = {'\0'};
-
+	//Dayi
     if (!CLSIDToString(Global::TSFTTSCLSID, achIMEKey + ARRAYSIZE(RegInfo_Prefix_CLSID) - 1))
     {
         return;
@@ -282,4 +332,5 @@ void UnregisterServer()
     memcpy(achIMEKey, RegInfo_Prefix_CLSID, sizeof(RegInfo_Prefix_CLSID) - sizeof(WCHAR));
 
     RecurseDeleteKey(HKEY_CLASSES_ROOT, achIMEKey);
+
 }

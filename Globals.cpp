@@ -21,6 +21,7 @@ map <WCHAR, WCHAR> radicalMap;
 
 BOOL isWindows8 = FALSE;
 
+IME_MODE imeMode = IME_MODE_DAYI;
 
 BOOL hasPhraseSection = FALSE;
 BOOL hasCINPhraseSection = FALSE;
@@ -30,19 +31,44 @@ HFONT defaultlFontHandle;				// Global font object we use everywhere
 
 
 //---------------------------------------------------------------------
-// TSFTTS CLSID
+// TSFDAYI CLSID
 //---------------------------------------------------------------------
 // {1DE68A87-FF3B-46A0-8F80-46730B2491B1}
 extern const CLSID TSFTTSCLSID = 
 { 0x1de68a87, 0xff3b, 0x46a0, { 0x8f, 0x80, 0x46, 0x73, 0xb, 0x24, 0x91, 0xb1 } };
+//---------------------------------------------------------------------
+// TSFARRAY CLSID
+//---------------------------------------------------------------------
+// {FD2D8F35-AF70-46DE-A08B-B76BDE8FED0F}
+extern const CLSID TSFARRAYCLSID = 
+{ 0xfd2d8f35, 0xaf70, 0x46de, { 0xa0, 0x8b, 0xb7, 0x6b, 0xde, 0x8f, 0xed, 0xf } };
+//---------------------------------------------------------------------
+// TSFPHONETIC CLSID
+//---------------------------------------------------------------------
+// {9E6AC57A-BA61-4CD1-B582-0B4E7DA13C82}
+extern const CLSID TSFPHONETICCLSID = 
+{ 0x9e6ac57a, 0xba61, 0x4cd1, { 0xb5, 0x82, 0xb, 0x4e, 0x7d, 0xa1, 0x3c, 0x82 } };
+
 
 
 //---------------------------------------------------------------------
-// Profile GUID
+// TSFDayiProfile GUID
 //---------------------------------------------------------------------
 // {36851834-92AD-4397-9F50-800384D5C24C}
-extern const GUID TSFTTSGuidProfile = 
+extern const GUID TSFDayiGuidProfile = 
 { 0x36851834, 0x92ad, 0x4397, { 0x9f, 0x50, 0x80, 0x3, 0x84, 0xd5, 0xc2, 0x4c } };
+//---------------------------------------------------------------------
+// TSFArrayProfile GUID
+//---------------------------------------------------------------------
+// {5DFC1743-638C-4F61-9E76-FCFA9707F450}
+extern const GUID TSFArrayGuidProfile = 
+{ 0x5dfc1743, 0x638c, 0x4f61, { 0x9e, 0x76, 0xfc, 0xfa, 0x97, 0x7, 0xf4, 0x50 } };
+//---------------------------------------------------------------------
+// TSFPhoneticProfile GUID
+//---------------------------------------------------------------------
+// {26892981-14E3-447B-AF2C-9067CD4A4A8A}
+extern const GUID TSFPhoneticGuidProfile = 
+{ 0x26892981, 0x14e3, 0x447b, { 0xaf, 0x2c, 0x90, 0x67, 0xcd, 0x4a, 0x4a, 0x8a } };
 
 
 //---------------------------------------------------------------------

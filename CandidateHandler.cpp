@@ -55,7 +55,14 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 	if (!_IsComposing())
 		_StartComposition(pContext);
 
-	candidateLen = _pUIPresenter->_GetSelectedCandidateString(&pCandidateString);
+	if(Global::imeMode == IME_MODE_ARRAY)
+	{
+		candidateLen = _pCompositionProcessorEngine->CheckArraySpeicalCode(&pCandidateString);
+	}
+	if(candidateLen == 0)
+	{
+		candidateLen = _pUIPresenter->_GetSelectedCandidateString(&pCandidateString);
+	}
 	if (candidateLen == 0)
     {
 		if(_candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION || _candidateMode == CANDIDATE_PHRASE)
@@ -123,8 +130,7 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 		}
 		else
 		{   //_endcandidatelist only if the phrase lookup return 0 results
-			if(_pUIPresenter)
-				_pUIPresenter->_EndCandidateList();
+			_DeleteCandidateList(FALSE, pContext);
 		}
 
 

@@ -33,12 +33,14 @@ public:
 	BOOL FindConvertedString(CDictionaryResult **ppdret);
     BOOL FindConvertedStringForWildcard(CDictionaryResult **ppdret);
 	BOOL ParseConfig(); 
+	VOID SetSearchSection(SEARCH_SECTION searchSection) { _searchSection =searchSection;}
 
     CStringRange* _pSearchKeyCode;
 
     DWORD_PTR _charIndex;      // in character. Always point start of line in dictionary file.
 
 private:
+	SEARCH_SECTION _searchSection;
     BOOL FindWorker(BOOL isTextSearch, _Out_ CDictionaryResult **ppdret, BOOL isWildcardSearch, _In_opt_ BOOL parseConfig = FALSE);
 
     DWORD_PTR GetBufferInWCharLength()
@@ -90,7 +92,8 @@ enum SEARCH_MODE
 	SEARCH_RADICAL,
 	SEARCH_CONFIG,
 	SEARCH_CONTROLKEY,
-	SEARCH_SYMBOL
+	SEARCH_SYMBOL, 
+	SEARCH_PRHASE_FROM_KEYSTROKE
 };
 enum CONTROLKEY_TYPE
 {

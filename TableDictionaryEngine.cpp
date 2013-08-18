@@ -13,6 +13,7 @@
 CTableDictionaryEngine::CTableDictionaryEngine(LCID locale, _In_ CFile *pDictionaryFile, _In_ WCHAR keywordDelimiter)
 	:CBaseDictionaryEngine(locale, pDictionaryFile, keywordDelimiter)
 {
+	_searchSection = SEARCH_SECTION_TEXT;
 }
 
 //+---------------------------------------------------------------------------
@@ -25,6 +26,7 @@ VOID CTableDictionaryEngine::CollectWord(_In_ CStringRange *pKeyCode, _Inout_ CT
 {
     CDictionaryResult* pdret = nullptr;
 	CDictionarySearch dshSearch(_locale, _pDictionaryFile, pKeyCode, _keywordDelimiter);
+	dshSearch.SetSearchSection(_searchSection);
 
     while (dshSearch.FindPhrase(&pdret))
     {
@@ -47,6 +49,7 @@ VOID CTableDictionaryEngine::CollectWord(_In_ CStringRange *pKeyCode, _Inout_ CT
 {
     CDictionaryResult* pdret = nullptr;
     CDictionarySearch dshSearch(_locale, _pDictionaryFile, pKeyCode, _keywordDelimiter);
+	dshSearch.SetSearchSection(_searchSection);
 
     while (dshSearch.FindPhrase(&pdret))
     {

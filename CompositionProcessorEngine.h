@@ -44,9 +44,13 @@ public:
     BOOL IsSymbolChar(WCHAR wch);
 	BOOL IsSymbol();
 
-	//Address characters direct input
-	BOOL IsAddressChar(WCHAR wch);
-	WCHAR GetAddressChar(WCHAR wch);
+	//Dayi Address characters direct input
+	BOOL IsDayiAddressChar(WCHAR wch);
+	WCHAR GetDayiAddressChar(WCHAR wch);
+
+	//Array short code and special code
+	BOOL IsArrayShortCode();
+	DWORD_PTR CheckArraySpeicalCode(_Outptr_result_maybenull_ const WCHAR **ppwchSpecialCodeResultString);
 	
     BOOL IsDoubleSingleByte(WCHAR wch);
     BOOL IsWildcard() { return _isWildcard; }
@@ -118,6 +122,15 @@ private:
     CTableDictionaryEngine* _pTableDictionaryEngine;
 	CTableDictionaryEngine* _pTTSTableDictionaryEngine;
 	CTableDictionaryEngine* _pCINTableDictionaryEngine;
+	CTableDictionaryEngine* _pArrayShortCodeTableDictionaryEngine;
+	CTableDictionaryEngine* _pArraySpecialCodeTableDictionaryEngine;
+
+	CFileMapping* _pTTSDictionaryFile;
+	CFileMapping* _pCINDictionaryFile;
+	CFileMapping* _pArrayShortCodeDictionaryFile;
+	CFileMapping* _pArraySpecialCodeDictionaryFile;
+
+
     CStringRange _keystrokeBuffer;
 
     BOOL _hasWildcardIncludedInKeystrokeBuffer;
@@ -158,8 +171,7 @@ private:
     UINT _candidateListPhraseModifier;
     UINT _candidateWndWidth;
 
-    CFileMapping* _pTTSDictionaryFile;
-	CFileMapping* _pCINDictionaryFile;
+    
 
     static const int OUT_OF_FILE_INDEX = -1;
 };

@@ -37,9 +37,13 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CTSFTTS *pTextServ
     _pTableDictionaryEngine = nullptr;
 	_pCINTableDictionaryEngine = nullptr;
 	_pTTSTableDictionaryEngine = nullptr;
+	_pArrayShortCodeTableDictionaryEngine = nullptr;
+	_pArraySpecialCodeTableDictionaryEngine = nullptr;
 
     _pTTSDictionaryFile = nullptr;
 	_pCINDictionaryFile = nullptr;
+	_pArraySpecialCodeDictionaryFile = nullptr;
+	_pArrayShortCodeDictionaryFile = nullptr;
 
    
     _tfClientId = TF_CLIENTID_NULL;
@@ -58,7 +62,7 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CTSFTTS *pTextServ
 
     _candidateListPhraseModifier = 0;
 
-	InitKeyStrokeTable();
+
 
 }
 
@@ -297,7 +301,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFTTSArray<CCandida
 		PWCHAR pwch3code = new (std::nothrow) WCHAR[ 6 ];
 		if (!pwch3code) return;
 
-		if (!isFindWildcard  && (CConfig::GetThreeCodeMode() && _keystrokeBuffer.GetLength() == 3))
+		if (!isFindWildcard  && (Global::imeMode == IME_MODE_DAYI && CConfig::GetThreeCodeMode() && _keystrokeBuffer.GetLength() == 3))
         {
 			StringCchCopyN(pwch, keystrokeBufLen, _keystrokeBuffer.Get(), _keystrokeBuffer.GetLength());
 			StringCchCat(pwch, keystrokeBufLen, L"*");
@@ -403,7 +407,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFTTSArray<CCandida
     {
         _pTableDictionaryEngine->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList);
     }
-	else if (CConfig::GetThreeCodeMode() && _keystrokeBuffer.GetLength() == 3)
+	else if (Global::imeMode == IME_MODE_DAYI && CConfig::GetThreeCodeMode() && _keystrokeBuffer.GetLength() == 3)
 	{
 		
 
@@ -443,10 +447,28 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFTTSArray<CCandida
 		}
 		delete [] pwch;
 	}
-    else 
-    {
-        _pTableDictionaryEngine->CollectWord(&_keystrokeBuffer, pCandidateList);
+    else if(IsSymbol())
+	{
+		_pTableDictionaryEngine->SetSearchSection(SEARCH_SECTION_SYMBOL);
+		_pTableDictionaryEngine->CollectWord(&_keystrokeBuffer, pCandidateList);
     }
+	else if(Global::imeMode== IME_MODE_ARRAY && (_keystrokeBuffer.GetLength()<3)) //array short code mode
+	{
+		if(_pArrayShortCodeTableDictionaryEngine == nullptr)
+		{
+			_pTableDictionaryEngine->SetSearchSection(SEARCH_SECTION_PRHASE_FROM_KEYSTROKE);
+			_pTableDictionaryEngine->CollectWord(&_keystrokeBuffer, pCandidateList);
+		}
+		else
+		{
+			_pArrayShortCodeTableDictionaryEngine->CollectWord(&_keystrokeBuffer, pCandidateList);
+		}
+	}
+	else
+	{
+		_pTableDictionaryEngine->SetSearchSection(SEARCH_SECTION_TEXT);
+        _pTableDictionaryEngine->CollectWord(&_keystrokeBuffer, pCandidateList);
+	}
 
 	_candidateWndWidth = DEFAULT_CAND_ITEM_LENGTH + TRAILING_SPACE;
     for (UINT index = 0; index < pCandidateList->Count();)
@@ -462,11 +484,6 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFTTSArray<CCandida
 		{
 			_candidateWndWidth = (UINT) pLI->_ItemString.GetLength() + TRAILING_SPACE;
 		}
-		/*
-		WCHAR debugStr[256];
-		StringCchPrintf(debugStr, 256, L"cand item - %d : length: %d \n", index, pLI->_ItemString.GetLength());
-		debugPrint(debugStr);
-		*/
         index++;
     }
 }
@@ -538,7 +555,12 @@ void CCompositionProcessorEngine::GetCandidateStringInConverted(CStringRange &se
 //----------------------------------------------------------------------------
 BOOL CCompositionProcessorEngine::IsSymbol()
 {
-	return (_keystrokeBuffer.GetLength()<3 && *_keystrokeBuffer.Get()==L'=');	
+	if(Global::imeMode==IME_MODE_DAYI)
+		return (_keystrokeBuffer.GetLength()<3 && *_keystrokeBuffer.Get()==L'=');	
+	else if(Global::imeMode==IME_MODE_ARRAY)
+		return (_keystrokeBuffer.GetLength()<3 && _toupper(*_keystrokeBuffer.Get())==L'W');	
+	else
+		return FALSE;
 }
 
 //+---------------------------------------------------------------------------
@@ -549,7 +571,7 @@ BOOL CCompositionProcessorEngine::IsSymbol()
 BOOL CCompositionProcessorEngine::IsSymbolChar(WCHAR wch)
 {
 	if(_keystrokeBuffer.Get() == nullptr) return FALSE;
-	if((_keystrokeBuffer.GetLength() == 1) && (*_keystrokeBuffer.Get() == L'=') ) 
+	if((_keystrokeBuffer.GetLength() == 1) && (*_keystrokeBuffer.Get() == L'=') && Global::imeMode==IME_MODE_DAYI) 
 	{
 		for (int i = 0; i < ARRAYSIZE(Global::symbolCharTable); i++)
 		{
@@ -560,16 +582,25 @@ BOOL CCompositionProcessorEngine::IsSymbolChar(WCHAR wch)
 		}
 
 	}
+	if((_keystrokeBuffer.GetLength() == 1) && (_toupper(*_keystrokeBuffer.Get()) == L'W') && Global::imeMode==IME_MODE_ARRAY) 
+	{
+		for (int i = 0; i < 10; i++)
+		{
+			if(wch == ('0' + i))
+				return TRUE;
+		}
+	}
     return FALSE;
 }
 
 //+---------------------------------------------------------------------------
 //
-// IsAddressChar
+// IsDayiAddressChar
 //
 //----------------------------------------------------------------------------
-BOOL CCompositionProcessorEngine::IsAddressChar(WCHAR wch)
+BOOL CCompositionProcessorEngine::IsDayiAddressChar(WCHAR wch)
 {
+	if(Global::imeMode != IME_MODE_DAYI) return FALSE;
 	if(_keystrokeBuffer.Get() == nullptr || (_keystrokeBuffer.Get() && (_keystrokeBuffer.GetLength() == 0))) 
 	{
 		for (int i = 0; i < ARRAYSIZE(Global::addressCharTable); i++)
@@ -586,11 +617,11 @@ BOOL CCompositionProcessorEngine::IsAddressChar(WCHAR wch)
 
 //+---------------------------------------------------------------------------
 //
-// GetAddressChar
+// GetDayiAddressChar
 //
 //----------------------------------------------------------------------------
 
-WCHAR CCompositionProcessorEngine::GetAddressChar(WCHAR wch)
+WCHAR CCompositionProcessorEngine::GetDayiAddressChar(WCHAR wch)
 {
     for (int i = 0; i < ARRAYSIZE(Global::addressCharTable); i++)
     {
@@ -602,7 +633,52 @@ WCHAR CCompositionProcessorEngine::GetAddressChar(WCHAR wch)
 	return 0;
 }
 
+//+---------------------------------------------------------------------------
+//
+// IsArrayShortCode
+//
+//----------------------------------------------------------------------------
+BOOL CCompositionProcessorEngine::IsArrayShortCode()
+{
+	if(Global::imeMode == IME_MODE_ARRAY && _keystrokeBuffer.GetLength() <3) return TRUE;
+	else
+		return FALSE;
+}
 
+//+---------------------------------------------------------------------------
+//
+// checkArraySpeicalCode
+//
+//----------------------------------------------------------------------------
+DWORD_PTR CCompositionProcessorEngine::CheckArraySpeicalCode(_Outptr_result_maybenull_ const WCHAR **ppwchSpecialCodeResultString)
+{
+	*ppwchSpecialCodeResultString = nullptr;
+
+	if(Global::imeMode!= IME_MODE_ARRAY || _keystrokeBuffer.GetLength() !=2 ) return 0;
+	
+	CTSFTTSArray<CCandidateListItem> candidateList;
+
+	if(_pArraySpecialCodeTableDictionaryEngine == nullptr)
+	{
+		_pTableDictionaryEngine->SetSearchSection(SEARCH_SECTION_TEXT);
+		_pTableDictionaryEngine->CollectWord(&_keystrokeBuffer, &candidateList);
+	}
+	else
+	{
+		_pArraySpecialCodeTableDictionaryEngine->CollectWord(&_keystrokeBuffer, &candidateList);
+	}
+
+	if(candidateList.Count() == 1)
+	{
+		*ppwchSpecialCodeResultString = candidateList.GetAt(0)->_ItemString.Get();
+		return  candidateList.GetAt(0)->_ItemString.GetLength();
+	}
+	else
+		return 0;
+		
+
+
+}
 
 //+---------------------------------------------------------------------------
 //
@@ -627,6 +703,7 @@ BOOL CCompositionProcessorEngine::IsDoubleSingleByte(WCHAR wch)
 
 void CCompositionProcessorEngine::SetupKeystroke()
 {
+	InitKeyStrokeTable();
     SetKeystrokeTable(&_KeystrokeComposition);
     return;
 }
@@ -854,6 +931,16 @@ void CCompositionProcessorEngine::SetupConfiguration()
     _isDisableWildcardAtFirst = TRUE;
     _isKeystrokeSort = FALSE;
 
+	if(Global::imeMode == IME_MODE_DAYI)
+	{
+		CConfig::SetThreeCodeMode(TRUE);
+	}
+	else if(Global::imeMode == IME_MODE_ARRAY)
+	{
+		CConfig::SetAutoCompose(TRUE);
+		CConfig::SetSpaceAsPageDown(TRUE);
+	}
+
     SetInitialCandidateListRange();
 
 
@@ -875,26 +962,11 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 	WCHAR wszProgramFiles[MAX_PATH];
 	WCHAR wszAppData[MAX_PATH];
 
-	/*
-	//LPWSTR pwzProgramFiles = wszProgramFiles;
-	WCHAR wszSysWOW64[MAX_PATH];
-	if(GetSystemWow64Directory(wszSysWOW64, MAX_PATH)>0){ //return 0 indicates x86 system, x64 otherwize.
-	//x64 system.  Use ProgramW6432 environment variable to get %SystemDrive%\Program Filess.
-		//GetEnvironmentVariable(L"ProgramW6432", pwzProgramFiles, MAX_PATH);  //W6432 does not exist on VISTA
-		GetEnvironmentVariable(L"ProgramFiles", pwzProgramFiles, MAX_PATH);
-	}else
-	{//x86 system. 
-		SHGetKnownFolderPath(FOLDERID_ProgramFiles, 0, NULL, &pwzProgramFiles);
-	}
-	//CSIDL_APPDATA  personal roadming application data.
-	SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);
-	*/
 	// the environment variable consistenly get "Program Files" directory in either x64 or x86 system.
 	GetEnvironmentVariable(L"ProgramFiles", wszProgramFiles, MAX_PATH); 
-	
-	WCHAR wzsTTSFileName[MAX_PATH] = L"\\Windows NT\\TableTextService\\TableTextServiceDaYi.txt";
-	WCHAR wzsTSFTTSProfile[MAX_PATH] = L"\\TSFTTS";
-	WCHAR wzsCINFileName[MAX_PATH] = L"\\Dayi.cin";
+	//CSIDL_APPDATA  personal roadming application data.
+	SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);
+
 
     WCHAR *pwszFileName = new (std::nothrow) WCHAR[MAX_PATH];
 	WCHAR *pwszCINFileName = new (std::nothrow) WCHAR[MAX_PATH];
@@ -906,8 +978,11 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 	*pwszCINFileName = L'\0';
 
 	//tableTextService (TTS) dictionary file 
-	StringCchCopyN(pwszFileName, MAX_PATH, wszProgramFiles, wcslen(wszProgramFiles) + 1);
-	StringCchCatN(pwszFileName, MAX_PATH, wzsTTSFileName, wcslen(wzsTTSFileName));
+	if(Global::imeMode == IME_MODE_DAYI)
+		StringCchPrintf(pwszFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\Windows NT\\TableTextService\\TableTextServiceDaYi.txt");
+	else if(Global::imeMode == IME_MODE_ARRAY)
+		StringCchPrintf(pwszFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\Windows NT\\TableTextService\\TableTextServiceArray.txt");
+
 
 	//create CFileMapping object
     if (_pTTSDictionaryFile == nullptr)
@@ -928,11 +1003,15 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 	}
 
 	
-	StringCchCopyN(pwszCINFileName, MAX_PATH, wszAppData, wcslen(wszAppData));
-	StringCchCatN(pwszCINFileName, MAX_PATH, wzsTSFTTSProfile, wcslen(wzsTSFTTSProfile));
+	StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\TSFTTS");
+
 	if(PathFileExists(pwszCINFileName))
-	{ //dayi.cin in personal romaing profile
-		StringCchCatN(pwszCINFileName, MAX_PATH, wzsCINFileName, wcslen(wzsCINFileName));
+	{
+		if(Global::imeMode == IME_MODE_DAYI) //dayi.cin in personal romaing profile
+			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\TSFTTS\\Dayi.cin");
+		if(Global::imeMode == IME_MODE_ARRAY) //array.cin in personal romaing profile
+			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\TSFTTS\\Array.cin");
+	
 		if(PathFileExists(pwszCINFileName))  //create cin CFileMapping object
 		{
 			 //create CFileMapping object
@@ -953,11 +1032,43 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 			
 		}
 		
+		
 	}
 	else
 	{
 		//TSFTTS roadming profile is not exist. Create one.
 		CreateDirectory(pwszCINFileName, NULL);	
+	}
+
+	if(Global::imeMode == IME_MODE_ARRAY) //array-special.cin and array-shortcode.cin in personal romaing profile
+	{
+		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\TSFTTS\\array-special.cin");
+		if(!PathFileExists(pwszCINFileName)) //failed back to pre-install array-special.cin in program files.
+			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\TSFTTS\\array-special.cin");
+		if (_pArraySpecialCodeDictionaryFile == nullptr)
+		{
+			_pArraySpecialCodeDictionaryFile = new (std::nothrow) CFileMapping();
+			if ((_pArraySpecialCodeDictionaryFile)->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
+			{
+				_pArraySpecialCodeTableDictionaryEngine = 
+					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pArraySpecialCodeDictionaryFile, L'\t'); //cin files use tab as delimiter
+			}
+		}
+
+		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\TSFTTS\\array-shortcode.cin");
+		if(PathFileExists(pwszCINFileName))
+		{
+			if (_pArrayShortCodeDictionaryFile == nullptr)
+			{
+				_pArrayShortCodeDictionaryFile = new (std::nothrow) CFileMapping();
+				if ((_pArrayShortCodeDictionaryFile)->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
+				{
+					_pArrayShortCodeTableDictionaryEngine = 
+						new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pArrayShortCodeDictionaryFile, L'\t'); //cin files use tab as delimiter
+				}
+			}
+		}
+
 	}
 	
   
@@ -1050,12 +1161,15 @@ CCompositionProcessorEngine::XPreservedKey::~XPreservedKey()
 
 void CCompositionProcessorEngine::InitKeyStrokeTable()
 {
-	for (int i = 0; i < 10; i++)
-    {
-        _keystrokeTable[i].VirtualKey = '0' + i;
-        _keystrokeTable[i].Modifiers = 0;
-        _keystrokeTable[i].Function = FUNCTION_INPUT;
-    }
+	if(Global::imeMode != IME_MODE_ARRAY)
+	{
+		for (int i = 0; i < 10; i++)
+		{
+			_keystrokeTable[i].VirtualKey = '0' + i;
+			_keystrokeTable[i].Modifiers = 0;
+			_keystrokeTable[i].Function = FUNCTION_INPUT;
+		}
+	}
     for (int i = 0; i < 26; i++)
     {
         _keystrokeTable[i+10].VirtualKey = 'A' + i;
@@ -1074,20 +1188,20 @@ void CCompositionProcessorEngine::InitKeyStrokeTable()
 	*/
 
 	_keystrokeTable[36].VirtualKey = VK_OEM_1 ;  // ';'
-    _keystrokeTable[36].Modifiers = 0;
-    _keystrokeTable[36].Function = FUNCTION_INPUT;
+	_keystrokeTable[36].Modifiers = 0;
+	_keystrokeTable[36].Function = FUNCTION_INPUT;
 	_keystrokeTable[37].VirtualKey = VK_OEM_COMMA ;  //','
-    _keystrokeTable[37].Modifiers = 0;
-    _keystrokeTable[37].Function = FUNCTION_INPUT;
+	_keystrokeTable[37].Modifiers = 0;
+	_keystrokeTable[37].Function = FUNCTION_INPUT;
 	_keystrokeTable[38].VirtualKey = VK_OEM_PERIOD ; //'.'
-    _keystrokeTable[38].Modifiers = 0;
-    _keystrokeTable[38].Function = FUNCTION_INPUT;
+	_keystrokeTable[38].Modifiers = 0;
+	_keystrokeTable[38].Function = FUNCTION_INPUT;
 	_keystrokeTable[39].VirtualKey = VK_OEM_2 ; // '/'
 	_keystrokeTable[39].Modifiers = 0;
-    _keystrokeTable[39].Function = FUNCTION_INPUT;
+	_keystrokeTable[39].Function = FUNCTION_INPUT;
 	_keystrokeTable[40].VirtualKey = VK_OEM_PLUS ; // '/'
 	_keystrokeTable[40].Modifiers = 0;
-    _keystrokeTable[40].Function = FUNCTION_INPUT;
+	_keystrokeTable[40].Function = FUNCTION_INPUT;
 }
 
 

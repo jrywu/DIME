@@ -276,7 +276,7 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
                 HFONT hFontOld = (HFONT)SelectObject(dcHandle, Global::defaultlFontHandle);
                 GetTextMetrics(dcHandle, &_TextMetric);
 
-				_cxTitle = _TextMetric.tmMaxCharWidth* (_wndWidth);
+				_cxTitle = _TextMetric.tmAveCharWidth* (_wndWidth);
 				_cyRow = _TextMetric.tmHeight + _TextMetric.tmHeight/4;
                 SelectObject(dcHandle, hFontOld);
                 ReleaseDC(wndHandle, dcHandle);
@@ -671,7 +671,7 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT iIndex, _In_ RECT 
 	int cyLine = _cyRow;
 	int cyOffset = _cyRow/4 ;
 
-	_cxTitle = _TextMetric.tmMaxCharWidth*_wndWidth   + cxLine *3;
+	_cxTitle = _TextMetric.tmAveCharWidth*_wndWidth   + cxLine *3;
 	_cyRow = _TextMetric.tmHeight + _TextMetric.tmHeight/4;
 	
 	int oldCxTitle = _cxTitle;

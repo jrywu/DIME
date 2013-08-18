@@ -27,7 +27,7 @@
 DWORD CTSFTTS::_dwActivateFlags =0;
 
 BOOL CTSFTTS::_AddTextProcessorEngine()
-{
+ {
 	debugPrint(L"CTSFTTS::_AddTextProcessorEngine()");
     LANGID langid = 0;
     CLSID clsid = GUID_NULL;
@@ -59,6 +59,14 @@ BOOL CTSFTTS::_AddTextProcessorEngine()
         {
             return TRUE;
         }
+		else
+		{
+			delete _pCompositionProcessorEngine;
+			delete _pUIPresenter;
+			_pCompositionProcessorEngine = nullptr;
+			_pUIPresenter = nullptr;
+			Global::radicalMap.clear();
+		}
     }
 
     // Create composition processor engine
@@ -70,6 +78,14 @@ BOOL CTSFTTS::_AddTextProcessorEngine()
     {
         return FALSE;
     }
+	if(_pUIPresenter == nullptr)
+	{
+		_pUIPresenter = new (std::nothrow) CUIPresenter(this, _pCompositionProcessorEngine);
+	}
+	if (_pUIPresenter == nullptr)
+	{
+		return FALSE;    
+	}
 
     // setup composition processor engine
     if (FALSE == SetupLanguageProfile(langid, guidProfile, _GetThreadMgr(), _GetClientId(), _IsSecureMode()))
@@ -562,7 +578,10 @@ HRESULT CTSFTTS::GetDisplayName(_Out_ BSTR *pbstrDisplayName)
 
 	
 	bstrName = new (std::nothrow) WCHAR[50];
-	LoadString(Global::dllInstanceHandle, IDS_DAYI_DESCRIPTION, bstrName, 50);
+	if(Global::imeMode == IME_MODE_DAYI)
+		LoadString(Global::dllInstanceHandle, IDS_DAYI_DESCRIPTION, bstrName, 50);
+	if(Global::imeMode == IME_MODE_ARRAY)
+		LoadString(Global::dllInstanceHandle, IDS_ARRAY_DESCRIPTION, bstrName, 50);
 
 	if(bstrName == NULL)	return E_OUTOFMEMORY;
 	
@@ -582,8 +601,21 @@ HRESULT CTSFTTS::GetLayout(_Out_ TKBLayoutType *ptkblayoutType, _Out_ WORD *pwPr
     HRESULT hr = E_INVALIDARG;
     if ((ptkblayoutType != nullptr) && (pwPreferredLayoutId != nullptr))
     {
-        *ptkblayoutType = TKBLT_CLASSIC;
-        *pwPreferredLayoutId = TKBL_CLASSIC_TRADITIONAL_CHINESE_DAYI;
+		if(Global::imeMode==IME_MODE_DAYI)
+		{
+			*ptkblayoutType = TKBLT_CLASSIC;
+			*pwPreferredLayoutId = TKBL_CLASSIC_TRADITIONAL_CHINESE_DAYI;
+		}
+		else if(Global::imeMode==IME_MODE_PHONETIC)
+		{
+			*ptkblayoutType = TKBLT_CLASSIC;
+			*pwPreferredLayoutId = TKBL_CLASSIC_TRADITIONAL_CHINESE_PHONETIC;
+		}
+		else
+		{
+			*ptkblayoutType = TKBLT_CLASSIC;
+			*pwPreferredLayoutId = TKBL_UNDEFINED;
+		}
         hr = S_OK;
     }
     return hr;
@@ -605,7 +637,21 @@ HRESULT CTSFTTS::Show(_In_ HWND hwndParent, _In_ LANGID langid, _In_ REFGUID rgu
 {
 	
 	langid;
-	rguidProfile;
+
+	if(rguidProfile == Global::TSFDayiGuidProfile)
+	{
+		Global::imeMode = IME_MODE_DAYI;
+	}
+	else if(rguidProfile == Global::TSFArrayGuidProfile)
+	{
+		Global::imeMode = IME_MODE_ARRAY;
+	}
+
+	if(_IsComposing() && _pContext) _EndComposition(_pContext);
+	_DeleteCandidateList(FALSE, _pContext);
+	
+
+
 
 	// comctl32.dll and comdlg32.dll can't be loaded into immersivemode (app container), thus use late binding here.
 	HINSTANCE dllCtlHandle = NULL;       
@@ -715,7 +761,7 @@ HRESULT CTSFTTS::CreateInstance(REFCLSID rclsid, REFIID riid, _Outptr_result_may
     }
 
     return hr;
-}
+	}
 
 //+---------------------------------------------------------------------------
 //
@@ -838,6 +884,9 @@ HRESULT CTSFTTS::GetComModuleName(REFGUID rclsid, _Out_writes_(cchPath)WCHAR* wc
 
 BOOL CTSFTTS::SetupLanguageProfile(LANGID langid, REFGUID guidLanguageProfile, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, BOOL isSecureMode)
 {
+    _langid = langid;
+	_guidProfile = guidLanguageProfile;
+
 	debugPrint(L"CTSFTTS::SetupLanguageProfile()\n");
 
     BOOL ret = TRUE;
@@ -847,8 +896,12 @@ BOOL CTSFTTS::SetupLanguageProfile(LANGID langid, REFGUID guidLanguageProfile, _
         goto Exit;
     }
 
-    _langid = langid;
-    _guidProfile = guidLanguageProfile;
+
+	if(guidLanguageProfile == Global::TSFDayiGuidProfile)
+		Global::imeMode = IME_MODE_DAYI;
+	else if(guidLanguageProfile == Global::TSFArrayGuidProfile)
+		Global::imeMode = IME_MODE_ARRAY;
+
     
 	InitializeTSFTTSCompartment(pThreadMgr, tfClientId);
     SetupLanguageBar(pThreadMgr, tfClientId, isSecureMode);

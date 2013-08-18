@@ -174,11 +174,12 @@ HRESULT CTSFTTS::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine 
     // Get candidate string from composition processor engine
     //
 	if(CConfig::GetAutoCompose() // auto composing mode: show candidates while composition updated imeediately.
-		||  pCompositionProcessorEngine->IsSymbol())// fetch candidate in symobl mode with composition started with '='
+		||  pCompositionProcessorEngine->IsSymbol()// fetch candidate in symobl mode with composition started with '='(DAYI) or 'W' (Array)
+		||  Global::imeMode== IME_MODE_ARRAY) //
 	{
 		CTSFTTSArray<CCandidateListItem> candidateList;
 	
-		pCompositionProcessorEngine->GetCandidateList(&candidateList, !pCompositionProcessorEngine->IsSymbol(), FALSE);
+		pCompositionProcessorEngine->GetCandidateList(&candidateList, !(pCompositionProcessorEngine->IsSymbol()|| Global::imeMode== IME_MODE_ARRAY ), FALSE);
 		
 
 
@@ -487,7 +488,7 @@ HRESULT CTSFTTS::_HandleCompositionAddressChar(TfEditCookie ec, _In_ ITfContext 
     CCompositionProcessorEngine* pCompositionProcessorEngine = nullptr;
     pCompositionProcessorEngine = _pCompositionProcessorEngine;
 
-	WCHAR addressChar = pCompositionProcessorEngine->GetAddressChar(wch);
+	WCHAR addressChar = pCompositionProcessorEngine->GetDayiAddressChar(wch);
 
     CStringRange addressCharString;
     addressCharString.Set(&addressChar, 1);
