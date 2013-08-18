@@ -14,7 +14,9 @@
 //static configuration settings initilization
 BOOL CConfig::_doBeep = TRUE;
 BOOL CConfig::_autoCompose = FALSE;
-BOOL CConfig::_threeCodeMode = FALSE;
+BOOL CConfig::_threeCodeMode = TRUE;
+BOOL CConfig::_arrayForceSP = FALSE;
+BOOL CConfig::_arrayNotifySP = TRUE;
 BOOL CConfig::_arrowKeySWPages = TRUE;
 BOOL CConfig::_spaceAsPageDown = FALSE;
 UINT CConfig::_fontSize = 14;
@@ -149,6 +151,8 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		CheckDlgButton(hDlg, IDC_CHECKBOX_AUTOCOMPOSE, (_autoCompose)?BST_CHECKED:BST_UNCHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_DOBEEP, (_doBeep)?BST_CHECKED:BST_UNCHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_THREECODEMODE,(_threeCodeMode)?BST_CHECKED:BST_UNCHECKED);
+		CheckDlgButton(hDlg, IDC_CHECKBOX_ARRAY_FORCESP,(_arrayForceSP)?BST_CHECKED:BST_UNCHECKED);
+		CheckDlgButton(hDlg, IDC_CHECKBOX_ARRAY_NOTIFYSP,(_arrayNotifySP)?BST_CHECKED:BST_UNCHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_PHRASE, (_makePhrase)?BST_CHECKED:BST_UNCHECKED);	
 		
 		CheckDlgButton(hDlg, IDC_RADIO_KEYBOARD_OPEN, (_activatedKeyboardMode)?BST_CHECKED:BST_UNCHECKED);
@@ -160,7 +164,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		CheckDlgButton(hDlg, IDC_CHECKBOX_ARROWKEYSWPAGES, (_arrowKeySWPages)?BST_CHECKED:BST_UNCHECKED);
 		// hide autocompose and space as pagedown option in DAYI.
 			
-		if(Global::imeMode==IME_MODE_DAYI)
+		if(Global::imeMode==IME_MODE_DAYI || Global::imeMode==IME_MODE_ARRAY)
 		{
 			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_AUTOCOMPOSE), SW_HIDE);
 			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_SPACEASPAGEDOWN), SW_HIDE);
@@ -169,7 +173,11 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		{
 			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_THREECODEMODE), SW_HIDE);
 		}
-
+		if(Global::imeMode!=IME_MODE_ARRAY)
+		{
+			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_FORCESP), SW_HIDE);
+			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_NOTIFYSP), SW_HIDE);
+		}
 		ret = TRUE;
 		break;
 
@@ -238,6 +246,8 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		case IDC_RADIO_KEYBOARD_OPEN:
 		case IDC_RADIO_KEYBOARD_CLOSE:
 		case IDC_CHECKBOX_THREECODEMODE:
+		case IDC_CHECKBOX_ARRAY_FORCESP:
+		case IDC_CHECKBOX_ARRAY_NOTIFYSP:
 		case IDC_CHECKBOX_PHRASE:
 		case IDC_CHECKBOX_ARROWKEYSWPAGES:
 		case IDC_CHECKBOX_SPACEASPAGEDOWN:
@@ -310,7 +320,8 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			_showNotifyDesktop = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_SHOWNOTIFY) == BST_CHECKED;
 			_spaceAsPageDown = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_SPACEASPAGEDOWN) == BST_CHECKED;
 			_arrowKeySWPages = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_ARROWKEYSWPAGES) == BST_CHECKED;
-
+			_arrayForceSP = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_ARRAY_FORCESP) == BST_CHECKED;
+			_arrayNotifySP = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_ARRAY_NOTIFYSP) == BST_CHECKED;
 
 
 			GetDlgItemText(hDlg, IDC_EDIT_MAXWIDTH, num, _countof(num));
@@ -406,7 +417,6 @@ VOID CConfig::WriteConfig()
 	{
 		fwprintf_s(fp, L"[Config]\n");
 		fwprintf_s(fp, L"AutoCompose = %d\n", _autoCompose?1:0);
-		fwprintf_s(fp, L"ThreeCodeMode = %d\n", _threeCodeMode?1:0);
 		fwprintf_s(fp, L"SpaceAsPageDown = %d\n", _spaceAsPageDown?1:0);
 		fwprintf_s(fp, L"ArrowKeySWPages = %d\n", _arrowKeySWPages?1:0);
 		fwprintf_s(fp, L"DoBeep = %d\n", _doBeep?1:0);
@@ -426,6 +436,14 @@ VOID CConfig::WriteConfig()
 		fwprintf_s(fp, L"SelectedBGItemColor = 0x%06X\n", _selectedBGColor);
 		if(Global::isWindows8)
 			fwprintf_s(fp, L"AppPermissionSet = %d\n", _appPermissionSet?1:0);
+		if(Global::imeMode == IME_MODE_DAYI)
+			fwprintf_s(fp, L"ThreeCodeMode = %d\n", _threeCodeMode?1:0);
+		if(Global::imeMode == IME_MODE_ARRAY)
+		{
+			fwprintf_s(fp, L"ArrayForceSP = %d\n", _arrayForceSP?1:0);
+			fwprintf_s(fp, L"ArrayNotifySP = %d\n", _arrayNotifySP?1:0);
+		}
+		
 
 		fclose(fp);
 	}

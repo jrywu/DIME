@@ -51,6 +51,7 @@ public:
 	//Array short code and special code
 	BOOL IsArrayShortCode();
 	DWORD_PTR CheckArraySpeicalCode(_Outptr_result_maybenull_ const WCHAR **ppwchSpecialCodeResultString);
+	BOOL LookupSpeicalCode(_In_ CStringRange *inword, _Outptr_result_maybenull_ const WCHAR **ppwchSpecialCodeResultString);
 	
     BOOL IsDoubleSingleByte(WCHAR wch);
     BOOL IsWildcard() { return _isWildcard; }

@@ -187,7 +187,8 @@ HRESULT CUIPresenter::ToShowCandidateWindow()
 {
 	debugPrint(L"CUIPresenter::ToShowCandidateWindow()");
     _MoveCandidateWindowToTextExt();
-    _pCandidateWnd->_Show(TRUE);
+    if (_pCandidateWnd) _pCandidateWnd->_Show(TRUE);
+	if(_pNotifyWnd) _pNotifyWnd->_Show(TRUE);
 
 
     return S_OK;
@@ -196,10 +197,7 @@ HRESULT CUIPresenter::ToShowCandidateWindow()
 HRESULT CUIPresenter::ToHideCandidateWindow()
 {
 	debugPrint(L"CUIPresenter::ToHideCandidateWindow()");
-	if (_pCandidateWnd)
-	{
-		_pCandidateWnd->_Show(FALSE);
-	}
+	if (_pCandidateWnd)	_pCandidateWnd->_Show(FALSE);	
 
     _updatedFlags = TF_CLUIE_SELECTION | TF_CLUIE_CURRENTPAGE;
     _UpdateUIElement();
@@ -552,6 +550,7 @@ void CUIPresenter::_SetCandidateText(_In_ CTSFTTSArray<CCandidateListItem> *pCan
 
 	_pCandidateWnd->_SetWidth(candWidth);
 
+	Show(_isShowMode);
     if (_isShowMode)
     {
         _pCandidateWnd->_InvalidateRect();
@@ -749,7 +748,9 @@ void CUIPresenter::_MoveCandidateWindowToTextExt()
         return;
     }
 
-    _pCandidateWnd->_Move(rc.left, rc.bottom);
+   _pCandidateWnd->_Move(rc.left, rc.bottom);
+   _candLocation.x = rc.left;
+   _candLocation.y = rc.bottom;
 }
 //+---------------------------------------------------------------------------
 //
@@ -948,7 +949,7 @@ HRESULT CUIPresenter::OnKillThreadFocus()
     {
         Show(FALSE);
     }
-
+	if(_pNotifyWnd) _pNotifyWnd->_Show(FALSE);
     return S_OK;
 }
 
@@ -1124,7 +1125,7 @@ void CUIPresenter::ClearNotify()
 		//_pNotifyWnd->_Show(FALSE);
 	}
 }
-void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText)
+void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ UINT timeToHide)
 {
 
 	ITfThreadMgr* pThreadMgr = nullptr;
@@ -1136,52 +1137,67 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText)
 	pContext = _GetContextDocument();
 	if(pContext == nullptr)
 	{
-
 		pThreadMgr = _pTextService->_GetThreadMgr();
 		if (nullptr != pThreadMgr)
 		{
 			if (SUCCEEDED(pThreadMgr->GetFocus(&pDocumentMgr)) && pDocumentMgr != nullptr)
 			{
-
-				if (SUCCEEDED(pDocumentMgr->GetTop(&pContext)) && pContext != nullptr)
-				{
-					if(MakeNotifyWindow(pContext)== S_OK)
-					{
-
-						_SetNotifyTextColor(CConfig::GetItemColor(), CConfig::GetItemBGColor());
-						SetNotifyText(pNotifyText);
-
-
-						HWND parentWndHandle = nullptr;
-						ITfContextView* pView = nullptr;
-
-						if(pContext)
-						{
-							if (SUCCEEDED(pContext->GetActiveView(&pView)))
-							{
-								pView->GetWnd(&parentWndHandle);
-							}
-						}
-
-						POINT cursorPoint;
-						GetCaretPos(&cursorPoint);
-						MapWindowPoints(parentWndHandle, NULL, &cursorPoint, 1);
-						ShowNotify(TRUE, 1500);	//hide after 1.5 secconds
-						_pNotifyWnd->_Move(cursorPoint.x, cursorPoint.y);
-
-					}
-				}
+				pDocumentMgr->GetTop(&pContext); 
 			}
 		}
+	}
+	if(pContext != nullptr)
+	{
+		if(MakeNotifyWindow(pContext)== S_OK)
+		{
+
+			_SetNotifyTextColor(CConfig::GetItemColor(), CConfig::GetItemBGColor());
+			SetNotifyText(pNotifyText);
 
 
+			HWND parentWndHandle = nullptr;
+			ITfContextView* pView = nullptr;
 
+			if(pContext)
+			{
+				if (SUCCEEDED(pContext->GetActiveView(&pView)))
+				{
+					pView->GetWnd(&parentWndHandle);
+				}
+			}
 
+			POINT cursorPoint;
+			GetCaretPos(&cursorPoint);
+			MapWindowPoints(parentWndHandle, NULL, &cursorPoint, 1);
+			ShowNotify(TRUE, timeToHide);	//hide after 1.5 secconds
+			_pNotifyWnd->_InvalidateRect();
+			if(_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())
+			{
+				_pNotifyWnd->_Move(_candLocation.x - _pNotifyWnd->_GetWidth(), _candLocation.y);
+			}
+			else
+				_pNotifyWnd->_Move(cursorPoint.x, cursorPoint.y + _pNotifyWnd->_GetHeight() );
+
+		}
 	}
 
 
 }
 
+BOOL CUIPresenter::IsNotifyShown()
+{
+	if(_pNotifyWnd && _pNotifyWnd->_IsWindowVisible())
+		return TRUE;
+	else
+		return FALSE;
+}
+BOOL CUIPresenter::IsCandShown()
+{
+	if(_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())
+		return TRUE;
+	else
+		return FALSE;
+}
 
 
 

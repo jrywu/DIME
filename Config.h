@@ -52,6 +52,11 @@ public:
 	static BOOL GetActivatedKeyboardMode() {return _activatedKeyboardMode;}
 	static void SetAppPermissionSet(BOOL appPermissionSet) { _appPermissionSet = appPermissionSet;}
 	static BOOL GetAppPermissionSet() {return _appPermissionSet;}
+	//array special code
+	static void SetArrayNotifySP(BOOL arrayNotifySP) { _arrayNotifySP = arrayNotifySP;}
+	static BOOL GetArrayNotifySP() {return _arrayNotifySP;}
+	static void SetArrayForceSP(BOOL arrayForceSP) { _arrayForceSP = arrayForceSP;}
+	static BOOL GetArrayForceSP() {return _arrayForceSP;}
 
 	static VOID WriteConfig();
 	static VOID LoadConfig();
@@ -85,6 +90,9 @@ private:
 
 	static BOOL _spaceAsPageDown;
 	static BOOL _arrowKeySWPages;
+
+	static BOOL _arrayNotifySP;
+	static BOOL _arrayForceSP;
 
 	static struct _stat _initTimeStamp;
 

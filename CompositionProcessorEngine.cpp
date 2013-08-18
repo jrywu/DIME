@@ -234,7 +234,7 @@ void CCompositionProcessorEngine::GetReadingStrings(_Inout_ CTSFTTSArray<CString
         {
 			if(Global::radicalMap.size() && !IsSymbol()) // if radicalMap is valid (size()>0), then convert the keystroke buffer 
 			{
-				WCHAR* radicalChar = new (std::nothrow) WCHAR[2];
+				WCHAR radicalChar[2];
 				*radicalChar = towupper(*(_keystrokeBuffer.Get() + index));
 				WCHAR* radical = &Global::radicalMap[*radicalChar];
 				if(*radical == L'\0') *radical = *radicalChar;
@@ -558,7 +558,7 @@ BOOL CCompositionProcessorEngine::IsSymbol()
 	if(Global::imeMode==IME_MODE_DAYI)
 		return (_keystrokeBuffer.GetLength()<3 && *_keystrokeBuffer.Get()==L'=');	
 	else if(Global::imeMode==IME_MODE_ARRAY)
-		return (_keystrokeBuffer.GetLength()<3 && _toupper(*_keystrokeBuffer.Get())==L'W');	
+		return (_keystrokeBuffer.GetLength()<3 && towupper(*_keystrokeBuffer.Get())==L'W');	
 	else
 		return FALSE;
 }
@@ -582,7 +582,7 @@ BOOL CCompositionProcessorEngine::IsSymbolChar(WCHAR wch)
 		}
 
 	}
-	if((_keystrokeBuffer.GetLength() == 1) && (_toupper(*_keystrokeBuffer.Get()) == L'W') && Global::imeMode==IME_MODE_ARRAY) 
+	if((_keystrokeBuffer.GetLength() == 1) && (towupper(*_keystrokeBuffer.Get()) == L'W') && Global::imeMode==IME_MODE_ARRAY) 
 	{
 		for (int i = 0; i < 10; i++)
 		{
@@ -676,6 +676,50 @@ DWORD_PTR CCompositionProcessorEngine::CheckArraySpeicalCode(_Outptr_result_mayb
 	else
 		return 0;
 		
+
+
+}
+//+---------------------------------------------------------------------------
+//
+// checkArraySpeicalCode
+//
+//----------------------------------------------------------------------------
+BOOL CCompositionProcessorEngine::LookupSpeicalCode(_In_ CStringRange *inword, _Outptr_result_maybenull_ const WCHAR **ppwchSpecialCodeResultString)
+{
+	*ppwchSpecialCodeResultString = nullptr;
+	CTSFTTSArray<CCandidateListItem> candidateList;
+
+	if(Global::imeMode!= IME_MODE_ARRAY || _pArraySpecialCodeTableDictionaryEngine == nullptr || inword == nullptr ) return FALSE; 
+	else
+	{
+		_pArraySpecialCodeTableDictionaryEngine->CollectWordFromConvertedString(inword, &candidateList);
+		if(candidateList.Count() == 1)
+	{
+		
+		PWCHAR pwch;
+		pwch = new (std::nothrow) WCHAR[candidateList.GetAt(0)->_FindKeyCode.GetLength()+1];
+		*pwch=L'\0';
+		if(candidateList.GetAt(0)->_FindKeyCode.GetLength() && Global::radicalMap.size())
+		{
+			for(int i=0; i <candidateList.GetAt(0)->_FindKeyCode.GetLength(); i++)
+			{ // query keyname from keymap
+				WCHAR radicalChar[2];
+				*radicalChar = towupper(*(candidateList.GetAt(0)->_FindKeyCode.Get() + i));
+				WCHAR* radical = &Global::radicalMap[*radicalChar];
+				if(*radical == L'\0') *radical = *radicalChar;
+				StringCchCatN(pwch, candidateList.GetAt(0)->_FindKeyCode.GetLength()+1, radical,1); 
+			}
+			*ppwchSpecialCodeResultString = pwch;
+			return TRUE;
+		}
+		else
+		{
+			delete pwch;
+			*ppwchSpecialCodeResultString = candidateList.GetAt(0)->_FindKeyCode.Get();
+		}
+	}
+	}
+	return FALSE;
 
 
 }

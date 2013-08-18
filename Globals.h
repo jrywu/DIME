@@ -130,8 +130,8 @@ extern HFONT defaultlFontHandle;  // Global font object we use everywhere
 
 
 extern const CLSID TSFTTSCLSID;
-extern const CLSID TSFARRAYCLSID;
-extern const CLSID TSFPHONETICCLSID;
+
+
 extern const GUID TSFDayiGuidProfile;
 extern const GUID TSFArrayGuidProfile;
 extern const GUID TSFPhoneticGuidProfile;

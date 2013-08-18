@@ -89,7 +89,7 @@ void CTSFTTS::_EndComposition(_In_opt_ ITfContext *pContext)
     CEndCompositionEditSession *pEditSession = new (std::nothrow) CEndCompositionEditSession(this, pContext);
     HRESULT hr = S_OK;
 
-    if (nullptr != pEditSession)
+    if (pEditSession && pContext)
     {
         pContext->RequestEditSession(_tfClientId, pEditSession, TF_ES_ASYNCDONTCARE | TF_ES_READWRITE, &hr);
         pEditSession->Release();

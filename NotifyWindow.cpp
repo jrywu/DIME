@@ -29,7 +29,8 @@ CNotifyWindow::CNotifyWindow(_In_ NOTIFYWNDCALLBACK pfnCallback, _In_ void *pv)
 	_y =0;
 
 	_fontSize = 14;
-  
+	
+	_timeToHide = -1;
 }
 
 //+---------------------------------------------------------------------------
@@ -125,7 +126,7 @@ void CNotifyWindow::_ResizeWindow()
 void CNotifyWindow::_Move(int x, int y)
 {
 	_x = x;
-	_y = y + _cyTitle;
+	_y = y;
     CBaseWindow::_Move(_x, _y);
 	
 }
@@ -135,13 +136,16 @@ void CNotifyWindow::_Move(int x, int y)
 // _Show
 //
 //----------------------------------------------------------------------------
-
+void CNotifyWindow::_Show(BOOL isShowWnd)
+{
+	_Show(isShowWnd, _timeToHide);
+}
 void CNotifyWindow::_Show(BOOL isShowWnd, int timeToHide)
 {
+	_timeToHide = timeToHide;
     if (_pShadowWnd)
-    {
         _pShadowWnd->_Show(isShowWnd);
-    }
+ 
     CBaseWindow::_Show(isShowWnd);
 	if(isShowWnd && timeToHide > 0)
 			_StartTimer(timeToHide);//hide the window after timeToHide
@@ -516,6 +520,14 @@ void CNotifyWindow::_Clear()
 	_notifyText.Set(nullptr,0);
 }
 
+UINT CNotifyWindow::_GetWidth()
+{
+	return _cxTitle;
+}
+UINT CNotifyWindow::_GetHeight()
+{
+	return _cyTitle;
+}
 
 
 void CNotifyWindow::_FireMessageToLightDismiss(_In_ HWND wndHandle, _In_ WINDOWPOS *pWndPos)

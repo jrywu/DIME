@@ -29,7 +29,8 @@ public:
     BOOL _Create(_In_ UINT fontHeight,  _In_opt_ HWND parentWndHandle);
 
     void _Move(int x, int y);
-    void _Show(BOOL isShowWnd, int timeToHide = -1);
+    void _Show(BOOL isShowWnd, int timeToHide);
+	void _Show(BOOL isShowWnd);
 
     VOID _SetTextColor(_In_ COLORREF crColor, _In_ COLORREF crBkColor);
     VOID _SetFillColor(_In_ COLORREF crBkColor);
@@ -44,6 +45,9 @@ public:
     void _AddString(_Inout_ const CStringRange *pNotifyText);
 	void _SetString(_Inout_ const CStringRange *pNotifyText);
     void _Clear();
+
+	UINT _GetWidth();
+	UINT _GetHeight();
     
 private:
     void _HandleMouseMsg(_In_ UINT mouseMsg, _In_ POINT point);
@@ -65,6 +69,8 @@ private:
     COLORREF _crTextColor;
     COLORREF _crBkColor;
     HBRUSH _brshBkColor;
+
+	UINT _timeToHide;
 
     TEXTMETRIC _TextMetric;
     

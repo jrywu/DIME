@@ -35,6 +35,8 @@
 #define IDC_COL_PHRASE                          1107
 #define IDC_COL_SEBG                            1108
 #define IDC_COL_SEFR                            1109
+#define IDC_CHECKBOX_ARRAY_FORCESP				1110
+#define IDC_CHECKBOX_ARRAY_NOTIFYSP				1111
 #define IDC_EDIT_MAXWIDTH                       1112
 #define IDC_COMBO_UNTILCANDLIST                 1113
 #define IDC_CHECKBOX_AUTOCOMPOSE                1114

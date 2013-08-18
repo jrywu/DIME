@@ -50,7 +50,8 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
     }
 	
 	const WCHAR* pCandidateString = nullptr;
-	DWORD_PTR candidateLen = 0;    
+	DWORD_PTR candidateLen = 0;
+	BOOL arrayUsingSPCode =FALSE;
 
 	if (!_IsComposing())
 		_StartComposition(pContext);
@@ -58,6 +59,7 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 	if(Global::imeMode == IME_MODE_ARRAY)
 	{
 		candidateLen = _pCompositionProcessorEngine->CheckArraySpeicalCode(&pCandidateString);
+		if(candidateLen) arrayUsingSPCode = TRUE;
 	}
 	if(candidateLen == 0)
 	{
@@ -91,17 +93,35 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 		StringCchCopyN(pwch, 2, pCandidateString, 1); 	
 	}
 	candidateString.Set(pwch, 1 );
-
-	hr = _AddComposingAndChar(ec, pContext, &commitString);
-	if (FAILED(hr))	return hr;
+	//-----------------do reverse lookup and array spcial code notify
+	BOOL ArraySPFound = FALSE;
+	if(Global::imeMode == IME_MODE_ARRAY && !arrayUsingSPCode && (CConfig::GetArrayForceSP() || CConfig::GetArrayNotifySP()) )
+	{
+		const WCHAR *specialCode = nullptr;
+		CStringRange notifyText;
+		ArraySPFound = _pCompositionProcessorEngine->LookupSpeicalCode(&commitString, &specialCode); 
+		if(specialCode)
+			_pUIPresenter->ShowNotifyText(&notifyText.Set(specialCode,wcslen(specialCode)), -1);
+	}
+	//----------------- commit the selected string
+	if(Global::imeMode == IME_MODE_ARRAY && !arrayUsingSPCode && CConfig::GetArrayForceSP() &&  ArraySPFound  )
+	{
+		_pCompositionProcessorEngine->DoBeep();
+		_HandleCancel(ec,pContext);
+		return hr;
+	}
+	else
+	{
+		hr = _AddComposingAndChar(ec, pContext, &commitString);
+		if (FAILED(hr))	return hr;
+		// Do not send _endcandidatelist here to avoid cand dissapear in win8
+		_TerminateComposition(ec, pContext);
+		_candidateMode = CANDIDATE_NONE;
+		_isCandidateWithWildcard = FALSE;	
+	}
 	
-	// Do not send _endcandidatelist here to avoid cand dissapear in win8
-	_TerminateComposition(ec, pContext);
-	_candidateMode = CANDIDATE_NONE;
-	_isCandidateWithWildcard = FALSE;	
-	
 
-
+	//-----------------do accociated phrase (make phrase)
 	if (CConfig::GetMakePhrase())
 	{
 		_pCompositionProcessorEngine->GetCandidateStringInConverted(candidateString, &candidatePhraseList);

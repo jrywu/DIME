@@ -83,6 +83,7 @@ public:
 	VOID _SetCandidateSelectedTextColor(COLORREF crColor, COLORREF crBkColor);
     VOID _SetCandidateFillColor(COLORREF fiColor);
 	VOID _SetCandidateNotifyColor(COLORREF crColor, COLORREF crBkColor);
+	BOOL IsCandShown();
 
     DWORD_PTR _GetSelectedCandidateString(_Outptr_result_maybenull_ const WCHAR **ppwchCandidateString);
     BOOL _SetCandidateSelectionInPage(int nPos) { return _pCandidateWnd->_SetSelectionInPage(nPos); }
@@ -110,7 +111,8 @@ public:
 	void SetNotifyText(_In_ CStringRange *pNotifyText);
 	void ShowNotify(_In_ BOOL showMode, _In_opt_ int timeToHide = -1);
 	void ClearNotify();
-	void ShowNotifyText(_In_ CStringRange *pNotifyText);
+	void ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ UINT timeToHide = 1500);
+	BOOL IsNotifyShown();
 
 	BOOL isUILessMode() {return !_isShowMode;}
 private:

@@ -315,6 +315,10 @@ ReadValue:
 					CConfig::SetAutoCompose((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ThreeCodeMode", 13)) == CSTR_EQUAL)
 					CConfig::SetThreeCodeMode((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ArrayForceSP", 12)) == CSTR_EQUAL)
+					CConfig::SetArrayForceSP((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ArrayNotifySP", 13)) == CSTR_EQUAL)
+					CConfig::SetArrayNotifySP((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"SpaceAsPageDown", 15)) == CSTR_EQUAL)
 					CConfig::SetSpaceAsPageDown((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ArrowKeySWPages", 15)) == CSTR_EQUAL)
@@ -348,8 +352,7 @@ ReadValue:
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"SelectedItemColor", 18)) == CSTR_EQUAL)
 					CConfig::SetSelectedColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"SelectedBGItemColor", 20)) == CSTR_EQUAL)
-					CConfig::SetSelectedBGColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
-				
+					CConfig::SetSelectedBGColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));	
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"FontFaceName", 12)) == CSTR_EQUAL)
 				{
 					WCHAR *pwszFontFaceName = new (std::nothrow) WCHAR[32];
