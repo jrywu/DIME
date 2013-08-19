@@ -295,6 +295,8 @@ STDAPI CTSFTTS::OnTestKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam
  {
     Global::UpdateModifiers(wParam, lParam);
 
+	_pUIPresenter->ClearNotify(); //clear notiy window
+
     _KEYSTROKE_STATE KeystrokeState;
     WCHAR wch = '\0';
     UINT code = 0;

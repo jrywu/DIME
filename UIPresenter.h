@@ -111,7 +111,7 @@ public:
 	void SetNotifyText(_In_ CStringRange *pNotifyText);
 	void ShowNotify(_In_ BOOL showMode, _In_opt_ int timeToHide = -1);
 	void ClearNotify();
-	void ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ UINT timeToHide = 1500);
+	void ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ int timeToHide = 1500);
 	BOOL IsNotifyShown();
 
 	BOOL isUILessMode() {return !_isShowMode;}

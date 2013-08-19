@@ -1125,7 +1125,7 @@ void CUIPresenter::ClearNotify()
 		//_pNotifyWnd->_Show(FALSE);
 	}
 }
-void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ UINT timeToHide)
+void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ int timeToHide)
 {
 
 	ITfThreadMgr* pThreadMgr = nullptr;

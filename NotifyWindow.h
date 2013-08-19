@@ -70,7 +70,7 @@ private:
     COLORREF _crBkColor;
     HBRUSH _brshBkColor;
 
-	UINT _timeToHide;
+	int _timeToHide;
 
     TEXTMETRIC _TextMetric;
     

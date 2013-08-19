@@ -701,7 +701,7 @@ BOOL CCompositionProcessorEngine::LookupSpeicalCode(_In_ CStringRange *inword, _
 		*pwch=L'\0';
 		if(candidateList.GetAt(0)->_FindKeyCode.GetLength() && Global::radicalMap.size())
 		{
-			for(int i=0; i <candidateList.GetAt(0)->_FindKeyCode.GetLength(); i++)
+			for(UINT i=0; i <candidateList.GetAt(0)->_FindKeyCode.GetLength(); i++)
 			{ // query keyname from keymap
 				WCHAR radicalChar[2];
 				*radicalChar = towupper(*(candidateList.GetAt(0)->_FindKeyCode.Get() + i));
@@ -1005,9 +1005,12 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 	
 	WCHAR wszProgramFiles[MAX_PATH];
 	WCHAR wszAppData[MAX_PATH];
-
-	// the environment variable consistenly get "Program Files" directory in either x64 or x86 system.
-	GetEnvironmentVariable(L"ProgramFiles", wszProgramFiles, MAX_PATH); 
+	WCHAR wszSysWOW64[MAX_PATH];
+	
+	if(GetSystemWow64Directory(wszSysWOW64, MAX_PATH)>0) //return 0 indicates x86 system, x64 otherwize.
+		GetEnvironmentVariable(L"ProgramW6432", wszProgramFiles, MAX_PATH); 
+	else
+		GetEnvironmentVariable(L"ProgramFiles", wszProgramFiles, MAX_PATH); 
 	//CSIDL_APPDATA  personal roadming application data.
 	SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);
 
