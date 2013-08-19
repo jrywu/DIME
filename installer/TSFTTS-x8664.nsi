@@ -178,8 +178,11 @@ Section "MainSection" SEC01
   File "system32.x86\TSFTTS.dll"
   ExecWait '"$SYSDIR\regsvr32.exe" /s $SYSDIR\TSFTTS.dll'
   File "system32.x86\*.dll"
+  CreateDirectory  "$INSTDIR"
+  SetOutPath "$INSTDIR"
+  File "*.cin"
   SetOutPath "$APPDATA\TSFTTS\"
-  CreateDirectory "$APPDATA\TSFTTS"
+  ;CreateDirectory "$APPDATA\TSFTTS"
   File "config.ini"
   
 SectionEnd
@@ -196,7 +199,7 @@ Section -AdditionalIcons
 SectionEnd
 
 Section -Post
-  CreateDirectory "$INSTDIR"
+  SetOutPath  "$INSTDIR"
   WriteUninstaller "$INSTDIR\uninst.exe"
   ${If} ${RunningX64}
   	SetRegView 64
@@ -254,6 +257,7 @@ Section Uninstall
   lbContinueUninstall:
   
   Delete "$INSTDIR\uninst.exe"
+  Delete "$INSTDIR\*.cin"
   RMDir /r "$INSTDIR"
   Delete "$SMPROGRAMS\TSFTTS\Uninstall.lnk"
   ${If} ${RunningX64}
