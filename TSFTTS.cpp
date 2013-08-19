@@ -736,6 +736,7 @@ HRESULT CTSFTTS::Show(_In_ HWND hwndParent, _In_ LANGID langid, _In_ REFGUID rgu
 //----------------------------------------------------------------------------
 HRESULT CTSFTTS::Show(_In_ HWND hwndParent)
 {  
+	hwndParent;
 	//MessageBox(hwndParent, L"Show help call", L"TSFTTS", NULL);
         return S_OK;
 }

@@ -3,7 +3,7 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-
+//#define DEBUG_PRINT
 
 #include "Private.h"
 #include "TSFTTS.h"
@@ -18,6 +18,7 @@
 STDAPI CTSFTTS::OnSetThreadFocus()
 {
 	debugPrint(L"CTSFTTS::OnSetThreadFocus()\n");
+	
     if (_pUIPresenter)
     {
         ITfDocumentMgr* pCandidateListDocumentMgr = nullptr;
