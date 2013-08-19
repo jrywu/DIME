@@ -104,7 +104,7 @@ HRESULT CTSFTTS::_HandleCompositionInput(TfEditCookie ec, _In_ ITfContext *pCont
 		_pUIPresenter->ClearNotify();
 	}
 
-	if (_pUIPresenter && _pUIPresenter->IsCandShown() 
+	if (_pUIPresenter 
 		&& _candidateMode != CANDIDATE_INCREMENTAL &&_candidateMode != CANDIDATE_NONE )
     {
         _HandleCompositionFinalize(ec, pContext, TRUE);

@@ -3,7 +3,7 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-
+//#define DEBUG_PRINT
 
 #include "Private.h"
 #include "TSFTTS.h"
@@ -17,6 +17,7 @@
 
 BOOL CTSFTTS::_InitFunctionProviderSink()
 {
+	debugPrint(L"CTSFTTS::_InitFunctionProviderSink()");
     ITfSourceSingle* pSourceSingle = nullptr;
     BOOL ret = FALSE;
     if (SUCCEEDED(_pThreadMgr->QueryInterface(IID_ITfSourceSingle, (void **)&pSourceSingle)))

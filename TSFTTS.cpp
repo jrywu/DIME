@@ -57,18 +57,23 @@ BOOL CTSFTTS::_AddTextProcessorEngine()
        
         if ((langid == _langid) && IsEqualGUID(guidProfile, _guidProfile))
         {
+			debugPrint(L"CTSFTTS::_AddTextProcessorEngine() _pCompositionProcessorEngine with the coming guidProfile exist, return true.");
             return TRUE;
         }
 		else
 		{
+			debugPrint(L"CTSFTTS::_AddTextProcessorEngine() _pCompositionProcessorEngine with the diff. guidProfile exist, recreate one.");
 			delete _pCompositionProcessorEngine;
 			delete _pUIPresenter;
 			_pCompositionProcessorEngine = nullptr;
 			_pUIPresenter = nullptr;
 			Global::radicalMap.clear();
+			_UninitFunctionProviderSink();  // reset the function provider sink to get updated UI less candidate provider
+			_InitFunctionProviderSink();
+			
 		}
     }
-
+	
     // Create composition processor engine
     if (_pCompositionProcessorEngine == nullptr)
     {
@@ -262,9 +267,9 @@ STDAPI CTSFTTS::QueryInterface(REFIID riid, _Outptr_ void **ppvObj)
     {
         *ppvObj = (ITfFunctionProvider *)this;
     }
-    //else if (IsEqualIID(riid, IID_ITfFunction))
+   // else if (IsEqualIID(riid, IID_ITfFunction))
     //{
-    //    *ppvObj = (ITfFunction *)this;
+        //*ppvObj = (ITfFunction *)this;
     //}
     else if (IsEqualIID(riid, IID_ITfFnGetPreferredTouchKeyboardLayout))
     {
@@ -333,6 +338,7 @@ STDAPI CTSFTTS::ActivateEx(ITfThreadMgr *pThreadMgr, TfClientId tfClientId, DWOR
 
     if (!_InitThreadMgrEventSink())
     {
+		debugPrint(L"CTSFTTS::ActivateEx(); _InitThreadMgrEventSink failed.");
         goto ExitError;
     }
 
@@ -345,31 +351,37 @@ STDAPI CTSFTTS::ActivateEx(ITfThreadMgr *pThreadMgr, TfClientId tfClientId, DWOR
 
     if (!_InitKeyEventSink())
     {
+		debugPrint(L"CTSFTTS::ActivateEx(); _InitKeyEventSink failed.");
         goto ExitError;
     }
 
     if (!_InitActiveLanguageProfileNotifySink())
     {
+		debugPrint(L"CTSFTTS::ActivateEx(); _InitActiveLanguageProfileNotifySink failed.");
         goto ExitError;
     }
 
     if (!_InitThreadFocusSink())
     {
+		debugPrint(L"CTSFTTS::ActivateEx(); _InitThreadFocusSink failed.");
         goto ExitError;
     }
 
     if (!_InitDisplayAttributeGuidAtom())
     {
+		debugPrint(L"CTSFTTS::ActivateEx(); _InitDisplayAttributeGuidAtom failed.");
         goto ExitError;
     }
 
     if (!_InitFunctionProviderSink())
     {
+		debugPrint(L"CTSFTTS::ActivateEx(); _InitFunctionProviderSink failed.");
         goto ExitError;
     }
 
     if (!_AddTextProcessorEngine())
     {
+		debugPrint(L"CTSFTTS::ActivateEx(); _AddTextProcessorEngine failed.");
         goto ExitError;
     }
 
@@ -545,8 +557,9 @@ HRESULT CTSFTTS::GetDescription(__RPC__deref_out_opt BSTR *pbstrDesc)
 //----------------------------------------------------------------------------
 HRESULT CTSFTTS::GetFunction(__RPC__in REFGUID rguid, __RPC__in REFIID riid, __RPC__deref_out_opt IUnknown **ppunk)
 {
+	debugPrint(L"CTSFTTS::GetFunction()");
     HRESULT hr = E_NOINTERFACE;
-
+	
     if ((IsEqualGUID(rguid, GUID_NULL)) 
         && (IsEqualGUID(riid, __uuidof(ITfFnSearchCandidateProvider))))
     {
@@ -556,7 +569,7 @@ HRESULT CTSFTTS::GetFunction(__RPC__in REFGUID rguid, __RPC__in REFIID riid, __R
     {
         hr = QueryInterface(riid, (void **)ppunk);
     }
-
+	
     return hr;
 }
 
@@ -722,9 +735,8 @@ HRESULT CTSFTTS::Show(_In_ HWND hwndParent, _In_ LANGID langid, _In_ REFGUID rgu
 //
 //----------------------------------------------------------------------------
 HRESULT CTSFTTS::Show(_In_ HWND hwndParent)
-{
-        
-	MessageBox(hwndParent, L"Show help call", L"TSFTTS", NULL);
+{  
+	//MessageBox(hwndParent, L"Show help call", L"TSFTTS", NULL);
         return S_OK;
 }
 
@@ -895,12 +907,19 @@ BOOL CTSFTTS::SetupLanguageProfile(LANGID langid, REFGUID guidLanguageProfile, _
         ret = FALSE;
         goto Exit;
     }
-
-
+	
 	if(guidLanguageProfile == Global::TSFDayiGuidProfile)
+	{
+		debugPrint(L"CTSFTTS::SetupLanguageProfile() : DAYI Mode");
 		Global::imeMode = IME_MODE_DAYI;
+	}
 	else if(guidLanguageProfile == Global::TSFArrayGuidProfile)
+	{
+		debugPrint(L"CTSFTTS::SetupLanguageProfile() : Array Mode");
 		Global::imeMode = IME_MODE_ARRAY;
+	}
+
+
 
     
 	InitializeTSFTTSCompartment(pThreadMgr, tfClientId);
@@ -914,6 +933,7 @@ BOOL CTSFTTS::SetupLanguageProfile(LANGID langid, REFGUID guidLanguageProfile, _
 
     
 Exit:
+	debugPrint(L"CTSFTTS::SetupLanguageProfile()finished \n");
     return ret;
 }
 

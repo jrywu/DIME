@@ -30,6 +30,7 @@ BOOL CTSFTTS::VerifyTSFTTSCLSID(_In_ REFCLSID clsid)
 
 STDAPI CTSFTTS::OnActivated(_In_ REFCLSID clsid, _In_ REFGUID guidProfile, _In_ BOOL isActivated)
 {
+	guidProfile;
 	debugPrint(L"CTSFTTS::OnActivated() isActivated = %d", isActivated);
 
 
@@ -38,17 +39,9 @@ STDAPI CTSFTTS::OnActivated(_In_ REFCLSID clsid, _In_ REFGUID guidProfile, _In_ 
         return S_OK;
     }
 
-	if(guidProfile == Global::TSFDayiGuidProfile)
-	{
-		Global::imeMode = IME_MODE_DAYI;
-	}
-	else if(guidProfile == Global::TSFArrayGuidProfile)
-	{
-		Global::imeMode = IME_MODE_ARRAY;
-	}
-
     if (isActivated)
     {
+
 		if(!_AddTextProcessorEngine())  return S_OK;
 		
 		

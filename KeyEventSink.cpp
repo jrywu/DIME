@@ -3,7 +3,7 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-
+//#define DEBUG_PRINT
 
 #include "Private.h"
 #include "Globals.h"
@@ -267,6 +267,8 @@ BOOL CTSFTTS::_IsKeyboardDisabled()
         pDocMgrFocus->Release();
     }
 
+	debugPrint(L" CTSFTTS::_IsKeyboardDisabled(), isDisabled = %d", isDisabled);
+
     return isDisabled;
 }
 
@@ -293,6 +295,7 @@ STDAPI CTSFTTS::OnSetFocus(BOOL fForeground)
 
 STDAPI CTSFTTS::OnTestKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL *pIsEaten)
  {
+	debugPrint(L" CTSFTTS::OnTestKeyDown()");
     Global::UpdateModifiers(wParam, lParam);
 
 	_pUIPresenter->ClearNotify(); //clear notiy window
@@ -324,6 +327,7 @@ STDAPI CTSFTTS::OnTestKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam
 
 STDAPI CTSFTTS::OnKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL *pIsEaten)
 {
+	debugPrint(L" CTSFTTS::OnKeyDown()");
     Global::UpdateModifiers(wParam, lParam);
 
     _KEYSTROKE_STATE KeystrokeState;
@@ -373,6 +377,7 @@ STDAPI CTSFTTS::OnKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BO
 
 STDAPI CTSFTTS::OnTestKeyUp(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL *pIsEaten)
 {
+	debugPrint(L" CTSFTTS::OnTestKeyUp()");
     if (pIsEaten == nullptr)
     {
         return E_INVALIDARG;
@@ -398,6 +403,7 @@ STDAPI CTSFTTS::OnTestKeyUp(ITfContext *pContext, WPARAM wParam, LPARAM lParam, 
 
 STDAPI CTSFTTS::OnKeyUp(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL *pIsEaten)
 {
+	debugPrint(L" CTSFTTS::OnKeyUp()");
     Global::UpdateModifiers(wParam, lParam);
 
     WCHAR wch = '\0';
@@ -418,6 +424,7 @@ STDAPI CTSFTTS::OnKeyUp(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL
 STDAPI CTSFTTS::OnPreservedKey(ITfContext *pContext, REFGUID rguid, BOOL *pIsEaten)
 {
 	pContext;
+	debugPrint(L" CTSFTTS::OnPreservedKey()");
 	
     CCompositionProcessorEngine *pCompositionProcessorEngine;
     pCompositionProcessorEngine = _pCompositionProcessorEngine;
@@ -441,11 +448,13 @@ STDAPI CTSFTTS::OnPreservedKey(ITfContext *pContext, REFGUID rguid, BOOL *pIsEat
 
 BOOL CTSFTTS::_InitKeyEventSink()
 {
+	debugPrint(L"CTSFTTS::_InitKeyEventSink()");
     ITfKeystrokeMgr* pKeystrokeMgr = nullptr;
     HRESULT hr = S_OK;
 
     if (FAILED(_pThreadMgr->QueryInterface(IID_ITfKeystrokeMgr, (void **)&pKeystrokeMgr)))
     {
+		debugPrint(L"CTSFTTS::_InitKeyEventSink() failed");
         return FALSE;
     }
 
@@ -465,10 +474,12 @@ BOOL CTSFTTS::_InitKeyEventSink()
 
 void CTSFTTS::_UninitKeyEventSink()
 {
+	debugPrint(L"CTSFTTS::_UninitKeyEventSink()");
     ITfKeystrokeMgr* pKeystrokeMgr = nullptr;
 
     if (FAILED(_pThreadMgr->QueryInterface(IID_ITfKeystrokeMgr, (void **)&pKeystrokeMgr)))
     {
+		debugPrint(L"CTSFTTS::_UninitKeyEventSink() failed");
         return;
     }
 

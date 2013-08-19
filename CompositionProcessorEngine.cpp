@@ -953,6 +953,7 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL *pIsE
     }
 	else if (IsEqualGUID(rguid, _PreservedKey_Config.Guid))
 	{
+		// call config dialog
 		_pTextService->Show(NULL, 0,  _PreservedKey_Config.Guid);
 	}
    

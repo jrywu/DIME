@@ -94,8 +94,8 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 	}
 	candidateString.Set(pwch, 1 );
 	//-----------------do reverse lookup and array spcial code notify
-	BOOL ArraySPFound = FALSE;
-	if(Global::imeMode == IME_MODE_ARRAY && !arrayUsingSPCode && (CConfig::GetArrayForceSP() || CConfig::GetArrayNotifySP()) )
+	BOOL ArraySPFound = FALSE;            // should not show notify in UI-less mode
+	if(Global::imeMode == IME_MODE_ARRAY && !_IsUILessMode()  && !arrayUsingSPCode && (CConfig::GetArrayForceSP() || CConfig::GetArrayNotifySP()))
 	{
 		const WCHAR *specialCode = nullptr;
 		CStringRange notifyText;
@@ -103,8 +103,8 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 		if(specialCode)
 			_pUIPresenter->ShowNotifyText(&notifyText.Set(specialCode,wcslen(specialCode)), -1);
 	}
-	//----------------- commit the selected string
-	if(Global::imeMode == IME_MODE_ARRAY && !arrayUsingSPCode && CConfig::GetArrayForceSP() &&  ArraySPFound  )
+	//----------------- commit the selected string   // thus cancel forceSP mode in UILess Mode
+	if(Global::imeMode == IME_MODE_ARRAY && !_IsUILessMode()  && !arrayUsingSPCode && CConfig::GetArrayForceSP() &&  ArraySPFound )
 	{
 		_pCompositionProcessorEngine->DoBeep();
 		_HandleCancel(ec,pContext);
@@ -114,8 +114,9 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 	{
 		hr = _AddComposingAndChar(ec, pContext, &commitString);
 		if (FAILED(hr))	return hr;
-		// Do not send _endcandidatelist here to avoid cand dissapear in win8
+		// Do not send _endcandidatelist (or handleComplete) here to avoid cand dissapear in win8 metro
 		_TerminateComposition(ec, pContext);
+		//_pCompositionProcessorEngine->PurgeVirtualKey();
 		_candidateMode = CANDIDATE_NONE;
 		_isCandidateWithWildcard = FALSE;	
 	}
