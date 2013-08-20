@@ -27,7 +27,7 @@ BOOL CConfig::_appPermissionSet = FALSE;
 BOOL CConfig::_activatedKeyboardMode = TRUE;
 BOOL CConfig::_makePhrase = TRUE;
 BOOL CConfig::_showNotifyDesktop = TRUE;
-WCHAR* CConfig::_pFontFaceName = L"Microsoft JhengHei";
+WCHAR CConfig::_pFontFaceName[] = {L"Microsoft JhengHei"};
 COLORREF CConfig::_itemColor = CANDWND_ITEM_COLOR;
 COLORREF CConfig::_itemBGColor = GetSysColor(COLOR_3DHIGHLIGHT);
 COLORREF CConfig::_selectedColor = CANDWND_SELECTED_ITEM_COLOR;
@@ -337,7 +337,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 
 			pwszFontFaceName = new (std::nothrow) WCHAR[LF_FACESIZE];
 			GetDlgItemText(hDlg, IDC_EDIT_FONTNAME, pwszFontFaceName, LF_FACESIZE);
-			_pFontFaceName = pwszFontFaceName;
+			StringCchCopy(_pFontFaceName, LF_FACESIZE, pwszFontFaceName);
 				
 			_itemColor = colors[0].color ;
 			_selectedColor = colors[1].color;

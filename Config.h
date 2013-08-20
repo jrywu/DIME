@@ -28,7 +28,7 @@ public:
 	static BOOL GetMakePhrase() {return _makePhrase;}
 	static void SetShowNotifyDesktop(BOOL showNotifyDesktop) { _showNotifyDesktop = showNotifyDesktop;}
 	static BOOL GetShowNotifyDesktop() {return _showNotifyDesktop;}
-	static void SetFontFaceName(WCHAR *pFontFaceName) {_pFontFaceName = pFontFaceName;}
+	static void SetFontFaceName(WCHAR *pFontFaceName) {StringCchCopy(_pFontFaceName, LF_FACESIZE,pFontFaceName);}
 	static WCHAR* GetFontFaceName(){ return _pFontFaceName;}
 	//colors
 	static void SetItemColor(UINT itemColor) { _itemColor = itemColor;}
@@ -80,7 +80,7 @@ private:
 	static BOOL _fontItalic;
 	static BOOL _showNotifyDesktop;
 	static UINT _maxCodes;
-	static WCHAR* _pFontFaceName;
+	static WCHAR _pFontFaceName[LF_FACESIZE];
 	static COLORREF _itemColor;
 	static COLORREF _phraseColor;
 	static COLORREF _numberColor;
