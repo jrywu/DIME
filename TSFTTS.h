@@ -18,6 +18,7 @@ class CLangBarItemButton;
 class CUIPresenter;
 class CCompositionProcessorEngine;
 
+
 const DWORD WM_CheckGlobalCompartment = WM_USER;
 LRESULT CALLBACK CTSFTTS_WindowProc(HWND wndHandle, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
@@ -129,9 +130,7 @@ public:
     HRESULT _HandleCompositionArrowKey(TfEditCookie ec, _In_ ITfContext *pContext, KEYSTROKE_FUNCTION keyFunction);
     HRESULT _HandleCompositionDoubleSingleByte(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch);
 	HRESULT _HandleCompositionAddressChar(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch);
-	// function for textlayoutchange.
-	HRESULT _HandlTextLayoutChange(TfEditCookie ec, _In_ ITfContext *pContext, _In_ ITfRange *pRangeComposition);
-
+	
     // key event handlers for candidate object.
     HRESULT _HandleCandidateFinalize(TfEditCookie ec, _In_ ITfContext *pContext);
     HRESULT _HandleCandidateConvert(TfEditCookie ec, _In_ ITfContext *pContext);
@@ -162,20 +161,28 @@ public:
 	void OnSwitchedToFullShape();
 	void OnSwitchedToHalfShape();
 
+	
+	// function for textlayoutchange.
+	HRESULT _LayoutChangeNotification(TfEditCookie ec, _In_ ITfContext *pContext, RECT *rc);
+	HRESULT _ProbeCompositionRangeNotification(_In_ TfEditCookie ec,_In_ ITfContext *pContext);
 private:
+	
     // functions for the composition object.
     HRESULT _HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *pCompositionProcessorEngine, TfEditCookie ec, _In_ ITfContext *pContext);
     HRESULT _CreateAndStartCandidate(_In_ CCompositionProcessorEngine *pCompositionProcessorEngine, TfEditCookie ec, _In_ ITfContext *pContext);
     HRESULT _HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext);
+
+	//for probing the composition range to get correct caret position
+	void _ProbeComposition(_In_ ITfContext *pContext);
 
     void _StartComposition(_In_ ITfContext *pContext);
     void _EndComposition(_In_opt_ ITfContext *pContext);
     BOOL _IsComposing();
     BOOL _IsKeyboardDisabled();
 
-    HRESULT _AddComposingAndChar(TfEditCookie ec, _In_ ITfContext *pContext, _In_ CStringRange *pstrAddString);
+    
     HRESULT _AddCharAndFinalize(TfEditCookie ec, _In_ ITfContext *pContext, _In_ CStringRange *pstrAddString);
-
+	HRESULT _AddComposingAndChar(TfEditCookie ec, _In_ ITfContext *pContext, _In_ CStringRange *pstrAddString);
     BOOL _FindComposingRange(TfEditCookie ec, _In_ ITfContext *pContext, _In_ ITfRange *pSelection, _Outptr_result_maybenull_ ITfRange **ppRange);
     HRESULT _SetInputString(TfEditCookie ec, _In_ ITfContext *pContext, _Out_opt_ ITfRange *pRange, _In_ CStringRange *pstrAddString, BOOL exist_composing);
     HRESULT _InsertAtSelection(TfEditCookie ec, _In_ ITfContext *pContext, _In_ CStringRange *pstrAddString, _Outptr_ ITfRange **ppCompRange);
@@ -198,7 +205,7 @@ private:
 
     BOOL _InitTextEditSink(_In_ ITfDocumentMgr *pDocMgr);
 
-    void _UpdateLanguageBarOnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus);
+    BOOL _UpdateLanguageBarOnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus);
 
     BOOL _InitKeyEventSink();
     void _UninitKeyEventSink();

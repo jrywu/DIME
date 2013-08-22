@@ -10,6 +10,7 @@
 #include "TSFTTS.h"
 #include "CompositionProcessorEngine.h"
 #include "UIPresenter.h"
+#include "GetTextExtentEditSession.h"
 
 //+---------------------------------------------------------------------------
 //
@@ -21,7 +22,7 @@
 
 STDAPI CTSFTTS::OnCompositionTerminated(TfEditCookie ecWrite, _In_ ITfComposition *pComposition)
 {
-	debugPrint(L"CTSFTTS::_TerminateComposition()");
+	debugPrint(L"CTSFTTS::OnCompositionTerminated()");
 	HRESULT hr = S_OK;
     ITfContext* pContext = _pContext;
    
@@ -45,11 +46,10 @@ STDAPI CTSFTTS::OnCompositionTerminated(TfEditCookie ecWrite, _In_ ITfCompositio
     return hr;
 }
 
-HRESULT CTSFTTS::_HandlTextLayoutChange(TfEditCookie ec, _In_ ITfContext *pContext,  _In_ ITfRange *pRangeComposition)
+HRESULT CTSFTTS::_LayoutChangeNotification(TfEditCookie ec, _In_ ITfContext *pContext, RECT* rc)
 {
 	debugPrint(L"CTSFTTS::_HandlTextLayoutChange()");
-	ec; pRangeComposition; pContext;
-
+	debugPrint (L"CTSFTTS::_HandlTextLayoutChange(); top=%d, bottom=%d, left =%d, righ=%d",rc->top, rc->bottom, rc->left, rc->right);
 	POINT curPos;
 	GetCaretPos(&curPos);
 		
@@ -65,11 +65,10 @@ HRESULT CTSFTTS::_HandlTextLayoutChange(TfEditCookie ec, _In_ ITfContext *pConte
 			_phraseCandLocation.y = curPos.y;
 			
 		}
-		else if( (_phraseCandLocation.x != curPos.x) || (_phraseCandLocation.y != curPos.y))
+		else if( (_phraseCandLocation.x - curPos.x <20) || (_phraseCandLocation.y - curPos.y <20))//-------> bug here may cancel cand accidently
 		{  //phrase cand moved delete the cand.
 			debugPrint(L"CTSFTTS::_HandlTextLayouyChange() cursor moved. end composition and kill the cand.");
-			//_EndComposition(pContext); 
-			_HandleCancel(ec, pContext);
+			//_HandleCancel(ec, pContext);
 			
 		}
 
@@ -172,7 +171,7 @@ HRESULT CTSFTTS::_AddCharAndFinalize(TfEditCookie ec, _In_ ITfContext *pContext,
         return hr;
 
     // we use SetText here instead of InsertTextAtSelection because we've already started a composition
-    // we don't want to the app to adjust the insertion point inside our composition
+    // we don't want the app to adjust the insertion point inside our composition
     hr = tfSelection.range->SetText(ec, 0, pstrAddString->Get(), (LONG)pstrAddString->GetLength());
     if (hr == S_OK)
     {
@@ -379,12 +378,6 @@ BOOL CTSFTTS::_SetCompositionLanguage(TfEditCookie ec, _In_ ITfContext *pContext
     HRESULT hr = S_OK;
     BOOL ret = TRUE;
 
-    CCompositionProcessorEngine* pCompositionProcessorEngine = nullptr;
-    pCompositionProcessorEngine = _pCompositionProcessorEngine;
-
-    //LANGID langidProfile = 0;
-    //GetLanguageProfile(&langidProfile);
-
     ITfRange* pRangeComposition = nullptr;
     ITfProperty* pLanguageProperty = nullptr;
 
@@ -420,4 +413,109 @@ BOOL CTSFTTS::_SetCompositionLanguage(TfEditCookie ec, _In_ ITfContext *pContext
 
 Exit:
     return ret;
+}
+
+
+//+---------------------------------------------------------------------------
+//
+// CProbeComposistionEditSession
+//
+//----------------------------------------------------------------------------
+
+class CProbeComposistionEditSession : public CEditSessionBase
+{
+public:
+    CProbeComposistionEditSession(_In_ CTSFTTS *pTextService, _In_ ITfContext *pContext) : CEditSessionBase(pTextService, pContext)
+    {
+    }
+
+    // ITfEditSession
+    STDMETHODIMP DoEditSession(TfEditCookie ec);
+};
+
+//+---------------------------------------------------------------------------
+//
+// ITfEditSession::DoEditSession
+//
+//----------------------------------------------------------------------------
+
+STDAPI CProbeComposistionEditSession::DoEditSession(TfEditCookie ec)
+{
+	debugPrint(L"CProbeComposistionEditSession::DoEditSession()\n");
+	_pTextService->_ProbeCompositionRangeNotification(ec, _pContext);
+	
+    return S_OK;
+}
+
+//////////////////////////////////////////////////////////////////////
+//
+// CTSFTTS class
+//
+//////////////////////////////////////////////////////////////////////+---------------------------------------------------------------------------
+//
+// _ProbeComposition
+//
+// this starts the new (std::nothrow) composition at the selection of the current 
+// focus context.
+//----------------------------------------------------------------------------
+
+void CTSFTTS::_ProbeComposition(_In_ ITfContext *pContext)
+{
+	debugPrint(L"CTSFTTS::_ProbeComposition()\n");
+	CProbeComposistionEditSession* pProbeComposistionEditSession = new (std::nothrow) CProbeComposistionEditSession(this, pContext);
+
+	if (nullptr != pProbeComposistionEditSession)
+	{
+		HRESULT hr = S_OK;
+		pContext->RequestEditSession(_tfClientId, pProbeComposistionEditSession, TF_ES_SYNC | TF_ES_READWRITE, &hr);
+
+		pProbeComposistionEditSession->Release();
+	}
+
+	_EndComposition(pContext);
+	
+   
+}
+
+HRESULT CTSFTTS::_ProbeCompositionRangeNotification(_In_ TfEditCookie ec, _In_ ITfContext *pContext)
+{
+	debugPrint(L"CTSFTTS::_ProbeCompositionRangeNotification()\n");
+	HRESULT hr = S_OK;
+	//_HandleCompositionInput(ec, pContext, 'a');
+	_StartComposition(pContext);
+	CStringRange empty;
+	hr = _AddComposingAndChar(ec, pContext, &empty.Set(L"A", 1));
+	/*
+	ITfRange *pRange;
+	ITfContextView* pContextView;
+	ITfDocumentMgr* pDocumgr;
+	if (_pComposition&&SUCCEEDED(_pComposition->GetRange(&pRange)))
+	{
+		if(SUCCEEDED(pContext->GetActiveView(&pContextView)))
+		{
+			if(SUCCEEDED( pContext->GetDocumentMgr(&pDocumgr)))
+			{
+				_pUIPresenter->_StartCandidateList(_tfClientId, pDocumgr, pContext, ec, pRange, 5);
+				// _pUIPresenter->_StartLayout(pContext, ec, pRange);
+				CGetTextExtentEditSession* pEditSession = nullptr;
+				pEditSession = new (std::nothrow) CGetTextExtentEditSession(this, pContext, pContextView, pRange, nullptr);
+				if (nullptr != (pEditSession))
+				{
+					HRESULT hr = S_OK;
+					pContext->RequestEditSession(_tfClientId, pEditSession, TF_ES_SYNC | TF_ES_READWRITE, &hr);
+
+					pEditSession->Release();
+				}
+
+
+				pDocumgr->Release();
+			}
+		pContextView->Release();
+		}
+		pRange->Release();
+	}
+	hr = _AddComposingAndChar(ec, pContext, &empty.Set(L"A", 1));
+    
+	*/
+	return hr;
 }

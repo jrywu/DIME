@@ -16,8 +16,6 @@
 #include "LanguageBar.h"
 #include "sddl.h"
 
-#define DEFAULT_CAND_ITEM_LENGTH 3
-#define TRAILING_SPACE 1
 
 //////////////////////////////////////////////////////////////////////
 //

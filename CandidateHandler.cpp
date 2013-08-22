@@ -116,7 +116,6 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 		if (FAILED(hr))	return hr;
 		// Do not send _endcandidatelist (or handleComplete) here to avoid cand dissapear in win8 metro
 		_TerminateComposition(ec, pContext);
-		//_pCompositionProcessorEngine->PurgeVirtualKey();
 		_candidateMode = CANDIDATE_NONE;
 		_isCandidateWithWildcard = FALSE;	
 	}

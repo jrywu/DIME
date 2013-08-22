@@ -58,4 +58,11 @@
 //---------------------------------------------------------------------
 #define CLSID_STRLEN    (38)  // strlen("{xxxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxx}")
 
+
+//---------------------------------------------------------------------
+// candidate width
+//---------------------------------------------------------------------
+#define DEFAULT_CAND_ITEM_LENGTH 3
+#define TRAILING_SPACE 1
+
 #endif

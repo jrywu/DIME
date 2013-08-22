@@ -19,7 +19,7 @@
 //
 //----------------------------------------------------------------------------
 
-void CTSFTTS::_UpdateLanguageBarOnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus)
+BOOL CTSFTTS::_UpdateLanguageBarOnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus)
 {
     BOOL needDisableButtons = FALSE;
 
@@ -62,10 +62,9 @@ void CTSFTTS::_UpdateLanguageBarOnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus)
         }
     }
 
-    CCompositionProcessorEngine* pCompositionProcessorEngine = nullptr;
-    pCompositionProcessorEngine = _pCompositionProcessorEngine;
-
+   
     SetLanguageBarStatus(TF_LBI_STATUS_DISABLED, needDisableButtons);
+	return needDisableButtons;
 }
 
 //+---------------------------------------------------------------------------

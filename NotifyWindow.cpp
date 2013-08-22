@@ -19,12 +19,27 @@
 CNotifyWindow::CNotifyWindow(_In_ NOTIFYWNDCALLBACK pfnCallback, _In_ void *pv)
 {
    
+	HDC dcHandle = nullptr;
+	HWND wndHandle = GetFocus();
+	dcHandle = GetDC(wndHandle);
+	if (dcHandle)
+	{
+		HFONT hFontOld = (HFONT)SelectObject(dcHandle, Global::defaultlFontHandle);
+		GetTextMetrics(dcHandle, &_TextMetric);
+
+		_cxTitle = _TextMetric.tmAveCharWidth* (int) (_notifyText.GetLength() + 5);
+		_cyTitle = _TextMetric.tmHeight *2;
+
+		SelectObject(dcHandle, hFontOld);
+		ReleaseDC(wndHandle, dcHandle);
+	}
+
     _pfnCallback = pfnCallback;
     _pObj = pv;
 
     _pShadowWnd = nullptr;
-	_cxTitle = 100;
-	_cyTitle = 100;
+	//_cxTitle = 100;
+	//_cyTitle = 100;
 	_x =0;
 	_y =0;
 
@@ -184,7 +199,6 @@ LRESULT CALLBACK CNotifyWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT uM
     case WM_CREATE:
         {
             HDC dcHandle = nullptr;
-
             dcHandle = GetDC(wndHandle);
             if (dcHandle)
             {

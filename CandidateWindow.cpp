@@ -171,22 +171,22 @@ Exit:
 
 void CCandidateWindow::_ResizeWindow()
 {
-	//_cxTitle = max(_cxTitle, _cxTitle + GetSystemMetrics(SM_CXFRAME) * 2 +  CANDWND_BORDER_WIDTH);
 
 	debugPrint(L"CCandidateWindow::_ResizeWindow() _cxTitle = %d", _cxTitle);
 
     int candidateListPageCnt = _pIndexRange->Count();
-	CBaseWindow::_Resize(_x, _y, _cxTitle + GetSystemMetrics(SM_CXVSCROLL) * 3/2 +  CANDWND_BORDER_WIDTH *2, 
-		_cyRow * candidateListPageCnt + _cyRow/3  + CANDWND_BORDER_WIDTH *2);
+	int VScrollWidth = GetSystemMetrics(SM_CXVSCROLL) * 3/2;
+	CBaseWindow::_Resize(_x, _y, _cxTitle + VScrollWidth +  CANDWND_BORDER_WIDTH*2, 
+		_cyRow * candidateListPageCnt + _cyRow /2  + CANDWND_BORDER_WIDTH *2);
 
     RECT rcCandRect = {0, 0, 0, 0};
     _GetClientRect(&rcCandRect);
 
 
-    int left = rcCandRect.right - GetSystemMetrics(SM_CXVSCROLL) * 3/2 - CANDWND_BORDER_WIDTH;
-    int top = rcCandRect.top + CANDWND_BORDER_WIDTH;
-    int width = GetSystemMetrics(SM_CXVSCROLL) * 3/ 2;
-    int height = rcCandRect.bottom - rcCandRect.top - CANDWND_BORDER_WIDTH * 2;
+    int left = rcCandRect.right - VScrollWidth;
+    int top = rcCandRect.top;
+    int width = VScrollWidth;
+    int height = rcCandRect.bottom - rcCandRect.top;
 
     _pVScrollBarWnd->_Resize(left, top, width, height);
 }
@@ -214,9 +214,10 @@ void CCandidateWindow::_Move(int x, int y)
 void CCandidateWindow::_Show(BOOL isShowWnd)
 {
     if (_pShadowWnd)
-    {
-        _pShadowWnd->_Show(isShowWnd);
-    }
+		_pShadowWnd->_Show(isShowWnd);
+	if (_pVScrollBarWnd)
+		_pVScrollBarWnd->_Show(FALSE);
+
     CBaseWindow::_Show(isShowWnd);
 }
 
@@ -276,8 +277,12 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
                 HFONT hFontOld = (HFONT)SelectObject(dcHandle, Global::defaultlFontHandle);
                 GetTextMetrics(dcHandle, &_TextMetric);
 
-				_cxTitle = _TextMetric.tmAveCharWidth* (_wndWidth);
-				_cyRow = _TextMetric.tmHeight + _TextMetric.tmHeight/4;
+				SIZE FWFontSize;
+				GetTextExtentPoint32(dcHandle,L"¼e", 1, &FWFontSize); //don't trust the TextMetrics. Measurement the font height and width directly.
+
+				_cxTitle = FWFontSize.cx*_wndWidth + _TextMetric.tmAveCharWidth *StringPosition;
+				_cyRow =   FWFontSize.cy + FWFontSize.cy/4;
+
                 SelectObject(dcHandle, hFontOld);
                 ReleaseDC(wndHandle, dcHandle);
             }
@@ -334,7 +339,7 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
             {
                 if ((pWndPos->flags & SWP_HIDEWINDOW) != 0)
                 {
-                    //_pVScrollBarWnd->_Show(FALSE);
+                    _pVScrollBarWnd->_Show(FALSE);
                 }
 
                 _pVScrollBarWnd->_OnOwnerWndMoved((pWndPos->flags & SWP_NOSIZE) == 0);
@@ -350,10 +355,10 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
         }
 
         // show/hide v-scroll
-		if (_pVScrollBarWnd)
-        {
-            _pVScrollBarWnd->_Show((BOOL)wParam);
-        }
+		//if (_pVScrollBarWnd)
+        //{
+        //   _pVScrollBarWnd->_Show((BOOL)wParam);
+        //}
         break;
 
     case WM_PAINT:
@@ -660,21 +665,27 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT iIndex, _In_ RECT 
 	
     int pageCount = 0;
     int candidateListPageCnt = _pIndexRange->Count();
+	int VScrollWidth = GetSystemMetrics(SM_CXVSCROLL) *3/2;
 
     RECT rc;
 	const size_t lenOfPageCount = 16;
 
 	HFONT hFontOld = (HFONT)SelectObject(dcHandle, Global::defaultlFontHandle);
 	GetTextMetrics(dcHandle, &_TextMetric);
+	SIZE FWFontSize;
+	GetTextExtentPoint32(dcHandle,L"¼e", 1, &FWFontSize); //don't trust the TextMetrics. Measurement the font height and width directly.
 
 	int cxLine = _TextMetric.tmAveCharWidth;
-	int cyLine = _cyRow;
-	int cyOffset = _cyRow/4 ;
+	int cyLine = FWFontSize.cy + FWFontSize.cy /4;
 
-	_cxTitle = _TextMetric.tmAveCharWidth*_wndWidth   + cxLine *3;
-	_cyRow = _TextMetric.tmHeight + _TextMetric.tmHeight/4;
+	int fistLineOffset = cyLine /4;
 	
-	int oldCxTitle = _cxTitle;
+	_cxTitle = FWFontSize.cx*_wndWidth + cxLine *StringPosition;
+	_cyRow = cyLine;
+
+	int cyOffset = FWFontSize.cy/8  + fistLineOffset ; //offset in line + blank before 1st line.
+	
+	//int oldCxTitle = _cxTitle;
 
 
     for (;
@@ -684,49 +695,46 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT iIndex, _In_ RECT 
         WCHAR pageCountString[lenOfPageCount] = {'\0'};
         CCandidateListItem* pItemList = nullptr;
 
-        rc.top = prc->top + pageCount * cyLine + CANDWND_BORDER_WIDTH * 2;;
-        rc.bottom = rc.top + cyLine + CANDWND_BORDER_WIDTH * 2;;
+        rc.top = prc->top + pageCount * cyLine + fistLineOffset;
+        rc.bottom = rc.top + cyLine;
 
 
         rc.left = prc->left + PageCountPosition * cxLine;
         rc.right = prc->left + StringPosition * cxLine;
 
         // Number Font Color And BK
-        SetTextColor(dcHandle, _crNumberColor);// CANDWND_NUM_COLOR);
-        SetBkColor(dcHandle, _crNumberBkColor);// GetSysColor(COLOR_3DHIGHLIGHT));
+        SetTextColor(dcHandle, _crNumberColor);
+        SetBkColor(dcHandle, _crNumberBkColor);
 
         StringCchPrintf(pageCountString, ARRAYSIZE(pageCountString), L"%d", (LONG)*_pIndexRange->GetAt(pageCount));
         ExtTextOut(dcHandle, PageCountPosition * cxLine, pageCount * cyLine + cyOffset, ETO_OPAQUE, &rc, pageCountString, lenOfPageCount, NULL);
 
         rc.left = prc->left + StringPosition * cxLine;
-        rc.right = prc->right - GetSystemMetrics(SM_CXVSCROLL) *3/2 - CANDWND_BORDER_WIDTH;
+        rc.right = prc->right - VScrollWidth;
 
         // Candidate Font Color And BK
         if (_currentSelection != (INT)iIndex)
         {
             SetTextColor(dcHandle, _crTextColor);
-            SetBkColor(dcHandle, _crBkColor); //GetSysColor(COLOR_3DHIGHLIGHT));
+            SetBkColor(dcHandle, _crBkColor); 
         }
         else
         {
-            SetTextColor(dcHandle, _crSelectedTextColor);//CANDWND_SELECTED_ITEM_COLOR);
-            SetBkColor(dcHandle, _crSelectedBkColor);// CANDWND_SELECTED_BK_COLOR);
+            SetTextColor(dcHandle, _crSelectedTextColor);
+            SetBkColor(dcHandle, _crSelectedBkColor);
         }
 
 		pItemList = _candidateList.GetAt(iIndex);
-
 		SIZE size;
 		GetTextExtentPoint32(dcHandle,pItemList->_ItemString.Get(), (int)pItemList->_ItemString.GetLength(), &size);
-		//debugPrint(L"_cxTitle = %d, size.cx = %d, cxline =%d, size.cx  + cxLine * 3 +  _TextMetric.tmMaxCharWidth * 2", _cxTitle, size.cx, cxLine, size.cx  + cxLine * 3 +  _TextMetric.tmMaxCharWidth * 2);
-		_cxTitle = max(_cxTitle, size.cx  + cxLine * 3 +  _TextMetric.tmMaxCharWidth * 2);
-		
+		_cxTitle = max(_cxTitle, size.cx + TRAILING_SPACE * FWFontSize.cx + cxLine * StringPosition);
 
         ExtTextOut(dcHandle, StringPosition * cxLine, pageCount * cyLine + cyOffset, 
 			ETO_OPAQUE, &rc, pItemList->_ItemString.Get(), (DWORD)pItemList->_ItemString.GetLength(), NULL);
     }
     for (; (pageCount < candidateListPageCnt); pageCount++)
     {
-        rc.top    = prc->top + pageCount * cyLine;
+        rc.top    = prc->top + pageCount * cyLine + fistLineOffset;
         rc.bottom = rc.top + cyLine;
 
         rc.left   = prc->left + PageCountPosition * cxLine;
@@ -737,7 +745,7 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT iIndex, _In_ RECT 
 
 	SelectObject(dcHandle, hFontOld);
 
-	if(_cxTitle !=oldCxTitle) _ResizeWindow();
+	if(_cxTitle != prc->right - prc->left - VScrollWidth) _ResizeWindow();
 }
 
 //+---------------------------------------------------------------------------

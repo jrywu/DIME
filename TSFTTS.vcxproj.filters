@@ -253,9 +253,6 @@
     <ClCompile Include="EnumDisplayAttributeInfo.cpp">
       <Filter>Source Files\Framework\Composition\Display</Filter>
     </ClCompile>
-    <ClCompile Include="GetTextExtentEditSession.cpp">
-      <Filter>Source Files\Framework\Composition</Filter>
-    </ClCompile>
     <ClCompile Include="EditSession.cpp">
       <Filter>Source Files\Framework\Composition</Filter>
     </ClCompile>
@@ -329,7 +326,10 @@
       <Filter>Source Files\Configuration</Filter>
     </ClCompile>
     <ClCompile Include="TfTextLayoutSink.cpp">
-      <Filter>Source Files\UI</Filter>
+      <Filter>Source Files\UI\Candidate</Filter>
+    </ClCompile>
+    <ClCompile Include="GetTextExtentEditSession.cpp">
+      <Filter>Source Files\Framework</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

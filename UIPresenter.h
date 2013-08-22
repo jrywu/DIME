@@ -111,7 +111,8 @@ public:
 	void SetNotifyText(_In_ CStringRange *pNotifyText);
 	void ShowNotify(_In_ BOOL showMode, _In_opt_ int timeToHide = -1);
 	void ClearNotify();
-	void ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ int timeToHide = 1500);
+	void ClearAll();
+	void ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ int timeToHide = 1500, _In_ ITfContext* pContext = nullptr);
 	BOOL IsNotifyShown();
 
 	BOOL isUILessMode() {return !_isShowMode;}
@@ -150,7 +151,6 @@ protected:
 
 
 private:
-	CCompositionProcessorEngine *_pCompositionProcessorEngine;  // to retrieve user settings
     HWND _parentWndHandle;
     CCandidateRange* _pIndexRange;
     KEYSTROKE_CATEGORY _Category;
@@ -159,6 +159,7 @@ private:
     CTSFTTS* _pTextService;
     LONG _refCount;
 	POINT _candLocation;
+	RECT _rectCompRange;
 };
 
 

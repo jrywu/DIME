@@ -3,12 +3,13 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-//#define DEBUG_PRINT
+#define DEBUG_PRINT
 
 #include "Private.h"
 #include "Globals.h"
 #include "TSFTTS.h"
 #include "UIPresenter.h"
+#include "GetTextExtentEditSession.h"
 
 //+---------------------------------------------------------------------------
 //
@@ -51,14 +52,38 @@ STDAPI CTSFTTS::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMg
 {
 	debugPrint(L"CTSFTTS::OnSetFocus()\n");
     pDocMgrPrevFocus;
+	ITfContext* pContext = nullptr;
+	
+	_InitTextEditSink(pDocMgrFocus);
+	
 
-    _InitTextEditSink(pDocMgrFocus);
+	if(!_UpdateLanguageBarOnSetFocus(pDocMgrFocus))
+	{
+		pDocMgrFocus->GetTop(&pContext);
+		if(_IsComposing() && pContext)
+			_EndComposition(pContext);
+		
+		if(pContext) //CreateContext(_tfClientId, 0, NULL, &pContext, &ec))) //  
+		{	
+			_ProbeComposition(pContext);
 
-    _UpdateLanguageBarOnSetFocus(pDocMgrFocus);
+			//CStringRange notifytext;
+			//_pUIPresenter->ShowNotifyText(&notifytext.Set(L"AAA", 3), 1000);
+		}
+
+
+	}
+	else
+	{
+		debugPrint(L"CTSFTTS::OnSetFocus() pDocMgrFocus = null, no valid context on focus");
+		//_pUIPresenter->ClearAll();
+		_pUIPresenter->ClearNotify();
+	}
 
 	if(pDocMgrFocus)
 	{
-		ITfContext* pContext(NULL);
+#ifdef DEBUG_PRINT //probing the TSF supprting status.
+		ITfContext* pContext = nullptr;
 		bool isTransitory = false;
 		bool isMultiRegion = false;
 		bool isMultiSelection = false;
@@ -78,8 +103,9 @@ STDAPI CTSFTTS::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMg
 		if(isTransitory) debugPrint(L"TSF in Transitory context\n");
 		if(isMultiRegion) debugPrint(L"Support multi region\n");
 		if(isMultiSelection) debugPrint(L"Support multi selection\n");
+#endif
 	}
-
+	
     //
     // We have to hide/unhide candidate list depending on whether they are 
     // associated with pDocMgrFocus.
@@ -116,6 +142,8 @@ STDAPI CTSFTTS::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMg
         _pDocMgrLastFocused->AddRef();
     }
 
+	//if(pContext && _pUIPresenter)	_pUIPresenter->_EndCandidateList();
+	debugPrint(L"leaving CTSFTTS::OnSetFocus()\n");
     return S_OK;
 }
 
@@ -201,3 +229,4 @@ void CTSFTTS::_UninitThreadMgrEventSink()
 
     _threadMgrEventSinkCookie = TF_INVALID_COOKIE;
 }
+

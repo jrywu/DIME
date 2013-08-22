@@ -51,7 +51,7 @@ public:
 void CTSFTTS::_TerminateComposition(TfEditCookie ec, _In_ ITfContext *pContext, BOOL isCalledFromDeactivate)
 {
 	debugPrint(L"CTSFTTS::_TerminateComposition()\n");
-	isCalledFromDeactivate;
+	//isCalledFromDeactivate;
 
     if (_pComposition != nullptr)
     {

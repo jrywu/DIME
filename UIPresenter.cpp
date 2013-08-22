@@ -3,7 +3,7 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-//#define DEBUG_PRINT
+#define DEBUG_PRINT
 
 #include "Private.h"
 #include "CandidateWindow.h"
@@ -25,8 +25,6 @@ CUIPresenter::CUIPresenter(_In_ CTSFTTS *pTextService, CCompositionProcessorEngi
 	: CTfTextLayoutSink(pTextService)
 {
 
-	_pCompositionProcessorEngine = pCompositionProcessorEngine;
-
 	_pIndexRange = pCompositionProcessorEngine->GetCandidateListIndexRange();
 
     _parentWndHandle = nullptr;
@@ -42,7 +40,7 @@ CUIPresenter::CUIPresenter(_In_ CTSFTTS *pTextService, CCompositionProcessorEngi
     _pTextService->AddRef();
 
     _refCount = 1;
-
+	
 }
 
 //+---------------------------------------------------------------------------
@@ -760,16 +758,19 @@ void CUIPresenter::_MoveCandidateWindowToTextExt()
 
 VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
 {
-	debugPrint(L"CUIPresenter::_LayoutChangeNotification()");
+	debugPrint(L"CUIPresenter::_LayoutChangeNotification(), top = %d, bottom = %d, right = %d, left = %d", lpRect->top, lpRect->bottom, lpRect->right, lpRect->left);
 	
     RECT rectCandidate = {0, 0, 0, 0};
     POINT ptCandidate = {0, 0};
-
-    _pCandidateWnd->_GetClientRect(&rectCandidate);
-    _pCandidateWnd->_GetWindowExtent(lpRect, &rectCandidate, &ptCandidate);
-    _pCandidateWnd->_Move(ptCandidate.x, ptCandidate.y);
-	_candLocation.x = ptCandidate.x;
-	_candLocation.y = ptCandidate.y;
+	//if(_pCandidateWnd)
+	//{
+		_pCandidateWnd->_GetClientRect(&rectCandidate);
+		_pCandidateWnd->_GetWindowExtent(lpRect, &rectCandidate, &ptCandidate);
+		_pCandidateWnd->_Move(ptCandidate.x, ptCandidate.y);
+		_candLocation.x = ptCandidate.x;
+		_candLocation.y = ptCandidate.y;
+	//}
+	//if(lpRect) _rectCompRange = *lpRect;
 }
 
 void CUIPresenter::GetCandLocation(POINT *lpPoint)
@@ -1076,7 +1077,6 @@ HRESULT CUIPresenter::MakeNotifyWindow(_In_ ITfContext *pContextDocument)
 {
 	HRESULT hr = S_OK;
 
-	if(_pCompositionProcessorEngine == nullptr) return S_FALSE;
 
 	if (nullptr == _pNotifyWnd)
     {
@@ -1116,33 +1116,40 @@ void CUIPresenter::ShowNotify(_In_ BOOL showMode, _In_opt_ int timeToHide)
 	if (_pNotifyWnd)
 		_pNotifyWnd->_Show(showMode, timeToHide);
 }
+void CUIPresenter::ClearAll()
+{
+	ClearNotify();
+	DisposeCandidateWindow();
+}
+
 void CUIPresenter::ClearNotify()
 {
 	if (_pNotifyWnd)
-	{
 		_pNotifyWnd->_Clear();
-		DisposeNotifyWindow(); //recreate the window so as the ITfContext is always from the latest one.
-		//_pNotifyWnd->_Show(FALSE);
-	}
+	DisposeNotifyWindow(); //recreate the window so as the ITfContext is always from the latest one.
 }
-void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ int timeToHide)
+void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ int timeToHide, ITfContext* pContext)
 {
-
+	debugPrint(L"CUIPresenter::ShowNotifyText");
 	ITfThreadMgr* pThreadMgr = nullptr;
 	ITfDocumentMgr* pDocumentMgr = nullptr;
-	ITfContext* pContext = nullptr;
+	
 
 	if (_pNotifyWnd)  ClearNotify();
 
-	pContext = _GetContextDocument();
+
 	if(pContext == nullptr)
 	{
-		pThreadMgr = _pTextService->_GetThreadMgr();
-		if (nullptr != pThreadMgr)
+		pContext = _GetContextDocument();
+		if(pContext == nullptr)
 		{
-			if (SUCCEEDED(pThreadMgr->GetFocus(&pDocumentMgr)) && pDocumentMgr != nullptr)
+			pThreadMgr = _pTextService->_GetThreadMgr();
+			if (nullptr != pThreadMgr)
 			{
-				pDocumentMgr->GetTop(&pContext); 
+				if (SUCCEEDED(pThreadMgr->GetFocus(&pDocumentMgr)) && pDocumentMgr != nullptr)
+				{
+					pDocumentMgr->GetTop(&pContext); 
+				}
 			}
 		}
 	}
@@ -1166,9 +1173,10 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ int timeT
 				}
 			}
 
-			POINT cursorPoint;
-			GetCaretPos(&cursorPoint);
-			MapWindowPoints(parentWndHandle, NULL, &cursorPoint, 1);
+			POINT pt = {0,0};	
+			GetCaretPos(&pt);
+			MapWindowPoints(GetFocus(), NULL, &pt, 1);
+			debugPrint(L"current caret position, x = %d, y = %d, focus hwd = %x, foreground hwd = %x, active hwd = %x", pt.x, pt.y, GetFocus(), GetForegroundWindow(), GetActiveWindow());
 			ShowNotify(TRUE, timeToHide);	//hide after 1.5 secconds
 			_pNotifyWnd->_InvalidateRect();
 			if(_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())
@@ -1176,7 +1184,7 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ int timeT
 				_pNotifyWnd->_Move(_candLocation.x - _pNotifyWnd->_GetWidth(), _candLocation.y);
 			}
 			else
-				_pNotifyWnd->_Move(cursorPoint.x, cursorPoint.y + _pNotifyWnd->_GetHeight() );
+				_pNotifyWnd->_Move(pt.x, pt.y + _pNotifyWnd->_GetHeight() );
 
 		}
 	}
