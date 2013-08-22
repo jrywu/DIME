@@ -73,7 +73,7 @@ HRESULT CTSFTTS::_HandleCancel(TfEditCookie ec, _In_ ITfContext *pContext)
 
     _RemoveDummyCompositionForComposing(ec, _pComposition);
 
-    _DeleteCandidateList(FALSE, pContext);
+    _DeleteCandidateList(TRUE, pContext);
 
     _TerminateComposition(ec, pContext);
 
@@ -332,6 +332,10 @@ HRESULT CTSFTTS::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pCo
 		 }
 		
     }
+	else
+	{
+		pCompositionProcessorEngine->DoBeep();
+	}
 	if(nCount==1 )  //finalized with the only candidate without showing cand.
 	{
 		_HandleCandidateFinalize(ec, pContext);

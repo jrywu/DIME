@@ -64,9 +64,7 @@ BOOL CTSFTTS::_AddTextProcessorEngine()
 		{
 			debugPrint(L"CTSFTTS::_AddTextProcessorEngine() _pCompositionProcessorEngine with the diff. guidProfile exist, recreate one.");
 			delete _pCompositionProcessorEngine;
-			delete _pUIPresenter;
 			_pCompositionProcessorEngine = nullptr;
-			_pUIPresenter = nullptr;
 			Global::radicalMap.clear();
 			_UninitFunctionProviderSink();  // reset the function provider sink to get updated UI less candidate provider
 			_InitFunctionProviderSink();
@@ -662,7 +660,8 @@ HRESULT CTSFTTS::Show(_In_ HWND hwndParent, _In_ LANGID langid, _In_ REFGUID rgu
 	}
 
 	if(_IsComposing() && _pContext) _EndComposition(_pContext);
-	_DeleteCandidateList(FALSE, _pContext);
+	_DeleteCandidateList(TRUE, _pContext);
+	//if(_pUIPresenter) _pUIPresenter->ClearAll();
 	
 
 

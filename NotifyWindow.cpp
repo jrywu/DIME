@@ -3,7 +3,7 @@
 //  Jeremy '13,7,17
 //
 //
-
+//#define DEBUG_PRINT
 
 #include "Private.h"
 #include "Globals.h"
@@ -68,6 +68,7 @@ CNotifyWindow::~CNotifyWindow()
 
 BOOL CNotifyWindow::_Create(_In_ UINT fontSize, _In_opt_ HWND parentWndHandle)
 {
+	debugPrint(L"CNotifyWindow::_Create()");
     BOOL ret = FALSE;
 	_fontSize = fontSize;
 
@@ -129,6 +130,7 @@ BOOL CNotifyWindow::_CreateBackGroundShadowWindow()
 
 void CNotifyWindow::_ResizeWindow()
 {
+	debugPrint(L"CNotifyWindow::_ResizeWindow()");
    	CBaseWindow::_Resize(_x, _y, _cxTitle, _cyTitle);  //x, y, cx, cy    
 }
 
@@ -194,6 +196,7 @@ VOID CNotifyWindow::_SetFillColor(_In_ COLORREF crBkColor)
 
 LRESULT CALLBACK CNotifyWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam)
 {
+	
     switch (uMsg)
     {
     case WM_CREATE:
@@ -207,7 +210,7 @@ LRESULT CALLBACK CNotifyWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT uM
 				 
 				_cxTitle = _TextMetric.tmAveCharWidth* (int) (_notifyText.GetLength() + 5);
 				_cyTitle = _TextMetric.tmHeight *2;
-
+				debugPrint(L"CNotifyWindow::_WindowProcCallback():WM_CREATE, _cxTitle = %d, _cyTitle=%d", _cxTitle, _cyTitle);
                 SelectObject(dcHandle, hFontOld);
                 ReleaseDC(wndHandle, dcHandle);
             }
@@ -268,6 +271,7 @@ LRESULT CALLBACK CNotifyWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT uM
 
     case WM_PAINT:
         {
+			debugPrint(L"CNotifyWindow::_WindowProcCallback():WM_PAINT");
             HDC dcHandle = nullptr;
             PAINTSTRUCT ps;
 
@@ -418,14 +422,13 @@ void CNotifyWindow::_OnMouseMove(POINT pt)
 
 void CNotifyWindow::_DrawText(_In_ HDC dcHandle, _In_ RECT *prc)
 {
-    
-	HFONT hFontOld = (HFONT)SelectObject(dcHandle, Global::defaultlFontHandle);
-
+ 	HFONT hFontOld = (HFONT)SelectObject(dcHandle, Global::defaultlFontHandle);
+	int _oldCxTitle = _cxTitle;
 	SIZE size;
 	GetTextExtentPoint32(dcHandle, _notifyText.Get(), (UINT)_notifyText.GetLength(), &size);
 	_cxTitle = size.cx  + _TextMetric.tmAveCharWidth * 5/2;
 	_cyTitle = size.cy * 3/2;
- 
+	debugPrint(L"CNotifyWindow::_DrawText(), _cxTitle = %d, _cyTitle=%d", _cxTitle, _cyTitle);
 	
     RECT rc;
 	rc.top = prc->top;
@@ -439,7 +442,11 @@ void CNotifyWindow::_DrawText(_In_ HDC dcHandle, _In_ RECT *prc)
     ExtTextOut(dcHandle, _TextMetric.tmAveCharWidth, _cyTitle/5, ETO_OPAQUE, &rc, _notifyText.Get(), (DWORD)_notifyText.GetLength(), NULL);
 
 	SelectObject(dcHandle, hFontOld);
-	_ResizeWindow();
+	if(_oldCxTitle != _cxTitle)
+	{
+		//_x -= (_cxTitle - _oldCxTitle);
+		_ResizeWindow();
+	}
     
     
 }
@@ -494,6 +501,7 @@ void CNotifyWindow::_AddString(_Inout_ const CStringRange *pNotifyText)
 		StringCchCopyN(pwchString, _notifyText.GetLength() + notifyTextLen + 2, _notifyText.Get(),_notifyText.GetLength()); 
 		StringCchCatN(pwchString,_notifyText.GetLength() + notifyTextLen + 2, pNotifyText->Get(), notifyTextLen); 
 		_notifyText.Set(pwchString, _notifyText.GetLength() + notifyTextLen);
+
     }
 
    
@@ -536,6 +544,7 @@ void CNotifyWindow::_Clear()
 
 UINT CNotifyWindow::_GetWidth()
 {
+	debugPrint(L"CNotifyWindow::_GetWidth() _cxTitle = %d", _cxTitle);
 	return _cxTitle;
 }
 UINT CNotifyWindow::_GetHeight()

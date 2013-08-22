@@ -36,7 +36,7 @@ STDAPI CTSFTTS::OnCompositionTerminated(TfEditCookie ecWrite, _In_ ITfCompositio
 	}
 	
 	_EndComposition(pContext);
-	_DeleteCandidateList(FALSE, pContext);
+	_DeleteCandidateList(TRUE, pContext);
 	
 	if (pContext)
 	{
@@ -48,11 +48,13 @@ STDAPI CTSFTTS::OnCompositionTerminated(TfEditCookie ecWrite, _In_ ITfCompositio
 
 HRESULT CTSFTTS::_LayoutChangeNotification(TfEditCookie ec, _In_ ITfContext *pContext, RECT* rc)
 {
-	debugPrint(L"CTSFTTS::_HandlTextLayoutChange()");
+	ec; pContext;
+	debugPrint(L"\nCTSFTTS::_HandlTextLayoutChange() _candidateMode = %d", _candidateMode);
 	debugPrint (L"CTSFTTS::_HandlTextLayoutChange(); top=%d, bottom=%d, left =%d, righ=%d",rc->top, rc->bottom, rc->left, rc->right);
 	POINT curPos;
 	GetCaretPos(&curPos);
-		
+	ClientToScreen(GetFocus(), &curPos);
+	debugPrint (L"CTSFTTS::_HandlTextLayoutChange(); x=%d, y=%d",curPos.x, curPos.y);		
 	if( _candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION || _candidateMode == CANDIDATE_PHRASE)
 	{
 		
@@ -61,11 +63,11 @@ HRESULT CTSFTTS::_LayoutChangeNotification(TfEditCookie ec, _In_ ITfContext *pCo
 		{
 			debugPrint(L"CTSFTTS::_HandlTextLayouyChange() _phraseCand is showing ");
 			_phraseCandShowing = FALSE; //finishing showing phrase cand
-			_phraseCandLocation.x = curPos.x;
-			_phraseCandLocation.y = curPos.y;
+			_phraseCandLocation.x = rc->left; //curPos.x;
+			_phraseCandLocation.y = rc->bottom;//curPos.y;
 			
 		}
-		else if( (_phraseCandLocation.x - curPos.x <20) || (_phraseCandLocation.y - curPos.y <20))//-------> bug here may cancel cand accidently
+		else if( (_phraseCandLocation.x != rc->left) || (_phraseCandLocation.y != rc->bottom))//-------> bug here may cancel cand accidently
 		{  //phrase cand moved delete the cand.
 			debugPrint(L"CTSFTTS::_HandlTextLayouyChange() cursor moved. end composition and kill the cand.");
 			//_HandleCancel(ec, pContext);
@@ -347,7 +349,8 @@ Exit:
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFTTS::_RemoveDummyCompositionForComposing(TfEditCookie ec, _In_ ITfComposition *pComposition)
+HRESULT CTSFTTS::_RemoveDummyCompositionForComposing
+	(TfEditCookie ec, _In_ ITfComposition *pComposition)
 {
 	debugPrint(L"CTSFTTS::_RemoveDummyCompositionForComposing()\n");
     HRESULT hr = S_OK;
@@ -463,7 +466,7 @@ void CTSFTTS::_ProbeComposition(_In_ ITfContext *pContext)
 {
 	debugPrint(L"CTSFTTS::_ProbeComposition()\n");
 	CProbeComposistionEditSession* pProbeComposistionEditSession = new (std::nothrow) CProbeComposistionEditSession(this, pContext);
-
+	if(_IsComposing())	_EndComposition(_pContext);
 	if (nullptr != pProbeComposistionEditSession)
 	{
 		HRESULT hr = S_OK;
@@ -481,11 +484,11 @@ HRESULT CTSFTTS::_ProbeCompositionRangeNotification(_In_ TfEditCookie ec, _In_ I
 {
 	debugPrint(L"CTSFTTS::_ProbeCompositionRangeNotification()\n");
 	HRESULT hr = S_OK;
-	//_HandleCompositionInput(ec, pContext, 'a');
+	
 	_StartComposition(pContext);
 	CStringRange empty;
 	hr = _AddComposingAndChar(ec, pContext, &empty.Set(L"A", 1));
-	/*
+	
 	ITfRange *pRange;
 	ITfContextView* pContextView;
 	ITfDocumentMgr* pDocumgr;
@@ -495,19 +498,7 @@ HRESULT CTSFTTS::_ProbeCompositionRangeNotification(_In_ TfEditCookie ec, _In_ I
 		{
 			if(SUCCEEDED( pContext->GetDocumentMgr(&pDocumgr)))
 			{
-				_pUIPresenter->_StartCandidateList(_tfClientId, pDocumgr, pContext, ec, pRange, 5);
-				// _pUIPresenter->_StartLayout(pContext, ec, pRange);
-				CGetTextExtentEditSession* pEditSession = nullptr;
-				pEditSession = new (std::nothrow) CGetTextExtentEditSession(this, pContext, pContextView, pRange, nullptr);
-				if (nullptr != (pEditSession))
-				{
-					HRESULT hr = S_OK;
-					pContext->RequestEditSession(_tfClientId, pEditSession, TF_ES_SYNC | TF_ES_READWRITE, &hr);
-
-					pEditSession->Release();
-				}
-
-
+				_pUIPresenter->_StartLayout(pContext, ec, pRange);
 				pDocumgr->Release();
 			}
 		pContextView->Release();
@@ -515,7 +506,8 @@ HRESULT CTSFTTS::_ProbeCompositionRangeNotification(_In_ TfEditCookie ec, _In_ I
 		pRange->Release();
 	}
 	hr = _AddComposingAndChar(ec, pContext, &empty.Set(L"A", 1));
+	
     
-	*/
+	
 	return hr;
 }

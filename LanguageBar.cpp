@@ -1049,10 +1049,13 @@ void CTSFTTS::OnKeyboardClosed()
 	debugPrint(L"CTSFTTS::OnKeyboardClosed()\n");
 	// switching to English (native) mode delete the phrase candidate window before exting.
 	if(_IsComposing()) 
+	{
 		_EndComposition(_pContext);
-	
-	if(_candidateMode != CANDIDATE_NONE)
-		_DeleteCandidateList(FALSE, NULL);
+		_DeleteCandidateList(TRUE,_pContext);
+	}
+	//if(_candidateMode != CANDIDATE_NONE)
+	//	_DeleteCandidateList(FALSE, NULL);
+	//if(_pUIPresenter) 	_pUIPresenter->ClearAll();
 
 	CStringRange notifyText;
 	if(CConfig::GetShowNotifyDesktop())
@@ -1073,8 +1076,11 @@ void CTSFTTS::OnSwitchedToFullShape()
 {
 	debugPrint(L"CTSFTTS::OnSwitchedToFullShape()\n");
 	if(_IsComposing()) 
+	{
 		_EndComposition(_pContext);
-	_DeleteCandidateList(FALSE, NULL);
+		_DeleteCandidateList(TRUE,_pContext);
+	}
+	//if(_pUIPresenter)	_pUIPresenter->ClearAll();
 	CStringRange notifyText;
 	if(CConfig::GetShowNotifyDesktop())
 		 _pUIPresenter->ShowNotifyText(&notifyText.Set(L"¥þ§Î", 2));
@@ -1084,8 +1090,11 @@ void CTSFTTS::OnSwitchedToHalfShape()
 {
 	debugPrint(L"CTSFTTS::OnSwitchedToHalfShape()\n");
 	if(_IsComposing()) 
+	{
 		_EndComposition(_pContext);
-	_DeleteCandidateList(FALSE, NULL);
+		_DeleteCandidateList(TRUE,_pContext);
+	}
+	//if(_pUIPresenter) _pUIPresenter->ClearAll();
 	CStringRange notifyText;
 	if(CConfig::GetShowNotifyDesktop())
 		 _pUIPresenter->ShowNotifyText(&notifyText.Set(L"¥b§Î", 2));

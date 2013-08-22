@@ -298,7 +298,7 @@ STDAPI CTSFTTS::OnTestKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam
 	debugPrint(L" CTSFTTS::OnTestKeyDown()");
     Global::UpdateModifiers(wParam, lParam);
 
-	_pUIPresenter->ClearNotify(); //clear notiy window
+	//_pUIPresenter->ClearNotify(); //clear notiy window
 
     _KEYSTROKE_STATE KeystrokeState;
     WCHAR wch = '\0';
@@ -338,6 +338,9 @@ STDAPI CTSFTTS::OnKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BO
 
     if (*pIsEaten)
     {
+		debugPrint(L" CTSFTTS::OnKeyDown() eating the key");
+		_pUIPresenter->ClearNotify(); //Clear notify if exist.
+
         bool needInvokeKeyHandler = true;
         //
         // Invoke key handler edit session

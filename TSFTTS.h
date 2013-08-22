@@ -165,6 +165,8 @@ public:
 	// function for textlayoutchange.
 	HRESULT _LayoutChangeNotification(TfEditCookie ec, _In_ ITfContext *pContext, RECT *rc);
 	HRESULT _ProbeCompositionRangeNotification(_In_ TfEditCookie ec,_In_ ITfContext *pContext);
+	void _ProbeComposition(_In_ ITfContext *pContext);
+
 private:
 	
     // functions for the composition object.
@@ -173,8 +175,7 @@ private:
     HRESULT _HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext);
 
 	//for probing the composition range to get correct caret position
-	void _ProbeComposition(_In_ ITfContext *pContext);
-
+	
     void _StartComposition(_In_ ITfContext *pContext);
     void _EndComposition(_In_opt_ ITfContext *pContext);
     BOOL _IsComposing();

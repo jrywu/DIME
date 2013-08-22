@@ -122,15 +122,20 @@ STDAPI CTfTextLayoutSink::OnLayoutChange(_In_ ITfContext *pContext, TfLayoutCode
 HRESULT CTfTextLayoutSink::_StartLayout(_In_ ITfContext *pContextDocument, TfEditCookie ec, _In_ ITfRange *pRangeComposition)
 {
 	debugPrint(L"CTfTextLayoutSink::_StartLayout()\n");
-    _pContextDocument = pContextDocument;
-    _pContextDocument->AddRef();
+	if(_pContextDocument != pContextDocument)
+	{
+		_pContextDocument = pContextDocument;
+		_pContextDocument->AddRef();
 
-    _pRangeComposition = pRangeComposition;
-    if(_pRangeComposition) _pRangeComposition->AddRef();
+		_pRangeComposition = pRangeComposition;
+		if(_pRangeComposition) _pRangeComposition->AddRef();
 
-    _tfEditCookie = ec;
+		_tfEditCookie = ec;
 
-    return _AdviseTextLayoutSink();
+		return _AdviseTextLayoutSink();
+	}
+	else
+		return S_OK;
 }
 
 VOID CTfTextLayoutSink::_EndLayout()
@@ -142,12 +147,13 @@ VOID CTfTextLayoutSink::_EndLayout()
         _pRangeComposition = nullptr;
     }
 
-    if (_pContextDocument)
+    if(_pContextDocument)
     {
-        _UnadviseTextLayoutSink();
-        _pContextDocument->Release();
-        _pContextDocument = nullptr;
-    }
+		_UnadviseTextLayoutSink();
+		_pContextDocument->Release();
+		_pContextDocument = nullptr;
+	}
+    
 }
 
 HRESULT CTfTextLayoutSink::_AdviseTextLayoutSink()

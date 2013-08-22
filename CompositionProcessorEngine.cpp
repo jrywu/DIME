@@ -682,9 +682,9 @@ DWORD_PTR CCompositionProcessorEngine::CheckArraySpeicalCode(_Outptr_result_mayb
 // checkArraySpeicalCode
 //
 //----------------------------------------------------------------------------
-BOOL CCompositionProcessorEngine::LookupSpeicalCode(_In_ CStringRange *inword, _Outptr_result_maybenull_ const WCHAR **ppwchSpecialCodeResultString)
+BOOL CCompositionProcessorEngine::LookupSpeicalCode(_In_ CStringRange *inword, _Out_ CStringRange *csrReslt)
 {
-	*ppwchSpecialCodeResultString = nullptr;
+
 	CTSFTTSArray<CCandidateListItem> candidateList;
 
 	if(Global::imeMode!= IME_MODE_ARRAY || _pArraySpecialCodeTableDictionaryEngine == nullptr || inword == nullptr ) return FALSE; 
@@ -707,13 +707,14 @@ BOOL CCompositionProcessorEngine::LookupSpeicalCode(_In_ CStringRange *inword, _
 				if(*radical == L'\0') *radical = *radicalChar;
 				StringCchCatN(pwch, candidateList.GetAt(0)->_FindKeyCode.GetLength()+1, radical,1); 
 			}
-			*ppwchSpecialCodeResultString = pwch;
+			csrReslt->Set(pwch, candidateList.GetAt(0)->_FindKeyCode.GetLength());
 			return TRUE;
 		}
 		else
 		{
 			delete pwch;
-			*ppwchSpecialCodeResultString = candidateList.GetAt(0)->_FindKeyCode.Get();
+			csrReslt = inword;
+
 		}
 	}
 	}

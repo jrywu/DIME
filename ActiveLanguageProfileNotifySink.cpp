@@ -61,6 +61,7 @@ STDAPI CTSFTTS::OnActivated(_In_ REFCLSID clsid, _In_ REFGUID guidProfile, _In_ 
     else
     {
         _DeleteCandidateList(FALSE, nullptr);
+		//if(_pUIPresenter) _pUIPresenter->ClearAll();
 
         HideAllLanguageBarIcons();
     }

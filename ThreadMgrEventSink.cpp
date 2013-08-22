@@ -3,7 +3,7 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-#define DEBUG_PRINT
+//#define DEBUG_PRINT
 
 #include "Private.h"
 #include "Globals.h"
@@ -60,15 +60,17 @@ STDAPI CTSFTTS::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMg
 	if(!_UpdateLanguageBarOnSetFocus(pDocMgrFocus))
 	{
 		pDocMgrFocus->GetTop(&pContext);
-		if(_IsComposing() && pContext)
-			_EndComposition(pContext);
-		
-		if(pContext) //CreateContext(_tfClientId, 0, NULL, &pContext, &ec))) //  
+		if(pContext && !_IsComposing()) //CreateContext(_tfClientId, 0, NULL, &pContext, &ec))) //  
 		{	
-			_ProbeComposition(pContext);
-
-			//CStringRange notifytext;
-			//_pUIPresenter->ShowNotifyText(&notifytext.Set(L"AAA", 3), 1000);
+			/*
+			BOOL isOpen = FALSE;
+			CCompartment CompartmentKeyboardOpen(_pThreadMgr, _tfClientId, Global::TSFTTSGuidCompartmentIMEMode);
+			CompartmentKeyboardOpen._GetCompartmentBOOL(isOpen);
+			CStringRange notify;
+			if(isOpen) notify.Set(L"英文",2);
+			else  notify.Set(L"中文",2);
+			_pUIPresenter->ShowNotifyText(&notify,-1);
+			*/
 		}
 
 
@@ -76,7 +78,6 @@ STDAPI CTSFTTS::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMg
 	else
 	{
 		debugPrint(L"CTSFTTS::OnSetFocus() pDocMgrFocus = null, no valid context on focus");
-		//_pUIPresenter->ClearAll();
 		_pUIPresenter->ClearNotify();
 	}
 
@@ -118,6 +119,11 @@ STDAPI CTSFTTS::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMg
         {
             if (pCandidateListDocumentMgr != pDocMgrFocus)
             {
+				if(pContext && _IsComposing())
+				{
+					//_EndComposition(pContext);
+					//_DeleteCandidateList(TRUE, pContext);
+				}
                 _pUIPresenter->OnKillThreadFocus();
             }
             else 

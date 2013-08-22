@@ -159,6 +159,7 @@ private:
     CTSFTTS* _pTextService;
     LONG _refCount;
 	POINT _candLocation;
+	POINT _notifyLocation;
 	RECT _rectCompRange;
 };
 

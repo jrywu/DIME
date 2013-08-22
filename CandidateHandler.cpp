@@ -81,7 +81,7 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
     }
 	
 	
-	commitString.Set(pCandidateString , candidateLen );
+	commitString.Set(pCandidateString , candidateLen);
 	
 	PWCHAR pwch = new (std::nothrow) WCHAR[2];  // pCandidateString will be destroyed after _detelteCanddiateList was called.
 	pwch[1] = L'0';
@@ -93,15 +93,15 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 		StringCchCopyN(pwch, 2, pCandidateString, 1); 	
 	}
 	candidateString.Set(pwch, 1 );
-	//-----------------do reverse lookup and array spcial code notify
+	//-----------------do  array spcial code notify
 	BOOL ArraySPFound = FALSE;            // should not show notify in UI-less mode
 	if(Global::imeMode == IME_MODE_ARRAY && !_IsUILessMode()  && !arrayUsingSPCode && (CConfig::GetArrayForceSP() || CConfig::GetArrayNotifySP()))
 	{
-		const WCHAR *specialCode = nullptr;
+		CStringRange specialCode;
 		CStringRange notifyText;
 		ArraySPFound = _pCompositionProcessorEngine->LookupSpeicalCode(&commitString, &specialCode); 
-		if(specialCode)
-			_pUIPresenter->ShowNotifyText(&notifyText.Set(specialCode,wcslen(specialCode)), -1);
+		if(specialCode.Get())
+			_pUIPresenter->ShowNotifyText(&specialCode, -1);
 	}
 	//----------------- commit the selected string   // thus cancel forceSP mode in UILess Mode
 	if(Global::imeMode == IME_MODE_ARRAY && !_IsUILessMode()  && !arrayUsingSPCode && CConfig::GetArrayForceSP() &&  ArraySPFound )
@@ -115,9 +115,7 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 		hr = _AddComposingAndChar(ec, pContext, &commitString);
 		if (FAILED(hr))	return hr;
 		// Do not send _endcandidatelist (or handleComplete) here to avoid cand dissapear in win8 metro
-		_TerminateComposition(ec, pContext);
-		_candidateMode = CANDIDATE_NONE;
-		_isCandidateWithWildcard = FALSE;	
+		_HandleComplete(ec,pContext);
 	}
 	
 
@@ -145,17 +143,20 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 			_pUIPresenter->_SetCandidateText(&candidatePhraseList, TRUE, _pCompositionProcessorEngine->GetCandidateWindowWidth());
 			_pUIPresenter->_SetCandidateSelection(-1, FALSE); // set selected index to -1 if showing phrase candidates
 			_phraseCandShowing = TRUE;  //_phraseCandShowing = TRUE. phrase cand is showing
+			debugPrint(L"CTSFTTS::_HandleCandidateWorker() phrase cand is showing");
 			_candidateMode = CANDIDATE_PHRASE;
 			_isCandidateWithWildcard = FALSE;	
+			
 		}
 		else
-		{   //_endcandidatelist only if the phrase lookup return 0 results
-			_DeleteCandidateList(FALSE, pContext);
+		{   //cancel the composition if the phrase lookup return 0 results
+			_HandleCancel(ec,pContext);
 		}
 
 
 	}
-	
+	else
+		_DeleteCandidateList(TRUE, pContext); // endCanddiateUI if not doing associated phrase.
 	
 	
 Exit:
@@ -317,14 +318,15 @@ HRESULT CTSFTTS::_CreateAndStartCandidate(_In_ CCompositionProcessorEngine *pCom
 
 VOID CTSFTTS::_DeleteCandidateList(BOOL isForce, _In_opt_ ITfContext *pContext)
 {
-	isForce;pContext;
+	//isForce;
+	pContext;
 	debugPrint(L"CTSFTTS::_DeleteCandidateList()\n");
 	if(_pCompositionProcessorEngine) 
 	{
 	    _pCompositionProcessorEngine->PurgeVirtualKey();
 	}
 
-    if (_pUIPresenter)
+    if (_pUIPresenter && isForce)
     {
 		_pUIPresenter->_EndCandidateList();
     }
