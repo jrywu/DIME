@@ -121,13 +121,13 @@ private:
     
 
     CTableDictionaryEngine* _pTableDictionaryEngine;
-	CTableDictionaryEngine* _pTTSTableDictionaryEngine;
-	CTableDictionaryEngine* _pCINTableDictionaryEngine;
+	CTableDictionaryEngine* _pTTSTableDictionaryEngine[5];
+	CTableDictionaryEngine* _pCINTableDictionaryEngine[5];
 	CTableDictionaryEngine* _pArrayShortCodeTableDictionaryEngine;
 	CTableDictionaryEngine* _pArraySpecialCodeTableDictionaryEngine;
 
-	CFileMapping* _pTTSDictionaryFile;
-	CFileMapping* _pCINDictionaryFile;
+	CFileMapping* _pTTSDictionaryFile[5];
+	CFileMapping* _pCINDictionaryFile[5];
 	CFileMapping* _pArrayShortCodeDictionaryFile;
 	CFileMapping* _pArraySpecialCodeDictionaryFile;
 

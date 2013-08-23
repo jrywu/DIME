@@ -305,7 +305,7 @@ ReadValue:
 				*radical=L'0';
 				StringCchCopyN(radicalChar,  2, keyword.Get(),1); 
 				StringCchCopyN(radical, 2, valueStrings.GetAt(0)->Get(), 1);
-				Global::radicalMap[towupper(*radicalChar)] = *radical;
+				Global::radicalMap[Global::imeMode][towupper(*radicalChar)] = *radical;
 				goto FindNextLine;
 			}
 			if(searchMode == SEARCH_CONFIG)

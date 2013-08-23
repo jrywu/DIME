@@ -33,13 +33,19 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CTSFTTS *pTextServ
     _pTextService->AddRef();
 
     _pTableDictionaryEngine = nullptr;
-	_pCINTableDictionaryEngine = nullptr;
-	_pTTSTableDictionaryEngine = nullptr;
+	for (UINT i =0 ; i<5 ; i++)
+	{
+		_pTTSTableDictionaryEngine[i] = nullptr;
+		_pCINTableDictionaryEngine[i] = nullptr;
+		_pTTSDictionaryFile[i] = nullptr;
+		_pCINDictionaryFile[i] = nullptr;
+	}
+
+
 	_pArrayShortCodeTableDictionaryEngine = nullptr;
 	_pArraySpecialCodeTableDictionaryEngine = nullptr;
 
-    _pTTSDictionaryFile = nullptr;
-	_pCINDictionaryFile = nullptr;
+    
 	_pArraySpecialCodeDictionaryFile = nullptr;
 	_pArrayShortCodeDictionaryFile = nullptr;
 
@@ -60,7 +66,7 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CTSFTTS *pTextServ
 
     _candidateListPhraseModifier = 0;
 
-
+	
 
 }
 
@@ -73,31 +79,33 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CTSFTTS *pTextServ
 CCompositionProcessorEngine::~CCompositionProcessorEngine()
 {
 	_pTextService->Release();
-    if (_pTTSTableDictionaryEngine)
-    {
-        delete _pTTSTableDictionaryEngine;
-        _pTTSTableDictionaryEngine = nullptr;
-	}
-	if (_pCINTableDictionaryEngine)
-    {
-        delete _pCINTableDictionaryEngine;
-        _pCINTableDictionaryEngine = nullptr;
+	for (UINT i =0 ; i<5 ; i++)
+	{
+		if (_pTTSTableDictionaryEngine[i])
+		{
+			delete _pTTSTableDictionaryEngine[i];
+			_pTTSTableDictionaryEngine[i] = nullptr;
+		}
+		if (_pCINTableDictionaryEngine[i])
+		{
+			delete _pCINTableDictionaryEngine[i];
+			_pCINTableDictionaryEngine[i] = nullptr;
+		}
+		if (_pTTSDictionaryFile[i])
+		{
+			delete _pTTSDictionaryFile[i];
+			_pTTSDictionaryFile[i] = nullptr;
+		}
+		if (_pCINDictionaryFile[i])
+		{
+			delete _pTTSDictionaryFile[i];
+			_pCINDictionaryFile[i] = nullptr;
+		}
 	}
 	_pTableDictionaryEngine = nullptr;
 
 	
 
-	if (_pTTSDictionaryFile)
-    {
-        delete _pTTSDictionaryFile;
-        _pTTSDictionaryFile = nullptr;
-    }
-
-    if (_pCINDictionaryFile)
-    {
-        delete _pCINDictionaryFile;
-        _pCINDictionaryFile = nullptr;
-    }
 }
 
 
@@ -230,11 +238,11 @@ void CCompositionProcessorEngine::GetReadingStrings(_Inout_ CTSFTTSArray<CString
 		
         for (DWORD index = 0; index < _keystrokeBuffer.GetLength(); index++)
         {
-			if(Global::radicalMap.size() && !IsSymbol()) // if radicalMap is valid (size()>0), then convert the keystroke buffer 
+			if(Global::radicalMap[Global::imeMode].size() && !IsSymbol()) // if radicalMap is valid (size()>0), then convert the keystroke buffer 
 			{
 				WCHAR radicalChar[2];
 				*radicalChar = towupper(*(_keystrokeBuffer.Get() + index));
-				WCHAR* radical = &Global::radicalMap[*radicalChar];
+				WCHAR* radical = &Global::radicalMap[Global::imeMode][*radicalChar];
 				if(*radical == L'\0') *radical = *radicalChar;
 				StringCchCatN(pwchRadical, _keystrokeBuffer.GetLength() + 1, radical,1); 
 			}
@@ -246,7 +254,7 @@ void CCompositionProcessorEngine::GetReadingStrings(_Inout_ CTSFTTSArray<CString
                 _hasWildcardIncludedInKeystrokeBuffer = TRUE;
             }
         }
-		if(Global::radicalMap.size()&& !IsSymbol())
+		if(Global::radicalMap[Global::imeMode].size()&& !IsSymbol())
 		{
 			pNewString->Set(pwchRadical, _keystrokeBuffer.GetLength());
 		}
@@ -519,10 +527,10 @@ void CCompositionProcessorEngine::GetCandidateStringInConverted(CStringRange &se
     }
     searchText.Set(pwch, len);
 
-	if(_pCINTableDictionaryEngine && Global::hasCINPhraseSection) // do phrase lookup if CIN file has phrase section
-		_pCINTableDictionaryEngine->CollectWordFromConvertedString(&searchText, pCandidateList);
-	else if(_pTTSTableDictionaryEngine && Global::hasPhraseSection)// do phrase lookup in TTS file if CIN phrase section is not present
-		_pTTSTableDictionaryEngine->CollectWordFromConvertedString(&searchText, pCandidateList);
+	if(_pCINTableDictionaryEngine[Global::imeMode] && Global::hasCINPhraseSection) // do phrase lookup if CIN file has phrase section
+		_pCINTableDictionaryEngine[Global::imeMode]->CollectWordFromConvertedString(&searchText, pCandidateList);
+	else if(_pTTSTableDictionaryEngine[Global::imeMode] && Global::hasPhraseSection)// do phrase lookup in TTS file if CIN phrase section is not present
+		_pTTSTableDictionaryEngine[Global::imeMode]->CollectWordFromConvertedString(&searchText, pCandidateList);
 	else // no phrase section, do wildcard text search
 		_pTableDictionaryEngine->CollectWordFromConvertedStringForWildcard(&searchText, pCandidateList);
 
@@ -553,6 +561,7 @@ void CCompositionProcessorEngine::GetCandidateStringInConverted(CStringRange &se
 //----------------------------------------------------------------------------
 BOOL CCompositionProcessorEngine::IsSymbol()
 {
+	if(_keystrokeBuffer.Get() == nullptr) return FALSE;
 	if(Global::imeMode==IME_MODE_DAYI)
 		return (_keystrokeBuffer.GetLength()<3 && *_keystrokeBuffer.Get()==L'=');	
 	else if(Global::imeMode==IME_MODE_ARRAY)
@@ -697,13 +706,13 @@ BOOL CCompositionProcessorEngine::LookupSpeicalCode(_In_ CStringRange *inword, _
 		PWCHAR pwch;
 		pwch = new (std::nothrow) WCHAR[candidateList.GetAt(0)->_FindKeyCode.GetLength()+1];
 		*pwch=L'\0';
-		if(candidateList.GetAt(0)->_FindKeyCode.GetLength() && Global::radicalMap.size())
+		if(candidateList.GetAt(0)->_FindKeyCode.GetLength() && Global::radicalMap[Global::imeMode].size())
 		{
 			for(UINT i=0; i <candidateList.GetAt(0)->_FindKeyCode.GetLength(); i++)
 			{ // query keyname from keymap
 				WCHAR radicalChar[2];
 				*radicalChar = towupper(*(candidateList.GetAt(0)->_FindKeyCode.Get() + i));
-				WCHAR* radical = &Global::radicalMap[*radicalChar];
+				WCHAR* radical = &Global::radicalMap[Global::imeMode][*radicalChar];
 				if(*radical == L'\0') *radical = *radicalChar;
 				StringCchCatN(pwch, candidateList.GetAt(0)->_FindKeyCode.GetLength()+1, radical,1); 
 			}
@@ -759,7 +768,7 @@ void CCompositionProcessorEngine::SetupKeystroke()
 
 void CCompositionProcessorEngine::SetKeystrokeTable(_Inout_ CTSFTTSArray<_KEYSTROKE> *pKeystroke)
 {
-
+	pKeystroke->Clear();
     for (int i = 0; i <  41; i++)
     {
         _KEYSTROKE* pKS = nullptr;
@@ -1032,21 +1041,22 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 
 
 	//create CFileMapping object
-    if (_pTTSDictionaryFile == nullptr)
+    if (_pTTSDictionaryFile[Global::imeMode] == nullptr)
     {
-        _pTTSDictionaryFile = new (std::nothrow) CFileMapping();
-        if (!_pTTSDictionaryFile)  goto ErrorExit;
+        _pTTSDictionaryFile[Global::imeMode] = new (std::nothrow) CFileMapping();
+        if (!_pTTSDictionaryFile[Global::imeMode])  goto ErrorExit;
     }
-	if (!(_pTTSDictionaryFile)->CreateFile(pwszFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
+	if (!(_pTTSDictionaryFile[Global::imeMode])->CreateFile(pwszFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
 	{
 		goto ErrorExit;
 	}
 	else
 	{
-		_pTTSTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pTTSDictionaryFile, L'='); //TTS file use '=' as delimiter
-		if (!_pTTSTableDictionaryEngine)  goto ErrorExit;
-		_pTTSTableDictionaryEngine->ParseConfig(); //parse config first.
-		_pTableDictionaryEngine = _pTTSTableDictionaryEngine;  //set TTS as default dictionary engine
+		_pTTSTableDictionaryEngine[Global::imeMode] = new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pTTSDictionaryFile[Global::imeMode], L'='); //TTS file use '=' as delimiter
+		if (!_pTTSTableDictionaryEngine[Global::imeMode])  goto ErrorExit;
+		Global::radicalMap[Global::imeMode].clear();
+		_pTTSTableDictionaryEngine[Global::imeMode]->ParseConfig(); //parse config first.
+		_pTableDictionaryEngine = _pTTSTableDictionaryEngine[Global::imeMode];  //set TTS as default dictionary engine
 	}
 
 	
@@ -1062,17 +1072,18 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 		if(PathFileExists(pwszCINFileName))  //create cin CFileMapping object
 		{
 			 //create CFileMapping object
-			if (_pCINDictionaryFile == nullptr)
+			if (_pCINDictionaryFile[Global::imeMode] == nullptr)
 			{
-				_pCINDictionaryFile = new (std::nothrow) CFileMapping();
-				if ((_pCINDictionaryFile)->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
+				_pCINDictionaryFile[Global::imeMode] = new (std::nothrow) CFileMapping();
+				if ((_pCINDictionaryFile[Global::imeMode])->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
 				{
-					_pCINTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pCINDictionaryFile, L'\t'); //cin files use tab as delimiter
+					_pCINTableDictionaryEngine[Global::imeMode] = new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pCINDictionaryFile[Global::imeMode], L'\t'); //cin files use tab as delimiter
 
-					if (_pCINTableDictionaryEngine)  
+					if (_pCINTableDictionaryEngine[Global::imeMode])  
 					{
-						_pCINTableDictionaryEngine->ParseConfig(); //parse config first.
-						_pTableDictionaryEngine = _pCINTableDictionaryEngine;  //set CIN as dictionary engine if avaialble
+						Global::radicalMap[Global::imeMode].clear();
+						_pCINTableDictionaryEngine[Global::imeMode]->ParseConfig(); //parse config first.
+						_pTableDictionaryEngine = _pCINTableDictionaryEngine[Global::imeMode];  //set CIN as dictionary engine if avaialble
 					}
 				}
 			}
@@ -1139,7 +1150,7 @@ ErrorExit:
 
 CFile* CCompositionProcessorEngine::GetDictionaryFile()
 {
-    return _pTTSDictionaryFile;
+    return _pTTSDictionaryFile[Global::imeMode];
 }
 
 
@@ -1208,20 +1219,24 @@ CCompositionProcessorEngine::XPreservedKey::~XPreservedKey()
 
 void CCompositionProcessorEngine::InitKeyStrokeTable()
 {
+	UINT index=0;
 	if(Global::imeMode != IME_MODE_ARRAY)
 	{
-		for (int i = 0; i < 10; i++)
+		for (UINT i = 0; i < 10; i++)
 		{
 			_keystrokeTable[i].VirtualKey = '0' + i;
 			_keystrokeTable[i].Modifiers = 0;
 			_keystrokeTable[i].Function = FUNCTION_INPUT;
+			index ++;
 		}
 	}
-    for (int i = 0; i < 26; i++)
+	UINT offset = index;
+    for (UINT i = 0; i < 26; i++)
     {
-        _keystrokeTable[i+10].VirtualKey = 'A' + i;
-        _keystrokeTable[i+10].Modifiers = 0;
-        _keystrokeTable[i+10].Function = FUNCTION_INPUT;
+        _keystrokeTable[i+offset].VirtualKey = 'A' + i;
+        _keystrokeTable[i+offset].Modifiers = 0;
+        _keystrokeTable[i+offset].Function = FUNCTION_INPUT;
+		index++;
     }
 	/*
 	#define VK_OEM_1          0xBA   // ';:' for US
@@ -1234,27 +1249,41 @@ void CCompositionProcessorEngine::InitKeyStrokeTable()
 	#define VK_OEM_PLUS       0xBB   // '+' any country
 	*/
 
-	_keystrokeTable[36].VirtualKey = VK_OEM_1 ;  // ';'
-	_keystrokeTable[36].Modifiers = 0;
-	_keystrokeTable[36].Function = FUNCTION_INPUT;
-	_keystrokeTable[37].VirtualKey = VK_OEM_COMMA ;  //','
-	_keystrokeTable[37].Modifiers = 0;
-	_keystrokeTable[37].Function = FUNCTION_INPUT;
-	_keystrokeTable[38].VirtualKey = VK_OEM_PERIOD ; //'.'
-	_keystrokeTable[38].Modifiers = 0;
-	_keystrokeTable[38].Function = FUNCTION_INPUT;
-	_keystrokeTable[39].VirtualKey = VK_OEM_2 ; // '/'
-	_keystrokeTable[39].Modifiers = 0;
-	_keystrokeTable[39].Function = FUNCTION_INPUT;
-	_keystrokeTable[40].VirtualKey = VK_OEM_PLUS ; // '/'
-	_keystrokeTable[40].Modifiers = 0;
-	_keystrokeTable[40].Function = FUNCTION_INPUT;
+
+	_keystrokeTable[index].VirtualKey = VK_OEM_1 ;  // ';'
+	_keystrokeTable[index].Modifiers = 0;
+	_keystrokeTable[index].Function = FUNCTION_INPUT;
+	index++;
+	_keystrokeTable[index].VirtualKey = VK_OEM_COMMA ;  //','
+	_keystrokeTable[index].Modifiers = 0;
+	_keystrokeTable[index].Function = FUNCTION_INPUT;
+	index++;
+	_keystrokeTable[index].VirtualKey = VK_OEM_PERIOD ; //'.'
+	_keystrokeTable[index].Modifiers = 0;
+	_keystrokeTable[index].Function = FUNCTION_INPUT;
+	index++;
+	_keystrokeTable[index].VirtualKey = VK_OEM_2 ; // '/'
+	_keystrokeTable[index].Modifiers = 0;
+	_keystrokeTable[index].Function = FUNCTION_INPUT;
+	index++;
+	_keystrokeTable[index].VirtualKey = VK_OEM_PLUS ; // '/'
+	_keystrokeTable[index].Modifiers = 0;
+	_keystrokeTable[index].Function = FUNCTION_INPUT;
+
+	offset = index++;
+	for(UINT i=offset; i<50; i++)
+	{
+		 _keystrokeTable[i].VirtualKey = 0;
+        _keystrokeTable[i].Modifiers = 0;
+        _keystrokeTable[i].Function = FUNCTION_INPUT;
+	}
 }
 
 
 
 void CCompositionProcessorEngine::SetInitialCandidateListRange()
 {
+	_candidateListIndexRange.Clear();
     for (DWORD i = 1; i <= 10; i++)
     {
         DWORD* pNewIndexRange = nullptr;

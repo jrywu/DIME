@@ -9,7 +9,7 @@
 #include "Globals.h"
 #include "BaseWindow.h"
 #include "NotifyWindow.h"
-
+#define NO_WINDOW_SHADOW
 //+---------------------------------------------------------------------------
 //
 // ctor
@@ -77,13 +77,13 @@ BOOL CNotifyWindow::_Create(_In_ UINT fontSize, _In_opt_ HWND parentWndHandle)
     {
         goto Exit;
     }
-
+#ifndef NO_WINDOW_SHADOW
     ret = _CreateBackGroundShadowWindow();
     if (FALSE == ret)
     {
         goto Exit;
     }
-
+#endif
     _ResizeWindow();
 
 Exit:
@@ -281,7 +281,7 @@ LRESULT CALLBACK CNotifyWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT uM
             dcHandle = BeginPaint(wndHandle, &ps);
 	
             _OnPaint(dcHandle, &ps);
-            _DrawBorder(wndHandle, NOTIFYWND_BORDER_WIDTH*2);
+            _DrawBorder(wndHandle, NOTIFYWND_BORDER_WIDTH);
             EndPaint(wndHandle, &ps);
 
             ReleaseDC(wndHandle, dcHandle);
@@ -469,7 +469,7 @@ void CNotifyWindow::_DrawBorder(_In_ HWND wndHandle, _In_ int cx)
     // zero based
     OffsetRect(&rcWnd, -rcWnd.left, -rcWnd.top); 
 
-    HPEN hPen = CreatePen(PS_DOT, cx, NOTIFYWND_BORDER_COLOR);
+	HPEN hPen = CreatePen(PS_SOLID, cx, NOTIFYWND_BORDER_COLOR);
     HPEN hPenOld = (HPEN)SelectObject(dcHandle, hPen);
     HBRUSH hBorderBrush = (HBRUSH)GetStockObject(NULL_BRUSH);
     HBRUSH hBorderBrushOld = (HBRUSH)SelectObject(dcHandle, hBorderBrush);

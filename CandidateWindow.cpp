@@ -10,7 +10,7 @@
 #include "Globals.h"
 #include "BaseWindow.h"
 #include "CandidateWindow.h"
-
+#define NO_WINDOW_SHADOW
 //+---------------------------------------------------------------------------
 //
 // ctor
@@ -79,12 +79,13 @@ BOOL CCandidateWindow::_Create(_In_ UINT wndWidth, _In_ UINT fontSize, _In_opt_ 
     {
         goto Exit;
     }
-
+#ifndef NO_WINDOW_SHADOW
     ret = _CreateBackGroundShadowWindow();
     if (FALSE == ret)
     {
         goto Exit;
     }
+#endif
 
     ret = _CreateVScrollWindow();
     if (FALSE == ret)
@@ -354,11 +355,11 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
             _pShadowWnd->_Show((BOOL)wParam);
         }
 
-        // show/hide v-scroll
-		//if (_pVScrollBarWnd)
-        //{
-        //   _pVScrollBarWnd->_Show((BOOL)wParam);
-        //}
+        /* show/hide v-scroll
+		if (_pVScrollBarWnd)
+        {
+           _pVScrollBarWnd->_Show((BOOL)wParam);
+        }*/
         break;
 
     case WM_PAINT:
@@ -368,7 +369,7 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
 
             dcHandle = BeginPaint(wndHandle, &ps);
             _OnPaint(dcHandle, &ps);
-            _DrawBorder(wndHandle, CANDWND_BORDER_WIDTH*2);
+            _DrawBorder(wndHandle, CANDWND_BORDER_WIDTH);
             EndPaint(wndHandle, &ps);
         }
         return 0;
@@ -738,7 +739,7 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT iIndex, _In_ RECT 
         rc.bottom = rc.top + cyLine;
 
         rc.left   = prc->left + PageCountPosition * cxLine;
-        rc.right  = prc->left + StringPosition * cxLine;
+        rc.right  = prc->left + (PageCountPosition+1) * cxLine;
 
         FillRect(dcHandle, &rc, _brshBkColor);
     }
@@ -763,7 +764,7 @@ void CCandidateWindow::_DrawBorder(_In_ HWND wndHandle, _In_ int cx)
     // zero based
     OffsetRect(&rcWnd, -rcWnd.left, -rcWnd.top); 
 
-    HPEN hPen = CreatePen(PS_DOT, cx, CANDWND_BORDER_COLOR);
+    HPEN hPen = CreatePen(PS_SOLID, cx, CANDWND_BORDER_COLOR);
     HPEN hPenOld = (HPEN)SelectObject(dcHandle, hPen);
     HBRUSH hBorderBrush = (HBRUSH)GetStockObject(NULL_BRUSH);
     HBRUSH hBorderBrushOld = (HBRUSH)SelectObject(dcHandle, hBorderBrush);

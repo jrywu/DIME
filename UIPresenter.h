@@ -92,7 +92,7 @@ public:
 	BOOL _SetCandidateSelection(_In_ int selectedIndex, _In_opt_ BOOL isNotify = TRUE);
     BOOL _MoveCandidatePage(_In_ int offSet);
 
-    void _MoveCandidateWindowToTextExt();
+    void _MoveUIWindowsToTextExt();
 
     // CTfTextLayoutSink
     virtual VOID _LayoutChangeNotification(_In_ RECT *lpRect);
@@ -128,9 +128,8 @@ private:
     HRESULT _UpdateUIElement();
 	
 
-    HRESULT ToShowCandidateWindow();
-
-    HRESULT ToHideCandidateWindow();
+    HRESULT ToShowUIWindows();
+    HRESULT ToHideUIWindows();
 
     HRESULT BeginUIElement();
     HRESULT EndUIElement();

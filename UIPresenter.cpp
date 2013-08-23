@@ -174,24 +174,24 @@ STDAPI CUIPresenter::GetGUID(GUID *pguid)
 //
 //----------------------------------------------------------------------------
 
-STDAPI CUIPresenter::Show(BOOL showCandidateWindow)
+STDAPI CUIPresenter::Show(BOOL showWindow)
 {
-	debugPrint(L"CUIPresenter::Show(), showCandidateWindow=%d", showCandidateWindow);
-    if (showCandidateWindow)
+	debugPrint(L"CUIPresenter::Show(), showWindow=%d", showWindow);
+    if (showWindow)
     {
-        ToShowCandidateWindow();
+        ToShowUIWindows();
     }
     else
     {
-        ToHideCandidateWindow();
+        ToHideUIWindows();
     }
     return S_OK;
 }
 
-HRESULT CUIPresenter::ToShowCandidateWindow()
+HRESULT CUIPresenter::ToShowUIWindows()
 {
-	debugPrint(L"CUIPresenter::ToShowCandidateWindow()");
-    _MoveCandidateWindowToTextExt();
+	debugPrint(L"CUIPresenter::ToShowUIWindows()");
+    _MoveUIWindowsToTextExt();
     if (_pCandidateWnd) _pCandidateWnd->_Show(TRUE);
 	if(_pNotifyWnd) _pNotifyWnd->_Show(TRUE);
 
@@ -199,9 +199,9 @@ HRESULT CUIPresenter::ToShowCandidateWindow()
     return S_OK;
 }
 
-HRESULT CUIPresenter::ToHideCandidateWindow()
+HRESULT CUIPresenter::ToHideUIWindows()
 {
-	debugPrint(L"CUIPresenter::ToHideCandidateWindow()");
+	debugPrint(L"CUIPresenter::ToHideUIWindows()");
 	if (_pCandidateWnd)	_pCandidateWnd->_Show(FALSE);	
 
     _updatedFlags = TF_CLUIE_SELECTION | TF_CLUIE_CURRENTPAGE;
@@ -743,7 +743,7 @@ BOOL CUIPresenter::_MoveCandidatePage(_In_ int offSet)
 //
 //----------------------------------------------------------------------------
 
-void CUIPresenter::_MoveCandidateWindowToTextExt()
+void CUIPresenter::_MoveUIWindowsToTextExt()
 {
 	debugPrint(L"CUIPresenter::_MoveCandidateWindowToTextExt()");
     RECT rc;
@@ -752,10 +752,12 @@ void CUIPresenter::_MoveCandidateWindowToTextExt()
     {
         return;
     }
-
-   _pCandidateWnd->_Move(rc.left, rc.bottom);
-   _candLocation.x = rc.left;
-   _candLocation.y = rc.bottom;
+	if(_pCandidateWnd)
+	{
+		_pCandidateWnd->_Move(rc.left, rc.bottom);
+		_candLocation.x = rc.left;
+		_candLocation.y = rc.bottom;
+	}
    if(_pNotifyWnd)
    {
 	   _notifyLocation.x = rc.left;

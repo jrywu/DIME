@@ -5,6 +5,7 @@
 //
 
 #include <map>
+#include "Globals.h"
 #include "Private.h"
 #include "resource.h"
 #include "BaseWindow.h"
@@ -17,7 +18,7 @@ HINSTANCE dllInstanceHandle;
 
 LONG dllRefCount = -1;
 
-map <WCHAR, WCHAR> radicalMap;
+mapWCHWCH radicalMap[5];
 
 BOOL isWindows8 = FALSE;
 

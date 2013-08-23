@@ -226,7 +226,11 @@ public:
     { 
         return _CandidateListIndexRange.Append(); 
     }
-
+	inline void *Clear() 
+    { 
+		_CandidateListIndexRange.Clear(); 
+		return nullptr;
+    }
 private:
     CTSFTTSArray<DWORD> _CandidateListIndexRange;
 };
