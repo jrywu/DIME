@@ -775,7 +775,8 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
 	if(lpRect == nullptr) return;
     RECT rect = {0, 0, 0, 0};
     POINT pt = {0, 0};
-	if(_pCandidateWnd)
+	if(_pCandidateWnd
+		&& (lpRect->bottom - lpRect->top >1) && (lpRect->right - lpRect->left >1)  ) // confirm the extent rect is valid.
 	{
 		_pCandidateWnd->_GetClientRect(&rect);
 		_pCandidateWnd->_GetWindowExtent(lpRect, &rect, &pt);
@@ -783,7 +784,8 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
 		_candLocation.x = pt.x;
 		_candLocation.y = pt.y;
 	}
-	if(_pNotifyWnd)
+	if(_pNotifyWnd
+		&& (lpRect->bottom - lpRect->top >1) && (lpRect->right - lpRect->left >1)  ) // confirm the extent rect is valid.
 	{
 		
 		if(_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())
@@ -1213,11 +1215,18 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ int timeT
 				}
 			}
 			GUITHREADINFO* guiInfo = new GUITHREADINFO;
+			POINT* pt = nullptr;
 			guiInfo->cbSize = sizeof(GUITHREADINFO);
 			GetGUIThreadInfo(NULL, guiInfo);
 			if(guiInfo->hwndCaret)
-			{
-				debugPrint(L"current caret position, x = %d, y = %d, focus hwd = %x", guiInfo->rcCaret.left, guiInfo->rcCaret.bottom);
+			{   //for acient non TSF aware apps with a floating composition window.  The caret position we can get is always the caret in the flaoting comosition window.
+				pt = new POINT;
+				pt->x = guiInfo->rcCaret.left;
+				pt->y = guiInfo->rcCaret.bottom;
+				ClientToScreen(parentWndHandle, pt);
+				debugPrint(L"current caret position from GetGUIThreadInfo, x = %d, y = %d, focus hwd = %x", guiInfo->rcCaret.left, guiInfo->rcCaret.bottom);
+				if(_notifyLocation.x < 0) _notifyLocation.x = pt->x;
+				if(_notifyLocation.y < 0) _notifyLocation.y = pt->y;
 			}
 
 			ShowNotify(TRUE, timeToHide);	//hide after 1.5 secconds

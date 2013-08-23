@@ -99,10 +99,6 @@ HRESULT CTSFTTS::_HandleCompositionInput(TfEditCookie ec, _In_ ITfContext *pCont
     CCompositionProcessorEngine* pCompositionProcessorEngine = nullptr;
     pCompositionProcessorEngine = _pCompositionProcessorEngine;
 
-	if (_pUIPresenter && _pUIPresenter->IsNotifyShown())
-	{
-		_pUIPresenter->ClearNotify();
-	}
 
 	if (_pUIPresenter 
 		&& _candidateMode != CANDIDATE_INCREMENTAL &&_candidateMode != CANDIDATE_NONE )
