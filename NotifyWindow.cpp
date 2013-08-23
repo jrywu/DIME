@@ -19,21 +19,7 @@
 CNotifyWindow::CNotifyWindow(_In_ NOTIFYWNDCALLBACK pfnCallback, _In_ void *pv)
 {
    
-	HDC dcHandle = nullptr;
-	HWND wndHandle = GetFocus();
-	dcHandle = GetDC(wndHandle);
-	if (dcHandle)
-	{
-		HFONT hFontOld = (HFONT)SelectObject(dcHandle, Global::defaultlFontHandle);
-		GetTextMetrics(dcHandle, &_TextMetric);
-
-		_cxTitle = _TextMetric.tmAveCharWidth* (int) (_notifyText.GetLength() + 5);
-		_cyTitle = _TextMetric.tmHeight *2;
-
-		SelectObject(dcHandle, hFontOld);
-		ReleaseDC(wndHandle, dcHandle);
-	}
-
+	
     _pfnCallback = pfnCallback;
     _pObj = pv;
 

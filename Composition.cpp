@@ -51,10 +51,12 @@ HRESULT CTSFTTS::_LayoutChangeNotification(TfEditCookie ec, _In_ ITfContext *pCo
 	ec; pContext;
 	debugPrint(L"\nCTSFTTS::_HandlTextLayoutChange() _candidateMode = %d", _candidateMode);
 	debugPrint (L"CTSFTTS::_HandlTextLayoutChange(); top=%d, bottom=%d, left =%d, righ=%d",rc->top, rc->bottom, rc->left, rc->right);
+	/*
 	POINT curPos;
 	GetCaretPos(&curPos);
 	ClientToScreen(GetFocus(), &curPos);
 	debugPrint (L"CTSFTTS::_HandlTextLayoutChange(); x=%d, y=%d",curPos.x, curPos.y);		
+	*/
 	if( _candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION || _candidateMode == CANDIDATE_PHRASE)
 	{
 		

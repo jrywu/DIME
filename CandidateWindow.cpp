@@ -44,8 +44,9 @@ CCandidateWindow::CCandidateWindow(_In_ CANDWNDCALLBACK pfnCallback, _In_ void *
 
 	_fontSize = _TextMetric.tmHeight;
 
-	_x = 0;
-	_y = 0;
+	//initilialized for out of screen 
+	_x = -32768;
+	_y = -32768;
 }
 
 //+---------------------------------------------------------------------------

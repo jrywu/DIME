@@ -1209,41 +1209,38 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ int timeT
 			HWND parentWndHandle = nullptr;
 			ITfContextView* pView = nullptr;
 
-			if(pContext)
+			if (SUCCEEDED(pContext->GetActiveView(&pView)))
 			{
-				if (SUCCEEDED(pContext->GetActiveView(&pView)))
-				{
-					pView->GetWnd(&parentWndHandle);
+				pView->GetWnd(&parentWndHandle);
+				debugPrint(L" parentWndHandle = %x , FocusHwnd = %x, ActiveHwnd =%x, ForeGroundHWnd = %x", parentWndHandle, GetFocus(), GetActiveWindow(), GetForegroundWindow());
+				GUITHREADINFO* guiInfo = new GUITHREADINFO;
+				POINT* pt = nullptr;
+				guiInfo->cbSize = sizeof(GUITHREADINFO);
+				GetGUIThreadInfo(NULL, guiInfo);
+				if(guiInfo->hwndCaret)
+				{   //for acient non TSF aware apps with a floating composition window.  The caret position we can get is always the caret in the flaoting comosition window.
+					pt = new POINT;
+					pt->x = guiInfo->rcCaret.left;
+					pt->y = guiInfo->rcCaret.bottom;
+					ClientToScreen(parentWndHandle, pt);
+					debugPrint(L"current caret position from GetGUIThreadInfo, x = %d, y = %d, focus hwd = %x", guiInfo->rcCaret.left, guiInfo->rcCaret.bottom);
+					if(_notifyLocation.x < 0) _notifyLocation.x = pt->x;
+					if(_notifyLocation.y < 0) _notifyLocation.y = pt->y;
 				}
-			}
-			GUITHREADINFO* guiInfo = new GUITHREADINFO;
-			POINT* pt = nullptr;
-			guiInfo->cbSize = sizeof(GUITHREADINFO);
-			GetGUIThreadInfo(NULL, guiInfo);
-			if(guiInfo->hwndCaret)
-			{   //for acient non TSF aware apps with a floating composition window.  The caret position we can get is always the caret in the flaoting comosition window.
-				pt = new POINT;
-				pt->x = guiInfo->rcCaret.left;
-				pt->y = guiInfo->rcCaret.bottom;
-				ClientToScreen(parentWndHandle, pt);
-				debugPrint(L"current caret position from GetGUIThreadInfo, x = %d, y = %d, focus hwd = %x", guiInfo->rcCaret.left, guiInfo->rcCaret.bottom);
-				if(_notifyLocation.x < 0) _notifyLocation.x = pt->x;
-				if(_notifyLocation.y < 0) _notifyLocation.y = pt->y;
-			}
 
-			ShowNotify(TRUE, timeToHide);	//hide after 1.5 secconds
+				ShowNotify(TRUE, timeToHide);	//hide after 1.5 secconds
 
-			if(_pCandidateWnd == nullptr && shouldProbeComposition)
-				_pTextService->_ProbeComposition(pContext);
-			
-			if(_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())
-			{
-				_pNotifyWnd->_Move(_notifyLocation.x - _pNotifyWnd->_GetWidth(), _notifyLocation.y);
+				if(_pCandidateWnd == nullptr && shouldProbeComposition)
+					_pTextService->_ProbeComposition(pContext);
+
+				if(_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())
+				{
+					_pNotifyWnd->_Move(_notifyLocation.x - _pNotifyWnd->_GetWidth(), _notifyLocation.y);
+				}
+				else
+					_pNotifyWnd->_Move(_notifyLocation.x, _notifyLocation.y);
+
 			}
-			else
-				_pNotifyWnd->_Move(_notifyLocation.x, _notifyLocation.y);
-			
-
 		}
 		 
 

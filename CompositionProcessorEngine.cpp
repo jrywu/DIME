@@ -1266,14 +1266,15 @@ void CCompositionProcessorEngine::InitKeyStrokeTable()
 	_keystrokeTable[index].Modifiers = 0;
 	_keystrokeTable[index].Function = FUNCTION_INPUT;
 	index++;
-	_keystrokeTable[index].VirtualKey = VK_OEM_PLUS ; // '/'
+	_keystrokeTable[index].VirtualKey = VK_OEM_PLUS ; // '='
 	_keystrokeTable[index].Modifiers = 0;
 	_keystrokeTable[index].Function = FUNCTION_INPUT;
 
-	offset = index++;
+	index++;
+	offset = index;
 	for(UINT i=offset; i<50; i++)
 	{
-		 _keystrokeTable[i].VirtualKey = 0;
+		_keystrokeTable[i].VirtualKey = 0;
         _keystrokeTable[i].Modifiers = 0;
         _keystrokeTable[i].Function = FUNCTION_INPUT;
 	}
