@@ -1672,7 +1672,7 @@ BOOL CCompositionProcessorEngine::IsKeystrokeRange(UINT uCode, _Out_ _KEYSTROKE_
              if ((GetCandidateListPhraseModifier() == 0 && (Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT) )!= 0) || //shift + 123...
                 (GetCandidateListPhraseModifier() != 0 && Global::CheckModifiers(Global::ModifiersValue, GetCandidateListPhraseModifier())))
             {
-				pKeyState->Category = CATEGORY_CANDIDATE;//CATEGORY_PHRASE; 
+				pKeyState->Category = CATEGORY_CANDIDATE;
 				pKeyState->Function = FUNCTION_SELECT_BY_NUMBER;
                 return TRUE;
             }

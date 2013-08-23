@@ -146,7 +146,8 @@ void CBaseWindow::_Move(int x, int y)
 {
     if (_wndHandle != nullptr)
     {
-        SetWindowPos(_wndHandle, 0, x, y, 0, 0, SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER);
+		// set the zorder to be above all non topmost windows to avoid bounce back on child windows (like office share->email)
+        SetWindowPos(_wndHandle, HWND_TOPMOST, x, y, 0, 0, SWP_NOACTIVATE | SWP_NOSIZE);
     }
     else
     {
