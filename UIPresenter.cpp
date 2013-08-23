@@ -40,6 +40,13 @@ CUIPresenter::CUIPresenter(_In_ CTSFTTS *pTextService, CCompositionProcessorEngi
     _pTextService->AddRef();
 
     _refCount = 1;
+
+	//intialized the location out of screen to avoid showing before correct tracking position obtained.
+	_candLocation.x = -32768;
+	_candLocation.y = -32768;
+	
+	_notifyLocation.x = -32768;
+	_notifyLocation.y = -32768;
 	
 }
 
@@ -496,7 +503,7 @@ HRESULT CUIPresenter::_StartCandidateList(TfClientId tfClientId, _In_ ITfDocumen
         goto Exit;
     }
 
-    Show(_isShowMode);
+	Show(_isShowMode);
 
     RECT rcTextExt;
     if (SUCCEEDED(_GetTextExt(&rcTextExt)))
@@ -1205,12 +1212,14 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ int timeT
 					pView->GetWnd(&parentWndHandle);
 				}
 			}
-/*
-			POINT pt = {0,0};	
-			GetCaretPos(&pt);
-			MapWindowPoints(GetFocus(), NULL, &pt, 1);
-			debugPrint(L"current caret position, x = %d, y = %d, focus hwd = %x, pContext = %x", pt.x, pt.y, GetFocus(), pContext);
-			*/
+			GUITHREADINFO* guiInfo = new GUITHREADINFO;
+			guiInfo->cbSize = sizeof(GUITHREADINFO);
+			GetGUIThreadInfo(NULL, guiInfo);
+			if(guiInfo->hwndCaret)
+			{
+				debugPrint(L"current caret position, x = %d, y = %d, focus hwd = %x", guiInfo->rcCaret.left, guiInfo->rcCaret.bottom);
+			}
+
 			ShowNotify(TRUE, timeToHide);	//hide after 1.5 secconds
 
 			if(_pCandidateWnd == nullptr && shouldProbeComposition)
@@ -1223,7 +1232,9 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ int timeT
 			else
 				_pNotifyWnd->_Move(_notifyLocation.x, _notifyLocation.y);
 			
+
 		}
+		 
 
 	}
 

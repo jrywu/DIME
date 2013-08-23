@@ -130,8 +130,9 @@ BOOL CNotifyWindow::_CreateBackGroundShadowWindow()
 
 void CNotifyWindow::_ResizeWindow()
 {
-	debugPrint(L"CNotifyWindow::_ResizeWindow()");
-   	CBaseWindow::_Resize(_x, _y, _cxTitle, _cyTitle);  //x, y, cx, cy    
+	debugPrint(L"CNotifyWindow::_ResizeWindow() , _x = %d, _y= %d, _cx= %d, _cy= %d", _x, _y, _cxTitle, _cyTitle);
+   	CBaseWindow::_Resize(_x, _y, _cxTitle, _cyTitle); 
+	_InvalidateRect();
 }
 
 //+---------------------------------------------------------------------------
@@ -142,6 +143,7 @@ void CNotifyWindow::_ResizeWindow()
 
 void CNotifyWindow::_Move(int x, int y)
 {
+	debugPrint(L"CNotifyWindow::_Move(), x = %d, y= %d", x, y);
 	_x = x;
 	_y = y;
     CBaseWindow::_Move(_x, _y);
@@ -207,7 +209,8 @@ LRESULT CALLBACK CNotifyWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT uM
             {
                 HFONT hFontOld = (HFONT)SelectObject(dcHandle, Global::defaultlFontHandle);
                 GetTextMetrics(dcHandle, &_TextMetric);
-				 
+				_x = -32768;
+				_y = -32768;  //out of screen intially
 				_cxTitle = _TextMetric.tmAveCharWidth* (int) (_notifyText.GetLength() + 5);
 				_cyTitle = _TextMetric.tmHeight *2;
 				debugPrint(L"CNotifyWindow::_WindowProcCallback():WM_CREATE, _cxTitle = %d, _cyTitle=%d", _cxTitle, _cyTitle);

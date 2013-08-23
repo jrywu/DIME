@@ -466,7 +466,7 @@ void CTSFTTS::_ProbeComposition(_In_ ITfContext *pContext)
 {
 	debugPrint(L"CTSFTTS::_ProbeComposition()\n");
 	CProbeComposistionEditSession* pProbeComposistionEditSession = new (std::nothrow) CProbeComposistionEditSession(this, pContext);
-	if(_IsComposing())	_EndComposition(_pContext);
+
 	if (nullptr != pProbeComposistionEditSession)
 	{
 		HRESULT hr = S_OK;
@@ -474,7 +474,7 @@ void CTSFTTS::_ProbeComposition(_In_ ITfContext *pContext)
 
 		pProbeComposistionEditSession->Release();
 	}
-
+	
 	_EndComposition(pContext);
 	
    
@@ -484,10 +484,10 @@ HRESULT CTSFTTS::_ProbeCompositionRangeNotification(_In_ TfEditCookie ec, _In_ I
 {
 	debugPrint(L"CTSFTTS::_ProbeCompositionRangeNotification()\n");
 	HRESULT hr = S_OK;
-	
-	_StartComposition(pContext);
+	if(!_IsComposing())
+		_StartComposition(pContext);
 	CStringRange empty;
-	hr = _AddComposingAndChar(ec, pContext, &empty.Set(L"A", 1));
+	hr = _AddComposingAndChar(ec, pContext, &empty.Set(L" ", 1));
 	
 	ITfRange *pRange;
 	ITfContextView* pContextView;
@@ -499,13 +499,20 @@ HRESULT CTSFTTS::_ProbeCompositionRangeNotification(_In_ TfEditCookie ec, _In_ I
 			if(SUCCEEDED( pContext->GetDocumentMgr(&pDocumgr)))
 			{
 				_pUIPresenter->_StartLayout(pContext, ec, pRange);
+
 				pDocumgr->Release();
 			}
 		pContextView->Release();
 		}
 		pRange->Release();
 	}
-	hr = _AddComposingAndChar(ec, pContext, &empty.Set(L"A", 1));
+
+	RECT rcTextExt;
+	if (SUCCEEDED(_pUIPresenter->_GetTextExt(&rcTextExt)) 
+		&& (rcTextExt.bottom - rcTextExt.top >1) && (rcTextExt.right - rcTextExt.left >1)  ) // confirm the extent rect is valid.
+	{
+		_pUIPresenter->_LayoutChangeNotification(&rcTextExt);
+	}
 	
     
 	
