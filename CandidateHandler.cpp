@@ -93,13 +93,36 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 		StringCchCopyN(pwch, 2, pCandidateString, 1); 	
 	}
 	candidateString.Set(pwch, 1 );
+	//-----------------do reverse conversion notify
+	if(_pITfReverseConversion[Global::imeMode])
+	{
+		BSTR bstr;
+		bstr = SysAllocStringLen(pCandidateString , (UINT) candidateLen);
+		ITfReverseConversionList* reverseConversionList;
+		if(SUCCEEDED(_pITfReverseConversion[Global::imeMode]->DoReverseConversion(bstr, &reverseConversionList)))
+		{
+			UINT hasResult;
+			if(reverseConversionList && SUCCEEDED(reverseConversionList->GetLength(&hasResult)) && hasResult)
+			{
+				BSTR bstrResult;
+				if(SUCCEEDED(reverseConversionList->GetString(0, &bstrResult))  && bstrResult && SysStringLen(bstrResult))
+				{
+					CStringRange reverseConvNotify;
+					WCHAR* pwch = new (std::nothrow) WCHAR[SysStringLen(bstrResult)+1];
+					StringCchCopy(pwch, SysStringLen(bstrResult)+1, (WCHAR*) bstrResult);
+					_pUIPresenter->ShowNotifyText(&reverseConvNotify.Set(pwch, wcslen(pwch)), -1);
+				}
+			}
+			
+		}
+	}
 	//-----------------do  array spcial code notify
 	BOOL ArraySPFound = FALSE;            // should not show notify in UI-less mode
 	if(Global::imeMode == IME_MODE_ARRAY && !_IsUILessMode()  && !arrayUsingSPCode && (CConfig::GetArrayForceSP() || CConfig::GetArrayNotifySP()))
 	{
 		CStringRange specialCode;
 		CStringRange notifyText;
-		ArraySPFound = _pCompositionProcessorEngine->LookupSpeicalCode(&commitString, &specialCode); 
+		ArraySPFound = _pCompositionProcessorEngine->LookupArraySpeicalCode(&commitString, &specialCode); 
 		if(specialCode.Get())
 			_pUIPresenter->ShowNotifyText(&specialCode, -1);
 	}
@@ -117,8 +140,6 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 		// Do not send _endcandidatelist (or handleComplete) here to avoid cand dissapear in win8 metro
 		_HandleComplete(ec,pContext);
 	}
-	
-
 	//-----------------do accociated phrase (make phrase)
 	if (CConfig::GetMakePhrase())
 	{

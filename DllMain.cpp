@@ -50,17 +50,17 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID pvReserved)
         break;
 
     case DLL_PROCESS_DETACH:
-
+		debugPrint(L"DllMain() DLL_PROCESS_DETACH");
         DeleteCriticalSection(&Global::CS);
 
         break;
 
     case DLL_THREAD_ATTACH:
-
+		debugPrint(L"DllMain() DLL_THREAD_ATTACH");
         break;
 
     case DLL_THREAD_DETACH:
-
+		debugPrint(L"DllMain() DLL_THREAD_DETACH");
         break;
     }
 

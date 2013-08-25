@@ -16,6 +16,7 @@ public:
     HRESULT CreateInstance();
     HRESULT GetCurrentLanguage(_Out_ LANGID *plangid);
     HRESULT GetDefaultLanguageProfile(LANGID langid, REFGUID catid, _Out_ CLSID *pclsid, _Out_ GUID *pguidProfile);
+	HRESULT GetReverseConversionProviders(LANGID langid, CTSFTTSArray <LanguageProfileInfo> *langProfileInfoList);
 
 private:
     ITfInputProcessorProfiles* _pInputProcessorProfile;

@@ -43,6 +43,12 @@
     <Filter Include="Source Files\Configuration">
       <UniqueIdentifier>{48586160-0527-48f2-aedd-ea9cd7773da9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Framework\Composition\CompositionEngine">
+      <UniqueIdentifier>{be47d1ab-bedd-4d3d-b929-b5ed30cb06fd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Framework\Composition\ReverseConversion">
+      <UniqueIdentifier>{7f3f60b0-0a73-4e36-bc8f-bcf4a41b09dd}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="image\ImeModeOn.ico">
@@ -182,6 +188,9 @@
     <ClInclude Include="Config.h">
       <Filter>Source Files\Configuration</Filter>
     </ClInclude>
+    <ClInclude Include="ReverseConversion.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BaseDictionaryEngine.cpp">
@@ -238,9 +247,6 @@
     <ClCompile Include="Composition.cpp">
       <Filter>Source Files\Framework\Composition</Filter>
     </ClCompile>
-    <ClCompile Include="CompositionProcessorEngine.cpp">
-      <Filter>Source Files\Framework\Composition</Filter>
-    </ClCompile>
     <ClCompile Include="EndComposition.cpp">
       <Filter>Source Files\Framework\Composition</Filter>
     </ClCompile>
@@ -257,9 +263,6 @@
       <Filter>Source Files\Framework\Composition</Filter>
     </ClCompile>
     <ClCompile Include="StartComposition.cpp">
-      <Filter>Source Files\Framework\Composition</Filter>
-    </ClCompile>
-    <ClCompile Include="TfInputProcessorProfile.cpp">
       <Filter>Source Files\Framework\Composition</Filter>
     </ClCompile>
     <ClCompile Include="ActiveLanguageProfileNotifySink.cpp">
@@ -330,6 +333,15 @@
     </ClCompile>
     <ClCompile Include="GetTextExtentEditSession.cpp">
       <Filter>Source Files\Framework</Filter>
+    </ClCompile>
+    <ClCompile Include="CompositionProcessorEngine.cpp">
+      <Filter>Source Files\Framework\Composition\CompositionEngine</Filter>
+    </ClCompile>
+    <ClCompile Include="TfInputProcessorProfile.cpp">
+      <Filter>Source Files\Framework\Composition\CompositionEngine</Filter>
+    </ClCompile>
+    <ClCompile Include="ReverseConversion.cpp">
+      <Filter>Source Files\Framework\Composition\ReverseConversion</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

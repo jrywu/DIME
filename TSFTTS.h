@@ -17,12 +17,13 @@
 class CLangBarItemButton;
 class CUIPresenter;
 class CCompositionProcessorEngine;
-
+class CReverseConversion;
 
 const DWORD WM_CheckGlobalCompartment = WM_USER;
 LRESULT CALLBACK CTSFTTS_WindowProc(HWND wndHandle, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
-class CTSFTTS : public ITfTextInputProcessorEx,
+class CTSFTTS : 
+	public ITfTextInputProcessorEx,
     public ITfThreadMgrEventSink,
     public ITfTextEditSink,
     public ITfKeyEventSink,
@@ -33,7 +34,7 @@ class CTSFTTS : public ITfTextInputProcessorEx,
     public ITfFunctionProvider,
     public ITfFnGetPreferredTouchKeyboardLayout,
 	public ITfFnConfigure,//control panel application
-	public ITfFnShowHelp
+	public ITfReverseConversionMgr
 {
 public:
     CTSFTTS();
@@ -98,7 +99,10 @@ public:
 	//ITfFnConfigure 
 	STDMETHODIMP Show(_In_ HWND hwndParent, _In_ LANGID langid, _In_ REFGUID rguidProfile);
 	// ITfFnShowHelp
-    STDMETHODIMP Show(_In_ HWND hwndParent);
+    // STDMETHODIMP Show(_In_ HWND hwndParent);
+	
+	//ITfReverseConversionMgr 
+	STDMETHODIMP GetReverseConversion(_In_ LANGID langid, _In_   REFGUID guidProfile, _In_ DWORD dwflag, _Out_ ITfReverseConversion **ppReverseConversion);
 
 	 // Get language profile.
     //GUID GetLanguageProfile(LANGID *plangid){ *plangid = _langid;  return _guidProfile;}
@@ -169,6 +173,8 @@ public:
 
 private:
 	
+	void _LoadConfig(BOOL isForce = FALSE);
+
     // functions for the composition object.
     HRESULT _HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *pCompositionProcessorEngine, TfEditCookie ec, _In_ ITfContext *pContext);
     HRESULT _CreateAndStartCandidate(_In_ CCompositionProcessorEngine *pCompositionProcessorEngine, TfEditCookie ec, _In_ ITfContext *pContext);
@@ -227,7 +233,7 @@ private:
     BOOL _InitFunctionProviderSink();
     void _UninitFunctionProviderSink();
 
-    BOOL _AddTextProcessorEngine();
+	BOOL _AddTextProcessorEngine(LANGID inLangID = 0, GUID inGuidProfile = GUID_NULL);
 
     BOOL VerifyTSFTTSCLSID(_In_ REFCLSID clsid);
 
@@ -320,9 +326,12 @@ private:
 	BOOL _phraseCandShowing;
 	POINT _phraseCandLocation;
 	
-	
-
+	//ReverseConversion COM provider object
+	CReverseConversion * _pReverseConversion[5];
+	//ReverseConversion Interface object
+	ITfReverseConversion* _pITfReverseConversion[5];
 };
+
 
 
 #endif

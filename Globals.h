@@ -205,12 +205,12 @@ inline static void debugPrint(const WCHAR* format,...)
 	
 
 	FILE *fp;
-	_wfopen_s(&fp, wszDebugLogPath, L"a");
+	_wfopen_s(&fp, wszDebugLogPath, L"a, ccs=UTF-8");
 	if(fp)
 	{
 		va_list args;
 		va_start (args, format);
-		vfwprintf_s (fp, format, args);
+		vfwprintf_s(fp, format, args);
 		va_end (args);
 		fwprintf_s(fp, L"\n");
 		fclose(fp);

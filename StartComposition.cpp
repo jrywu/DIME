@@ -104,7 +104,7 @@ Exit:
 void CTSFTTS::_StartComposition(_In_ ITfContext *pContext)
 {
 	debugPrint(L"CTSFTTS::_StartComposition()\n");
-	CConfig::LoadConfig();// update config upon start composition
+	_LoadConfig();// update config upon start composition
     CStartCompositionEditSession* pStartCompositionEditSession = new (std::nothrow) CStartCompositionEditSession(this, pContext);
 
     if (nullptr != pStartCompositionEditSession)

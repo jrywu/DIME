@@ -32,9 +32,10 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CTSFTTS *pTextServ
 	_pTextService = pTextService;
     _pTextService->AddRef();
 
-    _pTableDictionaryEngine = nullptr;
+    
 	for (UINT i =0 ; i<5 ; i++)
 	{
+		_pTableDictionaryEngine[i] = nullptr;
 		_pTTSTableDictionaryEngine[i] = nullptr;
 		_pCINTableDictionaryEngine[i] = nullptr;
 		_pTTSDictionaryFile[i] = nullptr;
@@ -101,9 +102,13 @@ CCompositionProcessorEngine::~CCompositionProcessorEngine()
 			delete _pTTSDictionaryFile[i];
 			_pCINDictionaryFile[i] = nullptr;
 		}
-	}
-	_pTableDictionaryEngine = nullptr;
+		if (_pTableDictionaryEngine[i])
+		{   // _pTableDictionaryEngine[i] is only a pointer to either _pTTSDictionaryFile[i] or _pCINTableDictionaryEngine. no need to delete it.
+			_pTableDictionaryEngine[i] = nullptr;
+		}
 
+	}
+	
 	
 
 }
@@ -322,11 +327,13 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFTTSArray<CCandida
 			pwch3code[4] = L'*'; pwch3code[5] = L'\0'; 
 			
 			CTSFTTSArray<CCandidateListItem> wCandidateList;
-			CStringRange w3codeMode;			
-			_pTableDictionaryEngine->CollectWordForWildcard(&wildcardSearch, pCandidateList);
+			CStringRange w3codeMode;		
+			_pTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_TEXT);
+			_pTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&wildcardSearch, pCandidateList);
 			if(pCandidateList->Count())	
 			{
-				_pTableDictionaryEngine->CollectWordForWildcard(&w3codeMode.Set(pwch3code,4), &wCandidateList);
+				_pTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_TEXT);
+				_pTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&w3codeMode.Set(pwch3code,4), &wCandidateList);
 				if(wCandidateList.Count())
 				{   //append the candidate items got with 3codemode wildcard string to the end of exact match items.
 					for(UINT i = 0; i < wCandidateList.Count(); i++)
@@ -347,7 +354,8 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFTTSArray<CCandida
 			}
 			else
 			{
-				_pTableDictionaryEngine->CollectWordForWildcard(&w3codeMode.Set(pwch3code,4), pCandidateList);
+				_pTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_TEXT);
+				_pTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&w3codeMode.Set(pwch3code,4), pCandidateList);
 			}
 
 
@@ -369,8 +377,8 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFTTSArray<CCandida
 			{
 		        return;
 	        }
-
-			_pTableDictionaryEngine->CollectWordForWildcard(&wildcardSearch, pCandidateList);
+			_pTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_TEXT);
+			_pTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&wildcardSearch, pCandidateList);
 		}
 
         
@@ -382,7 +390,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFTTSArray<CCandida
 
         if (IsKeystrokeSort())
         {
-            _pTableDictionaryEngine->SortListItemByFindKeyCode(pCandidateList);
+            _pTableDictionaryEngine[Global::imeMode]->SortListItemByFindKeyCode(pCandidateList);
         }
 
         // Incremental search would show keystroke data from all candidate list items
@@ -411,12 +419,11 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFTTSArray<CCandida
     }
     else if (isWildcardSearch)
     {
-        _pTableDictionaryEngine->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList);
+		_pTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_TEXT);
+        _pTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList);
     }
 	else if (Global::imeMode == IME_MODE_DAYI && CConfig::GetThreeCodeMode() && _keystrokeBuffer.GetLength() == 3)
 	{
-		
-
 		CStringRange wildcardSearch;
         PWCHAR pwch = new (std::nothrow) WCHAR[ 5 ];
         if (!pwch) return;
@@ -424,11 +431,12 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFTTSArray<CCandida
 		pwch[2] = L'?';		pwch[3] = *(_keystrokeBuffer.Get()+2);      
 		wildcardSearch.Set(pwch, 4);
 		CTSFTTSArray<CCandidateListItem> wCandidateList;
-
-		_pTableDictionaryEngine->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList);
+		
+		_pTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_TEXT);
+		_pTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList);
 		if(pCandidateList->Count())
 		{
-			_pTableDictionaryEngine->CollectWordForWildcard(&wildcardSearch, &wCandidateList);
+			_pTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&wildcardSearch, &wCandidateList);
 			if(wCandidateList.Count())
 			{   //append the candidate items got with 3codemode wildcard string to the end of exact match items.
 				for(UINT i = 0; i < wCandidateList.Count(); i++)
@@ -449,21 +457,21 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFTTSArray<CCandida
 		}
 		else //if no exact match items found, send the results from 3codemode 
 		{
-			_pTableDictionaryEngine->CollectWordForWildcard(&wildcardSearch, pCandidateList);
+			_pTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&wildcardSearch, pCandidateList);
 		}
 		delete [] pwch;
 	}
     else if(IsSymbol())
 	{
-		_pTableDictionaryEngine->SetSearchSection(SEARCH_SECTION_SYMBOL);
-		_pTableDictionaryEngine->CollectWord(&_keystrokeBuffer, pCandidateList);
+		_pTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_SYMBOL);
+		_pTableDictionaryEngine[Global::imeMode]->CollectWord(&_keystrokeBuffer, pCandidateList);
     }
 	else if(Global::imeMode== IME_MODE_ARRAY && (_keystrokeBuffer.GetLength()<3)) //array short code mode
 	{
 		if(_pArrayShortCodeTableDictionaryEngine == nullptr)
 		{
-			_pTableDictionaryEngine->SetSearchSection(SEARCH_SECTION_PRHASE_FROM_KEYSTROKE);
-			_pTableDictionaryEngine->CollectWord(&_keystrokeBuffer, pCandidateList);
+			_pTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_PRHASE_FROM_KEYSTROKE);
+			_pTableDictionaryEngine[Global::imeMode]->CollectWord(&_keystrokeBuffer, pCandidateList);
 		}
 		else
 		{
@@ -472,8 +480,8 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFTTSArray<CCandida
 	}
 	else
 	{
-		_pTableDictionaryEngine->SetSearchSection(SEARCH_SECTION_TEXT);
-        _pTableDictionaryEngine->CollectWord(&_keystrokeBuffer, pCandidateList);
+		_pTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_TEXT);
+        _pTableDictionaryEngine[Global::imeMode]->CollectWord(&_keystrokeBuffer, pCandidateList);
 	}
 
 	_candidateWndWidth = DEFAULT_CAND_ITEM_LENGTH + TRAILING_SPACE;
@@ -530,12 +538,14 @@ void CCompositionProcessorEngine::GetCandidateStringInConverted(CStringRange &se
 	if(_pCINTableDictionaryEngine[Global::imeMode] && Global::hasCINPhraseSection) // do phrase lookup if CIN file has phrase section
 		_pCINTableDictionaryEngine[Global::imeMode]->CollectWordFromConvertedString(&searchText, pCandidateList);
 	else if(_pTTSTableDictionaryEngine[Global::imeMode] && Global::hasPhraseSection)// do phrase lookup in TTS file if CIN phrase section is not present
+	{   _pTTSTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_PHRASE);
 		_pTTSTableDictionaryEngine[Global::imeMode]->CollectWordFromConvertedString(&searchText, pCandidateList);
+	}
 	else // no phrase section, do wildcard text search
-		_pTableDictionaryEngine->CollectWordFromConvertedStringForWildcard(&searchText, pCandidateList);
+		_pTableDictionaryEngine[Global::imeMode]->CollectWordFromConvertedStringForWildcard(&searchText, pCandidateList);
 
 	if (IsKeystrokeSort())
-		_pTableDictionaryEngine->SortListItemByFindKeyCode(pCandidateList);
+		_pTableDictionaryEngine[Global::imeMode]->SortListItemByFindKeyCode(pCandidateList);
 	
 	_candidateWndWidth = DEFAULT_CAND_ITEM_LENGTH + TRAILING_SPACE;
 	for (UINT index = 0; index < pCandidateList->Count();)
@@ -667,8 +677,8 @@ DWORD_PTR CCompositionProcessorEngine::CheckArraySpeicalCode(_Outptr_result_mayb
 
 	if(_pArraySpecialCodeTableDictionaryEngine == nullptr)
 	{
-		_pTableDictionaryEngine->SetSearchSection(SEARCH_SECTION_TEXT);
-		_pTableDictionaryEngine->CollectWord(&_keystrokeBuffer, &candidateList);
+		_pTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_TEXT);
+		_pTableDictionaryEngine[Global::imeMode]->CollectWord(&_keystrokeBuffer, &candidateList);
 	}
 	else
 	{
@@ -691,18 +701,16 @@ DWORD_PTR CCompositionProcessorEngine::CheckArraySpeicalCode(_Outptr_result_mayb
 // checkArraySpeicalCode
 //
 //----------------------------------------------------------------------------
-BOOL CCompositionProcessorEngine::LookupSpeicalCode(_In_ CStringRange *inword, _Out_ CStringRange *csrReslt)
+BOOL CCompositionProcessorEngine::LookupArraySpeicalCode(_In_ CStringRange *inword, _Out_ CStringRange *csrReslt)
 {
 
-	CTSFTTSArray<CCandidateListItem> candidateList;
-
 	if(Global::imeMode!= IME_MODE_ARRAY || _pArraySpecialCodeTableDictionaryEngine == nullptr || inword == nullptr ) return FALSE; 
-	else
+
+	CTSFTTSArray<CCandidateListItem> candidateList;
+	_pArraySpecialCodeTableDictionaryEngine->CollectWordFromConvertedString(inword, &candidateList);
+	if(candidateList.Count() == 1)
 	{
-		_pArraySpecialCodeTableDictionaryEngine->CollectWordFromConvertedString(inword, &candidateList);
-		if(candidateList.Count() == 1)
-	{
-		
+
 		PWCHAR pwch;
 		pwch = new (std::nothrow) WCHAR[candidateList.GetAt(0)->_FindKeyCode.GetLength()+1];
 		*pwch=L'\0';
@@ -726,10 +734,41 @@ BOOL CCompositionProcessorEngine::LookupSpeicalCode(_In_ CStringRange *inword, _
 
 		}
 	}
-	}
+
 	return FALSE;
 
 
+}
+
+HRESULT CCompositionProcessorEngine::GetReverConversionResults(REFGUID guidLanguageProfile, _In_ LPCWSTR lpstrToConvert, _Inout_ CTSFTTSArray<CCandidateListItem> *pCandidateList)
+{
+	debugPrint(L"CCompositionProcessorEngine::GetReverConversionResults() \n");
+	IME_MODE imeMode = IME_MODE_NONE;
+	if(guidLanguageProfile == Global::TSFDayiGuidProfile)
+	{
+		debugPrint(L"CCompositionProcessorEngine::SetupDictionaryFile() : DAYI Mode");
+		imeMode = IME_MODE_DAYI;
+	}
+	else if(guidLanguageProfile == Global::TSFArrayGuidProfile)
+	{
+		debugPrint(L"CCompositionProcessorEngine::SetupDictionaryFile() : Array Mode");
+		imeMode = IME_MODE_ARRAY;
+	}
+	else if(guidLanguageProfile == Global::TSFPhoneticGuidProfile)
+	{
+		debugPrint(L"CCompositionProcessorEngine::SetupDictionaryFile() : Phonetc Mode");
+		imeMode = IME_MODE_PHONETIC;
+	}
+	else
+		return S_FALSE;
+
+	if(_pTableDictionaryEngine[imeMode] == nullptr)
+		return S_FALSE;
+
+	_pTableDictionaryEngine[imeMode]->SetSearchSection(SEARCH_SECTION_TEXT);
+	CStringRange csrToCovert;
+	_pTableDictionaryEngine[imeMode]->CollectWordFromConvertedString(&csrToCovert.Set(lpstrToConvert, wcslen(lpstrToConvert)), pCandidateList);
+	return S_OK;
 }
 
 //+---------------------------------------------------------------------------
@@ -855,6 +894,7 @@ void CCompositionProcessorEngine::SetPreservedKey(const CLSID clsid, TF_PRESERVE
 
 BOOL CCompositionProcessorEngine::InitPreservedKey(_In_ XPreservedKey *pXPreservedKey, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId)
 {
+	if(pThreadMgr == nullptr) return FALSE;
     ITfKeystrokeMgr *pKeystrokeMgr = nullptr;
 
     if (IsEqualGUID(pXPreservedKey->Guid, GUID_NULL))
@@ -962,7 +1002,7 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL *pIsE
 	else if (IsEqualGUID(rguid, _PreservedKey_Config.Guid))
 	{
 		// call config dialog
-		_pTextService->Show(NULL, 0,  _PreservedKey_Config.Guid);
+		_pTextService->Show(NULL, 0,  GUID_NULL);
 	}
    
     else
@@ -990,7 +1030,10 @@ void CCompositionProcessorEngine::SetupConfiguration()
 	}
 	else if(Global::imeMode == IME_MODE_ARRAY)
 	{
-		CConfig::SetAutoCompose(TRUE);
+		CConfig::SetSpaceAsPageDown(TRUE);
+	}
+	else if(Global::imeMode == IME_MODE_PHONETIC)
+	{
 		CConfig::SetSpaceAsPageDown(TRUE);
 	}
 
@@ -1007,22 +1050,41 @@ void CCompositionProcessorEngine::SetupConfiguration()
 //
 //----------------------------------------------------------------------------
 
-BOOL CCompositionProcessorEngine::SetupDictionaryFile()
+BOOL CCompositionProcessorEngine::SetupDictionaryFile(REFGUID guidLanguageProfile)
 {	
     debugPrint(L"CCompositionProcessorEngine::SetupDictionaryFile() \n");
-
+	IME_MODE imeMode = IME_MODE_NONE;
+	if(guidLanguageProfile == Global::TSFDayiGuidProfile)
+	{
+		debugPrint(L"CCompositionProcessorEngine::SetupDictionaryFile() : DAYI Mode");
+		imeMode = IME_MODE_DAYI;
+	}
+	else if(guidLanguageProfile == Global::TSFArrayGuidProfile)
+	{
+		debugPrint(L"CCompositionProcessorEngine::SetupDictionaryFile() : Array Mode");
+		imeMode = IME_MODE_ARRAY;
+	}
+	else if(guidLanguageProfile == Global::TSFPhoneticGuidProfile)
+	{
+			debugPrint(L"CCompositionProcessorEngine::SetupDictionaryFile() : Phonetic Mode");
+			imeMode = IME_MODE_PHONETIC;
+	}
+	else
+		return FALSE;
 	
 	WCHAR wszProgramFiles[MAX_PATH];
 	WCHAR wszAppData[MAX_PATH];
-	WCHAR wszSysWOW64[MAX_PATH];
-	
-	if(GetSystemWow64Directory(wszSysWOW64, MAX_PATH)>0) //return 0 indicates x86 system, x64 otherwize.
-		GetEnvironmentVariable(L"ProgramW6432", wszProgramFiles, MAX_PATH); 
-	else
+		
+	if(GetEnvironmentVariable(L"ProgramW6432", wszProgramFiles, MAX_PATH) ==0)
+	{//on 64-bit vista only 32bit app has this enviroment variable.  Which means the call failed when the apps running is 64-bit.
+	 //on 32-bit windows, this will definitely failed.  Get ProgramFiles enviroment variable now will retrive the correct program files path.
 		GetEnvironmentVariable(L"ProgramFiles", wszProgramFiles, MAX_PATH); 
+	}
+	
 	//CSIDL_APPDATA  personal roadming application data.
 	SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);
 
+	debugPrint(L"CCompositionProcessorEngine::SetupDictionaryFile() :wszProgramFiles = %s", wszProgramFiles);
 
     WCHAR *pwszFileName = new (std::nothrow) WCHAR[MAX_PATH];
 	WCHAR *pwszCINFileName = new (std::nothrow) WCHAR[MAX_PATH];
@@ -1034,29 +1096,30 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 	*pwszCINFileName = L'\0';
 
 	//tableTextService (TTS) dictionary file 
-	if(Global::imeMode == IME_MODE_DAYI)
+	if(imeMode == IME_MODE_DAYI)
 		StringCchPrintf(pwszFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\Windows NT\\TableTextService\\TableTextServiceDaYi.txt");
-	else if(Global::imeMode == IME_MODE_ARRAY)
+	else if(imeMode == IME_MODE_ARRAY)
 		StringCchPrintf(pwszFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\Windows NT\\TableTextService\\TableTextServiceArray.txt");
-
+	else
+		StringCchPrintf(pwszFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\Windows NT\\TableTextService\\TableTextServiceDaYi.txt"); // we need this to lookup phrase
 
 	//create CFileMapping object
-    if (_pTTSDictionaryFile[Global::imeMode] == nullptr)
+    if (_pTTSDictionaryFile[imeMode] == nullptr)
     {
-        _pTTSDictionaryFile[Global::imeMode] = new (std::nothrow) CFileMapping();
-        if (!_pTTSDictionaryFile[Global::imeMode])  goto ErrorExit;
+        _pTTSDictionaryFile[imeMode] = new (std::nothrow) CFileMapping();
+        if (!_pTTSDictionaryFile[imeMode])  goto ErrorExit;
     }
-	if (!(_pTTSDictionaryFile[Global::imeMode])->CreateFile(pwszFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
+	if (!(_pTTSDictionaryFile[imeMode])->CreateFile(pwszFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
 	{
 		goto ErrorExit;
 	}
 	else
 	{
-		_pTTSTableDictionaryEngine[Global::imeMode] = new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pTTSDictionaryFile[Global::imeMode], L'='); //TTS file use '=' as delimiter
-		if (!_pTTSTableDictionaryEngine[Global::imeMode])  goto ErrorExit;
-		Global::radicalMap[Global::imeMode].clear();
-		_pTTSTableDictionaryEngine[Global::imeMode]->ParseConfig(); //parse config first.
-		_pTableDictionaryEngine = _pTTSTableDictionaryEngine[Global::imeMode];  //set TTS as default dictionary engine
+		_pTTSTableDictionaryEngine[imeMode] = new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pTTSDictionaryFile[imeMode], L'='); //TTS file use '=' as delimiter
+		if (!_pTTSTableDictionaryEngine[imeMode])  goto ErrorExit;
+		Global::radicalMap[imeMode].clear();
+		_pTTSTableDictionaryEngine[imeMode]->ParseConfig(imeMode); //parse config first.
+		_pTableDictionaryEngine[imeMode] = _pTTSTableDictionaryEngine[imeMode];  //set TTS as default dictionary engine
 	}
 
 	
@@ -1064,26 +1127,32 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile()
 
 	if(PathFileExists(pwszCINFileName))
 	{
-		if(Global::imeMode == IME_MODE_DAYI) //dayi.cin in personal romaing profile
+		if(imeMode == IME_MODE_DAYI) //dayi.cin in personal romaing profile
 			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\TSFTTS\\Dayi.cin");
-		if(Global::imeMode == IME_MODE_ARRAY) //array.cin in personal romaing profile
+		if(imeMode == IME_MODE_ARRAY) //array.cin in personal romaing profile
 			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\TSFTTS\\Array.cin");
+		if(imeMode == IME_MODE_PHONETIC) //phone.cin in personal romaing profile
+		{
+			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\TSFTTS\\Phone.cin");
+			if(!PathFileExists(pwszCINFileName)) //failed back to pre-install array-special.cin in program files.
+				StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\TSFTTS\\Phone.cin");
+		}
 	
 		if(PathFileExists(pwszCINFileName))  //create cin CFileMapping object
 		{
 			 //create CFileMapping object
-			if (_pCINDictionaryFile[Global::imeMode] == nullptr)
+			if (_pCINDictionaryFile[imeMode] == nullptr)
 			{
-				_pCINDictionaryFile[Global::imeMode] = new (std::nothrow) CFileMapping();
-				if ((_pCINDictionaryFile[Global::imeMode])->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
+				_pCINDictionaryFile[imeMode] = new (std::nothrow) CFileMapping();
+				if ((_pCINDictionaryFile[imeMode])->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
 				{
-					_pCINTableDictionaryEngine[Global::imeMode] = new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pCINDictionaryFile[Global::imeMode], L'\t'); //cin files use tab as delimiter
+					_pCINTableDictionaryEngine[imeMode] = new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pCINDictionaryFile[imeMode], L'\t'); //cin files use tab as delimiter
 
-					if (_pCINTableDictionaryEngine[Global::imeMode])  
+					if (_pCINTableDictionaryEngine[imeMode])  
 					{
-						Global::radicalMap[Global::imeMode].clear();
-						_pCINTableDictionaryEngine[Global::imeMode]->ParseConfig(); //parse config first.
-						_pTableDictionaryEngine = _pCINTableDictionaryEngine[Global::imeMode];  //set CIN as dictionary engine if avaialble
+						Global::radicalMap[imeMode].clear();
+						_pCINTableDictionaryEngine[imeMode]->ParseConfig(imeMode); //parse config first.
+						_pTableDictionaryEngine[imeMode] = _pCINTableDictionaryEngine[imeMode];  //set CIN as dictionary engine if avaialble
 					}
 				}
 			}

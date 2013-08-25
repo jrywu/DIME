@@ -111,6 +111,28 @@ BOOL RegisterProfiles()
         goto Exit;
     }
 
+	//Phonetic profile registration
+	*serviceDescripion=L'\0';
+	LoadString(Global::dllInstanceHandle, IDS_PHONETIC_DESCRIPTION, serviceDescripion, 50);
+    hr = StringCchLength(serviceDescripion, STRSAFE_MAX_CCH, &lenOfDesc);
+    if (hr != S_OK)
+    {
+        goto Exit;
+    }
+	hr = pITfInputProcessorProfileMgr->RegisterProfile(Global::TSFTTSCLSID,
+        TEXTSERVICE_LANGID,
+		Global::TSFPhoneticGuidProfile,
+        serviceDescripion,
+        static_cast<ULONG>(lenOfDesc),
+        achIconFile,
+        cchA,
+		(UINT)TEXTSERVICE_PHONETIC_ICON_INDEX, NULL, 0, TRUE, 0);
+
+    if (FAILED(hr))
+    {
+        goto Exit;
+    }
+
 Exit:
     if (pITfInputProcessorProfileMgr)
     {
@@ -145,6 +167,12 @@ void UnregisterProfiles()
     }
 	//Array profile 
     hr = pITfInputProcessorProfileMgr->UnregisterProfile(Global::TSFTTSCLSID, TEXTSERVICE_LANGID, Global::TSFArrayGuidProfile, 0);
+    if (FAILED(hr))
+    {
+        goto Exit;
+    }
+	//Phonetic profile 
+	hr = pITfInputProcessorProfileMgr->UnregisterProfile(Global::TSFTTSCLSID, TEXTSERVICE_LANGID, Global::TSFPhoneticGuidProfile, 0);
     if (FAILED(hr))
     {
         goto Exit;

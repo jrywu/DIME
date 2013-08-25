@@ -38,7 +38,7 @@
 #define IDC_CHECKBOX_ARRAY_FORCESP				1110
 #define IDC_CHECKBOX_ARRAY_NOTIFYSP				1111
 #define IDC_EDIT_MAXWIDTH                       1112
-#define IDC_COMBO_UNTILCANDLIST                 1113
+#define IDC_COMBO_REVERSE_CONVERSION            1113
 #define IDC_CHECKBOX_AUTOCOMPOSE                1114
 #define IDC_CHECKBOX_DOBEEP						1115
 #define IDC_RADIO_KEYBOARD_OPEN                 1116
@@ -48,6 +48,9 @@
 #define IDC_CHECKBOX_SPACEASPAGEDOWN            1120
 #define IDC_CHECKBOX_ARROWKEYSWPAGES            1121
 #define IDC_CHECKBOX_SHOWNOTIFY                 1122
+#define IDC_RADIO_OUTPUT_CHT					1123
+#define IDC_RADIO_OUTPUT_CHS					1124
+
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED

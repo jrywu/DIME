@@ -40,6 +40,7 @@
     <ClInclude Include="KeyStateCategory.h" />
     <ClInclude Include="BaseStructure.h" />
     <ClInclude Include="NotifyWindow.h" />
+    <ClInclude Include="ReverseConversion.h" />
     <ClInclude Include="SearchCandidateProvider.h" />
     <ClInclude Include="DictionaryParser.h" />
     <ClInclude Include="DictionarySearch.h" />
@@ -82,6 +83,7 @@
     <ClCompile Include="KeyStateCategory.cpp" />
     <ClCompile Include="NotifyWindow.cpp" />
     <ClCompile Include="BaseStructure.cpp" />
+    <ClCompile Include="ReverseConversion.cpp" />
     <ClCompile Include="SearchCandidateProvider.cpp" />
     <ClCompile Include="DictionaryParser.cpp" />
     <ClCompile Include="DictionarySearch.cpp" />

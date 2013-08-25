@@ -79,9 +79,10 @@ BOOL CDictionarySearch::FindConvertedStringForWildcard(CDictionaryResult **ppdre
 	return FindWorker(TRUE, ppdret, TRUE); // Wildcard
 }
 
-BOOL CDictionarySearch::ParseConfig()
+BOOL CDictionarySearch::ParseConfig(IME_MODE imeMode)
 {
-	debugPrint(L"CDictionarySearch::ParseConfig()");
+	debugPrint(L"CDictionarySearch::ParseConfig() imeMode = %d", imeMode);
+	_imeMode = imeMode;
 	return FindWorker(FALSE, NULL, FALSE, TRUE); // parseConfig=TRUE;
 }
 
@@ -111,6 +112,7 @@ BOOL CDictionarySearch::FindWorker(BOOL isTextSearch, _Out_ CDictionaryResult **
 
 TryAgain:
 	bufLenOneLine = GetOneLine(&pwch[indexTrace], dwTotalBufLen);
+	if(pwch == nullptr) return FALSE;
 	if (bufLenOneLine == 0)
 	{
 		goto FindNextLine;
@@ -155,7 +157,7 @@ TryAgain:
 					{
 						if(isTextSearch)
 						{
-							if(Global::hasPhraseSection) searchMode = SEARCH_NONE;  // use TTS phrase section in text search, thus set SERACH_NONE here.
+							if(_searchSection == SEARCH_SECTION_PHRASE) searchMode = SEARCH_NONE;  // use TTS phrase section in text search, thus set SERACH_NONE here.
 							else searchMode = SEARCH_TEXT;
 						}
 						else if(_searchSection == SEARCH_SECTION_TEXT) searchMode = SEARCH_MAPPING;
@@ -166,7 +168,7 @@ TryAgain:
 				else if (CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"[Phrase]", 8)) == CSTR_EQUAL)
 				{ // in Phrase block
 					if(parseConfig) Global::hasPhraseSection = TRUE;
-					searchMode = (!parseConfig && isTextSearch)?SEARCH_PHRASE:SEARCH_NONE;
+					searchMode = (!parseConfig && isTextSearch && _searchSection == SEARCH_SECTION_PHRASE)?SEARCH_PHRASE:SEARCH_NONE;
 				}
 				else if (parseConfig && CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"[Radical]", 9)) == CSTR_EQUAL)
 				{
@@ -305,7 +307,7 @@ ReadValue:
 				*radical=L'0';
 				StringCchCopyN(radicalChar,  2, keyword.Get(),1); 
 				StringCchCopyN(radical, 2, valueStrings.GetAt(0)->Get(), 1);
-				Global::radicalMap[Global::imeMode][towupper(*radicalChar)] = *radical;
+				Global::radicalMap[_imeMode][towupper(*radicalChar)] = *radical;
 				goto FindNextLine;
 			}
 			if(searchMode == SEARCH_CONFIG)
@@ -337,6 +339,34 @@ ReadValue:
 					CConfig::SetActivatedKeyboardMode((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"MakePhrase", 10)) == CSTR_EQUAL)
 					CConfig::SetMakePhrase((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"DoHanConvert", 12)) == CSTR_EQUAL)
+					CConfig::SetDoHanConvert((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ReloadReversionConversion", 25)) == CSTR_EQUAL)
+					CConfig::SetReloadReverseConversion((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ReversionConversionCLSID", 24)) == CSTR_EQUAL)
+				{
+					BSTR pbstr;
+					pbstr = SysAllocStringLen( valueStrings.GetAt(0)->Get(), (UINT) valueStrings.GetAt(0)->GetLength());
+					CLSID clsid;
+					if(SUCCEEDED(CLSIDFromString(pbstr, &clsid)))
+						CConfig::SetReverseConverstionCLSID(clsid);
+					SysFreeString(pbstr);
+				}
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ReversionConversionGUIDProfile", 30)) == CSTR_EQUAL)
+				{
+					BSTR pbstr;
+					pbstr = SysAllocStringLen( valueStrings.GetAt(0)->Get(), (UINT) valueStrings.GetAt(0)->GetLength());
+					CLSID clsid;
+					if(SUCCEEDED(CLSIDFromString(pbstr, &clsid)))
+						CConfig::SetReverseConversionGUIDProfile(clsid);
+					SysFreeString(pbstr);
+				}
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ReversionConversionDescription", 30)) == CSTR_EQUAL)
+				{
+					WCHAR *pwszReverseConversionDescription = new (std::nothrow) WCHAR[valueStrings.GetAt(0)->GetLength() + 1];
+					StringCchCopyN(pwszReverseConversionDescription, valueStrings.GetAt(0)->GetLength() +1, valueStrings.GetAt(0)->Get(), valueStrings.GetAt(0)->GetLength());
+					CConfig::SetReverseConversionDescription(pwszReverseConversionDescription);
+				}
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ShowNotifyDesktop", 17)) == CSTR_EQUAL)
 					CConfig::SetShowNotifyDesktop((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));			
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"AppPermissionSet", 16)) == CSTR_EQUAL)
@@ -355,8 +385,9 @@ ReadValue:
 					CConfig::SetSelectedBGColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));	
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"FontFaceName", 12)) == CSTR_EQUAL)
 				{
-					WCHAR *pwszFontFaceName = new (std::nothrow) WCHAR[32];
-					StringCchCopyN(pwszFontFaceName, 32, valueStrings.GetAt(0)->Get(), valueStrings.GetAt(0)->GetLength());
+					WCHAR *pwszFontFaceName = new (std::nothrow) WCHAR[LF_FACESIZE];
+					assert(valueStrings.GetAt(0)->GetLength() < LF_FACESIZE-1);
+					StringCchCopyN(pwszFontFaceName, LF_FACESIZE, valueStrings.GetAt(0)->Get(), valueStrings.GetAt(0)->GetLength());
 					CConfig::SetFontFaceName(pwszFontFaceName);
 				}
 				goto FindNextLine;

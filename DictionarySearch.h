@@ -32,7 +32,7 @@ public:
     BOOL FindPhraseForWildcard(_Out_ CDictionaryResult **ppdret);
 	BOOL FindConvertedString(CDictionaryResult **ppdret);
     BOOL FindConvertedStringForWildcard(CDictionaryResult **ppdret);
-	BOOL ParseConfig(); 
+	BOOL ParseConfig(IME_MODE imeMode); 
 	VOID SetSearchSection(SEARCH_SECTION searchSection) { _searchSection =searchSection;}
 
     CStringRange* _pSearchKeyCode;
@@ -56,6 +56,7 @@ private:
     CFile* _pFile;
 	enum SEARCH_MODE searchMode;
 	CTSFTTS *_pTextService;
+	IME_MODE _imeMode;
 
 };
 

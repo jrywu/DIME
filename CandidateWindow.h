@@ -13,6 +13,7 @@
 #include "ShadowWindow.h"
 #include "ScrollBarWindow.h"
 #include "BaseStructure.h"
+#include "Define.h"
 
 enum CANDWND_ACTION
 {
@@ -29,7 +30,9 @@ public:
 
     BOOL _Create(_In_ UINT wndWidth, _In_ UINT fontSize, _In_opt_ HWND parentWndHandle);
 
-	void _SetWidth(_In_ UINT wndWidth) { _wndWidth = wndWidth; }
+	void _SetCandStringLength(_In_ UINT wndWidth) { _wndWidth = wndWidth; } // in chararacters
+	UINT _GetWidth() { return _cxTitle + GetSystemMetrics(SM_CXVSCROLL) * 3/2  + CANDWND_BORDER_WIDTH *2;}
+
 
     void _Move(int x, int y);
     void _Show(BOOL isShowWnd);

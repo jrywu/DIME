@@ -139,7 +139,7 @@ private:
     void DisposeCandidateWindow();
 	void DisposeNotifyWindow();
 
-    void AddCandidateToTSFTTSUI(_In_ CTSFTTSArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode);
+    void AddCandidateToUI(_In_ CTSFTTSArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode);
 
     void SetPageIndexWithScrollInfo(_In_ CTSFTTSArray<CCandidateListItem> *pCandidateList);
 

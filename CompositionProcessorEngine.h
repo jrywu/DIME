@@ -37,6 +37,9 @@ public:
     void GetCandidateList(_Inout_ CTSFTTSArray<CCandidateListItem> *pCandidateList, BOOL isIncrementalWordSearch, BOOL isWildcardSearch);
     void GetCandidateStringInConverted(CStringRange &searchString, _In_ CTSFTTSArray<CCandidateListItem> *pCandidateList);
 
+	//reverse converion
+	HRESULT GetReverConversionResults(REFGUID guidLanguageProfile, _In_ LPCWSTR lpstrToConvert, _Inout_ CTSFTTSArray<CCandidateListItem> *pCandidateList);
+
     // Preserved key handler
     void OnPreservedKey(REFGUID rguid, _Out_ BOOL *pIsEaten, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId);
 
@@ -51,7 +54,7 @@ public:
 	//Array short code and special code
 	BOOL IsArrayShortCode();
 	DWORD_PTR CheckArraySpeicalCode(_Outptr_result_maybenull_ const WCHAR **ppwchSpecialCodeResultString);
-	BOOL LookupSpeicalCode(_In_ CStringRange *inword, _Out_ CStringRange *csrResult);
+	BOOL LookupArraySpeicalCode(_In_ CStringRange *inword, _Out_ CStringRange *csrResult);
 	
     BOOL IsDoubleSingleByte(WCHAR wch);
     BOOL IsWildcard() { return _isWildcard; }
@@ -92,7 +95,7 @@ public:
     void SetupPreserved(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId);
     void SetupConfiguration();
     void SetKeystrokeTable(_Inout_ CTSFTTSArray<_KEYSTROKE> *pKeystroke);
-	BOOL SetupDictionaryFile();
+	BOOL SetupDictionaryFile(REFGUID guidLanguageProfile);
 
 
 private:
@@ -120,7 +123,7 @@ private:
 	CTSFTTS* _pTextService;
     
 
-    CTableDictionaryEngine* _pTableDictionaryEngine;
+    CTableDictionaryEngine* _pTableDictionaryEngine[5];
 	CTableDictionaryEngine* _pTTSTableDictionaryEngine[5];
 	CTableDictionaryEngine* _pCINTableDictionaryEngine[5];
 	CTableDictionaryEngine* _pArrayShortCodeTableDictionaryEngine;

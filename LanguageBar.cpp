@@ -96,6 +96,7 @@ BOOL CTSFTTS::InitLanguageBar(_In_ CLangBarItemButton *pLangBarItemButton, _In_ 
 
 void CTSFTTS::SetupLanguageBar(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, BOOL isSecureMode)
 {
+	if(pThreadMgr == nullptr) return;
 	debugPrint(L"SetupLanguageBar()");
     DWORD dwEnable = 1;
 	//win8 only to show IME
@@ -775,6 +776,7 @@ HRESULT CLangBarItemButton::_CompartmentCallback(_In_ void *pv, REFGUID guidComp
 
 void CTSFTTS::InitializeTSFTTSCompartment(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId)
 {
+	if(pThreadMgr == nullptr) return;
 	// set initial mode
 	if(Global::isWindows8){
 		CCompartment CompartmentKeyboardOpen(pThreadMgr, tfClientId, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
@@ -1066,7 +1068,7 @@ void CTSFTTS::OnKeyboardOpen()
 {
 	debugPrint(L"CTSFTTS::OnKeyboardOpen()\n");
 	// switching to Chinese mode
-	CConfig::LoadConfig();
+	_LoadConfig();
 	CStringRange notifyText;
 	if(CConfig::GetShowNotifyDesktop())
 		 _pUIPresenter->ShowNotifyText(&notifyText.Set(L"¤¤¤å", 2));	

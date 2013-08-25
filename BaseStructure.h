@@ -96,7 +96,8 @@ enum IME_MODE
 {
     IME_MODE_DAYI = 0,
 	IME_MODE_ARRAY,
-	IME_MODE_PHONETIC
+	IME_MODE_PHONETIC,
+	IME_MODE_NONE
 };
 
 //---------------------------------------------------------------------
@@ -272,5 +273,12 @@ struct CCandidateListItem
 		_FindKeyCode = rhs._FindKeyCode;
 		return *this;
 	}
+};
+
+struct LanguageProfileInfo
+{
+	CLSID	clsid;
+	GUID	guidProfile;
+	PWCH	description;
 };
 #endif

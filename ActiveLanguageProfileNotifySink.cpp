@@ -41,12 +41,11 @@ STDAPI CTSFTTS::OnActivated(_In_ REFCLSID clsid, _In_ REFGUID guidProfile, _In_ 
 
     if (isActivated)
     {
-
+			
+		
+				
 		if(!_AddTextProcessorEngine())  return S_OK;
-		
-		
-		CConfig::LoadConfig();
-
+		_LoadConfig(TRUE);
 		ShowAllLanguageBarIcons();
 		BOOL activatedKeyboardMode = CConfig::GetActivatedKeyboardMode();
 		ConversionModeCompartmentUpdated(_pThreadMgr, &activatedKeyboardMode );
@@ -60,8 +59,7 @@ STDAPI CTSFTTS::OnActivated(_In_ REFCLSID clsid, _In_ REFGUID guidProfile, _In_ 
     }
     else
     {
-        _DeleteCandidateList(FALSE, nullptr);
-		//if(_pUIPresenter) _pUIPresenter->ClearAll();
+        _DeleteCandidateList(TRUE, nullptr);
 
         HideAllLanguageBarIcons();
     }

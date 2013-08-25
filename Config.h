@@ -2,13 +2,25 @@
 #define CCONFIG_H
 #pragma once
 
+
+struct ColorInfo
+{
+	int id;
+	COLORREF color;
+};
+
+typedef HPROPSHEETPAGE (__stdcall *_T_CreatePropertySheetPage)( LPCPROPSHEETPAGE lppsp );
+typedef INT_PTR (__stdcall * _T_PropertySheet)(LPCPROPSHEETHEADER lppsph );
+typedef BOOL (__stdcall * _T_ChooseColor)(_Inout_  LPCHOOSECOLOR lpcc);
+typedef BOOL (__stdcall * _T_ChooseFont)(_Inout_  LPCHOOSEFONT lpcf);
+
 class CConfig
 {
 public:
 	//The configuration settings maybe read/write from ITfFnConfigure::Show() by explorer and which is before OnActivateEX(), thus no objects are created at that time.
 	//Thus all the settings should be static and can be accesses program wide.
 	CConfig(){}
-	~CConfig(){}
+	~CConfig(){clearReverseConvervsionInfoList();}
 	//  configuration set/get
 	static void SetAutoCompose(BOOL autoCompose) {_autoCompose = autoCompose;}
 	static BOOL GetAutoCompose() {return _autoCompose;}
@@ -50,13 +62,31 @@ public:
 	static BOOL GetArrowKeySWPages() {return _arrowKeySWPages;}
 	static void SetActivatedKeyboardMode(BOOL activatedKeyboardMode) { _activatedKeyboardMode = activatedKeyboardMode;}
 	static BOOL GetActivatedKeyboardMode() {return _activatedKeyboardMode;}
+	
 	static void SetAppPermissionSet(BOOL appPermissionSet) { _appPermissionSet = appPermissionSet;}
 	static BOOL GetAppPermissionSet() {return _appPermissionSet;}
+	static void SetReloadReverseConversion(BOOL reloadReverseConversion) { _reloadReverseConversion = reloadReverseConversion;}
+	static BOOL GetReloadReverseConversion() {return _reloadReverseConversion;}
 	//array special code
 	static void SetArrayNotifySP(BOOL arrayNotifySP) { _arrayNotifySP = arrayNotifySP;}
 	static BOOL GetArrayNotifySP() {return _arrayNotifySP;}
 	static void SetArrayForceSP(BOOL arrayForceSP) { _arrayForceSP = arrayForceSP;}
 	static BOOL GetArrayForceSP() {return _arrayForceSP;}
+
+	//convert output string to simplifed chinese
+	static void SetDoHanConvert(BOOL doHanConvert) { _doHanConvert = doHanConvert;}
+	static BOOL GetDoHanConvert() {return _doHanConvert;}
+
+	//reversion conversion
+	static void SetReverseConvervsionInfoList (CTSFTTSArray <LanguageProfileInfo> *reverseConvervsionInfoList);
+	CTSFTTSArray <LanguageProfileInfo> *GetReverseConvervsionInfoList() {return _reverseConvervsionInfoList;}
+	static void SetReverseConverstionCLSID(CLSID reverseConverstionCLSID) { _reverseConverstionCLSID = reverseConverstionCLSID;}
+	static CLSID GetReverseConverstionCLSID() {return _reverseConverstionCLSID;}
+	static void SetReverseConversionGUIDProfile(GUID reverseConversionGUIDProfile) { _reverseConversionGUIDProfile = reverseConversionGUIDProfile;}
+	static GUID GetReverseConversionGUIDProfile() {return _reverseConversionGUIDProfile;}
+	static void SetReverseConversionDescription(WCHAR* reverseConversionDescription) { _reverseConversionDescription = reverseConversionDescription;}
+	static WCHAR* GetReverseConversionDescription() {return _reverseConversionDescription;}
+
 
 	static VOID WriteConfig();
 	static VOID LoadConfig();
@@ -73,6 +103,7 @@ private:
 	static BOOL _threeCodeMode;
 	static BOOL _doBeep;
 	static BOOL _appPermissionSet;
+	static BOOL _reloadReverseConversion;
 	static BOOL _activatedKeyboardMode;
 	static BOOL _makePhrase;
     static UINT _fontSize;
@@ -94,10 +125,20 @@ private:
 	static BOOL _arrayNotifySP;
 	static BOOL _arrayForceSP;
 
+	static BOOL _doHanConvert;
+
+
 	static struct _stat _initTimeStamp;
 
-	
-	
+	static CTSFTTSArray <LanguageProfileInfo> *_reverseConvervsionInfoList;
+	static CLSID _reverseConverstionCLSID;
+	static GUID _reverseConversionGUIDProfile;
+	static WCHAR* _reverseConversionDescription;
+
+	static void clearReverseConvervsionInfoList();
+
+	static ColorInfo colors[6];
 };
+
 
 #endif

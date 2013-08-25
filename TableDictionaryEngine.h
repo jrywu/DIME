@@ -29,7 +29,7 @@ public:
 
 	VOID CollectWordFromConvertedString(_In_ CStringRange *pString, _Inout_ CTSFTTSArray<CCandidateListItem> *pItemList);
     VOID CollectWordFromConvertedStringForWildcard(_In_ CStringRange *pString, _Inout_ CTSFTTSArray<CCandidateListItem> *pItemList);
-	VOID ParseConfig();
+	VOID ParseConfig(IME_MODE imeMode);
 	VOID SetSearchSection(SEARCH_SECTION searchSection) { _searchSection =searchSection;}
 private:
 	CTSFTTS *_pTextService;
