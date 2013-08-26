@@ -1122,8 +1122,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(REFGUID guidLanguageProfil
 		
 		}
 	}
-	if(Global::imeMode == imeMode)
-				_pTableDictionaryEngine[imeMode] = _pTTSTableDictionaryEngine[imeMode];  //set TTS as default dictionary engine
+	_pTableDictionaryEngine[imeMode] = _pTTSTableDictionaryEngine[imeMode];  //set TTS as default dictionary engine
 	
 	StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\TSFTTS");
 
@@ -1158,8 +1157,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(REFGUID guidLanguageProfil
 					}
 				}
 			}
-			if(Global::imeMode == imeMode)
-				_pTableDictionaryEngine[imeMode] = _pCINTableDictionaryEngine[imeMode];  //set CIN as dictionary engine if avaialble
+			_pTableDictionaryEngine[imeMode] = _pCINTableDictionaryEngine[imeMode];  //set CIN as dictionary engine if avaialble
 		}
 		
 		
