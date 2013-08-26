@@ -766,8 +766,8 @@ void CUIPresenter::_MoveUIWindowsToTextExt()
 		ClientToScreen(parentWndHandle, &pt);
 		debugPrint(L"current caret position from GetCaretPos, x = %d, y = %d", pt.x, pt.y);
 		if(pt.x <compRect.right && pt.x >=compRect.left) 	compRect.left = pt.x;
-		if(pt.y <=compRect.bottom && pt.y >compRect.top && (compRect.bottom - pt.y < pt.y - compRect.top) ) 	compRect.bottom = pt.y;
-
+		//if(pt.y <=compRect.bottom && pt.y >compRect.top && (compRect.bottom - pt.y < pt.y - compRect.top) ) 	compRect.bottom = pt.y;
+		/*
 		GUITHREADINFO* guiInfo = new GUITHREADINFO;
 		guiInfo->cbSize = sizeof(GUITHREADINFO);
 		GetGUIThreadInfo(NULL, guiInfo);
@@ -779,9 +779,9 @@ void CUIPresenter::_MoveUIWindowsToTextExt()
 			ClientToScreen(parentWndHandle, &pt);
 			debugPrint(L"current caret position from GetGUIThreadInfo, x = %d, y = %d", pt.x, pt.y);
 			if(pt.x <compRect.right && pt.x >=compRect.left) 	compRect.left = pt.x;
-			if(pt.y <=compRect.bottom && pt.y >compRect.top && (compRect.bottom - pt.y < pt.y - compRect.top) ) 	compRect.bottom = pt.y;
+			//if(pt.y <=compRect.bottom && pt.y >compRect.top && (compRect.bottom - pt.y < pt.y - compRect.top) ) 	compRect.bottom = pt.y;
 		}
-
+		*/
 	}
 	if(_pCandidateWnd)
 	{
@@ -826,8 +826,8 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
 		ClientToScreen(parentWndHandle, &pt);
 		debugPrint(L"current caret position from GetCaretPos, x = %d, y = %d", pt.x, pt.y);
 		if(pt.x <compRect.right && pt.x >=compRect.left) 	compRect.left = pt.x;
-		if(pt.y <=compRect.bottom && pt.y >compRect.top && (compRect.bottom - pt.y < pt.y - compRect.top) ) 	compRect.bottom = pt.y;
-
+		//if(pt.y <=compRect.bottom && pt.y >compRect.top && (compRect.bottom - pt.y < pt.y - compRect.top) ) 	compRect.bottom = pt.y;
+		/*
 		GUITHREADINFO* guiInfo = new GUITHREADINFO;
 		guiInfo->cbSize = sizeof(GUITHREADINFO);
 		GetGUIThreadInfo(NULL, guiInfo);
@@ -839,9 +839,9 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
 			ClientToScreen(parentWndHandle, &pt);
 			debugPrint(L"current caret position from GetGUIThreadInfo, x = %d, y = %d", pt.x, pt.y);
 			if(pt.x <compRect.right && pt.x >=compRect.left) 	compRect.left = pt.x;
-			if(pt.y <=compRect.bottom && pt.y >compRect.top && (compRect.bottom - pt.y < pt.y - compRect.top) ) 	compRect.bottom = pt.y;
+			//if(pt.y <=compRect.bottom && pt.y >compRect.top && (compRect.bottom - pt.y < pt.y - compRect.top) ) 	compRect.bottom = pt.y;
 		}
-
+		*/
 	}
 	if(_pCandidateWnd
 		&& (lpRect->bottom - lpRect->top >1) && (lpRect->right - lpRect->left >1)  ) // confirm the extent rect is valid.
