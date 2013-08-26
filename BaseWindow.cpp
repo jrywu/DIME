@@ -146,8 +146,8 @@ void CBaseWindow::_Move(int x, int y)
 {
     if (_wndHandle != nullptr)
     {
-		// set the zorder to be above all non topmost windows to avoid bounce back on child windows (like office share->email)
-        SetWindowPos(_wndHandle, HWND_TOPMOST, x, y, 0, 0, SWP_NOACTIVATE | SWP_NOSIZE);
+		// do not aluter zorder to  to avoid bounce back on child windows (like office share->email)
+        SetWindowPos(_wndHandle, NULL, x, y, 0, 0, SWP_NOACTIVATE | SWP_NOSIZE |SWP_NOZORDER);
     }
     else
     {
@@ -194,11 +194,13 @@ void CBaseWindow::_Show(BOOL isShowWnd)
     {
         if (isShowWnd)
         {
-            ShowWindow(_wndHandle, SW_SHOWNA);
+			SetWindowPos(_wndHandle,  NULL, 0, 0, 0, 0, 
+				SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE | SWP_SHOWWINDOW |SWP_NOZORDER); 
         }
         else
         {
-            ShowWindow(_wndHandle, SW_HIDE);
+           SetWindowPos(_wndHandle,  NULL, 0, 0, 0, 0, 
+				SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE | SWP_HIDEWINDOW |SWP_NOZORDER); 
         }
     }
     else

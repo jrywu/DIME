@@ -24,8 +24,7 @@ CNotifyWindow::CNotifyWindow(_In_ NOTIFYWNDCALLBACK pfnCallback, _In_ void *pv)
     _pObj = pv;
 
     _pShadowWnd = nullptr;
-	//_cxTitle = 100;
-	//_cyTitle = 100;
+
 	_x =0;
 	_y =0;
 
@@ -88,6 +87,7 @@ BOOL CNotifyWindow::_CreateMainWindow(_In_opt_ HWND parentWndHandle)
     {
         return FALSE;
     }
+	
 	SetLayeredWindowAttributes(_GetWnd(), 0,  (255 * 95) / 100, LWA_ALPHA);
 
     return TRUE;
@@ -117,7 +117,7 @@ BOOL CNotifyWindow::_CreateBackGroundShadowWindow()
 void CNotifyWindow::_ResizeWindow()
 {
 	debugPrint(L"CNotifyWindow::_ResizeWindow() , _x = %d, _y= %d, _cx= %d, _cy= %d", _x, _y, _cxTitle, _cyTitle);
-   	CBaseWindow::_Resize(_x, _y, _cxTitle, _cyTitle); 
+    CBaseWindow::_Resize(_x, _y, _cxTitle, _cyTitle); 
 	_InvalidateRect();
 }
 
