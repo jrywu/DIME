@@ -1104,24 +1104,26 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(REFGUID guidLanguageProfil
 		StringCchPrintf(pwszFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\Windows NT\\TableTextService\\TableTextServiceDaYi.txt"); // we need this to lookup phrase
 
 	//create CFileMapping object
-    if (_pTTSDictionaryFile[imeMode] == nullptr)
-    {
-        _pTTSDictionaryFile[imeMode] = new (std::nothrow) CFileMapping();
-        if (!_pTTSDictionaryFile[imeMode])  goto ErrorExit;
-    }
-	if (!(_pTTSDictionaryFile[imeMode])->CreateFile(pwszFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
+	if (_pTTSDictionaryFile[imeMode] == nullptr)
 	{
-		goto ErrorExit;
-	}
-	else
-	{
-		_pTTSTableDictionaryEngine[imeMode] = new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pTTSDictionaryFile[imeMode], L'='); //TTS file use '=' as delimiter
-		if (!_pTTSTableDictionaryEngine[imeMode])  goto ErrorExit;
-		Global::radicalMap[imeMode].clear();
-		_pTTSTableDictionaryEngine[imeMode]->ParseConfig(imeMode); //parse config first.
-		_pTableDictionaryEngine[imeMode] = _pTTSTableDictionaryEngine[imeMode];  //set TTS as default dictionary engine
-	}
+		_pTTSDictionaryFile[imeMode] = new (std::nothrow) CFileMapping();
+		if (!_pTTSDictionaryFile[imeMode])  goto ErrorExit;
 
+		if (!(_pTTSDictionaryFile[imeMode])->CreateFile(pwszFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
+		{
+			goto ErrorExit;
+		}
+		else
+		{
+			_pTTSTableDictionaryEngine[imeMode] = new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pTTSDictionaryFile[imeMode], L'='); //TTS file use '=' as delimiter
+			if (!_pTTSTableDictionaryEngine[imeMode])  goto ErrorExit;
+			Global::radicalMap[imeMode].clear();
+			_pTTSTableDictionaryEngine[imeMode]->ParseConfig(imeMode); //parse config first.
+		
+		}
+	}
+	if(Global::imeMode == imeMode)
+				_pTableDictionaryEngine[imeMode] = _pTTSTableDictionaryEngine[imeMode];  //set TTS as default dictionary engine
 	
 	StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\TSFTTS");
 
@@ -1152,11 +1154,12 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(REFGUID guidLanguageProfil
 					{
 						Global::radicalMap[imeMode].clear();
 						_pCINTableDictionaryEngine[imeMode]->ParseConfig(imeMode); //parse config first.
-						_pTableDictionaryEngine[imeMode] = _pCINTableDictionaryEngine[imeMode];  //set CIN as dictionary engine if avaialble
+						
 					}
 				}
 			}
-			
+			if(Global::imeMode == imeMode)
+				_pTableDictionaryEngine[imeMode] = _pCINTableDictionaryEngine[imeMode];  //set CIN as dictionary engine if avaialble
 		}
 		
 		

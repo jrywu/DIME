@@ -50,6 +50,7 @@
 #define IDC_CHECKBOX_SHOWNOTIFY                 1122
 #define IDC_RADIO_OUTPUT_CHT					1123
 #define IDC_RADIO_OUTPUT_CHS					1124
+#define IDC_STATIC_EDIT_MAXWIDTH				1125
 
 // Next default values for new objects
 // 
