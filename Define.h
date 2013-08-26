@@ -65,4 +65,9 @@
 #define DEFAULT_CAND_ITEM_LENGTH 3
 #define TRAILING_SPACE 1
 
+
+//---------------------------------------------------------------------
+// candidate width
+//---------------------------------------------------------------------
+#define IM_SLOTS 6
 #endif

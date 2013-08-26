@@ -107,7 +107,7 @@ extern HINSTANCE dllInstanceHandle;
 
 extern IME_MODE imeMode;
 typedef  map <WCHAR, WCHAR> mapWCHWCH;
-extern mapWCHWCH radicalMap[5];
+extern mapWCHWCH radicalMap[IM_SLOTS];
 
 extern BOOL isWindows8; //OS Version
 extern BOOL autoCompose; // show candidates while composing
@@ -154,7 +154,7 @@ extern const GUID TSFTTSGuidCompartmentDoubleSingleByte;
 
 extern const WCHAR FullWidthCharTable[];
 extern const WCHAR symbolCharTable[27];
-extern const _AddressDirectInput addressCharTable[5];
+extern const _DayiAddressDirectInput dayiAddressCharTable[5];
 
 extern const GUID TSFTTSGuidLangBarIMEMode;
 extern const GUID TSFTTSGuidLangBarDoubleSingleByte;

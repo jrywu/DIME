@@ -33,7 +33,7 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CTSFTTS *pTextServ
     _pTextService->AddRef();
 
     
-	for (UINT i =0 ; i<5 ; i++)
+	for (UINT i =0 ; i< IM_SLOTS ; i++)
 	{
 		_pTableDictionaryEngine[i] = nullptr;
 		_pTTSTableDictionaryEngine[i] = nullptr;
@@ -45,11 +45,11 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CTSFTTS *pTextServ
 
 	_pArrayShortCodeTableDictionaryEngine = nullptr;
 	_pArraySpecialCodeTableDictionaryEngine = nullptr;
-
-    
 	_pArraySpecialCodeDictionaryFile = nullptr;
 	_pArrayShortCodeDictionaryFile = nullptr;
 
+	_pTCSCTableDictionaryEngine = nullptr;
+	_pTCSCTableDictionaryFile =nullptr;
    
     _tfClientId = TF_CLIENTID_NULL;
 
@@ -80,7 +80,7 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CTSFTTS *pTextServ
 CCompositionProcessorEngine::~CCompositionProcessorEngine()
 {
 	_pTextService->Release();
-	for (UINT i =0 ; i<5 ; i++)
+	for (UINT i =0 ; i < IM_SLOTS ; i++)
 	{
 		if (_pTTSTableDictionaryEngine[i])
 		{
@@ -108,6 +108,17 @@ CCompositionProcessorEngine::~CCompositionProcessorEngine()
 		}
 
 	}
+	if (_pTCSCTableDictionaryEngine)
+	{
+		delete _pTCSCTableDictionaryEngine;
+		_pTCSCTableDictionaryEngine = nullptr;
+	}
+	if (_pTCSCTableDictionaryFile)
+	{
+		delete _pTCSCTableDictionaryFile;
+		_pTCSCTableDictionaryFile =nullptr;
+	}
+
 	
 	
 
@@ -245,11 +256,10 @@ void CCompositionProcessorEngine::GetReadingStrings(_Inout_ CTSFTTSArray<CString
         {
 			if(Global::radicalMap[Global::imeMode].size() && !IsSymbol()) // if radicalMap is valid (size()>0), then convert the keystroke buffer 
 			{
-				WCHAR radicalChar[2];
-				*radicalChar = towupper(*(_keystrokeBuffer.Get() + index));
-				WCHAR* radical = &Global::radicalMap[Global::imeMode][*radicalChar];
-				if(*radical == L'\0') *radical = *radicalChar;
-				StringCchCatN(pwchRadical, _keystrokeBuffer.GetLength() + 1, radical,1); 
+				map<WCHAR, WCHAR>::iterator item = 
+					Global::radicalMap[Global::imeMode].find(towupper(*(_keystrokeBuffer.Get() + index)));
+				if(item != Global::radicalMap[Global::imeMode].end() )
+					StringCchCatN(pwchRadical, _keystrokeBuffer.GetLength() + 1, &item->second,1); 
 			}
 
             oneKeystroke.Set(_keystrokeBuffer.Get() + index, 1);
@@ -620,9 +630,9 @@ BOOL CCompositionProcessorEngine::IsDayiAddressChar(WCHAR wch)
 	if(Global::imeMode != IME_MODE_DAYI) return FALSE;
 	if(_keystrokeBuffer.Get() == nullptr || (_keystrokeBuffer.Get() && (_keystrokeBuffer.GetLength() == 0))) 
 	{
-		for (int i = 0; i < ARRAYSIZE(Global::addressCharTable); i++)
+		for (int i = 0; i < ARRAYSIZE(Global::dayiAddressCharTable); i++)
 		{
-			if (Global::addressCharTable[i]._Code == wch)
+			if (Global::dayiAddressCharTable[i]._Code == wch)
 			{
 				return TRUE;
 			}
@@ -640,11 +650,11 @@ BOOL CCompositionProcessorEngine::IsDayiAddressChar(WCHAR wch)
 
 WCHAR CCompositionProcessorEngine::GetDayiAddressChar(WCHAR wch)
 {
-    for (int i = 0; i < ARRAYSIZE(Global::addressCharTable); i++)
+    for (int i = 0; i < ARRAYSIZE(Global::dayiAddressCharTable); i++)
     {
-        if (Global::addressCharTable[i]._Code == wch)
+        if (Global::dayiAddressCharTable[i]._Code == wch)
         {
-			return Global::addressCharTable[i]._AddressChar;
+			return Global::dayiAddressCharTable[i]._AddressChar;
         }
     }
 	return 0;
@@ -718,11 +728,10 @@ BOOL CCompositionProcessorEngine::LookupArraySpeicalCode(_In_ CStringRange *inwo
 		{
 			for(UINT i=0; i <candidateList.GetAt(0)->_FindKeyCode.GetLength(); i++)
 			{ // query keyname from keymap
-				WCHAR radicalChar[2];
-				*radicalChar = towupper(*(candidateList.GetAt(0)->_FindKeyCode.Get() + i));
-				WCHAR* radical = &Global::radicalMap[Global::imeMode][*radicalChar];
-				if(*radical == L'\0') *radical = *radicalChar;
-				StringCchCatN(pwch, candidateList.GetAt(0)->_FindKeyCode.GetLength()+1, radical,1); 
+				map<WCHAR, WCHAR>::iterator item = 
+					Global::radicalMap[Global::imeMode].find(towupper(*(_keystrokeBuffer.Get() + i)));
+				if(item != Global::radicalMap[Global::imeMode].end() )
+					StringCchCatN(pwch, candidateList.GetAt(0)->_FindKeyCode.GetLength()+1, &item->second,1); 
 			}
 			csrReslt->Set(pwch, candidateList.GetAt(0)->_FindKeyCode.GetLength());
 			return TRUE;
@@ -740,27 +749,34 @@ BOOL CCompositionProcessorEngine::LookupArraySpeicalCode(_In_ CStringRange *inwo
 
 }
 
-HRESULT CCompositionProcessorEngine::GetReverConversionResults(REFGUID guidLanguageProfile, _In_ LPCWSTR lpstrToConvert, _Inout_ CTSFTTSArray<CCandidateListItem> *pCandidateList)
+IME_MODE CCompositionProcessorEngine::GetImeModeFromGuidProfile(REFGUID guidLanguageProfile)
 {
-	debugPrint(L"CCompositionProcessorEngine::GetReverConversionResults() \n");
+	debugPrint(L"CCompositionProcessorEngine::GetImeModeFromGuidProfile() \n");
 	IME_MODE imeMode = IME_MODE_NONE;
 	if(guidLanguageProfile == Global::TSFDayiGuidProfile)
 	{
-		debugPrint(L"CCompositionProcessorEngine::SetupDictionaryFile() : DAYI Mode");
+		debugPrint(L"CCompositionProcessorEngine::GetImeModeFromGuidProfile() : DAYI Mode");
 		imeMode = IME_MODE_DAYI;
 	}
 	else if(guidLanguageProfile == Global::TSFArrayGuidProfile)
 	{
-		debugPrint(L"CCompositionProcessorEngine::SetupDictionaryFile() : Array Mode");
+		debugPrint(L"CCompositionProcessorEngine::GetImeModeFromGuidProfile() : Array Mode");
 		imeMode = IME_MODE_ARRAY;
 	}
 	else if(guidLanguageProfile == Global::TSFPhoneticGuidProfile)
 	{
-		debugPrint(L"CCompositionProcessorEngine::SetupDictionaryFile() : Phonetc Mode");
+		debugPrint(L"CCompositionProcessorEngine::GetImeModeFromGuidProfile() : Phonetc Mode");
 		imeMode = IME_MODE_PHONETIC;
 	}
-	else
-		return S_FALSE;
+	
+	return imeMode;
+
+}
+
+HRESULT CCompositionProcessorEngine::GetReverConversionResults(REFGUID guidLanguageProfile, _In_ LPCWSTR lpstrToConvert, _Inout_ CTSFTTSArray<CCandidateListItem> *pCandidateList)
+{
+	debugPrint(L"CCompositionProcessorEngine::GetReverConversionResults() \n");
+	IME_MODE imeMode = GetImeModeFromGuidProfile(guidLanguageProfile);
 
 	if(_pTableDictionaryEngine[imeMode] == nullptr)
 		return S_FALSE;
@@ -792,34 +808,78 @@ BOOL CCompositionProcessorEngine::IsDoubleSingleByte(WCHAR wch)
 //
 //----------------------------------------------------------------------------
 
-void CCompositionProcessorEngine::SetupKeystroke()
+void CCompositionProcessorEngine::SetupKeystroke(IME_MODE imeMode)
 {
-	InitKeyStrokeTable();
-    SetKeystrokeTable(&_KeystrokeComposition);
+
+	if( Global::radicalMap[imeMode].size() == 0 || Global::radicalMap[imeMode].size() >50) return;
+
+	_KeystrokeComposition.Clear();
+
+	if((imeMode == IME_MODE_DAYI) && (Global::radicalMap[imeMode].find('=') == Global::radicalMap[imeMode].end() ))
+	{ //dayi symbol prompt
+		Global::radicalMap[imeMode]['='] = L'=';
+	}
+	for(map<WCHAR,WCHAR>::iterator item = Global::radicalMap[imeMode].begin(); item != Global::radicalMap[imeMode].end(); ++item) 
+	{
+		_KEYSTROKE* pKS = nullptr;
+        pKS = _KeystrokeComposition.Append();
+        if (!pKS)
+            break;
+  
+		pKS->Function = FUNCTION_INPUT;
+		pKS->Modifiers =0;
+		WCHAR key = item->first;
+		if( (key >= '0' && key <='9') || (key >= 'A' && key <= 'Z') )
+			pKS->VirtualKey = key;
+		else if( key == ',')
+			pKS->VirtualKey = VK_OEM_COMMA;
+		else if( key == '.')
+			pKS->VirtualKey = VK_OEM_PERIOD;
+		else if( key == '/')
+			pKS->VirtualKey = VK_OEM_2;
+		else if( key == ';')
+			pKS->VirtualKey = VK_OEM_1;
+		else if( key == '\'')
+			pKS->VirtualKey = VK_OEM_7;
+		else if( key == '[')
+			pKS->VirtualKey = VK_OEM_4;
+		else if( key == ']')
+			pKS->VirtualKey = VK_OEM_6;
+		else if( key == '`')
+			pKS->VirtualKey = VK_OEM_3;
+		else if( key == '-')
+			pKS->VirtualKey = VK_OEM_MINUS;
+		else if( key == '=')
+			pKS->VirtualKey = VK_OEM_PLUS;
+		
+		pKS->Modifiers = 0;
+		pKS->Function = FUNCTION_INPUT;
+
+	}
+
+
+
+
+	/*
+	#define VK_OEM_1          0xBA   // ';:' for US
+	#define VK_OEM_PLUS       0xBB   // '+' any country
+	#define VK_OEM_COMMA      0xBC   // ',' any country
+	#define VK_OEM_MINUS      0xBD   // '-' any country
+	#define VK_OEM_PERIOD     0xBE   // '.' any country
+	#define VK_OEM_2          0xBF   // '/?' for US
+	#define VK_OEM_3          0xC0   // '`/~' for US
+	#define VK_OEM_PLUS       0xBB   // '+' any country
+	#define VK_OEM_4          0xDB  //  '[{' for US
+	#define VK_OEM_5          0xDC  //  '\|' for US
+	#define VK_OEM_6          0xDD  //  ']}' for US
+	#define VK_OEM_7          0xDE  //  ''"' for US
+	*/
+
+
     return;
 }
 
-//+---------------------------------------------------------------------------
-//
-// SetKeystrokeTable
-//
-//----------------------------------------------------------------------------
 
-void CCompositionProcessorEngine::SetKeystrokeTable(_Inout_ CTSFTTSArray<_KEYSTROKE> *pKeystroke)
-{
-	pKeystroke->Clear();
-    for (int i = 0; i <  41; i++)
-    {
-        _KEYSTROKE* pKS = nullptr;
-
-        pKS = pKeystroke->Append();
-        if (!pKS)
-        {
-            break;
-        }
-        *pKS = _keystrokeTable[i];
-    }
-}
 
 //+---------------------------------------------------------------------------
 //
@@ -1050,27 +1110,10 @@ void CCompositionProcessorEngine::SetupConfiguration()
 //
 //----------------------------------------------------------------------------
 
-BOOL CCompositionProcessorEngine::SetupDictionaryFile(REFGUID guidLanguageProfile)
+BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 {	
     debugPrint(L"CCompositionProcessorEngine::SetupDictionaryFile() \n");
-	IME_MODE imeMode = IME_MODE_NONE;
-	if(guidLanguageProfile == Global::TSFDayiGuidProfile)
-	{
-		debugPrint(L"CCompositionProcessorEngine::SetupDictionaryFile() : DAYI Mode");
-		imeMode = IME_MODE_DAYI;
-	}
-	else if(guidLanguageProfile == Global::TSFArrayGuidProfile)
-	{
-		debugPrint(L"CCompositionProcessorEngine::SetupDictionaryFile() : Array Mode");
-		imeMode = IME_MODE_ARRAY;
-	}
-	else if(guidLanguageProfile == Global::TSFPhoneticGuidProfile)
-	{
-			debugPrint(L"CCompositionProcessorEngine::SetupDictionaryFile() : Phonetic Mode");
-			imeMode = IME_MODE_PHONETIC;
-	}
-	else
-		return FALSE;
+	
 	
 	WCHAR wszProgramFiles[MAX_PATH];
 	WCHAR wszAppData[MAX_PATH];
@@ -1209,8 +1252,75 @@ ErrorExit:
     return FALSE;
 }
 
+BOOL CCompositionProcessorEngine::SetupHanCovertTable()
+{	
+	debugPrint(L"CCompositionProcessorEngine::SetupHanCovertTable() \n");
+	if(CConfig::GetDoHanConvert() &&  _pTCSCTableDictionaryEngine == nullptr)
+	{
+		WCHAR wszProgramFiles[MAX_PATH];
+
+		if(GetEnvironmentVariable(L"ProgramW6432", wszProgramFiles, MAX_PATH) ==0)
+		{//on 64-bit vista only 32bit app has this enviroment variable.  Which means the call failed when the apps running is 64-bit.
+			//on 32-bit windows, this will definitely failed.  Get ProgramFiles enviroment variable now will retrive the correct program files path.
+			GetEnvironmentVariable(L"ProgramFiles", wszProgramFiles, MAX_PATH); 
+		}
 
 
+		debugPrint(L"CCompositionProcessorEngine::SetupDictionaryFile() :wszProgramFiles = %s", wszProgramFiles);
+
+		WCHAR *pwszCINFileName = new (std::nothrow) WCHAR[MAX_PATH];
+		if (!pwszCINFileName)  goto ErrorExit;
+		*pwszCINFileName = L'\0';
+
+		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\TSFTTS\\TCSC.cin");
+		if (_pTCSCTableDictionaryFile == nullptr)
+		{
+			_pTCSCTableDictionaryFile = new (std::nothrow) CFileMapping();
+			if ((_pTCSCTableDictionaryFile)->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
+			{
+				_pTCSCTableDictionaryEngine = 
+					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pTCSCTableDictionaryFile, L'\t'); //cin files use tab as delimiter
+			}
+		}
+
+
+		delete []pwszCINFileName;
+		return TRUE;
+ErrorExit:
+		if (pwszCINFileName)  delete []pwszCINFileName;
+	}
+    return FALSE;
+}
+BOOL CCompositionProcessorEngine::GetTCFromSC(CStringRange* stringToConvert, CStringRange* convertedString)
+{
+	stringToConvert;convertedString;
+	//not yet implemented
+	return FALSE;
+}
+BOOL CCompositionProcessorEngine::GetSCFromTC(CStringRange* stringToConvert, CStringRange* convertedString)
+{
+	debugPrint(L"CCompositionProcessorEngine::GetSCFromTC()");
+	if(!CConfig::GetDoHanConvert()) return FALSE;
+
+	if(_pTCSCTableDictionaryEngine == nullptr) SetupHanCovertTable();
+
+	UINT lenToConvert = (UINT) stringToConvert->GetLength();
+	PWCHAR pwch = new (std::nothrow) WCHAR[lenToConvert +1];
+	*pwch = L'\0';
+	CStringRange wcharToCover;
+
+	for (UINT i = 0;i <lenToConvert; i++)
+	{
+		CTSFTTSArray<CCandidateListItem> candidateList;
+		_pTCSCTableDictionaryEngine->CollectWord(&wcharToCover.Set(stringToConvert->Get() + i, 1), &candidateList);
+		if(candidateList.Count() == 1)
+			StringCchCatN(pwch, lenToConvert +1, candidateList.GetAt(0)->_ItemString.Get(),1); 
+		else
+			StringCchCatN(pwch, lenToConvert +1, wcharToCover.Get(),1); 
+	}
+	convertedString->Set(pwch, lenToConvert);
+	return TRUE;
+}
 
 //+---------------------------------------------------------------------------
 //
@@ -1284,70 +1394,6 @@ CCompositionProcessorEngine::XPreservedKey::~XPreservedKey()
     {
         delete [] Description;
     }
-}
-
-
-void CCompositionProcessorEngine::InitKeyStrokeTable()
-{
-	UINT index=0;
-	if(Global::imeMode != IME_MODE_ARRAY)
-	{
-		for (UINT i = 0; i < 10; i++)
-		{
-			_keystrokeTable[i].VirtualKey = '0' + i;
-			_keystrokeTable[i].Modifiers = 0;
-			_keystrokeTable[i].Function = FUNCTION_INPUT;
-			index ++;
-		}
-	}
-	UINT offset = index;
-    for (UINT i = 0; i < 26; i++)
-    {
-        _keystrokeTable[i+offset].VirtualKey = 'A' + i;
-        _keystrokeTable[i+offset].Modifiers = 0;
-        _keystrokeTable[i+offset].Function = FUNCTION_INPUT;
-		index++;
-    }
-	/*
-	#define VK_OEM_1          0xBA   // ';:' for US
-	#define VK_OEM_PLUS       0xBB   // '+' any country
-	#define VK_OEM_COMMA      0xBC   // ',' any country
-	#define VK_OEM_MINUS      0xBD   // '-' any country
-	#define VK_OEM_PERIOD     0xBE   // '.' any country
-	#define VK_OEM_2          0xBF   // '/?' for US
-	#define VK_OEM_3          0xC0   // '`/~' for US
-	#define VK_OEM_PLUS       0xBB   // '+' any country
-	*/
-
-
-	_keystrokeTable[index].VirtualKey = VK_OEM_1 ;  // ';'
-	_keystrokeTable[index].Modifiers = 0;
-	_keystrokeTable[index].Function = FUNCTION_INPUT;
-	index++;
-	_keystrokeTable[index].VirtualKey = VK_OEM_COMMA ;  //','
-	_keystrokeTable[index].Modifiers = 0;
-	_keystrokeTable[index].Function = FUNCTION_INPUT;
-	index++;
-	_keystrokeTable[index].VirtualKey = VK_OEM_PERIOD ; //'.'
-	_keystrokeTable[index].Modifiers = 0;
-	_keystrokeTable[index].Function = FUNCTION_INPUT;
-	index++;
-	_keystrokeTable[index].VirtualKey = VK_OEM_2 ; // '/'
-	_keystrokeTable[index].Modifiers = 0;
-	_keystrokeTable[index].Function = FUNCTION_INPUT;
-	index++;
-	_keystrokeTable[index].VirtualKey = VK_OEM_PLUS ; // '='
-	_keystrokeTable[index].Modifiers = 0;
-	_keystrokeTable[index].Function = FUNCTION_INPUT;
-
-	index++;
-	offset = index;
-	for(UINT i=offset; i<50; i++)
-	{
-		_keystrokeTable[i].VirtualKey = 0;
-        _keystrokeTable[i].Modifiers = 0;
-        _keystrokeTable[i].Function = FUNCTION_INPUT;
-	}
 }
 
 
@@ -1615,7 +1661,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
         }
     }
 
-    if (IsKeystrokeRange(uCode, pKeyState, candidateMode))
+	if (IsKeystrokeRange(uCode, pKeyState, candidateMode))
     {
         return TRUE;
     }

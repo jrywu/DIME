@@ -200,6 +200,11 @@ TryAgain:
 					searchMode = SEARCH_CONTROLKEY;
 					goto ReadValue;
 				}
+				else if (parseConfig && CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%autoCompose*", 13), &keyword))
+				{
+					searchMode = SEARCH_CONTROLKEY;
+					goto ReadValue;
+				}
 				else if (CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%chardef?begin", 14), &keyword))
 				{
 					if(!parseConfig)
@@ -226,14 +231,15 @@ TryAgain:
 				{
 					searchMode = SEARCH_NONE;
 				}
-				else if (CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%phrasedef?begin", 16),&keyword))
+				else if (parseConfig && CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%keyname*", 9), &keyword))
 				{
-					if(parseConfig) Global::hasCINPhraseSection = TRUE;
-					searchMode = (!parseConfig && isTextSearch)?SEARCH_PHRASE:SEARCH_NONE;
+					searchMode = SEARCH_CONTROLKEY;
+					goto ReadValue;
 				}
-				else if (parseConfig && CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%phrasedef?end", 14), &keyword))
+				else if (!parseConfig && CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%chardef*", 9), &keyword))
 				{
-					searchMode = SEARCH_NONE;
+					searchMode = SEARCH_CONTROLKEY;
+					goto ReadValue;
 				}
 				else
 				{
@@ -396,8 +402,36 @@ ReadValue:
 			{
 				CParserStringRange testKey, value;				
 				if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"%autoCompose", 12)) == CSTR_EQUAL)
+				{
 					CConfig::SetAutoCompose((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
+				}
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"%keyname", 8)) == CSTR_EQUAL)
+				{
+					if(CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"begin", 5)) == CSTR_EQUAL)
+						searchMode = (parseConfig)?SEARCH_RADICAL:SEARCH_NONE;
+					else if(CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"end", 3)) == CSTR_EQUAL)
+						searchMode = SEARCH_NONE;
+				}
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"%chardef", 8)) == CSTR_EQUAL)
+				{
+					if(CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"begin", 5)) == CSTR_EQUAL)
+					{
+						if(!parseConfig)
+						{
+							if(isTextSearch) 
+							{
+								if(Global::hasCINPhraseSection) searchMode = SEARCH_NONE;
+								else searchMode = SEARCH_TEXT;
+							}
+							else searchMode = SEARCH_MAPPING;
+						}
+						else
+							searchMode = SEARCH_NONE;
+					}
 
+				}
+				else if(CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"end", 3)) == CSTR_EQUAL)
+						searchMode = SEARCH_NONE;
 
 				controlKeyType = NOT_CONTROLKEY;
 				goto FindNextLine;

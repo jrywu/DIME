@@ -40,7 +40,7 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 
 	debugPrint(L"CTSFTTS::_HandleCandidateWorker() \n");
     HRESULT hr = S_OK;
-	CStringRange commitString;
+	CStringRange commitString, convertedString;
 	CTSFTTSArray<CCandidateListItem> candidatePhraseList;	
 	CStringRange candidateString;
 	
@@ -93,8 +93,8 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 		StringCchCopyN(pwch, 2, pCandidateString, 1); 	
 	}
 	candidateString.Set(pwch, 1 );
-	//-----------------do reverse conversion notify
-	if(_pITfReverseConversion[Global::imeMode])
+	//-----------------do reverse conversion notify. We should not show notify in UI-less mode, thus cancel reverse conversion notify in UILess Mode
+	if(_pITfReverseConversion[Global::imeMode] && !_IsUILessMode())
 	{
 		BSTR bstr;
 		bstr = SysAllocStringLen(pCandidateString , (UINT) candidateLen);
@@ -116,8 +116,8 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 			
 		}
 	}
-	//-----------------do  array spcial code notify
-	BOOL ArraySPFound = FALSE;            // should not show notify in UI-less mode
+	//-----------------do  array spcial code notify. We should not show notify in UI-less mode, thus cancel forceSP mode in UILess Mode
+	BOOL ArraySPFound = FALSE;            
 	if(Global::imeMode == IME_MODE_ARRAY && !_IsUILessMode()  && !arrayUsingSPCode && (CConfig::GetArrayForceSP() || CConfig::GetArrayNotifySP()))
 	{
 		CStringRange specialCode;
@@ -126,7 +126,13 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 		if(specialCode.Get())
 			_pUIPresenter->ShowNotifyText(&specialCode, -1);
 	}
-	//----------------- commit the selected string   // thus cancel forceSP mode in UILess Mode
+	convertedString = commitString;
+	//----------------- do TC to SC covert if required 
+	if(CConfig::GetDoHanConvert())
+	{
+		_pCompositionProcessorEngine->GetSCFromTC(&commitString, &convertedString);
+	}
+	//----------------- commit the selected string   
 	if(Global::imeMode == IME_MODE_ARRAY && !_IsUILessMode()  && !arrayUsingSPCode && CConfig::GetArrayForceSP() &&  ArraySPFound )
 	{
 		_pCompositionProcessorEngine->DoBeep();
@@ -135,7 +141,7 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 	}
 	else
 	{
-		hr = _AddComposingAndChar(ec, pContext, &commitString);
+		hr = _AddComposingAndChar(ec, pContext, &convertedString);
 		if (FAILED(hr))	return hr;
 		// Do not send _endcandidatelist (or handleComplete) here to avoid cand dissapear in win8 metro
 		_HandleComplete(ec,pContext);

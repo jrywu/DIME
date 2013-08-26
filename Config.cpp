@@ -183,7 +183,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 	size_t i;
 	WCHAR num[16];
 	WCHAR fontname[LF_FACESIZE];
-	int fontpoint =14, fontweight = FW_NORMAL, x, y;
+	int fontpoint =12, fontweight = FW_NORMAL, x, y;
 	BOOL fontitalic = FALSE;
 	CHOOSEFONT cf;
 	LOGFONT lf;
@@ -221,7 +221,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 
 		if(fontpoint < 8 || fontpoint > 72)
 		{
-			fontpoint = 14;
+			fontpoint = 12;
 		}
 		if(fontweight < 0 || fontweight > 1000)
 		{

@@ -28,7 +28,7 @@ struct _DEFINED_KEYWORD
 };
 
 
-struct _AddressDirectInput
+struct _DayiAddressDirectInput
 {
     WCHAR _Code;
     WCHAR _AddressChar;

@@ -40,6 +40,10 @@ public:
 	//reverse converion
 	HRESULT GetReverConversionResults(REFGUID guidLanguageProfile, _In_ LPCWSTR lpstrToConvert, _Inout_ CTSFTTSArray<CCandidateListItem> *pCandidateList);
 
+	//Han covert
+	BOOL GetSCFromTC(CStringRange* stringToConvert, CStringRange* convertedString);
+	BOOL GetTCFromSC(CStringRange* stringToConvert, CStringRange* convertedString);
+
     // Preserved key handler
     void OnPreservedKey(REFGUID rguid, _Out_ BOOL *pIsEaten, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId);
 
@@ -91,17 +95,17 @@ public:
         }
     };
     _KEYSTROKE _keystrokeTable[50];
-    void SetupKeystroke();
+    
     void SetupPreserved(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId);
     void SetupConfiguration();
-    void SetKeystrokeTable(_Inout_ CTSFTTSArray<_KEYSTROKE> *pKeystroke);
-	BOOL SetupDictionaryFile(REFGUID guidLanguageProfile);
+	void SetupKeystroke(IME_MODE imeMode);
+	BOOL SetupDictionaryFile(IME_MODE imeMode);
+	BOOL SetupHanCovertTable();
 
+	IME_MODE GetImeModeFromGuidProfile(REFGUID guidLanguageProfile);
 
 private:
-	void InitKeyStrokeTable();
-	
-	
+
     BOOL IsVirtualKeyKeystrokeComposition(UINT uCode, _Out_opt_ _KEYSTROKE_STATE *pKeyState, KEYSTROKE_FUNCTION function);
     BOOL IsVirtualKeyKeystrokeCandidate(UINT uCode, _In_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode, _Out_ BOOL *pfRetCode, _In_ CTSFTTSArray<_KEYSTROKE> *pKeystrokeMetric);
     BOOL IsKeystrokeRange(UINT uCode, _Out_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode);
@@ -123,16 +127,18 @@ private:
 	CTSFTTS* _pTextService;
     
 
-    CTableDictionaryEngine* _pTableDictionaryEngine[5];
-	CTableDictionaryEngine* _pTTSTableDictionaryEngine[5];
-	CTableDictionaryEngine* _pCINTableDictionaryEngine[5];
+    CTableDictionaryEngine* _pTableDictionaryEngine[IM_SLOTS];
+	CTableDictionaryEngine* _pTTSTableDictionaryEngine[IM_SLOTS];
+	CTableDictionaryEngine* _pCINTableDictionaryEngine[IM_SLOTS];
 	CTableDictionaryEngine* _pArrayShortCodeTableDictionaryEngine;
 	CTableDictionaryEngine* _pArraySpecialCodeTableDictionaryEngine;
+	CTableDictionaryEngine* _pTCSCTableDictionaryEngine;
 
-	CFileMapping* _pTTSDictionaryFile[5];
-	CFileMapping* _pCINDictionaryFile[5];
+	CFileMapping* _pTTSDictionaryFile[IM_SLOTS];
+	CFileMapping* _pCINDictionaryFile[IM_SLOTS];
 	CFileMapping* _pArrayShortCodeDictionaryFile;
 	CFileMapping* _pArraySpecialCodeDictionaryFile;
+	CFileMapping* _pTCSCTableDictionaryFile;
 
 
     CStringRange _keystrokeBuffer;
@@ -173,9 +179,7 @@ private:
     BOOL _isKeystrokeSort : 1;
 	CCandidateRange _candidateListIndexRange;
     UINT _candidateListPhraseModifier;
-    UINT _candidateWndWidth;
-
-    
+    UINT _candidateWndWidth; 
 
     static const int OUT_OF_FILE_INDEX = -1;
 };

@@ -18,7 +18,7 @@ HINSTANCE dllInstanceHandle;
 
 LONG dllRefCount = -1;
 
-mapWCHWCH radicalMap[5];
+mapWCHWCH radicalMap[IM_SLOTS];
 
 BOOL isWindows8 = FALSE;
 
@@ -218,7 +218,7 @@ extern const WCHAR symbolCharTable[27] = {
 //---------------------------------------------------------------------
 // defined directly input address characters
 //---------------------------------------------------------------------
-extern const _AddressDirectInput addressCharTable[5] = {
+extern const _DayiAddressDirectInput dayiAddressCharTable[5] = {
 	{L'\'', L'¸¹'},
 	{L'[', L'¸ô'},
 	{L']', L'µó'},

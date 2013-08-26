@@ -561,7 +561,7 @@ void CScrollButtonWindow::_OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps)
 
     _GetClientRect(&rc);
 
-    DrawFrameControl(dcHandle, &rc, DFC_SCROLL, subTypeOfControl | typeOfControl | (!_IsEnabled() ? DFCS_INACTIVE : 0));
+    DrawFrameControl(dcHandle, &rc, DFC_SCROLL, DFCS_FLAT | subTypeOfControl | typeOfControl | (!_IsEnabled() ? DFCS_INACTIVE : 0));
 }
 
 //+---------------------------------------------------------------------------

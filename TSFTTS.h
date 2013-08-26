@@ -98,14 +98,12 @@ public:
 
 	//ITfFnConfigure 
 	STDMETHODIMP Show(_In_ HWND hwndParent, _In_ LANGID langid, _In_ REFGUID rguidProfile);
-	// ITfFnShowHelp
-    // STDMETHODIMP Show(_In_ HWND hwndParent);
 	
 	//ITfReverseConversionMgr 
 	STDMETHODIMP GetReverseConversion(_In_ LANGID langid, _In_   REFGUID guidProfile, _In_ DWORD dwflag, _Out_ ITfReverseConversion **ppReverseConversion);
 
 	 // Get language profile.
-    //GUID GetLanguageProfile(LANGID *plangid){ *plangid = _langid;  return _guidProfile;}
+    GUID GetLanguageProfile(LANGID *plangid){ *plangid = _langid;  return _guidProfile;}
     // Get locale
     LCID GetLocale(){return MAKELCID(_langid, SORT_DEFAULT);}
     
@@ -327,9 +325,9 @@ private:
 	POINT _phraseCandLocation;
 	
 	//ReverseConversion COM provider object
-	CReverseConversion * _pReverseConversion[5];
+	CReverseConversion * _pReverseConversion[IM_SLOTS];
 	//ReverseConversion Interface object
-	ITfReverseConversion* _pITfReverseConversion[5];
+	ITfReverseConversion* _pITfReverseConversion[IM_SLOTS];
 };
 
 
