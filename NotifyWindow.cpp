@@ -28,9 +28,12 @@ CNotifyWindow::CNotifyWindow(_In_ NOTIFYWNDCALLBACK pfnCallback, _In_ void *pv)
 	_x =0;
 	_y =0;
 
-	_fontSize = 14;
+
+	_fontSize = 12;
 	
 	_timeToHide = -1;
+
+	_notifyText.Set(nullptr,0);
 }
 
 //+---------------------------------------------------------------------------
@@ -51,11 +54,13 @@ CNotifyWindow::~CNotifyWindow()
 // CandidateWinow is the top window
 //----------------------------------------------------------------------------
 
-BOOL CNotifyWindow::_Create(_In_ UINT fontSize, _In_opt_ HWND parentWndHandle)
+BOOL CNotifyWindow::_Create(_In_ UINT fontSize, _In_opt_ HWND parentWndHandle, _In_opt_ CStringRange* notifyText)
 {
 	debugPrint(L"CNotifyWindow::_Create()");
     BOOL ret = FALSE;
 	_fontSize = fontSize;
+	if(notifyText)
+		_SetString(notifyText);
 
     ret = _CreateMainWindow(parentWndHandle);
     if (FALSE == ret)
@@ -193,13 +198,28 @@ LRESULT CALLBACK CNotifyWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT uM
             dcHandle = GetDC(wndHandle);
             if (dcHandle)
             {
-                HFONT hFontOld = (HFONT)SelectObject(dcHandle, Global::defaultlFontHandle);
+				HFONT hFontOld = (HFONT)SelectObject(dcHandle, Global::defaultlFontHandle);
                 GetTextMetrics(dcHandle, &_TextMetric);
+
+				if(_notifyText.GetLength())
+				{
+					SIZE size;
+					GetTextExtentPoint32(dcHandle,_notifyText.Get(), (UINT)_notifyText.GetLength(), &size); //don't trust the TextMetrics. Measurement the font height and width directly.
+
+					_cxTitle = size.cx + _TextMetric.tmAveCharWidth * 5/2;
+					_cyTitle = size.cy *3/2;
+				}
+				else
+				{
+					_cxTitle = _TextMetric.tmMaxCharWidth *4 + _TextMetric.tmAveCharWidth * 5/2;
+					_cyTitle = _TextMetric.tmHeight *2;
+				}
 				_x = -32768;
 				_y = -32768;  //out of screen intially
-				_cxTitle = _TextMetric.tmAveCharWidth* (int) (_notifyText.GetLength() + 5);
-				_cyTitle = _TextMetric.tmHeight *2;
-				debugPrint(L"CNotifyWindow::_WindowProcCallback():WM_CREATE, _cxTitle = %d, _cyTitle=%d", _cxTitle, _cyTitle);
+				
+				
+				debugPrint(L"CNotifyWindow::_WindowProcCallback():WM_CREATE, _cxTitle = %d, _cyTitle=%d, _TextMetric.tmAveCharWidt = %d", 
+					_cxTitle, _cyTitle, _TextMetric.tmAveCharWidth);
                 SelectObject(dcHandle, hFontOld);
                 ReleaseDC(wndHandle, dcHandle);
             }
@@ -417,7 +437,7 @@ void CNotifyWindow::_DrawText(_In_ HDC dcHandle, _In_ RECT *prc)
 	GetTextExtentPoint32(dcHandle, _notifyText.Get(), (UINT)_notifyText.GetLength(), &size);
 	_cxTitle = size.cx  + _TextMetric.tmAveCharWidth * 5/2;
 	_cyTitle = size.cy * 3/2;
-	debugPrint(L"CNotifyWindow::_DrawText(), _cxTitle = %d, _cyTitle=%d", _cxTitle, _cyTitle);
+	debugPrint(L"CNotifyWindow::_DrawText(), _cxTitle = %d, _cyTitle=%d, text size x = %d, y = %d", _cxTitle, _cyTitle, size.cx, size.cy);
 	
     RECT rc;
 	rc.top = prc->top;
@@ -433,7 +453,6 @@ void CNotifyWindow::_DrawText(_In_ HDC dcHandle, _In_ RECT *prc)
 	SelectObject(dcHandle, hFontOld);
 	if(_oldCxTitle != _cxTitle)
 	{
-		//_x -= (_cxTitle - _oldCxTitle);
 		_ResizeWindow();
 	}
     
@@ -478,6 +497,7 @@ void CNotifyWindow::_DrawBorder(_In_ HWND wndHandle, _In_ int cx)
 
 void CNotifyWindow::_AddString(_Inout_ const CStringRange *pNotifyText)
 {
+	debugPrint(L"CNotifyWindow::_AddString()");
 	size_t notifyTextLen = pNotifyText->GetLength();
     WCHAR* pwchString = nullptr;
     if (notifyTextLen)
@@ -490,7 +510,7 @@ void CNotifyWindow::_AddString(_Inout_ const CStringRange *pNotifyText)
 		StringCchCopyN(pwchString, _notifyText.GetLength() + notifyTextLen + 2, _notifyText.Get(),_notifyText.GetLength()); 
 		StringCchCatN(pwchString,_notifyText.GetLength() + notifyTextLen + 2, pNotifyText->Get(), notifyTextLen); 
 		_notifyText.Set(pwchString, _notifyText.GetLength() + notifyTextLen);
-
+		
     }
 
    
@@ -504,10 +524,13 @@ void CNotifyWindow::_AddString(_Inout_ const CStringRange *pNotifyText)
 
 void CNotifyWindow::_SetString(_Inout_ const CStringRange *pNotifyText)
 {
+	debugPrint(L"CNotifyWindow::_SetString()");
+	if(pNotifyText == nullptr) return;
 	size_t notifyTextLen = pNotifyText->GetLength();
     WCHAR* pwchString = nullptr;
     if (notifyTextLen)
     {
+		delete [] _notifyText.Get();
         pwchString = new (std::nothrow) WCHAR[ notifyTextLen + 1];
         if (!pwchString)
         {
@@ -515,8 +538,10 @@ void CNotifyWindow::_SetString(_Inout_ const CStringRange *pNotifyText)
         }
 		StringCchCopyN(pwchString, notifyTextLen + 1, pNotifyText->Get(), notifyTextLen);
 		_notifyText.Set(pwchString, notifyTextLen);
-    }
 
+		debugPrint(L"CNotifyWindow::_SetString(), notifyTextLen =%d", notifyTextLen);
+
+    }
    
 }
 

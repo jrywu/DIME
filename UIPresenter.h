@@ -107,7 +107,7 @@ public:
 
 	void GetCandLocation(_Out_ POINT *lpPoint);
 
-	HRESULT MakeNotifyWindow(_In_ ITfContext *pContextDocument);
+	HRESULT MakeNotifyWindow(_In_ ITfContext *pContextDocument, _In_opt_ CStringRange *pNotifyText =nullptr);
 	void SetNotifyText(_In_ CStringRange *pNotifyText);
 	void ShowNotify(_In_ BOOL showMode, _In_opt_ int timeToHide = -1);
 	void ClearNotify();

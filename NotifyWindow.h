@@ -26,7 +26,7 @@ public:
     CNotifyWindow(_In_ NOTIFYWNDCALLBACK pfnCallback, _In_ void *pv);
     virtual ~CNotifyWindow();
 
-    BOOL _Create(_In_ UINT fontHeight,  _In_opt_ HWND parentWndHandle);
+	BOOL _Create(_In_ UINT fontHeight,  _In_opt_ HWND parentWndHandle, CStringRange* notifytext=nullptr);
 
     void _Move(int x, int y);
     void _Show(BOOL isShowWnd, int timeToHide);
@@ -82,6 +82,8 @@ private:
 	int _y;
 
 	CStringRange _notifyText;
+
+
 	UINT _fontSize;
 
     CShadowWindow* _pShadowWnd;

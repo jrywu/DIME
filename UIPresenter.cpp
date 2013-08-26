@@ -625,6 +625,7 @@ void CUIPresenter::_SetNotifyTextColor(COLORREF crColor, COLORREF crBkColor)
 	{
 	    _pNotifyWnd->_SetTextColor(crColor, crBkColor);
 		_pNotifyWnd->_SetFillColor(crBkColor);
+		_pNotifyWnd->_InvalidateRect();
 	}
 }
 
@@ -858,10 +859,17 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
 		
 		if(_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())
 		{
+			debugPrint(L"notify width = %d, candwidth = %d", _pNotifyWnd->_GetWidth(), _pCandidateWnd->_GetWidth());
 			if(candPt.x < (int) _pNotifyWnd->_GetWidth() )
+			{
 				_pNotifyWnd->_Move(candPt.x + _pCandidateWnd->_GetWidth(), candPt.y);
+				debugPrint(L"move notify to x = %d, y = %d", candPt.x + _pCandidateWnd->_GetWidth(), candPt.y);
+			}
 			else
+			{
 				_pNotifyWnd->_Move(candPt.x-_pNotifyWnd->_GetWidth(), candPt.y);
+				debugPrint(L"move notify to x = %d, y = %d", candPt.x-_pNotifyWnd->_GetWidth(), candPt.y);
+			}
 			_notifyLocation.x = candPt.x;
 			_notifyLocation.y = candPt.y;
 		}
@@ -874,7 +882,7 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
 			_notifyLocation.x = notifyPt.x;
 			_notifyLocation.y = notifyPt.y;
 		}
-		debugPrint(L"move notify to x = %d, y = %d", _notifyLocation.x, _notifyLocation.y);
+		
 	}
 	_rectCompRange = compRect;
 }
@@ -1179,7 +1187,7 @@ Exit:
     return hr;
 }
 
-HRESULT CUIPresenter::MakeNotifyWindow(_In_ ITfContext *pContextDocument)
+HRESULT CUIPresenter::MakeNotifyWindow(_In_ ITfContext *pContextDocument, CStringRange * notifyText)
 {
 	HRESULT hr = S_OK;
 
@@ -1200,7 +1208,7 @@ HRESULT CUIPresenter::MakeNotifyWindow(_In_ ITfContext *pContextDocument)
 	
 	if (_pNotifyWnd->_GetUIWnd() == nullptr)
 	{
-		if( !_pNotifyWnd->_Create(CConfig::GetFontSize(), parentWndHandle))
+		if( !_pNotifyWnd->_Create(CConfig::GetFontSize(), parentWndHandle, notifyText))
 		{
 			hr = E_OUTOFMEMORY;
 			return hr;
@@ -1218,7 +1226,7 @@ void CUIPresenter::SetNotifyText(_In_ CStringRange *pNotifyText)
 	if (_pNotifyWnd)
 	{
 		_pNotifyWnd->_SetString(pNotifyText);
-		_pNotifyWnd->_InvalidateRect();
+
 	}
 }
 void CUIPresenter::ShowNotify(_In_ BOOL showMode, _In_opt_ int timeToHide)
@@ -1273,11 +1281,11 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ int timeT
 	}
 	if(pContext != nullptr)
 	{
-		if(MakeNotifyWindow(pContext)== S_OK)
+		if(MakeNotifyWindow(pContext, pNotifyText)== S_OK)
 		{
 
 			_SetNotifyTextColor(CConfig::GetItemColor(), CConfig::GetItemBGColor());
-			SetNotifyText(pNotifyText);
+			//SetNotifyText(pNotifyText);
 			
 
 			HWND parentWndHandle = nullptr;
