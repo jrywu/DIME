@@ -58,7 +58,7 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 
 	if(Global::imeMode == IME_MODE_ARRAY)
 	{
-		candidateLen = _pCompositionProcessorEngine->CheckArraySpeicalCode(&pCandidateString);
+		candidateLen = _pCompositionProcessorEngine->CollectWordFromArraySpeicalCode(&pCandidateString);
 		if(candidateLen) arrayUsingSPCode = TRUE;
 	}
 	if(candidateLen == 0)
@@ -96,6 +96,7 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 	//-----------------do reverse conversion notify. We should not show notify in UI-less mode, thus cancel reverse conversion notify in UILess Mode
 	if(_pITfReverseConversion[Global::imeMode] && !_IsUILessMode())
 	{
+		
 		BSTR bstr;
 		bstr = SysAllocStringLen(pCandidateString , (UINT) candidateLen);
 		ITfReverseConversionList* reverseConversionList;
@@ -122,7 +123,7 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 	{
 		CStringRange specialCode;
 		CStringRange notifyText;
-		ArraySPFound = _pCompositionProcessorEngine->LookupArraySpeicalCode(&commitString, &specialCode); 
+		ArraySPFound = _pCompositionProcessorEngine->GetArraySpeicalCodeFromConvertedText(&commitString, &specialCode); 
 		if(specialCode.Get())
 			_pUIPresenter->ShowNotifyText(&specialCode, -1);
 	}

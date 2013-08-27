@@ -67,6 +67,7 @@ HRESULT CTSFTTS::Show(_In_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID i
 {
 	debugPrint(L"CTSFTTS::Show()");
 
+	if(_IsStoreAppMode() ||_IsUILessMode() || _IsSecureMode()) return S_OK;
 	
 	CTfInputProcessorProfile profile;
 	LANGID langid = inLangid;

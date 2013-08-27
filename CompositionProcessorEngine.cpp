@@ -677,7 +677,7 @@ BOOL CCompositionProcessorEngine::IsArrayShortCode()
 // checkArraySpeicalCode
 //
 //----------------------------------------------------------------------------
-DWORD_PTR CCompositionProcessorEngine::CheckArraySpeicalCode(_Outptr_result_maybenull_ const WCHAR **ppwchSpecialCodeResultString)
+DWORD_PTR CCompositionProcessorEngine::CollectWordFromArraySpeicalCode(_Outptr_result_maybenull_ const WCHAR **ppwchSpecialCodeResultString)
 {
 	*ppwchSpecialCodeResultString = nullptr;
 
@@ -711,7 +711,7 @@ DWORD_PTR CCompositionProcessorEngine::CheckArraySpeicalCode(_Outptr_result_mayb
 // checkArraySpeicalCode
 //
 //----------------------------------------------------------------------------
-BOOL CCompositionProcessorEngine::LookupArraySpeicalCode(_In_ CStringRange *inword, _Out_ CStringRange *csrReslt)
+BOOL CCompositionProcessorEngine::GetArraySpeicalCodeFromConvertedText(_In_ CStringRange *inword, _Out_ CStringRange *csrReslt)
 {
 
 	if(Global::imeMode!= IME_MODE_ARRAY || _pArraySpecialCodeTableDictionaryEngine == nullptr || inword == nullptr ) return FALSE; 
