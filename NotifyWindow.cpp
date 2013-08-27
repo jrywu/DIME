@@ -16,12 +16,14 @@
 //
 //----------------------------------------------------------------------------
 
-CNotifyWindow::CNotifyWindow(_In_ NOTIFYWNDCALLBACK pfnCallback, _In_ void *pv)
+CNotifyWindow::CNotifyWindow(_In_ NOTIFYWNDCALLBACK pfnCallback, _In_ void *pv, enum NOTIFY_TYPE notifyType)
 {
    
 	
     _pfnCallback = pfnCallback;
     _pObj = pv;
+
+	_notifyType = notifyType;
 
     _pShadowWnd = nullptr;
 
@@ -138,7 +140,6 @@ void CNotifyWindow::_Move(int x, int y)
 	_x = x;
 	_y = y;
     CBaseWindow::_Move(_x, _y);
-	
 }
 
 //+---------------------------------------------------------------------------
@@ -157,7 +158,9 @@ void CNotifyWindow::_Show(BOOL isShowWnd, int timeToHide)
         _pShadowWnd->_Show(isShowWnd);
  
     CBaseWindow::_Show(isShowWnd);
-	if(isShowWnd && timeToHide > 0)
+	//if(!isShowWnd && _notifyType == NOTIFY_CHN_ENG) _StartTimer(1000); 
+	//else 
+		if(isShowWnd && timeToHide > 0)
 			_StartTimer(timeToHide);//hide the window after timeToHide
 }
 
@@ -609,10 +612,37 @@ void CNotifyWindow::_DeleteShadowWnd()
 
 void CNotifyWindow::_OnTimer()
 {
-	_Show(FALSE);
-	if (_IsTimer())
-    {
-        _EndTimer();
-    }
+	if(_notifyType == NOTIFY_CHN_ENG)
+	{
+		if(!_IsWindowVisible())
+		{
+			_pfnCallback(_pObj, SHOW_CHN_ENG_NOTIFY);
+		}
+	}
+	else
+	{
+		_Show(FALSE);
 
+	}
+	if (_IsTimer()) 	_EndTimer();
+
+}
+
+void CNotifyWindow::_OnLButtonDown(POINT pt)
+{
+	pt;
+	if(_notifyType == NOTIFY_CHN_ENG)
+	{
+		_pfnCallback(_pObj, SWITCH_CHN_ENG);
+	}
+}
+
+
+void CNotifyWindow::_OnMouseMove(POINT pt)
+{
+	pt;
+	if(_notifyType == NOTIFY_CHN_ENG)
+		SetCursor(LoadCursor(NULL, IDC_HAND));
+	else
+		SetCursor(LoadCursor(NULL, IDC_ARROW));
 }

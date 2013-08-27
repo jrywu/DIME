@@ -111,7 +111,7 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 					CStringRange reverseConvNotify;
 					WCHAR* pwch = new (std::nothrow) WCHAR[SysStringLen(bstrResult)+1];
 					StringCchCopy(pwch, SysStringLen(bstrResult)+1, (WCHAR*) bstrResult);
-					_pUIPresenter->ShowNotifyText(&reverseConvNotify.Set(pwch, wcslen(pwch)), -1);
+					_pUIPresenter->ShowNotifyText(&reverseConvNotify.Set(pwch, wcslen(pwch)), -1, NOTIFY_REVERSE_CONVERSION);
 				}
 			}
 			
@@ -125,7 +125,7 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 		CStringRange notifyText;
 		ArraySPFound = _pCompositionProcessorEngine->GetArraySpeicalCodeFromConvertedText(&commitString, &specialCode); 
 		if(specialCode.Get())
-			_pUIPresenter->ShowNotifyText(&specialCode, -1);
+			_pUIPresenter->ShowNotifyText(&specialCode, -1, NOTIFY_REVERSE_CONVERSION);
 	}
 	convertedString = commitString;
 	//----------------- do TC to SC covert if required 

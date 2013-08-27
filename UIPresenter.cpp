@@ -48,7 +48,13 @@ CUIPresenter::CUIPresenter(_In_ CTSFTTS *pTextService, CCompositionProcessorEngi
 	
 	_notifyLocation.x = -32768;
 	_notifyLocation.y = -32768;
+
+	_rectCompRange.top = -32768;
+	_rectCompRange.bottom = -32768;
+	_rectCompRange.left = -32768;
+	_rectCompRange.right = -32768;
 	
+	_inFocus = FALSE;
 }
 
 //+---------------------------------------------------------------------------
@@ -193,7 +199,7 @@ HRESULT CUIPresenter::ToShowUIWindows()
 {
 	debugPrint(L"CUIPresenter::ToShowUIWindows()");
     _MoveUIWindowsToTextExt();
-    if (_pCandidateWnd) _pCandidateWnd->_Show(TRUE);
+    if(_pCandidateWnd) _pCandidateWnd->_Show(TRUE);
 	if(_pNotifyWnd) _pNotifyWnd->_Show(TRUE);
 
 
@@ -204,6 +210,7 @@ HRESULT CUIPresenter::ToHideUIWindows()
 {
 	debugPrint(L"CUIPresenter::ToHideUIWindows()");
 	if (_pCandidateWnd)	_pCandidateWnd->_Show(FALSE);	
+	if(_pNotifyWnd) _pNotifyWnd->_Show(TRUE);
 
     _updatedFlags = TF_CLUIE_SELECTION | TF_CLUIE_CURRENTPAGE;
     _UpdateUIElement();
@@ -750,29 +757,28 @@ void CUIPresenter::_MoveUIWindowsToTextExt()
 	debugPrint(L"CUIPresenter::_MoveCandidateWindowToTextExt()");
     RECT compRect;
 
-    if (FAILED(_GetTextExt(&compRect)))
-    {
-        return;
-    }
-	debugPrint(L"CUIPresenter::_MoveCandidateWindowToTextExt(), top = %d, bottom = %d, right = %d, left = %d", compRect.top, compRect.bottom, compRect.right, compRect.left);
-	ITfContext *pContext =  _GetContextDocument();
-	ITfContextView * pView = nullptr;
-	HWND parentWndHandle;
-	if (SUCCEEDED(pContext->GetActiveView(&pView)))
+	if (SUCCEEDED(_GetTextExt(&compRect)))
 	{
-		POINT pt;
-		pView->GetWnd(&parentWndHandle);
-		GetCaretPos(&pt);
-		ClientToScreen(parentWndHandle, &pt);
-		debugPrint(L"current caret position from GetCaretPos, x = %d, y = %d", pt.x, pt.y);
-		if(pt.x <compRect.right && pt.x >=compRect.left) 	compRect.left = pt.x;
-		//if(pt.y <=compRect.bottom && pt.y >compRect.top && (compRect.bottom - pt.y < pt.y - compRect.top) ) 	compRect.bottom = pt.y;
-		/*
-		GUITHREADINFO* guiInfo = new GUITHREADINFO;
-		guiInfo->cbSize = sizeof(GUITHREADINFO);
-		GetGUIThreadInfo(NULL, guiInfo);
-		if(guiInfo->hwndCaret)
-		{   //for acient non TSF aware apps with a floating composition window.  The caret position we can get is always the caret in the flaoting comosition window.
+
+		debugPrint(L"CUIPresenter::_MoveCandidateWindowToTextExt(), top = %d, bottom = %d, right = %d, left = %d", compRect.top, compRect.bottom, compRect.right, compRect.left);
+		ITfContext *pContext =  _GetContextDocument();
+		ITfContextView * pView = nullptr;
+		HWND parentWndHandle;
+		if (pContext && SUCCEEDED(pContext->GetActiveView(&pView)))
+		{
+			POINT pt;
+			pView->GetWnd(&parentWndHandle);
+			GetCaretPos(&pt);
+			ClientToScreen(parentWndHandle, &pt);
+			debugPrint(L"current caret position from GetCaretPos, x = %d, y = %d", pt.x, pt.y);
+			if(pt.x <compRect.right && pt.x >=compRect.left) 	compRect.left = pt.x;
+			//if(pt.y <=compRect.bottom && pt.y >compRect.top && (compRect.bottom - pt.y < pt.y - compRect.top) ) 	compRect.bottom = pt.y;
+			/*
+			GUITHREADINFO* guiInfo = new GUITHREADINFO;
+			guiInfo->cbSize = sizeof(GUITHREADINFO);
+			GetGUIThreadInfo(NULL, guiInfo);
+			if(guiInfo->hwndCaret)
+			{   //for acient non TSF aware apps with a floating composition window.  The caret position we can get is always the caret in the flaoting comosition window.
 
 			pt.x = guiInfo->rcCaret.left;
 			pt.y = guiInfo->rcCaret.bottom;
@@ -780,24 +786,80 @@ void CUIPresenter::_MoveUIWindowsToTextExt()
 			debugPrint(L"current caret position from GetGUIThreadInfo, x = %d, y = %d", pt.x, pt.y);
 			if(pt.x <compRect.right && pt.x >=compRect.left) 	compRect.left = pt.x;
 			//if(pt.y <=compRect.bottom && pt.y >compRect.top && (compRect.bottom - pt.y < pt.y - compRect.top) ) 	compRect.bottom = pt.y;
+			}
+			*/
 		}
-		*/
 	}
+	else
+		compRect = _rectCompRange;
+
+	RECT candRect = {0, 0, 0, 0};
+	RECT notifyRect = {0, 0, 0, 0};
+    POINT candPt = {0, 0};
+	POINT notifyPt = {0, 0};
+
+	
 	if(_pCandidateWnd)
+	{
+		_pCandidateWnd->_GetClientRect(&candRect);
+		_pCandidateWnd->_GetWindowExtent(&compRect, &candRect, &candPt);
+		_pCandidateWnd->_Move(candPt.x, candPt.y);
+		_candLocation.x = candPt.x;
+		_candLocation.y = candPt.y;
+		debugPrint(L"move cand to x = %d, y = %d", candPt.x, candPt.y);
+	}
+	if(_pNotifyWnd)
+	{
+		
+		if(_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())
+		{
+			debugPrint(L"notify width = %d, candwidth = %d", _pNotifyWnd->_GetWidth(), _pCandidateWnd->_GetWidth());
+			if(candPt.x < (int) _pNotifyWnd->_GetWidth() )
+			{
+				_pNotifyWnd->_Move(candPt.x + _pCandidateWnd->_GetWidth(), candPt.y);
+				debugPrint(L"move notify to x = %d, y = %d", candPt.x + _pCandidateWnd->_GetWidth(), candPt.y);
+			}
+			else
+			{
+				_pNotifyWnd->_Move(candPt.x-_pNotifyWnd->_GetWidth(), candPt.y);
+				debugPrint(L"move notify to x = %d, y = %d", candPt.x-_pNotifyWnd->_GetWidth(), candPt.y);
+			}
+			_notifyLocation.x = candPt.x;
+			_notifyLocation.y = candPt.y;
+		}
+		else
+		{
+			_pNotifyWnd->_InvalidateRect();
+			_pNotifyWnd->_GetClientRect(&notifyRect);
+			_pNotifyWnd->_GetWindowExtent(&compRect, &notifyRect, &notifyPt);
+			_pNotifyWnd->_Move(notifyPt.x, notifyPt.y);
+			_notifyLocation.x = notifyPt.x;
+			_notifyLocation.y = notifyPt.y;
+		}
+		
+	}
+	/*
+	if(_pCandidateWnd )
 	{
 		_pCandidateWnd->_Move(compRect.left, compRect.bottom);
 		_candLocation.x = compRect.left;
 		_candLocation.y = compRect.bottom;
 	}
-   if(_pNotifyWnd)
+	if(_pNotifyWnd )
    {
 	   _notifyLocation.x = compRect.left;
 	   _notifyLocation.y = compRect.bottom;
-	   if(_notifyLocation.x  < (int) _pNotifyWnd->_GetWidth() )
-		   _pNotifyWnd->_Move(_notifyLocation.x  + _pCandidateWnd->_GetWidth() , _notifyLocation.y);
-	   else		
-		   _pNotifyWnd->_Move(_notifyLocation.x  - _pNotifyWnd->_GetWidth() , _notifyLocation.y);
+	   if(_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())
+	   {
+		   if( _notifyLocation.x  < (int) _pNotifyWnd->_GetWidth() ) //no rooom left for notify window in the left of cand. move the notify window to the right
+			   _pNotifyWnd->_Move(_notifyLocation.x  + _pCandidateWnd->_GetWidth() , _notifyLocation.y);
+		   else	
+			   _pNotifyWnd->_Move(_notifyLocation.x  - _pNotifyWnd->_GetWidth() , _notifyLocation.y);
+	   }
+	   else
+		   _pNotifyWnd->_Move(_notifyLocation.x , _notifyLocation.y);
    }
+   */
 }
 //+---------------------------------------------------------------------------
 //
@@ -877,7 +939,7 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
 		{
 			_pNotifyWnd->_InvalidateRect();
 			_pNotifyWnd->_GetClientRect(&notifyRect);
-			_pNotifyWnd->_GetWindowExtent(&compRect, &candRect, &notifyPt);
+			_pNotifyWnd->_GetWindowExtent(&compRect, &notifyRect, &notifyPt);
 			_pNotifyWnd->_Move(notifyPt.x, notifyPt.y);
 			_notifyLocation.x = notifyPt.x;
 			_notifyLocation.y = notifyPt.y;
@@ -911,9 +973,25 @@ VOID CUIPresenter::_LayoutDestroyNotification()
 //
 //----------------------------------------------------------------------------
 
-HRESULT CUIPresenter::_NotifyChangeNotification()
+HRESULT CUIPresenter::_NotifyChangeNotification(enum NOTIFYWND_ACTION action)
 {
+	debugPrint(L"CUIPresenter::_NotifyChangeNotification() action = %d, _inFocus =%d", action, _inFocus);
+	switch(action)
+	{
+		case SWITCH_CHN_ENG:
+			BOOL isEaten;
+			_pTextService->OnPreservedKey(NULL, Global::TSFTTSGuidImeModePreserveKey, &isEaten);
+			break;
+		case SHOW_CHN_ENG_NOTIFY:
+			if(_inFocus && _pNotifyWnd &&!_pTextService->_IsComposing() && (_pCandidateWnd == nullptr || (_pCandidateWnd && !_pCandidateWnd->_IsWindowVisible())))
+			{
+				_pNotifyWnd->_Show(TRUE);
+
+			}
+			break;
+	}
 	return S_OK;
+
 }
 
 //+---------------------------------------------------------------------------
@@ -999,11 +1077,12 @@ HRESULT CUIPresenter::_CandWndCallback(_In_ void *pv, _In_ enum CANDWND_ACTION a
 //----------------------------------------------------------------------------
 
 // static
-HRESULT CUIPresenter::_NotifyWndCallback(_In_ void *pv)
+HRESULT CUIPresenter::_NotifyWndCallback(_In_ void *pv, enum NOTIFYWND_ACTION action)
 {
+	
     CUIPresenter* fakeThis = (CUIPresenter*)pv;
 
-    return fakeThis->_NotifyChangeNotification();
+    return fakeThis->_NotifyChangeNotification(action);
 }
 
 //+---------------------------------------------------------------------------
@@ -1048,6 +1127,7 @@ HRESULT CUIPresenter::OnSetThreadFocus()
     {
         Show(TRUE);
     }
+	_inFocus = TRUE;
     return S_OK;
 }
 
@@ -1065,6 +1145,7 @@ HRESULT CUIPresenter::OnKillThreadFocus()
         Show(FALSE);
     }
 	if(_pNotifyWnd) _pNotifyWnd->_Show(FALSE);
+	_inFocus = FALSE;
     return S_OK;
 }
 
@@ -1187,14 +1268,14 @@ Exit:
     return hr;
 }
 
-HRESULT CUIPresenter::MakeNotifyWindow(_In_ ITfContext *pContextDocument, CStringRange * notifyText)
+HRESULT CUIPresenter::MakeNotifyWindow(_In_ ITfContext *pContextDocument, CStringRange * notifyText, enum NOTIFY_TYPE notifyType)
 {
 	HRESULT hr = S_OK;
 
 
 	if (nullptr == _pNotifyWnd)
     {
-		_pNotifyWnd = new (std::nothrow) CNotifyWindow(_NotifyWndCallback, this);
+		_pNotifyWnd = new (std::nothrow) CNotifyWindow(_NotifyWndCallback, this, notifyType);
 	}
 
     if (nullptr == _pNotifyWnd)	return S_FALSE;
@@ -1247,46 +1328,43 @@ void CUIPresenter::ClearNotify()
 	debugPrint(L"CUIPresenter::ClearNotify()");
 	if (_pNotifyWnd)
 	{
-		if(_pCandidateWnd == nullptr) _EndLayout();
 		_pNotifyWnd->_Clear();
+		_pNotifyWnd->_Show(FALSE);
 	}
 	DisposeNotifyWindow(); //recreate the window so as the ITfContext is always from the latest one.
 }
-void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ int timeToHide, ITfContext* pContext)
+void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ int timeToHide,  _In_ enum NOTIFY_TYPE notifyType)
 {
 	debugPrint(L"CUIPresenter::ShowNotifyText()");
+	ITfContext* pContext = _GetContextDocument();
 	ITfThreadMgr* pThreadMgr = nullptr;
 	ITfDocumentMgr* pDocumentMgr = nullptr;
-	BOOL shouldProbeComposition = TRUE;
+
 
 	if (_pNotifyWnd) 
 	{
 		ClearNotify();
 	}
 
+
 	if(pContext == nullptr)
 	{
-		pContext = _GetContextDocument();
-		if(pContext == nullptr)
+		pThreadMgr = _pTextService->_GetThreadMgr();
+		if (nullptr != pThreadMgr)
 		{
-			pThreadMgr = _pTextService->_GetThreadMgr();
-			if (nullptr != pThreadMgr)
+			if (SUCCEEDED(pThreadMgr->GetFocus(&pDocumentMgr)) && pDocumentMgr != nullptr)
 			{
-				if (SUCCEEDED(pThreadMgr->GetFocus(&pDocumentMgr)) && pDocumentMgr != nullptr)
-				{
-					pDocumentMgr->GetTop(&pContext); 
-				}
+				pDocumentMgr->GetTop(&pContext); 
 			}
 		}
 	}
+	
 	if(pContext != nullptr)
 	{
-		if(MakeNotifyWindow(pContext, pNotifyText)== S_OK)
+		if(MakeNotifyWindow(pContext, pNotifyText, notifyType)== S_OK)
 		{
-
-			_SetNotifyTextColor(CConfig::GetItemColor(), CConfig::GetItemBGColor());
-			//SetNotifyText(pNotifyText);
-			
+		
+			_SetNotifyTextColor(CConfig::GetItemColor(), CConfig::GetItemBGColor());	
 
 			HWND parentWndHandle = nullptr;
 			ITfContextView* pView = nullptr;
@@ -1312,7 +1390,7 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ int timeT
 
 				ShowNotify(TRUE, timeToHide);	//hide after 1.5 secconds
 
-				if(_pCandidateWnd == nullptr && shouldProbeComposition)
+				if(notifyType == NOTIFY_CHN_ENG || notifyType == NOTIFY_SINGLEDOUBLEBYTE)
 					_pTextService->_ProbeComposition(pContext);
 
 				if(_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())
@@ -1326,6 +1404,7 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ int timeT
 					_pNotifyWnd->_Move(_notifyLocation.x, _notifyLocation.y);
 
 			}
+
 		}
 		 
 

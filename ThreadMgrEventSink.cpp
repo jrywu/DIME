@@ -62,15 +62,11 @@ STDAPI CTSFTTS::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMg
 		pDocMgrFocus->GetTop(&pContext);
 		if(pContext && !_IsComposing()) //CreateContext(_tfClientId, 0, NULL, &pContext, &ec))) //  
 		{	
-			/*
-			BOOL isOpen = FALSE;
-			CCompartment CompartmentKeyboardOpen(_pThreadMgr, _tfClientId, Global::TSFTTSGuidCompartmentIMEMode);
-			CompartmentKeyboardOpen._GetCompartmentBOOL(isOpen);
 			CStringRange notify;
-			if(isOpen) notify.Set(L"英文",2);
-			else  notify.Set(L"中文",2);
-			_pUIPresenter->ShowNotifyText(&notify,-1);
-			*/
+			if(_isChinese) notify.Set(L"中文",2);
+			else  notify.Set(L"英文",2);
+			_pUIPresenter->ShowNotifyText(&notify,5, NOTIFY_CHN_ENG);
+			
 		}
 
 
@@ -78,7 +74,7 @@ STDAPI CTSFTTS::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMg
 	else
 	{
 		debugPrint(L"CTSFTTS::OnSetFocus() pDocMgrFocus = null, no valid context on focus");
-		_pUIPresenter->ClearNotify();
+		_pUIPresenter->Show(FALSE);
 	}
 
 	if(pDocMgrFocus)

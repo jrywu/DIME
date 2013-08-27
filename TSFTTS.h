@@ -169,6 +169,7 @@ public:
 	HRESULT _ProbeCompositionRangeNotification(_In_ TfEditCookie ec,_In_ ITfContext *pContext);
 	void _ProbeComposition(_In_ ITfContext *pContext);
 
+	BOOL _IsComposing();
 private:
 	
 	void _LoadConfig(BOOL isForce = FALSE);
@@ -182,7 +183,6 @@ private:
 	
     void _StartComposition(_In_ ITfContext *pContext);
     void _EndComposition(_In_opt_ ITfContext *pContext);
-    BOOL _IsComposing();
     BOOL _IsKeyboardDisabled();
 
     
@@ -328,6 +328,9 @@ private:
 	CReverseConversion * _pReverseConversion[IM_SLOTS];
 	//ReverseConversion Interface object
 	ITfReverseConversion* _pITfReverseConversion[IM_SLOTS];
+
+	BOOL _isChinese;
+	BOOL _isFullShape;
 };
 
 

@@ -15,15 +15,18 @@
 
 enum NOTIFYWND_ACTION
 {
-    CLICK_TO_DISMISS
+    SWITCH_CHN_ENG,
+	SHOW_CHN_ENG_NOTIFY
 };
 
-typedef HRESULT (*NOTIFYWNDCALLBACK)(void *pv);
+
+
+typedef HRESULT (*NOTIFYWNDCALLBACK)(void *pv, enum NOTIFYWND_ACTION action);
 
 class CNotifyWindow : public CBaseWindow
 {
 public:
-    CNotifyWindow(_In_ NOTIFYWNDCALLBACK pfnCallback, _In_ void *pv);
+    CNotifyWindow(_In_ NOTIFYWNDCALLBACK pfnCallback, _In_ void *pv, _In_ enum NOTIFY_TYPE notifyType);
     virtual ~CNotifyWindow();
 
 	BOOL _Create(_In_ UINT fontHeight,  _In_opt_ HWND parentWndHandle, CStringRange* notifytext=nullptr);
@@ -38,9 +41,10 @@ public:
     LRESULT CALLBACK _WindowProcCallback(_In_ HWND wndHandle, UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam);
     void _OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps);
 	virtual void _OnTimer();
-    //void _OnLButtonDown(POINT pt);
+    
+	void _OnLButtonDown(POINT pt);
     //void _OnLButtonUp(POINT pt);
-    //void _OnMouseMove(POINT pt);
+    void _OnMouseMove(POINT pt);
     
     void _AddString(_Inout_ const CStringRange *pNotifyText);
 	void _SetString(_Inout_ const CStringRange *pNotifyText);
@@ -48,6 +52,9 @@ public:
 
 	UINT _GetWidth();
 	UINT _GetHeight();
+
+	void SetNotifyType(enum NOTIFY_TYPE notifytype) { _notifyType = notifytype;}
+	NOTIFY_TYPE GetNotifyType() { return _notifyType;}
     
 private:
     void _HandleMouseMsg(_In_ UINT mouseMsg, _In_ POINT point);
@@ -83,6 +90,7 @@ private:
 
 	CStringRange _notifyText;
 
+	NOTIFY_TYPE _notifyType;
 
 	UINT _fontSize;
 

@@ -111,6 +111,16 @@ enum SEARCH_SECTION
 	SEARCH_SECTION_PRHASE_FROM_KEYSTROKE
 };
 
+//---------------------------------------------------------------------
+// NOTIFY_TYPE
+//---------------------------------------------------------------------
+enum NOTIFY_TYPE
+{
+	NOTIFY_CHN_ENG,
+	NOTIFY_SINGLEDOUBLEBYTE,
+	NOTIFY_REVERSE_CONVERSION,
+	NOTIFY_OTHERS
+};
 
 //---------------------------------------------------------------------
 // structure

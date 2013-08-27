@@ -9,7 +9,9 @@
 #include "Globals.h"
 #include "BaseWindow.h"
 #include "CandidateWindow.h"
+
 #define NO_WINDOW_SHADOW
+#define ANIMATION_STEP_TIME 8
 //+---------------------------------------------------------------------------
 //
 // ctor
@@ -113,7 +115,7 @@ BOOL CCandidateWindow::_CreateMainWindow(_In_opt_ HWND parentWndHandle)
         return FALSE;
     }
 	
-	SetLayeredWindowAttributes(_GetWnd(), 0,  (255 * 95) / 100, LWA_ALPHA);
+	SetLayeredWindowAttributes(_GetWnd(), 0,  (255 * 5) / 100, LWA_ALPHA);
 
     return TRUE;
 }
@@ -201,11 +203,36 @@ void CCandidateWindow::_ResizeWindow()
 void CCandidateWindow::_Move(int x, int y)
 {
 	debugPrint(L"CCandidateWindow::_Move() x =%d, y=%d", x,y);
-    CBaseWindow::_Move(x, y);
+    
 	_x = x;
 	_y = y;
-}
+	CBaseWindow::_Move(x, y);
 
+	SetLayeredWindowAttributes(_GetWnd(), 0,  255 * (5 / 100), LWA_ALPHA); // 30% transparent when drawing
+	_animationStage = 10;
+	
+	if (_IsTimer())    _EndTimer();
+	_StartTimer(ANIMATION_STEP_TIME);
+}
+void CCandidateWindow::_OnTimer()
+{   //animate the window faded out with layered tranparency
+	debugPrint(L"CCandidateWindow::_OnTimer() _animationStage = %d", _animationStage);
+	if(_animationStage)
+	{
+		BYTE transparentLevel = (255 * (5 + 9 * (11 - (BYTE)_animationStage))) / 100; 
+		debugPrint(L"CCandidateWindow::_OnTimer() transparentLevel = %d", transparentLevel);
+
+		SetLayeredWindowAttributes(_GetWnd(), 0, transparentLevel , LWA_ALPHA); 
+		_StartTimer(ANIMATION_STEP_TIME);
+		_animationStage --;
+	
+	}
+	else
+	{
+		if (_IsTimer())    _EndTimer();
+		SetLayeredWindowAttributes(_GetWnd(), 0,  (255 * 95) / 100, LWA_ALPHA); 
+	}
+}
 //+---------------------------------------------------------------------------
 //
 // _Show
@@ -368,8 +395,8 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
             PAINTSTRUCT ps;
 
             dcHandle = BeginPaint(wndHandle, &ps);
+			_DrawBorder(wndHandle, CANDWND_BORDER_WIDTH);
             _OnPaint(dcHandle, &ps);
-            _DrawBorder(wndHandle, CANDWND_BORDER_WIDTH);
             EndPaint(wndHandle, &ps);
         }
         return 0;
@@ -457,6 +484,7 @@ void CCandidateWindow::_HandleMouseMsg(_In_ UINT mouseMsg, _In_ POINT point)
 void CCandidateWindow::_OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pPaintStruct)
 {
 	debugPrint(L"CCandidateWindow::_OnPaint()\n");
+
     SetBkMode(dcHandle, TRANSPARENT);
 
     HFONT hFontOld = (HFONT)SelectObject(dcHandle, Global::defaultlFontHandle);
@@ -474,6 +502,7 @@ void CCandidateWindow::_OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pPaintStruc
     _AdjustPageIndex(currentPage, currentPageIndex);
 
     _DrawList(dcHandle, currentPageIndex, &pPaintStruct->rcPaint);
+
 
 cleanup:
     SelectObject(dcHandle, hFontOld);
@@ -511,8 +540,6 @@ void CCandidateWindow::_OnLButtonDown(POINT pt)
 
     for (UINT pageCount = 0; (index < _candidateList.Count()) && (pageCount < candidateListPageCnt); index++, pageCount++)
     {	
-		//rc.left = rcWindow.left;
-        //rc.right = rcWindow.right - GetSystemMetrics(SM_CXVSCROLL) * 2;
         rc.top = rcWindow.top + (pageCount * cyLine);
         rc.bottom = rcWindow.top + ((pageCount + 1) * cyLine);
 

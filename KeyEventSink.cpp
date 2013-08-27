@@ -299,6 +299,7 @@ STDAPI CTSFTTS::OnTestKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam
     Global::UpdateModifiers(wParam, lParam);
 	if (_pUIPresenter && _pUIPresenter->IsNotifyShown())//Clear notify if exist.
 	{
+		//_pUIPresenter->ShowNotify(FALSE);
 		_pUIPresenter->ClearNotify();
 	}
 
@@ -333,6 +334,7 @@ STDAPI CTSFTTS::OnKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BO
     Global::UpdateModifiers(wParam, lParam);
 	if (_pUIPresenter && _pUIPresenter->IsNotifyShown())//Clear notify if exist.
 	{
+		//_pUIPresenter->ShowNotify(FALSE);
 		_pUIPresenter->ClearNotify();
 	}
    
@@ -438,11 +440,6 @@ STDAPI CTSFTTS::OnPreservedKey(ITfContext *pContext, REFGUID rguid, BOOL *pIsEat
     pCompositionProcessorEngine = _pCompositionProcessorEngine;
 
     pCompositionProcessorEngine->OnPreservedKey(rguid, pIsEaten, _GetThreadMgr(), _GetClientId());
-
-	BOOL isOpen = FALSE;
-	CCompartment CompartmentKeyboardOpen(_pThreadMgr, _tfClientId, Global::TSFTTSGuidCompartmentIMEMode);
-    CompartmentKeyboardOpen._GetCompartmentBOOL(isOpen);
-
 
     return S_OK;
 }

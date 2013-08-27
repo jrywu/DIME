@@ -1050,47 +1050,46 @@ void CTSFTTS::OnKeyboardClosed()
 {
 	debugPrint(L"CTSFTTS::OnKeyboardClosed()\n");
 	// switching to English (native) mode delete the phrase candidate window before exting.
+	_isChinese = FALSE;
 	if(_IsComposing()) 
 	{
 		_EndComposition(_pContext);
 		_DeleteCandidateList(TRUE,_pContext);
 	}
-	//if(_candidateMode != CANDIDATE_NONE)
-	//	_DeleteCandidateList(FALSE, NULL);
-	//if(_pUIPresenter) 	_pUIPresenter->ClearAll();
-
 	CStringRange notifyText;
 	if(CConfig::GetShowNotifyDesktop())
-		 _pUIPresenter->ShowNotifyText(&notifyText.Set(L"英文", 2));
+		_pUIPresenter->ShowNotifyText(&notifyText.Set(L"英文", 2), 5 , NOTIFY_CHN_ENG);
 }
 
 void CTSFTTS::OnKeyboardOpen()
 {
 	debugPrint(L"CTSFTTS::OnKeyboardOpen()\n");
+	_isChinese = TRUE;
 	// switching to Chinese mode
 	_LoadConfig();
 	CStringRange notifyText;
 	if(CConfig::GetShowNotifyDesktop())
-		 _pUIPresenter->ShowNotifyText(&notifyText.Set(L"中文", 2));	
+		 _pUIPresenter->ShowNotifyText(&notifyText.Set(L"中文", 2), 5 , NOTIFY_CHN_ENG);	
 }
 
 void CTSFTTS::OnSwitchedToFullShape()
 {
 	debugPrint(L"CTSFTTS::OnSwitchedToFullShape()\n");
+	_isFullShape = TRUE;
 	if(_IsComposing()) 
 	{
 		_EndComposition(_pContext);
 		_DeleteCandidateList(TRUE,_pContext);
 	}
-	//if(_pUIPresenter)	_pUIPresenter->ClearAll();
 	CStringRange notifyText;
 	if(CConfig::GetShowNotifyDesktop())
-		 _pUIPresenter->ShowNotifyText(&notifyText.Set(L"全形", 2));
+		_pUIPresenter->ShowNotifyText(&notifyText.Set(L"全形", 2), 5 , NOTIFY_SINGLEDOUBLEBYTE);
 }
 
 void CTSFTTS::OnSwitchedToHalfShape()
 {
 	debugPrint(L"CTSFTTS::OnSwitchedToHalfShape()\n");
+	_isFullShape = FALSE;
 	if(_IsComposing()) 
 	{
 		_EndComposition(_pContext);
@@ -1099,5 +1098,5 @@ void CTSFTTS::OnSwitchedToHalfShape()
 	//if(_pUIPresenter) _pUIPresenter->ClearAll();
 	CStringRange notifyText;
 	if(CConfig::GetShowNotifyDesktop())
-		 _pUIPresenter->ShowNotifyText(&notifyText.Set(L"半形", 2));
+		 _pUIPresenter->ShowNotifyText(&notifyText.Set(L"半形", 2), 5 , NOTIFY_SINGLEDOUBLEBYTE);
 }
