@@ -53,13 +53,12 @@ STDAPI CTSFTTS::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMg
 	debugPrint(L"CTSFTTS::OnSetFocus()\n");
     pDocMgrPrevFocus;
 	ITfContext* pContext = nullptr;
-	
+
 	_InitTextEditSink(pDocMgrFocus);
 	
-
 	if(!_UpdateLanguageBarOnSetFocus(pDocMgrFocus))
 	{
-		pDocMgrFocus->GetTop(&pContext);
+		pDocMgrFocus->GetTop(&pContext);	
 		if(pContext && !_IsComposing()) 
 		{	
 			CStringRange notify;
@@ -67,11 +66,6 @@ STDAPI CTSFTTS::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMg
 		}
 
 
-	}
-	else
-	{
-		debugPrint(L"CTSFTTS::OnSetFocus() pDocMgrFocus = null, no valid context on focus");
-		_pUIPresenter->ClearAll();
 	}
 
 	if(pDocMgrFocus)
@@ -112,11 +106,6 @@ STDAPI CTSFTTS::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMg
         {
             if (pCandidateListDocumentMgr != pDocMgrFocus)
             {
-				if(pContext && _IsComposing())
-				{
-					//_EndComposition(pContext);
-					//_DeleteCandidateList(TRUE, pContext);
-				}
                 _pUIPresenter->OnKillThreadFocus();
             }
             else 
@@ -141,7 +130,6 @@ STDAPI CTSFTTS::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMg
         _pDocMgrLastFocused->AddRef();
     }
 
-	//if(pContext && _pUIPresenter)	_pUIPresenter->_EndCandidateList();
 	debugPrint(L"leaving CTSFTTS::OnSetFocus()\n");
     return S_OK;
 }
