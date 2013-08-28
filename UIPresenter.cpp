@@ -200,7 +200,10 @@ HRESULT CUIPresenter::ToShowUIWindows()
 	debugPrint(L"CUIPresenter::ToShowUIWindows()");
     _MoveUIWindowsToTextExt();
     if(_pCandidateWnd) _pCandidateWnd->_Show(TRUE);
-	if(_pNotifyWnd) _pNotifyWnd->_Show(TRUE);
+	if(_pNotifyWnd && _pNotifyWnd->GetNotifyType() == NOTIFY_OTHERS)
+	{
+		_pNotifyWnd->_Show(TRUE);
+	}
 
 
     return S_OK;
@@ -210,7 +213,13 @@ HRESULT CUIPresenter::ToHideUIWindows()
 {
 	debugPrint(L"CUIPresenter::ToHideUIWindows()");
 	if (_pCandidateWnd)	_pCandidateWnd->_Show(FALSE);	
-	if(_pNotifyWnd) _pNotifyWnd->_Show(TRUE);
+	if(_pNotifyWnd)
+	{
+		if( _pNotifyWnd->GetNotifyType() == NOTIFY_OTHERS)
+			_pNotifyWnd->_Show(FALSE);
+		else
+			ClearNotify();
+	}
 
     _updatedFlags = TF_CLUIE_SELECTION | TF_CLUIE_CURRENTPAGE;
     _UpdateUIElement();
@@ -793,6 +802,8 @@ void CUIPresenter::_MoveUIWindowsToTextExt()
 	else
 		compRect = _rectCompRange;
 
+	_LayoutChangeNotification(&compRect);
+	/*
 	RECT candRect = {0, 0, 0, 0};
 	RECT notifyRect = {0, 0, 0, 0};
     POINT candPt = {0, 0};
@@ -906,7 +917,7 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
 		*/
 	}
 	if(_pCandidateWnd
-		&& (lpRect->bottom - lpRect->top >1) && (lpRect->right - lpRect->left >1)  ) // confirm the extent rect is valid.
+		&& (lpRect->bottom - lpRect->top >1) )// && (lpRect->right - lpRect->left >1)  ) // confirm the extent rect is valid.
 	{
 		_pCandidateWnd->_GetClientRect(&candRect);
 		_pCandidateWnd->_GetWindowExtent(&compRect, &candRect, &candPt);
@@ -916,7 +927,7 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
 		debugPrint(L"move cand to x = %d, y = %d", candPt.x, candPt.y);
 	}
 	if(_pNotifyWnd
-		&& (lpRect->bottom - lpRect->top >1) && (lpRect->right - lpRect->left >1)  ) // confirm the extent rect is valid.
+		&& (lpRect->bottom - lpRect->top >1) )// && (lpRect->right - lpRect->left >1)  ) // confirm the extent rect is valid.
 	{
 		
 		if(_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())
@@ -937,12 +948,12 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
 		}
 		else
 		{
-			_pNotifyWnd->_InvalidateRect();
 			_pNotifyWnd->_GetClientRect(&notifyRect);
 			_pNotifyWnd->_GetWindowExtent(&compRect, &notifyRect, &notifyPt);
 			_pNotifyWnd->_Move(notifyPt.x, notifyPt.y);
 			_notifyLocation.x = notifyPt.x;
 			_notifyLocation.y = notifyPt.y;
+			debugPrint(L"move notify to x = %d, y = %d", notifyPt.x, notifyPt.y);
 		}
 		
 	}
@@ -973,21 +984,41 @@ VOID CUIPresenter::_LayoutDestroyNotification()
 //
 //----------------------------------------------------------------------------
 
-HRESULT CUIPresenter::_NotifyChangeNotification(enum NOTIFYWND_ACTION action)
+HRESULT CUIPresenter::_NotifyChangeNotification(enum NOTIFYWND_ACTION action, _In_ WPARAM wParam, _In_ LPARAM lParam)
 {
+	lParam;
 	debugPrint(L"CUIPresenter::_NotifyChangeNotification() action = %d, _inFocus =%d", action, _inFocus);
 	switch(action)
 	{
 		case SWITCH_CHN_ENG:
 			BOOL isEaten;
+			Global::IsShiftKeyDownOnly = TRUE;
 			_pTextService->OnPreservedKey(NULL, Global::TSFTTSGuidImeModePreserveKey, &isEaten);
+			Global::IsShiftKeyDownOnly = FALSE;
 			break;
-		case SHOW_CHN_ENG_NOTIFY:
-			if(_inFocus && _pNotifyWnd &&!_pTextService->_IsComposing() && (_pCandidateWnd == nullptr || (_pCandidateWnd && !_pCandidateWnd->_IsWindowVisible())))
-			{
-				_pNotifyWnd->_Show(TRUE);
+		case SHOW_NOTIFY:
 
+			if(_GetContextDocument() == nullptr)  //layout is not started. we need to do probecomposition to start layout
+			{
+				ITfContext* pContext = nullptr;
+				ITfThreadMgr* pThreadMgr = nullptr;
+				ITfDocumentMgr* pDocumentMgr = nullptr;
+				pThreadMgr = _pTextService->_GetThreadMgr();
+				if (nullptr != pThreadMgr)
+				{
+					if (SUCCEEDED(pThreadMgr->GetFocus(&pDocumentMgr)) && pDocumentMgr != nullptr)
+					{
+						if(SUCCEEDED(pDocumentMgr->GetTop(&pContext) && pContext))
+						{
+							ShowNotify(TRUE, 0, (UINT) wParam);
+							_pTextService->_ProbeComposition(pContext);
+						}
+
+					}
+				}
 			}
+			else
+				ShowNotify(TRUE, 0, (UINT) wParam);
 			break;
 	}
 	return S_OK;
@@ -1077,12 +1108,12 @@ HRESULT CUIPresenter::_CandWndCallback(_In_ void *pv, _In_ enum CANDWND_ACTION a
 //----------------------------------------------------------------------------
 
 // static
-HRESULT CUIPresenter::_NotifyWndCallback(_In_ void *pv, enum NOTIFYWND_ACTION action)
+HRESULT CUIPresenter::_NotifyWndCallback(_In_ void *pv, enum NOTIFYWND_ACTION action, _In_ WPARAM wParam, _In_ LPARAM lParam)
 {
 	
     CUIPresenter* fakeThis = (CUIPresenter*)pv;
 
-    return fakeThis->_NotifyChangeNotification(action);
+    return fakeThis->_NotifyChangeNotification(action, wParam, lParam);
 }
 
 //+---------------------------------------------------------------------------
@@ -1139,7 +1170,7 @@ HRESULT CUIPresenter::OnSetThreadFocus()
 
 HRESULT CUIPresenter::OnKillThreadFocus()
 {
-	debugPrint(L"CUIPresenter::OnSetThreadFocus()");
+	debugPrint(L"CUIPresenter::OnKillThreadFocus()");
     if (_isShowMode)
     {
         Show(FALSE);
@@ -1310,17 +1341,19 @@ void CUIPresenter::SetNotifyText(_In_ CStringRange *pNotifyText)
 
 	}
 }
-void CUIPresenter::ShowNotify(_In_ BOOL showMode, _In_opt_ int timeToHide)
+void CUIPresenter::ShowNotify(_In_ BOOL showMode,  _In_opt_ UINT delayShow, _In_opt_ UINT timeToHide)
 {
 	debugPrint(L"CUIPresenter::ShowNotify()");
 	if (_pNotifyWnd)
-		_pNotifyWnd->_Show(showMode, timeToHide);
+		_pNotifyWnd->_Show(showMode, delayShow, timeToHide);
 }
 void CUIPresenter::ClearAll()
 {
 	debugPrint(L"CUIPresenter::ClearAll()");
-	ClearNotify();
-	DisposeCandidateWindow();
+	if(_pNotifyWnd)
+		ClearNotify();
+	if(_pCandidateWnd)
+		_EndCandidateList();
 }
 
 void CUIPresenter::ClearNotify()
@@ -1328,14 +1361,16 @@ void CUIPresenter::ClearNotify()
 	debugPrint(L"CUIPresenter::ClearNotify()");
 	if (_pNotifyWnd)
 	{
-		_pNotifyWnd->_Clear();
-		_pNotifyWnd->_Show(FALSE);
+		if(_GetContextDocument() && _pCandidateWnd == nullptr) //cand is not here. the layoutsink was start by notify, and we need to end here.
+			_EndLayout();
+
+		DisposeNotifyWindow(); //recreate the window so as the ITfContext is always from the latest one.
 	}
-	DisposeNotifyWindow(); //recreate the window so as the ITfContext is always from the latest one.
+	
 }
-void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ int timeToHide,  _In_ enum NOTIFY_TYPE notifyType)
+void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ UINT delayShow, _In_ UINT timeToHide,  _In_ enum NOTIFY_TYPE notifyType)
 {
-	debugPrint(L"CUIPresenter::ShowNotifyText()");
+	debugPrint(L"CUIPresenter::ShowNotifyText(): text = %s, delayShow = %d, timeTimeHide = %d, notifyType= %d", pNotifyText->Get(), delayShow, timeToHide, notifyType);
 	ITfContext* pContext = _GetContextDocument();
 	ITfThreadMgr* pThreadMgr = nullptr;
 	ITfDocumentMgr* pDocumentMgr = nullptr;
@@ -1388,9 +1423,9 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ int timeT
 					if(_notifyLocation.y < 0) _notifyLocation.y = pt->y;
 				}
 
-				ShowNotify(TRUE, timeToHide);	//hide after 1.5 secconds
+				ShowNotify(TRUE, delayShow, timeToHide);	//hide after 1.5 secconds
 
-				if(notifyType == NOTIFY_CHN_ENG || notifyType == NOTIFY_SINGLEDOUBLEBYTE)
+				if(delayShow == 0 && _GetContextDocument() == nullptr ) //means TextLayoutSink is not working. We need to ProbeComposition to start layout
 					_pTextService->_ProbeComposition(pContext);
 
 				if(_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())

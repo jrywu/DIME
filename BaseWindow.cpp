@@ -9,7 +9,6 @@
 #include "Globals.h"
 #include "BaseWindow.h"
 
-#define idTimer_UIObject 39772
 
 //+---------------------------------------------------------------------------
 //
@@ -538,7 +537,7 @@ void CBaseWindow::_SetCaptureObject(_In_opt_ CBaseWindow *pUIObj)
 //
 //----------------------------------------------------------------------------
 
-void CBaseWindow::_SetTimerObject(_In_opt_ CBaseWindow *pUIObj, UINT uElapse)
+void CBaseWindow::_SetTimerObject(_In_opt_ CBaseWindow *pUIObj, UINT uElapse, _In_opt_ UINT_PTR timerID)
 {
     CBaseWindow* pUIWnd = _GetTopmostUIWnd();
     if (nullptr == pUIWnd)
@@ -546,14 +545,15 @@ void CBaseWindow::_SetTimerObject(_In_opt_ CBaseWindow *pUIObj, UINT uElapse)
         return;
     }
 
-    pUIWnd->_pTimerUIObj = pUIObj;
+  
     if (pUIObj != nullptr)
     {
-        SetTimer(pUIWnd->_GetWnd(), idTimer_UIObject, uElapse,  NULL);
+		pUIWnd->_pTimerUIObj = pUIObj;
+        SetTimer(pUIWnd->_GetWnd(), timerID, uElapse,  NULL);
     }
     else
     {
-        KillTimer(pUIWnd->_GetWnd(), idTimer_UIObject);
+        KillTimer(pUIWnd->_GetWnd(), timerID);
     }
 }
 
@@ -582,12 +582,17 @@ LRESULT CALLBACK CBaseWindow::_WindowProc(_In_ HWND wndHandle, UINT uMsg, _In_ W
     {
         switch (wParam)
         {
-        case idTimer_UIObject:
+        case DEFAULT_TIMER_ID:
             if (pv->_GetTimerObject() != nullptr)
             {
                 pv->_GetTimerObject()->_OnTimer();
             }
             break;
+		default:
+			if (pv->_GetTimerObject() != nullptr)
+            {
+				pv->_GetTimerObject()->_OnTimerID((UINT_PTR) wParam);
+            }
         }
         return 0;
     }

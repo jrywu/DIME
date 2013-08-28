@@ -124,7 +124,7 @@ BOOL CScrollBarWindow::_Create(ATOM atom, DWORD dwExStyle, DWORD dwStyle, CBaseW
         return FALSE;
     }
 
-    _pBtnUp->_Create(NULL, WS_EX_LEFTSCROLLBAR, 0, this);
+    _pBtnUp->_Create(NULL, 0, 0, this);
     _pBtnUp->_SetUIWnd(_GetUIWnd());
 
     _pBtnDn = new (std::nothrow) CScrollButtonWindow(dwStyle & WS_HSCROLL ? DFCS_SCROLLRIGHT : DFCS_SCROLLDOWN);

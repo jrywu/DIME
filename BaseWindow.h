@@ -5,6 +5,7 @@
 //
 
 
+#define DEFAULT_TIMER_ID 39772
 
 #pragma once
 
@@ -53,6 +54,7 @@ public:
     virtual void _OnLButtonUp(POINT pt) { pt; }
     virtual void _OnMouseMove(POINT pt) { pt; }
     virtual void _OnTimer() { }
+	virtual void _OnTimerID(UINT_PTR timerID) { timerID; }
 
     CBaseWindow* _GetTopmostUIWnd();
 
@@ -113,21 +115,21 @@ protected:
 
     BOOL _IsCapture();
 
-    void _StartTimer(UINT uElapse) 
+    void _StartTimer(UINT uElapse, UINT_PTR timerID = DEFAULT_TIMER_ID) 
     { 
-        _SetTimerObject(this, uElapse); 
+        _SetTimerObject(this, uElapse, timerID); 
     }
 
-    void _EndTimer()    
+    void _EndTimer(UINT_PTR timerID = DEFAULT_TIMER_ID)    
     { 
-        _SetTimerObject(nullptr); 
+        _SetTimerObject(nullptr, 0, timerID); 
     }
 
     BOOL _IsTimer();
 
 private:
     void _SetCaptureObject(_In_opt_ CBaseWindow *pUIObj);
-    void _SetTimerObject(_In_opt_ CBaseWindow *pUIObj, UINT uElapse = 0);
+    void _SetTimerObject(_In_opt_ CBaseWindow *pUIObj, UINT uElapse = 0, _In_opt_ UINT_PTR timerID = DEFAULT_TIMER_ID);
 
     void GetWorkAreaFromPoint(_In_ const POINT& ptPoint, _Out_ LPRECT lprcWorkArea);
     void CalcFitPointAroundTextExtent(_In_ const RECT *prcTextExtent, _In_ const RECT *prcWorkArea, _In_ const RECT *prcWindow, _Out_ POINT *ppt);

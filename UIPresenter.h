@@ -109,19 +109,19 @@ public:
 
 	HRESULT MakeNotifyWindow(_In_ ITfContext *pContextDocument, _In_opt_ CStringRange *pNotifyText =nullptr, enum NOTIFY_TYPE notifyType = NOTIFY_OTHERS);
 	void SetNotifyText(_In_ CStringRange *pNotifyText);
-	void ShowNotify(_In_ BOOL showMode, _In_opt_ int timeToHide = -1);
+	void ShowNotify(_In_ BOOL showMode, _In_opt_ UINT delayShow = 0, _In_opt_ UINT timeToHide = 0);
 	void ClearNotify();
 	void ClearAll();
-	void ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ int timeToHide = 1500, _In_ enum NOTIFY_TYPE = NOTIFY_OTHERS);
+	void ShowNotifyText(_In_ CStringRange *pNotifyText, _In_opt_ UINT delayShow = 0, _In_ UINT timeToHide = 0, _In_ enum NOTIFY_TYPE = NOTIFY_OTHERS);
 	BOOL IsNotifyShown();
 
 	BOOL isUILessMode() {return !_isShowMode;}
 private:
     virtual HRESULT CALLBACK _CandidateChangeNotification(_In_ enum CANDWND_ACTION action);
-	virtual HRESULT CALLBACK _NotifyChangeNotification(_In_ enum NOTIFYWND_ACTION action);
+	virtual HRESULT CALLBACK _NotifyChangeNotification(_In_ enum NOTIFYWND_ACTION action, _In_ WPARAM wParam, _In_ LPARAM lParam);
 
     static HRESULT _CandWndCallback(_In_ void *pv, _In_ enum CANDWND_ACTION action);
-	static HRESULT _NotifyWndCallback(_In_ void *pv, _In_ enum NOTIFYWND_ACTION action);
+	static HRESULT _NotifyWndCallback(_In_ void *pv, _In_ enum NOTIFYWND_ACTION action, _In_ WPARAM wParam, _In_ LPARAM lParam);
 
     friend COLORREF _AdjustTextColor(_In_ COLORREF crColor, _In_ COLORREF crBkColor);
 

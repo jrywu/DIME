@@ -35,7 +35,7 @@ public:
 
 
     void _Move(int x, int y);
-	void _OnTimer();
+	void _OnTimerID(UINT_PTR timerID);
     void _Show(BOOL isShowWnd);
 
 	VOID _SetNumberColor(_In_ COLORREF crColor, _In_ COLORREF crBkColor);
@@ -123,7 +123,7 @@ private:
     BOOL _dontAdjustOnEmptyItemPage;
     BOOL _isStoreAppMode;
 
-	UINT _animationStage;
+	BYTE _animationStage;
 
 	int _x;
 	int _y;

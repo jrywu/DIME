@@ -275,7 +275,7 @@ HRESULT CTSFTTS::_SetInputString(TfEditCookie ec, _In_ ITfContext *pContext, _Ou
 
     _SetCompositionLanguage(ec, pContext);
 
-    _SetCompositionDisplayAttributes(ec, pContext, _gaDisplayAttributeInput);
+	_SetCompositionDisplayAttributes(ec, pContext, _gaDisplayAttributeConverted);// _gaDisplayAttributeInput);
 
     // update the selection, we'll make it an insertion point just past
     // the inserted text.
@@ -460,19 +460,21 @@ STDAPI CProbeComposistionEditSession::DoEditSession(TfEditCookie ec)
 //
 // _ProbeComposition
 //
-// this starts the new (std::nothrow) composition at the selection of the current 
-// focus context.
+// starts a new (std::nothrow) pProbeComposistionEditSession at the selection of the current 
+// focus context to get correct caret position.
 //----------------------------------------------------------------------------
 
 void CTSFTTS::_ProbeComposition(_In_ ITfContext *pContext)
 {
-	debugPrint(L"CTSFTTS::_ProbeComposition()\n");
+	debugPrint(L"CTSFTTS::_ProbeComposition() pContext = %x\n", pContext);
 	CProbeComposistionEditSession* pProbeComposistionEditSession = new (std::nothrow) CProbeComposistionEditSession(this, pContext);
 
 	if (nullptr != pProbeComposistionEditSession)
 	{
-		HRESULT hr = S_OK;
-		pContext->RequestEditSession(_tfClientId, pProbeComposistionEditSession, TF_ES_SYNC | TF_ES_READWRITE, &hr);
+		HRESULT hrES = S_OK, hr = S_OK;
+		hr = pContext->RequestEditSession(_tfClientId, pProbeComposistionEditSession, TF_ES_ASYNCDONTCARE | TF_ES_READWRITE, &hrES);
+		
+		debugPrint(L"CTSFTTS::_ProbeComposition() RequestEdisession HRESULT = %x, return HRESULT  = %x\n", hrES, hr );
 
 		pProbeComposistionEditSession->Release();
 	}
@@ -509,13 +511,15 @@ HRESULT CTSFTTS::_ProbeCompositionRangeNotification(_In_ TfEditCookie ec, _In_ I
 		pRange->Release();
 	}
 
+	_pUIPresenter->_MoveUIWindowsToTextExt();
+	/*
 	RECT rcTextExt;
 	if (SUCCEEDED(_pUIPresenter->_GetTextExt(&rcTextExt)) 
 		&& (rcTextExt.bottom - rcTextExt.top >1) && (rcTextExt.right - rcTextExt.left >1)  ) // confirm the extent rect is valid.
 	{
 		_pUIPresenter->_LayoutChangeNotification(&rcTextExt);
 	}
-	
+	*/
     
 	
 	return hr;

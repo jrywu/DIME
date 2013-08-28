@@ -719,6 +719,7 @@ VOID CConfig::LoadConfig()
 		}
 		else
 		{
+			//should do IM specific default here.
 			WriteConfig(); // config.ini is not there. create one.
 		}
 	}

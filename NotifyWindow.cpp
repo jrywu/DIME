@@ -10,6 +10,10 @@
 #include "BaseWindow.h"
 #include "NotifyWindow.h"
 #define NO_WINDOW_SHADOW
+#define ANIMATION_STEP_TIME 15
+#define ANIMATION_TIMER_ID 39773
+#define DELAY_SHOW_TIMER_ID 39775
+#define TIME_TO_HIDE_TIMER_ID 39776
 //+---------------------------------------------------------------------------
 //
 // ctor
@@ -33,7 +37,8 @@ CNotifyWindow::CNotifyWindow(_In_ NOTIFYWNDCALLBACK pfnCallback, _In_ void *pv, 
 
 	_fontSize = 12;
 	
-	_timeToHide = -1;
+	_delayShow = 0;
+	_timeToHide = 0;
 
 	_notifyText.Set(nullptr,0);
 }
@@ -95,7 +100,7 @@ BOOL CNotifyWindow::_CreateMainWindow(_In_opt_ HWND parentWndHandle)
         return FALSE;
     }
 	
-	SetLayeredWindowAttributes(_GetWnd(), 0,  (255 * 95) / 100, LWA_ALPHA);
+	SetLayeredWindowAttributes(_GetWnd(), 0,  (255 * 5) / 100, LWA_ALPHA);
 
     return TRUE;
 }
@@ -140,6 +145,41 @@ void CNotifyWindow::_Move(int x, int y)
 	_x = x;
 	_y = y;
     CBaseWindow::_Move(_x, _y);
+	SetLayeredWindowAttributes(_GetWnd(), 0,  255 * (5 / 100), LWA_ALPHA); // 5% transparent faded out to 95 %
+	_animationStage = 10;	
+	_EndTimer(ANIMATION_TIMER_ID);
+	_StartTimer(ANIMATION_STEP_TIME, ANIMATION_TIMER_ID);
+}
+void CNotifyWindow::_OnTimerID(UINT_PTR timerID)
+{   //animate the window faded out with layered tranparency
+	debugPrint(L"CCandidateWindow::_OnTimer(): timerID = %d,  _animationStage = %d", timerID, _animationStage);
+	switch (timerID)
+	{
+	case ANIMATION_TIMER_ID:
+		if(_animationStage)
+		{
+			BYTE transparentLevel = (255 * (5 + 9 * (11 - (BYTE)_animationStage))) / 100; 
+			debugPrint(L"CCandidateWindow::_OnTimer() transparentLevel = %d", transparentLevel);
+
+			SetLayeredWindowAttributes(_GetWnd(), 0, transparentLevel , LWA_ALPHA); 
+			_StartTimer(ANIMATION_STEP_TIME, ANIMATION_TIMER_ID);
+			_animationStage --;
+
+		}
+		else
+		{
+			_EndTimer(ANIMATION_TIMER_ID);
+			SetLayeredWindowAttributes(_GetWnd(), 0,  (255 * 95) / 100, LWA_ALPHA); 
+		}
+		break;
+	case DELAY_SHOW_TIMER_ID:
+		_EndTimer(DELAY_SHOW_TIMER_ID);
+		_pfnCallback(_pObj, SHOW_NOTIFY, _timeToHide, _notifyType);
+		break;
+	case TIME_TO_HIDE_TIMER_ID:
+		_Show(FALSE, 0, 0);
+		break;
+	}
 }
 
 //+---------------------------------------------------------------------------
@@ -147,21 +187,34 @@ void CNotifyWindow::_Move(int x, int y)
 // _Show
 //
 //----------------------------------------------------------------------------
-void CNotifyWindow::_Show(BOOL isShowWnd)
+
+void CNotifyWindow::_Show(BOOL isShowWnd, UINT delayShow, UINT timeToHide)
 {
-	_Show(isShowWnd, _timeToHide);
-}
-void CNotifyWindow::_Show(BOOL isShowWnd, int timeToHide)
-{
+	debugPrint(L"CNotifyWindow::_Show(), isShowWnd = %d, delayShow = %d, timeToHide = %d ", isShowWnd, delayShow, timeToHide);
+	_delayShow = delayShow;
 	_timeToHide = timeToHide;
-    if (_pShadowWnd)
-        _pShadowWnd->_Show(isShowWnd);
+
+	if(_IsTimer()) 
+	{
+		_EndTimer(DELAY_SHOW_TIMER_ID);
+		_EndTimer(TIME_TO_HIDE_TIMER_ID);
+	}
+
+	if(!isShowWnd || delayShow == 0) //ignore delayShow if isShowWnd is FALSE
+	{
+		
+		if (_pShadowWnd)
+			_pShadowWnd->_Show(isShowWnd);
  
-    CBaseWindow::_Show(isShowWnd);
-	//if(!isShowWnd && _notifyType == NOTIFY_CHN_ENG) _StartTimer(1000); 
-	//else 
-		if(isShowWnd && timeToHide > 0)
-			_StartTimer(timeToHide);//hide the window after timeToHide
+		CBaseWindow::_Show(isShowWnd);
+	}
+	if(isShowWnd)
+	{
+		if(delayShow > 0 )
+			_StartTimer(delayShow, DELAY_SHOW_TIMER_ID);//Show the notify after delay Show
+		if(timeToHide > 0)
+			_StartTimer(timeToHide, TIME_TO_HIDE_TIMER_ID);//Show the notify after delay Show
+	}
 }
 
 //+---------------------------------------------------------------------------
@@ -610,30 +663,13 @@ void CNotifyWindow::_DeleteShadowWnd()
     }
 }
 
-void CNotifyWindow::_OnTimer()
-{
-	if(_notifyType == NOTIFY_CHN_ENG)
-	{
-		if(!_IsWindowVisible())
-		{
-			_pfnCallback(_pObj, SHOW_CHN_ENG_NOTIFY);
-		}
-	}
-	else
-	{
-		_Show(FALSE);
-
-	}
-	if (_IsTimer()) 	_EndTimer();
-
-}
 
 void CNotifyWindow::_OnLButtonDown(POINT pt)
 {
 	pt;
 	if(_notifyType == NOTIFY_CHN_ENG)
 	{
-		_pfnCallback(_pObj, SWITCH_CHN_ENG);
+		_pfnCallback(_pObj, SWITCH_CHN_ENG, NULL, NULL);
 	}
 }
 

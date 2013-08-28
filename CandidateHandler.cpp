@@ -42,7 +42,8 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
     HRESULT hr = S_OK;
 	CStringRange commitString, convertedString;
 	CTSFTTSArray<CCandidateListItem> candidatePhraseList;	
-	CStringRange candidateString;
+	CStringRange lastChar;
+	CStringRange notify;
 	
     if (nullptr == _pUIPresenter)
     {
@@ -56,12 +57,12 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 	if (!_IsComposing())
 		_StartComposition(pContext);
 
-	if(Global::imeMode == IME_MODE_ARRAY)
+	if (Global::imeMode == IME_MODE_ARRAY)// check if the _strokebuffer is array special code
 	{
 		candidateLen = _pCompositionProcessorEngine->CollectWordFromArraySpeicalCode(&pCandidateString);
 		if(candidateLen) arrayUsingSPCode = TRUE;
 	}
-	if(candidateLen == 0)
+	if (candidateLen == 0) 
 	{
 		candidateLen = _pUIPresenter->_GetSelectedCandidateString(&pCandidateString);
 	}
@@ -84,7 +85,6 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 	commitString.Set(pCandidateString , candidateLen);
 	
 	PWCHAR pwch = new (std::nothrow) WCHAR[2];  // pCandidateString will be destroyed after _detelteCanddiateList was called.
-	pwch[1] = L'0';
 	if(candidateLen > 1)
 	{	
 		StringCchCopyN(pwch, 2, pCandidateString + candidateLen -1, 1); 
@@ -92,7 +92,7 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 	{
 		StringCchCopyN(pwch, 2, pCandidateString, 1); 	
 	}
-	candidateString.Set(pwch, 1 );
+	lastChar.Set(pwch, 1 );
 	//-----------------do reverse conversion notify. We should not show notify in UI-less mode, thus cancel reverse conversion notify in UILess Mode
 	if(_pITfReverseConversion[Global::imeMode] && !_IsUILessMode())
 	{
@@ -111,13 +111,13 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 					CStringRange reverseConvNotify;
 					WCHAR* pwch = new (std::nothrow) WCHAR[SysStringLen(bstrResult)+1];
 					StringCchCopy(pwch, SysStringLen(bstrResult)+1, (WCHAR*) bstrResult);
-					_pUIPresenter->ShowNotifyText(&reverseConvNotify.Set(pwch, wcslen(pwch)), -1, NOTIFY_REVERSE_CONVERSION);
+					_pUIPresenter->ShowNotifyText(&reverseConvNotify.Set(pwch, wcslen(pwch)));
 				}
 			}
 			
 		}
 	}
-	//-----------------do  array spcial code notify. We should not show notify in UI-less mode, thus cancel forceSP mode in UILess Mode
+	//-----------------do  array spcial code notify. We should not show notify in UI-less mode, thus cancel forceSP mode in UILess Mode---
 	BOOL ArraySPFound = FALSE;            
 	if(Global::imeMode == IME_MODE_ARRAY && !_IsUILessMode()  && !arrayUsingSPCode && (CConfig::GetArrayForceSP() || CConfig::GetArrayNotifySP()))
 	{
@@ -125,10 +125,10 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 		CStringRange notifyText;
 		ArraySPFound = _pCompositionProcessorEngine->GetArraySpeicalCodeFromConvertedText(&commitString, &specialCode); 
 		if(specialCode.Get())
-			_pUIPresenter->ShowNotifyText(&specialCode, -1, NOTIFY_REVERSE_CONVERSION);
+			_pUIPresenter->ShowNotifyText(&specialCode);
 	}
 	convertedString = commitString;
-	//----------------- do TC to SC covert if required 
+	//----------------- do TC to SC covert if required----------------------------------------------------------------------------------
 	if(CConfig::GetDoHanConvert())
 	{
 		_pCompositionProcessorEngine->GetSCFromTC(&commitString, &convertedString);
@@ -147,10 +147,10 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 		// Do not send _endcandidatelist (or handleComplete) here to avoid cand dissapear in win8 metro
 		_HandleComplete(ec,pContext);
 	}
-	//-----------------do accociated phrase (make phrase)
+	//-----------------do accociated phrase (make phrase)--------------------------------------------------------------------------------
 	if (CConfig::GetMakePhrase())
 	{
-		_pCompositionProcessorEngine->GetCandidateStringInConverted(candidateString, &candidatePhraseList);
+		_pCompositionProcessorEngine->GetCandidateStringInConverted(lastChar, &candidatePhraseList);
 
 
 		// We have a candidate list if candidatePhraseList.Cnt is not 0
@@ -184,8 +184,9 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 
 	}
 	else
+	{
 		_DeleteCandidateList(TRUE, pContext); // endCanddiateUI if not doing associated phrase.
-	
+	}
 	
 Exit:
     return hr;

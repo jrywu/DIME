@@ -1058,7 +1058,7 @@ void CTSFTTS::OnKeyboardClosed()
 	}
 	CStringRange notifyText;
 	if(CConfig::GetShowNotifyDesktop())
-		_pUIPresenter->ShowNotifyText(&notifyText.Set(L"英文", 2), 5 , NOTIFY_CHN_ENG);
+		_pUIPresenter->ShowNotifyText(&notifyText.Set(L"英文", 2), 0, 3000 , NOTIFY_CHN_ENG);
 }
 
 void CTSFTTS::OnKeyboardOpen()
@@ -1069,7 +1069,7 @@ void CTSFTTS::OnKeyboardOpen()
 	_LoadConfig();
 	CStringRange notifyText;
 	if(CConfig::GetShowNotifyDesktop())
-		 _pUIPresenter->ShowNotifyText(&notifyText.Set(L"中文", 2), 5 , NOTIFY_CHN_ENG);	
+		 _pUIPresenter->ShowNotifyText(&notifyText.Set(L"中文", 2), 0, 3000 , NOTIFY_CHN_ENG);	
 }
 
 void CTSFTTS::OnSwitchedToFullShape()
@@ -1083,7 +1083,7 @@ void CTSFTTS::OnSwitchedToFullShape()
 	}
 	CStringRange notifyText;
 	if(CConfig::GetShowNotifyDesktop())
-		_pUIPresenter->ShowNotifyText(&notifyText.Set(L"全形", 2), 5 , NOTIFY_SINGLEDOUBLEBYTE);
+		_pUIPresenter->ShowNotifyText(&notifyText.Set(L"全形", 2), 0, 3000 , NOTIFY_SINGLEDOUBLEBYTE);
 }
 
 void CTSFTTS::OnSwitchedToHalfShape()
@@ -1098,5 +1098,5 @@ void CTSFTTS::OnSwitchedToHalfShape()
 	//if(_pUIPresenter) _pUIPresenter->ClearAll();
 	CStringRange notifyText;
 	if(CConfig::GetShowNotifyDesktop())
-		 _pUIPresenter->ShowNotifyText(&notifyText.Set(L"半形", 2), 5 , NOTIFY_SINGLEDOUBLEBYTE);
+		 _pUIPresenter->ShowNotifyText(&notifyText.Set(L"半形", 2), 0, 3000 , NOTIFY_SINGLEDOUBLEBYTE);
 }

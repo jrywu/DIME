@@ -297,10 +297,10 @@ STDAPI CTSFTTS::OnTestKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam
  {
 	debugPrint(L" CTSFTTS::OnTestKeyDown()");
     Global::UpdateModifiers(wParam, lParam);
-	if (_pUIPresenter && _pUIPresenter->IsNotifyShown())//Clear notify if exist.
+	if (_pUIPresenter)
 	{
-		//_pUIPresenter->ShowNotify(FALSE);
-		_pUIPresenter->ClearNotify();
+		CStringRange notify;
+		_pUIPresenter->ShowNotifyText(&notify.Set(_isChinese?L"中文":L"英文",2), 3000, 6000, NOTIFY_CHN_ENG);
 	}
 
     _KEYSTROKE_STATE KeystrokeState;
@@ -332,10 +332,10 @@ STDAPI CTSFTTS::OnKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BO
 {
 	debugPrint(L" CTSFTTS::OnKeyDown()");
     Global::UpdateModifiers(wParam, lParam);
-	if (_pUIPresenter && _pUIPresenter->IsNotifyShown())//Clear notify if exist.
+	if (_pUIPresenter )
 	{
-		//_pUIPresenter->ShowNotify(FALSE);
-		_pUIPresenter->ClearNotify();
+		CStringRange notify;
+		_pUIPresenter->ShowNotifyText(&notify.Set(_isChinese?L"中文":L"英文",2), 3000, 6000, NOTIFY_CHN_ENG);
 	}
    
 	_KEYSTROKE_STATE KeystrokeState;

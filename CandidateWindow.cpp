@@ -12,6 +12,7 @@
 
 #define NO_WINDOW_SHADOW
 #define ANIMATION_STEP_TIME 8
+#define ANIMATION_TIMER_ID 39773
 //+---------------------------------------------------------------------------
 //
 // ctor
@@ -45,7 +46,6 @@ CCandidateWindow::CCandidateWindow(_In_ CANDWNDCALLBACK pfnCallback, _In_ void *
 
 	_fontSize = _TextMetric.tmHeight;
 
-	//initilialized for out of screen 
 	_x = -32768;
 	_y = -32768;
 }
@@ -209,28 +209,32 @@ void CCandidateWindow::_Move(int x, int y)
 	CBaseWindow::_Move(x, y);
 
 	SetLayeredWindowAttributes(_GetWnd(), 0,  255 * (5 / 100), LWA_ALPHA); // 30% transparent when drawing
-	_animationStage = 10;
-	
-	if (_IsTimer())    _EndTimer();
-	_StartTimer(ANIMATION_STEP_TIME);
+	_animationStage = 10;	
+	_EndTimer(ANIMATION_TIMER_ID);
+	_StartTimer(ANIMATION_STEP_TIME, ANIMATION_TIMER_ID);
 }
-void CCandidateWindow::_OnTimer()
+void CCandidateWindow::_OnTimerID(UINT_PTR timerID)
 {   //animate the window faded out with layered tranparency
-	debugPrint(L"CCandidateWindow::_OnTimer() _animationStage = %d", _animationStage);
-	if(_animationStage)
+	debugPrint(L"CCandidateWindow::_OnTimer(): timerID = %d,  _animationStage = %d", timerID, _animationStage);
+	switch (timerID)
 	{
-		BYTE transparentLevel = (255 * (5 + 9 * (11 - (BYTE)_animationStage))) / 100; 
-		debugPrint(L"CCandidateWindow::_OnTimer() transparentLevel = %d", transparentLevel);
+	case ANIMATION_TIMER_ID:
+		if(_animationStage)
+		{
+			BYTE transparentLevel = (255 * (5 + 9 * (11 - _animationStage))) / 100; 
+			debugPrint(L"CCandidateWindow::_OnTimer() transparentLevel = %d", transparentLevel);
 
-		SetLayeredWindowAttributes(_GetWnd(), 0, transparentLevel , LWA_ALPHA); 
-		_StartTimer(ANIMATION_STEP_TIME);
-		_animationStage --;
-	
-	}
-	else
-	{
-		if (_IsTimer())    _EndTimer();
-		SetLayeredWindowAttributes(_GetWnd(), 0,  (255 * 95) / 100, LWA_ALPHA); 
+			SetLayeredWindowAttributes(_GetWnd(), 0, transparentLevel , LWA_ALPHA); 
+			_StartTimer(ANIMATION_STEP_TIME, ANIMATION_TIMER_ID);
+			_animationStage --;
+
+		}
+		else
+		{
+			_EndTimer(ANIMATION_TIMER_ID);
+			SetLayeredWindowAttributes(_GetWnd(), 0,  (255 * 95) / 100, LWA_ALPHA); 
+		}
+		break;
 	}
 }
 //+---------------------------------------------------------------------------

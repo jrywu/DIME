@@ -16,12 +16,12 @@
 enum NOTIFYWND_ACTION
 {
     SWITCH_CHN_ENG,
-	SHOW_CHN_ENG_NOTIFY
+	SHOW_NOTIFY
 };
 
 
 
-typedef HRESULT (*NOTIFYWNDCALLBACK)(void *pv, enum NOTIFYWND_ACTION action);
+typedef HRESULT (*NOTIFYWNDCALLBACK)(void *pv, enum NOTIFYWND_ACTION action, _In_ WPARAM wParam, _In_ LPARAM lParam);
 
 class CNotifyWindow : public CBaseWindow
 {
@@ -32,15 +32,14 @@ public:
 	BOOL _Create(_In_ UINT fontHeight,  _In_opt_ HWND parentWndHandle, CStringRange* notifytext=nullptr);
 
     void _Move(int x, int y);
-    void _Show(BOOL isShowWnd, int timeToHide);
-	void _Show(BOOL isShowWnd);
+    void _Show(BOOL isShowWnd, UINT delayShow = 0, UINT timeToHide = 0);
 
     VOID _SetTextColor(_In_ COLORREF crColor, _In_ COLORREF crBkColor);
     VOID _SetFillColor(_In_ COLORREF crBkColor);
 
     LRESULT CALLBACK _WindowProcCallback(_In_ HWND wndHandle, UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam);
     void _OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps);
-	virtual void _OnTimer();
+	virtual void _OnTimerID(UINT_PTR timerID);
     
 	void _OnLButtonDown(POINT pt);
     //void _OnLButtonUp(POINT pt);
@@ -77,7 +76,8 @@ private:
     COLORREF _crBkColor;
     HBRUSH _brshBkColor;
 
-	int _timeToHide;
+	UINT _timeToHide;
+	UINT _delayShow;
 
     TEXTMETRIC _TextMetric;
     
@@ -95,4 +95,6 @@ private:
 	UINT _fontSize;
 
     CShadowWindow* _pShadowWnd;
+
+	BYTE _animationStage;
 };

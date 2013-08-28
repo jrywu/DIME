@@ -268,9 +268,6 @@
     <ClCompile Include="ActiveLanguageProfileNotifySink.cpp">
       <Filter>Source Files\Framework</Filter>
     </ClCompile>
-    <ClCompile Include="DisplayAttribute.cpp">
-      <Filter>Source Files\Framework</Filter>
-    </ClCompile>
     <ClCompile Include="FunctionProviderSink.cpp">
       <Filter>Source Files\Framework</Filter>
     </ClCompile>
@@ -331,9 +328,6 @@
     <ClCompile Include="TfTextLayoutSink.cpp">
       <Filter>Source Files\UI\Candidate</Filter>
     </ClCompile>
-    <ClCompile Include="GetTextExtentEditSession.cpp">
-      <Filter>Source Files\Framework</Filter>
-    </ClCompile>
     <ClCompile Include="CompositionProcessorEngine.cpp">
       <Filter>Source Files\Framework\Composition\CompositionEngine</Filter>
     </ClCompile>
@@ -342,6 +336,12 @@
     </ClCompile>
     <ClCompile Include="ReverseConversion.cpp">
       <Filter>Source Files\Framework\Composition\ReverseConversion</Filter>
+    </ClCompile>
+    <ClCompile Include="DisplayAttribute.cpp">
+      <Filter>Source Files\Framework\Composition\Display</Filter>
+    </ClCompile>
+    <ClCompile Include="GetTextExtentEditSession.cpp">
+      <Filter>Source Files\UI</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
