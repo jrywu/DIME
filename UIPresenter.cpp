@@ -986,7 +986,7 @@ VOID CUIPresenter::_LayoutDestroyNotification()
 
 HRESULT CUIPresenter::_NotifyChangeNotification(enum NOTIFYWND_ACTION action, _In_ WPARAM wParam, _In_ LPARAM lParam)
 {
-	lParam;
+
 	debugPrint(L"CUIPresenter::_NotifyChangeNotification() action = %d, _inFocus =%d", action, _inFocus);
 	switch(action)
 	{
@@ -1017,7 +1017,7 @@ HRESULT CUIPresenter::_NotifyChangeNotification(enum NOTIFYWND_ACTION action, _I
 					}
 				}
 			}
-			else
+			else if((NOTIFY_TYPE)lParam == NOTIFY_OTHERS || (_pCandidateWnd && !_pCandidateWnd->_IsWindowVisible()))
 				ShowNotify(TRUE, 0, (UINT) wParam);
 			break;
 	}
