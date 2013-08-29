@@ -47,8 +47,10 @@ STDAPI CTSFTTS::OnActivated(_In_ REFCLSID clsid, _In_ REFGUID guidProfile, _In_ 
 		if(!_AddTextProcessorEngine())  return S_OK;
 		_LoadConfig(TRUE);
 		ShowAllLanguageBarIcons();
+		
 		BOOL activatedKeyboardMode = CConfig::GetActivatedKeyboardMode();
 		ConversionModeCompartmentUpdated(_pThreadMgr, &activatedKeyboardMode );
+		_pUIPresenter->ClearNotify();
 
 		// SetFocus to focused document manager for probing the composition range
 		ITfDocumentMgr* pDocuMgr;

@@ -63,8 +63,14 @@ __inline UINT VKeyFromVKPacketAndWchar(UINT vk, WCHAR wch)
 BOOL CTSFTTS::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pCodeOut, _Out_writes_(1) WCHAR *pwch, _Out_opt_ _KEYSTROKE_STATE *pKeyState)
 {
     pContext;
-
     *pCodeOut = codeIn;
+
+	if (_pUIPresenter )
+	{
+		_pUIPresenter->ClearNotify();
+		//CStringRange notify;
+		//_pUIPresenter->ShowNotifyText(&notify.Set(_isChinese?L"中文":L"英文",2), 3000, 6000, NOTIFY_CHN_ENG);
+	}
 
     BOOL isOpen = FALSE;
 	CCompartment CompartmentKeyboardOpen(_pThreadMgr, _tfClientId, Global::TSFTTSGuidCompartmentIMEMode);
@@ -297,11 +303,6 @@ STDAPI CTSFTTS::OnTestKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam
  {
 	debugPrint(L" CTSFTTS::OnTestKeyDown()");
     Global::UpdateModifiers(wParam, lParam);
-	if (_pUIPresenter)
-	{
-		CStringRange notify;
-		_pUIPresenter->ShowNotifyText(&notify.Set(_isChinese?L"中文":L"英文",2), 3000, 6000, NOTIFY_CHN_ENG);
-	}
 
     _KEYSTROKE_STATE KeystrokeState;
     WCHAR wch = '\0';
@@ -332,11 +333,6 @@ STDAPI CTSFTTS::OnKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BO
 {
 	debugPrint(L" CTSFTTS::OnKeyDown()");
     Global::UpdateModifiers(wParam, lParam);
-	if (_pUIPresenter )
-	{
-		CStringRange notify;
-		_pUIPresenter->ShowNotifyText(&notify.Set(_isChinese?L"中文":L"英文",2), 3000, 6000, NOTIFY_CHN_ENG);
-	}
    
 	_KEYSTROKE_STATE KeystrokeState;
     WCHAR wch = '\0';

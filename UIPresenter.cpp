@@ -215,10 +215,10 @@ HRESULT CUIPresenter::ToHideUIWindows()
 	if (_pCandidateWnd)	_pCandidateWnd->_Show(FALSE);	
 	if(_pNotifyWnd)
 	{
-		if( _pNotifyWnd->GetNotifyType() == NOTIFY_OTHERS)
-			_pNotifyWnd->_Show(FALSE);
-		else
-			ClearNotify();
+		//if( _pNotifyWnd->GetNotifyType() == NOTIFY_OTHERS)
+		//_pNotifyWnd->_Show(FALSE);
+		//else 
+		ClearNotify();
 	}
 
     _updatedFlags = TF_CLUIE_SELECTION | TF_CLUIE_CURRENTPAGE;
@@ -1010,7 +1010,7 @@ HRESULT CUIPresenter::_NotifyChangeNotification(enum NOTIFYWND_ACTION action, _I
 					{
 						if(SUCCEEDED(pDocumentMgr->GetTop(&pContext) && pContext))
 						{
-							ShowNotify(TRUE, 0, (UINT) wParam);
+							//ShowNotify(TRUE, 0, (UINT) wParam);
 							_pTextService->_ProbeComposition(pContext);
 						}
 
@@ -1171,12 +1171,10 @@ HRESULT CUIPresenter::OnSetThreadFocus()
 HRESULT CUIPresenter::OnKillThreadFocus()
 {
 	debugPrint(L"CUIPresenter::OnKillThreadFocus()");
-    if (_isShowMode)
-    {
-        Show(FALSE);
-    }
-	if(_pNotifyWnd) _pNotifyWnd->_Show(FALSE);
-	_inFocus = FALSE;
+    //if (_isShowMode)
+         //Show(FALSE);
+	 ToHideUIWindows();
+    _inFocus = FALSE;
     return S_OK;
 }
 
@@ -1370,7 +1368,7 @@ void CUIPresenter::ClearNotify()
 }
 void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ UINT delayShow, _In_ UINT timeToHide,  _In_ enum NOTIFY_TYPE notifyType)
 {
-	debugPrint(L"CUIPresenter::ShowNotifyText(): text = %s, delayShow = %d, timeTimeHide = %d, notifyType= %d", pNotifyText->Get(), delayShow, timeToHide, notifyType);
+	debugPrint(L"CUIPresenter::ShowNotifyText(): text = %s, delayShow = %d, timeTimeHide = %d, notifyType= %d, _inFoucs = %d, ", pNotifyText->Get(), delayShow, timeToHide, notifyType, _inFocus);
 	ITfContext* pContext = _GetContextDocument();
 	ITfThreadMgr* pThreadMgr = nullptr;
 	ITfDocumentMgr* pDocumentMgr = nullptr;

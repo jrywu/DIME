@@ -51,6 +51,7 @@ CNotifyWindow::CNotifyWindow(_In_ NOTIFYWNDCALLBACK pfnCallback, _In_ void *pv, 
 
 CNotifyWindow::~CNotifyWindow()
 {
+	if(_IsTimer()) _EndTimer();
     _DeleteShadowWnd();
     
 }

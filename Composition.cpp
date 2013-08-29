@@ -511,6 +511,7 @@ HRESULT CTSFTTS::_ProbeCompositionRangeNotification(_In_ TfEditCookie ec, _In_ I
 		pRange->Release();
 	}
 
+	_pUIPresenter->ShowNotify(TRUE,0,0);
 	_pUIPresenter->_MoveUIWindowsToTextExt();
 	/*
 	RECT rcTextExt;

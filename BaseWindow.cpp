@@ -553,6 +553,7 @@ void CBaseWindow::_SetTimerObject(_In_opt_ CBaseWindow *pUIObj, UINT uElapse, _I
     }
     else
     {
+		if(timerID == DEFAULT_TIMER_ID) pUIWnd->_pTimerUIObj = nullptr;
         KillTimer(pUIWnd->_GetWnd(), timerID);
     }
 }

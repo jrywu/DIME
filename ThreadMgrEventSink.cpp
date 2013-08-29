@@ -65,8 +65,9 @@ STDAPI CTSFTTS::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMg
 			_pUIPresenter->ShowNotifyText(&notify.Set(_isChinese?L"中文":L"英文",2), 500, 3500, NOTIFY_CHN_ENG);
 		}
 
-
 	}
+	else 
+		_pUIPresenter->ClearNotify();
 
 	if(pDocMgrFocus)
 	{
@@ -109,8 +110,9 @@ STDAPI CTSFTTS::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMg
                 _pUIPresenter->OnKillThreadFocus();
             }
             else 
-            {
-                _pUIPresenter->OnSetThreadFocus();
+			{
+				_pUIPresenter->OnSetThreadFocus();
+				
             }
 
             pCandidateListDocumentMgr->Release();
