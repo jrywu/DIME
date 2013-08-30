@@ -891,7 +891,7 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
 	ITfContext *pContext =  _GetContextDocument();
 	ITfContextView * pView = nullptr;
 	HWND parentWndHandle;
-	if (SUCCEEDED(pContext->GetActiveView(&pView)))
+	if (pContext && SUCCEEDED(pContext->GetActiveView(&pView)))
 	{
 		POINT pt;
 		pView->GetWnd(&parentWndHandle);
@@ -1010,7 +1010,7 @@ HRESULT CUIPresenter::_NotifyChangeNotification(enum NOTIFYWND_ACTION action, _I
 					{
 						if(SUCCEEDED(pDocumentMgr->GetTop(&pContext) && pContext))
 						{
-							//ShowNotify(TRUE, 0, (UINT) wParam);
+							ShowNotify(TRUE, 0, (UINT) wParam);
 							_pTextService->_ProbeComposition(pContext);
 						}
 
@@ -1376,8 +1376,12 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ UINT dela
 
 	if (_pNotifyWnd) 
 	{
-		ClearNotify();
+		if(_pNotifyWnd->GetNotifyType() == NOTIFY_SINGLEDOUBLEBYTE && _pNotifyWnd->_IsWindowVisible())
+			return;
+		else
+			ClearNotify();
 	}
+
 
 
 	if(pContext == nullptr)
@@ -1421,20 +1425,23 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ UINT dela
 					if(_notifyLocation.y < 0) _notifyLocation.y = pt->y;
 				}
 
-				ShowNotify(TRUE, delayShow, timeToHide);	//hide after 1.5 secconds
+				ShowNotify(TRUE, delayShow, timeToHide);	
+
+				if(delayShow == 0)
+				{
+					if(_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())
+					{
+						if(_notifyLocation.x  < (int) _pNotifyWnd->_GetWidth() )
+							_pNotifyWnd->_Move(_notifyLocation.x  + _pCandidateWnd->_GetWidth() , _notifyLocation.y);
+						else		
+							_pNotifyWnd->_Move(_notifyLocation.x  - _pNotifyWnd->_GetWidth() , _notifyLocation.y);
+					}
+					else
+						_pNotifyWnd->_Move(_notifyLocation.x, _notifyLocation.y);
+				}
 
 				if(delayShow == 0 && _GetContextDocument() == nullptr ) //means TextLayoutSink is not working. We need to ProbeComposition to start layout
 					_pTextService->_ProbeComposition(pContext);
-
-				if(_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())
-				{
-					if(_notifyLocation.x  < (int) _pNotifyWnd->_GetWidth() )
-						_pNotifyWnd->_Move(_notifyLocation.x  + _pCandidateWnd->_GetWidth() , _notifyLocation.y);
-					else		
-						_pNotifyWnd->_Move(_notifyLocation.x  - _pNotifyWnd->_GetWidth() , _notifyLocation.y);
-				}
-				else
-					_pNotifyWnd->_Move(_notifyLocation.x, _notifyLocation.y);
 
 			}
 

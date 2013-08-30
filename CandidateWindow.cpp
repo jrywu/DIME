@@ -386,11 +386,7 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
             _pShadowWnd->_Show((BOOL)wParam);
         }
 
-        /* show/hide v-scroll
-		if (_pVScrollBarWnd)
-        {
-           _pVScrollBarWnd->_Show((BOOL)wParam);
-        }*/
+        
         break;
 
     case WM_PAINT:
@@ -613,12 +609,12 @@ void CCandidateWindow::_OnMouseMove(POINT pt)
 
     if (_pVScrollBarWnd && PtInRect(&rcWindow, pt))
 	{
-		SetCapture(_GetWnd());
+		if(!_IsCapture())	_StartCapture();
 		_pVScrollBarWnd->_Show(TRUE);
 	}
 	else
 	{
-		ReleaseCapture();
+		if(!_IsCapture())	_EndCapture();
 		_pVScrollBarWnd->_Show(FALSE);
 		_InvalidateRect();
 	}

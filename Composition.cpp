@@ -46,45 +46,6 @@ STDAPI CTSFTTS::OnCompositionTerminated(TfEditCookie ecWrite, _In_ ITfCompositio
     return hr;
 }
 
-HRESULT CTSFTTS::_LayoutChangeNotification(TfEditCookie ec, _In_ ITfContext *pContext, RECT* rc)
-{
-	ec; pContext;
-	debugPrint(L"\nCTSFTTS::_HandlTextLayoutChange() _candidateMode = %d", _candidateMode);
-	debugPrint (L"CTSFTTS::_HandlTextLayoutChange(); top=%d, bottom=%d, left =%d, righ=%d",rc->top, rc->bottom, rc->left, rc->right);
-	/*
-	POINT curPos;
-	GetCaretPos(&curPos);
-	ClientToScreen(GetFocus(), &curPos);
-	debugPrint (L"CTSFTTS::_HandlTextLayoutChange(); x=%d, y=%d",curPos.x, curPos.y);		
-	*/
-	if( _candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION || _candidateMode == CANDIDATE_PHRASE)
-	{
-		
-		debugPrint(L"CTSFTTS::_HandlTextLayouyChange() candMode = CANDIDATE_WITH_NEXT_COMPOSITION or CANDIDATE_PHRASE");
-		if(_phraseCandShowing)
-		{
-			debugPrint(L"CTSFTTS::_HandlTextLayouyChange() _phraseCand is showing ");
-			_phraseCandShowing = FALSE; //finishing showing phrase cand
-			_phraseCandLocation.x = rc->left; //curPos.x;
-			_phraseCandLocation.y = rc->bottom;//curPos.y;
-			
-		}
-		else if( (_phraseCandLocation.x != rc->left) || (_phraseCandLocation.y != rc->bottom))//-------> bug here may cancel cand accidently
-		{  //phrase cand moved delete the cand.
-			debugPrint(L"CTSFTTS::_HandlTextLayouyChange() cursor moved. end composition and kill the cand.");
-			//_HandleCancel(ec, pContext);
-			
-		}
-
-
-	}
-
-	
-
-   
-	
-	return S_OK;
-}
 
 //+---------------------------------------------------------------------------
 //
@@ -471,6 +432,7 @@ void CTSFTTS::_ProbeComposition(_In_ ITfContext *pContext)
 
 	if (nullptr != pProbeComposistionEditSession)
 	{
+		
 		HRESULT hrES = S_OK, hr = S_OK;
 		hr = pContext->RequestEditSession(_tfClientId, pProbeComposistionEditSession, TF_ES_ASYNCDONTCARE | TF_ES_READWRITE, &hrES);
 		
@@ -479,19 +441,33 @@ void CTSFTTS::_ProbeComposition(_In_ ITfContext *pContext)
 		pProbeComposistionEditSession->Release();
 	}
 	
-	_EndComposition(pContext);
+
+	//_EndComposition(pContext);
 	
    
 }
 
 HRESULT CTSFTTS::_ProbeCompositionRangeNotification(_In_ TfEditCookie ec, _In_ ITfContext *pContext)
 {
-	debugPrint(L"CTSFTTS::_ProbeCompositionRangeNotification()\n");
+	debugPrint(L"CTSFTTS::_ProbeCompositionRangeNotification(), \n");
+
+
 	HRESULT hr = S_OK;
 	if(!_IsComposing())
 		_StartComposition(pContext);
-	CStringRange empty;
-	hr = _AddComposingAndChar(ec, pContext, &empty.Set(L" ", 1));
+	
+	hr = E_FAIL;
+    ULONG fetched = 0;
+    TF_SELECTION tfSelection;
+
+    if ((hr = pContext->GetSelection(ec, TF_DEFAULT_SELECTION, 1, &tfSelection, &fetched)) != S_OK || fetched != 1)
+	{
+		_TerminateComposition(ec,pContext);
+        return hr;
+	}
+	tfSelection.range->Release();
+
+    
 	
 	ITfRange *pRange;
 	ITfContextView* pContextView;
@@ -502,7 +478,15 @@ HRESULT CTSFTTS::_ProbeCompositionRangeNotification(_In_ TfEditCookie ec, _In_ I
 		{
 			if(SUCCEEDED( pContext->GetDocumentMgr(&pDocumgr)))
 			{
-				_pUIPresenter->_StartLayout(pContext, ec, pRange);
+				ITfDocumentMgr* pFocusDocuMgr;
+				_pThreadMgr->GetFocus(&pFocusDocuMgr);
+				if(pFocusDocuMgr == pDocumgr)
+				{
+					_pUIPresenter->_StartLayout(pContext, ec, pRange);
+					_pUIPresenter->_MoveUIWindowsToTextExt();
+				}
+				else 
+					_pUIPresenter->ClearNotify();
 
 				pDocumgr->Release();
 			}
@@ -511,8 +495,8 @@ HRESULT CTSFTTS::_ProbeCompositionRangeNotification(_In_ TfEditCookie ec, _In_ I
 		pRange->Release();
 	}
 
-	_pUIPresenter->ShowNotify(TRUE,0,0);
-	_pUIPresenter->_MoveUIWindowsToTextExt();
+
+	
 	/*
 	RECT rcTextExt;
 	if (SUCCEEDED(_pUIPresenter->_GetTextExt(&rcTextExt)) 
@@ -522,6 +506,6 @@ HRESULT CTSFTTS::_ProbeCompositionRangeNotification(_In_ TfEditCookie ec, _In_ I
 	}
 	*/
     
-	
+	_TerminateComposition(ec,pContext);
 	return hr;
 }

@@ -43,8 +43,6 @@ STDAPI CGetTextExtentEditSession::DoEditSession(TfEditCookie ec)
     {
 		if(_pTfTextLayoutSink)
 			_pTfTextLayoutSink->_LayoutChangeNotification(&rc);
-		//if(_pTextService)
-			//_pTextService->_LayoutChangeNotification(ec, _pContext, &rc);
         
     }
 

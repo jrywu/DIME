@@ -59,15 +59,14 @@ STDAPI CTSFTTS::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMg
 	if(!_UpdateLanguageBarOnSetFocus(pDocMgrFocus))
 	{
 		pDocMgrFocus->GetTop(&pContext);	
-		if(pContext && !_IsComposing()) 
+		if(pContext) 
 		{	
 			CStringRange notify;
 			_pUIPresenter->ShowNotifyText(&notify.Set(_isChinese?L"中文":L"英文",2), 500, 3500, NOTIFY_CHN_ENG);
 		}
 
 	}
-	else 
-		_pUIPresenter->ClearNotify();
+
 
 	if(pDocMgrFocus)
 	{

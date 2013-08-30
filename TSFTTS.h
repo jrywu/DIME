@@ -164,8 +164,7 @@ public:
 	void OnSwitchedToHalfShape();
 
 	
-	// function for textlayoutchange.
-	HRESULT _LayoutChangeNotification(TfEditCookie ec, _In_ ITfContext *pContext, RECT *rc);
+	// function for probe caret position when showing notify 
 	HRESULT _ProbeCompositionRangeNotification(_In_ TfEditCookie ec,_In_ ITfContext *pContext);
 	void _ProbeComposition(_In_ ITfContext *pContext);
 
@@ -320,9 +319,6 @@ private:
     // Support the search integration
     ITfFnSearchCandidateProvider* _pITfFnSearchCandidateProvider;
 
-	//for phrase cand killing when cursor moved
-	BOOL _phraseCandShowing;
-	POINT _phraseCandLocation;
 	
 	//ReverseConversion COM provider object
 	CReverseConversion * _pReverseConversion[IM_SLOTS];

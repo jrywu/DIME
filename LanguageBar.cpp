@@ -1053,8 +1053,8 @@ void CTSFTTS::OnKeyboardClosed()
 	_isChinese = FALSE;
 	if(_IsComposing()) 
 	{
-		_EndComposition(_pContext);
-		_DeleteCandidateList(TRUE,_pContext);
+		//_EndComposition(_pContext);
+		//_DeleteCandidateList(TRUE,_pContext);
 	}
 	CStringRange notifyText;
 	if(CConfig::GetShowNotifyDesktop())

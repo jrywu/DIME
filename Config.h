@@ -39,7 +39,7 @@ public:
 	static void SetMakePhrase(BOOL makePhrase) { _makePhrase = makePhrase;}
 	static BOOL GetMakePhrase() {return _makePhrase;}
 	static void SetShowNotifyDesktop(BOOL showNotifyDesktop) { _showNotifyDesktop = showNotifyDesktop;}
-	static BOOL GetShowNotifyDesktop() {return _showNotifyDesktop;}
+	static BOOL GetShowNotifyDesktop() {return _showNotifyDesktop ;}
 	static void SetFontFaceName(WCHAR *pFontFaceName) {StringCchCopy(_pFontFaceName, LF_FACESIZE,pFontFaceName);}
 	static WCHAR* GetFontFaceName(){ return _pFontFaceName;}
 	//colors

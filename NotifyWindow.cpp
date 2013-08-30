@@ -175,7 +175,7 @@ void CNotifyWindow::_OnTimerID(UINT_PTR timerID)
 		break;
 	case DELAY_SHOW_TIMER_ID:
 		_EndTimer(DELAY_SHOW_TIMER_ID);
-		_pfnCallback(_pObj, SHOW_NOTIFY, _timeToHide, _notifyType);
+		_pfnCallback(_pObj, SHOW_NOTIFY, _timeToHide - _delayShow, _notifyType);
 		break;
 	case TIME_TO_HIDE_TIMER_ID:
 		_Show(FALSE, 0, 0);
@@ -211,10 +211,20 @@ void CNotifyWindow::_Show(BOOL isShowWnd, UINT delayShow, UINT timeToHide)
 	}
 	if(isShowWnd)
 	{
+
 		if(delayShow > 0 )
 			_StartTimer(delayShow, DELAY_SHOW_TIMER_ID);//Show the notify after delay Show
 		if(timeToHide > 0)
 			_StartTimer(timeToHide, TIME_TO_HIDE_TIMER_ID);//Show the notify after delay Show
+	}
+	if( delayShow == 0 )
+	{
+		if(isShowWnd && _notifyType == NOTIFY_CHN_ENG)
+		{
+			if(!_IsCapture()) _StartCapture();
+		}
+		else
+			if(_IsCapture()) _EndCapture();
 	}
 }
 
@@ -443,42 +453,9 @@ void CNotifyWindow::_OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pPaintStruct)
 //cleanup:
     SelectObject(dcHandle, hFontOld);
 }
-/*
-//+---------------------------------------------------------------------------
-//
-// _OnLButtonDown
-//
-//----------------------------------------------------------------------------
 
-void CNotifyWindow::_OnLButtonDown(POINT pt)
-{
-   
-   return;
-}
 
-//+---------------------------------------------------------------------------
-//
-// _OnLButtonUp
-//
-//----------------------------------------------------------------------------
 
-void CNotifyWindow::_OnLButtonUp(POINT pt)
-{
-	return;
-   
-}
-
-//+---------------------------------------------------------------------------
-//
-// _OnMouseMove
-//
-//----------------------------------------------------------------------------
-
-void CNotifyWindow::_OnMouseMove(POINT pt)
-{
-   return;
-}
-*/
 
 //+---------------------------------------------------------------------------
 //
@@ -667,19 +644,40 @@ void CNotifyWindow::_DeleteShadowWnd()
 
 void CNotifyWindow::_OnLButtonDown(POINT pt)
 {
-	pt;
-	if(_notifyType == NOTIFY_CHN_ENG)
+	RECT rcWindow = {0, 0, 0, 0};
+
+	_GetClientRect(&rcWindow);
+
+	if(PtInRect(&rcWindow, pt))
 	{
-		_pfnCallback(_pObj, SWITCH_CHN_ENG, NULL, NULL);
+		if(_notifyType == NOTIFY_CHN_ENG)
+		{
+			_pfnCallback(_pObj, SWITCH_CHN_ENG, NULL, NULL);
+		}
 	}
+	else
+	{   // hide the notify if click outside the notify window.
+		_Show(FALSE,0,0);
+		
+	}
+
 }
 
 
 void CNotifyWindow::_OnMouseMove(POINT pt)
 {
-	pt;
-	if(_notifyType == NOTIFY_CHN_ENG)
-		SetCursor(LoadCursor(NULL, IDC_HAND));
+
+	 RECT rcWindow = {0, 0, 0, 0};
+
+    _GetClientRect(&rcWindow);
+
+	if(PtInRect(&rcWindow, pt))
+	{
+		if(_notifyType == NOTIFY_CHN_ENG)
+			SetCursor(LoadCursor(NULL, IDC_HAND));
+		else
+			SetCursor(LoadCursor(NULL, IDC_ARROW));
+	}
 	else
-		SetCursor(LoadCursor(NULL, IDC_ARROW));
+			SetCursor(LoadCursor(NULL, IDC_ARROW));
 }

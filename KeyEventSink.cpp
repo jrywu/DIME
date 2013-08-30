@@ -67,9 +67,13 @@ BOOL CTSFTTS::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pC
 
 	if (_pUIPresenter )
 	{
-		_pUIPresenter->ClearNotify();
-		//CStringRange notify;
-		//_pUIPresenter->ShowNotifyText(&notify.Set(_isChinese?L"中文":L"英文",2), 3000, 6000, NOTIFY_CHN_ENG);
+		if(CConfig::GetShowNotifyDesktop() )
+		{
+			CStringRange notify;
+			_pUIPresenter->ShowNotifyText(&notify.Set(_isChinese?L"中文":L"英文",2), 3000, 6000, NOTIFY_CHN_ENG);
+		}
+		else 
+			_pUIPresenter->ClearNotify();
 	}
 
     BOOL isOpen = FALSE;
