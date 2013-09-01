@@ -12,6 +12,7 @@
 
 CTfTextLayoutSink::CTfTextLayoutSink(_In_ CTSFTTS *pTextService)
 {
+	debugPrint(L"CTfTextLayoutSink::CTfTextLayoutSink() constructor");
     _pTextService = pTextService;
     _pTextService->AddRef();
 
@@ -28,6 +29,7 @@ CTfTextLayoutSink::CTfTextLayoutSink(_In_ CTSFTTS *pTextService)
 
 CTfTextLayoutSink::~CTfTextLayoutSink()
 {
+	debugPrint(L"CTfTextLayoutSink::~CTfTextLayoutSink() destructor");
     if (_pTextService)
     {
         _pTextService->Release();

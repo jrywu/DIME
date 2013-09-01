@@ -93,7 +93,6 @@ HRESULT CTfInputProcessorProfile::GetReverseConversionProviders(LANGID langid, C
 						PWCH pwchDescription;
 						pLangProfileInfo = langProfileInfoList->Append();;
 						pwchDescription = new (std::nothrow) WCHAR[wcslen(bstrDescription)+1];
-						*pwchDescription = L'\0';
 						StringCchCopy(pwchDescription, wcslen(bstrDescription)+1, bstrDescription);
 						pLangProfileInfo->clsid = langProfile.clsid;
 						pLangProfileInfo->guidProfile = langProfile.guidProfile;

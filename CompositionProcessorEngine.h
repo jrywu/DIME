@@ -38,7 +38,7 @@ public:
     void GetCandidateStringInConverted(CStringRange &searchString, _In_ CTSFTTSArray<CCandidateListItem> *pCandidateList);
 
 	//reverse converion
-	HRESULT GetReverConversionResults(REFGUID guidLanguageProfile, _In_ LPCWSTR lpstrToConvert, _Inout_ CTSFTTSArray<CCandidateListItem> *pCandidateList);
+	HRESULT GetReverConversionResults(IME_MODE imeMode, _In_ LPCWSTR lpstrToConvert, _Inout_ CTSFTTSArray<CCandidateListItem> *pCandidateList);
 
 	//Han covert
 	BOOL GetSCFromTC(CStringRange* stringToConvert, CStringRange* convertedString);
@@ -100,6 +100,7 @@ public:
     void SetupConfiguration();
 	void SetupKeystroke(IME_MODE imeMode);
 	BOOL SetupDictionaryFile(IME_MODE imeMode);
+	void ReleaseDictionary();
 	BOOL SetupHanCovertTable();
 
 	IME_MODE GetImeModeFromGuidProfile(REFGUID guidLanguageProfile);

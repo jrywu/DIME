@@ -29,6 +29,7 @@
 
 CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CTSFTTS *pTextService)
 {
+	debugPrint(L"CCompositionProcessorEngine::CCompositionProcessorEngine() constructor");
 	_pTextService = pTextService;
     _pTextService->AddRef();
 
@@ -79,7 +80,13 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CTSFTTS *pTextServ
 
 CCompositionProcessorEngine::~CCompositionProcessorEngine()
 {
-	_pTextService->Release();
+	debugPrint(L"CCompositionProcessorEngine::~CCompositionProcessorEngine() destructor");
+	if(_pTextService) _pTextService->Release();
+	ReleaseDictionary();
+}
+void CCompositionProcessorEngine::ReleaseDictionary()
+{
+	
 	for (UINT i =0 ; i < IM_SLOTS ; i++)
 	{
 		if (_pTTSTableDictionaryEngine[i])
@@ -548,7 +555,8 @@ void CCompositionProcessorEngine::GetCandidateStringInConverted(CStringRange &se
 	if(_pCINTableDictionaryEngine[Global::imeMode] && Global::hasCINPhraseSection) // do phrase lookup if CIN file has phrase section
 		_pCINTableDictionaryEngine[Global::imeMode]->CollectWordFromConvertedString(&searchText, pCandidateList);
 	else if(_pTTSTableDictionaryEngine[Global::imeMode] && Global::hasPhraseSection)// do phrase lookup in TTS file if CIN phrase section is not present
-	{   _pTTSTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_PHRASE);
+	{   
+		_pTTSTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_PHRASE);
 		_pTTSTableDictionaryEngine[Global::imeMode]->CollectWordFromConvertedString(&searchText, pCandidateList);
 	}
 	else // no phrase section, do wildcard text search
@@ -600,9 +608,9 @@ BOOL CCompositionProcessorEngine::IsSymbolChar(WCHAR wch)
 	if(_keystrokeBuffer.Get() == nullptr) return FALSE;
 	if((_keystrokeBuffer.GetLength() == 1) && (*_keystrokeBuffer.Get() == L'=') && Global::imeMode==IME_MODE_DAYI) 
 	{
-		for (int i = 0; i < ARRAYSIZE(Global::symbolCharTable); i++)
+		for (int i = 0; i < wcslen(Global::DayiSymbolCharTable); i++)
 		{
-			if (Global::symbolCharTable[i] == wch)
+			if (Global::DayiSymbolCharTable[i] == wch)
 			{
 				return TRUE;
 			}
@@ -765,18 +773,23 @@ IME_MODE CCompositionProcessorEngine::GetImeModeFromGuidProfile(REFGUID guidLang
 	}
 	else if(guidLanguageProfile == Global::TSFPhoneticGuidProfile)
 	{
-		debugPrint(L"CCompositionProcessorEngine::GetImeModeFromGuidProfile() : Phonetc Mode");
+		debugPrint(L"CCompositionProcessorEngine::GetImeModeFromGuidProfile() : Phonetic Mode");
 		imeMode = IME_MODE_PHONETIC;
+	}
+	else if(guidLanguageProfile == Global::TSFGenericGuidProfile)
+	{
+		debugPrint(L"CCompositionProcessorEngine::GetImeModeFromGuidProfile() : Generic Mode");
+		imeMode = IME_MODE_GENERIC;
 	}
 	
 	return imeMode;
 
 }
 
-HRESULT CCompositionProcessorEngine::GetReverConversionResults(REFGUID guidLanguageProfile, _In_ LPCWSTR lpstrToConvert, _Inout_ CTSFTTSArray<CCandidateListItem> *pCandidateList)
+HRESULT CCompositionProcessorEngine::GetReverConversionResults(IME_MODE imeMode, _In_ LPCWSTR lpstrToConvert, _Inout_ CTSFTTSArray<CCandidateListItem> *pCandidateList)
 {
 	debugPrint(L"CCompositionProcessorEngine::GetReverConversionResults() \n");
-	IME_MODE imeMode = GetImeModeFromGuidProfile(guidLanguageProfile);
+	
 
 	if(_pTableDictionaryEngine[imeMode] == nullptr)
 		return S_FALSE;
@@ -1180,6 +1193,12 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\TSFTTS\\Phone.cin");
 			if(!PathFileExists(pwszCINFileName)) //failed back to pre-install array-special.cin in program files.
 				StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\TSFTTS\\Phone.cin");
+		}
+		if(imeMode == IME_MODE_GENERIC) //phone.cin in personal romaing profile
+		{
+			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\TSFTTS\\Generic.cin");
+			if(!PathFileExists(pwszCINFileName)) //failed back to pre-install array-special.cin in program files.
+				StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\TSFTTS\\Generic.cin");
 		}
 	
 		if(PathFileExists(pwszCINFileName))  //create cin CFileMapping object

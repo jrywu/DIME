@@ -24,7 +24,7 @@
 CUIPresenter::CUIPresenter(_In_ CTSFTTS *pTextService, CCompositionProcessorEngine *pCompositionProcessorEngine) 
 	: CTfTextLayoutSink(pTextService)
 {
-	
+	debugPrint(L"CUIPresenter::CUIPresenter() constructor");
     _pTextService = pTextService;
     _pTextService->AddRef();
 
@@ -65,6 +65,7 @@ CUIPresenter::CUIPresenter(_In_ CTSFTTS *pTextService, CCompositionProcessorEngi
 
 CUIPresenter::~CUIPresenter()
 {
+	debugPrint(L"CUIPresenter::~CUIPresenter() destructor");
     _EndCandidateList();
 	DisposeNotifyWindow();
     _pTextService->Release();
@@ -549,6 +550,7 @@ void CUIPresenter::_EndCandidateList()
     
 	EndUIElement();
 	_ClearCandidateList();
+	ClearNotify();
 	_UpdateUIElement();
 
     DisposeCandidateWindow();
@@ -1171,8 +1173,7 @@ HRESULT CUIPresenter::OnSetThreadFocus()
 HRESULT CUIPresenter::OnKillThreadFocus()
 {
 	debugPrint(L"CUIPresenter::OnKillThreadFocus()");
-    //if (_isShowMode)
-         //Show(FALSE);
+
 	 ToHideUIWindows();
     _inFocus = FALSE;
     return S_OK;
@@ -1376,7 +1377,7 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ UINT dela
 
 	if (_pNotifyWnd) 
 	{
-		if(_pNotifyWnd->GetNotifyType() == NOTIFY_SINGLEDOUBLEBYTE && _pNotifyWnd->_IsWindowVisible())
+		if(notifyType == NOTIFY_CHN_ENG && _pNotifyWnd->GetNotifyType() != NOTIFY_CHN_ENG )
 			return;
 		else
 			ClearNotify();

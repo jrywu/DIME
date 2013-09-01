@@ -135,6 +135,7 @@ extern const CLSID TSFTTSCLSID;
 extern const GUID TSFDayiGuidProfile;
 extern const GUID TSFArrayGuidProfile;
 extern const GUID TSFPhoneticGuidProfile;
+extern const GUID TSFGenericGuidProfile;
 
 extern const GUID TSFTTSGuidImeModePreserveKey;
 extern const GUID TSFTTSGuidDoubleSingleBytePreserveKey;
@@ -153,7 +154,7 @@ extern const GUID TSFTTSGuidCompartmentIMEMode;
 extern const GUID TSFTTSGuidCompartmentDoubleSingleByte;
 
 extern const WCHAR FullWidthCharTable[];
-extern const WCHAR symbolCharTable[27];
+extern const WCHAR DayiSymbolCharTable[];
 extern const _DayiAddressDirectInput dayiAddressCharTable[5];
 
 extern const GUID TSFTTSGuidLangBarIMEMode;

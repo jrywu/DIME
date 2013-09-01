@@ -3,7 +3,7 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-
+//#define DEBUG_PRINT
 
 #include "Private.h"
 #include "globals.h"
@@ -79,12 +79,14 @@ STDAPI CTSFTTS::OnEndEdit(__RPC__in_opt ITfContext *pContext, TfEditCookie ecRea
 
 BOOL CTSFTTS::_InitTextEditSink(_In_ ITfDocumentMgr *pDocMgr)
 {
+	debugPrint(L"CTSFTTS::_InitTextEditSink()\n");
     ITfSource* pSource = nullptr;
     BOOL ret = TRUE;
 
     // clear out any previous sink first
     if (_textEditSinkCookie != TF_INVALID_COOKIE)
     {
+		debugPrint(L"CTSFTTS::_InitTextEditSink() release old textEditSink first.");
         if (SUCCEEDED(_pTextEditSinkContext->QueryInterface(IID_ITfSource, (void **)&pSource)))
         {
             pSource->UnadviseSink(_textEditSinkCookie);
@@ -114,6 +116,7 @@ BOOL CTSFTTS::_InitTextEditSink(_In_ ITfDocumentMgr *pDocMgr)
     ret = FALSE;
     if (SUCCEEDED(_pTextEditSinkContext->QueryInterface(IID_ITfSource, (void **)&pSource)))
     {
+		debugPrint(L"CTSFTTS::_InitTextEditSink() advis new textEditSink.");
         if (SUCCEEDED(pSource->AdviseSink(IID_ITfTextEditSink, (ITfTextEditSink *)this, &_textEditSinkCookie)))
         {
             ret = TRUE;
@@ -132,4 +135,27 @@ BOOL CTSFTTS::_InitTextEditSink(_In_ ITfDocumentMgr *pDocMgr)
     }
 
     return ret;
+}
+
+
+void CTSFTTS::_UnInitTextEditSink()
+{
+	debugPrint(L"CTSFTTS::_UnInitTextEditSink()\n");
+    ITfSource* pSource = nullptr;
+
+
+	 if (_textEditSinkCookie != TF_INVALID_COOKIE)
+    {
+        if (SUCCEEDED(_pTextEditSinkContext->QueryInterface(IID_ITfSource, (void **)&pSource)))
+        {
+            pSource->UnadviseSink(_textEditSinkCookie);
+            pSource->Release();
+        }
+
+        _pTextEditSinkContext->Release();
+        _pTextEditSinkContext = nullptr;
+        _textEditSinkCookie = TF_INVALID_COOKIE;
+    }
+
+    pSource->Release();
 }

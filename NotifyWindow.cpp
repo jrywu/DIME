@@ -143,6 +143,7 @@ void CNotifyWindow::_ResizeWindow()
 void CNotifyWindow::_Move(int x, int y)
 {
 	debugPrint(L"CNotifyWindow::_Move(), x = %d, y= %d", x, y);
+	if(!_IsCapture() && x >=0 && y >= 0) _StartCapture();
 	_x = x;
 	_y = y;
     CBaseWindow::_Move(_x, _y);
@@ -153,14 +154,14 @@ void CNotifyWindow::_Move(int x, int y)
 }
 void CNotifyWindow::_OnTimerID(UINT_PTR timerID)
 {   //animate the window faded out with layered tranparency
-	debugPrint(L"CCandidateWindow::_OnTimer(): timerID = %d,  _animationStage = %d", timerID, _animationStage);
+	debugPrint(L"CNotifyWindow::_OnTimer(): timerID = %d,  _animationStage = %d", timerID, _animationStage);
 	switch (timerID)
 	{
 	case ANIMATION_TIMER_ID:
 		if(_animationStage)
 		{
 			BYTE transparentLevel = (255 * (5 + 9 * (11 - (BYTE)_animationStage))) / 100; 
-			debugPrint(L"CCandidateWindow::_OnTimer() transparentLevel = %d", transparentLevel);
+			debugPrint(L"CNotifyWindow::_OnTimer() transparentLevel = %d", transparentLevel);
 
 			SetLayeredWindowAttributes(_GetWnd(), 0, transparentLevel , LWA_ALPHA); 
 			_StartTimer(ANIMATION_STEP_TIME, ANIMATION_TIMER_ID);
@@ -174,8 +175,8 @@ void CNotifyWindow::_OnTimerID(UINT_PTR timerID)
 		}
 		break;
 	case DELAY_SHOW_TIMER_ID:
-		_EndTimer(DELAY_SHOW_TIMER_ID);
-		_pfnCallback(_pObj, SHOW_NOTIFY, _timeToHide - _delayShow, _notifyType);
+ 		_EndTimer(DELAY_SHOW_TIMER_ID);
+		_pfnCallback(_pObj, SHOW_NOTIFY, _timeToHide , _notifyType);
 		break;
 	case TIME_TO_HIDE_TIMER_ID:
 		_Show(FALSE, 0, 0);
@@ -197,6 +198,7 @@ void CNotifyWindow::_Show(BOOL isShowWnd, UINT delayShow, UINT timeToHide)
 
 	if(_IsTimer()) 
 	{
+		debugPrint(L"CNotifyWindow::_Show(), end old timers first");
 		_EndTimer(DELAY_SHOW_TIMER_ID);
 		_EndTimer(TIME_TO_HIDE_TIMER_ID);
 	}
@@ -213,18 +215,28 @@ void CNotifyWindow::_Show(BOOL isShowWnd, UINT delayShow, UINT timeToHide)
 	{
 
 		if(delayShow > 0 )
+		{
+			debugPrint(L"CNotifyWindow::_Show(), set delay show timer, id = %d", DELAY_SHOW_TIMER_ID);
 			_StartTimer(delayShow, DELAY_SHOW_TIMER_ID);//Show the notify after delay Show
-		if(timeToHide > 0)
+		}
+		else if(timeToHide > 0)
+		{
+			debugPrint(L"CNotifyWindow::_Show(), set time to hide timer");
 			_StartTimer(timeToHide, TIME_TO_HIDE_TIMER_ID);//Show the notify after delay Show
+		}
 	}
 	if( delayShow == 0 )
 	{
+		debugPrint(L"CNotifyWindow::_Show() showing and start capture");
 		if(isShowWnd && _notifyType == NOTIFY_CHN_ENG)
 		{
-			if(!_IsCapture()) _StartCapture();
+			debugPrint(L"CNotifyWindow::_Show() about to show and start capture");
 		}
 		else
+		{
+			debugPrint(L"CNotifyWindow::_Show() about to hid  and stop capture");
 			if(_IsCapture()) _EndCapture();
+		}
 	}
 }
 

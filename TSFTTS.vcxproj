@@ -40,7 +40,7 @@
     <ClInclude Include="KeyStateCategory.h" />
     <ClInclude Include="BaseStructure.h" />
     <ClInclude Include="NotifyWindow.h" />
-    <ClInclude Include="ReverseConversion.h" />
+    <ClInclude Include="ReverseConversionProvider.h" />
     <ClInclude Include="SearchCandidateProvider.h" />
     <ClInclude Include="DictionaryParser.h" />
     <ClInclude Include="DictionarySearch.h" />
@@ -84,6 +84,7 @@
     <ClCompile Include="NotifyWindow.cpp" />
     <ClCompile Include="BaseStructure.cpp" />
     <ClCompile Include="ReverseConversion.cpp" />
+    <ClCompile Include="ReverseConversionProvider.cpp" />
     <ClCompile Include="SearchCandidateProvider.cpp" />
     <ClCompile Include="DictionaryParser.cpp" />
     <ClCompile Include="DictionarySearch.cpp" />
@@ -125,6 +126,7 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="image\TSFDayi.ico" />
+    <Image Include="image\TSFGeneric.ico" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{0C8FE010-5146-44D8-AF99-82702C15FEA5}</ProjectGuid>

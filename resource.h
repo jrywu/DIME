@@ -7,9 +7,11 @@
 #define IDI_DAYI						11
 #define IDI_ARRAY						12
 #define IDI_PHONETIC					13
-#define IDS_DAYI_DESCRIPTION			14
-#define	IDS_ARRAY_DESCRIPTION			15
-#define	IDS_PHONETIC_DESCRIPTION		16
+#define IDI_GENERIC						14
+#define IDS_DAYI_DESCRIPTION			15
+#define	IDS_ARRAY_DESCRIPTION			16
+#define	IDS_PHONETIC_DESCRIPTION		17
+#define	IDS_GENERIC_DESCRIPTION			18
 
 #define IDIS_TSFTTS                     19
 #define IDS_IME_MODE                    20
@@ -25,7 +27,8 @@
 #define IDC_STATIC (-1)
 #endif
 
-#define IDD_DIALOG_BEHAVIOR                     111
+#define IDD_DIALOG_COMMON						111
+#define IDD_DIALOG_DICTIONARY					112
 #define IDC_EDIT_FONTNAME                       1101
 #define IDC_EDIT_FONTPOINT                      1102
 #define IDC_BUTTON_CHOOSEFONT                   1103
@@ -51,6 +54,10 @@
 #define IDC_RADIO_OUTPUT_CHT					1123
 #define IDC_RADIO_OUTPUT_CHS					1124
 #define IDC_STATIC_EDIT_MAXWIDTH				1125
+#define IDC_BUTTON_LOAD_MAIN					1126
+#define IDC_BUTTON_LOAD_PHRASE					1127
+#define IDC_BUTTON_LOAD_ARRAY_SP				1128
+#define IDC_BUTTON_LOAD_ARRAY_SC				1129
 
 // Next default values for new objects
 // 

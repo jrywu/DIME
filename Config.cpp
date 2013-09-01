@@ -11,6 +11,7 @@
 #include "TableDictionaryEngine.h"
 #include "Aclapi.h"
 #include "TfInputProcessorProfile.h"
+#include "CompositionProcessorEngine.h"
 
 //static configuration settings initilization
 BOOL CConfig::_doBeep = TRUE;
@@ -69,49 +70,33 @@ HRESULT CTSFTTS::Show(_In_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID i
 
 	if(_IsStoreAppMode() ||_IsUILessMode() || _IsSecureMode()) return S_OK;
 	
-	CTfInputProcessorProfile profile;
+	CTfInputProcessorProfile* profile = new CTfInputProcessorProfile();
 	LANGID langid = inLangid;
 	GUID guidProfile = inRefGuidProfile;
 	
-	if (SUCCEEDED(profile.CreateInstance()))
+	if (SUCCEEDED(profile->CreateInstance()))
 	{
 		if(langid == 0)
-			profile.GetCurrentLanguage(&langid);
+			profile->GetCurrentLanguage(&langid);
 		if(guidProfile == GUID_NULL)
 		{
 			CLSID clsid;
-			profile.GetDefaultLanguageProfile(langid, GUID_TFCAT_TIP_KEYBOARD, &clsid, &guidProfile);
+			profile->GetDefaultLanguageProfile(langid, GUID_TFCAT_TIP_KEYBOARD, &clsid, &guidProfile);
 		}
 		
 		CTSFTTSArray <LanguageProfileInfo> langProfileInfoList;
-		profile.GetReverseConversionProviders(langid, &langProfileInfoList);
+		profile->GetReverseConversionProviders(langid, &langProfileInfoList);
 		CConfig::SetReverseConvervsionInfoList(&langProfileInfoList);
+		
 	}
-	
-	if(guidProfile == Global::TSFDayiGuidProfile)
-	{
-		debugPrint(L"CTSFTTS::Show() : DAYI Mode");
-		Global::imeMode = IME_MODE_DAYI;
-	}
-	else if(guidProfile == Global::TSFArrayGuidProfile)
-	{
-		debugPrint(L"CTSFTTS::Show() : Array Mode");
-		Global::imeMode = IME_MODE_ARRAY;
-	}
-	else if(guidProfile == Global::TSFPhoneticGuidProfile)
-	{
-		debugPrint(L"CTSFTTS::Show() : Phonetic Mode");
-		Global::imeMode = IME_MODE_PHONETIC;
-	}
-	else
-		return FALSE;
+	delete profile;
 
 	_LoadConfig();
-	_AddTextProcessorEngine(langid, guidProfile);
-
+	
 	if(_IsComposing() && _pContext) _EndComposition(_pContext);
 	_DeleteCandidateList(TRUE, _pContext);
 
+	
 
 	// comctl32.dll and comdlg32.dll can't be loaded into immersivemode (app container), thus use late binding here.
 	HINSTANCE dllCtlHandle = NULL;       
@@ -136,8 +121,8 @@ HRESULT CTSFTTS::Show(_In_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID i
 		int id;
 		DLGPROC DlgProc;
 	} DlgPage[] = {
-		{IDD_DIALOG_BEHAVIOR,	CConfig::CommonPropertyPageWndProc},
-		//{IDD_DIALOG_DICTIONARY,	DlgProcDictionary},
+		{IDD_DIALOG_COMMON,	CConfig::CommonPropertyPageWndProc},
+		//{IDD_DIALOG_DICTIONARY,	CConfig::DictionaryPropertyPageWndProc},
 		
 	};
 	HPROPSHEETPAGE hpsp[_countof(DlgPage)];
@@ -518,6 +503,127 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 	
 }
 
+
+INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	BOOL ret = FALSE;
+	//HWND hwnd;
+	OPENFILENAMEW ofn;
+	
+	HINSTANCE dllDlgHandle = NULL;       
+	dllDlgHandle = LoadLibrary(L"comdlg32.dll");
+	_T_ChooseColor _ChooseColor = NULL;
+	_T_ChooseFont _ChooseFont = NULL;
+	_T_GetOpenFileName _GetOpenFileName = NULL;
+
+	WCHAR wszAppData[MAX_PATH];
+	WCHAR pathToLoad[MAX_PATH];
+	WCHAR pathToWrite[MAX_PATH];
+		
+	//CSIDL_APPDATA  personal roadming application data.
+	SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);
+
+	if(dllDlgHandle)
+	{
+		_GetOpenFileName = reinterpret_cast<_T_GetOpenFileName> ( GetProcAddress(dllDlgHandle, "GetOpenFileNameW"));
+	}
+
+	switch(message)
+	{
+	case WM_INITDIALOG:
+		
+		ret = TRUE;
+		break;
+
+	case WM_COMMAND:
+		switch(LOWORD(wParam))
+		{
+		case IDC_BUTTON_LOAD_MAIN:
+		case IDC_BUTTON_LOAD_PHRASE:
+		case IDC_BUTTON_LOAD_ARRAY_SC:
+		case IDC_BUTTON_LOAD_ARRAY_SP:
+			pathToLoad[0] = L'\0';
+			ZeroMemory(&ofn, sizeof(OPENFILENAMEW));
+			ofn.lStructSize = sizeof(OPENFILENAMEW);
+			ofn.hwndOwner = hDlg;
+			ofn.lpstrFile = pathToLoad;
+			ofn.nMaxFile = MAX_PATH;
+			ofn.Flags = OFN_FILEMUSTEXIST;
+			ofn.lpstrFilter = L"CIN Files\0*.cin\0\0";
+			
+			if(_GetOpenFileName && (_GetOpenFileName)(&ofn) != 0)
+			{
+				PropSheet_Changed(GetParent(hDlg), hDlg);
+				debugPrint(L"file name: %s selected", pathToLoad);
+
+				StringCchPrintf(pathToWrite, MAX_PATH, L"%s%s", wszAppData, L"\\TSFTTS\\Generic.cin");
+				
+				FILE *fpr, *fpw;
+				errno_t ret;
+				ret = _wfopen_s(&fpr, pathToLoad, L"r, ccs=UTF-8");
+				if(ret != 0)
+				{
+					MessageBox(GetFocus(), L"指定檔案無法開啟!!", L"File open error!", MB_ICONERROR);
+				}
+				else
+				{
+					if( _wfopen_s(&fpw, pathToWrite, L"w+, ccs=UTF-16LE") !=0 )
+					{
+						StringCchCat(pathToWrite, MAX_PATH, L".pending");
+						if( _wfopen_s(&fpw, pathToWrite, L"w+, ccs=UTF-16LE") ==0 )
+						{
+							WCHAR line[256], key[256], value[256];
+							while( fgetws(line, 256, fpr) != NULL)
+							{
+								if(swscanf_s(line, L"%s %s", key, _countof(key), value, _countof(value)) == 0)
+									fwprintf_s(fpw, L"%s", line);
+								else
+									fwprintf_s(fpw, L"%s\t%s\n", key, value);
+							}
+							fclose(fpw);
+							MessageBox(GetFocus(), L"檔案載入完成。", L"File loaded!", MB_ICONINFORMATION);
+						}
+						else
+						{
+							MessageBox(GetFocus(), L"檔案載入發生錯誤 !!", L"File open error!", MB_ICONERROR);
+						}
+					}
+					fclose(fpr);
+				}
+				
+			}
+			break;
+
+		default:
+			break;
+		}
+		break;
+
+	case WM_NOTIFY:
+		switch(((LPNMHDR)lParam)->code)
+		{
+		case PSN_APPLY:	
+			
+
+			CConfig::WriteConfig();
+			ret = TRUE;
+			break;
+
+		default:
+			break;
+		}
+		break;
+
+	default:
+		break;
+	}
+
+	FreeLibrary(dllDlgHandle);
+	return ret;
+	
+	
+}
+
 void DrawColor(HWND hwnd, HDC hdc, COLORREF col)
 {
 	RECT rect;
@@ -562,6 +668,8 @@ VOID CConfig::WriteConfig()
 			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\ArrayConfig.ini", wzsTSFTTSProfile);
 		else if(Global::imeMode == IME_MODE_PHONETIC)
 			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\PhoneConfig.ini", wzsTSFTTSProfile);
+		else if(Global::imeMode == IME_MODE_GENERIC)
+			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\GenericConfig.ini", wzsTSFTTSProfile);
 		else
 			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\config.ini", wzsTSFTTSProfile);
 
@@ -655,6 +763,8 @@ VOID CConfig::LoadConfig()
 			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\ArrayConfig.ini", wzsTSFTTSProfile);
 		else if(Global::imeMode == IME_MODE_PHONETIC)
 			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\PhoneConfig.ini", wzsTSFTTSProfile);
+		else if(Global::imeMode == IME_MODE_GENERIC)
+			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\GenericConfig.ini", wzsTSFTTSProfile);
 		else
 			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\config.ini", wzsTSFTTSProfile);
 

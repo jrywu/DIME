@@ -227,7 +227,7 @@ TryAgain:
 				{
 					searchMode = (parseConfig)?SEARCH_RADICAL:SEARCH_NONE;
 				}
-				else if (parseConfig && CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%keyname?end", 14), &keyword))
+				else if (parseConfig && CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%keyname?end", 12), &keyword))
 				{
 					searchMode = SEARCH_NONE;
 				}
@@ -313,6 +313,7 @@ ReadValue:
 				*radical=L'0';
 				StringCchCopyN(radicalChar,  2, keyword.Get(),1); 
 				StringCchCopyN(radical, 2, valueStrings.GetAt(0)->Get(), 1);
+				assert( Global::radicalMap[_imeMode].size() <50);
 				Global::radicalMap[_imeMode][towupper(*radicalChar)] = *radical;
 				goto FindNextLine;
 			}

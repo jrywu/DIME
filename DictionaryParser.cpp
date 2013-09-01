@@ -312,13 +312,15 @@ DWORD_PTR CDictionaryParser::GetOneLine(_In_z_ LPCWSTR pwszBuffer, DWORD_PTR dwB
 {
     DWORD_PTR dwIndexTrace = 0;     // in char
 
-    if (FAILED(FindChar(L'\r', pwszBuffer, dwBufLen, &dwIndexTrace)))
-    {
-        if (FAILED(FindChar(L'\0', pwszBuffer, dwBufLen, &dwIndexTrace)))
-        {
-            return dwBufLen;
-        }
-    }
+	while(dwIndexTrace <dwBufLen)
+	{
+		if (*(pwszBuffer + dwIndexTrace) == L'\r' || *(pwszBuffer + dwIndexTrace) == L'\n' || *(pwszBuffer + dwIndexTrace) == L'\0')
+		{
+			return dwIndexTrace;
+		}
+		dwIndexTrace++;
+	}
+
 
     return dwIndexTrace;
 }

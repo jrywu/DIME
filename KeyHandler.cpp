@@ -174,19 +174,19 @@ HRESULT CTSFTTS::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine 
     //
     // Get candidate string from composition processor engine
     //
+	BOOL symbolMode = pCompositionProcessorEngine->IsSymbol();
 	if(CConfig::GetAutoCompose() // auto composing mode: show candidates while composition updated imeediately.
-		||  pCompositionProcessorEngine->IsSymbol()// fetch candidate in symobl mode with composition started with '='(DAYI) or 'W' (Array)
+		|| symbolMode // fetch candidate in symobl mode with composition started with '='(DAYI) or 'W' (Array)
 		||  Global::imeMode== IME_MODE_ARRAY) //
 	{
 		CTSFTTSArray<CCandidateListItem> candidateList;
 	
 		pCompositionProcessorEngine->GetCandidateList(&candidateList, !(pCompositionProcessorEngine->IsSymbol()|| Global::imeMode== IME_MODE_ARRAY ), FALSE);
 		
+		UINT nCount = candidateList.Count();
 
-
-		if (candidateList.Count())
+		if (nCount)
 		{
-			
 			hr = _CreateAndStartCandidate(pCompositionProcessorEngine, ec, pContext);
 			if (SUCCEEDED(hr))
 			{
@@ -199,6 +199,12 @@ HRESULT CTSFTTS::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine 
 				_candidateMode = CANDIDATE_INCREMENTAL;
 				_isCandidateWithWildcard = FALSE;
 			}
+			if(nCount==1 && symbolMode )  //finalized with the only candidate without showing cand.
+			{
+				_HandleCandidateFinalize(ec, pContext);
+				return hr;
+			}
+			
 
 
 		}
@@ -286,7 +292,7 @@ HRESULT CTSFTTS::_HandleCompositionFinalize(TfEditCookie ec, _In_ ITfContext *pC
         }
     }
 
-    _HandleCancel(ec, pContext);
+    //_HandleCancel(ec, pContext);
 
     return S_OK;
 }

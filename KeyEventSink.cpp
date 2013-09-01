@@ -62,19 +62,10 @@ __inline UINT VKeyFromVKPacketAndWchar(UINT vk, WCHAR wch)
 
 BOOL CTSFTTS::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pCodeOut, _Out_writes_(1) WCHAR *pwch, _Out_opt_ _KEYSTROKE_STATE *pKeyState)
 {
+	debugPrint(L"CTSFTTS::_IsKeyEaten(), codein = %d", codeIn);
     pContext;
     *pCodeOut = codeIn;
 
-	if (_pUIPresenter )
-	{
-		if(CConfig::GetShowNotifyDesktop() )
-		{
-			CStringRange notify;
-			_pUIPresenter->ShowNotifyText(&notify.Set(_isChinese?L"中文":L"英文",2), 3000, 6000, NOTIFY_CHN_ENG);
-		}
-		else 
-			_pUIPresenter->ClearNotify();
-	}
 
     BOOL isOpen = FALSE;
 	CCompartment CompartmentKeyboardOpen(_pThreadMgr, _tfClientId, Global::TSFTTSGuidCompartmentIMEMode);
@@ -135,6 +126,20 @@ BOOL CTSFTTS::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pC
     pCompositionProcessorEngine = _pCompositionProcessorEngine;
 
 
+	
+	//
+    // Symbol mode start with L'=' for dayi or L'w' for array
+    //
+	if (isOpen && pCompositionProcessorEngine->IsSymbolChar(wch))
+	{
+		if (pKeyState)
+		{
+			pKeyState->Category = CATEGORY_COMPOSING;
+			pKeyState->Function = FUNCTION_INPUT;
+		}
+			return TRUE;
+	}
+
 	//
     // Address characters direct input mode  '[]-\
     //
@@ -148,19 +153,6 @@ BOOL CTSFTTS::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pC
 			return TRUE;
 	}
 
-	//
-    // Symbol mode start with L'='
-    //
-	if (isOpen && pCompositionProcessorEngine->IsSymbolChar(wch))
-	{
-		if (pKeyState)
-		{
-			pKeyState->Category = CATEGORY_COMPOSING;
-			pKeyState->Function = FUNCTION_INPUT;
-		}
-			return TRUE;
-	}
-	
 	//
 	// check if the normal composition  need the key
 	//
@@ -311,6 +303,20 @@ STDAPI CTSFTTS::OnTestKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam
     _KEYSTROKE_STATE KeystrokeState;
     WCHAR wch = '\0';
     UINT code = 0;
+
+	
+	if (_pUIPresenter )
+	{
+		if(CConfig::GetShowNotifyDesktop() || _IsStoreAppMode() )
+		{
+			CStringRange notify;
+			_pUIPresenter->ShowNotifyText(&notify.Set(_isChinese?L"中文":L"英文",2), 3000, 3000, NOTIFY_CHN_ENG);
+		}
+		else 
+			_pUIPresenter->ClearNotify();
+	}
+
+
     *pIsEaten = _IsKeyEaten(pContext, (UINT)wParam, &code, &wch, &KeystrokeState);
 
     if (KeystrokeState.Category == CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION)
@@ -341,6 +347,17 @@ STDAPI CTSFTTS::OnKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BO
 	_KEYSTROKE_STATE KeystrokeState;
     WCHAR wch = '\0';
     UINT code = 0;
+
+	if (_pUIPresenter )
+	{
+		if(CConfig::GetShowNotifyDesktop() || _IsStoreAppMode() )
+		{
+			CStringRange notify;
+			_pUIPresenter->ShowNotifyText(&notify.Set(_isChinese?L"中文":L"英文",2), 3000, 3000, NOTIFY_CHN_ENG);
+		}
+		else 
+			_pUIPresenter->ClearNotify();
+	}
 
     *pIsEaten = _IsKeyEaten(pContext, (UINT)wParam, &code, &wch, &KeystrokeState);
 

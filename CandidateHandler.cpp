@@ -83,6 +83,7 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 	
 	
 	commitString.Set(pCandidateString , candidateLen);
+	_commitString = commitString;
 	
 	PWCHAR pwch = new (std::nothrow) WCHAR[2];  // pCandidateString will be destroyed after _detelteCanddiateList was called.
 	if(candidateLen > 1)
@@ -96,26 +97,7 @@ HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pConte
 	//-----------------do reverse conversion notify. We should not show notify in UI-less mode, thus cancel reverse conversion notify in UILess Mode
 	if(_pITfReverseConversion[Global::imeMode] && !_IsUILessMode())
 	{
-		
-		BSTR bstr;
-		bstr = SysAllocStringLen(pCandidateString , (UINT) candidateLen);
-		ITfReverseConversionList* reverseConversionList;
-		if(SUCCEEDED(_pITfReverseConversion[Global::imeMode]->DoReverseConversion(bstr, &reverseConversionList)))
-		{
-			UINT hasResult;
-			if(reverseConversionList && SUCCEEDED(reverseConversionList->GetLength(&hasResult)) && hasResult)
-			{
-				BSTR bstrResult;
-				if(SUCCEEDED(reverseConversionList->GetString(0, &bstrResult))  && bstrResult && SysStringLen(bstrResult))
-				{
-					CStringRange reverseConvNotify;
-					WCHAR* pwch = new (std::nothrow) WCHAR[SysStringLen(bstrResult)+1];
-					StringCchCopy(pwch, SysStringLen(bstrResult)+1, (WCHAR*) bstrResult);
-					_pUIPresenter->ShowNotifyText(&reverseConvNotify.Set(pwch, wcslen(pwch)));
-				}
-			}
-			
-		}
+		_AsyncReverseConversion(pContext); //asynchronized the reverse conversion with editsession for better perfomance
 	}
 	//-----------------do  array spcial code notify. We should not show notify in UI-less mode, thus cancel forceSP mode in UILess Mode---
 	BOOL ArraySPFound = FALSE;            

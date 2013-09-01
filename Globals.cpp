@@ -22,7 +22,7 @@ mapWCHWCH radicalMap[IM_SLOTS];
 
 BOOL isWindows8 = FALSE;
 
-IME_MODE imeMode = IME_MODE_DAYI;
+IME_MODE imeMode = IME_MODE_NONE;
 
 BOOL hasPhraseSection = FALSE;
 BOOL hasCINPhraseSection = FALSE;
@@ -58,7 +58,12 @@ extern const GUID TSFArrayGuidProfile =
 // {26892981-14E3-447B-AF2C-9067CD4A4A8A}
 extern const GUID TSFPhoneticGuidProfile = 
 { 0x26892981, 0x14e3, 0x447b, { 0xaf, 0x2c, 0x90, 0x67, 0xcd, 0x4a, 0x4a, 0x8a } };
-
+//---------------------------------------------------------------------
+// TSFGenericProfile GUID
+//---------------------------------------------------------------------
+// {061BEEA7-FFF9-420C-B3F6-A9047AFD0877}
+extern const GUID TSFGenericGuidProfile = 
+{ 0x61beea7, 0xfff9, 0x420c, { 0xb3, 0xf6, 0xa9, 0x4, 0x7a, 0xfd, 0x8, 0x77 } };
 
 //---------------------------------------------------------------------
 // PreserveKey GUID
@@ -212,9 +217,7 @@ extern const WCHAR FullWidthCharTable[] = {
 //---------------------------------------------------------------------
 // defined symbol characters
 //---------------------------------------------------------------------
-extern const WCHAR symbolCharTable[27] = {
-	L' ', L'!', L'@', L'\\', L'\"',  L'#', L'$', L'%', L'&', L'\'', L'(', L')',	L'+', L':', L'<', L'>', L'[', L']', L'^', L'-', L'_', L'`', L'{', L'}', L'|', L'~', L'?'
-};
+extern const WCHAR DayiSymbolCharTable[] = L" !@\\\"#$%&L\'()+:<>[]^-_`{}|~?";
 //---------------------------------------------------------------------
 // defined directly input address characters
 //---------------------------------------------------------------------

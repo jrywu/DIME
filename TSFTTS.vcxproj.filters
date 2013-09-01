@@ -188,7 +188,7 @@
     <ClInclude Include="Config.h">
       <Filter>Source Files\Configuration</Filter>
     </ClInclude>
-    <ClInclude Include="ReverseConversion.h">
+    <ClInclude Include="ReverseConversionProvider.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -343,9 +343,15 @@
     <ClCompile Include="GetTextExtentEditSession.cpp">
       <Filter>Source Files\UI</Filter>
     </ClCompile>
+    <ClCompile Include="ReverseConversionProvider.cpp">
+      <Filter>Source Files\Framework\Composition\ReverseConversion</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Image Include="image\TSFDayi.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="image\TSFGeneric.ico">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

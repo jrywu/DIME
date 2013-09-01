@@ -15,7 +15,7 @@
 #define TEXTSERVICE_DAYI_ICON_INDEX		-IDI_DAYI
 #define TEXTSERVICE_ARRAY_ICON_INDEX	-IDI_ARRAY
 #define TEXTSERVICE_PHONETIC_ICON_INDEX -IDI_PHONETIC
-
+#define TEXTSERVICE_GENERIC_ICON_INDEX	-IDI_GENERIC
 
 #define IME_MODE_ON_ICON_INDEX      IDI_IME_MODE_ON
 #define IME_MODE_OFF_ICON_INDEX     IDI_IME_MODE_OFF
@@ -70,4 +70,5 @@
 // candidate width
 //---------------------------------------------------------------------
 #define IM_SLOTS 6
+
 #endif

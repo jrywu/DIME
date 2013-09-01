@@ -30,6 +30,7 @@ static CClassFactory* classFactoryObjects[1] = { nullptr };
 
 void DllAddRef(void)
 {
+	debugPrint(L"DllAddRef() Global::dllRefCount = %d ", Global::dllRefCount +1);
     InterlockedIncrement(&Global::dllRefCount);
 }
 
@@ -41,6 +42,7 @@ void DllAddRef(void)
 
 void DllRelease(void)
 {
+	debugPrint(L"DllRelease() Global::dllRefCount = %d ", Global::dllRefCount -1);
     if (InterlockedDecrement(&Global::dllRefCount) < 0)
     {
         EnterCriticalSection(&Global::CS);
@@ -95,6 +97,7 @@ private:
 
 STDAPI CClassFactory::QueryInterface(REFIID riid, _Outptr_ void **ppvObj)
 {
+	debugPrint(L"CClassFactory::QueryInterface()");
     if (IsEqualIID(riid, IID_IClassFactory) || IsEqualIID(riid, IID_IUnknown))
     {
         *ppvObj = this;
@@ -114,6 +117,7 @@ STDAPI CClassFactory::QueryInterface(REFIID riid, _Outptr_ void **ppvObj)
 
 STDAPI_(ULONG) CClassFactory::AddRef()
 {
+	debugPrint(L"CClassFactory::AddRef()");
     DllAddRef();
     return (Global::dllRefCount + 1);
 }
@@ -126,6 +130,7 @@ STDAPI_(ULONG) CClassFactory::AddRef()
 
 STDAPI_(ULONG) CClassFactory::Release()
 {
+	debugPrint(L"CClassFactory::Release()");
     DllRelease();
     return (Global::dllRefCount + 1);
 }
@@ -138,6 +143,7 @@ STDAPI_(ULONG) CClassFactory::Release()
 
 STDAPI CClassFactory::CreateInstance(_In_opt_ IUnknown *pUnkOuter, _In_ REFIID riid, _COM_Outptr_ void **ppvObj)
 {
+	debugPrint(L"CClassFactory::CreateInstance() riid = %d", riid);
     return _pfnCreateInstance(pUnkOuter, riid, ppvObj);
 }
 
@@ -149,6 +155,7 @@ STDAPI CClassFactory::CreateInstance(_In_opt_ IUnknown *pUnkOuter, _In_ REFIID r
 
 STDAPI CClassFactory::LockServer(BOOL fLock)
 {
+	debugPrint(L"CClassFactory::LockServer() fLock = %d", fLock);
     if (fLock)
     {
         DllAddRef();
@@ -181,6 +188,7 @@ void BuildGlobalObjects(void)
 
 void FreeGlobalObjects(void)
 {
+	debugPrint(L"BuildGlobalObjects()");
     for (int i = 0; i < ARRAYSIZE(classFactoryObjects); i++)
     {
         if (nullptr != classFactoryObjects[i])
@@ -246,6 +254,7 @@ STDAPI  DllGetClassObject(
 
 STDAPI DllCanUnloadNow(void)
 {
+	debugPrint(L"DllCanUnloadNow()");
     if (Global::dllRefCount >= 0)
     {
         return S_FALSE;

@@ -102,6 +102,10 @@ public:
 	//ITfReverseConversionMgr 
 	STDMETHODIMP GetReverseConversion(_In_ LANGID langid, _In_   REFGUID guidProfile, _In_ DWORD dwflag, _Out_ ITfReverseConversion **ppReverseConversion);
 
+	void _AsyncReverseConversion(_In_ ITfContext* pContext);
+	HRESULT _AsyncReverseConversionNotification(_In_ TfEditCookie ec,_In_ ITfContext *pContext);
+
+	void ReleaseReverseConversion();
 	 // Get language profile.
     GUID GetLanguageProfile(LANGID *plangid){ *plangid = _langid;  return _guidProfile;}
     // Get locale
@@ -208,11 +212,15 @@ private:
     void _UninitThreadMgrEventSink();
 
     BOOL _InitTextEditSink(_In_ ITfDocumentMgr *pDocMgr);
+	void _UnInitTextEditSink();
 
     BOOL _UpdateLanguageBarOnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus);
 
     BOOL _InitKeyEventSink();
     void _UninitKeyEventSink();
+
+	BOOL _InitMouseEventSink();
+    void _UninitMouseEventSink();
 
     BOOL _InitActiveLanguageProfileNotifySink();
     void _UninitActiveLanguageProfileNotifySink();
@@ -324,6 +332,8 @@ private:
 	CReverseConversion * _pReverseConversion[IM_SLOTS];
 	//ReverseConversion Interface object
 	ITfReverseConversion* _pITfReverseConversion[IM_SLOTS];
+
+	CStringRange _commitString;
 
 	BOOL _isChinese;
 	BOOL _isFullShape;

@@ -441,9 +441,6 @@ void CTSFTTS::_ProbeComposition(_In_ ITfContext *pContext)
 		pProbeComposistionEditSession->Release();
 	}
 	
-
-	//_EndComposition(pContext);
-	
    
 }
 

@@ -41,9 +41,9 @@ STDAPI CTSFTTS::OnActivated(_In_ REFCLSID clsid, _In_ REFGUID guidProfile, _In_ 
 
     if (isActivated)
     {
-			
 		
-				
+		Global::imeMode = _pCompositionProcessorEngine->GetImeModeFromGuidProfile(guidProfile);
+						
 		if(!_AddTextProcessorEngine())  return S_OK;
 		_LoadConfig(TRUE);
 		ShowAllLanguageBarIcons();
