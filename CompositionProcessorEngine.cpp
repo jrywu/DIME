@@ -608,7 +608,7 @@ BOOL CCompositionProcessorEngine::IsSymbolChar(WCHAR wch)
 	if(_keystrokeBuffer.Get() == nullptr) return FALSE;
 	if((_keystrokeBuffer.GetLength() == 1) && (*_keystrokeBuffer.Get() == L'=') && Global::imeMode==IME_MODE_DAYI) 
 	{
-		for (int i = 0; i < wcslen(Global::DayiSymbolCharTable); i++)
+		for (UINT i = 0; i < wcslen(Global::DayiSymbolCharTable); i++)
 		{
 			if (Global::DayiSymbolCharTable[i] == wch)
 			{

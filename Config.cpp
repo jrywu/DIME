@@ -512,8 +512,6 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 	
 	HINSTANCE dllDlgHandle = NULL;       
 	dllDlgHandle = LoadLibrary(L"comdlg32.dll");
-	_T_ChooseColor _ChooseColor = NULL;
-	_T_ChooseFont _ChooseFont = NULL;
 	_T_GetOpenFileName _GetOpenFileName = NULL;
 
 	WCHAR wszAppData[MAX_PATH];

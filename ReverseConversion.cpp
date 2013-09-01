@@ -57,6 +57,7 @@ void CTSFTTS::_AsyncReverseConversion(_In_ ITfContext* pContext)
 
 HRESULT CTSFTTS::_AsyncReverseConversionNotification(_In_ TfEditCookie ec,_In_ ITfContext *pContext)
 {
+	ec;
 	debugPrint(L"CTSFTTS::_AsyncReverseConversionNotification() pContext = %x\n", pContext);
 	BSTR bstr;
 	bstr = SysAllocStringLen(_commitString.Get() , (UINT) _commitString.GetLength());
