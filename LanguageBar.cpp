@@ -1053,8 +1053,8 @@ void CTSFTTS::OnKeyboardClosed()
 	_isChinese = FALSE;
 	if(_IsComposing()) 
 	{
-		//_EndComposition(_pContext);
-		//_DeleteCandidateList(TRUE,_pContext);
+		_DeleteCandidateList(TRUE,_pContext);
+		_EndComposition(_pContext);
 	}
 	CStringRange notifyText;
 	if(CConfig::GetShowNotifyDesktop())
@@ -1078,8 +1078,8 @@ void CTSFTTS::OnSwitchedToFullShape()
 	_isFullShape = TRUE;
 	if(_IsComposing()) 
 	{
-		_EndComposition(_pContext);
 		_DeleteCandidateList(TRUE,_pContext);
+		_EndComposition(_pContext);
 	}
 	CStringRange notifyText;
 	if(CConfig::GetShowNotifyDesktop())
@@ -1092,10 +1092,10 @@ void CTSFTTS::OnSwitchedToHalfShape()
 	_isFullShape = FALSE;
 	if(_IsComposing()) 
 	{
-		_EndComposition(_pContext);
 		_DeleteCandidateList(TRUE,_pContext);
+		_EndComposition(_pContext);
 	}
-	//if(_pUIPresenter) _pUIPresenter->ClearAll();
+	
 	CStringRange notifyText;
 	if(CConfig::GetShowNotifyDesktop())
 		 _pUIPresenter->ShowNotifyText(&notifyText.Set(L"¥b§Î", 2), 0, 3000 , NOTIFY_SINGLEDOUBLEBYTE);

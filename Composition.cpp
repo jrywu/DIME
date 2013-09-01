@@ -428,6 +428,8 @@ STDAPI CProbeComposistionEditSession::DoEditSession(TfEditCookie ec)
 void CTSFTTS::_ProbeComposition(_In_ ITfContext *pContext)
 {
 	debugPrint(L"CTSFTTS::_ProbeComposition() pContext = %x\n", pContext);
+
+
 	CProbeComposistionEditSession* pProbeComposistionEditSession = new (std::nothrow) CProbeComposistionEditSession(this, pContext);
 
 	if (nullptr != pProbeComposistionEditSession)
@@ -463,8 +465,7 @@ HRESULT CTSFTTS::_ProbeCompositionRangeNotification(_In_ TfEditCookie ec, _In_ I
         return hr;
 	}
 	tfSelection.range->Release();
-
-    
+   
 	
 	ITfRange *pRange;
 	ITfContextView* pContextView;
@@ -493,15 +494,6 @@ HRESULT CTSFTTS::_ProbeCompositionRangeNotification(_In_ TfEditCookie ec, _In_ I
 	}
 
 
-	
-	/*
-	RECT rcTextExt;
-	if (SUCCEEDED(_pUIPresenter->_GetTextExt(&rcTextExt)) 
-		&& (rcTextExt.bottom - rcTextExt.top >1) && (rcTextExt.right - rcTextExt.left >1)  ) // confirm the extent rect is valid.
-	{
-		_pUIPresenter->_LayoutChangeNotification(&rcTextExt);
-	}
-	*/
     
 	_TerminateComposition(ec,pContext);
 	return hr;

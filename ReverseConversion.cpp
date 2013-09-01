@@ -16,8 +16,7 @@ class CReverseConversionEditSession : public CEditSessionBase
 {
 public:
     CReverseConversionEditSession(_In_ CTSFTTS *pTextService, _In_ ITfContext *pContext) : CEditSessionBase(pTextService, pContext)
-    {
-    }
+    {}
 
     // ITfEditSession
     STDMETHODIMP DoEditSession(TfEditCookie ec);
