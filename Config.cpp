@@ -7,7 +7,7 @@
 #include "resource.h"
 #include "TSFTTS.h"
 #include "DictionarySearch.h"
-#include "FileMapping.h"
+#include "File.h"
 #include "TableDictionaryEngine.h"
 #include "Aclapi.h"
 #include "TfInputProcessorProfile.h"
@@ -775,8 +775,8 @@ VOID CConfig::LoadConfig()
 			{
 				_initTimeStamp.st_mtime = initTimeStamp.st_mtime;
 
-				CFileMapping *iniDictionaryFile;
-				iniDictionaryFile = new (std::nothrow) CFileMapping();
+				CFile *iniDictionaryFile;
+				iniDictionaryFile = new (std::nothrow) CFile();
 				if ((iniDictionaryFile)->CreateFile(pwszINIFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
 				{
 					CTableDictionaryEngine * iniTableDictionaryEngine;

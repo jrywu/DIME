@@ -13,7 +13,7 @@
 #include "TableDictionaryEngine.h"
 #include "KeyHandlerEditSession.h"
 #include "BaseStructure.h"
-#include "FileMapping.h"
+#include "File.h"
 #include "define.h"
 
 class CCompositionProcessorEngine
@@ -135,11 +135,11 @@ private:
 	CTableDictionaryEngine* _pArraySpecialCodeTableDictionaryEngine;
 	CTableDictionaryEngine* _pTCSCTableDictionaryEngine;
 
-	CFileMapping* _pTTSDictionaryFile[IM_SLOTS];
-	CFileMapping* _pCINDictionaryFile[IM_SLOTS];
-	CFileMapping* _pArrayShortCodeDictionaryFile;
-	CFileMapping* _pArraySpecialCodeDictionaryFile;
-	CFileMapping* _pTCSCTableDictionaryFile;
+	CFile* _pTTSDictionaryFile[IM_SLOTS];
+	CFile* _pCINDictionaryFile[IM_SLOTS];
+	CFile* _pArrayShortCodeDictionaryFile;
+	CFile* _pArraySpecialCodeDictionaryFile;
+	CFile* _pTCSCTableDictionaryFile;
 
 
     CStringRange _keystrokeBuffer;

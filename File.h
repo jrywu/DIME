@@ -5,8 +5,10 @@
 //
 #ifndef FILE_H
 #define FILE_H
-
 #pragma once
+
+#include <sys/types.h> 
+#include <wchar.h>
 
 class CFile
 {
@@ -16,9 +18,6 @@ public:
 
     BOOL CreateFile(_In_ PCWSTR pFileName, DWORD desiredAccess, DWORD creationDisposition,
         DWORD sharedMode = 0, _Inout_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes = nullptr, DWORD flagsAndAttributes = 0, _Inout_opt_ HANDLE templateFileHandle = nullptr);
-
-    BOOL IsEndOfFile();
-    VOID NextLine();
 
     _Ret_maybenull_
     const WCHAR *GetReadBufferPointer()
@@ -36,9 +35,11 @@ public:
     DWORD_PTR GetFileSize() { return _fileSize;}
 
     LPCWSTR GetFileName() { return _pFileName;}
+	_stat GetTimeStamp() { return _timeStamp;}
 
 protected:
     virtual BOOL SetupReadBuffer();
+
 
 protected:
     const WCHAR* _pReadBuffer;   // read buffer memory.
@@ -66,5 +67,7 @@ private:
     UINT _codePage;             // used for MultiByteToWideChar
     DWORD_PTR _filePosPointer;  // in byte. Always point start of line.
     LPWSTR _pFileName;
+
+	struct _stat _timeStamp;
 };
 #endif

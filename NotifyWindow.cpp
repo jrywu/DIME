@@ -143,7 +143,7 @@ void CNotifyWindow::_ResizeWindow()
 void CNotifyWindow::_Move(int x, int y)
 {
 	debugPrint(L"CNotifyWindow::_Move(), x = %d, y= %d", x, y);
-	if(!_IsCapture() && x >=0 && y >= 0) _StartCapture();
+	if(_notifyType == NOTIFY_CHN_ENG && !_IsCapture() && _IsWindowVisible() && x >=0 && y >= 0) _StartCapture();
 	_x = x;
 	_y = y;
     CBaseWindow::_Move(_x, _y);

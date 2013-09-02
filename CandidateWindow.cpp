@@ -609,14 +609,16 @@ void CCandidateWindow::_OnMouseMove(POINT pt)
 
     if (_pVScrollBarWnd && PtInRect(&rcWindow, pt))
 	{
-		if(!_IsCapture())	_StartCapture();
+		//if(!_IsCapture())	_StartCapture();
+		SetCapture(_GetWnd());
 		_pVScrollBarWnd->_Show(TRUE);
 	}
 	else
 	{
-		if(!_IsCapture())	_EndCapture();
+		ReleaseCapture();
+		//if(!_IsCapture())	_EndCapture();
 		_pVScrollBarWnd->_Show(FALSE);
-		_InvalidateRect();
+
 	}
 	
 	RECT rc = {0, 0, 0, 0};

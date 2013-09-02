@@ -4,7 +4,7 @@
 //
 //
 
-
+#include "Globals.h"
 #include "Private.h"
 #include "File.h"
 #include "BaseStructure.h"
@@ -23,6 +23,7 @@ CFile::CFile(UINT codePage)
     _fileSize = 0;
     _filePosPointer = 0;
     _pFileName = nullptr;
+
 }
 
 //---------------------------------------------------------------------
@@ -79,7 +80,7 @@ BOOL CFile::CreateFile(_In_ PCWSTR pFileName, DWORD desiredAccess,
     {
         return FALSE;
     }
-
+	_wstat(pFileName, & _timeStamp);
     _fileSize = ::GetFileSize(_fileHandle, NULL);
 
     return TRUE;
@@ -93,6 +94,15 @@ BOOL CFile::CreateFile(_In_ PCWSTR pFileName, DWORD desiredAccess,
 
 BOOL CFile::SetupReadBuffer()
 {
+	struct _stat timeStamp;
+	if (_wstat(_pFileName, &timeStamp) || //error for retrieving timestamp
+		(long(timeStamp.st_mtime>>32) != long(_timeStamp.st_mtime>>32)) ||  // or the timestamp not match previous saved one.
+		(long(timeStamp.st_mtime) != long(_timeStamp.st_mtime)) )			// then load the config. skip otherwise
+	{
+		debugPrint(L"the file is updated");
+	}
+
+
     const WCHAR* pWideBuffer = nullptr;
 
     _pReadBuffer = (const WCHAR *) new (std::nothrow) BYTE[ _fileSize ];
@@ -102,49 +112,14 @@ BOOL CFile::SetupReadBuffer()
     }
 
     DWORD dwNumberOfByteRead = 0;
-    if (!ReadFile(_fileHandle, (LPVOID)_pReadBuffer, (DWORD)_fileSize, &dwNumberOfByteRead, NULL))
+    if (!ReadFile(_fileHandle, (LPVOID)_pReadBuffer, (DWORD)256, &dwNumberOfByteRead, NULL))
     {
         delete [] _pReadBuffer;
         _pReadBuffer = nullptr;
         return FALSE;
     }
 
-    if (!IsTextUnicode(_pReadBuffer, dwNumberOfByteRead, NULL))
-    {
-        // This is ASCII file.
-        // Read file with Unicode conversion.
-        int wideLength = 0;
-
-        wideLength = MultiByteToWideChar(_codePage, 0, (LPCSTR)_pReadBuffer, dwNumberOfByteRead, NULL, 0);
-        if (wideLength <= 0)
-        {
-            delete [] _pReadBuffer;
-            _pReadBuffer = nullptr;
-            return FALSE;
-        }
-
-        pWideBuffer = new (std::nothrow) WCHAR[ wideLength ];
-        if (!pWideBuffer)
-        {
-            delete [] _pReadBuffer;
-            _pReadBuffer = nullptr;
-            return FALSE;
-        }
-
-        wideLength = MultiByteToWideChar(_codePage, 0, (LPCSTR)_pReadBuffer, (DWORD)_fileSize, (LPWSTR)pWideBuffer, wideLength);
-        if (wideLength <= 0)
-        {
-            delete [] pWideBuffer;
-            delete [] _pReadBuffer;
-            _pReadBuffer = nullptr;
-            return FALSE;
-        }
-
-        _fileSize = wideLength * sizeof(WCHAR);
-        delete [] _pReadBuffer;
-        _pReadBuffer = pWideBuffer;
-    }
-    else if (_fileSize > sizeof(WCHAR))
+    if (IsTextUnicode(_pReadBuffer, dwNumberOfByteRead, NULL) && _fileSize > sizeof(WCHAR))
     {
         // Read file in allocated buffer
         pWideBuffer = new (std::nothrow) WCHAR[ _fileSize/sizeof(WCHAR) - 1 ];
@@ -175,71 +150,12 @@ BOOL CFile::SetupReadBuffer()
         return FALSE;
     }
 
+	 if (_fileHandle)
+    {
+        CloseHandle(_fileHandle);
+        _fileHandle = nullptr;
+    }
+
     return TRUE;
 }
 
-//+---------------------------------------------------------------------------
-//
-// IsEndOfFile
-//
-//----------------------------------------------------------------------------
-
-BOOL CFile::IsEndOfFile()
-{
-    return _fileSize == _filePosPointer ? TRUE : FALSE;
-}
-
-//+---------------------------------------------------------------------------
-//
-// NextLine
-//
-//----------------------------------------------------------------------------
-
-VOID CFile::NextLine()
-{
-    DWORD_PTR totalBufLen = GetBufferInWCharLength();
-    if (totalBufLen == 0)
-    {
-        goto SetEOF;
-    }
-    const WCHAR *pwch = GetBufferInWChar();
-
-    DWORD_PTR indexTrace = 0;       // in char
-
-    if (FindChar(L'\r', pwch, totalBufLen, &indexTrace) != S_OK)
-    {
-        goto SetEOF;
-    }
-    if (indexTrace >= DWORD_MAX -1)
-    {
-        goto SetEOF;
-    }
-
-    indexTrace++;  // skip CR
-    totalBufLen -= indexTrace;
-    if (totalBufLen == 0)
-    {
-        goto SetEOF;
-    }
-
-    if (pwch[indexTrace] != L'\n')
-    {
-        _filePosPointer += (indexTrace * sizeof(WCHAR));
-        return;
-    }
-
-    indexTrace++;
-    totalBufLen--;
-    if (totalBufLen == 0)
-    {
-        goto SetEOF;
-    }
-
-    _filePosPointer += (indexTrace * sizeof(WCHAR));
-
-    return;
-
-SetEOF:
-    _filePosPointer = _fileSize;
-    return;
-}

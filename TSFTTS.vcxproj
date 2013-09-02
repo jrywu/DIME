@@ -48,7 +48,6 @@
     <ClInclude Include="EditSession.h" />
     <ClInclude Include="EnumDisplayAttributeInfo.h" />
     <ClInclude Include="File.h" />
-    <ClInclude Include="FileMapping.h" />
     <ClInclude Include="GetTextExtentEditSession.h" />
     <ClInclude Include="Globals.h" />
     <ClInclude Include="KeyHandlerEditSession.h" />
@@ -96,7 +95,6 @@
     <ClCompile Include="EndComposition.cpp" />
     <ClCompile Include="EnumDisplayAttributeInfo.cpp" />
     <ClCompile Include="File.cpp" />
-    <ClCompile Include="FileMapping.cpp" />
     <ClCompile Include="FunctionProviderSink.cpp" />
     <ClCompile Include="GetTextExtentEditSession.cpp" />
     <ClCompile Include="Globals.cpp" />

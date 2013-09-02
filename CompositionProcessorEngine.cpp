@@ -1162,7 +1162,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 	//create CFileMapping object
 	if (_pTTSDictionaryFile[imeMode] == nullptr)
 	{
-		_pTTSDictionaryFile[imeMode] = new (std::nothrow) CFileMapping();
+		_pTTSDictionaryFile[imeMode] = new (std::nothrow) CFile();
 		if (!_pTTSDictionaryFile[imeMode])  goto ErrorExit;
 
 		if (!(_pTTSDictionaryFile[imeMode])->CreateFile(pwszFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
@@ -1206,7 +1206,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			 //create CFileMapping object
 			if (_pCINDictionaryFile[imeMode] == nullptr)
 			{
-				_pCINDictionaryFile[imeMode] = new (std::nothrow) CFileMapping();
+				_pCINDictionaryFile[imeMode] = new (std::nothrow) CFile();
 				if ((_pCINDictionaryFile[imeMode])->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
 				{
 					_pCINTableDictionaryEngine[imeMode] = new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pCINDictionaryFile[imeMode], L'\t'); //cin files use tab as delimiter
@@ -1237,7 +1237,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\TSFTTS\\array-special.cin");
 		if (_pArraySpecialCodeDictionaryFile == nullptr)
 		{
-			_pArraySpecialCodeDictionaryFile = new (std::nothrow) CFileMapping();
+			_pArraySpecialCodeDictionaryFile = new (std::nothrow) CFile();
 			if ((_pArraySpecialCodeDictionaryFile)->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
 			{
 				_pArraySpecialCodeTableDictionaryEngine = 
@@ -1250,7 +1250,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 		{
 			if (_pArrayShortCodeDictionaryFile == nullptr)
 			{
-				_pArrayShortCodeDictionaryFile = new (std::nothrow) CFileMapping();
+				_pArrayShortCodeDictionaryFile = new (std::nothrow) CFile();
 				if ((_pArrayShortCodeDictionaryFile)->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
 				{
 					_pArrayShortCodeTableDictionaryEngine = 
@@ -1294,7 +1294,7 @@ BOOL CCompositionProcessorEngine::SetupHanCovertTable()
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\TSFTTS\\TCSC.cin");
 		if (_pTCSCTableDictionaryFile == nullptr)
 		{
-			_pTCSCTableDictionaryFile = new (std::nothrow) CFileMapping();
+			_pTCSCTableDictionaryFile = new (std::nothrow) CFile();
 			if ((_pTCSCTableDictionaryFile)->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
 			{
 				_pTCSCTableDictionaryEngine = 
