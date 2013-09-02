@@ -48,9 +48,9 @@ private:
         return (_pFile->GetFileSize() / sizeof(WCHAR)) - _charIndex;     // in char count as a returned length.
     }
 
-    const WCHAR* GetBufferInWChar()
+    const WCHAR* GetBufferInWChar(BOOL *fileReloaded)
     {
-        return _pFile->GetReadBufferPointer() + _charIndex;
+        return _pFile->GetReadBufferPointer(fileReloaded) + _charIndex;
     }
 
     CFile* _pFile;

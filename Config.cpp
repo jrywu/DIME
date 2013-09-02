@@ -514,6 +514,7 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 	dllDlgHandle = LoadLibrary(L"comdlg32.dll");
 	_T_GetOpenFileName _GetOpenFileName = NULL;
 
+	WCHAR targetName[MAX_PATH];
 	WCHAR wszAppData[MAX_PATH];
 	WCHAR pathToLoad[MAX_PATH];
 	WCHAR pathToWrite[MAX_PATH];
@@ -537,9 +538,25 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 		switch(LOWORD(wParam))
 		{
 		case IDC_BUTTON_LOAD_MAIN:
+			if(Global::imeMode == IME_MODE_DAYI)
+				StringCchCopy(targetName, MAX_PATH, L"\\TSFTTS\\Dayi.cin");
+			else if(Global::imeMode == IME_MODE_ARRAY)
+				StringCchCopy(targetName, MAX_PATH, L"\\TSFTTS\\Array.cin");
+			else if(Global::imeMode == IME_MODE_PHONETIC)
+				StringCchCopy(targetName, MAX_PATH, L"\\TSFTTS\\Phone.cin");
+			else if(Global::imeMode == IME_MODE_GENERIC)
+				StringCchCopy(targetName, MAX_PATH, L"\\TSFTTS\\Generic.cin");
+			goto LoadFile;
 		case IDC_BUTTON_LOAD_PHRASE:
+			StringCchCopy(targetName, MAX_PATH, L"\\TSFTTS\\phrase.cin");
+			goto LoadFile;
 		case IDC_BUTTON_LOAD_ARRAY_SC:
+			StringCchCopy(targetName, MAX_PATH, L"\\TSFTTS\\sc.cin");
+			goto LoadFile;
 		case IDC_BUTTON_LOAD_ARRAY_SP:
+			StringCchCopy(targetName, MAX_PATH, L"\\TSFTTS\\sp.cin");
+			goto LoadFile;
+LoadFile:
 			pathToLoad[0] = L'\0';
 			ZeroMemory(&ofn, sizeof(OPENFILENAMEW));
 			ofn.lStructSize = sizeof(OPENFILENAMEW);
@@ -554,7 +571,7 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 				PropSheet_Changed(GetParent(hDlg), hDlg);
 				debugPrint(L"file name: %s selected", pathToLoad);
 
-				StringCchPrintf(pathToWrite, MAX_PATH, L"%s%s", wszAppData, L"\\TSFTTS\\Generic.cin");
+				StringCchPrintf(pathToWrite, MAX_PATH, L"%s%s", wszAppData, targetName);
 				
 				FILE *fpr, *fpw;
 				errno_t ret;
@@ -571,9 +588,13 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 						while( fgetws(line, 256, fpr) != NULL)
 						{
 							if(swscanf_s(line, L"%s %s", key, _countof(key), value, _countof(value)) < 2)
+							{
 								fwprintf_s(fpw, L"%s", line);
-							else
+							}
+							else if(key[0] != '"') //filter out " as key which will cause error.
+							{
 								fwprintf_s(fpw, L"%s\t%s\n", key, value);
+							}
 						}
 						fclose(fpw);
 						MessageBox(GetFocus(), L"檔案載入完成。", L"File loaded!", MB_ICONINFORMATION);

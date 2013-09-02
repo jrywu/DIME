@@ -124,7 +124,7 @@ BOOL CFile::SetupReadBuffer()
 	delete [] _pReadBuffer;
 	_pReadBuffer = pWideBuffer;
 
-	 if (_fileHandle)
+	if (_fileHandle)
     {
         CloseHandle(_fileHandle);
         _fileHandle = nullptr;
@@ -133,9 +133,10 @@ BOOL CFile::SetupReadBuffer()
     return TRUE;
 }
 
-const WCHAR* CFile::GetReadBufferPointer()
+const WCHAR* CFile::GetReadBufferPointer(BOOL *fileReloaded)
 {
 	debugPrint(L" CFile::GetReadBufferPointer()");
+	if(fileReloaded) *fileReloaded = FALSE;
 	if (!_pReadBuffer)
 	{
 		if (!SetupReadBuffer())
@@ -151,6 +152,21 @@ const WCHAR* CFile::GetReadBufferPointer()
 			(long(timeStamp.st_mtime) != long(_timeStamp.st_mtime)) )			// then load the config. skip otherwise
 		{
 			debugPrint(L"the file is updated and need to reload");
+			if (_fileHandle)
+			{
+				CloseHandle(_fileHandle);
+				_fileHandle = nullptr;
+			}
+			if (CreateFile(_pFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
+			{
+				delete [] _pReadBuffer;
+				_pReadBuffer = nullptr;
+				if (!SetupReadBuffer())
+				{
+					return nullptr;
+				}
+				if(fileReloaded) *fileReloaded = TRUE;
+			}
 		}
 	}
 	return _pReadBuffer;

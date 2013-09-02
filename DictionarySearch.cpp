@@ -94,13 +94,22 @@ BOOL CDictionarySearch::ParseConfig(IME_MODE imeMode)
 
 BOOL CDictionarySearch::FindWorker(BOOL isTextSearch, _Out_ CDictionaryResult **ppdret, BOOL isWildcardSearch, _In_opt_ BOOL parseConfig)
 {
+	
+	BOOL fileReloaded;
+	const WCHAR *pwch = GetBufferInWChar(&fileReloaded);
+	if(fileReloaded)
+	{
+		_charIndex = 0;
+		Global::radicalMap[Global::imeMode].clear();
+		ParseConfig(Global::imeMode);
+	}
+
 	DWORD_PTR dwTotalBufLen = GetBufferInWCharLength();        // in char
 	if (dwTotalBufLen == 0)
 	{
 		return FALSE;
 	}
 
-	const WCHAR *pwch = GetBufferInWChar();
 	DWORD_PTR indexTrace = 0;     // in char
 	if(!parseConfig) *ppdret = nullptr;
 	
@@ -189,7 +198,7 @@ TryAgain:
 				}
 				else
 				{
-					searchMode =  SEARCH_NONE;
+					//searchMode =  SEARCH_NONE;
 				}
 				controlKeyType = NOT_CONTROLKEY;
 				goto FindNextLine;
@@ -232,19 +241,23 @@ TryAgain:
 				{
 					searchMode = SEARCH_NONE;
 				}
-				else if (parseConfig && CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%keyname*", 9), &keyword))
+				else if (parseConfig &&
+					 (CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"%keyname", 8)) == CSTR_EQUAL ||
+					  CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%keyname*", 9), &keyword)  ))
 				{
 					searchMode = SEARCH_CONTROLKEY;
 					goto ReadValue;
 				}
-				else if (!parseConfig && CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%chardef*", 9), &keyword))
+				else if (!parseConfig && 
+					(CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"%chardef", 8)) == CSTR_EQUAL ||
+					 CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%chardef*", 9), &keyword)  ))
 				{
 					searchMode = SEARCH_CONTROLKEY;
 					goto ReadValue;
 				}
 				else
 				{
-					searchMode = SEARCH_NONE;
+					//searchMode = SEARCH_NONE;
 				}
 				controlKeyType = NOT_CONTROLKEY;
 				goto FindNextLine;
@@ -314,7 +327,7 @@ ReadValue:
 				*radical=L'0';
 				StringCchCopyN(radicalChar,  2, keyword.Get(),1); 
 				StringCchCopyN(radical, 2, valueStrings.GetAt(0)->Get(), 1);
-				assert( Global::radicalMap[_imeMode].size() <50);
+				assert( Global::radicalMap[_imeMode].size() < 100);
 				Global::radicalMap[_imeMode][towupper(*radicalChar)] = *radical;
 				goto FindNextLine;
 			}

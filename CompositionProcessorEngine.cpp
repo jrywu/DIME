@@ -824,7 +824,7 @@ BOOL CCompositionProcessorEngine::IsDoubleSingleByte(WCHAR wch)
 void CCompositionProcessorEngine::SetupKeystroke(IME_MODE imeMode)
 {
 
-	if( Global::radicalMap[imeMode].size() == 0 || Global::radicalMap[imeMode].size() >50) return;
+	if( Global::radicalMap[imeMode].size() == 0 || Global::radicalMap[imeMode].size() > 100) return;
 
 	_KeystrokeComposition.Clear();
 

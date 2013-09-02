@@ -999,23 +999,25 @@ HRESULT CUIPresenter::_NotifyChangeNotification(enum NOTIFYWND_ACTION action, _I
 			Global::IsShiftKeyDownOnly = FALSE;
 			break;
 		case SHOW_NOTIFY:
-
-			if(_GetContextDocument() == nullptr)  //layout is not started. we need to do probecomposition to start layout
+			if((NOTIFY_TYPE)lParam == NOTIFY_CHN_ENG && !_pTextService->_IsComposing())
 			{
-				ITfContext* pContext = nullptr;
-				ITfThreadMgr* pThreadMgr = nullptr;
-				ITfDocumentMgr* pDocumentMgr = nullptr;
-				pThreadMgr = _pTextService->_GetThreadMgr();
-				if (nullptr != pThreadMgr)
+				if(_GetContextDocument() == nullptr)  //layout is not started. we need to do probecomposition to start layout
 				{
-					if (SUCCEEDED(pThreadMgr->GetFocus(&pDocumentMgr)) && pDocumentMgr != nullptr)
+					ITfContext* pContext = nullptr;
+					ITfThreadMgr* pThreadMgr = nullptr;
+					ITfDocumentMgr* pDocumentMgr = nullptr;
+					pThreadMgr = _pTextService->_GetThreadMgr();
+					if (nullptr != pThreadMgr)
 					{
-						if(SUCCEEDED(pDocumentMgr->GetTop(&pContext) && pContext))
+						if (SUCCEEDED(pThreadMgr->GetFocus(&pDocumentMgr)) && pDocumentMgr != nullptr)
 						{
-							ShowNotify(TRUE, 0, (UINT) wParam);
-							_pTextService->_ProbeComposition(pContext);
-						}
+							if(SUCCEEDED(pDocumentMgr->GetTop(&pContext) && pContext))
+							{
+								ShowNotify(TRUE, 0, (UINT) wParam);
+								_pTextService->_ProbeComposition(pContext);
+							}
 
+						}
 					}
 				}
 			}
