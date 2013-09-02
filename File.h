@@ -20,18 +20,7 @@ public:
         DWORD sharedMode = 0, _Inout_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes = nullptr, DWORD flagsAndAttributes = 0, _Inout_opt_ HANDLE templateFileHandle = nullptr);
 
     _Ret_maybenull_
-    const WCHAR *GetReadBufferPointer()
-    {
-        if (!_pReadBuffer)
-        {
-            if (!SetupReadBuffer())
-            {
-                return nullptr;
-            }
-        }
-        return _pReadBuffer;
-    }
-
+    const WCHAR *GetReadBufferPointer();
     DWORD_PTR GetFileSize() { return _fileSize;}
 
     LPCWSTR GetFileName() { return _pFileName;}

@@ -122,7 +122,7 @@ HRESULT CTSFTTS::Show(_In_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID i
 		DLGPROC DlgProc;
 	} DlgPage[] = {
 		{IDD_DIALOG_COMMON,	CConfig::CommonPropertyPageWndProc},
-		//{IDD_DIALOG_DICTIONARY,	CConfig::DictionaryPropertyPageWndProc},
+		{IDD_DIALOG_DICTIONARY,	CConfig::DictionaryPropertyPageWndProc},
 		
 	};
 	HPROPSHEETPAGE hpsp[_countof(DlgPage)];
@@ -565,29 +565,28 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 				}
 				else
 				{
-					if( _wfopen_s(&fpw, pathToWrite, L"w+, ccs=UTF-16LE") !=0 )
+					if( _wfopen_s(&fpw, pathToWrite, L"w+, ccs=UTF-16LE") ==0 )
 					{
-						StringCchCat(pathToWrite, MAX_PATH, L".pending");
-						if( _wfopen_s(&fpw, pathToWrite, L"w+, ccs=UTF-16LE") ==0 )
+						WCHAR line[256], key[256], value[256];
+						while( fgetws(line, 256, fpr) != NULL)
 						{
-							WCHAR line[256], key[256], value[256];
-							while( fgetws(line, 256, fpr) != NULL)
-							{
-								if(swscanf_s(line, L"%s %s", key, _countof(key), value, _countof(value)) == 0)
-									fwprintf_s(fpw, L"%s", line);
-								else
-									fwprintf_s(fpw, L"%s\t%s\n", key, value);
-							}
-							fclose(fpw);
-							MessageBox(GetFocus(), L"檔案載入完成。", L"File loaded!", MB_ICONINFORMATION);
+							if(swscanf_s(line, L"%s %s", key, _countof(key), value, _countof(value)) < 2)
+								fwprintf_s(fpw, L"%s", line);
+							else
+								fwprintf_s(fpw, L"%s\t%s\n", key, value);
 						}
-						else
-						{
-							MessageBox(GetFocus(), L"檔案載入發生錯誤 !!", L"File open error!", MB_ICONERROR);
-						}
+						fclose(fpw);
+						MessageBox(GetFocus(), L"檔案載入完成。", L"File loaded!", MB_ICONINFORMATION);
+
 					}
-					fclose(fpr);
+					else
+					{
+						MessageBox(GetFocus(), L"檔案載入發生錯誤 !!", L"File open error!", MB_ICONERROR);
+					}
 				}
+				fclose(fpr);
+				
+				
 				
 			}
 			break;

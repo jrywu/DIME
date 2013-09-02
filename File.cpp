@@ -3,7 +3,7 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-
+//#define DEBUG_PRINT
 #include "Globals.h"
 #include "Private.h"
 #include "File.h"
@@ -61,6 +61,7 @@ BOOL CFile::CreateFile(_In_ PCWSTR pFileName, DWORD desiredAccess,
     DWORD creationDisposition,
     DWORD sharedMode, _Inout_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD flagsAndAttributes, _Inout_opt_ HANDLE templateFileHandle)
 {
+	debugPrint(L" CFile::CreateFile() filename = %s", pFileName);
     size_t fullPathLen = wcslen(pFileName);
     if (!_pFileName)
     {
@@ -94,61 +95,34 @@ BOOL CFile::CreateFile(_In_ PCWSTR pFileName, DWORD desiredAccess,
 
 BOOL CFile::SetupReadBuffer()
 {
-	struct _stat timeStamp;
-	if (_wstat(_pFileName, &timeStamp) || //error for retrieving timestamp
-		(long(timeStamp.st_mtime>>32) != long(_timeStamp.st_mtime>>32)) ||  // or the timestamp not match previous saved one.
-		(long(timeStamp.st_mtime) != long(_timeStamp.st_mtime)) )			// then load the config. skip otherwise
+	
+	debugPrint(L" CFile::CreateFile()");
+   
+	DWORD dwNumberOfByteRead = 0;
+	if(_fileSize < sizeof(WCHAR) ) 
+		return FALSE;
+	// Read file in allocated buffer
+	const WCHAR* pWideBuffer  = new (std::nothrow) WCHAR[ _fileSize/sizeof(WCHAR) - 1 ];
+	if (!pWideBuffer)
 	{
-		debugPrint(L"the file is updated");
+		return FALSE;
 	}
 
+	// skip unicode byte-order signature
+	SetFilePointer(_fileHandle, sizeof(WCHAR), NULL, FILE_BEGIN);
 
-    const WCHAR* pWideBuffer = nullptr;
+	if (!ReadFile(_fileHandle, (LPVOID)pWideBuffer, (DWORD)(_fileSize - sizeof(WCHAR)), &dwNumberOfByteRead, NULL) 
+		|| !IsTextUnicode(pWideBuffer, dwNumberOfByteRead, NULL))
+	{
+		delete [] pWideBuffer;
+		_pReadBuffer = nullptr;
+		return FALSE;
+	}
+	
 
-    _pReadBuffer = (const WCHAR *) new (std::nothrow) BYTE[ _fileSize ];
-    if (!_pReadBuffer)
-    {
-        return FALSE;
-    }
-
-    DWORD dwNumberOfByteRead = 0;
-    if (!ReadFile(_fileHandle, (LPVOID)_pReadBuffer, (DWORD)256, &dwNumberOfByteRead, NULL))
-    {
-        delete [] _pReadBuffer;
-        _pReadBuffer = nullptr;
-        return FALSE;
-    }
-
-    if (IsTextUnicode(_pReadBuffer, dwNumberOfByteRead, NULL) && _fileSize > sizeof(WCHAR))
-    {
-        // Read file in allocated buffer
-        pWideBuffer = new (std::nothrow) WCHAR[ _fileSize/sizeof(WCHAR) - 1 ];
-        if (!pWideBuffer)
-        {
-            delete [] _pReadBuffer;
-            _pReadBuffer = nullptr;
-            return FALSE;
-        }
-
-        // skip unicode byte-order signature
-        SetFilePointer(_fileHandle, sizeof(WCHAR), NULL, FILE_BEGIN);
-
-        if (!ReadFile(_fileHandle, (LPVOID)pWideBuffer, (DWORD)(_fileSize - sizeof(WCHAR)), &dwNumberOfByteRead, NULL))
-        {
-            delete [] pWideBuffer;
-            delete [] _pReadBuffer;
-            _pReadBuffer = nullptr;
-            return FALSE;
-        }
-
-        _fileSize -= sizeof(WCHAR);
-        delete [] _pReadBuffer;
-        _pReadBuffer = pWideBuffer;
-    }
-    else
-    {
-        return FALSE;
-    }
+	_fileSize -= sizeof(WCHAR);
+	delete [] _pReadBuffer;
+	_pReadBuffer = pWideBuffer;
 
 	 if (_fileHandle)
     {
@@ -159,3 +133,25 @@ BOOL CFile::SetupReadBuffer()
     return TRUE;
 }
 
+const WCHAR* CFile::GetReadBufferPointer()
+{
+	debugPrint(L" CFile::GetReadBufferPointer()");
+	if (!_pReadBuffer)
+	{
+		if (!SetupReadBuffer())
+		{
+			return nullptr;
+		}
+	}
+	else
+	{
+		struct _stat timeStamp;
+		if (_wstat(_pFileName, &timeStamp) || //error for retrieving timestamp
+			(long(timeStamp.st_mtime>>32) != long(_timeStamp.st_mtime>>32)) ||  // or the timestamp not match previous saved one.
+			(long(timeStamp.st_mtime) != long(_timeStamp.st_mtime)) )			// then load the config. skip otherwise
+		{
+			debugPrint(L"the file is updated and need to reload");
+		}
+	}
+	return _pReadBuffer;
+}

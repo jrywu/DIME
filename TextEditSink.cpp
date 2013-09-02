@@ -157,5 +157,4 @@ void CTSFTTS::_UnInitTextEditSink()
         _textEditSinkCookie = TF_INVALID_COOKIE;
     }
 
-    pSource->Release();
 }

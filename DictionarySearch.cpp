@@ -137,6 +137,7 @@ TryAgain:
 		if (!ParseLine(&pwch[indexTrace], bufLenOneLine, &keyword))
 		{
 			if(controlKeyType == NOT_CONTROLKEY) //Control key may have key without value.
+
 				return FALSE;    // error
 		}
 
