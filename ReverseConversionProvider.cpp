@@ -253,12 +253,12 @@ void CReverseConversionList::SetResultList(CTSFTTSArray<CCandidateListItem>* pCa
 			}
 			for(UINT i=0; i <pCandidateList->GetAt(index)->_FindKeyCode.GetLength(); i++)
 			{ // query keyname from keymap
-				map<WCHAR, WCHAR>::iterator item = 
+				map<WCHAR, PWCH>::iterator item = 
 					Global::radicalMap[_imeMode].find(towupper(*(pCandidateList->GetAt(index)->_FindKeyCode.Get() + i)));
 				if(item != Global::radicalMap[_imeMode].end() )
 				{
 					assert(wcslen(_resultString) + 1 < REVERSE_CONV_RESULT_LENGTH-1);
-					StringCchCatN(_resultString, 256, &item->second,1); 
+					StringCchCat(_resultString, REVERSE_CONV_RESULT_LENGTH, item->second); 
 				}
 			}
 		}

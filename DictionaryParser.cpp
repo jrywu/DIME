@@ -71,15 +71,13 @@ BOOL CDictionaryParser::ParseLine(_In_reads_(dwBufLen) LPCWSTR pwszBuffer, DWORD
 					PWCHAR pwch = new (std::nothrow) WCHAR[psrgKeyword->GetLength() + localKeyword.GetLength() + 2];
 					if (!pwch)   continue;
     				
-					//StringCchCopyN(pwch, psrgKeyword->GetLength() + localKeyword.GetLength() + 2, psrgKeyword->Get(), psrgKeyword->GetLength());
-
+					
 					if ((pwszKeyWordDelimiter))
 					{						
 						dwBufLen -= (pwszKeyWordDelimiter - pwszBuffer);
 						pwszBuffer = pwszKeyWordDelimiter + 1;
 						dwBufLen--;
 
-						//StringCchCatN(pwch, psrgKeyword->GetLength() + localKeyword.GetLength() + 2, localKeyword.Get(),localKeyword.GetLength()); 
 						StringCchCopyN(pwch, psrgKeyword->GetLength() + localKeyword.GetLength() + 2, localKeyword.Get(),localKeyword.GetLength()); 
 						psrgValue->Set(pwch, wcslen(pwch));
 						RemoveWhiteSpaceFromBegin(psrgValue);
@@ -91,7 +89,6 @@ BOOL CDictionaryParser::ParseLine(_In_reads_(dwBufLen) LPCWSTR pwszBuffer, DWORD
 						RemoveWhiteSpaceFromBegin(&localKeyword);
 						RemoveWhiteSpaceFromEnd(&localKeyword);
 						RemoveStringDelimiter(&localKeyword);
-						//StringCchCatN(pwch, psrgKeyword->GetLength() + localKeyword.GetLength() + 2, localKeyword.Get(),localKeyword.GetLength()); 
 						StringCchCopyN(pwch, psrgKeyword->GetLength() + localKeyword.GetLength() + 2, localKeyword.Get(),localKeyword.GetLength()); 
 						psrgValue->Set(pwch, wcslen(pwch));
 					}
@@ -265,31 +262,25 @@ BOOL CDictionaryParser::RemoveStringDelimiter(_Inout_opt_ CStringRange *pString)
 			if(pwszKeyWordDelimiter)
 			{	
 				PWCHAR pwchNoEscape = new (std::nothrow) WCHAR[pString->GetLength() + 1];
-				*pwchNoEscape = L'0';
+				*pwchNoEscape = L'\0';
 				const WCHAR *pwch = pString->Get();
 				DWORD_PTR index = 0;
 				for(UINT i=0;i < pString->GetLength(); i++)
 				{
-					if(*pwch == L'\\')
+					WCHAR wch = pwch[i];
+					if(wch == L'\\')
 					{
-						if(i!=0 && (*(pwch-1) == L'\\'))
+						if(i > 0 && (pwch[i-1] == L'\\'))
 						{
 							StringCchCatN(pwchNoEscape, pString->GetLength() + 1, L"\\", 1); 
-							//*(pwchNoEscape) = L'\\';
-							//pwchNoEscape++;
 							index ++;
 						}
 					}
 					else
 					{
-						if(index)
-							StringCchCatN(pwchNoEscape, pString->GetLength() + 1, pwch, 1); 
-						else
-							StringCchCopyN(pwchNoEscape, pString->GetLength() + 1, pwch, 1); 
-						
+						StringCchCatN(pwchNoEscape, pString->GetLength() + 1, &wch, 1); 					
 						index ++;
 					}
-					pwch++;
 				}
 				pString->Set(pwchNoEscape, index);
 			}
@@ -311,6 +302,8 @@ BOOL CDictionaryParser::RemoveStringDelimiter(_Inout_opt_ CStringRange *pString)
 DWORD_PTR CDictionaryParser::GetOneLine(_In_z_ LPCWSTR pwszBuffer, DWORD_PTR dwBufLen)
 {
     DWORD_PTR dwIndexTrace = 0;     // in char
+
+	if(pwszBuffer == nullptr) return 0;
 
 	while(dwIndexTrace <dwBufLen)
 	{

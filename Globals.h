@@ -106,8 +106,8 @@ inline BOOL IsTooSimilar(COLORREF cr1, COLORREF cr2)
 extern HINSTANCE dllInstanceHandle;
 
 extern IME_MODE imeMode;
-typedef  map <WCHAR, WCHAR> mapWCHWCH;
-extern mapWCHWCH radicalMap[IM_SLOTS];
+typedef  map <WCHAR, PWCH> mapWCHPWCH;
+extern mapWCHPWCH radicalMap[IM_SLOTS];
 
 extern BOOL isWindows8; //OS Version
 extern BOOL autoCompose; // show candidates while composing

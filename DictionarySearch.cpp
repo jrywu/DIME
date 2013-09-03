@@ -316,14 +316,12 @@ ReadValue:
 			}
 			if(_searchMode == SEARCH_RADICAL)
 			{
-				PWCHAR radicalChar = new (std::nothrow) WCHAR[2];
-				PWCHAR radical = new (std::nothrow) WCHAR[2];
-				*radicalChar=L'0';
-				*radical=L'0';
-				StringCchCopyN(radicalChar,  2, keyword.Get(),1); 
-				StringCchCopyN(radical, 2, valueStrings.GetAt(0)->Get(), 1);
-				assert( Global::radicalMap[_imeMode].size() < 100);
-				Global::radicalMap[_imeMode][towupper(*radicalChar)] = *radical;
+				WCHAR radicalChar = *keyword.Get();
+				PWCHAR radical = new (std::nothrow) WCHAR[16];
+				*radical = '\0';
+				StringCchCopyN(radical, 16, valueStrings.GetAt(0)->Get(), valueStrings.GetAt(0)->GetLength());
+				assert( Global::radicalMap[_imeMode].size() < MAX_RADICAL);
+				Global::radicalMap[_imeMode][towupper(radicalChar)] = radical;
 				goto FindNextLine;
 			}
 			if(_searchMode == SEARCH_CONFIG)

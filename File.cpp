@@ -98,14 +98,20 @@ BOOL CFile::SetupReadBuffer()
 	
 	debugPrint(L" CFile::CreateFile()");
    
+	BOOL ret = TRUE;
+
 	DWORD dwNumberOfByteRead = 0;
 	if(_fileSize < sizeof(WCHAR) ) 
-		return FALSE;
+	{
+		ret = FALSE;
+		goto errorExit;
+	}
 	// Read file in allocated buffer
 	const WCHAR* pWideBuffer  = new (std::nothrow) WCHAR[ _fileSize/sizeof(WCHAR) - 1 ];
 	if (!pWideBuffer)
 	{
-		return FALSE;
+		ret = FALSE;
+		goto errorExit;
 	}
 
 	// skip unicode byte-order signature
@@ -116,7 +122,8 @@ BOOL CFile::SetupReadBuffer()
 	{
 		delete [] pWideBuffer;
 		_pReadBuffer = nullptr;
-		return FALSE;
+		ret = FALSE;
+		goto errorExit;
 	}
 	
 
@@ -124,13 +131,14 @@ BOOL CFile::SetupReadBuffer()
 	delete [] _pReadBuffer;
 	_pReadBuffer = pWideBuffer;
 
+errorExit:
 	if (_fileHandle)
     {
         CloseHandle(_fileHandle);
         _fileHandle = nullptr;
     }
 
-    return TRUE;
+    return ret;
 }
 
 const WCHAR* CFile::GetReadBufferPointer(BOOL *fileReloaded)

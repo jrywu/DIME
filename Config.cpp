@@ -584,16 +584,58 @@ LoadFile:
 				{
 					if( _wfopen_s(&fpw, pathToWrite, L"w+, ccs=UTF-16LE") ==0 )
 					{
-						WCHAR line[256], key[256], value[256];
+						WCHAR line[256], key[256], value[256], escapedKey[256];
+						BOOL doEscape = FALSE;
 						while( fgetws(line, 256, fpr) != NULL)
 						{
 							if(swscanf_s(line, L"%s %s", key, _countof(key), value, _countof(value)) < 2)
 							{
 								fwprintf_s(fpw, L"%s", line);
 							}
-							else if(key[0] != '"') //filter out " as key which will cause error.
+							else 
 							{
-								fwprintf_s(fpw, L"%s\t%s\n", key, value);
+								if(	(CompareString(1028, NORM_IGNORECASE , key, (int) wcslen(key), L"%keyname", 8) == CSTR_EQUAL
+									&& CompareString(1028, NORM_IGNORECASE , value, (int) wcslen(value), L"begin", 5) == CSTR_EQUAL)||
+									(CompareString(1028, NORM_IGNORECASE , key, (int) wcslen(key), L"%chardef", 8) == CSTR_EQUAL
+									&& CompareString(1028, NORM_IGNORECASE , value, (int) wcslen(value), L"begin", 5)== CSTR_EQUAL))
+								{
+									doEscape = TRUE;
+									fwprintf_s(fpw, L"%s %s\n", key, value);
+									continue;
+								}
+								else if((CompareString(1028, NORM_IGNORECASE , key, (int) wcslen(key), L"%keyname", 8)== CSTR_EQUAL
+									&& CompareString(1028, NORM_IGNORECASE , value, (int) wcslen(value), L"end", 3)== CSTR_EQUAL)||
+									(CompareString(1028, NORM_IGNORECASE , key, (int) wcslen(key), L"%chardef", 8)== CSTR_EQUAL
+									&& CompareString(1028, NORM_IGNORECASE , value, (int) wcslen(value), L"end", 3)== CSTR_EQUAL))
+								{
+									doEscape = FALSE;
+									fwprintf_s(fpw, L"%s %s\n", key, value);
+									continue;
+								}
+
+								if(doEscape)
+								{
+									StringCchCopy(escapedKey, _countof(escapedKey), L"\"");
+									for(UINT i = 0; i < wcslen(key); i++)
+									{
+										if(key[i] == '"') //escape " .
+										{
+											StringCchCat(escapedKey, _countof(escapedKey), L"\\\"");
+										}
+										else if (key[i] == '\\') // escaoe \ .
+										{
+											StringCchCat(escapedKey, _countof(escapedKey), L"\\\\");
+										}
+										else
+										{
+											StringCchCatN(escapedKey, _countof(escapedKey),&key[i], 1);
+										}
+									}
+									StringCchCat(escapedKey, _countof(escapedKey), L"\"");
+									fwprintf_s(fpw, L"%s\t%s\n", escapedKey, value);
+								}
+								else
+									fwprintf_s(fpw, L"%s\t%s\n", key, value);
 							}
 						}
 						fclose(fpw);

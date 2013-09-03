@@ -18,7 +18,7 @@ HINSTANCE dllInstanceHandle;
 
 LONG dllRefCount = -1;
 
-mapWCHWCH radicalMap[IM_SLOTS];
+mapWCHPWCH radicalMap[IM_SLOTS];
 
 BOOL isWindows8 = FALSE;
 

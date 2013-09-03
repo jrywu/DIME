@@ -16,6 +16,7 @@
 #include "LanguageBar.h"
 #include "sddl.h"
 
+#define MAX_READINGSTRING 64
 
 //////////////////////////////////////////////////////////////////////
 //
@@ -256,17 +257,20 @@ void CCompositionProcessorEngine::GetReadingStrings(_Inout_ CTSFTTSArray<CString
         }
 
 		PWCHAR pwchRadical;
-		pwchRadical = new (std::nothrow) WCHAR[_keystrokeBuffer.GetLength() + 1];
+		pwchRadical = new (std::nothrow) WCHAR[MAX_READINGSTRING];
 		*pwchRadical = L'\0';
 		
         for (DWORD index = 0; index < _keystrokeBuffer.GetLength(); index++)
         {
 			if(Global::radicalMap[Global::imeMode].size() && !IsSymbol()) // if radicalMap is valid (size()>0), then convert the keystroke buffer 
 			{
-				map<WCHAR, WCHAR>::iterator item = 
+				map<WCHAR, PWCH>::iterator item = 
 					Global::radicalMap[Global::imeMode].find(towupper(*(_keystrokeBuffer.Get() + index)));
 				if(item != Global::radicalMap[Global::imeMode].end() )
-					StringCchCatN(pwchRadical, _keystrokeBuffer.GetLength() + 1, &item->second,1); 
+				{
+					assert(wcslen(pwchRadical) + wcslen(item->second) < MAX_READINGSTRING -1 );
+					StringCchCat(pwchRadical, MAX_READINGSTRING, item->second); 
+				}
 			}
 
             oneKeystroke.Set(_keystrokeBuffer.Get() + index, 1);
@@ -278,7 +282,7 @@ void CCompositionProcessorEngine::GetReadingStrings(_Inout_ CTSFTTSArray<CString
         }
 		if(Global::radicalMap[Global::imeMode].size()&& !IsSymbol())
 		{
-			pNewString->Set(pwchRadical, _keystrokeBuffer.GetLength());
+			pNewString->Set(pwchRadical, wcslen(pwchRadical));
 		}
 		else
 		{
@@ -730,16 +734,19 @@ BOOL CCompositionProcessorEngine::GetArraySpeicalCodeFromConvertedText(_In_ CStr
 	{
 
 		PWCHAR pwch;
-		pwch = new (std::nothrow) WCHAR[candidateList.GetAt(0)->_FindKeyCode.GetLength()+1];
+		pwch = new (std::nothrow) WCHAR[MAX_READINGSTRING];
 		*pwch=L'\0';
 		if(candidateList.GetAt(0)->_FindKeyCode.GetLength() && Global::radicalMap[Global::imeMode].size())
 		{
 			for(UINT i=0; i <candidateList.GetAt(0)->_FindKeyCode.GetLength(); i++)
 			{ // query keyname from keymap
-				map<WCHAR, WCHAR>::iterator item = 
+				map<WCHAR, PWCH>::iterator item = 
 					Global::radicalMap[Global::imeMode].find(towupper(*(_keystrokeBuffer.Get() + i)));
 				if(item != Global::radicalMap[Global::imeMode].end() )
-					StringCchCatN(pwch, candidateList.GetAt(0)->_FindKeyCode.GetLength()+1, &item->second,1); 
+				{
+					assert(wcslen(pwch) + wcslen(item->second) < MAX_READINGSTRING -1);
+					StringCchCat(pwch, MAX_READINGSTRING, item->second); 
+				}
 			}
 			csrReslt->Set(pwch, candidateList.GetAt(0)->_FindKeyCode.GetLength());
 			return TRUE;
@@ -824,15 +831,18 @@ BOOL CCompositionProcessorEngine::IsDoubleSingleByte(WCHAR wch)
 void CCompositionProcessorEngine::SetupKeystroke(IME_MODE imeMode)
 {
 
-	if( Global::radicalMap[imeMode].size() == 0 || Global::radicalMap[imeMode].size() > 100) return;
+	if( Global::radicalMap[imeMode].size() == 0 || Global::radicalMap[imeMode].size() > MAX_RADICAL) return;
 
 	_KeystrokeComposition.Clear();
 
 	if((imeMode == IME_MODE_DAYI) && (Global::radicalMap[imeMode].find('=') == Global::radicalMap[imeMode].end() ))
 	{ //dayi symbol prompt
-		Global::radicalMap[imeMode]['='] = L'=';
+		WCHAR *pwchEqual = new (std::nothrow) WCHAR[2];
+		pwchEqual[0] = L'=';
+		pwchEqual[1] = L'\0';
+		Global::radicalMap[imeMode]['='] = pwchEqual;
 	}
-	for(map<WCHAR,WCHAR>::iterator item = Global::radicalMap[imeMode].begin(); item != Global::radicalMap[imeMode].end(); ++item) 
+	for(map<WCHAR,PWCH>::iterator item = Global::radicalMap[imeMode].begin(); item != Global::radicalMap[imeMode].end(); ++item) 
 	{
 		_KEYSTROKE* pKS = nullptr;
         pKS = _KeystrokeComposition.Append();
@@ -844,29 +854,133 @@ void CCompositionProcessorEngine::SetupKeystroke(IME_MODE imeMode)
 		WCHAR key = item->first;
 		if( (key >= '0' && key <='9') || (key >= 'A' && key <= 'Z') )
 			pKS->VirtualKey = key;
+		else if( key == '!')
+		{
+			pKS->VirtualKey = '1';
+			pKS->Modifiers = TF_MOD_SHIFT;
+		}
+		else if( key == '@')
+		{
+			pKS->VirtualKey = '2';
+			pKS->Modifiers = TF_MOD_SHIFT;
+		}
+		else if( key == '#')
+		{
+			pKS->VirtualKey = '3';
+			pKS->Modifiers = TF_MOD_SHIFT;
+		}
+		else if( key == '$')
+		{
+			pKS->VirtualKey = '4';
+			pKS->Modifiers = TF_MOD_SHIFT;
+		}
+		else if( key == '%')
+		{
+			pKS->VirtualKey = '5';
+			pKS->Modifiers = TF_MOD_SHIFT;
+		}
+		else if( key == '^')
+		{
+			pKS->VirtualKey = '6';
+			pKS->Modifiers = TF_MOD_SHIFT;
+		}
+		else if( key == '&')
+		{
+			pKS->VirtualKey = '7';
+			pKS->Modifiers = TF_MOD_SHIFT;
+		}
+		else if( key == '*')
+		{
+			pKS->VirtualKey = '8';
+			pKS->Modifiers = TF_MOD_SHIFT;
+		}
+		else if( key == '(')
+		{
+			pKS->VirtualKey = '9';
+			pKS->Modifiers = TF_MOD_SHIFT;
+		}
+		else if( key == ')')
+		{
+			pKS->VirtualKey = '0';
+			pKS->Modifiers = TF_MOD_SHIFT;
+		}
 		else if( key == ',')
 			pKS->VirtualKey = VK_OEM_COMMA;
+		else if( key == '<')
+		{
+			pKS->VirtualKey = VK_OEM_COMMA;
+			pKS->Modifiers = TF_MOD_SHIFT;
+		}
 		else if( key == '.')
 			pKS->VirtualKey = VK_OEM_PERIOD;
-		else if( key == '/')
-			pKS->VirtualKey = VK_OEM_2;
+		else if( key == '>')
+		{
+			pKS->VirtualKey = VK_OEM_PERIOD;
+			pKS->Modifiers = TF_MOD_SHIFT;
+		}
 		else if( key == ';')
 			pKS->VirtualKey = VK_OEM_1;
-		else if( key == '\'')
-			pKS->VirtualKey = VK_OEM_7;
-		else if( key == '[')
-			pKS->VirtualKey = VK_OEM_4;
-		else if( key == ']')
-			pKS->VirtualKey = VK_OEM_6;
+		else if( key == ':')
+		{
+			pKS->VirtualKey = VK_OEM_1;
+			pKS->Modifiers = TF_MOD_SHIFT;
+		}
+		else if( key == '/')
+			pKS->VirtualKey = VK_OEM_2;
+		else if( key == '?')
+		{
+			pKS->VirtualKey = VK_OEM_2;
+			pKS->Modifiers = TF_MOD_SHIFT;
+		}
 		else if( key == '`')
 			pKS->VirtualKey = VK_OEM_3;
+		else if( key == '~')
+		{
+			pKS->VirtualKey = VK_OEM_3;
+			pKS->Modifiers = TF_MOD_SHIFT;
+		}
+		else if( key == '[')
+			pKS->VirtualKey = VK_OEM_4;
+		else if( key == '{')
+		{
+			pKS->VirtualKey = VK_OEM_4;
+			pKS->Modifiers = TF_MOD_SHIFT;
+		}
+		else if( key == '\\')
+			pKS->VirtualKey = VK_OEM_5;
+		else if( key == '|')
+		{
+			pKS->VirtualKey = VK_OEM_5;
+			pKS->Modifiers = TF_MOD_SHIFT;
+		}
+		else if( key == ']')
+			pKS->VirtualKey = VK_OEM_6;
+		else if( key == '}')
+		{
+			pKS->VirtualKey = VK_OEM_6;
+			pKS->Modifiers = TF_MOD_SHIFT;
+		}
+		else if( key == '\'')
+			pKS->VirtualKey = VK_OEM_7;
+		else if( key == '"')
+		{
+			pKS->VirtualKey = VK_OEM_7;
+			pKS->Modifiers = TF_MOD_SHIFT;
+		}
 		else if( key == '-')
 			pKS->VirtualKey = VK_OEM_MINUS;
+		else if( key == '_')
+		{
+			pKS->VirtualKey = VK_OEM_MINUS;
+			pKS->Modifiers = TF_MOD_SHIFT;
+		}
 		else if( key == '=')
 			pKS->VirtualKey = VK_OEM_PLUS;
-		
-		pKS->Modifiers = 0;
-		pKS->Function = FUNCTION_INPUT;
+		else if( key == '+')
+		{
+			pKS->VirtualKey = VK_OEM_PLUS;
+			pKS->Modifiers = TF_MOD_SHIFT;
+		}
 
 	}
 
@@ -1173,7 +1287,17 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 		{
 			_pTTSTableDictionaryEngine[imeMode] = new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pTTSDictionaryFile[imeMode], L'='); //TTS file use '=' as delimiter
 			if (!_pTTSTableDictionaryEngine[imeMode])  goto ErrorExit;
-			Global::radicalMap[imeMode].clear();
+			
+			if(Global::radicalMap[imeMode].size())
+			{
+				for(map<WCHAR,PWCH>::iterator item = Global::radicalMap[imeMode].begin(); item != Global::radicalMap[imeMode].end(); ++item)
+				{
+					delete [] item->second;
+				}
+				Global::radicalMap[imeMode].clear();
+			}
+
+
 			_pTTSTableDictionaryEngine[imeMode]->ParseConfig(imeMode); //parse config first.
 		
 		}
@@ -1213,6 +1337,10 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 
 					if (_pCINTableDictionaryEngine[imeMode])  
 					{
+						for(map<WCHAR,PWCH>::iterator item = Global::radicalMap[imeMode].begin(); item != Global::radicalMap[imeMode].end(); ++item)
+						{
+							delete [] item->second;
+						}
 						Global::radicalMap[imeMode].clear();
 						_pCINTableDictionaryEngine[imeMode]->ParseConfig(imeMode); //parse config first.
 						
@@ -1856,6 +1984,10 @@ void CCompositionProcessorEngine::UpdateDictionaryFile()
 	{
 		if(_pCINTableDictionaryEngine[Global::imeMode])
 		{
+			for(map<WCHAR,PWCH>::iterator item = Global::radicalMap[Global::imeMode].begin(); item != Global::radicalMap[Global::imeMode].end(); ++item)
+			{
+				delete [] item->second;
+			}
 			Global::radicalMap[Global::imeMode].clear();
 			_pCINTableDictionaryEngine[Global::imeMode]->ParseConfig(Global::imeMode);
 			SetupKeystroke(Global::imeMode);
