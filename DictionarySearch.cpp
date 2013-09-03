@@ -100,8 +100,6 @@ BOOL CDictionarySearch::FindWorker(BOOL isTextSearch, _Out_ CDictionaryResult **
 	if(fileReloaded)
 	{
 		_charIndex = 0;
-		Global::radicalMap[Global::imeMode].clear();
-		ParseConfig(Global::imeMode);
 	}
 
 	DWORD_PTR dwTotalBufLen = GetBufferInWCharLength();        // in char

@@ -900,6 +900,8 @@ BOOL CTSFTTS::_IsUILessMode()
 void CTSFTTS::_LoadConfig(BOOL isForce)
 {
 	CConfig::LoadConfig();
+	if(_pCompositionProcessorEngine) _pCompositionProcessorEngine->UpdateDictionaryFile();
+
 	if(CConfig::GetReloadReverseConversion() || isForce)
 	{
 		if(_pITfReverseConversion[Global::imeMode])

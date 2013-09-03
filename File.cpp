@@ -171,3 +171,15 @@ const WCHAR* CFile::GetReadBufferPointer(BOOL *fileReloaded)
 	}
 	return _pReadBuffer;
 }
+
+BOOL CFile::IsFileUpdated()
+{
+	debugPrint(L" CFile::IsFileUpdated()");
+	struct _stat timeStamp;
+	if (_wstat(_pFileName, &timeStamp) || //error for retrieving timestamp
+		(long(timeStamp.st_mtime>>32) != long(_timeStamp.st_mtime>>32)) ||  // or the timestamp not match previous saved one.
+		(long(timeStamp.st_mtime) != long(_timeStamp.st_mtime)) )			// then load the config. skip otherwise
+		return TRUE;
+	else 
+		return FALSE;
+}

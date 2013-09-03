@@ -100,8 +100,10 @@ public:
     void SetupConfiguration();
 	void SetupKeystroke(IME_MODE imeMode);
 	BOOL SetupDictionaryFile(IME_MODE imeMode);
-	void ReleaseDictionary();
+	void ReleaseDictionaryFiles();
 	BOOL SetupHanCovertTable();
+
+	void UpdateDictionaryFile();
 
 	IME_MODE GetImeModeFromGuidProfile(REFGUID guidLanguageProfile);
 

@@ -82,9 +82,9 @@ CCompositionProcessorEngine::~CCompositionProcessorEngine()
 {
 	debugPrint(L"CCompositionProcessorEngine::~CCompositionProcessorEngine() destructor");
 	if(_pTextService) _pTextService->Release();
-	ReleaseDictionary();
+	ReleaseDictionaryFiles();
 }
-void CCompositionProcessorEngine::ReleaseDictionary()
+void CCompositionProcessorEngine::ReleaseDictionaryFiles()
 {
 	
 	for (UINT i =0 ; i < IM_SLOTS ; i++)
@@ -1847,4 +1847,19 @@ void CCompositionProcessorEngine::DoBeep()
 {
 	if(CConfig::GetDoBeep())
 		MessageBeep(MB_ICONASTERISK);
+}
+
+
+void CCompositionProcessorEngine::UpdateDictionaryFile()
+{
+	if(_pCINDictionaryFile[Global::imeMode] && _pCINDictionaryFile[Global::imeMode]->IsFileUpdated())
+	{
+		if(_pCINTableDictionaryEngine[Global::imeMode])
+		{
+			Global::radicalMap[Global::imeMode].clear();
+			_pCINTableDictionaryEngine[Global::imeMode]->ParseConfig(Global::imeMode);
+			SetupKeystroke(Global::imeMode);
+			SetupConfiguration();
+		}
+	}
 }

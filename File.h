@@ -24,7 +24,7 @@ public:
     DWORD_PTR GetFileSize() { return _fileSize;}
 
     LPCWSTR GetFileName() { return _pFileName;}
-	_stat GetTimeStamp() { return _timeStamp;}
+	BOOL IsFileUpdated();
 
 protected:
     virtual BOOL SetupReadBuffer();
