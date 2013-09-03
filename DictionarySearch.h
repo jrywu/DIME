@@ -54,7 +54,7 @@ private:
     }
 
     CFile* _pFile;
-	enum SEARCH_MODE searchMode;
+	enum SEARCH_MODE _searchMode;
 	CTSFTTS *_pTextService;
 	IME_MODE _imeMode;
 
