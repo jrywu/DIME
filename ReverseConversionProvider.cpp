@@ -34,7 +34,7 @@ HRESULT CTSFTTS::GetReverseConversion(_In_ LANGID langid, _In_   REFGUID guidPro
 
 	if(_pReverseConversion[imeMode] == nullptr)
 	{
-		_pReverseConversion[imeMode] =  new (std::nothrow) CReverseConversion(_pCompositionProcessorEngine, guidProfile);
+		_pReverseConversion[imeMode] =  new (std::nothrow) CReverseConversion(_pCompositionProcessorEngine, imeMode);
 	}
 	
 
@@ -53,14 +53,15 @@ HRESULT CTSFTTS::GetReverseConversion(_In_ LANGID langid, _In_   REFGUID guidPro
 }
 
 
-CReverseConversion::CReverseConversion(CCompositionProcessorEngine* pCompositionProcessorEngine, REFGUID guidLanguageProfile)
+CReverseConversion::CReverseConversion(CCompositionProcessorEngine* pCompositionProcessorEngine, IME_MODE imeMode)
 {
 	debugPrint(L"CReverseConversion(ITfReverseConversion)::CReverseConversion() constructor");
 	_refCount = 1;
 	_pReverseConversionList = nullptr;
 	_pCompositionProcessorEngine = pCompositionProcessorEngine;
-	_guidLanguageProfile = guidLanguageProfile;
-	_imeMode = _pCompositionProcessorEngine->GetImeModeFromGuidProfile(guidLanguageProfile);
+	_imeMode = imeMode;
+	_pRadicalMap = _pCompositionProcessorEngine->GetRadicalMap(_imeMode);
+
 	DllAddRef();
 }
 CReverseConversion::~CReverseConversion()
@@ -86,7 +87,7 @@ HRESULT CReverseConversion::DoReverseConversion(_In_ LPCWSTR lpstrToConvert, _Ou
 	HRESULT hr = S_FALSE;
 	if(_pReverseConversionList == nullptr)
 	{	
-		_pReverseConversionList = new (std::nothrow) CReverseConversionList(_imeMode); 
+		_pReverseConversionList = new (std::nothrow) CReverseConversionList(_imeMode, _pRadicalMap); 
 		if(_pReverseConversionList == nullptr)	
 			return S_FALSE;		
 	}
@@ -147,13 +148,14 @@ STDAPI_(ULONG) CReverseConversion::Release()
     return cr;
 }
 
-CReverseConversionList::CReverseConversionList(IME_MODE imeMode)
+CReverseConversionList::CReverseConversionList(IME_MODE imeMode, _T_RacialMap* pRadicalMap)
 {
 	debugPrint(L"CReverseConversionList(ITfReverseConversionList)::CReverseConversionList() constructor, imeMode = %d", imeMode);
 	_refCount = 1;
 	_resultFound = FALSE;
 	_resultString = new (std::nothrow) WCHAR[REVERSE_CONV_RESULT_LENGTH];
 	_imeMode = imeMode;
+	_pRadicalMap = pRadicalMap;
 
 }
 CReverseConversionList::~CReverseConversionList()
@@ -244,7 +246,7 @@ void CReverseConversionList::SetResultList(CTSFTTSArray<CCandidateListItem>* pCa
 	*_resultString = L'\0';
 	for (UINT index = 0; index < pCandidateList->Count(); index++)
     {
-		if(pCandidateList->GetAt(index)->_FindKeyCode.GetLength() && Global::radicalMap[_imeMode].size())
+		if(pCandidateList->GetAt(index)->_FindKeyCode.GetLength() && _pRadicalMap->size())
 		{
 			if(index)
 			{
@@ -254,8 +256,8 @@ void CReverseConversionList::SetResultList(CTSFTTSArray<CCandidateListItem>* pCa
 			for(UINT i=0; i <pCandidateList->GetAt(index)->_FindKeyCode.GetLength(); i++)
 			{ // query keyname from keymap
 				map<WCHAR, PWCH>::iterator item = 
-					Global::radicalMap[_imeMode].find(towupper(*(pCandidateList->GetAt(index)->_FindKeyCode.Get() + i)));
-				if(item != Global::radicalMap[_imeMode].end() )
+					_pRadicalMap->find(towupper(*(pCandidateList->GetAt(index)->_FindKeyCode.Get() + i)));
+				if(item != _pRadicalMap->end() )
 				{
 					assert(wcslen(_resultString) + 1 < REVERSE_CONV_RESULT_LENGTH-1);
 					StringCchCat(_resultString, REVERSE_CONV_RESULT_LENGTH, item->second); 

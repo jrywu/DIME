@@ -259,16 +259,16 @@ void CCompositionProcessorEngine::GetReadingStrings(_Inout_ CTSFTTSArray<CString
 		PWCHAR pwchRadical;
 		pwchRadical = new (std::nothrow) WCHAR[MAX_READINGSTRING];
 
-		if(Global::radicalMap[Global::imeMode].size()&& !IsSymbol())
+		if(_pTableDictionaryEngine[Global::imeMode]->GetRadicalMap()->size()&& !IsSymbol())
 		{
 			*pwchRadical = L'\0';
 			for (DWORD index = 0; index < _keystrokeBuffer.GetLength(); index++)
 			{
-				if(Global::radicalMap[Global::imeMode].size() && !IsSymbol()) // if radicalMap is valid (size()>0), then convert the keystroke buffer 
+				if(_pTableDictionaryEngine[Global::imeMode]->GetRadicalMap()->size() && !IsSymbol()) // if radicalMap is valid (size()>0), then convert the keystroke buffer 
 				{
-					map<WCHAR, PWCH>::iterator item = 
-						Global::radicalMap[Global::imeMode].find(towupper(*(_keystrokeBuffer.Get() + index)));
-					if(item != Global::radicalMap[Global::imeMode].end() )
+					_T_RacialMap::iterator item = 
+						_pTableDictionaryEngine[Global::imeMode]->GetRadicalMap()->find(towupper(*(_keystrokeBuffer.Get() + index)));
+					if(item != _pTableDictionaryEngine[Global::imeMode]->GetRadicalMap()->end() )
 					{
 						assert(wcslen(pwchRadical) + wcslen(item->second) < MAX_READINGSTRING -1 );
 						StringCchCat(pwchRadical, MAX_READINGSTRING, item->second); 
@@ -736,13 +736,13 @@ BOOL CCompositionProcessorEngine::GetArraySpeicalCodeFromConvertedText(_In_ CStr
 		PWCHAR pwch;
 		pwch = new (std::nothrow) WCHAR[MAX_READINGSTRING];
 		*pwch=L'\0';
-		if(candidateList.GetAt(0)->_FindKeyCode.GetLength() && Global::radicalMap[Global::imeMode].size())
+		if(candidateList.GetAt(0)->_FindKeyCode.GetLength() && _pTableDictionaryEngine[Global::imeMode]->GetRadicalMap()->size())
 		{
 			for(UINT i=0; i <candidateList.GetAt(0)->_FindKeyCode.GetLength(); i++)
 			{ // query keyname from keymap
-				map<WCHAR, PWCH>::iterator item = 
-					Global::radicalMap[Global::imeMode].find(towupper(*(_keystrokeBuffer.Get() + i)));
-				if(item != Global::radicalMap[Global::imeMode].end() )
+				_T_RacialMap::iterator item = 
+					_pTableDictionaryEngine[Global::imeMode]->GetRadicalMap()->find(towupper(*(_keystrokeBuffer.Get() + i)));
+				if(item != _pTableDictionaryEngine[Global::imeMode]->GetRadicalMap()->end() )
 				{
 					assert(wcslen(pwch) + wcslen(item->second) < MAX_READINGSTRING -1);
 					StringCchCat(pwch, MAX_READINGSTRING, item->second); 
@@ -831,19 +831,21 @@ BOOL CCompositionProcessorEngine::IsDoubleSingleByte(WCHAR wch)
 void CCompositionProcessorEngine::SetupKeystroke(IME_MODE imeMode)
 {
 
-	if( Global::radicalMap[imeMode].size() == 0 || Global::radicalMap[imeMode].size() > MAX_RADICAL) return;
+	if( _pTableDictionaryEngine[imeMode] == nullptr ||_pTableDictionaryEngine[imeMode]->GetRadicalMap() == nullptr ||
+		_pTableDictionaryEngine[imeMode]->GetRadicalMap()->size() == 0 || _pTableDictionaryEngine[imeMode]->GetRadicalMap()->size() > MAX_RADICAL) return;
 
 	_KeystrokeComposition.Clear();
 
-	if((imeMode == IME_MODE_DAYI) && (Global::radicalMap[imeMode].find('=') == Global::radicalMap[imeMode].end() ))
+	if((imeMode == IME_MODE_DAYI) && (_pTableDictionaryEngine[imeMode]->GetRadicalMap()->find('=') == _pTableDictionaryEngine[imeMode]->GetRadicalMap()->end() ))
 	{ //dayi symbol prompt
 		WCHAR *pwchEqual = new (std::nothrow) WCHAR[2];
 		pwchEqual[0] = L'=';
 		pwchEqual[1] = L'\0';
-		Global::radicalMap[imeMode]['='] = pwchEqual;
+		(*_pTableDictionaryEngine[imeMode]->GetRadicalMap())['='] = pwchEqual;
 	}
 
-	for(map<WCHAR,PWCH>::iterator item = Global::radicalMap[imeMode].begin(); item != Global::radicalMap[imeMode].end(); ++item) 
+	for(_T_RacialMap::iterator item = _pTableDictionaryEngine[imeMode]->GetRadicalMap()->begin(); item != 
+		_pTableDictionaryEngine[imeMode]->GetRadicalMap()->end(); ++item) 
 	{
 		_KEYSTROKE* pKS = nullptr;
         pKS = _KeystrokeComposition.Append();
@@ -1295,19 +1297,9 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 		}
 		else
 		{
-			_pTTSTableDictionaryEngine[imeMode] = new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pTTSDictionaryFile[imeMode], L'='); //TTS file use '=' as delimiter
+			_pTTSTableDictionaryEngine[imeMode] = new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pTTSDictionaryFile[imeMode], TTS_DICTIONARY); //TTS file use '=' as delimiter
 			if (!_pTTSTableDictionaryEngine[imeMode])  goto ErrorExit;
 			
-			if(Global::radicalMap[imeMode].size())
-			{
-				for(map<WCHAR,PWCH>::iterator item = Global::radicalMap[imeMode].begin(); item != Global::radicalMap[imeMode].end(); ++item)
-				{
-					delete [] item->second;
-				}
-				Global::radicalMap[imeMode].clear();
-			}
-
-
 			_pTTSTableDictionaryEngine[imeMode]->ParseConfig(imeMode); //parse config first.
 		
 		}
@@ -1343,23 +1335,12 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 				_pCINDictionaryFile[imeMode] = new (std::nothrow) CFile();
 				if ((_pCINDictionaryFile[imeMode])->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
 				{
-					_pCINTableDictionaryEngine[imeMode] = new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pCINDictionaryFile[imeMode], L'\t'); //cin files use tab as delimiter
-
-					if (_pCINTableDictionaryEngine[imeMode])  
-					{
-						for(map<WCHAR,PWCH>::iterator item = Global::radicalMap[imeMode].begin(); item != Global::radicalMap[imeMode].end(); ++item)
-						{
-							delete [] item->second;
-						}
-						Global::radicalMap[imeMode].clear();
-						_pCINTableDictionaryEngine[imeMode]->ParseConfig(imeMode); //parse config first.
-						
-					}
+					_pCINTableDictionaryEngine[imeMode] = new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pCINDictionaryFile[imeMode], CIN_DICTIONARY); //cin files use tab as delimiter
+					_pCINTableDictionaryEngine[imeMode]->ParseConfig(imeMode); //parse config first.				
 				}
 			}
-			_pTableDictionaryEngine[imeMode] = _pCINTableDictionaryEngine[imeMode];  //set CIN as dictionary engine if avaialble
+			_pTableDictionaryEngine[imeMode] = _pCINTableDictionaryEngine[imeMode];  //set CIN as dictionary engine if avaialble	
 		}
-		
 		
 	}
 	else
@@ -1368,7 +1349,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 		CreateDirectory(pwszCINFileName, NULL);	
 	}
 
-	if(Global::imeMode == IME_MODE_ARRAY) //array-special.cin and array-shortcode.cin in personal romaing profile
+	if(imeMode == IME_MODE_ARRAY) //array-special.cin and array-shortcode.cin in personal romaing profile
 	{
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\TSFTTS\\array-special.cin");
 		if(!PathFileExists(pwszCINFileName)) //failed back to pre-install array-special.cin in program files.
@@ -1379,7 +1360,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			if ((_pArraySpecialCodeDictionaryFile)->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
 			{
 				_pArraySpecialCodeTableDictionaryEngine = 
-					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pArraySpecialCodeDictionaryFile, L'\t'); //cin files use tab as delimiter
+					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pArraySpecialCodeDictionaryFile, CIN_DICTIONARY); //cin files use tab as delimiter
 			}
 		}
 
@@ -1392,7 +1373,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 				if ((_pArrayShortCodeDictionaryFile)->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
 				{
 					_pArrayShortCodeTableDictionaryEngine = 
-						new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pArrayShortCodeDictionaryFile, L'\t'); //cin files use tab as delimiter
+						new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pArrayShortCodeDictionaryFile, CIN_DICTIONARY); //cin files use tab as delimiter
 				}
 			}
 		}
@@ -1436,7 +1417,7 @@ BOOL CCompositionProcessorEngine::SetupHanCovertTable()
 			if ((_pTCSCTableDictionaryFile)->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
 			{
 				_pTCSCTableDictionaryEngine = 
-					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pTCSCTableDictionaryFile, L'\t'); //cin files use tab as delimiter
+					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pTCSCTableDictionaryFile, CIN_DICTIONARY); //cin files use tab as delimiter
 			}
 		}
 
@@ -1994,11 +1975,6 @@ void CCompositionProcessorEngine::UpdateDictionaryFile()
 	{
 		if(_pCINTableDictionaryEngine[Global::imeMode])
 		{
-			for(map<WCHAR,PWCH>::iterator item = Global::radicalMap[Global::imeMode].begin(); item != Global::radicalMap[Global::imeMode].end(); ++item)
-			{
-				delete [] item->second;
-			}
-			Global::radicalMap[Global::imeMode].clear();
 			_pCINTableDictionaryEngine[Global::imeMode]->ParseConfig(Global::imeMode);
 			SetupKeystroke(Global::imeMode);
 			SetupConfiguration();

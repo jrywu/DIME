@@ -7,15 +7,19 @@
 #define TSFTTSBASESTRUCTURE_H
 
 #pragma once
-
-#include "stdafx.h"
 #include <vector>
-#include "assert.h"
+#include <map>
 #include <iostream>
+#include "stdafx.h"
+#include "assert.h"
+
 
 
 using std::cout;
 using std::endl;
+using std::map;
+
+typedef  map <WCHAR, PWCH> _T_RacialMap;
 
 //---------------------------------------------------------------------
 // defined keyword
@@ -28,7 +32,7 @@ struct _DEFINED_KEYWORD
 };
 
 
-struct _DayiAddressDirectInput
+struct _DAYI_ADDRESS_DIRECT_INPUT
 {
     WCHAR _Code;
     WCHAR _AddressChar;
@@ -37,6 +41,14 @@ struct _DayiAddressDirectInput
 //---------------------------------------------------------------------
 // enum
 //---------------------------------------------------------------------
+
+enum DICTIONARY_TYPE
+{
+	TTS_DICTIONARY,
+	CIN_DICTIONARY,
+	LIME_DICTIONARY
+};
+
 enum KEYSTROKE_CATEGORY
 {
     CATEGORY_NONE = 0,

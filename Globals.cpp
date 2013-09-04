@@ -11,14 +11,12 @@
 #include "BaseWindow.h"
 #include "define.h"
 #include "BaseStructure.h"
-using std::map;
+
 
 namespace Global {
 HINSTANCE dllInstanceHandle;
 
 LONG dllRefCount = -1;
-
-mapWCHPWCH radicalMap[IM_SLOTS];
 
 BOOL isWindows8 = FALSE;
 
@@ -221,7 +219,7 @@ extern const WCHAR DayiSymbolCharTable[] = L" !@\\\"#$%&L\'()+:<>[]^-_`{}|~?";
 //---------------------------------------------------------------------
 // defined directly input address characters
 //---------------------------------------------------------------------
-extern const _DayiAddressDirectInput dayiAddressCharTable[5] = {
+extern const _DAYI_ADDRESS_DIRECT_INPUT dayiAddressCharTable[5] = {
 	{L'\'', L'¸¹'},
 	{L'[', L'¸ô'},
 	{L']', L'µó'},

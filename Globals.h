@@ -7,14 +7,14 @@
 #define GLOBAL_H
 
 #pragma once
-#include <map>
+
 #include "private.h"
 #include "define.h"
 #include "BaseStructure.h"
 #include "Config.h"
 
 
-using std::map;
+
 void DllAddRef();
 void DllRelease();
 
@@ -106,12 +106,8 @@ inline BOOL IsTooSimilar(COLORREF cr1, COLORREF cr2)
 extern HINSTANCE dllInstanceHandle;
 
 extern IME_MODE imeMode;
-typedef  map <WCHAR, PWCH> mapWCHPWCH;
-extern mapWCHPWCH radicalMap[IM_SLOTS];
 
 extern BOOL isWindows8; //OS Version
-extern BOOL autoCompose; // show candidates while composing
-extern BOOL threeCodeMode;
 extern BOOL hasPhraseSection; // the dictionary file has TTS [Phrase] section
 extern BOOL hasCINPhraseSection; // the dictionary file has CIN %phrasedef section
 
@@ -155,7 +151,7 @@ extern const GUID TSFTTSGuidCompartmentDoubleSingleByte;
 
 extern const WCHAR FullWidthCharTable[];
 extern const WCHAR DayiSymbolCharTable[];
-extern const _DayiAddressDirectInput dayiAddressCharTable[5];
+extern const _DAYI_ADDRESS_DIRECT_INPUT dayiAddressCharTable[5];
 
 extern const GUID TSFTTSGuidLangBarIMEMode;
 extern const GUID TSFTTSGuidLangBarDoubleSingleByte;

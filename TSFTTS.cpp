@@ -645,13 +645,15 @@ HRESULT CTSFTTS::GetDisplayName(_Out_ BSTR *pbstrDisplayName)
 	*pbstrDisplayName = NULL;
 
 	
-	bstrName = new (std::nothrow) WCHAR[50];
+	bstrName = new (std::nothrow) WCHAR[64];
 	if(Global::imeMode == IME_MODE_DAYI)
-		LoadString(Global::dllInstanceHandle, IDS_DAYI_DESCRIPTION, bstrName, 50);
+		LoadString(Global::dllInstanceHandle, IDS_DAYI_DESCRIPTION, bstrName, 64);
 	if(Global::imeMode == IME_MODE_ARRAY)
-		LoadString(Global::dllInstanceHandle, IDS_ARRAY_DESCRIPTION, bstrName, 50);
+		LoadString(Global::dllInstanceHandle, IDS_ARRAY_DESCRIPTION, bstrName, 64);
 	if(Global::imeMode == IME_MODE_PHONETIC)
-		LoadString(Global::dllInstanceHandle, IDS_PHONETIC_DESCRIPTION, bstrName, 50);
+		LoadString(Global::dllInstanceHandle, IDS_PHONETIC_DESCRIPTION, bstrName, 64);
+	if(Global::imeMode == IME_MODE_GENERIC)
+		LoadString(Global::dllInstanceHandle, IDS_GENERIC_DESCRIPTION, bstrName, 64);
 
 	if(bstrName == NULL)	return E_OUTOFMEMORY;
 	

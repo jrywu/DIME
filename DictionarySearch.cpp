@@ -80,11 +80,12 @@ BOOL CDictionarySearch::FindConvertedStringForWildcard(CDictionaryResult **ppdre
 	return FindWorker(TRUE, ppdret, TRUE); // Wildcard
 }
 
-BOOL CDictionarySearch::ParseConfig(IME_MODE imeMode)
+BOOL CDictionarySearch::ParseConfig(IME_MODE imeMode, _T_RacialMap* pRadicalMap)
 {
 	debugPrint(L"CDictionarySearch::ParseConfig() imeMode = %d", imeMode);
 	_imeMode = imeMode;
-	return FindWorker(FALSE, NULL, FALSE, TRUE); // parseConfig=TRUE;
+
+	return FindWorker(FALSE, NULL, FALSE, TRUE, pRadicalMap); // parseConfig=TRUE;
 }
 
 //+---------------------------------------------------------------------------
@@ -93,7 +94,7 @@ BOOL CDictionarySearch::ParseConfig(IME_MODE imeMode)
 //
 //----------------------------------------------------------------------------
 
-BOOL CDictionarySearch::FindWorker(BOOL isTextSearch, _Out_ CDictionaryResult **ppdret, BOOL isWildcardSearch, _In_opt_ BOOL parseConfig)
+BOOL CDictionarySearch::FindWorker(BOOL isTextSearch, _Out_ CDictionaryResult **ppdret, BOOL isWildcardSearch, _In_opt_ BOOL parseConfig, _In_opt_ _T_RacialMap* pRadicalMap)
 {
 	
 	BOOL fileReloaded;
@@ -314,14 +315,15 @@ ReadValue:
 				if(controlKeyType == NOT_CONTROLKEY)
 					return FALSE;
 			}
-			if(_searchMode == SEARCH_RADICAL)
+			if(_searchMode == SEARCH_RADICAL && pRadicalMap)
 			{
 				WCHAR radicalChar = *keyword.Get();
 				PWCHAR radical = new (std::nothrow) WCHAR[16];
 				*radical = '\0';
 				StringCchCopyN(radical, 16, valueStrings.GetAt(0)->Get(), valueStrings.GetAt(0)->GetLength());
-				assert( Global::radicalMap[_imeMode].size() < MAX_RADICAL);
-				Global::radicalMap[_imeMode][towupper(radicalChar)] = radical;
+
+				assert(pRadicalMap->size() < MAX_RADICAL);
+				(*pRadicalMap)[towupper(radicalChar)] = radical;
 				goto FindNextLine;
 			}
 			if(_searchMode == SEARCH_CONFIG)

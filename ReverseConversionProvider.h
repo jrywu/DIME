@@ -9,7 +9,7 @@ class CCompositionProcessorEngine;
 class CReverseConversion : public ITfReverseConversion
 {
 public:
-	CReverseConversion(CCompositionProcessorEngine* pCompositionProcessorEngine, REFGUID guidLanguageProfile);
+	CReverseConversion(CCompositionProcessorEngine* pCompositionProcessorEngine, IME_MODE imeMode);
 	~CReverseConversion();
 	// IUnknown methods
 	STDMETHODIMP QueryInterface(REFIID riid, _Outptr_ void **ppvObj);
@@ -21,14 +21,14 @@ private:
 	LONG _refCount;
 	CReverseConversionList* _pReverseConversionList;
 	CCompositionProcessorEngine* _pCompositionProcessorEngine;
-	GUID _guidLanguageProfile;
 	IME_MODE _imeMode;
+	_T_RacialMap* _pRadicalMap;
 };
 
 class CReverseConversionList : public ITfReverseConversionList
 {
 public:
-	CReverseConversionList(IME_MODE imeMode);
+	CReverseConversionList(IME_MODE imeMode, _T_RacialMap* pRadicalMap);
 	~CReverseConversionList();
 	// IUnknown methods
 	STDMETHODIMP QueryInterface(REFIID riid, _Outptr_ void **ppvObj);
@@ -44,4 +44,5 @@ private:
 	BOOL _resultFound;
 	WCHAR* _resultString;
 	IME_MODE _imeMode;
+	_T_RacialMap* _pRadicalMap;
 };

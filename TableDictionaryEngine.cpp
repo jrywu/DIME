@@ -10,12 +10,21 @@
 #include "DictionarySearch.h"
 #include "TSFTTS.h"
 
-CTableDictionaryEngine::CTableDictionaryEngine(LCID locale, _In_ CFile *pDictionaryFile, _In_ WCHAR keywordDelimiter)
+CTableDictionaryEngine::CTableDictionaryEngine(LCID locale, _In_ CFile *pDictionaryFile, _In_ DICTIONARY_TYPE dictionaryType )
 {
 	_locale = locale;
     _pDictionaryFile = pDictionaryFile;
-	_keywordDelimiter = keywordDelimiter;
 	_searchSection = SEARCH_SECTION_TEXT;
+	_dictionaryType = dictionaryType;
+
+	_pRadicalMap = new _T_RacialMap();
+
+	if(dictionaryType == TTS_DICTIONARY)
+		_keywordDelimiter = '=';
+	else if (dictionaryType == CIN_DICTIONARY)
+		_keywordDelimiter = '\t';
+	else if (dictionaryType == LIME_DICTIONARY)
+		_keywordDelimiter = '|';
 }
 
 //+---------------------------------------------------------------------------
@@ -160,8 +169,16 @@ VOID CTableDictionaryEngine::CollectWordFromConvertedString(_In_ CStringRange *p
 }
 VOID CTableDictionaryEngine::ParseConfig(IME_MODE imeMode)
 {
-	 CDictionarySearch dshSearch(_locale, _pDictionaryFile, NULL, _keywordDelimiter);
-	 dshSearch.ParseConfig(imeMode);
+	if(_pRadicalMap->size())
+	{
+		for(_T_RacialMap::iterator item = _pRadicalMap->begin(); item != _pRadicalMap->end(); ++item)
+		{
+			delete [] item->second;
+		}
+		_pRadicalMap->clear();
+	}
+	CDictionarySearch dshSearch(_locale, _pDictionaryFile, NULL, _keywordDelimiter);
+	dshSearch.ParseConfig(imeMode, _pRadicalMap);
 
 }
 

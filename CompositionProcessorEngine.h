@@ -110,6 +110,7 @@ public:
 	void GetVKeyFromPrintable(WCHAR printable, UINT* vKey, UINT* modifier);
 
 	IME_MODE GetImeModeFromGuidProfile(REFGUID guidLanguageProfile);
+	_T_RacialMap* GetRadicalMap(IME_MODE imeMode) {return _pTableDictionaryEngine[imeMode]->GetRadicalMap();  }
 
 private:
 
