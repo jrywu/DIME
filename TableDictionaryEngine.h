@@ -5,13 +5,13 @@
 //
 #ifndef TABLEDICTIONARYENGLINE_H
 #define TABLEDICTIONARYENGLINE_H
-
 #pragma once
 
-#include "BaseDictionaryEngine.h"
+#include "File.h"
+#include "BaseStructure.h"
 
 class CTSFTTS;
-class CTableDictionaryEngine : public CBaseDictionaryEngine
+class CTableDictionaryEngine
 {
 public:
 	CTableDictionaryEngine(LCID locale, _In_ CFile *pDictionaryFile, _In_ WCHAR keywordDelimiter);
@@ -31,8 +31,16 @@ public:
     VOID CollectWordFromConvertedStringForWildcard(_In_ CStringRange *pString, _Inout_ CTSFTTSArray<CCandidateListItem> *pItemList);
 	VOID ParseConfig(IME_MODE imeMode);
 	VOID SetSearchSection(SEARCH_SECTION searchSection) { _searchSection =searchSection;}
+
+	VOID SortListItemByFindKeyCode(_Inout_ CTSFTTSArray<CCandidateListItem> *pItemList);
 private:
+	CFile* _pDictionaryFile;
+    LCID _locale;
+	WCHAR _keywordDelimiter;
 	CTSFTTS *_pTextService;
 	SEARCH_SECTION _searchSection;
+
+	VOID MergeSortByFindKeyCode(_Inout_ CTSFTTSArray<CCandidateListItem> *pItemList, int leftRange, int rightRange);
+
 };
 #endif

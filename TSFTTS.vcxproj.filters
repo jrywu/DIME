@@ -68,9 +68,6 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="BaseDictionaryEngine.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="BaseWindow.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -190,9 +187,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="BaseDictionaryEngine.cpp">
-      <Filter>Source Files\Framework\Composition\Dictionary</Filter>
-    </ClCompile>
     <ClCompile Include="DictionaryParser.cpp">
       <Filter>Source Files\Framework\Composition\Dictionary</Filter>
     </ClCompile>

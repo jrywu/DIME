@@ -26,7 +26,6 @@
     <None Include="TSFTTS.def" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="BaseDictionaryEngine.h" />
     <ClInclude Include="BaseWindow.h" />
     <ClInclude Include="ButtonWindow.h" />
     <ClInclude Include="CandidateListUIPresenter.h" />
@@ -69,7 +68,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ActiveLanguageProfileNotifySink.cpp" />
-    <ClCompile Include="BaseDictionaryEngine.cpp" />
     <ClCompile Include="BaseWindow.cpp" />
     <ClCompile Include="ButtonWindow.cpp" />
     <ClCompile Include="CandidateHandler.cpp" />
