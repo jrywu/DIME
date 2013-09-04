@@ -258,30 +258,30 @@ void CCompositionProcessorEngine::GetReadingStrings(_Inout_ CTSFTTSArray<CString
 
 		PWCHAR pwchRadical;
 		pwchRadical = new (std::nothrow) WCHAR[MAX_READINGSTRING];
-		*pwchRadical = L'\0';
-		
-        for (DWORD index = 0; index < _keystrokeBuffer.GetLength(); index++)
-        {
-			if(Global::radicalMap[Global::imeMode].size() && !IsSymbol()) // if radicalMap is valid (size()>0), then convert the keystroke buffer 
-			{
-				map<WCHAR, PWCH>::iterator item = 
-					Global::radicalMap[Global::imeMode].find(towupper(*(_keystrokeBuffer.Get() + index)));
-				if(item != Global::radicalMap[Global::imeMode].end() )
-				{
-					assert(wcslen(pwchRadical) + wcslen(item->second) < MAX_READINGSTRING -1 );
-					StringCchCat(pwchRadical, MAX_READINGSTRING, item->second); 
-				}
-			}
 
-            oneKeystroke.Set(_keystrokeBuffer.Get() + index, 1);
-
-            if (IsWildcard() && IsWildcardChar(*oneKeystroke.Get()))
-            {
-                _hasWildcardIncludedInKeystrokeBuffer = TRUE;
-            }
-        }
 		if(Global::radicalMap[Global::imeMode].size()&& !IsSymbol())
 		{
+			*pwchRadical = L'\0';
+			for (DWORD index = 0; index < _keystrokeBuffer.GetLength(); index++)
+			{
+				if(Global::radicalMap[Global::imeMode].size() && !IsSymbol()) // if radicalMap is valid (size()>0), then convert the keystroke buffer 
+				{
+					map<WCHAR, PWCH>::iterator item = 
+						Global::radicalMap[Global::imeMode].find(towupper(*(_keystrokeBuffer.Get() + index)));
+					if(item != Global::radicalMap[Global::imeMode].end() )
+					{
+						assert(wcslen(pwchRadical) + wcslen(item->second) < MAX_READINGSTRING -1 );
+						StringCchCat(pwchRadical, MAX_READINGSTRING, item->second); 
+					}
+				}
+
+				oneKeystroke.Set(_keystrokeBuffer.Get() + index, 1);
+
+				if (IsWildcard() && IsWildcardChar(*oneKeystroke.Get()))
+				{
+					_hasWildcardIncludedInKeystrokeBuffer = TRUE;
+				}
+			}
 			pNewString->Set(pwchRadical, wcslen(pwchRadical));
 		}
 		else
@@ -842,6 +842,7 @@ void CCompositionProcessorEngine::SetupKeystroke(IME_MODE imeMode)
 		pwchEqual[1] = L'\0';
 		Global::radicalMap[imeMode]['='] = pwchEqual;
 	}
+
 	for(map<WCHAR,PWCH>::iterator item = Global::radicalMap[imeMode].begin(); item != Global::radicalMap[imeMode].end(); ++item) 
 	{
 		_KEYSTROKE* pKS = nullptr;
@@ -850,143 +851,19 @@ void CCompositionProcessorEngine::SetupKeystroke(IME_MODE imeMode)
             break;
   
 		pKS->Function = FUNCTION_INPUT;
-		pKS->Modifiers =0;
+		UINT vKey, modifier;
 		WCHAR key = item->first;
-		if( (key >= '0' && key <='9') || (key >= 'A' && key <= 'Z') )
-			pKS->VirtualKey = key;
-		else if( key == '!')
-		{
-			pKS->VirtualKey = '1';
-			pKS->Modifiers = TF_MOD_SHIFT;
-		}
-		else if( key == '@')
-		{
-			pKS->VirtualKey = '2';
-			pKS->Modifiers = TF_MOD_SHIFT;
-		}
-		else if( key == '#')
-		{
-			pKS->VirtualKey = '3';
-			pKS->Modifiers = TF_MOD_SHIFT;
-		}
-		else if( key == '$')
-		{
-			pKS->VirtualKey = '4';
-			pKS->Modifiers = TF_MOD_SHIFT;
-		}
-		else if( key == '%')
-		{
-			pKS->VirtualKey = '5';
-			pKS->Modifiers = TF_MOD_SHIFT;
-		}
-		else if( key == '^')
-		{
-			pKS->VirtualKey = '6';
-			pKS->Modifiers = TF_MOD_SHIFT;
-		}
-		else if( key == '&')
-		{
-			pKS->VirtualKey = '7';
-			pKS->Modifiers = TF_MOD_SHIFT;
-		}
-		else if( key == '*')
-		{
-			pKS->VirtualKey = '8';
-			pKS->Modifiers = TF_MOD_SHIFT;
-		}
-		else if( key == '(')
-		{
-			pKS->VirtualKey = '9';
-			pKS->Modifiers = TF_MOD_SHIFT;
-		}
-		else if( key == ')')
-		{
-			pKS->VirtualKey = '0';
-			pKS->Modifiers = TF_MOD_SHIFT;
-		}
-		else if( key == ',')
-			pKS->VirtualKey = VK_OEM_COMMA;
-		else if( key == '<')
-		{
-			pKS->VirtualKey = VK_OEM_COMMA;
-			pKS->Modifiers = TF_MOD_SHIFT;
-		}
-		else if( key == '.')
-			pKS->VirtualKey = VK_OEM_PERIOD;
-		else if( key == '>')
-		{
-			pKS->VirtualKey = VK_OEM_PERIOD;
-			pKS->Modifiers = TF_MOD_SHIFT;
-		}
-		else if( key == ';')
-			pKS->VirtualKey = VK_OEM_1;
-		else if( key == ':')
-		{
-			pKS->VirtualKey = VK_OEM_1;
-			pKS->Modifiers = TF_MOD_SHIFT;
-		}
-		else if( key == '/')
-			pKS->VirtualKey = VK_OEM_2;
-		else if( key == '?')
-		{
-			pKS->VirtualKey = VK_OEM_2;
-			pKS->Modifiers = TF_MOD_SHIFT;
-		}
-		else if( key == '`')
-			pKS->VirtualKey = VK_OEM_3;
-		else if( key == '~')
-		{
-			pKS->VirtualKey = VK_OEM_3;
-			pKS->Modifiers = TF_MOD_SHIFT;
-		}
-		else if( key == '[')
-			pKS->VirtualKey = VK_OEM_4;
-		else if( key == '{')
-		{
-			pKS->VirtualKey = VK_OEM_4;
-			pKS->Modifiers = TF_MOD_SHIFT;
-		}
-		else if( key == '\\')
-			pKS->VirtualKey = VK_OEM_5;
-		else if( key == '|')
-		{
-			pKS->VirtualKey = VK_OEM_5;
-			pKS->Modifiers = TF_MOD_SHIFT;
-		}
-		else if( key == ']')
-			pKS->VirtualKey = VK_OEM_6;
-		else if( key == '}')
-		{
-			pKS->VirtualKey = VK_OEM_6;
-			pKS->Modifiers = TF_MOD_SHIFT;
-		}
-		else if( key == '\'')
-			pKS->VirtualKey = VK_OEM_7;
-		else if( key == '"')
-		{
-			pKS->VirtualKey = VK_OEM_7;
-			pKS->Modifiers = TF_MOD_SHIFT;
-		}
-		else if( key == '-')
-			pKS->VirtualKey = VK_OEM_MINUS;
-		else if( key == '_')
-		{
-			pKS->VirtualKey = VK_OEM_MINUS;
-			pKS->Modifiers = TF_MOD_SHIFT;
-		}
-		else if( key == '=')
-			pKS->VirtualKey = VK_OEM_PLUS;
-		else if( key == '+')
-		{
-			pKS->VirtualKey = VK_OEM_PLUS;
-			pKS->Modifiers = TF_MOD_SHIFT;
-		}
-
+		pKS->Printable = key;
+		GetVKeyFromPrintable(key, &vKey, &modifier);
+		pKS->VirtualKey = vKey;
+		pKS->Modifiers = modifier;
 	}
 
+    return;
+}
 
-
-
+void CCompositionProcessorEngine::GetVKeyFromPrintable(WCHAR printable, UINT *vKey, UINT *modifier)
+{
 	/*
 	#define VK_OEM_1          0xBA   // ';:' for US
 	#define VK_OEM_PLUS       0xBB   // '+' any country
@@ -1001,12 +878,145 @@ void CCompositionProcessorEngine::SetupKeystroke(IME_MODE imeMode)
 	#define VK_OEM_6          0xDD  //  ']}' for US
 	#define VK_OEM_7          0xDE  //  ''"' for US
 	*/
+	*modifier = 0;
 
+	if( (printable >= '0' && printable <='9') || (printable >= 'A' && printable <= 'Z') )
+	{
+		*vKey = printable;
+	}
+	else if( printable == '!')
+	{
+		*vKey = '1';
+		*modifier = TF_MOD_SHIFT;
+	}
+	else if( printable == '@')
+	{
+		*vKey = '2';
+		*modifier = TF_MOD_SHIFT;
+	}
+	else if( printable == '#')
+	{
+		*vKey = '3';
+		*modifier = TF_MOD_SHIFT;
+	}
+	else if( printable == '$')
+	{
+		*vKey = '4';
+		*modifier = TF_MOD_SHIFT;
+	}
+	else if( printable == '%')
+	{
+		*vKey = '5';
+		*modifier = TF_MOD_SHIFT;
+	}
+	else if( printable == '^')
+	{
+		*vKey = '6';
+		*modifier = TF_MOD_SHIFT;
+	}
+	else if( printable == '&')
+	{
+		*vKey = '7';
+		*modifier = TF_MOD_SHIFT;
+	}
+	else if( printable == '*')
+	{
+		*vKey = '8';
+		*modifier = TF_MOD_SHIFT;
+	}
+	else if( printable == '(')
+	{
+		*vKey = '9';
+		*modifier = TF_MOD_SHIFT;
+	}
+	else if( printable == ')')
+	{
+		*vKey = '0';
+		*modifier = TF_MOD_SHIFT;
+	}
+	else if( printable == ',')
+		*vKey = VK_OEM_COMMA;
+	else if( printable == '<')
+	{
+		*vKey = VK_OEM_COMMA;
+		*modifier = TF_MOD_SHIFT;
+	}
+	else if( printable == '.')
+		*vKey = VK_OEM_PERIOD;
+	else if( printable == '>')
+	{
+		*vKey = VK_OEM_PERIOD;
+		*modifier = TF_MOD_SHIFT;
+	}
+	else if( printable == ';')
+		*vKey = VK_OEM_1;
+	else if( printable == ':')
+	{
+		*vKey = VK_OEM_1;
+		*modifier = TF_MOD_SHIFT;
+	}
+	else if( printable == '/')
+		*vKey = VK_OEM_2;
+	else if( printable == '?')
+	{
+		*vKey = VK_OEM_2;
+		*modifier = TF_MOD_SHIFT;
+	}
+	else if( printable == '`')
+		*vKey = VK_OEM_3;
+	else if( printable == '~')
+	{
+		*vKey = VK_OEM_3;
+		*modifier = TF_MOD_SHIFT;
+	}
+	else if( printable == '[')
+		*vKey = VK_OEM_4;
+	else if( printable == '{')
+	{
+		*vKey = VK_OEM_4;
+		*modifier = TF_MOD_SHIFT;
+	}
+	else if( printable == '\\')
+		*vKey = VK_OEM_5;
+	else if( printable == '|')
+	{
+		*vKey = VK_OEM_5;
+		*modifier = TF_MOD_SHIFT;
+	}
+	else if( printable == ']')
+		*vKey = VK_OEM_6;
+	else if( printable == '}')
+	{
+		*vKey = VK_OEM_6;
+		*modifier = TF_MOD_SHIFT;
+	}
+	else if( printable == '\'')
+		*vKey = VK_OEM_7;
+	else if( printable == '"')
+	{
+		*vKey = VK_OEM_7;
+		*modifier = TF_MOD_SHIFT;
+	}
+	else if( printable == '-')
+		*vKey = VK_OEM_MINUS;
+	else if( printable == '_')
+	{
+		*vKey = VK_OEM_MINUS;
+		*modifier = TF_MOD_SHIFT;
+	}
+	else if( printable == '=')
+		*vKey = VK_OEM_PLUS;
+	else if( printable == '+')
+	{
+		*vKey = VK_OEM_PLUS;
+		*modifier = TF_MOD_SHIFT;
+	}
+	else
+	{
+		*vKey = printable;
+	}
 
-    return;
 }
-
-
 
 //+---------------------------------------------------------------------------
 //
@@ -1049,12 +1059,12 @@ void CCompositionProcessorEngine::SetPreservedKey(const CLSID clsid, TF_PRESERVE
 {
     pXPreservedKey->Guid = clsid;
 
-    TF_PRESERVEDKEY *ptfPsvKey1 = pXPreservedKey->TSFPreservedKeyTable.Append();
-    if (!ptfPsvKey1)
+    TF_PRESERVEDKEY *ptfPskey1 = pXPreservedKey->TSFPreservedKeyTable.Append();
+    if (!ptfPskey1)
     {
         return;
     }
-    *ptfPsvKey1 = tfPreservedKey;
+    *ptfPskey1 = tfPreservedKey;
 
 	size_t srgKeystrokeBufLen = 0;
 	if (StringCchLength(pwszDescription, STRSAFE_MAX_CCH, &srgKeystrokeBufLen) != S_OK)
@@ -1122,11 +1132,11 @@ BOOL CCompositionProcessorEngine::CheckShiftKeyOnly(_In_ CTSFTTSArray<TF_PRESERV
 {
     for (UINT i = 0; i < pTSFPreservedKeyTable->Count(); i++)
     {
-        TF_PRESERVEDKEY *ptfPsvKey = pTSFPreservedKeyTable->GetAt(i);
+        TF_PRESERVEDKEY *ptfPskey = pTSFPreservedKeyTable->GetAt(i);
 
-        if (((ptfPsvKey->uModifiers & (_TF_MOD_ON_KEYUP_SHIFT_ONLY & 0xffff0000)) && !Global::IsShiftKeyDownOnly) ||
-            ((ptfPsvKey->uModifiers & (_TF_MOD_ON_KEYUP_CONTROL_ONLY & 0xffff0000)) && !Global::IsControlKeyDownOnly) ||
-            ((ptfPsvKey->uModifiers & (_TF_MOD_ON_KEYUP_ALT_ONLY & 0xffff0000)) && !Global::IsAltKeyDownOnly)         )
+        if (((ptfPskey->uModifiers & (_TF_MOD_ON_KEYUP_SHIFT_ONLY & 0xffff0000)) && !Global::IsShiftKeyDownOnly) ||
+            ((ptfPskey->uModifiers & (_TF_MOD_ON_KEYUP_CONTROL_ONLY & 0xffff0000)) && !Global::IsControlKeyDownOnly) ||
+            ((ptfPskey->uModifiers & (_TF_MOD_ON_KEYUP_ALT_ONLY & 0xffff0000)) && !Global::IsAltKeyDownOnly)         )
         {
             return FALSE;
         }
@@ -1931,7 +1941,7 @@ BOOL CCompositionProcessorEngine::IsKeystrokeRange(UINT uCode, _Out_ _KEYSTROKE_
     {
         if (candidateMode == CANDIDATE_PHRASE)
         {
-            // Candidate phrase could specify modifier
+            // Candidate phrase could specify *modifier
              if ((GetCandidateListPhraseModifier() == 0 && (Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT) )!= 0) || //shift + 123...
                 (GetCandidateListPhraseModifier() != 0 && Global::CheckModifiers(Global::ModifiersValue, GetCandidateListPhraseModifier())))
             {
@@ -1947,7 +1957,7 @@ BOOL CCompositionProcessorEngine::IsKeystrokeRange(UINT uCode, _Out_ _KEYSTROKE_
         }
         else if (candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)
         {
-            // Candidate phrase could specify modifier
+            // Candidate phrase could specify *modifier
             if ((GetCandidateListPhraseModifier() == 0 && (Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT) )!= 0) || //shift + 123...
                 (GetCandidateListPhraseModifier() != 0 && Global::CheckModifiers(Global::ModifiersValue, GetCandidateListPhraseModifier())))
             {

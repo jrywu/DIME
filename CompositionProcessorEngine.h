@@ -83,18 +83,20 @@ public:
 	
 	struct _KEYSTROKE
     {
+		WCHAR Printable;
         UINT VirtualKey;
         UINT Modifiers;
         KEYSTROKE_FUNCTION Function;
 
         _KEYSTROKE()
         {
+			Printable = '\0';
             VirtualKey = 0;
             Modifiers = 0;
             Function = FUNCTION_NONE;
         }
     };
-    _KEYSTROKE _keystrokeTable[50];
+	_KEYSTROKE _keystrokeTable[MAX_RADICAL];
     
     void SetupPreserved(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId);
     void SetupConfiguration();
@@ -104,6 +106,8 @@ public:
 	BOOL SetupHanCovertTable();
 
 	void UpdateDictionaryFile();
+
+	void GetVKeyFromPrintable(WCHAR printable, UINT* vKey, UINT* modifier);
 
 	IME_MODE GetImeModeFromGuidProfile(REFGUID guidLanguageProfile);
 

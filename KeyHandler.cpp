@@ -164,6 +164,8 @@ HRESULT CTSFTTS::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine 
     for (UINT index = 0; index < readingStrings.Count(); index++)
     {
 		hr = _AddComposingAndChar(ec, pContext, readingStrings.GetAt(index));
+
+		if(readingStrings.GetAt(index)) delete [] readingStrings.GetAt(index)->Get();
 		
         if (FAILED(hr))
         {
