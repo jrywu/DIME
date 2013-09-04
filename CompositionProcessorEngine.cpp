@@ -34,6 +34,8 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CTSFTTS *pTextServ
 	_pTextService = pTextService;
     _pTextService->AddRef();
 
+	_imeMode = IME_MODE_NONE;
+
     
 	for (UINT i =0 ; i< IM_SLOTS ; i++)
 	{

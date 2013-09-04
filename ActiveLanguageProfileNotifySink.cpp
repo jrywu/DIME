@@ -43,6 +43,7 @@ STDAPI CTSFTTS::OnActivated(_In_ REFCLSID clsid, _In_ REFGUID guidProfile, _In_ 
     {
 		
 		Global::imeMode = _pCompositionProcessorEngine->GetImeModeFromGuidProfile(guidProfile);
+		_pCompositionProcessorEngine->SetImeMode(guidProfile);
 						
 		if(!_AddTextProcessorEngine())  return S_OK;
 		_LoadConfig(TRUE);

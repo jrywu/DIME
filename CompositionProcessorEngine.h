@@ -110,6 +110,10 @@ public:
 	void GetVKeyFromPrintable(WCHAR printable, UINT* vKey, UINT* modifier);
 
 	IME_MODE GetImeModeFromGuidProfile(REFGUID guidLanguageProfile);
+	void SetImeMode(REFGUID guidLanguageProfile) { _imeMode = GetImeModeFromGuidProfile(guidLanguageProfile);}
+	void SetImeMode(IME_MODE imeMode) {_imeMode = imeMode;}
+	IME_MODE GetImeMode() { return _imeMode;}
+
 	_T_RacialMap* GetRadicalMap(IME_MODE imeMode) {return _pTableDictionaryEngine[imeMode]->GetRadicalMap();  }
 
 private:
@@ -134,6 +138,7 @@ private:
 
 	CTSFTTS* _pTextService;
     
+	IME_MODE _imeMode;
 
     CTableDictionaryEngine* _pTableDictionaryEngine[IM_SLOTS];
 	CTableDictionaryEngine* _pTTSTableDictionaryEngine[IM_SLOTS];

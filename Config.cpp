@@ -137,7 +137,6 @@ HRESULT CTSFTTS::Show(_In_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID i
 	{
 		psp.pszTemplate = MAKEINTRESOURCE(DlgPage[i].id);
 		psp.pfnDlgProc = DlgPage[i].DlgProc;
-		//hpsp[i] = CreatePropertySheetPage(&psp);
 		if(_CreatePropertySheetPage)
 			hpsp[i] = (*_CreatePropertySheetPage)(&psp);
 	}
