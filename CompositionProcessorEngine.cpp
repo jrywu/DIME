@@ -1353,9 +1353,9 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 
 	if(imeMode == IME_MODE_ARRAY) //array-special.cin and array-shortcode.cin in personal romaing profile
 	{
-		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\TSFTTS\\array-special.cin");
+		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\TSFTTS\\Array-special.cin");
 		if(!PathFileExists(pwszCINFileName)) //failed back to pre-install array-special.cin in program files.
-			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\TSFTTS\\array-special.cin");
+			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\TSFTTS\\Array-special.cin");
 		if (_pArraySpecialCodeDictionaryFile == nullptr)
 		{
 			_pArraySpecialCodeDictionaryFile = new (std::nothrow) CFile();

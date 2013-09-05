@@ -164,7 +164,7 @@ private:
     CTSFTTSArray<_KEYSTROKE> _KeystrokeCandidate;
     CTSFTTSArray<_KEYSTROKE> _KeystrokeCandidateWildcard;
     CTSFTTSArray<_KEYSTROKE> _KeystrokeCandidateSymbol;
-    CTSFTTSArray<_KEYSTROKE> _KeystrokeSymbol;
+
 
     // Preserved key data
     class XPreservedKey
