@@ -919,7 +919,7 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
 		*/
 	}
 	if(_pCandidateWnd
-		&& (lpRect->bottom - lpRect->top >1) )// && (lpRect->right - lpRect->left >1)  ) // confirm the extent rect is valid.
+		&& (lpRect->bottom - lpRect->top >1 || lpRect->right - lpRect->left >1)  ) // confirm the extent rect is valid.
 	{
 		_pCandidateWnd->_GetClientRect(&candRect);
 		_pCandidateWnd->_GetWindowExtent(&compRect, &candRect, &candPt);
@@ -929,7 +929,7 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
 		debugPrint(L"move cand to x = %d, y = %d", candPt.x, candPt.y);
 	}
 	if(_pNotifyWnd
-		&& (lpRect->bottom - lpRect->top >1) )// && (lpRect->right - lpRect->left >1)  ) // confirm the extent rect is valid.
+		&& (lpRect->bottom - lpRect->top >1  || lpRect->right - lpRect->left >1)  ) // confirm the extent rect is valid.
 	{
 		
 		if(_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())
