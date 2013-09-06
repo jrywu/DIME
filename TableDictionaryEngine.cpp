@@ -37,7 +37,9 @@ VOID CTableDictionaryEngine::CollectWord(_In_ CStringRange *pKeyCode, _Inout_ CT
 {
     CDictionaryResult* pdret = nullptr;
 	CDictionarySearch dshSearch(_locale, _pDictionaryFile, pKeyCode, _keywordDelimiter);
-	dshSearch.SetSearchSection(_searchSection);
+
+	if(_dictionaryType == TTS_DICTIONARY)
+		dshSearch.SetSearchSection(_searchSection);
 
     while (dshSearch.FindPhrase(&pdret))
     {
@@ -60,7 +62,9 @@ VOID CTableDictionaryEngine::CollectWord(_In_ CStringRange *pKeyCode, _Inout_ CT
 {
     CDictionaryResult* pdret = nullptr;
     CDictionarySearch dshSearch(_locale, _pDictionaryFile, pKeyCode, _keywordDelimiter);
-	dshSearch.SetSearchSection(_searchSection);
+
+	if(_dictionaryType == TTS_DICTIONARY)
+		dshSearch.SetSearchSection(_searchSection);
 
     while (dshSearch.FindPhrase(&pdret))
     {
@@ -90,7 +94,10 @@ VOID CTableDictionaryEngine::CollectWordForWildcard(_In_ CStringRange *pKeyCode,
 {
     CDictionaryResult* pdret = nullptr;
     CDictionarySearch dshSearch(_locale, _pDictionaryFile, pKeyCode, _keywordDelimiter);
-	dshSearch.SetSearchSection(_searchSection);
+	
+	if(_dictionaryType == TTS_DICTIONARY)
+		dshSearch.SetSearchSection(_searchSection);
+
     while (dshSearch.FindPhraseForWildcard(&pdret))
     {
         for (UINT iIndex = 0; iIndex < pdret->_FindPhraseList.Count(); iIndex++)
@@ -119,7 +126,10 @@ VOID CTableDictionaryEngine::CollectWordFromConvertedStringForWildcard(_In_ CStr
 {
     CDictionaryResult* pdret = nullptr;
 	CDictionarySearch dshSearch(_locale, _pDictionaryFile, pString, _keywordDelimiter);
-	dshSearch.SetSearchSection(_searchSection);
+
+	if(_dictionaryType == TTS_DICTIONARY)
+		dshSearch.SetSearchSection(_searchSection);
+
     while (dshSearch.FindConvertedStringForWildcard(&pdret)) // TAIL ALL CHAR MATCH
     {
         for (UINT index = 0; index < pdret->_FindPhraseList.Count(); index++)
@@ -148,7 +158,10 @@ VOID CTableDictionaryEngine::CollectWordFromConvertedString(_In_ CStringRange *p
 {
     CDictionaryResult* pdret = nullptr;
     CDictionarySearch dshSearch(_locale, _pDictionaryFile, pString, _keywordDelimiter);
-	dshSearch.SetSearchSection(_searchSection);
+	
+	if(_dictionaryType == TTS_DICTIONARY)
+		dshSearch.SetSearchSection(_searchSection);
+
     while (dshSearch.FindConvertedString(&pdret)) // TAIL ALL CHAR MATCH
     {
         for (UINT index = 0; index < pdret->_FindPhraseList.Count(); index++)

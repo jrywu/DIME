@@ -114,7 +114,9 @@ public:
 	void SetImeMode(IME_MODE imeMode) {_imeMode = imeMode;}
 	IME_MODE GetImeMode() { return _imeMode;}
 
-	_T_RacialMap* GetRadicalMap(IME_MODE imeMode) {return _pTableDictionaryEngine[imeMode]->GetRadicalMap();  }
+	_T_RacialMap* GetRadicalMap(IME_MODE imeMode) {if(_pTableDictionaryEngine[imeMode] ) 
+														return _pTableDictionaryEngine[imeMode]->GetRadicalMap();  
+													else return nullptr; }
 
 private:
 
@@ -141,14 +143,13 @@ private:
 	IME_MODE _imeMode;
 
     CTableDictionaryEngine* _pTableDictionaryEngine[IM_SLOTS];
-	CTableDictionaryEngine* _pTTSTableDictionaryEngine[IM_SLOTS];
-	CTableDictionaryEngine* _pCINTableDictionaryEngine[IM_SLOTS];
+	CTableDictionaryEngine* _pPhraseTableDictionaryEngine;
 	CTableDictionaryEngine* _pArrayShortCodeTableDictionaryEngine;
 	CTableDictionaryEngine* _pArraySpecialCodeTableDictionaryEngine;
 	CTableDictionaryEngine* _pTCSCTableDictionaryEngine;
 
-	CFile* _pTTSDictionaryFile[IM_SLOTS];
-	CFile* _pCINDictionaryFile[IM_SLOTS];
+	CFile* _pTableDictionaryFile[IM_SLOTS];
+	CFile* _pPhraseDictionaryFile;
 	CFile* _pArrayShortCodeDictionaryFile;
 	CFile* _pArraySpecialCodeDictionaryFile;
 	CFile* _pTCSCTableDictionaryFile;

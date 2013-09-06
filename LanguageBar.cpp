@@ -1066,7 +1066,6 @@ void CTSFTTS::OnKeyboardOpen()
 	debugPrint(L"CTSFTTS::OnKeyboardOpen()\n");
 	_isChinese = TRUE;
 	// switching to Chinese mode
-	_LoadConfig();
 	CStringRange notifyText;
 	if(CConfig::GetShowNotifyDesktop())
 		 _pUIPresenter->ShowNotifyText(&notifyText.Set(L"¤¤¤å", 2), 0, 3000 , NOTIFY_CHN_ENG);	

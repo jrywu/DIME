@@ -81,6 +81,7 @@ BOOL CFile::CreateFile(_In_ PCWSTR pFileName, DWORD desiredAccess,
     {
         return FALSE;
     }
+
 	_wstat(pFileName, & _timeStamp);
     _fileSize = ::GetFileSize(_fileHandle, NULL);
 

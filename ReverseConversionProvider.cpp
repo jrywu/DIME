@@ -29,8 +29,6 @@ HRESULT CTSFTTS::GetReverseConversion(_In_ LANGID langid, _In_   REFGUID guidPro
 	}
 	
 	_pCompositionProcessorEngine->SetupDictionaryFile(imeMode);
-	_pCompositionProcessorEngine->SetupKeystroke(imeMode);
-	_pCompositionProcessorEngine->SetupConfiguration();
 
 	if(_pReverseConversion[imeMode] == nullptr)
 	{

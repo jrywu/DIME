@@ -178,7 +178,7 @@ TryAgain:
 				else if (CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"[Phrase]", 8)) == CSTR_EQUAL)
 				{ // in Phrase block
 					if(parseConfig) Global::hasPhraseSection = TRUE;
-					_searchMode = (!parseConfig && isTextSearch && _searchSection == SEARCH_SECTION_PHRASE)?SEARCH_PHRASE:SEARCH_NONE;
+					_searchMode = (!parseConfig  && _searchSection == SEARCH_SECTION_PHRASE)?SEARCH_PHRASE:SEARCH_NONE;
 				}
 				else if (parseConfig && CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"[Radical]", 9)) == CSTR_EQUAL)
 				{

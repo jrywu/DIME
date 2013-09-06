@@ -51,7 +51,11 @@ STDAPI CTSFTTS::OnActivated(_In_ REFCLSID clsid, _In_ REFGUID guidProfile, _In_ 
 		
 		BOOL activatedKeyboardMode = CConfig::GetActivatedKeyboardMode();
 		ConversionModeCompartmentUpdated(_pThreadMgr, &activatedKeyboardMode );
-		_pUIPresenter->ClearNotify();
+		if(CConfig::GetShowNotifyDesktop() || _IsStoreAppMode() )
+		{	
+			CStringRange notify;
+			_pUIPresenter->ShowNotifyText(&notify.Set(_isChinese?L"中文":L"英文",2), 500, 3000, NOTIFY_CHN_ENG);
+		}
 
 		// SetFocus to focused document manager for probing the composition range
 		ITfDocumentMgr* pDocuMgr;

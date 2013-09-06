@@ -547,7 +547,7 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 				StringCchCopy(targetName, MAX_PATH, L"\\TSFTTS\\Generic.cin");
 			goto LoadFile;
 		case IDC_BUTTON_LOAD_PHRASE:
-			StringCchCopy(targetName, MAX_PATH, L"\\TSFTTS\\phrase.cin");
+			StringCchCopy(targetName, MAX_PATH, L"\\TSFTTS\\Phrase.cin");
 			goto LoadFile;
 		case IDC_BUTTON_LOAD_ARRAY_SC:
 			StringCchCopy(targetName, MAX_PATH, L"\\TSFTTS\\Array-shortcode.cin");
