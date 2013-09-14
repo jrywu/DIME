@@ -21,6 +21,7 @@
 
 BOOL CTSFTTS::_UpdateLanguageBarOnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus)
 {
+	debugPrint(L"_UpdateLanguageBarOnSetFocus()");
     BOOL needDisableButtons = FALSE;
 
     if (!pDocMgrFocus) 
@@ -75,6 +76,7 @@ BOOL CTSFTTS::_UpdateLanguageBarOnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus)
 
 BOOL CTSFTTS::InitLanguageBar(_In_ CLangBarItemButton *pLangBarItemButton, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, REFGUID guidCompartment)
 {
+	debugPrint(L"InitLanguageBar()");
     if (pLangBarItemButton)
     {
         if (pLangBarItemButton->_AddItem(pThreadMgr) == S_OK)
@@ -96,8 +98,11 @@ BOOL CTSFTTS::InitLanguageBar(_In_ CLangBarItemButton *pLangBarItemButton, _In_ 
 
 void CTSFTTS::SetupLanguageBar(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, BOOL isSecureMode)
 {
-	if(pThreadMgr == nullptr) return;
 	debugPrint(L"SetupLanguageBar()");
+
+
+	if(pThreadMgr == nullptr) return;
+	
     DWORD dwEnable = 1;
 	//win8 only to show IME
 	if(Global::isWindows8){
@@ -191,6 +196,8 @@ VOID CTSFTTS::SetLanguageBarStatus(DWORD status, BOOL isSet)
 
 CLangBarItemButton::CLangBarItemButton(REFGUID guidLangBar, LPCWSTR description, LPCWSTR tooltip, DWORD onIconIndex, DWORD offIconIndex, BOOL isSecureMode)
 {
+	debugPrint(L"CLangBarItemButton()");
+
     DWORD bufLen = 0;
 
     DllAddRef();
@@ -776,6 +783,7 @@ HRESULT CLangBarItemButton::_CompartmentCallback(_In_ void *pv, REFGUID guidComp
 
 void CTSFTTS::InitializeTSFTTSCompartment(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId)
 {
+	debugPrint(L"CTSFTTS::CreateLanguageBarButton()");
 	if(pThreadMgr == nullptr) return;
 	// set initial mode
 	if(Global::isWindows8){
@@ -801,6 +809,7 @@ void CTSFTTS::InitializeTSFTTSCompartment(_In_ ITfThreadMgr *pThreadMgr, TfClien
 // static
 HRESULT CTSFTTS::CompartmentCallback(_In_ void *pv, REFGUID guidCompartment)
 {
+	debugPrint(L"CTSFTTS::CompartmentCallback()\n");
     CTSFTTS* fakeThis = (CTSFTTS*)pv;
     if (nullptr == fakeThis)
     {

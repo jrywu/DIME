@@ -67,7 +67,11 @@ BOOL CTSFTTS::_AddTextProcessorEngine(LANGID inLangID, GUID inGuidProfile)
         }
 		else
 		{
-			debugPrint(L"CTSFTTS::_AddTextProcessorEngine() _pCompositionProcessorEngine with the diff. guidProfile exist, recreate one.");
+
+			debugPrint(L"CTSFTTS::_AddTextProcessorEngine() _pCompositionProcessorEngine with the diff. guidProfile exist, recreate one." );
+			_LoadConfig(TRUE);
+			_lastKeyboardMode = CConfig::GetActivatedKeyboardMode();
+
 			if(_pUIPresenter) _pUIPresenter->ClearAll();
 
 			_UninitFunctionProviderSink();  // reset the function provider sink to get updated UI less candidate provider
@@ -75,12 +79,14 @@ BOOL CTSFTTS::_AddTextProcessorEngine(LANGID inLangID, GUID inGuidProfile)
 			
 		}
     }
-	
+
     // Create composition processor engine
     if (_pCompositionProcessorEngine == nullptr)
-    {
-		debugPrint(L"CTSFTTS::_AddTextProcessorEngine() create new CompositionProcessorEngine .");
-        _pCompositionProcessorEngine = new (std::nothrow) CCompositionProcessorEngine(this);
+    {		
+		_pCompositionProcessorEngine = new (std::nothrow) CCompositionProcessorEngine(this);
+
+		debugPrint(L"CTSFTTS::_AddTextProcessorEngine() create new CompositionProcessorEngine . ");
+        
     }
     if (!_pCompositionProcessorEngine)
     {
@@ -204,6 +210,7 @@ CTSFTTS::CTSFTTS()
 	}
 
 	_isChinese = FALSE;
+	_lastKeyboardMode = FALSE;
 	_isFullShape = FALSE;
 
 }
@@ -330,7 +337,7 @@ STDAPI CTSFTTS::QueryInterface(REFIID riid, _Outptr_ void **ppvObj)
 
 STDAPI_(ULONG) CTSFTTS::AddRef()
 {
-	debugPrint(L"CTSFTTS::AddRef(), _refCount = %d", _refCount+1); 
+	//debugPrint(L"CTSFTTS::AddRef(), _refCount = %d", _refCount+1); 
     return ++_refCount;
 }
 
@@ -342,7 +349,7 @@ STDAPI_(ULONG) CTSFTTS::AddRef()
 
 STDAPI_(ULONG) CTSFTTS::Release()
 {
-	debugPrint(L"CTSFTTS::Release(), _refCount = %d", _refCount-1);
+	//debugPrint(L"CTSFTTS::Release(), _refCount = %d", _refCount-1);
     LONG cr = --_refCount;
 
     assert(_refCount >= 0);
@@ -670,7 +677,7 @@ HRESULT CTSFTTS::GetDisplayName(_Out_ BSTR *pbstrDisplayName)
 //----------------------------------------------------------------------------
 HRESULT CTSFTTS::GetLayout(_Out_ TKBLayoutType *ptkblayoutType, _Out_ WORD *pwPreferredLayoutId)
 {
-	debugPrint(L"CTSFTTS::GetLayout()");
+	debugPrint(L"CTSFTTS::GetLayout(), imeMode = %d ", Global::imeMode);
     HRESULT hr = E_INVALIDARG;
     if ((ptkblayoutType != nullptr) && (pwPreferredLayoutId != nullptr))
     {
@@ -690,24 +697,11 @@ HRESULT CTSFTTS::GetLayout(_Out_ TKBLayoutType *ptkblayoutType, _Out_ WORD *pwPr
 			*pwPreferredLayoutId = TKBL_UNDEFINED;
 		}
         hr = S_OK;
+
+	
     }
     return hr;
 }
-
-
-/*/+---------------------------------------------------------------------------
-//
-// ITfFnShowHelp::Show
-//
-//----------------------------------------------------------------------------
-HRESULT CTSFTTS::Show(_In_ HWND hwndParent)
-{  
-	hwndParent;
-	//MessageBox(hwndParent, L"Show help call", L"TSFTTS", NULL);
-        return S_OK;
-}*/
-
-
 
 
 //+---------------------------------------------------------------------------
@@ -875,11 +869,12 @@ BOOL CTSFTTS::SetupLanguageProfile(LANGID langid, REFGUID guidLanguageProfile, _
         goto Exit;
     }
 
-    
+    IME_MODE imeMode = _pCompositionProcessorEngine->GetImeModeFromGuidProfile(_guidProfile);
+
 	InitializeTSFTTSCompartment(pThreadMgr, tfClientId);
     SetupLanguageBar(pThreadMgr, tfClientId, isSecureMode);
 
-	IME_MODE imeMode = _pCompositionProcessorEngine->GetImeModeFromGuidProfile(guidLanguageProfile);
+	
 	_pCompositionProcessorEngine->SetupPreserved(pThreadMgr, tfClientId);	
     _pCompositionProcessorEngine->SetupDictionaryFile(imeMode);
 	_pCompositionProcessorEngine->SetupKeystroke(imeMode);
@@ -938,8 +933,8 @@ void CTSFTTS::_LoadConfig(BOOL isForce)
 		CConfig::SetReloadReverseConversion(FALSE);
 		CConfig::WriteConfig();
 	}
-	if(_pCompositionProcessorEngine == nullptr)
-		_AddTextProcessorEngine();
+	//if(_pCompositionProcessorEngine == nullptr)
+	//30	_AddTextProcessorEngine();
 
 
 

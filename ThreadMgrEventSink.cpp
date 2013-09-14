@@ -50,7 +50,7 @@ STDAPI CTSFTTS::OnUninitDocumentMgr(_In_ ITfDocumentMgr *pDocMgr)
 
 STDAPI CTSFTTS::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMgr *pDocMgrPrevFocus)
 {
-	debugPrint(L"CTSFTTS::OnSetFocus()\n");
+	debugPrint(L"CTSFTTS::OnSetFocus() _isChinese = %d, _lastKeyboardMode = %d\n", _isChinese, _lastKeyboardMode);
     pDocMgrPrevFocus;
 	ITfContext* pContext = nullptr;
 
@@ -59,7 +59,7 @@ STDAPI CTSFTTS::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMg
 	if(!_UpdateLanguageBarOnSetFocus(pDocMgrFocus))
 	{
 		pDocMgrFocus->GetTop(&pContext);	
-		if(pContext && (CConfig::GetShowNotifyDesktop() || _IsStoreAppMode() ))
+		if(pContext && (CConfig::GetShowNotifyDesktop() ))
 		{	
 			CStringRange notify;
 			_pUIPresenter->ShowNotifyText(&notify.Set(_isChinese?L"中文":L"英文",2), 500, 3000, NOTIFY_CHN_ENG);
@@ -102,7 +102,8 @@ STDAPI CTSFTTS::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMg
     {
         ITfDocumentMgr* pCandidateListDocumentMgr = nullptr;
         ITfContext* pTfContext = _pUIPresenter->_GetContextDocument();
-        if ((nullptr != pTfContext) && SUCCEEDED(pTfContext->GetDocumentMgr(&pCandidateListDocumentMgr)))
+        if (pTfContext && 
+			SUCCEEDED(pTfContext->GetDocumentMgr(&pCandidateListDocumentMgr) && pCandidateListDocumentMgr ))
         {
             if (pCandidateListDocumentMgr != pDocMgrFocus)
             {

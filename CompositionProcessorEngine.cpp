@@ -1162,7 +1162,6 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL *pIsE
 		if(Global::isWindows8){
 			isOpen = FALSE;
 			CCompartment CompartmentKeyboardOpen(pThreadMgr, tfClientId, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
-			CCompartment CompartmentIMEMode(pThreadMgr, tfClientId, Global::TSFTTSGuidCompartmentIMEMode);
 			CompartmentKeyboardOpen._GetCompartmentBOOL(isOpen);
 			CompartmentKeyboardOpen._SetCompartmentBOOL(isOpen ? FALSE : TRUE);
 		}
@@ -1330,7 +1329,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 		// we don't provide preload Generic.cin in program files
 	}
 
-	if(PathFileExists(pwszCINFileName))  //create cin CFileMapping object
+	if(PathFileExists(pwszCINFileName))  //create cin CFile object
 	{
 		//create CFile object
 		if (_pTableDictionaryFile[imeMode] == nullptr)

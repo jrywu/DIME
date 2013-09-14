@@ -337,6 +337,7 @@ private:
 
 	BOOL _isChinese;
 	BOOL _isFullShape;
+	BOOL _lastKeyboardMode;
 };
 
 

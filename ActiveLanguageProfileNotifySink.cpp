@@ -36,6 +36,7 @@ STDAPI CTSFTTS::OnActivated(_In_ REFCLSID clsid, _In_ REFGUID guidProfile, _In_ 
 
     if (FALSE == VerifyTSFTTSCLSID(clsid))
     {
+		debugPrint(L"not our CLSID return now");
         return S_OK;
     }
 
@@ -43,15 +44,18 @@ STDAPI CTSFTTS::OnActivated(_In_ REFCLSID clsid, _In_ REFGUID guidProfile, _In_ 
     {
 		
 		Global::imeMode = _pCompositionProcessorEngine->GetImeModeFromGuidProfile(guidProfile);
+		debugPrint(L"activating with imeMode = %d", Global::imeMode);
 		_pCompositionProcessorEngine->SetImeMode(guidProfile);
 						
 		if(!_AddTextProcessorEngine())  return S_OK;
-		_LoadConfig(TRUE);
+		//_LoadConfig(TRUE);
+
 		ShowAllLanguageBarIcons();
 		
-		BOOL activatedKeyboardMode = CConfig::GetActivatedKeyboardMode();
-		ConversionModeCompartmentUpdated(_pThreadMgr, &activatedKeyboardMode );
-		if(CConfig::GetShowNotifyDesktop() || _IsStoreAppMode() )
+		//_lastKeyboardMode = CConfig::GetActivatedKeyboardMode();
+		debugPrint(L"Set keyboard mode to last state = %d", _lastKeyboardMode);
+		ConversionModeCompartmentUpdated(_pThreadMgr, &_lastKeyboardMode );
+		if(CConfig::GetShowNotifyDesktop() )
 		{	
 			CStringRange notify;
 			_pUIPresenter->ShowNotifyText(&notify.Set(_isChinese?L"中文":L"英文",2), 500, 3000, NOTIFY_CHN_ENG);
@@ -66,6 +70,8 @@ STDAPI CTSFTTS::OnActivated(_In_ REFCLSID clsid, _In_ REFGUID guidProfile, _In_ 
     }
     else
     {
+		debugPrint(L"_isChinese = %d", _isChinese);
+		_lastKeyboardMode = _isChinese;
         _DeleteCandidateList(TRUE, nullptr);
 
         HideAllLanguageBarIcons();

@@ -132,7 +132,7 @@ BOOL RegisterProfiles()
     {
         goto Exit;
     }
-	//Phonetic profile registration
+	//Generic profile registration
 	*serviceDescripion=L'\0';
 	LoadString(Global::dllInstanceHandle, IDS_GENERIC_DESCRIPTION, serviceDescripion, 50);
     hr = StringCchLength(serviceDescripion, STRSAFE_MAX_CCH, &lenOfDesc);
