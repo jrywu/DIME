@@ -544,24 +544,26 @@ STDAPI CLangBarItemButton::GetIcon(_Out_ HICON *phIcon)
     GetStatus(&status);
 
 	// If IME is working on the UAC mode, the size of ICON should be 24 x 24.
-    int desiredSize = 16;
+	/* Get desiredSize from GetSystemMetrics to be DPI-aware
+    int desiredSize =  16;
     if (_isSecureMode) // detect UAC mode
     {
-        desiredSize = _isSecureMode ? 24 : 16;
+        desiredSize = _isSecureMode ? 24 : 24;
     }
+	*/
 
     if (isOn && !(status & TF_LBI_STATUS_DISABLED))
     {
         if (Global::dllInstanceHandle)
         {
-            *phIcon = reinterpret_cast<HICON>(LoadImage(Global::dllInstanceHandle, MAKEINTRESOURCE(_onIconIndex), IMAGE_ICON, desiredSize, desiredSize, 0));
+            *phIcon = reinterpret_cast<HICON>(LoadImage(Global::dllInstanceHandle, MAKEINTRESOURCE(_onIconIndex), IMAGE_ICON, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), 0));
         }
     }
     else
     {
         if (Global::dllInstanceHandle)
         {
-            *phIcon = reinterpret_cast<HICON>(LoadImage(Global::dllInstanceHandle, MAKEINTRESOURCE(_offIconIndex), IMAGE_ICON, desiredSize, desiredSize, 0));
+            *phIcon = reinterpret_cast<HICON>(LoadImage(Global::dllInstanceHandle, MAKEINTRESOURCE(_offIconIndex), IMAGE_ICON, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), 0));
         }
     }
 
@@ -1062,9 +1064,10 @@ void CTSFTTS::OnKeyboardClosed()
 	_isChinese = FALSE;
 	if(_IsComposing()) 
 	{
-		_DeleteCandidateList(TRUE,_pContext);
 		_EndComposition(_pContext);
 	}
+	_DeleteCandidateList(TRUE,_pContext);
+
 	CStringRange notifyText;
 	if(CConfig::GetShowNotifyDesktop())
 		_pUIPresenter->ShowNotifyText(&notifyText.Set(L"英文", 2), 0, 3000 , NOTIFY_CHN_ENG);
@@ -1086,9 +1089,10 @@ void CTSFTTS::OnSwitchedToFullShape()
 	_isFullShape = TRUE;
 	if(_IsComposing()) 
 	{
-		_DeleteCandidateList(TRUE,_pContext);
 		_EndComposition(_pContext);
 	}
+	_DeleteCandidateList(FALSE,_pContext);
+
 	CStringRange notifyText;
 	if(CConfig::GetShowNotifyDesktop())
 		_pUIPresenter->ShowNotifyText(&notifyText.Set(L"全形", 2), 0, 3000 , NOTIFY_SINGLEDOUBLEBYTE);
@@ -1100,10 +1104,10 @@ void CTSFTTS::OnSwitchedToHalfShape()
 	_isFullShape = FALSE;
 	if(_IsComposing()) 
 	{
-		_DeleteCandidateList(TRUE,_pContext);
 		_EndComposition(_pContext);
 	}
-	
+	_DeleteCandidateList(TRUE,_pContext);
+
 	CStringRange notifyText;
 	if(CConfig::GetShowNotifyDesktop())
 		 _pUIPresenter->ShowNotifyText(&notifyText.Set(L"半形", 2), 0, 3000 , NOTIFY_SINGLEDOUBLEBYTE);

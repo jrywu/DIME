@@ -271,30 +271,11 @@ HRESULT CTSFTTS::_HandleCompositionFinalize(TfEditCookie ec, _In_ ITfContext *pC
         // Finalize current text store strings
         if (_IsComposing())
         {
-            ULONG fetched = 0;
-            TF_SELECTION tfSelection;
-
-            if (FAILED(pContext->GetSelection(ec, TF_DEFAULT_SELECTION, 1, &tfSelection, &fetched)) || fetched != 1)
-            {
-                return S_FALSE;
-            }
-
-            ITfRange* pRangeComposition = nullptr;
-            if (SUCCEEDED(_pComposition->GetRange(&pRangeComposition)))
-            {
-                if (_IsRangeCovered(ec, tfSelection.range, pRangeComposition))
-                {
-                    _EndComposition(pContext);
-                }
-
-                pRangeComposition->Release();
-            }
-
-            tfSelection.range->Release();
+			_HandleCancel(ec, pContext);
         }
     }
 
-    //_HandleCancel(ec, pContext);
+    
 
     return S_OK;
 }
