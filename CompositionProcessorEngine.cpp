@@ -61,8 +61,8 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CTSFTTS *pTextServ
  
     _hasWildcardIncludedInKeystrokeBuffer = FALSE;
 
-    _isWildcard = FALSE;
-    _isDisableWildcardAtFirst = FALSE;
+    _isWildcard = TRUE;
+    _isDisableWildcardAtFirst = TRUE;
     _isKeystrokeSort = FALSE;
 
 	
@@ -262,6 +262,11 @@ void CCompositionProcessorEngine::GetReadingStrings(_Inout_ CTSFTTSArray<CString
 					{
 						assert(wcslen(pwchRadical) + wcslen(item->second) < MAX_READINGSTRING -1 );
 						StringCchCat(pwchRadical, MAX_READINGSTRING, item->second); 
+					}
+					else
+					{
+						assert(wcslen(pwchRadical) + 1 < MAX_READINGSTRING -1 );
+						StringCchCatN(pwchRadical, MAX_READINGSTRING, (_keystrokeBuffer.Get() + index) , 1);
 					}
 				}
 
