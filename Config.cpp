@@ -529,7 +529,12 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 	switch(message)
 	{
 	case WM_INITDIALOG:
-		
+		if( Global::imeMode!=IME_MODE_ARRAY)
+		{
+			ShowWindow(GetDlgItem(hDlg, IDC_BUTTON_LOAD_ARRAY_SC), SW_HIDE);
+			ShowWindow(GetDlgItem(hDlg, IDC_BUTTON_LOAD_ARRAY_SP), SW_HIDE);
+		}
+	
 		ret = TRUE;
 		break;
 
@@ -583,13 +588,15 @@ LoadFile:
 				{
 					if( _wfopen_s(&fpw, pathToWrite, L"w+, ccs=UTF-16LE") ==0 )
 					{
-						WCHAR line[256], key[256], value[256], escapedKey[256];
+						WCHAR line[256], key[256], value[256], escapedKey[256], escapedValue[256], 
+							null[2], others[256];
 						BOOL doEscape = FALSE;
 						while( fgetws(line, 256, fpr) != NULL)
 						{
-							if(swscanf_s(line, L"%s %s", key, _countof(key), value, _countof(value)) < 2)
+							if(swscanf_s(line, L"%[^ \t\n]%1[ \t\n]%[^\t\n]%s", key, _countof(key), null, _countof(null), value, _countof(value), others, _countof(others) ) != 3)
 							{
-								fwprintf_s(fpw, L"%s", line);
+								if(!doEscape)
+									fwprintf_s(fpw, L"%s", line);
 							}
 							else 
 							{
@@ -631,7 +638,24 @@ LoadFile:
 										}
 									}
 									StringCchCat(escapedKey, _countof(escapedKey), L"\"");
-									fwprintf_s(fpw, L"%s\t%s\n", escapedKey, value);
+									StringCchCopy(escapedValue, _countof(escapedValue), L"\"");
+									for(UINT i = 0; i < wcslen(value); i++)
+									{
+										if(value[i] == '"') //escape " .
+										{
+											StringCchCat(escapedValue, _countof(escapedValue), L"\\\"");
+										}
+										else if (value[i] == '\\') // escaoe \ .
+										{
+											StringCchCat(escapedValue, _countof(escapedValue), L"\\\\");
+										}
+										else
+										{
+											StringCchCatN(escapedValue, _countof(escapedValue),&value[i], 1);
+										}
+									}
+									StringCchCat(escapedValue, _countof(escapedValue), L"\"");
+									fwprintf_s(fpw, L"%s\t%s\n", escapedKey, escapedValue);
 								}
 								else
 									fwprintf_s(fpw, L"%s\t%s\n", key, value);

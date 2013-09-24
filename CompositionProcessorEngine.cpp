@@ -591,7 +591,9 @@ BOOL CCompositionProcessorEngine::IsSymbol()
 {
 	if(_keystrokeBuffer.Get() == nullptr) return FALSE;
 	if(Global::imeMode==IME_MODE_DAYI)
-		return (_keystrokeBuffer.GetLength()<3 && *_keystrokeBuffer.Get()==L'=');	
+		return (_keystrokeBuffer.GetLength()<3 && *_keystrokeBuffer.Get()==L'=' 
+		&& _pTableDictionaryEngine[IME_MODE_DAYI] 
+		&& _pTableDictionaryEngine[IME_MODE_DAYI]->GetDictionaryType() == TTS_DICTIONARY);	
 	else if(Global::imeMode==IME_MODE_ARRAY)
 		return (_keystrokeBuffer.GetLength()<3 && towupper(*_keystrokeBuffer.Get())==L'W');	
 	else
@@ -606,7 +608,9 @@ BOOL CCompositionProcessorEngine::IsSymbol()
 BOOL CCompositionProcessorEngine::IsSymbolChar(WCHAR wch)
 {
 	if(_keystrokeBuffer.Get() == nullptr) return FALSE;
-	if((_keystrokeBuffer.GetLength() == 1) && (*_keystrokeBuffer.Get() == L'=') && Global::imeMode==IME_MODE_DAYI) 
+	if((_keystrokeBuffer.GetLength() == 1) && 
+		(*_keystrokeBuffer.Get() == L'=') && 
+		Global::imeMode==IME_MODE_DAYI) 
 	{
 		for (UINT i = 0; i < wcslen(Global::DayiSymbolCharTable); i++)
 		{
@@ -2058,20 +2062,19 @@ void CCompositionProcessorEngine::UpdateDictionaryFile()
 
 	SetupDictionaryFile(_imeMode);
 	if(pCurrentDictioanryFile != _pTableDictionaryFile[Global::imeMode])
-	{
+	{ // the table is loaded from TTS previously and now new cin is loaded.
 		SetupKeystroke(Global::imeMode);
 		SetupConfiguration();
 	}
 
 	if(_pTableDictionaryFile[Global::imeMode] && _pTableDictionaryEngine[Global::imeMode] &&
-		_pTableDictionaryEngine[Global::imeMode]->GetDictionaryType() == TTS_DICTIONARY &&
+		_pTableDictionaryEngine[Global::imeMode]->GetDictionaryType() == CIN_DICTIONARY &&
 		_pTableDictionaryFile[Global::imeMode]->IsFileUpdated())
 	{
-		if(_pTableDictionaryEngine[Global::imeMode])
-		{   // the table is loaded from .cin and the cin was updated.
-			_pTableDictionaryEngine[Global::imeMode]->ParseConfig(Global::imeMode);
-			SetupKeystroke(Global::imeMode);
-			SetupConfiguration();
-		}
+		// the table is loaded from .cin and the cin was updated.
+		_pTableDictionaryEngine[Global::imeMode]->ParseConfig(Global::imeMode);
+		SetupKeystroke(Global::imeMode);
+		SetupConfiguration();
+		
 	}
 }

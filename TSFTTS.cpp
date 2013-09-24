@@ -85,6 +85,9 @@ BOOL CTSFTTS::_AddTextProcessorEngine(LANGID inLangID, GUID inGuidProfile)
     {		
 		_pCompositionProcessorEngine = new (std::nothrow) CCompositionProcessorEngine(this);
 
+		_LoadConfig(TRUE);
+		_lastKeyboardMode = CConfig::GetActivatedKeyboardMode();
+
 		debugPrint(L"CTSFTTS::_AddTextProcessorEngine() create new CompositionProcessorEngine . ");
         
     }
