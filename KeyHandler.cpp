@@ -277,8 +277,7 @@ HRESULT CTSFTTS::_HandleCompositionFinalize(TfEditCookie ec, _In_ ITfContext *pC
 
     
 
-    return S_OK;
-}
+    return S_OK;}
 
 //+---------------------------------------------------------------------------
 //
