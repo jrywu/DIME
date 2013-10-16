@@ -130,7 +130,7 @@ BOOL CTSFTTS::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pC
 	//
     // Symbol mode start with L'=' for dayi or L'w' for array
     //
-	if (isOpen && pCompositionProcessorEngine->IsSymbolChar(wch))
+	if (isOpen && pCompositionProcessorEngine && pCompositionProcessorEngine->IsSymbolChar(wch))
 	{
 		if (pKeyState)
 		{
@@ -143,7 +143,7 @@ BOOL CTSFTTS::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pC
 	//
     // Address characters direct input mode  '[]-\
     //
-	if (isOpen && _candidateMode == CANDIDATE_NONE && pCompositionProcessorEngine->IsDayiAddressChar(wch))
+	if (isOpen && _candidateMode == CANDIDATE_NONE && pCompositionProcessorEngine && pCompositionProcessorEngine->IsDayiAddressChar(wch))
 	{
 		if (pKeyState)
 		{
@@ -156,7 +156,7 @@ BOOL CTSFTTS::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pC
 	//
 	// check if the normal composition  need the key
 	//
-    if (isOpen)
+    if (isOpen && pCompositionProcessorEngine)
     {
         //
         // The candidate or phrase list handles the keys through ITfKeyEventSink.
@@ -174,7 +174,7 @@ BOOL CTSFTTS::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pC
     //
     // Double/Single byte
     //
-    if (isDoubleSingleByte && pCompositionProcessorEngine->IsDoubleSingleByte(wch))
+    if (isDoubleSingleByte && pCompositionProcessorEngine && pCompositionProcessorEngine->IsDoubleSingleByte(wch))
     {
         if (_candidateMode == CANDIDATE_NONE)
         {
@@ -237,14 +237,14 @@ BOOL CTSFTTS::_IsKeyboardDisabled()
     ITfContext* pContext = nullptr;
     BOOL isDisabled = FALSE;
 
-    if ((_pThreadMgr->GetFocus(&pDocMgrFocus) != S_OK) ||
+    if ((_pThreadMgr && _pThreadMgr->GetFocus(&pDocMgrFocus) != S_OK) ||
         (pDocMgrFocus == nullptr))
     {
         // if there is no focus document manager object, the keyboard 
         // is disabled.
         isDisabled = TRUE;
     }
-    else if ((pDocMgrFocus->GetTop(&pContext) != S_OK) ||
+    else if ((pDocMgrFocus && pDocMgrFocus->GetTop(&pContext) != S_OK) ||
         (pContext == nullptr))
     {
         // if there is no context object, the keyboard is disabled.
@@ -305,7 +305,7 @@ STDAPI CTSFTTS::OnTestKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam
     UINT code = 0;
 
 	
-	if (_pUIPresenter )
+	if (_pUIPresenter)
 	{
 		if(CConfig::GetShowNotifyDesktop() || _IsStoreAppMode() )
 		{
@@ -348,7 +348,7 @@ STDAPI CTSFTTS::OnKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BO
     WCHAR wch = '\0';
     UINT code = 0;
 
-	if (_pUIPresenter )
+	if (_pUIPresenter)
 	{
 		if(CConfig::GetShowNotifyDesktop() || _IsStoreAppMode() )
 		{
@@ -456,7 +456,8 @@ STDAPI CTSFTTS::OnPreservedKey(ITfContext *pContext, REFGUID rguid, BOOL *pIsEat
     CCompositionProcessorEngine *pCompositionProcessorEngine;
     pCompositionProcessorEngine = _pCompositionProcessorEngine;
 
-    pCompositionProcessorEngine->OnPreservedKey(rguid, pIsEaten, _GetThreadMgr(), _GetClientId());
+	if(pCompositionProcessorEngine)
+		pCompositionProcessorEngine->OnPreservedKey(rguid, pIsEaten, _GetThreadMgr(), _GetClientId());
 
     return S_OK;
 }
@@ -474,7 +475,7 @@ BOOL CTSFTTS::_InitKeyEventSink()
     ITfKeystrokeMgr* pKeystrokeMgr = nullptr;
     HRESULT hr = S_OK;
 
-    if (FAILED(_pThreadMgr->QueryInterface(IID_ITfKeystrokeMgr, (void **)&pKeystrokeMgr)))
+    if (FAILED(_pThreadMgr->QueryInterface(IID_ITfKeystrokeMgr, (void **)&pKeystrokeMgr)) || pKeystrokeMgr==nullptr )
     {
 		debugPrint(L"CTSFTTS::_InitKeyEventSink() failed");
         return FALSE;
@@ -499,7 +500,7 @@ void CTSFTTS::_UninitKeyEventSink()
 	debugPrint(L"CTSFTTS::_UninitKeyEventSink()");
     ITfKeystrokeMgr* pKeystrokeMgr = nullptr;
 
-    if (FAILED(_pThreadMgr->QueryInterface(IID_ITfKeystrokeMgr, (void **)&pKeystrokeMgr)))
+    if (FAILED(_pThreadMgr->QueryInterface(IID_ITfKeystrokeMgr, (void **)&pKeystrokeMgr)) || pKeystrokeMgr == nullptr)
     {
 		debugPrint(L"CTSFTTS::_UninitKeyEventSink() failed");
         return;

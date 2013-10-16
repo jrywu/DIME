@@ -20,10 +20,10 @@ BOOL CTSFTTS::_InitFunctionProviderSink()
 	debugPrint(L"CTSFTTS::_InitFunctionProviderSink()");
     ITfSourceSingle* pSourceSingle = nullptr;
     BOOL ret = FALSE;
-    if (SUCCEEDED(_pThreadMgr->QueryInterface(IID_ITfSourceSingle, (void **)&pSourceSingle)))
+    if (SUCCEEDED(_pThreadMgr->QueryInterface(IID_ITfSourceSingle, (void **)&pSourceSingle)) && pSourceSingle)
     {
         IUnknown* punk = nullptr;
-        if (SUCCEEDED(QueryInterface(IID_IUnknown, (void **)&punk)))
+        if (SUCCEEDED(QueryInterface(IID_IUnknown, (void **)&punk)) && punk)
         {
             if (SUCCEEDED(pSourceSingle->AdviseSingleSink(_tfClientId, IID_ITfFunctionProvider, punk)))
             {
@@ -48,7 +48,7 @@ BOOL CTSFTTS::_InitFunctionProviderSink()
 void CTSFTTS::_UninitFunctionProviderSink()
 {
     ITfSourceSingle* pSourceSingle = nullptr;
-    if (SUCCEEDED(_pThreadMgr->QueryInterface(IID_ITfSourceSingle, (void **)&pSourceSingle)))
+    if (SUCCEEDED(_pThreadMgr->QueryInterface(IID_ITfSourceSingle, (void **)&pSourceSingle)) && pSourceSingle )
     {
         pSourceSingle->UnadviseSingleSink(_tfClientId, IID_ITfFunctionProvider);
         pSourceSingle->Release();

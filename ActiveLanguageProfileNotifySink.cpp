@@ -42,7 +42,7 @@ STDAPI CTSFTTS::OnActivated(_In_ REFCLSID clsid, _In_ REFGUID guidProfile, _In_ 
 
     if (isActivated)
     {
-		
+		if(_pCompositionProcessorEngine == nullptr) return S_OK;
 		Global::imeMode = _pCompositionProcessorEngine->GetImeModeFromGuidProfile(guidProfile);
 		debugPrint(L"activating with imeMode = %d", Global::imeMode);
 		_pCompositionProcessorEngine->SetImeMode(guidProfile);
@@ -58,12 +58,13 @@ STDAPI CTSFTTS::OnActivated(_In_ REFCLSID clsid, _In_ REFGUID guidProfile, _In_ 
 		if(CConfig::GetShowNotifyDesktop() )
 		{	
 			CStringRange notify;
-			_pUIPresenter->ShowNotifyText(&notify.Set(_isChinese?L"中文":L"英文",2), 500, 3000, NOTIFY_CHN_ENG);
+			if(_pUIPresenter)
+				_pUIPresenter->ShowNotifyText(&notify.Set(_isChinese?L"中文":L"英文",2), 500, 3000, NOTIFY_CHN_ENG);
 		}
 
 		// SetFocus to focused document manager for probing the composition range
 		ITfDocumentMgr* pDocuMgr;
-		if(SUCCEEDED(_GetThreadMgr()->GetFocus(&pDocuMgr)) && pDocuMgr !=nullptr)
+		if(SUCCEEDED(_GetThreadMgr()->GetFocus(&pDocuMgr)) && pDocuMgr)
 		{
 			OnSetFocus(pDocuMgr, NULL);
 		}
@@ -92,7 +93,7 @@ BOOL CTSFTTS::_InitActiveLanguageProfileNotifySink()
     ITfSource* pSource = nullptr;
     BOOL ret = FALSE;
 
-    if (_pThreadMgr->QueryInterface(IID_ITfSource, (void **)&pSource) != S_OK)
+    if (_pThreadMgr && _pThreadMgr->QueryInterface(IID_ITfSource, (void **)&pSource) != S_OK)
     {
         return ret;
     }
@@ -106,7 +107,8 @@ BOOL CTSFTTS::_InitActiveLanguageProfileNotifySink()
     ret = TRUE;
 
 Exit:
-    pSource->Release();
+	if(pSource)
+		pSource->Release();
     return ret;
 }
 
@@ -126,7 +128,7 @@ void CTSFTTS::_UninitActiveLanguageProfileNotifySink()
         return; // never Advised
     }
 
-    if (_pThreadMgr->QueryInterface(IID_ITfSource, (void **)&pSource) == S_OK)
+    if (_pThreadMgr->QueryInterface(IID_ITfSource, (void **)&pSource) == S_OK && pSource)
     {
         pSource->UnadviseSink(_activeLanguageProfileNotifySinkCookie);
         pSource->Release();

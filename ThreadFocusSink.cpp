@@ -24,7 +24,7 @@ STDAPI CTSFTTS::OnSetThreadFocus()
         ITfDocumentMgr* pCandidateListDocumentMgr = nullptr;
         ITfContext* pTfContext = _pUIPresenter->_GetContextDocument();
 
-        if ((nullptr != pTfContext) && SUCCEEDED(pTfContext->GetDocumentMgr(&pCandidateListDocumentMgr)))
+        if ( pTfContext && SUCCEEDED(pTfContext->GetDocumentMgr(&pCandidateListDocumentMgr)) && pCandidateListDocumentMgr)
         {
             if (pCandidateListDocumentMgr == _pDocMgrLastFocused)
             {
@@ -52,7 +52,7 @@ STDAPI CTSFTTS::OnKillThreadFocus()
         ITfDocumentMgr* pCandidateListDocumentMgr = nullptr;
         ITfContext* pTfContext = _pUIPresenter->_GetContextDocument();
 
-        if ((nullptr != pTfContext) && SUCCEEDED(pTfContext->GetDocumentMgr(&pCandidateListDocumentMgr)))
+        if (pTfContext && SUCCEEDED(pTfContext->GetDocumentMgr(&pCandidateListDocumentMgr)) && pCandidateListDocumentMgr)
         {
             if (_pDocMgrLastFocused)
             {
@@ -61,9 +61,7 @@ STDAPI CTSFTTS::OnKillThreadFocus()
             }
             _pDocMgrLastFocused = pCandidateListDocumentMgr;
             if (_pDocMgrLastFocused)
-            {
                 _pDocMgrLastFocused->AddRef();
-            }
         }
         _pUIPresenter->OnKillThreadFocus();
     }
@@ -74,7 +72,7 @@ BOOL CTSFTTS::_InitThreadFocusSink()
 {
     ITfSource* pSource = nullptr;
 
-    if (FAILED(_pThreadMgr->QueryInterface(IID_ITfSource, (void **)&pSource)))
+    if (FAILED(_pThreadMgr->QueryInterface(IID_ITfSource, (void **)&pSource)) || pSource == nullptr )
     {
         return FALSE;
     }
@@ -94,7 +92,7 @@ void CTSFTTS::_UninitThreadFocusSink()
 {
     ITfSource* pSource = nullptr;
 
-    if (FAILED(_pThreadMgr->QueryInterface(IID_ITfSource, (void **)&pSource)))
+    if (FAILED(_pThreadMgr->QueryInterface(IID_ITfSource, (void **)&pSource)) || pSource == nullptr)
     {
         return;
     }

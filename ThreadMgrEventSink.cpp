@@ -56,10 +56,10 @@ STDAPI CTSFTTS::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMg
 
 	_InitTextEditSink(pDocMgrFocus);
 	
-	if(!_UpdateLanguageBarOnSetFocus(pDocMgrFocus))
+	if(pDocMgrFocus && !_UpdateLanguageBarOnSetFocus(pDocMgrFocus))
 	{
 		pDocMgrFocus->GetTop(&pContext);	
-		if(pContext && (CConfig::GetShowNotifyDesktop() ))
+		if(_pUIPresenter && pContext && (CConfig::GetShowNotifyDesktop() ))
 		{	
 			CStringRange notify;
 			_pUIPresenter->ShowNotifyText(&notify.Set(_isChinese?L"中文":L"英文",2), 500, 3000, NOTIFY_CHN_ENG);
@@ -177,7 +177,7 @@ BOOL CTSFTTS::_InitThreadMgrEventSink()
     ITfSource* pSource = nullptr;
     BOOL ret = FALSE;
 
-    if (FAILED(_pThreadMgr->QueryInterface(IID_ITfSource, (void **)&pSource)))
+    if (FAILED(_pThreadMgr->QueryInterface(IID_ITfSource, (void **)&pSource)) || pSource==nullptr)
     {
         return ret;
     }
@@ -212,7 +212,7 @@ void CTSFTTS::_UninitThreadMgrEventSink()
         return; 
     }
 
-    if (SUCCEEDED(_pThreadMgr->QueryInterface(IID_ITfSource, (void **)&pSource)))
+    if (SUCCEEDED(_pThreadMgr->QueryInterface(IID_ITfSource, (void **)&pSource)) && pSource)
     {
         pSource->UnadviseSink(_threadMgrEventSinkCookie);
         pSource->Release();

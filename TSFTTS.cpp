@@ -872,17 +872,20 @@ BOOL CTSFTTS::SetupLanguageProfile(LANGID langid, REFGUID guidLanguageProfile, _
         goto Exit;
     }
 
-    IME_MODE imeMode = _pCompositionProcessorEngine->GetImeModeFromGuidProfile(_guidProfile);
+	if(_pCompositionProcessorEngine)
+	{
+		IME_MODE imeMode = _pCompositionProcessorEngine->GetImeModeFromGuidProfile(_guidProfile);
 
-	InitializeTSFTTSCompartment(pThreadMgr, tfClientId);
-    SetupLanguageBar(pThreadMgr, tfClientId, isSecureMode);
+		InitializeTSFTTSCompartment(pThreadMgr, tfClientId);
+		SetupLanguageBar(pThreadMgr, tfClientId, isSecureMode);
 
-	
-	_pCompositionProcessorEngine->SetupPreserved(pThreadMgr, tfClientId);	
-    _pCompositionProcessorEngine->SetupDictionaryFile(imeMode);
-	_pCompositionProcessorEngine->SetupKeystroke(imeMode);
-    _pCompositionProcessorEngine->SetupConfiguration();
-    
+
+		_pCompositionProcessorEngine->SetupPreserved(pThreadMgr, tfClientId);	
+		_pCompositionProcessorEngine->SetupDictionaryFile(imeMode);
+		_pCompositionProcessorEngine->SetupKeystroke(imeMode);
+		_pCompositionProcessorEngine->SetupConfiguration();
+	}
+
     
 Exit:
 	debugPrint(L"CTSFTTS::SetupLanguageProfile()finished \n");
@@ -913,10 +916,10 @@ void CTSFTTS::_LoadConfig(BOOL isForce)
 		{
 			ITfReverseConversionMgr * pITfReverseConversionMgr;
 			if(SUCCEEDED(CoCreateInstance(CConfig::GetReverseConverstionCLSID(), nullptr, CLSCTX_INPROC_SERVER, 
-				IID_ITfReverseConversionMgr, (void**)&pITfReverseConversionMgr)))
+				IID_ITfReverseConversionMgr, (void**)&pITfReverseConversionMgr)) && pITfReverseConversionMgr)
 			{
 				if(SUCCEEDED( pITfReverseConversionMgr->GetReverseConversion(_langid, 
-					CConfig::GetReverseConversionGUIDProfile(), NULL, &_pITfReverseConversion[Global::imeMode])))
+					CConfig::GetReverseConversionGUIDProfile(), NULL, &_pITfReverseConversion[Global::imeMode])) && _pITfReverseConversion[Global::imeMode])
 				{   //test if the interface can really do reverse conversion
 					BSTR bstr;
 					bstr = SysAllocStringLen(L"¤@" , (UINT) 1);
@@ -936,9 +939,6 @@ void CTSFTTS::_LoadConfig(BOOL isForce)
 		CConfig::SetReloadReverseConversion(FALSE);
 		CConfig::WriteConfig();
 	}
-	//if(_pCompositionProcessorEngine == nullptr)
-	//30	_AddTextProcessorEngine();
-
 
 
 }

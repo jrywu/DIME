@@ -12,6 +12,7 @@
 HRESULT CTSFTTS::GetReverseConversion(_In_ LANGID langid, _In_   REFGUID guidProfile, _In_ DWORD dwflag, _Out_ ITfReverseConversion **ppReverseConversion)
 {
 	debugPrint(L"CTSFTTS(ITfReverseConversionMgr)::GetReverseConversion() langid = %d, giudProfile = %d, dwflag = %d", langid, guidProfile, dwflag);
+	if(_pCompositionProcessorEngine) return E_FAIL;
 	IME_MODE imeMode = _pCompositionProcessorEngine->GetImeModeFromGuidProfile(guidProfile);
 
 	if(imeMode == IME_MODE_NONE)
@@ -95,7 +96,7 @@ HRESULT CReverseConversion::DoReverseConversion(_In_ LPCWSTR lpstrToConvert, _Ou
 	if(_pCompositionProcessorEngine == nullptr) return E_FAIL;
 	CTSFTTSArray<CCandidateListItem> candidateList;
 	hr = _pCompositionProcessorEngine->GetReverConversionResults(_imeMode, lpstrToConvert, &candidateList);
-	if(SUCCEEDED(hr))
+	if(SUCCEEDED(hr) && _pReverseConversionList)
 		_pReverseConversionList->SetResultList(&candidateList);
 	return hr;
 }

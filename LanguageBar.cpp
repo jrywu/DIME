@@ -867,7 +867,7 @@ void CTSFTTS::HideAllLanguageBarIcons()
 void CTSFTTS::ConversionModeCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr, BOOL *setKeyboardOpenClose)
 {
 	debugPrint(L"CTSFTTS::ConversionModeCompartmentUpdated()\n");
-    if (!_pCompartmentConversion)
+    if (_pCompartmentConversion == nullptr)
     {
         return;
     }

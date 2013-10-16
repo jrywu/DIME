@@ -69,7 +69,7 @@ public:
     BOOL IsKeystrokeSort() { return _isKeystrokeSort; }
 
     // Dictionary engine
-    BOOL IsDictionaryAvailable() { return (_pTableDictionaryEngine ? TRUE : FALSE); }
+    BOOL IsDictionaryAvailable() { return (_pTableDictionaryEngine[Global::imeMode] ? TRUE : FALSE); }
 
   
 

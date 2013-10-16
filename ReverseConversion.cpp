@@ -31,7 +31,8 @@ public:
 STDAPI CReverseConversionEditSession::DoEditSession(TfEditCookie ec)
 {
 	debugPrint(L"CReverseConversionEditSession::DoEditSession()\n");
-	_pTextService->_AsyncReverseConversionNotification(ec, _pContext);
+	if(_pTextService && _pContext) 
+		_pTextService->_AsyncReverseConversionNotification(ec, _pContext);
 	
     return S_OK;
 }
@@ -41,7 +42,7 @@ void CTSFTTS::_AsyncReverseConversion(_In_ ITfContext* pContext)
 	debugPrint(L"CTSFTTS::_AsyncReverseConversion() pContext = %x\n", pContext);
 	CReverseConversionEditSession* pReverseConversionEditSession = new (std::nothrow) CReverseConversionEditSession(this, pContext);
 
-	if (nullptr != pReverseConversionEditSession)
+	if ( pReverseConversionEditSession)
 	{
 		
 		HRESULT hrES = S_OK, hr = S_OK;
@@ -61,7 +62,7 @@ HRESULT CTSFTTS::_AsyncReverseConversionNotification(_In_ TfEditCookie ec,_In_ I
 	BSTR bstr;
 	bstr = SysAllocStringLen(_commitString.Get() , (UINT) _commitString.GetLength());
 	ITfReverseConversionList* reverseConversionList;
-	if(SUCCEEDED(_pITfReverseConversion[Global::imeMode]->DoReverseConversion(bstr, &reverseConversionList)))
+	if(SUCCEEDED(_pITfReverseConversion[Global::imeMode]->DoReverseConversion(bstr, &reverseConversionList)) && reverseConversionList)
 	{
 		UINT hasResult;
 		if(reverseConversionList && SUCCEEDED(reverseConversionList->GetLength(&hasResult)) && hasResult)

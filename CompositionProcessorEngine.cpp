@@ -694,6 +694,10 @@ BOOL CCompositionProcessorEngine::IsArrayShortCode()
 //----------------------------------------------------------------------------
 DWORD_PTR CCompositionProcessorEngine::CollectWordFromArraySpeicalCode(_Outptr_result_maybenull_ const WCHAR **ppwchSpecialCodeResultString)
 {
+	if (!IsDictionaryAvailable())
+    {
+        return 0;
+    }
 	*ppwchSpecialCodeResultString = nullptr;
 
 	if(Global::imeMode!= IME_MODE_ARRAY || _keystrokeBuffer.GetLength() !=2 ) return 0;
@@ -728,6 +732,10 @@ DWORD_PTR CCompositionProcessorEngine::CollectWordFromArraySpeicalCode(_Outptr_r
 //----------------------------------------------------------------------------
 BOOL CCompositionProcessorEngine::GetArraySpeicalCodeFromConvertedText(_In_ CStringRange *inword, _Out_ CStringRange *csrReslt)
 {
+	if (!IsDictionaryAvailable())
+    {
+        return FALSE;
+    }
 
 	if(Global::imeMode!= IME_MODE_ARRAY || _pArraySpecialCodeTableDictionaryEngine == nullptr || inword == nullptr ) return FALSE; 
 
@@ -834,7 +842,10 @@ BOOL CCompositionProcessorEngine::IsDoubleSingleByte(WCHAR wch)
 
 void CCompositionProcessorEngine::SetupKeystroke(IME_MODE imeMode)
 {
-
+	if (!IsDictionaryAvailable())
+    {
+        return;
+    }
 	if( _pTableDictionaryEngine[imeMode] == nullptr ||_pTableDictionaryEngine[imeMode]->GetRadicalMap() == nullptr ||
 		_pTableDictionaryEngine[imeMode]->GetRadicalMap()->size() == 0 || _pTableDictionaryEngine[imeMode]->GetRadicalMap()->size() > MAX_RADICAL) return;
 
@@ -1064,6 +1075,7 @@ void CCompositionProcessorEngine::SetupPreserved(_In_ ITfThreadMgr *pThreadMgr, 
 
 void CCompositionProcessorEngine::SetPreservedKey(const CLSID clsid, TF_PRESERVEDKEY & tfPreservedKey, _In_z_ LPCWSTR pwszDescription, _Out_ XPreservedKey *pXPreservedKey)
 {
+	if(pXPreservedKey == nullptr) return;
     pXPreservedKey->Guid = clsid;
 
     TF_PRESERVEDKEY *ptfPskey1 = pXPreservedKey->TSFPreservedKeyTable.Append();
@@ -1098,7 +1110,7 @@ void CCompositionProcessorEngine::SetPreservedKey(const CLSID clsid, TF_PRESERVE
 
 BOOL CCompositionProcessorEngine::InitPreservedKey(_In_ XPreservedKey *pXPreservedKey, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId)
 {
-	if(pThreadMgr == nullptr) return FALSE;
+	if(pThreadMgr == nullptr || pXPreservedKey == nullptr) return FALSE;
     ITfKeystrokeMgr *pKeystrokeMgr = nullptr;
 
     if (IsEqualGUID(pXPreservedKey->Guid, GUID_NULL))
@@ -1106,7 +1118,7 @@ BOOL CCompositionProcessorEngine::InitPreservedKey(_In_ XPreservedKey *pXPreserv
         return FALSE;
     }
 
-    if (pThreadMgr->QueryInterface(IID_ITfKeystrokeMgr, (void **)&pKeystrokeMgr) != S_OK)
+    if (pThreadMgr->QueryInterface(IID_ITfKeystrokeMgr, (void **)&pKeystrokeMgr) != S_OK  || pKeystrokeMgr ==nullptr )
     {
         return FALSE;
     }

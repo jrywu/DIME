@@ -52,7 +52,7 @@ STDAPI CTSFTTS::OnEndEdit(__RPC__in_opt ITfContext *pContext, TfEditCookie ecRea
             }
 
             ITfRange* pRangeComposition = nullptr;
-            if (SUCCEEDED(_pComposition->GetRange(&pRangeComposition)))
+            if (SUCCEEDED(_pComposition->GetRange(&pRangeComposition)) && pRangeComposition)
             {
                 if (!_IsRangeCovered(ecReadOnly, tfSelection.range, pRangeComposition))
                 {
@@ -87,7 +87,7 @@ BOOL CTSFTTS::_InitTextEditSink(_In_ ITfDocumentMgr *pDocMgr)
     if (_textEditSinkCookie != TF_INVALID_COOKIE)
     {
 		debugPrint(L"CTSFTTS::_InitTextEditSink() release old textEditSink first.");
-        if (SUCCEEDED(_pTextEditSinkContext->QueryInterface(IID_ITfSource, (void **)&pSource)))
+        if (_pTextEditSinkContext && SUCCEEDED(_pTextEditSinkContext->QueryInterface(IID_ITfSource, (void **)&pSource)) && pSource)
         {
             pSource->UnadviseSink(_textEditSinkCookie);
             pSource->Release();
@@ -114,7 +114,7 @@ BOOL CTSFTTS::_InitTextEditSink(_In_ ITfDocumentMgr *pDocMgr)
     }
 
     ret = FALSE;
-    if (SUCCEEDED(_pTextEditSinkContext->QueryInterface(IID_ITfSource, (void **)&pSource)))
+    if (SUCCEEDED(_pTextEditSinkContext->QueryInterface(IID_ITfSource, (void **)&pSource)) && pSource)
     {
 		debugPrint(L"CTSFTTS::_InitTextEditSink() advis new textEditSink.");
         if (SUCCEEDED(pSource->AdviseSink(IID_ITfTextEditSink, (ITfTextEditSink *)this, &_textEditSinkCookie)))
@@ -144,9 +144,9 @@ void CTSFTTS::_UnInitTextEditSink()
     ITfSource* pSource = nullptr;
 
 
-	 if (_textEditSinkCookie != TF_INVALID_COOKIE)
+	 if (_textEditSinkCookie != TF_INVALID_COOKIE && _pTextEditSinkContext)
     {
-        if (SUCCEEDED(_pTextEditSinkContext->QueryInterface(IID_ITfSource, (void **)&pSource)))
+        if (SUCCEEDED(_pTextEditSinkContext->QueryInterface(IID_ITfSource, (void **)&pSource)) && pSource)
         {
             pSource->UnadviseSink(_textEditSinkCookie);
             pSource->Release();
