@@ -475,7 +475,7 @@ BOOL CTSFTTS::_InitKeyEventSink()
     ITfKeystrokeMgr* pKeystrokeMgr = nullptr;
     HRESULT hr = S_OK;
 
-    if (FAILED(_pThreadMgr->QueryInterface(IID_ITfKeystrokeMgr, (void **)&pKeystrokeMgr)) || pKeystrokeMgr==nullptr )
+    if ( (_pThreadMgr && FAILED(_pThreadMgr->QueryInterface(IID_ITfKeystrokeMgr, (void **)&pKeystrokeMgr)) )|| pKeystrokeMgr==nullptr )
     {
 		debugPrint(L"CTSFTTS::_InitKeyEventSink() failed");
         return FALSE;
@@ -500,7 +500,7 @@ void CTSFTTS::_UninitKeyEventSink()
 	debugPrint(L"CTSFTTS::_UninitKeyEventSink()");
     ITfKeystrokeMgr* pKeystrokeMgr = nullptr;
 
-    if (FAILED(_pThreadMgr->QueryInterface(IID_ITfKeystrokeMgr, (void **)&pKeystrokeMgr)) || pKeystrokeMgr == nullptr)
+    if ( ( _pThreadMgr && FAILED(_pThreadMgr->QueryInterface(IID_ITfKeystrokeMgr, (void **)&pKeystrokeMgr))) || pKeystrokeMgr == nullptr)
     {
 		debugPrint(L"CTSFTTS::_UninitKeyEventSink() failed");
         return;

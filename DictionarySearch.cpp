@@ -438,10 +438,15 @@ ReadValue:
 						else
 							_searchMode = SEARCH_NONE;
 					}
-
-				}
-				else if(CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"end", 3)) == CSTR_EQUAL)
+					else if(CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"end", 3)) == CSTR_EQUAL)
 						_searchMode = SEARCH_NONE;
+				}
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"%selkey", 7)) == CSTR_EQUAL)
+				{
+				}
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"%endkey", 7)) == CSTR_EQUAL)
+				{
+				}
 
 				controlKeyType = NOT_CONTROLKEY;
 				goto FindNextLine;

@@ -241,63 +241,75 @@ CKeyStateComposing::CKeyStateComposing(_In_ CTSFTTS *pTextService) : CKeyStateCa
 
 HRESULT CKeyStateComposing::HandleKeyInput(KeyHandlerEditSessionDTO dto)
 {
+	if(_pTextService == nullptr) return E_FAIL;
     return _pTextService->_HandleCompositionInput(dto.ec, dto.pContext, dto.wch);
 }
 
 HRESULT CKeyStateComposing::HandleKeyFinalizeTextStoreAndInput(KeyHandlerEditSessionDTO dto)
 {
-    _pTextService->_HandleCompositionFinalize(dto.ec, dto.pContext, FALSE);
+    if(_pTextService == nullptr) return E_FAIL;
+	_pTextService->_HandleCompositionFinalize(dto.ec, dto.pContext, FALSE);
     return _pTextService->_HandleCompositionInput(dto.ec, dto.pContext, dto.wch);
 }
 
 HRESULT CKeyStateComposing::HandleKeyFinalizeTextStore(KeyHandlerEditSessionDTO dto)
 {
+	if(_pTextService == nullptr) return E_FAIL;
     return _pTextService->_HandleCompositionFinalize(dto.ec, dto.pContext, FALSE);
 }
 
 HRESULT CKeyStateComposing::HandleKeyFinalizeCandidatelistAndInput(KeyHandlerEditSessionDTO dto)
 {
+	if(_pTextService == nullptr) return E_FAIL;
     _pTextService->_HandleCompositionFinalize(dto.ec, dto.pContext, TRUE);
     return _pTextService->_HandleCompositionInput(dto.ec, dto.pContext, dto.wch);
 }
 
 HRESULT CKeyStateComposing::HandleKeyFinalizeCandidatelist(KeyHandlerEditSessionDTO dto)
 {
+	if(_pTextService == nullptr) return E_FAIL;
     return _pTextService->_HandleCompositionFinalize(dto.ec, dto.pContext, TRUE);
 }
 
 HRESULT CKeyStateComposing::HandleKeyConvert(KeyHandlerEditSessionDTO dto)
 {
+	if(_pTextService == nullptr) return E_FAIL;
     return _pTextService->_HandleCompositionConvert(dto.ec, dto.pContext, FALSE);
 }
 
 HRESULT CKeyStateComposing::HandleKeyConvertWildCard(KeyHandlerEditSessionDTO dto)
 {
+	if(_pTextService == nullptr) return E_FAIL;
     return _pTextService->_HandleCompositionConvert(dto.ec, dto.pContext, TRUE);
 }
 
 HRESULT CKeyStateComposing::HandleKeyCancel(KeyHandlerEditSessionDTO dto)
 {
+	if(_pTextService == nullptr) return E_FAIL;
     return _pTextService->_HandleCancel(dto.ec, dto.pContext);
 }
 
 HRESULT CKeyStateComposing::HandleKeyBackspace(KeyHandlerEditSessionDTO dto)
 {
+	if(_pTextService == nullptr) return E_FAIL;
     return _pTextService->_HandleCompositionBackspace(dto.ec, dto.pContext);
 }
 
 HRESULT CKeyStateComposing::HandleKeyArrow(KeyHandlerEditSessionDTO dto)
 {
+	if(_pTextService == nullptr) return E_FAIL;
     return _pTextService->_HandleCompositionArrowKey(dto.ec, dto.pContext, dto.arrowKey);
 }
 
 HRESULT CKeyStateComposing::HandleKeyDoubleSingleByte(KeyHandlerEditSessionDTO dto)
 {
+	if(_pTextService == nullptr) return E_FAIL;
     return _pTextService->_HandleCompositionDoubleSingleByte(dto.ec, dto.pContext, dto.wch);
 }
 
 HRESULT CKeyStateComposing::HandleKeyAddressChar(KeyHandlerEditSessionDTO dto)
 {
+	if(_pTextService == nullptr) return E_FAIL;
 	return _pTextService->_HandleCompositionAddressChar(dto.ec, dto.pContext, dto.wch);
 }
 
@@ -312,12 +324,14 @@ CKeyStateCandidate::CKeyStateCandidate(_In_ CTSFTTS *pTextService) : CKeyStateCa
 // _HandleCandidateInput
 HRESULT CKeyStateCandidate::HandleKeyFinalizeCandidatelist(KeyHandlerEditSessionDTO dto)
 {
+	if(_pTextService == nullptr) return E_FAIL;
     return _pTextService->_HandleCandidateFinalize(dto.ec, dto.pContext);
 }
 
 // HandleKeyFinalizeCandidatelistAndInput
 HRESULT CKeyStateCandidate::HandleKeyFinalizeCandidatelistAndInput(KeyHandlerEditSessionDTO dto)
 {
+	if(_pTextService == nullptr) return E_FAIL;
     _pTextService->_HandleCandidateFinalize(dto.ec, dto.pContext);
     return _pTextService->_HandleCompositionInput(dto.ec, dto.pContext, dto.wch);
 }
@@ -325,24 +339,28 @@ HRESULT CKeyStateCandidate::HandleKeyFinalizeCandidatelistAndInput(KeyHandlerEdi
 //_HandleCandidateConvert
 HRESULT CKeyStateCandidate::HandleKeyConvert(KeyHandlerEditSessionDTO dto)
 {
+	if(_pTextService == nullptr) return E_FAIL;
     return _pTextService->_HandleCandidateConvert(dto.ec, dto.pContext);
 }
 
 //_HandleCancel
 HRESULT CKeyStateCandidate::HandleKeyCancel(KeyHandlerEditSessionDTO dto)    
 {
+	if(_pTextService == nullptr) return E_FAIL;
     return _pTextService->_HandleCancel(dto.ec, dto.pContext);
 }
 
 //_HandleCandidateArrowKey
 HRESULT CKeyStateCandidate::HandleKeyArrow(KeyHandlerEditSessionDTO dto)
 {
+	if(_pTextService == nullptr) return E_FAIL;
     return _pTextService->_HandleCandidateArrowKey(dto.ec, dto.pContext, dto.arrowKey);
 }
 
 //_HandleCandidateSelectByNumber
 HRESULT CKeyStateCandidate::HandleKeySelectByNumber(KeyHandlerEditSessionDTO dto)
 {
+	if(_pTextService == nullptr) return E_FAIL;
     return _pTextService->_HandleCandidateSelectByNumber(dto.ec, dto.pContext, dto.code);
 }
 
@@ -357,23 +375,27 @@ CKeyStatePhrase::CKeyStatePhrase(_In_ CTSFTTS *pTextService) : CKeyStateCategory
 //HandleKeyFinalizeCandidatelist
 HRESULT CKeyStatePhrase::HandleKeyFinalizeCandidatelist(KeyHandlerEditSessionDTO dto)
 {
+	if(_pTextService == nullptr) return E_FAIL;
     return _pTextService->_HandlePhraseFinalize(dto.ec, dto.pContext);
 }
 
 //HandleKeyCancel
 HRESULT CKeyStatePhrase::HandleKeyCancel(KeyHandlerEditSessionDTO dto)
 {
+	if(_pTextService == nullptr) return E_FAIL;
     return _pTextService->_HandleCancel(dto.ec, dto.pContext);
 }
 
 //HandleKeyArrow
 HRESULT CKeyStatePhrase::HandleKeyArrow(KeyHandlerEditSessionDTO dto)
 {
+	if(_pTextService == nullptr) return E_FAIL;
     return _pTextService->_HandlePhraseArrowKey(dto.ec, dto.pContext, dto.arrowKey);
 }
 
 //HandleKeySelectByNumber
 HRESULT CKeyStatePhrase::HandleKeySelectByNumber(KeyHandlerEditSessionDTO dto)
 {
+	if(_pTextService == nullptr) return E_FAIL;
     return _pTextService->_HandlePhraseSelectByNumber(dto.ec, dto.pContext, dto.code);
 }

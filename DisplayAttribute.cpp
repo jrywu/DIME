@@ -21,13 +21,13 @@ void CTSFTTS::_ClearCompositionDisplayAttributes(TfEditCookie ec, _In_ ITfContex
     ITfProperty* pDisplayAttributeProperty = nullptr;
 
     // get the compositon range.
-    if (FAILED(_pComposition->GetRange(&pRangeComposition)))
+    if (_pComposition == nullptr || FAILED(_pComposition->GetRange(&pRangeComposition)))
     {
         return;
     }
 
     // get our the display attribute property
-    if (SUCCEEDED(pContext->GetProperty(GUID_PROP_ATTRIBUTE, &pDisplayAttributeProperty)))
+    if (SUCCEEDED(pContext->GetProperty(GUID_PROP_ATTRIBUTE, &pDisplayAttributeProperty)) && pDisplayAttributeProperty)
     {
         // clear the value over the range
         pDisplayAttributeProperty->Clear(ec, pRangeComposition);
@@ -35,7 +35,8 @@ void CTSFTTS::_ClearCompositionDisplayAttributes(TfEditCookie ec, _In_ ITfContex
         pDisplayAttributeProperty->Release();
     }
 
-    pRangeComposition->Release();
+	if(pRangeComposition)
+		pRangeComposition->Release();
 }
 
 //+---------------------------------------------------------------------------
@@ -51,8 +52,9 @@ BOOL CTSFTTS::_SetCompositionDisplayAttributes(TfEditCookie ec, _In_ ITfContext 
     HRESULT hr = S_OK;
 
     // we need a range and the context it lives in
-    hr = _pComposition->GetRange(&pRangeComposition);
-    if (FAILED(hr))
+    if(_pComposition) 
+		hr = _pComposition->GetRange(&pRangeComposition);
+    if (FAILED(hr) || pRangeComposition==nullptr )
     {
         return FALSE;
     }
@@ -60,7 +62,7 @@ BOOL CTSFTTS::_SetCompositionDisplayAttributes(TfEditCookie ec, _In_ ITfContext 
     hr = E_FAIL;
 
     // get our the display attribute property
-    if (SUCCEEDED(pContext->GetProperty(GUID_PROP_ATTRIBUTE, &pDisplayAttributeProperty)))
+    if (SUCCEEDED(pContext->GetProperty(GUID_PROP_ATTRIBUTE, &pDisplayAttributeProperty)) && pDisplayAttributeProperty)
     {
         VARIANT var;
         // set the value over the range
@@ -73,7 +75,8 @@ BOOL CTSFTTS::_SetCompositionDisplayAttributes(TfEditCookie ec, _In_ ITfContext 
         pDisplayAttributeProperty->Release();
     }
 
-    pRangeComposition->Release();
+	if(pRangeComposition)
+		pRangeComposition->Release();
     return (hr == S_OK);
 }
 
@@ -90,7 +93,7 @@ BOOL CTSFTTS::_InitDisplayAttributeGuidAtom()
     ITfCategoryMgr* pCategoryMgr = nullptr;
     HRESULT hr = CoCreateInstance(CLSID_TF_CategoryMgr, nullptr, CLSCTX_INPROC_SERVER, IID_ITfCategoryMgr, (void**)&pCategoryMgr);
 
-    if (FAILED(hr))
+    if (FAILED(hr) || pCategoryMgr == nullptr)
     {
         return FALSE;
     }
@@ -109,7 +112,8 @@ BOOL CTSFTTS::_InitDisplayAttributeGuidAtom()
     }
 
 Exit:
-    pCategoryMgr->Release();
+	if(pCategoryMgr)
+		pCategoryMgr->Release();
 
     return (hr == S_OK);
 }

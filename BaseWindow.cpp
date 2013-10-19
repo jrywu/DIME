@@ -335,7 +335,10 @@ BOOL CBaseWindow::_GetClientRect(_Inout_ LPRECT lpRect)
 
 HRESULT CBaseWindow::_GetWindowExtent(_In_ const RECT *prcTextExtent, _In_opt_ RECT *prcCandidateExtent, _Inout_ POINT *pptCandidate)
 {
-    RECT rcWorkArea = {0, 0, 0, 0};
+    
+	if(prcTextExtent == nullptr) return E_INVALIDARG;
+
+	RECT rcWorkArea = {0, 0, 0, 0};
 
     // Get work area
     GetWorkAreaFromPoint(*(LPPOINT)&prcTextExtent->left, &rcWorkArea);
@@ -357,6 +360,7 @@ HRESULT CBaseWindow::_GetWindowExtent(_In_ const RECT *prcTextExtent, _In_opt_ R
 
 void CBaseWindow::CalcFitPointAroundTextExtent(_In_ const RECT *prcTextExtent, _In_ const RECT *prcWorkArea, _In_ const RECT *prcWindow, _Out_ POINT *ppt)
 {
+	if(prcTextExtent == nullptr || prcWindow == nullptr || ppt == nullptr) return;
     RECT rcTargetWindow[2];
     DWORD dwFlags[2];
 
@@ -439,6 +443,7 @@ void CBaseWindow::CalcFitPointAroundTextExtent(_In_ const RECT *prcTextExtent, _
 
 DWORD CBaseWindow::RectInRect(_In_ const RECT *prcLimit, _In_ const RECT *prcTarget)
 {
+	if(prcLimit == nullptr || prcTarget == nullptr) return 0;
     DWORD dwFlags = 0;
     // Check if prcTarget is entirely inside prcLimit
     if (prcLimit->left <= prcTarget->left && prcTarget->right  <= prcLimit->right &&
@@ -568,13 +573,13 @@ void CBaseWindow::_SetTimerObject(_In_opt_ CBaseWindow *pUIObj, UINT uElapse, _I
 /* static */
 LRESULT CALLBACK CBaseWindow::_WindowProc(_In_ HWND wndHandle, UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam)
 {
-    if (uMsg == WM_CREATE)
+    if (uMsg == WM_CREATE && lParam)
     {
         _SetThis(wndHandle, ((CREATESTRUCT*)lParam)->lpCreateParams);
     }
 
     CBaseWindow* pv = _GetThis(wndHandle);
-    if (!pv)
+    if (pv == nullptr)
     {
         return DefWindowProc(wndHandle, uMsg, wParam, lParam);
     }
@@ -584,13 +589,13 @@ LRESULT CALLBACK CBaseWindow::_WindowProc(_In_ HWND wndHandle, UINT uMsg, _In_ W
         switch (wParam)
         {
         case DEFAULT_TIMER_ID:
-            if (pv->_GetTimerObject() != nullptr)
+            if (pv->_GetTimerObject())
             {
                 pv->_GetTimerObject()->_OnTimer();
             }
             break;
 		default:
-			if (pv->_GetTimerObject() != nullptr)
+			if (pv->_GetTimerObject())
             {
 				pv->_GetTimerObject()->_OnTimerID((UINT_PTR) wParam);
             }
@@ -641,7 +646,7 @@ void CBaseWindow::GetWorkAreaFromPoint(_In_ const POINT& ptPoint, _Out_ LPRECT l
 BOOL CBaseWindow::_IsTimer()
 {
     CBaseWindow* pobj = _GetTopmostUIWnd();
-    if (pobj != nullptr)
+    if (pobj)
     {
         return (pobj->_pTimerUIObj != nullptr);
     }
@@ -651,7 +656,7 @@ BOOL CBaseWindow::_IsTimer()
 BOOL CBaseWindow::_IsCapture()
 {
     CBaseWindow* pobj = _GetTopmostUIWnd();
-    if (pobj != nullptr)
+    if (pobj)
     {
         return (pobj->_pUIObjCapture != nullptr);
     }
@@ -662,7 +667,7 @@ CBaseWindow* CBaseWindow::_GetTopmostUIWnd()
 {
     CBaseWindow* pobj = this;
 
-    while (pobj->_pParentWnd != nullptr)
+    while (pobj->_pParentWnd)
     {
         pobj = pobj->_pParentWnd;
     }

@@ -129,16 +129,18 @@ STDMETHODIMP CTipCandidateList::GetCandidate(ULONG nIndex, _Outptr_result_mayben
         {
             if (nIndex == indexCur)
             {
-                BSTR bstr;
+                BSTR bstr=L"";
                 CTipCandidateString* pTipCandidateStrCur = (CTipCandidateString*)(*ppCandStrCur);
-                pTipCandidateStrCur->GetString(&bstr);
+                if(pTipCandidateStrCur) 
+					pTipCandidateStrCur->GetString(&bstr);
 
                 CTipCandidateString::CreateInstance(IID_ITfCandidateString, (void**)ppCandStr);
 
                 if (nullptr != (*ppCandStr))
                 {
                     CTipCandidateString* pTipCandidateStr = (CTipCandidateString*)(*ppCandStr);
-                    pTipCandidateStr->SetString((LPCWSTR)bstr, SysStringLen(bstr));
+                    if(pTipCandidateStr)
+						pTipCandidateStr->SetString((LPCWSTR)bstr, SysStringLen(bstr));
                 }
 
                 SysFreeString(bstr);

@@ -46,7 +46,7 @@ BOOL CTSFTTS::_UpdateLanguageBarOnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus)
                 needDisableButtons = TRUE;
             }
 
-            if (!pContext) 
+            if (pContext == nullptr) 
             {
                 // context is not associated
                 needDisableButtons = TRUE;
@@ -473,8 +473,11 @@ STDAPI CLangBarItemButton::OnClick(TfLBIClick click, POINT pt, _In_ const RECT *
 	
     BOOL isOn = FALSE;
 
-    _pCompartment->_GetCompartmentBOOL(isOn);
-    _pCompartment->_SetCompartmentBOOL(isOn ? FALSE : TRUE);
+	if(_pCompartment)
+	{
+		_pCompartment->_GetCompartmentBOOL(isOn);
+		_pCompartment->_SetCompartmentBOOL(isOn ? FALSE : TRUE);
+	}
 	
     return S_OK;
 }
@@ -528,11 +531,11 @@ STDAPI CLangBarItemButton::GetIcon(_Out_ HICON *phIcon)
 {
     BOOL isOn = FALSE;
 
-    if (!_pCompartment)
+    if (_pCompartment == nullptr)
     {
         return E_FAIL;
     }
-    if (!phIcon)
+    if (phIcon == nullptr)
     {
         return E_FAIL;
     }
@@ -543,15 +546,7 @@ STDAPI CLangBarItemButton::GetIcon(_Out_ HICON *phIcon)
     DWORD status = 0;
     GetStatus(&status);
 
-	// If IME is working on the UAC mode, the size of ICON should be 24 x 24.
-	/* Get desiredSize from GetSystemMetrics to be DPI-aware
-    int desiredSize =  16;
-    if (_isSecureMode) // detect UAC mode
-    {
-        desiredSize = _isSecureMode ? 24 : 24;
-    }
-	*/
-
+	
     if (isOn && !(status & TF_LBI_STATUS_DISABLED))
     {
         if (Global::dllInstanceHandle)
@@ -656,13 +651,13 @@ HRESULT CLangBarItemButton::_AddItem(_In_ ITfThreadMgr *pThreadMgr)
     HRESULT hr = S_OK;
     ITfLangBarItemMgr* pLangBarItemMgr = nullptr;
 
-    if (_isAddedToLanguageBar)
+    if (_isAddedToLanguageBar || pThreadMgr == nullptr)
     {
         return S_OK;
     }
 
     hr = pThreadMgr->QueryInterface(IID_ITfLangBarItemMgr, (void **)&pLangBarItemMgr);
-    if (SUCCEEDED(hr))
+    if (SUCCEEDED(hr) && pLangBarItemMgr)
     {
         hr = pLangBarItemMgr->AddItem(this);
         if (SUCCEEDED(hr))
@@ -686,13 +681,13 @@ HRESULT CLangBarItemButton::_RemoveItem(_In_ ITfThreadMgr *pThreadMgr)
     HRESULT hr = S_OK;
     ITfLangBarItemMgr* pLangBarItemMgr = nullptr;
 
-    if (!_isAddedToLanguageBar)
+    if (!_isAddedToLanguageBar || pThreadMgr == nullptr)
     {
         return S_OK;
     }
 
     hr = pThreadMgr->QueryInterface(IID_ITfLangBarItemMgr, (void **)&pLangBarItemMgr);
-    if (SUCCEEDED(hr))
+    if (SUCCEEDED(hr) && pLangBarItemMgr)
     {
         hr = pLangBarItemMgr->RemoveItem(this);
         if (SUCCEEDED(hr))
@@ -769,6 +764,9 @@ HRESULT CLangBarItemButton::_CompartmentCallback(_In_ void *pv, REFGUID guidComp
 {
     CLangBarItemButton* fakeThis = (CLangBarItemButton*)pv;
 
+	if(fakeThis == nullptr) 
+		return E_INVALIDARG;
+
     GUID guid = GUID_NULL;
     fakeThis->_pCompartment->_GetGUID(&guid);
 
@@ -820,7 +818,7 @@ HRESULT CTSFTTS::CompartmentCallback(_In_ void *pv, REFGUID guidCompartment)
 
     ITfThreadMgr* pThreadMgr = nullptr;
     HRESULT hr = CoCreateInstance(CLSID_TF_ThreadMgr, nullptr, CLSCTX_INPROC_SERVER, IID_ITfThreadMgr, (void**)&pThreadMgr);
-    if (FAILED(hr))
+    if (FAILED(hr) || pThreadMgr == nullptr)
     {
         return E_FAIL;
     }
@@ -946,7 +944,7 @@ void CTSFTTS::ConversionModeCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr, BO
 void CTSFTTS::PrivateCompartmentsUpdated(_In_ ITfThreadMgr *pThreadMgr)
 {
 	debugPrint(L"CTSFTTS::PrivateCompartmentsUpdated()");
-    if (!_pCompartmentConversion)
+    if (_pCompartmentConversion == nullptr)
     {
         return;
     }
@@ -991,7 +989,7 @@ void CTSFTTS::PrivateCompartmentsUpdated(_In_ ITfThreadMgr *pThreadMgr)
 void CTSFTTS::KeyboardOpenCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr, _In_ REFGUID guidCompartment)
 {
 	debugPrint(L"CTSFTTS::KeyboardOpenCompartmentUpdated()\n");
-    if (!_pCompartmentConversion)
+    if (_pCompartmentConversion == nullptr)
     {
         return;
     }
@@ -1069,7 +1067,7 @@ void CTSFTTS::OnKeyboardClosed()
 	_DeleteCandidateList(TRUE,_pContext);
 
 	CStringRange notifyText;
-	if(CConfig::GetShowNotifyDesktop())
+	if(CConfig::GetShowNotifyDesktop() && _pUIPresenter)
 		_pUIPresenter->ShowNotifyText(&notifyText.Set(L"英文", 2), 0, 3000 , NOTIFY_CHN_ENG);
 }
 
@@ -1079,7 +1077,7 @@ void CTSFTTS::OnKeyboardOpen()
 	_isChinese = TRUE;
 	// switching to Chinese mode
 	CStringRange notifyText;
-	if(CConfig::GetShowNotifyDesktop())
+	if(CConfig::GetShowNotifyDesktop() && _pUIPresenter)
 		 _pUIPresenter->ShowNotifyText(&notifyText.Set(L"中文", 2), 0, 3000 , NOTIFY_CHN_ENG);	
 }
 
@@ -1094,7 +1092,7 @@ void CTSFTTS::OnSwitchedToFullShape()
 	_DeleteCandidateList(FALSE,_pContext);
 
 	CStringRange notifyText;
-	if(CConfig::GetShowNotifyDesktop())
+	if(CConfig::GetShowNotifyDesktop() && _pUIPresenter)
 		_pUIPresenter->ShowNotifyText(&notifyText.Set(L"全形", 2), 0, 3000 , NOTIFY_SINGLEDOUBLEBYTE);
 }
 
@@ -1109,6 +1107,6 @@ void CTSFTTS::OnSwitchedToHalfShape()
 	_DeleteCandidateList(TRUE,_pContext);
 
 	CStringRange notifyText;
-	if(CConfig::GetShowNotifyDesktop())
+	if(CConfig::GetShowNotifyDesktop() && _pUIPresenter)
 		 _pUIPresenter->ShowNotifyText(&notifyText.Set(L"半形", 2), 0, 3000 , NOTIFY_SINGLEDOUBLEBYTE);
 }

@@ -22,7 +22,7 @@ CEditSessionBase::CEditSessionBase(_In_ CTSFTTS *pTextService, _In_ ITfContext *
     if(_pContext) _pContext->AddRef();
 
     _pTextService = pTextService;
-    _pTextService->AddRef();
+    if(pTextService) _pTextService->AddRef();
 }
 
 //+---------------------------------------------------------------------------

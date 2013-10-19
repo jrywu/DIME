@@ -72,7 +72,7 @@ BOOL CTSFTTS::_InitThreadFocusSink()
 {
     ITfSource* pSource = nullptr;
 
-    if (FAILED(_pThreadMgr->QueryInterface(IID_ITfSource, (void **)&pSource)) || pSource == nullptr )
+    if ( (_pThreadMgr && FAILED(_pThreadMgr->QueryInterface(IID_ITfSource, (void **)&pSource))) || pSource == nullptr )
     {
         return FALSE;
     }
@@ -92,7 +92,7 @@ void CTSFTTS::_UninitThreadFocusSink()
 {
     ITfSource* pSource = nullptr;
 
-    if (FAILED(_pThreadMgr->QueryInterface(IID_ITfSource, (void **)&pSource)) || pSource == nullptr)
+    if ( (_pThreadMgr && FAILED(_pThreadMgr->QueryInterface(IID_ITfSource, (void **)&pSource))) || pSource == nullptr)
     {
         return;
     }

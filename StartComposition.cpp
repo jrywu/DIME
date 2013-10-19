@@ -56,7 +56,8 @@ STDAPI CStartCompositionEditSession::DoEditSession(TfEditCookie ec)
         goto Exit;
     }
 
-    if (SUCCEEDED(pContextComposition->StartComposition(ec, pRangeInsert, _pTextService, &pComposition)) && (nullptr != pComposition))
+    if (_pTextService && _pContext &&
+		SUCCEEDED(pContextComposition->StartComposition(ec, pRangeInsert, _pTextService, &pComposition)) && pComposition)
     {
         _pTextService->_SetComposition(pComposition);
 
@@ -71,17 +72,17 @@ STDAPI CStartCompositionEditSession::DoEditSession(TfEditCookie ec)
     }
 
 Exit:
-    if (nullptr != pContextComposition)
+    if (pContextComposition)
     {
         pContextComposition->Release();
     }
 
-    if (nullptr != pRangeInsert)
+    if (pRangeInsert)
     {
         pRangeInsert->Release();
     }
 
-    if (nullptr != pInsertAtSelection)
+    if (pInsertAtSelection)
     {
         pInsertAtSelection->Release();
     }
@@ -107,7 +108,7 @@ void CTSFTTS::_StartComposition(_In_ ITfContext *pContext)
 	_LoadConfig();// update config upon start composition
     CStartCompositionEditSession* pStartCompositionEditSession = new (std::nothrow) CStartCompositionEditSession(this, pContext);
 
-    if (nullptr != pStartCompositionEditSession)
+    if (pContext && pStartCompositionEditSession)
     {
         HRESULT hr = S_OK;
         pContext->RequestEditSession(_tfClientId, pStartCompositionEditSession, TF_ES_SYNC | TF_ES_READWRITE, &hr);
@@ -127,8 +128,9 @@ void CTSFTTS::_StartComposition(_In_ ITfContext *pContext)
 
 void CTSFTTS::_SaveCompositionContext(_In_ ITfContext *pContext)
 {
-	assert(_pContext == nullptr);
-
-    pContext->AddRef();
-    _pContext = pContext;
+	if(_pContext)
+	{
+		pContext->AddRef();
+		_pContext = pContext;
+	}
 } 

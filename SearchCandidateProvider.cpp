@@ -183,11 +183,14 @@ STDMETHODIMP CSearchCandidateProvider::GetSearchCandidates(BSTR bstrQuery, BSTR 
         {
             ITfCandidateString* pCandStr = nullptr;
             CTipCandidateString::CreateInstance(IID_ITfCandidateString, (void**)&pCandStr);
-
-            ((CTipCandidateString*)pCandStr)->SetIndex(iCand);
-            ((CTipCandidateString*)pCandStr)->SetString(candidateList.GetAt(iCand)->_ItemString.Get(), candidateList.GetAt(iCand)->_ItemString.GetLength());
-
-            ((CTipCandidateList*)(*pplist))->SetCandidate(&pCandStr);
+			if(pCandStr)
+			{
+				((CTipCandidateString*)pCandStr)->SetIndex(iCand);
+				((CTipCandidateString*)pCandStr)->SetString(candidateList.GetAt(iCand)->_ItemString.Get(), candidateList.GetAt(iCand)->_ItemString.GetLength());
+			}
+			if(*pplist)
+				((CTipCandidateList*)(*pplist))->SetCandidate(&pCandStr);
+			
         }
     }
     hr = S_OK;

@@ -32,7 +32,8 @@ public:
     // ITfEditSession
     STDMETHODIMP DoEditSession(TfEditCookie ec)
     {
-        _pTextService->_TerminateComposition(ec, _pContext, TRUE);
+		if(_pTextService)
+			_pTextService->_TerminateComposition(ec, _pContext, TRUE);
         return S_OK;
     }
 
@@ -51,9 +52,9 @@ public:
 void CTSFTTS::_TerminateComposition(TfEditCookie ec, _In_ ITfContext *pContext, BOOL isCalledFromDeactivate)
 {
 	debugPrint(L"CTSFTTS::_TerminateComposition()\n");
-	//isCalledFromDeactivate;
 
-    if (_pComposition != nullptr)
+
+    if (_pComposition)
     {
 		if(isCalledFromDeactivate)
 			_RemoveDummyCompositionForComposing(ec, _pComposition);

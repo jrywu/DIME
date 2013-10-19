@@ -26,9 +26,11 @@ CUIPresenter::CUIPresenter(_In_ CTSFTTS *pTextService, CCompositionProcessorEngi
 {
 	debugPrint(L"CUIPresenter::CUIPresenter() constructor");
     _pTextService = pTextService;
-    _pTextService->AddRef();
+    if(_pTextService)
+		_pTextService->AddRef();
 
-	_pIndexRange = pCompositionProcessorEngine->GetCandidateListIndexRange();
+	if(pCompositionProcessorEngine)
+		_pIndexRange = pCompositionProcessorEngine->GetCandidateListIndexRange();
 
     _parentWndHandle = nullptr;
     _pCandidateWnd = nullptr;
@@ -216,9 +218,6 @@ HRESULT CUIPresenter::ToHideUIWindows()
 	if (_pCandidateWnd)	_pCandidateWnd->_Show(FALSE);	
 	if(_pNotifyWnd)
 	{
-		//if( _pNotifyWnd->GetNotifyType() == NOTIFY_OTHERS)
-		//_pNotifyWnd->_Show(FALSE);
-		//else 
 		ClearNotify();
 	}
 
@@ -236,7 +235,8 @@ HRESULT CUIPresenter::ToHideUIWindows()
 
 STDAPI CUIPresenter::IsShown(BOOL *pIsShow)
 {
-    *pIsShow = _pCandidateWnd->_IsWindowVisible();
+	if(_pCandidateWnd)
+		*pIsShow = _pCandidateWnd->_IsWindowVisible();
     return S_OK;
 }
 
@@ -315,7 +315,7 @@ STDAPI CUIPresenter::GetSelection(UINT *pSelectedCandidateIndex)
 
 STDAPI CUIPresenter::GetString(UINT uIndex, BSTR *pbstr)
 {
-    if (!_pCandidateWnd || (uIndex > _pCandidateWnd->_GetCount()))
+    if (_pCandidateWnd == nullptr || (uIndex > _pCandidateWnd->_GetCount()))
     {
         return E_FAIL;
     }
@@ -339,7 +339,7 @@ STDAPI CUIPresenter::GetString(UINT uIndex, BSTR *pbstr)
 STDAPI CUIPresenter::GetPageIndex(UINT *pIndex, UINT uSize, UINT *puPageCnt)
 {
 	debugPrint(L"CUIPresenter::GetPageIndex()");
-    if (!_pCandidateWnd)
+    if (_pCandidateWnd == nullptr)
     {
         if (pIndex)
         {
@@ -361,7 +361,7 @@ STDAPI CUIPresenter::GetPageIndex(UINT *pIndex, UINT uSize, UINT *puPageCnt)
 STDAPI CUIPresenter::SetPageIndex(UINT *pIndex, UINT uPageCnt)
 {
 	debugPrint(L"CUIPresenter::SetPageIndex(), index = %d, page count =%d", *pIndex, uPageCnt  );
-    if (!_pCandidateWnd)
+    if (_pCandidateWnd == nullptr)
     {
         return E_FAIL;
     }
@@ -377,7 +377,7 @@ STDAPI CUIPresenter::SetPageIndex(UINT *pIndex, UINT uPageCnt)
 STDAPI CUIPresenter::GetCurrentPage(UINT *puPage)
 {
 	debugPrint(L"CUIPresenter::GetCurrentPage(), puPage =%d", _pCandidateWnd->_GetCurrentPage(puPage) );
-    if (!_pCandidateWnd)
+    if (_pCandidateWnd == nullptr)
     {
         *puPage = 0;
         return S_OK;
@@ -572,10 +572,11 @@ void CUIPresenter::_SetCandidateText(_In_ CTSFTTSArray<CCandidateListItem> *pCan
 
     SetPageIndexWithScrollInfo(pCandidateList);
 
-	_pCandidateWnd->_SetCandStringLength(candWidth);
+	if(_pCandidateWnd)
+		_pCandidateWnd->_SetCandStringLength(candWidth);
 
 	Show(_isShowMode);
-    if (_isShowMode)
+    if (_isShowMode && _pCandidateWnd)
     {
         _pCandidateWnd->_InvalidateRect();
     }
@@ -592,14 +593,16 @@ void CUIPresenter::_SetCandidateText(_In_ CTSFTTSArray<CCandidateListItem> *pCan
 
 void CUIPresenter::AddCandidateToUI(_In_ CTSFTTSArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode)
 {
+	if(pCandidateList == nullptr || _pCandidateWnd == nullptr) return;
     for (UINT index = 0; index < pCandidateList->Count(); index++)
     {
-        _pCandidateWnd->_AddString(pCandidateList->GetAt(index), isAddFindKeyCode);
+		_pCandidateWnd->_AddString(pCandidateList->GetAt(index), isAddFindKeyCode);
     }
 }
 
 void CUIPresenter::SetPageIndexWithScrollInfo(_In_ CTSFTTSArray<CCandidateListItem> *pCandidateList)
 {
+	if(_pIndexRange == nullptr || pCandidateList == nullptr || _pCandidateWnd==nullptr ) return;
     UINT candCntInPage = _pIndexRange->Count();
     UINT bufferSize = pCandidateList->Count() / candCntInPage + 1;
     UINT* puPageIndex = new (std::nothrow) UINT[ bufferSize ];
@@ -650,24 +653,28 @@ void CUIPresenter::_SetNotifyTextColor(COLORREF crColor, COLORREF crBkColor)
 
 void CUIPresenter::_SetCandidateNumberColor(COLORREF crColor, COLORREF crBkColor)
 {
-    _pCandidateWnd->_SetNumberColor(crColor, crBkColor);
+	if(_pCandidateWnd)
+		_pCandidateWnd->_SetNumberColor(crColor, crBkColor);
 }
 
 
 void CUIPresenter::_SetCandidateTextColor(COLORREF crColor, COLORREF crBkColor)
 {
-    _pCandidateWnd->_SetTextColor(crColor, crBkColor);
+	if(_pCandidateWnd)
+		_pCandidateWnd->_SetTextColor(crColor, crBkColor);
 }
 
 void CUIPresenter::_SetCandidateSelectedTextColor(COLORREF crColor, COLORREF crBkColor)
 {
-    _pCandidateWnd->_SetSelectedTextColor(crColor, crBkColor);
+	if(_pCandidateWnd)
+		_pCandidateWnd->_SetSelectedTextColor(crColor, crBkColor);
 }
 
 
 void CUIPresenter::_SetCandidateFillColor(COLORREF fiColor)
 {
-    _pCandidateWnd->_SetFillColor(fiColor);
+	if(_pCandidateWnd)
+		_pCandidateWnd->_SetFillColor(fiColor);
 }
 
 //+---------------------------------------------------------------------------
@@ -678,7 +685,10 @@ void CUIPresenter::_SetCandidateFillColor(COLORREF fiColor)
 
 DWORD_PTR CUIPresenter::_GetSelectedCandidateString(_Outptr_result_maybenull_ const WCHAR **ppwchCandidateString)
 {
-    return _pCandidateWnd->_GetSelectedCandidateString(ppwchCandidateString);
+	if(_pCandidateWnd)
+		return _pCandidateWnd->_GetSelectedCandidateString(ppwchCandidateString);
+	else
+		return 0;
 }
 
 //+---------------------------------------------------------------------------
@@ -689,6 +699,7 @@ DWORD_PTR CUIPresenter::_GetSelectedCandidateString(_Outptr_result_maybenull_ co
 
 BOOL CUIPresenter::_MoveCandidateSelection(_In_ int offSet)
 {
+	if(_pCandidateWnd == nullptr) return FALSE;
     BOOL ret = _pCandidateWnd->_MoveSelection(offSet, TRUE);
     if (ret)
     {
@@ -714,6 +725,7 @@ BOOL CUIPresenter::_MoveCandidateSelection(_In_ int offSet)
 BOOL CUIPresenter::_SetCandidateSelection(_In_ int selectedIndex, _In_opt_ BOOL isNotify)
 {
 	debugPrint(L"CUIPresenter::_SetCandidateSelection(), selectedIndex = %d, iSnotify = %d", selectedIndex, isNotify);
+	if(_pCandidateWnd == nullptr) return FALSE;
     BOOL ret = _pCandidateWnd->_SetSelection(selectedIndex, isNotify);
     if (ret)
     {
@@ -740,6 +752,7 @@ BOOL CUIPresenter::_SetCandidateSelection(_In_ int selectedIndex, _In_opt_ BOOL 
 BOOL CUIPresenter::_MoveCandidatePage(_In_ int offSet)
 {
 	debugPrint(L"CUIPresenter::_MoveCandidatePage(), offSet = %d", offSet);
+	if(_pCandidateWnd == nullptr) return FALSE;
     BOOL ret = _pCandidateWnd->_MovePage(offSet, TRUE);
     if (ret)
     {
@@ -775,7 +788,7 @@ void CUIPresenter::_MoveUIWindowsToTextExt()
 		ITfContext *pContext =  _GetContextDocument();
 		ITfContextView * pView = nullptr;
 		HWND parentWndHandle;
-		if (pContext && SUCCEEDED(pContext->GetActiveView(&pView)))
+		if (pContext && pView && SUCCEEDED(pContext->GetActiveView(&pView)))
 		{
 			POINT pt;
 			pView->GetWnd(&parentWndHandle);
@@ -893,7 +906,7 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
 	ITfContext *pContext =  _GetContextDocument();
 	ITfContextView * pView = nullptr;
 	HWND parentWndHandle;
-	if (pContext && SUCCEEDED(pContext->GetActiveView(&pView)))
+	if (pContext && pView && SUCCEEDED(pContext->GetActiveView(&pView)))
 	{
 		POINT pt;
 		pView->GetWnd(&parentWndHandle);
@@ -918,7 +931,7 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
 		}
 		*/
 	}
-	if(_pCandidateWnd
+	if(_pCandidateWnd && lpRect
 		&& (lpRect->bottom - lpRect->top >1 || lpRect->right - lpRect->left >1)  ) // confirm the extent rect is valid.
 	{
 		_pCandidateWnd->_GetClientRect(&candRect);
@@ -928,7 +941,7 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
 		_candLocation.y = candPt.y;
 		debugPrint(L"move cand to x = %d, y = %d", candPt.x, candPt.y);
 	}
-	if(_pNotifyWnd
+	if(_pNotifyWnd && lpRect
 		&& (lpRect->bottom - lpRect->top >1  || lpRect->right - lpRect->left >1)  ) // confirm the extent rect is valid.
 	{
 		
@@ -964,8 +977,11 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
 
 void CUIPresenter::GetCandLocation(POINT *lpPoint)
 {
-	lpPoint->x = _candLocation.x;
-	lpPoint->y = _candLocation.y;
+	if(lpPoint)
+	{
+		lpPoint->x = _candLocation.x;
+		lpPoint->y = _candLocation.y;
+	}
 }
 
 //+---------------------------------------------------------------------------
@@ -995,21 +1011,22 @@ HRESULT CUIPresenter::_NotifyChangeNotification(enum NOTIFYWND_ACTION action, _I
 		case SWITCH_CHN_ENG:
 			BOOL isEaten;
 			Global::IsShiftKeyDownOnly = TRUE;
-			_pTextService->OnPreservedKey(NULL, Global::TSFTTSGuidImeModePreserveKey, &isEaten);
+			if(_pTextService)
+				_pTextService->OnPreservedKey(NULL, Global::TSFTTSGuidImeModePreserveKey, &isEaten);
 			Global::IsShiftKeyDownOnly = FALSE;
 			break;
 		case SHOW_NOTIFY:
 			if((NOTIFY_TYPE)lParam == NOTIFY_CHN_ENG && !_pTextService->_IsComposing())
 			{
-				if(_GetContextDocument() == nullptr)  //layout is not started. we need to do probecomposition to start layout
+				if(_pTextService && _GetContextDocument() == nullptr)  //layout is not started. we need to do probecomposition to start layout
 				{
 					ITfContext* pContext = nullptr;
 					ITfThreadMgr* pThreadMgr = nullptr;
 					ITfDocumentMgr* pDocumentMgr = nullptr;
 					pThreadMgr = _pTextService->_GetThreadMgr();
-					if (nullptr != pThreadMgr)
+					if (pThreadMgr)
 					{
-						if (SUCCEEDED(pThreadMgr->GetFocus(&pDocumentMgr)) && pDocumentMgr != nullptr)
+						if (SUCCEEDED(pThreadMgr->GetFocus(&pDocumentMgr)) && pDocumentMgr)
 						{
 							if(SUCCEEDED(pDocumentMgr->GetTop(&pContext) && pContext))
 							{
@@ -1038,6 +1055,7 @@ HRESULT CUIPresenter::_NotifyChangeNotification(enum NOTIFYWND_ACTION action, _I
 HRESULT CUIPresenter::_CandidateChangeNotification(_In_ enum CANDWND_ACTION action)
 {
     HRESULT hr = E_FAIL;
+	if(_pTextService == nullptr) return hr;
 
     TfClientId tfClientId = _pTextService->_GetClientId();
     ITfThreadMgr* pThreadMgr = nullptr;
@@ -1060,20 +1078,20 @@ HRESULT CUIPresenter::_CandidateChangeNotification(_In_ enum CANDWND_ACTION acti
     }
 
     hr = pThreadMgr->GetFocus(&pDocumentMgr);
-    if (FAILED(hr))
+    if (FAILED(hr) || pDocumentMgr == nullptr)
     {
         goto Exit;
     }
 
     hr = pDocumentMgr->GetTop(&pContext);
-    if (FAILED(hr))
+    if (FAILED(hr) || pContext == nullptr)
     {
         pDocumentMgr->Release();
         goto Exit;
     }
 
     CKeyHandlerEditSession *pEditSession = new (std::nothrow) CKeyHandlerEditSession(_pTextService, pContext, 0, 0, KeyState);
-    if (nullptr != pEditSession)
+    if (pEditSession && pContext)
     {
         HRESULT hrSession = S_OK;
         hr = pContext->RequestEditSession(tfClientId, pEditSession, TF_ES_SYNC | TF_ES_READWRITE, &hrSession);
@@ -1084,8 +1102,10 @@ HRESULT CUIPresenter::_CandidateChangeNotification(_In_ enum CANDWND_ACTION acti
         pEditSession->Release();
     }
 
-    pContext->Release();
-    pDocumentMgr->Release();
+    if(pContext)
+		pContext->Release();
+    if(pDocumentMgr)
+		pDocumentMgr->Release();
 
 Exit:
     return hr;
@@ -1101,7 +1121,7 @@ Exit:
 HRESULT CUIPresenter::_CandWndCallback(_In_ void *pv, _In_ enum CANDWND_ACTION action)
 {
     CUIPresenter* fakeThis = (CUIPresenter*)pv;
-
+	if(fakeThis == nullptr) return E_INVALIDARG;
     return fakeThis->_CandidateChangeNotification(action);
 }
 
@@ -1116,7 +1136,7 @@ HRESULT CUIPresenter::_NotifyWndCallback(_In_ void *pv, enum NOTIFYWND_ACTION ac
 {
 	
     CUIPresenter* fakeThis = (CUIPresenter*)pv;
-
+	if(fakeThis == nullptr) return E_INVALIDARG;
     return fakeThis->_NotifyChangeNotification(action, wParam, lParam);
 }
 
@@ -1130,17 +1150,17 @@ HRESULT CUIPresenter::_UpdateUIElement()
 {
 	
     HRESULT hr = S_OK;
-
+	if(_pTextService == nullptr) return hr;
     ITfThreadMgr* pThreadMgr = _pTextService->_GetThreadMgr();
     if (nullptr == pThreadMgr)
     {
-        return S_OK;
+        return hr;
     }
 
     ITfUIElementMgr* pUIElementMgr = nullptr;
 
     hr = pThreadMgr->QueryInterface(IID_ITfUIElementMgr, (void **)&pUIElementMgr);
-    if (hr == S_OK)
+    if (hr == S_OK && pUIElementMgr)
     {
         pUIElementMgr->UpdateUIElement(_uiElementId);
         pUIElementMgr->Release();
@@ -1187,7 +1207,7 @@ void CUIPresenter::RemoveSpecificCandidateFromList(_In_ LCID Locale, _Inout_ CTS
     {
         CCandidateListItem* pLI = candidateList.GetAt(index);
 
-        if (CStringRange::Compare(Locale, &candidateString, &pLI->_ItemString) == CSTR_EQUAL)
+        if (pLI && CStringRange::Compare(Locale, &candidateString, &pLI->_ItemString) == CSTR_EQUAL)
         {
             candidateList.RemoveAt(index);
             continue;
@@ -1254,6 +1274,12 @@ HRESULT CUIPresenter::BeginUIElement()
 {
 	HRESULT hr = S_OK;
 
+	if(_pTextService == nullptr) 
+	{
+		hr = E_FAIL;
+		goto Exit; 
+	}
+
     ITfThreadMgr* pThreadMgr = _pTextService->_GetThreadMgr();
     if (nullptr ==pThreadMgr)
     {
@@ -1280,6 +1306,12 @@ HRESULT CUIPresenter::EndUIElement()
 	debugPrint(L"CUIPresenter::EndUIElement(), _uiElementId = %d ", _uiElementId);
     HRESULT hr = S_OK;
 
+	if(_pTextService == nullptr) 
+	{
+		hr = E_FAIL;
+		goto Exit; 
+	}
+
     ITfThreadMgr* pThreadMgr = _pTextService->_GetThreadMgr();
     if ((nullptr == pThreadMgr) || (-1 == _uiElementId))
     {
@@ -1289,7 +1321,7 @@ HRESULT CUIPresenter::EndUIElement()
 
     ITfUIElementMgr* pUIElementMgr = nullptr;
     hr = pThreadMgr->QueryInterface(IID_ITfUIElementMgr, (void **)&pUIElementMgr);
-    if (hr == S_OK)
+    if (hr == S_OK && pUIElementMgr)
     {
         pUIElementMgr->EndUIElement(_uiElementId);
         pUIElementMgr->Release();
@@ -1314,12 +1346,12 @@ HRESULT CUIPresenter::MakeNotifyWindow(_In_ ITfContext *pContextDocument, CStrin
   
 	HWND parentWndHandle = nullptr;
     ITfContextView* pView = nullptr;
-    if (pContextDocument && SUCCEEDED(pContextDocument->GetActiveView(&pView)))
+    if (pContextDocument && SUCCEEDED(pContextDocument->GetActiveView(&pView)) && pView)
     {
         pView->GetWnd(&parentWndHandle);
     }
 	
-	if (_pNotifyWnd->_GetUIWnd() == nullptr)
+	if (_pNotifyWnd && _pNotifyWnd->_GetUIWnd() == nullptr)
 	{
 		if( !_pNotifyWnd->_Create(CConfig::GetFontSize(), parentWndHandle, notifyText))
 		{
@@ -1371,7 +1403,8 @@ void CUIPresenter::ClearNotify()
 }
 void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ UINT delayShow, _In_ UINT timeToHide,  _In_ enum NOTIFY_TYPE notifyType)
 {
-	debugPrint(L"CUIPresenter::ShowNotifyText(): text = %s, delayShow = %d, timeTimeHide = %d, notifyType= %d, _inFoucs = %d, ", pNotifyText->Get(), delayShow, timeToHide, notifyType, _inFocus);
+	if(pNotifyText)
+		debugPrint(L"CUIPresenter::ShowNotifyText(): text = %s, delayShow = %d, timeTimeHide = %d, notifyType= %d, _inFoucs = %d, ", pNotifyText->Get(), delayShow, timeToHide, notifyType, _inFocus);
 	ITfContext* pContext = _GetContextDocument();
 	ITfThreadMgr* pThreadMgr = nullptr;
 	ITfDocumentMgr* pDocumentMgr = nullptr;
@@ -1387,12 +1420,12 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ UINT dela
 
 
 
-	if(pContext == nullptr)
+	if(pContext == nullptr && _pTextService)
 	{
 		pThreadMgr = _pTextService->_GetThreadMgr();
-		if (nullptr != pThreadMgr)
+		if (pThreadMgr)
 		{
-			if (SUCCEEDED(pThreadMgr->GetFocus(&pDocumentMgr)) && pDocumentMgr != nullptr)
+			if (SUCCEEDED(pThreadMgr->GetFocus(&pDocumentMgr)) && pDocumentMgr)
 			{
 				pDocumentMgr->GetTop(&pContext); 
 			}
@@ -1409,17 +1442,20 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ UINT dela
 			HWND parentWndHandle = nullptr;
 			ITfContextView* pView = nullptr;
 
-			if (SUCCEEDED(pContext->GetActiveView(&pView)))
+			if (SUCCEEDED(pContext->GetActiveView(&pView)) && pView)
 			{
 				pView->GetWnd(&parentWndHandle);
 				debugPrint(L" parentWndHandle = %x , FocusHwnd = %x, ActiveHwnd =%x, ForeGroundHWnd = %x", parentWndHandle, GetFocus(), GetActiveWindow(), GetForegroundWindow());
 				GUITHREADINFO* guiInfo = new GUITHREADINFO;
+				if(guiInfo == nullptr) return;
+
 				POINT* pt = nullptr;
 				guiInfo->cbSize = sizeof(GUITHREADINFO);
 				GetGUIThreadInfo(NULL, guiInfo);
 				if(guiInfo->hwndCaret)
 				{   //for acient non TSF aware apps with a floating composition window.  The caret position we can get is always the caret in the flaoting comosition window.
 					pt = new POINT;
+					if(pt == nullptr) return;
 					pt->x = guiInfo->rcCaret.left;
 					pt->y = guiInfo->rcCaret.bottom;
 					ClientToScreen(parentWndHandle, pt);
@@ -1432,9 +1468,9 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ UINT dela
 
 				if(delayShow == 0)
 				{
-					if(_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())
+					if(_pCandidateWnd && _pNotifyWnd && _pCandidateWnd->_IsWindowVisible())
 					{
-						if(_notifyLocation.x  < (int) _pNotifyWnd->_GetWidth() )
+						if( _notifyLocation.x  < (int) _pNotifyWnd->_GetWidth() )
 							_pNotifyWnd->_Move(_notifyLocation.x  + _pCandidateWnd->_GetWidth() , _notifyLocation.y);
 						else		
 							_pNotifyWnd->_Move(_notifyLocation.x  - _pNotifyWnd->_GetWidth() , _notifyLocation.y);
@@ -1443,7 +1479,7 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ UINT dela
 						_pNotifyWnd->_Move(_notifyLocation.x, _notifyLocation.y);
 				}
 
-				if(delayShow == 0 && _GetContextDocument() == nullptr ) //means TextLayoutSink is not working. We need to ProbeComposition to start layout
+				if(_pTextService && delayShow == 0 && _GetContextDocument() == nullptr ) //means TextLayoutSink is not working. We need to ProbeComposition to start layout
 					_pTextService->_ProbeComposition(pContext);
 
 			}
@@ -1477,9 +1513,10 @@ HRESULT CUIPresenter::MakeCandidateWindow(_In_ ITfContext *pContextDocument, _In
 {
     HRESULT hr = S_OK;
 
-    if (nullptr != _pCandidateWnd)
+    if (nullptr != _pCandidateWnd || _pTextService == nullptr)
     {
-        return hr;
+        hr = E_FAIL;
+		goto Exit;
     }
 
     _pCandidateWnd = new (std::nothrow) CCandidateWindow(_CandWndCallback, this, _pIndexRange, _pTextService->_IsStoreAppMode());
@@ -1491,12 +1528,12 @@ HRESULT CUIPresenter::MakeCandidateWindow(_In_ ITfContext *pContextDocument, _In
 
     HWND parentWndHandle = nullptr;
     ITfContextView* pView = nullptr;
-    if (SUCCEEDED(pContextDocument->GetActiveView(&pView)))
+    if (SUCCEEDED(pContextDocument->GetActiveView(&pView)) && pView)
     {
         pView->GetWnd(&parentWndHandle);
     }
 
-	if (!_pCandidateWnd->_Create(wndWidth, CConfig::GetFontSize(), parentWndHandle))
+	if (_pCandidateWnd && !_pCandidateWnd->_Create(wndWidth, CConfig::GetFontSize(), parentWndHandle))
     {
         hr = E_OUTOFMEMORY;
         goto Exit;
@@ -1508,7 +1545,7 @@ Exit:
 
 void CUIPresenter::DisposeCandidateWindow()
 {
-    if (nullptr != _pCandidateWnd)
+    if (_pCandidateWnd)
     {
         _pCandidateWnd->_Destroy();
 		 delete _pCandidateWnd;
@@ -1517,7 +1554,7 @@ void CUIPresenter::DisposeCandidateWindow()
 }
 void CUIPresenter::DisposeNotifyWindow()
 {
-	if (nullptr != _pNotifyWnd)
+	if (_pNotifyWnd)
 	{
 		_pNotifyWnd->_Destroy();
 		delete _pNotifyWnd;

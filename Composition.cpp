@@ -91,7 +91,7 @@ HRESULT CTSFTTS::_AddComposingAndChar(TfEditCookie ec, _In_ ITfContext *pContext
     //
     ITfRange* pAheadSelection = nullptr;
     hr = pContext->GetStart(ec, &pAheadSelection);
-    if (SUCCEEDED(hr))
+    if (SUCCEEDED(hr) && pAheadSelection)
     {
         hr = pAheadSelection->ShiftEndToRange(ec, tfSelection.range, TF_ANCHOR_START);
         if (SUCCEEDED(hr))
@@ -132,7 +132,7 @@ HRESULT CTSFTTS::_AddCharAndFinalize(TfEditCookie ec, _In_ ITfContext *pContext,
     ULONG fetched = 0;
     TF_SELECTION tfSelection;
 
-    if ((hr = pContext->GetSelection(ec, TF_DEFAULT_SELECTION, 1, &tfSelection, &fetched)) != S_OK || fetched != 1)
+	if ((hr = pContext->GetSelection(ec, TF_DEFAULT_SELECTION, 1, &tfSelection, &fetched)) != S_OK || fetched != 1 || tfSelection.range==nullptr || pstrAddString ==nullptr)
         return hr;
 
     // we use SetText here instead of InsertTextAtSelection because we've already started a composition
@@ -143,7 +143,8 @@ HRESULT CTSFTTS::_AddCharAndFinalize(TfEditCookie ec, _In_ ITfContext *pContext,
         // update the selection, we'll make it an insertion point just past
         // the inserted text.
         tfSelection.range->Collapse(ec, TF_ANCHOR_END);
-        pContext->SetSelection(ec, 1, &tfSelection);
+		if(pContext)
+			pContext->SetSelection(ec, 1, &tfSelection);
     }
 
     tfSelection.range->Release();
@@ -161,7 +162,7 @@ BOOL CTSFTTS::_FindComposingRange(TfEditCookie ec, _In_ ITfContext *pContext, _I
 {
 	debugPrint(L"CTSFTTS::_FindComposingRange()");
 
-    if (ppRange == nullptr)
+    if (pContext == nullptr || ppRange == nullptr)
     {
         return FALSE;
     }
@@ -200,7 +201,8 @@ BOOL CTSFTTS::_FindComposingRange(TfEditCookie ec, _In_ ITfContext *pContext, _I
                 break;
             }
         }
-        (*ppRange)->Release();
+        if(*ppRange)
+			(*ppRange)->Release();
         *ppRange = nullptr;
     }
 
@@ -408,7 +410,8 @@ public:
 STDAPI CProbeComposistionEditSession::DoEditSession(TfEditCookie ec)
 {
 	debugPrint(L"CProbeComposistionEditSession::DoEditSession()\n");
-	_pTextService->_ProbeCompositionRangeNotification(ec, _pContext);
+	if(_pTextService) 
+		_pTextService->_ProbeCompositionRangeNotification(ec, _pContext);
 	
     return S_OK;
 }
@@ -459,7 +462,7 @@ HRESULT CTSFTTS::_ProbeCompositionRangeNotification(_In_ TfEditCookie ec, _In_ I
     ULONG fetched = 0;
     TF_SELECTION tfSelection;
 
-    if ((hr = pContext->GetSelection(ec, TF_DEFAULT_SELECTION, 1, &tfSelection, &fetched)) != S_OK || fetched != 1)
+    if ((hr = pContext->GetSelection(ec, TF_DEFAULT_SELECTION, 1, &tfSelection, &fetched)) != S_OK || fetched != 1 ||tfSelection.range==nullptr)
 	{
 		_TerminateComposition(ec,pContext);
         return hr;
@@ -470,11 +473,11 @@ HRESULT CTSFTTS::_ProbeCompositionRangeNotification(_In_ TfEditCookie ec, _In_ I
 	ITfRange *pRange;
 	ITfContextView* pContextView;
 	ITfDocumentMgr* pDocumgr;
-	if (_pComposition&&SUCCEEDED(_pComposition->GetRange(&pRange)))
+	if (_pComposition&&SUCCEEDED(_pComposition->GetRange(&pRange)) && pRange)
 	{
-		if(SUCCEEDED(pContext->GetActiveView(&pContextView)))
+		if(pContext && SUCCEEDED(pContext->GetActiveView(&pContextView)) && pContextView)
 		{
-			if(SUCCEEDED( pContext->GetDocumentMgr(&pDocumgr)))
+			if(pContext && SUCCEEDED( pContext->GetDocumentMgr(&pDocumgr)) && pDocumgr && _pThreadMgr &&_pUIPresenter)
 			{
 				ITfDocumentMgr* pFocusDocuMgr;
 				_pThreadMgr->GetFocus(&pFocusDocuMgr);

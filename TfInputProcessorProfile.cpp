@@ -64,7 +64,7 @@ HRESULT CTfInputProcessorProfile::GetReverseConversionProviders(LANGID langid, C
 	debugPrint(L"CTfInputProcessorProfile::GetReverseConversionProviders() langid = %d " , langid);
 	HRESULT hr;
 	IEnumTfLanguageProfiles* pEnumProf = 0;
-
+	if(_pInputProcessorProfile == nullptr) return E_FAIL;
 	hr = _pInputProcessorProfile->EnumLanguageProfiles(langid, &pEnumProf);
 	if (SUCCEEDED(hr) && pEnumProf)
 	{
@@ -91,15 +91,20 @@ HRESULT CTfInputProcessorProfile::GetReverseConversionProviders(LANGID langid, C
 					{
 						LanguageProfileInfo *pLangProfileInfo = nullptr;
 						PWCH pwchDescription;
-						pLangProfileInfo = langProfileInfoList->Append();;
+						if(langProfileInfoList)
+							pLangProfileInfo = langProfileInfoList->Append();;
 						pwchDescription = new (std::nothrow) WCHAR[wcslen(bstrDescription)+1];
 						StringCchCopy(pwchDescription, wcslen(bstrDescription)+1, bstrDescription);
-						pLangProfileInfo->clsid = langProfile.clsid;
-						pLangProfileInfo->guidProfile = langProfile.guidProfile;
-						pLangProfileInfo->description = pwchDescription;
-			
+						if(pLangProfileInfo)
+						{
+							pLangProfileInfo->clsid = langProfile.clsid;
+							pLangProfileInfo->guidProfile = langProfile.guidProfile;
+							pLangProfileInfo->description = pwchDescription;
+						}
+
 						debugPrint(L"%s supports reverse conversion ", bstrDescription);
-						pITfReverseConversion->Release();
+						if(pITfReverseConversion)
+							pITfReverseConversion->Release();
 					}	
 					pITfReverseConversionMgr->Release();
 				}

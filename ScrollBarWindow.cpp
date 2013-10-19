@@ -165,8 +165,10 @@ LRESULT CALLBACK CScrollBarWindow::_WindowProcCallback(_In_ HWND wndHandle, _In_
             _OnPaint(dcHandle, &ps);
 
             // paint all children
-            _pBtnUp->_OnPaint(dcHandle, &ps);
-            _pBtnDn->_OnPaint(dcHandle, &ps);
+            if(_pBtnUp)
+				_pBtnUp->_OnPaint(dcHandle, &ps);
+            if(_pBtnDn)
+				_pBtnDn->_OnPaint(dcHandle, &ps);
 
             EndPaint(wndHandle, &ps);
         }
@@ -188,7 +190,7 @@ void CScrollBarWindow::_OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps)
     HBRUSH hBrush = nullptr;
     CBaseWindow* pUIWnd = _GetUIWnd();
 
-    if (pUIWnd != nullptr && pUIWnd->_GetWnd())
+    if (pUIWnd && pUIWnd->_GetWnd())
     {
         hBrush = (HBRUSH)DefWindowProc(pUIWnd->_GetWnd(), WM_CTLCOLORSCROLLBAR, (WPARAM)dcHandle, (LPARAM)pUIWnd->_GetWnd());
     }
@@ -198,7 +200,8 @@ void CScrollBarWindow::_OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps)
         hBrush = GetSysColorBrush(COLOR_SCROLLBAR);
     }
 
-    FillRect(dcHandle, &pps->rcPaint, hBrush);
+	if(&pps)
+		FillRect(dcHandle, &pps->rcPaint, hBrush);
 }
 
 //+---------------------------------------------------------------------------
@@ -213,15 +216,17 @@ void CScrollBarWindow::_OnLButtonDown(POINT pt)
 
     RECT rc = {0, 0, 0, 0};
 
-    _pBtnUp->_GetClientRect(&rc);
-    if (PtInRect(&rc, pt))
+    if(_pBtnUp)
+		_pBtnUp->_GetClientRect(&rc);
+    if (_pBtnUp && PtInRect(&rc, pt))
     {
         _pBtnUp->_OnLButtonDown(pt);
     }
     else
     {
-        _pBtnDn->_GetClientRect(&rc);
-        if (PtInRect(&rc, pt))
+		if(_pBtnDn)
+			_pBtnDn->_GetClientRect(&rc);
+        if (_pBtnDn && PtInRect(&rc, pt))
         {
             _pBtnDn->_OnLButtonDown(pt);
         }
@@ -252,15 +257,17 @@ void CScrollBarWindow::_OnLButtonUp(POINT pt)
     {
         RECT rc = {0, 0, 0, 0};
 
-        _pBtnUp->_GetClientRect(&rc);
-        if (PtInRect(&rc, pt))
+        if(_pBtnUp)
+			_pBtnUp->_GetClientRect(&rc);
+        if (_pBtnUp && PtInRect(&rc, pt))
         {
             _pBtnUp->_OnLButtonUp(pt);
         }
         else
         {
-            _pBtnDn->_GetClientRect(&rc);
-            if (PtInRect(&rc, pt))
+			if(_pBtnDn)
+				_pBtnDn->_GetClientRect(&rc);
+            if (_pBtnDn && PtInRect(&rc, pt))
             {
                 _pBtnDn->_OnLButtonUp(pt);
             }
@@ -290,15 +297,17 @@ void CScrollBarWindow::_OnMouseMove(POINT pt)
 {
     RECT rc = {0, 0, 0, 0};
 
-    _pBtnUp->_GetClientRect(&rc);
-    if (PtInRect(&rc, pt))
+	if(_pBtnUp)
+		_pBtnUp->_GetClientRect(&rc);
+    if (_pBtnUp && PtInRect(&rc, pt))
     {
         _pBtnUp->_OnMouseMove(pt);
     }
     else
     {
-        _pBtnDn->_GetClientRect(&rc);
-        if (PtInRect(&rc, pt))
+		if(_pBtnDn)
+			_pBtnDn->_GetClientRect(&rc);
+        if (_pBtnDn && PtInRect(&rc, pt))
         {
             _pBtnDn->_OnMouseMove(pt);
         }
@@ -335,11 +344,13 @@ void CScrollBarWindow::_Resize(int x, int y, int cx, int cy)
 
     _GetBtnUpRect(&rc);
     //_pBtnUp->_Resize(x, y+rc.top, rc.right-rc.left, rc.bottom-rc.top);
-	_pBtnUp->_Resize(rc.left, rc.top, rc.right-rc.left, rc.bottom-rc.top);
+	if(_pBtnUp)
+		_pBtnUp->_Resize(rc.left, rc.top, rc.right-rc.left, rc.bottom-rc.top);
 
     _GetBtnDnRect(&rc);
     //_pBtnDn->_Resize(x, y+rc.top, rc.right-rc.left, rc.bottom-rc.top);
-	_pBtnDn->_Resize(rc.left, rc.top, rc.right-rc.left, rc.bottom-rc.top);
+	if(_pBtnDn)
+		_pBtnDn->_Resize(rc.left, rc.top, rc.right-rc.left, rc.bottom-rc.top);
 }
 
 //+---------------------------------------------------------------------------
@@ -354,8 +365,10 @@ void CScrollBarWindow::_Show(BOOL isShowWnd)
     {
         CBaseWindow::_Show(isShowWnd);
 
-        _pBtnUp->_Show(isShowWnd);
-        _pBtnDn->_Show(isShowWnd);
+        if(_pBtnUp)
+			_pBtnUp->_Show(isShowWnd);
+        if(_pBtnDn)
+			_pBtnDn->_Show(isShowWnd);
     }
 }
 
@@ -370,9 +383,11 @@ void CScrollBarWindow::_Enable(BOOL isEnable)
     if (_IsEnabled() != isEnable)
     {
         CBaseWindow::_Enable(isEnable);
-
-        _pBtnUp->_Enable(isEnable);
-        _pBtnDn->_Enable(isEnable);
+		
+		if(_pBtnUp)
+			_pBtnUp->_Enable(isEnable);
+		if(_pBtnDn)
+			_pBtnDn->_Enable(isEnable);
     }
 }
 

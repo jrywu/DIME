@@ -14,7 +14,8 @@ CTfTextLayoutSink::CTfTextLayoutSink(_In_ CTSFTTS *pTextService)
 {
 	debugPrint(L"CTfTextLayoutSink::CTfTextLayoutSink() constructor");
     _pTextService = pTextService;
-    _pTextService->AddRef();
+	if(_pTextService)
+		_pTextService->AddRef();
 
     _pRangeComposition = nullptr;
     _pContextDocument = nullptr;
@@ -102,7 +103,7 @@ STDAPI CTfTextLayoutSink::OnLayoutChange(_In_ ITfContext *pContext, TfLayoutCode
 			debugPrint(L"CTfTextLayoutSink::OnLayoutChange() TF_LC_CHANGE");
             CGetTextExtentEditSession* pEditSession = nullptr;
             pEditSession = new (std::nothrow) CGetTextExtentEditSession(_pTextService, pContext, pContextView, _pRangeComposition, this);
-            if (nullptr != (pEditSession))
+            if (pEditSession && pContext && _pTextService)
             {
                 HRESULT hr = S_OK;
                  pContext->RequestEditSession(_pTextService->_GetClientId(), pEditSession, TF_ES_SYNC | TF_ES_READ, &hr);
@@ -124,13 +125,15 @@ STDAPI CTfTextLayoutSink::OnLayoutChange(_In_ ITfContext *pContext, TfLayoutCode
 HRESULT CTfTextLayoutSink::_StartLayout(_In_ ITfContext *pContextDocument, TfEditCookie ec, _In_ ITfRange *pRangeComposition)
 {
 	debugPrint(L"CTfTextLayoutSink::_StartLayout()\n");
-	if(_pContextDocument != pContextDocument)
+	if(_pContextDocument != pContextDocument )
 	{
 		_pContextDocument = pContextDocument;
-		_pContextDocument->AddRef();
+		if(_pContextDocument)
+			_pContextDocument->AddRef();
 
 		_pRangeComposition = pRangeComposition;
-		if(_pRangeComposition) _pRangeComposition->AddRef();
+		if(_pRangeComposition) 
+			_pRangeComposition->AddRef();
 
 		_tfEditCookie = ec;
 
@@ -162,9 +165,9 @@ HRESULT CTfTextLayoutSink::_AdviseTextLayoutSink()
 {
     HRESULT hr = S_OK;
     ITfSource* pSource = nullptr;
-
+	if(_pContextDocument == nullptr) return S_OK;
     hr = _pContextDocument->QueryInterface(IID_ITfSource, (void **)&pSource);
-    if (FAILED(hr))
+    if (FAILED(hr) || pSource == nullptr)
     {
         return hr;
     }
@@ -192,7 +195,7 @@ HRESULT CTfTextLayoutSink::_UnadviseTextLayoutSink()
     }
 
     hr = _pContextDocument->QueryInterface(IID_ITfSource, (void **)&pSource);
-    if (FAILED(hr))
+    if (FAILED(hr) && pSource == nullptr)
     {
         return hr;
     }

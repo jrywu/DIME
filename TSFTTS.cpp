@@ -375,7 +375,8 @@ STDAPI CTSFTTS::ActivateEx(ITfThreadMgr *pThreadMgr, TfClientId tfClientId, DWOR
 {
 	debugPrint(L"CTSFTTS::ActivateEx(); ITfTextInputProcessorEx::ActivateEx()");
     _pThreadMgr = pThreadMgr;
-    _pThreadMgr->AddRef();
+	if(_pThreadMgr)
+		_pThreadMgr->AddRef();
 
     _tfClientId = tfClientId;
     _dwActivateFlags = dwFlags;
@@ -390,7 +391,7 @@ STDAPI CTSFTTS::ActivateEx(ITfThreadMgr *pThreadMgr, TfClientId tfClientId, DWOR
 
 	
     ITfDocumentMgr* pDocMgrFocus = nullptr;
-    if (SUCCEEDED(_pThreadMgr->GetFocus(&pDocMgrFocus)) && (pDocMgrFocus != nullptr))
+    if ( _pThreadMgr && SUCCEEDED(_pThreadMgr->GetFocus(&pDocMgrFocus)) && pDocMgrFocus)
     {
 		debugPrint(L"CTSFTTS::ActivateEx(); _InitTextEditSink.");
         _InitTextEditSink(pDocMgrFocus);
@@ -625,7 +626,7 @@ HRESULT CTSFTTS::GetFunction(__RPC__in REFGUID rguid, __RPC__in REFIID riid, __R
     HRESULT hr = E_NOINTERFACE;
 	
     if ((IsEqualGUID(rguid, GUID_NULL)) 
-        && (IsEqualGUID(riid, __uuidof(ITfFnSearchCandidateProvider))))
+        && (IsEqualGUID(riid, __uuidof(ITfFnSearchCandidateProvider))) && _pITfFnSearchCandidateProvider)
     {
         hr = _pITfFnSearchCandidateProvider->QueryInterface(riid, (void**)ppunk);
     }

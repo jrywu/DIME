@@ -32,7 +32,8 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CTSFTTS *pTextServ
 {
 	debugPrint(L"CCompositionProcessorEngine::CCompositionProcessorEngine() constructor");
 	_pTextService = pTextService;
-    _pTextService->AddRef();
+	if(_pTextService)
+		_pTextService->AddRef();
 
 	_imeMode = IME_MODE_NONE;
 
@@ -229,11 +230,15 @@ WCHAR CCompositionProcessorEngine::GetVirtualKey(DWORD_PTR dwIndex)
 
 void CCompositionProcessorEngine::GetReadingStrings(_Inout_ CTSFTTSArray<CStringRange> *pReadingStrings, _Out_ BOOL *pIsWildcardIncluded)
 {
+	if (!IsDictionaryAvailable(Global::imeMode))
+    {
+        return;
+    }
     CStringRange oneKeystroke;
 
     _hasWildcardIncludedInKeystrokeBuffer = FALSE;
 
-    if (pReadingStrings->Count() == 0 && _keystrokeBuffer.GetLength())
+    if (pReadingStrings && pReadingStrings->Count() == 0 && _keystrokeBuffer.GetLength())
     {
         CStringRange* pNewString = nullptr;
 
@@ -277,7 +282,7 @@ void CCompositionProcessorEngine::GetReadingStrings(_Inout_ CTSFTTSArray<CString
 					_hasWildcardIncludedInKeystrokeBuffer = TRUE;
 				}
 			}
-			pNewString->Set(pwchRadical, wcslen(pwchRadical));
+			if(pNewString) pNewString->Set(pwchRadical, wcslen(pwchRadical));
 		}
 		else
 		{
@@ -296,7 +301,7 @@ void CCompositionProcessorEngine::GetReadingStrings(_Inout_ CTSFTTSArray<CString
 
 void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFTTSArray<CCandidateListItem> *pCandidateList, BOOL isIncrementalWordSearch, BOOL isWildcardSearch)
 {
-    if (!IsDictionaryAvailable())
+    if (!IsDictionaryAvailable(Global::imeMode) || pCandidateList == nullptr)
     {
         return;
     }
@@ -346,7 +351,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFTTSArray<CCandida
 			CStringRange w3codeMode;		
 			_pTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_TEXT);
 			_pTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&wildcardSearch, pCandidateList);
-			if(pCandidateList->Count())	
+			if(pCandidateList && pCandidateList->Count())	
 			{
 				_pTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_TEXT);
 				_pTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&w3codeMode.Set(pwch3code,4), &wCandidateList);
@@ -399,7 +404,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFTTSArray<CCandida
 
         
 
-        if (0 >= pCandidateList->Count())
+        if (pCandidateList && 0 >= pCandidateList->Count())
         {
             return;
         }
@@ -425,9 +430,12 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFTTSArray<CCandida
                 keystrokeBufferLen = _keystrokeBuffer.GetLength();
             }
 
-            CStringRange newFindKeyCode;
-            newFindKeyCode.Set(pLI->_FindKeyCode.Get() + keystrokeBufferLen, pLI->_FindKeyCode.GetLength() - keystrokeBufferLen);
-            pLI->_FindKeyCode.Set(newFindKeyCode);
+			if(pLI)
+			{
+				CStringRange newFindKeyCode;
+				newFindKeyCode.Set(pLI->_FindKeyCode.Get() + keystrokeBufferLen, pLI->_FindKeyCode.GetLength() - keystrokeBufferLen);
+				pLI->_FindKeyCode.Set(newFindKeyCode);
+			}
         }
 
         delete [] pwch;
@@ -450,14 +458,15 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFTTSArray<CCandida
 		
 		_pTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_TEXT);
 		_pTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList);
-		if(pCandidateList->Count())
+		if(pCandidateList && pCandidateList->Count())
 		{
 			_pTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&wildcardSearch, &wCandidateList);
 			if(wCandidateList.Count())
 			{   //append the candidate items got with 3codemode wildcard string to the end of exact match items.
 				for(UINT i = 0; i < wCandidateList.Count(); i++)
 				{
-					if(!(CStringRange::Compare(_pTextService->GetLocale(), &_keystrokeBuffer, &(wCandidateList.GetAt(i)->_FindKeyCode)) == CSTR_EQUAL))
+					if(_pTextService && pCandidateList
+						&& !(CStringRange::Compare(_pTextService->GetLocale(), &_keystrokeBuffer, &(wCandidateList.GetAt(i)->_FindKeyCode)) == CSTR_EQUAL))
 					{
 						CCandidateListItem* pLI = nullptr;
 						pLI = pCandidateList->Append();
@@ -507,14 +516,17 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFTTSArray<CCandida
         CStringRange startItemString;
         CStringRange endItemString;
 
-        startItemString.Set(pLI->_ItemString.Get(), 1);
-        endItemString.Set(pLI->_ItemString.Get() + pLI->_ItemString.GetLength() - 1, 1);
-
-		if(pLI->_ItemString.GetLength() > _candidateWndWidth - TRAILING_SPACE )
+		if(pLI)
 		{
-			_candidateWndWidth = (UINT) pLI->_ItemString.GetLength() + TRAILING_SPACE;
+			startItemString.Set(pLI->_ItemString.Get(), 1);
+			endItemString.Set(pLI->_ItemString.Get() + pLI->_ItemString.GetLength() - 1, 1);
+
+			if(pLI->_ItemString.GetLength() > _candidateWndWidth - TRAILING_SPACE )
+			{
+				_candidateWndWidth = (UINT) pLI->_ItemString.GetLength() + TRAILING_SPACE;
+			}
+			index++;
 		}
-        index++;
     }
 }
 
@@ -526,7 +538,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFTTSArray<CCandida
 
 void CCompositionProcessorEngine::GetCandidateStringInConverted(CStringRange &searchString, _In_ CTSFTTSArray<CCandidateListItem> *pCandidateList)
 {
-    if (!IsDictionaryAvailable())
+    if (!IsDictionaryAvailable(Global::imeMode) || pCandidateList == nullptr)
     {
         return;
     }
@@ -559,8 +571,8 @@ void CCompositionProcessorEngine::GetCandidateStringInConverted(CStringRange &se
 		}
 		_pPhraseTableDictionaryEngine->CollectWord(&searchText, pCandidateList);
 	}	
-	else // no phrase section, do wildcard text search
-		_pPhraseTableDictionaryEngine->CollectWordFromConvertedStringForWildcard(&searchText, pCandidateList);
+	//else // no phrase section, do wildcard text search
+	//	_pPhraseTableDictionaryEngine->CollectWordFromConvertedStringForWildcard(&searchText, pCandidateList);
 
 	if (IsKeystrokeSort())
 		_pTableDictionaryEngine[Global::imeMode]->SortListItemByFindKeyCode(pCandidateList);
@@ -570,7 +582,7 @@ void CCompositionProcessorEngine::GetCandidateStringInConverted(CStringRange &se
     {
         CCandidateListItem *pLI = pCandidateList->GetAt(index);
         
-		if(pLI->_ItemString.GetLength() > _candidateWndWidth - TRAILING_SPACE )
+		if(pLI && pLI->_ItemString.GetLength() > _candidateWndWidth - TRAILING_SPACE )
 		{
 			_candidateWndWidth = (UINT) pLI->_ItemString.GetLength() + TRAILING_SPACE;
 		}
@@ -694,7 +706,7 @@ BOOL CCompositionProcessorEngine::IsArrayShortCode()
 //----------------------------------------------------------------------------
 DWORD_PTR CCompositionProcessorEngine::CollectWordFromArraySpeicalCode(_Outptr_result_maybenull_ const WCHAR **ppwchSpecialCodeResultString)
 {
-	if (!IsDictionaryAvailable())
+	if (!IsDictionaryAvailable(Global::imeMode))
     {
         return 0;
     }
@@ -732,7 +744,7 @@ DWORD_PTR CCompositionProcessorEngine::CollectWordFromArraySpeicalCode(_Outptr_r
 //----------------------------------------------------------------------------
 BOOL CCompositionProcessorEngine::GetArraySpeicalCodeFromConvertedText(_In_ CStringRange *inword, _Out_ CStringRange *csrReslt)
 {
-	if (!IsDictionaryAvailable())
+	if (!IsDictionaryAvailable(Global::imeMode))
     {
         return FALSE;
     }
@@ -842,7 +854,7 @@ BOOL CCompositionProcessorEngine::IsDoubleSingleByte(WCHAR wch)
 
 void CCompositionProcessorEngine::SetupKeystroke(IME_MODE imeMode)
 {
-	if (!IsDictionaryAvailable())
+	if (!IsDictionaryAvailable(imeMode))
     {
         return;
     }
@@ -865,7 +877,7 @@ void CCompositionProcessorEngine::SetupKeystroke(IME_MODE imeMode)
 	{
 		_KEYSTROKE* pKS = nullptr;
         pKS = _KeystrokeComposition.Append();
-        if (!pKS)
+        if (pKS == nullptr)
             break;
   
 		pKS->Function = FUNCTION_INPUT;
@@ -1149,6 +1161,7 @@ BOOL CCompositionProcessorEngine::InitPreservedKey(_In_ XPreservedKey *pXPreserv
 
 BOOL CCompositionProcessorEngine::CheckShiftKeyOnly(_In_ CTSFTTSArray<TF_PRESERVEDKEY> *pTSFPreservedKeyTable)
 {
+	if(pTSFPreservedKeyTable == nullptr) return FALSE;
     for (UINT i = 0; i < pTSFPreservedKeyTable->Count(); i++)
     {
         TF_PRESERVEDKEY *ptfPskey = pTSFPreservedKeyTable->GetAt(i);
@@ -1214,7 +1227,7 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL *pIsE
         CompartmentDoubleSingleByte._SetCompartmentBOOL(isDouble ? FALSE : TRUE);
         *pIsEaten = TRUE;
     }
-	else if (IsEqualGUID(rguid, _PreservedKey_Config.Guid))
+	else if (IsEqualGUID(rguid, _PreservedKey_Config.Guid) && _pTextService)
 	{
 		// call config dialog
 		_pTextService->Show(NULL, 0,  GUID_NULL);
@@ -1311,7 +1324,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 	{
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\TSFTTS\\Dayi.cin");
 		if(PathFileExists(pwszCINFileName) &&
-			_pTableDictionaryFile[imeMode] &&
+			_pTableDictionaryFile[imeMode] && _pTextService &&
 			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pTableDictionaryFile[imeMode]->GetFileName(), -1) != CSTR_EQUAL)
 		{ //indicate the prevoius table is built with system preload file in program files, and now user provides their own.
 			delete _pTableDictionaryEngine[imeMode];
@@ -1324,7 +1337,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 	{
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\TSFTTS\\Array.cin");
 		if(PathFileExists(pwszCINFileName) &&
-			_pTableDictionaryFile[imeMode] &&
+			_pTableDictionaryFile[imeMode] && _pTextService &&
 			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pTableDictionaryFile[imeMode]->GetFileName(), -1) != CSTR_EQUAL)
 		{ //indicate the prevoius table is built with system preload file in program files, and now user provides their own.
 			delete _pTableDictionaryEngine[imeMode];
@@ -1338,7 +1351,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\TSFTTS\\Phone.cin");
 		if(!PathFileExists(pwszCINFileName)) //failed back to pre-install Phone.cin in program files.
 			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\TSFTTS\\Phone.cin");
-		else if( _pTableDictionaryFile[imeMode] &&
+		else if( _pTableDictionaryFile[imeMode] && _pTextService &&
 			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pTableDictionaryFile[imeMode]->GetFileName(), -1) != CSTR_EQUAL)
 		{ //indicate the prevoius table is built with system preload file in program files, and now user provides their own.
 			delete _pTableDictionaryEngine[imeMode];
@@ -1359,7 +1372,8 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 		if (_pTableDictionaryFile[imeMode] == nullptr)
 		{
 			_pTableDictionaryFile[imeMode] = new (std::nothrow) CFile();
-			if ((_pTableDictionaryFile[imeMode])->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
+			if ((_pTableDictionaryFile[imeMode])&& _pTextService &&
+				(_pTableDictionaryFile[imeMode])->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
 			{
 				_pTableDictionaryEngine[imeMode] = //cin files use tab as delimiter
 					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pTableDictionaryFile[imeMode], CIN_DICTIONARY); 
@@ -1373,17 +1387,17 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 		if (_pTableDictionaryEngine[imeMode] == nullptr)
 		{
 			_pTableDictionaryFile[imeMode] = new (std::nothrow) CFile();
-			if (!_pTableDictionaryFile[imeMode])  goto ErrorExit;
+			if (_pTableDictionaryFile[imeMode] == nullptr)  goto ErrorExit;
 
 			if (!(_pTableDictionaryFile[imeMode])->CreateFile(pwszTTSFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
 			{
 				goto ErrorExit;
 			}
-			else
+			else if( _pTextService )
 			{
 				_pTableDictionaryEngine[imeMode] = //TTS file use '=' as delimiter
 					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pTableDictionaryFile[imeMode], TTS_DICTIONARY); 
-				if (!_pTableDictionaryEngine[imeMode])  goto ErrorExit;
+				if (_pTableDictionaryEngine[imeMode] == nullptr)  goto ErrorExit;
 
 				_pTableDictionaryEngine[imeMode]->ParseConfig(imeMode); //parse config first.
 
@@ -1404,7 +1418,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 		if(PathFileExists(pwszCINFileName))
 		{
 			_pPhraseDictionaryFile = new (std::nothrow) CFile();
-			if (_pPhraseDictionaryFile->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
+			if (_pPhraseDictionaryFile && _pTextService && _pPhraseDictionaryFile->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
 			{
 				_pPhraseTableDictionaryEngine = 
 					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pPhraseDictionaryFile, CIN_DICTIONARY); //cin files use tab as delimiter
@@ -1420,13 +1434,13 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 		else
 		{
 			_pPhraseDictionaryFile = new (std::nothrow) CFile();
-			if (!_pPhraseDictionaryFile)  goto ErrorExit;
+			if (_pPhraseDictionaryFile == nullptr)  goto ErrorExit;
 
 			if (!_pPhraseDictionaryFile->CreateFile(pwszTTSFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
 			{
 				goto ErrorExit;
 			}
-			else // no user provided phrase table present and we are not in ARRAY or DAYI, thus we load TTS DAYI table to provide phrase table
+			else if(_pTextService) // no user provided phrase table present and we are not in ARRAY or DAYI, thus we load TTS DAYI table to provide phrase table
 			{
 				_pPhraseTableDictionaryEngine = 
 					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pPhraseDictionaryFile, TTS_DICTIONARY); //TTS file use '=' as delimiter
@@ -1445,7 +1459,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\TSFTTS\\Array-special.cin");
 		if(!PathFileExists(pwszCINFileName)) //failed back to preload array-special.cin in program files.
 			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\TSFTTS\\Array-special.cin");
-		else if( _pArraySpecialCodeDictionaryFile &&
+		else if( _pArraySpecialCodeDictionaryFile && _pTextService &&
 			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pArraySpecialCodeDictionaryFile->GetFileName(), -1) != CSTR_EQUAL)
 		{ //indicate the prevoius table is built with system preload file in program files, and now user provides their own.
 			delete _pArraySpecialCodeTableDictionaryEngine;
@@ -1457,7 +1471,8 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 		if (_pArraySpecialCodeDictionaryFile == nullptr)
 		{
 			_pArraySpecialCodeDictionaryFile = new (std::nothrow) CFile();
-			if (_pArraySpecialCodeDictionaryFile->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
+			if (_pArraySpecialCodeDictionaryFile && _pTextService &&
+				_pArraySpecialCodeDictionaryFile->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
 			{
 				_pArraySpecialCodeTableDictionaryEngine = 
 					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pArraySpecialCodeDictionaryFile, CIN_DICTIONARY); //cin files use tab as delimiter
@@ -1470,7 +1485,8 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 		if(PathFileExists(pwszCINFileName) && _pArrayShortCodeDictionaryFile == nullptr)
 		{
 			_pArrayShortCodeDictionaryFile = new (std::nothrow) CFile();
-			if (_pArrayShortCodeDictionaryFile->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
+			if (_pArrayShortCodeDictionaryFile && _pTextService &&
+				_pArrayShortCodeDictionaryFile->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
 			{
 				_pArrayShortCodeTableDictionaryEngine = 
 					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pArrayShortCodeDictionaryFile, CIN_DICTIONARY); //cin files use tab as delimiter
@@ -1516,7 +1532,8 @@ BOOL CCompositionProcessorEngine::SetupHanCovertTable()
 		if (_pTCSCTableDictionaryFile == nullptr)
 		{
 			_pTCSCTableDictionaryFile = new (std::nothrow) CFile();
-			if ((_pTCSCTableDictionaryFile)->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
+			if (_pTCSCTableDictionaryFile && _pTextService &&
+				(_pTCSCTableDictionaryFile)->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
 			{
 				_pTCSCTableDictionaryEngine = 
 					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pTCSCTableDictionaryFile, CIN_DICTIONARY); //cin files use tab as delimiter
@@ -1540,9 +1557,10 @@ BOOL CCompositionProcessorEngine::GetTCFromSC(CStringRange* stringToConvert, CSt
 BOOL CCompositionProcessorEngine::GetSCFromTC(CStringRange* stringToConvert, CStringRange* convertedString)
 {
 	debugPrint(L"CCompositionProcessorEngine::GetSCFromTC()");
-	if(!CConfig::GetDoHanConvert()) return FALSE;
+	if(!CConfig::GetDoHanConvert() || stringToConvert == nullptr || convertedString == nullptr ) return FALSE;
 
 	if(_pTCSCTableDictionaryEngine == nullptr) SetupHanCovertTable();
+	if(_pTCSCTableDictionaryEngine == nullptr) return FALSE;
 
 	UINT lenToConvert = (UINT) stringToConvert->GetLength();
 	PWCHAR pwch = new (std::nothrow) WCHAR[lenToConvert +1];
@@ -1594,10 +1612,15 @@ BOOL CCompositionProcessorEngine::XPreservedKey::UninitPreservedKey(_In_ ITfThre
         return FALSE;
     }
 
-    if (FAILED(pThreadMgr->QueryInterface(IID_ITfKeystrokeMgr, (void **)&pKeystrokeMgr)))
+    if (pThreadMgr && FAILED(pThreadMgr->QueryInterface(IID_ITfKeystrokeMgr, (void **)&pKeystrokeMgr)))
     {
         return FALSE;
     }
+
+	if( pKeystrokeMgr == nullptr)
+	{
+		return FALSE;
+	}
 
     for (UINT i = 0; i < TSFPreservedKeyTable.Count(); i++)
     {
@@ -1623,7 +1646,7 @@ CCompositionProcessorEngine::XPreservedKey::~XPreservedKey()
     ITfThreadMgr* pThreadMgr = nullptr;
 
     HRESULT hr = CoCreateInstance(CLSID_TF_ThreadMgr, NULL, CLSCTX_INPROC_SERVER, IID_ITfThreadMgr, (void**)&pThreadMgr);
-    if (SUCCEEDED(hr))
+    if (SUCCEEDED(hr) && pThreadMgr)
     {
         UninitPreservedKey(pThreadMgr);
         pThreadMgr->Release();
@@ -1977,7 +2000,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeComposition(UINT uCode, _
 BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeCandidate(UINT uCode, _In_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode, _Out_ BOOL *pfRetCode, _In_ CTSFTTSArray<_KEYSTROKE> *pKeystrokeMetric)
 {
 	candidateMode;
-    if (pfRetCode == nullptr)
+    if (pfRetCode == nullptr || pKeystrokeMetric == nullptr)
     {
         return FALSE;
     }
@@ -1989,7 +2012,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeCandidate(UINT uCode, _In
 
         pKeystroke = pKeystrokeMetric->GetAt(i);
 
-        if ((pKeystroke->VirtualKey == uCode) && Global::CheckModifiers(Global::ModifiersValue, pKeystroke->Modifiers))
+        if (pKeystroke && (pKeystroke->VirtualKey == uCode) && Global::CheckModifiers(Global::ModifiersValue, pKeystroke->Modifiers))
         {
             *pfRetCode = TRUE;
             if (pKeyState)

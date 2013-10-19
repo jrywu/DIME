@@ -147,6 +147,7 @@ BOOL CCandidateWindow::_CreateVScrollWindow()
 
     SHELL_MODE shellMode = _isStoreAppMode ? STOREAPP : DESKTOP;
     CScrollBarWindowFactory* pFactory = CScrollBarWindowFactory::Instance();
+	if(pFactory == nullptr) return ret;
     _pVScrollBarWnd = pFactory->MakeScrollBarWindow(shellMode);
 
     if (_pVScrollBarWnd == nullptr)
@@ -176,7 +177,7 @@ void CCandidateWindow::_ResizeWindow()
 {
 
 	debugPrint(L"CCandidateWindow::_ResizeWindow() _cxTitle = %d", _cxTitle);
-
+	if(_pIndexRange == nullptr) return;
     int candidateListPageCnt = _pIndexRange->Count();
 	int VScrollWidth = GetSystemMetrics(SM_CXVSCROLL) * 3/2;
 	CBaseWindow::_Resize(_x, _y, _cxTitle + VScrollWidth +  CANDWND_BORDER_WIDTH*2, 
@@ -191,7 +192,8 @@ void CCandidateWindow::_ResizeWindow()
     int width = VScrollWidth;
     int height = rcCandRect.bottom - rcCandRect.top;
 
-    _pVScrollBarWnd->_Resize(left, top, width, height);
+	if(_pVScrollBarWnd)
+		_pVScrollBarWnd->_Resize(left, top, width, height);
 }
 
 //+---------------------------------------------------------------------------
@@ -330,13 +332,13 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
             WINDOWPOS* pWndPos = (WINDOWPOS*)lParam;
 
             // move shadow
-            if (_pShadowWnd)
+            if (_pShadowWnd && pWndPos)
             {
                 _pShadowWnd->_OnOwnerWndMoved((pWndPos->flags & SWP_NOSIZE) == 0);
             }
 
             // move v-scroll
-            if (_pVScrollBarWnd)
+            if (_pVScrollBarWnd && pWndPos)
             {
                 _pVScrollBarWnd->_OnOwnerWndMoved((pWndPos->flags & SWP_NOSIZE) == 0);
             }
@@ -350,7 +352,7 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
             WINDOWPOS* pWndPos = (WINDOWPOS*)lParam;
 
             // show/hide shadow
-            if (_pShadowWnd)
+            if (_pShadowWnd && pWndPos)
             {
                 if ((pWndPos->flags & SWP_HIDEWINDOW) != 0)
                 {
@@ -367,7 +369,7 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
             }
 
             // show/hide v-scroll
-            if (_pVScrollBarWnd)
+            if (_pVScrollBarWnd && pWndPos)
             {
                 if ((pWndPos->flags & SWP_HIDEWINDOW) != 0)
                 {
@@ -485,6 +487,8 @@ void CCandidateWindow::_OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pPaintStruc
 {
 	debugPrint(L"CCandidateWindow::_OnPaint()\n");
 
+	if(pPaintStruct == nullptr) return;
+
     SetBkMode(dcHandle, TRANSPARENT);
 
     HFONT hFontOld = (HFONT)SelectObject(dcHandle, Global::defaultlFontHandle);
@@ -516,6 +520,8 @@ cleanup:
 
 void CCandidateWindow::_OnLButtonDown(POINT pt)
 {
+	if(_pIndexRange == nullptr) return;
+
     RECT rcWindow = {0, 0, 0, 0};;
     _GetClientRect(&rcWindow);
 
@@ -692,6 +698,7 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT iIndex, _In_ RECT 
 {
 	debugPrint(L"CCandidateWindow::_DrawList(), _wndWidth = %d", _wndWidth);
 
+	if(_pIndexRange == nullptr || prc == nullptr) return;
 	
     int pageCount = 0;
     int candidateListPageCnt = _pIndexRange->Count();
@@ -755,6 +762,7 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT iIndex, _In_ RECT 
         }
 
 		pItemList = _candidateList.GetAt(iIndex);
+		if(pItemList == nullptr) continue;
 		SIZE size;
 		GetTextExtentPoint32(dcHandle,pItemList->_ItemString.Get(), (int)pItemList->_ItemString.GetLength(), &size);
 		_cxTitle = max(_cxTitle, size.cx + TRAILING_SPACE * FWFontSize.cx + cxLine * StringPosition);
@@ -817,6 +825,7 @@ void CCandidateWindow::_DrawBorder(_In_ HWND wndHandle, _In_ int cx)
 void CCandidateWindow::_AddString(_Inout_ CCandidateListItem *pCandidateItem, _In_ BOOL isAddFindKeyCode)
 {
 	debugPrint(L"CCandidateWindow::_AddString()");
+	if(pCandidateItem == nullptr) return;
     DWORD_PTR dwItemString = pCandidateItem->_ItemString.GetLength();
     const WCHAR* pwchString = nullptr;
     if (dwItemString)
@@ -862,7 +871,7 @@ void CCandidateWindow::_AddString(_Inout_ CCandidateListItem *pCandidateItem, _I
         return;
     }
 
-    if (pwchString)
+    if (pwchString && pLI)
     {
         pLI->_ItemString.Set(pwchString, dwItemString);
     }
@@ -939,6 +948,7 @@ DWORD CCandidateWindow::_GetCandidateString(_In_ int iIndex, _Outptr_result_mayb
     }
 
     pItemList = _candidateList.GetAt(iIndex);
+	if(pItemList == nullptr) return 0;
     if (ppwchCandidateString)
     {
         *ppwchCandidateString = pItemList->_ItemString.Get();
@@ -963,6 +973,7 @@ DWORD CCandidateWindow::_GetSelectedCandidateString(_Outptr_result_maybenull_ co
     }
 
     pItemList = _candidateList.GetAt(_currentSelection);
+	if(pItemList == nullptr) return 0;
     if (ppwchCandidateString)
     {
         *ppwchCandidateString = pItemList->_ItemString.Get();
@@ -1112,7 +1123,7 @@ BOOL CCandidateWindow::_MovePage(_In_ int offSet, _In_ BOOL isNotify)
     // want adjustment to eliminate empty entries.
     //
     // We do this for keeping behavior inline with downlevel.
-    if (_currentSelection % _pIndexRange->Count() == 0 && 
+    if (_pIndexRange && _currentSelection % _pIndexRange->Count() == 0 && 
         _currentSelection == (INT) *_PageIndex.GetAt(currentPage)) 
     {
         _dontAdjustOnEmptyItemPage = TRUE;
@@ -1421,6 +1432,7 @@ COLORREF _AdjustTextColor(_In_ COLORREF crColor, _In_ COLORREF crBkColor)
 
 HRESULT CCandidateWindow::_CurrentPageHasEmptyItems(_Inout_ BOOL *hasEmptyItems)
 {
+	if(_pIndexRange == nullptr) return E_FAIL;
     int candidateListPageCnt = _pIndexRange->Count();
     UINT currentPage = 0;
 
@@ -1483,6 +1495,7 @@ void CCandidateWindow::_FireMessageToLightDismiss(_In_ HWND wndHandle, _In_ WIND
 HRESULT CCandidateWindow::_AdjustPageIndex(_Inout_ UINT & currentPage, _Inout_ UINT & currentPageIndex)
 {
     HRESULT hr = E_FAIL;
+	if(_pIndexRange == nullptr) return hr;
     UINT candidateListPageCnt = _pIndexRange->Count();
 
     currentPageIndex = *_PageIndex.GetAt(currentPage);

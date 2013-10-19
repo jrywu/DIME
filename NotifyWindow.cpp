@@ -314,7 +314,7 @@ LRESULT CALLBACK CNotifyWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT uM
             WINDOWPOS* pWndPos = (WINDOWPOS*)lParam;
 
             // move shadow
-            if (_pShadowWnd)
+            if (_pShadowWnd && pWndPos)
             {
                 _pShadowWnd->_OnOwnerWndMoved((pWndPos->flags & SWP_NOSIZE) == 0);
             }
@@ -328,7 +328,7 @@ LRESULT CALLBACK CNotifyWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT uM
             WINDOWPOS* pWndPos = (WINDOWPOS*)lParam;
 
             // show/hide shadow
-            if (_pShadowWnd)
+            if (_pShadowWnd && pWndPos)
             {
                 if ((pWndPos->flags & SWP_HIDEWINDOW) != 0)
                 {
@@ -458,9 +458,12 @@ void CNotifyWindow::_OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pPaintStruct)
 
     HFONT hFontOld = (HFONT)SelectObject(dcHandle, Global::defaultlFontHandle);
 
-    FillRect(dcHandle, &pPaintStruct->rcPaint, _brshBkColor);
+	if(pPaintStruct)
+	{
+		FillRect(dcHandle, &pPaintStruct->rcPaint, _brshBkColor);
 
-    _DrawText(dcHandle, &pPaintStruct->rcPaint);
+		_DrawText(dcHandle, &pPaintStruct->rcPaint);
+	}
 
 //cleanup:
     SelectObject(dcHandle, hFontOld);
@@ -486,12 +489,15 @@ void CNotifyWindow::_DrawText(_In_ HDC dcHandle, _In_ RECT *prc)
 	debugPrint(L"CNotifyWindow::_DrawText(), _cxTitle = %d, _cyTitle=%d, text size x = %d, y = %d", _cxTitle, _cyTitle, size.cx, size.cy);
 	
     RECT rc;
-	rc.top = prc->top;
-    rc.bottom = rc.top + _cyTitle;
+	if(prc)
+	{
+		rc.top = prc->top;
+		rc.bottom = rc.top + _cyTitle;
 
-    rc.left = prc->left;
-	rc.right = prc->left + _cxTitle;
-	
+		rc.left = prc->left;
+		rc.right = prc->left + _cxTitle;
+	}
+
     SetTextColor(dcHandle, _crTextColor);// NOTIFYWND_TEXT_COLOR);
     SetBkColor(dcHandle, _crBkColor);//NOTIFYWND_TEXT_BK_COLOR);
     ExtTextOut(dcHandle, _TextMetric.tmAveCharWidth, _cyTitle/5, ETO_OPAQUE, &rc, _notifyText.Get(), (DWORD)_notifyText.GetLength(), NULL);
@@ -544,6 +550,7 @@ void CNotifyWindow::_DrawBorder(_In_ HWND wndHandle, _In_ int cx)
 void CNotifyWindow::_AddString(_Inout_ const CStringRange *pNotifyText)
 {
 	debugPrint(L"CNotifyWindow::_AddString()");
+	if(pNotifyText == nullptr ) return;
 	size_t notifyTextLen = pNotifyText->GetLength();
     WCHAR* pwchString = nullptr;
     if (notifyTextLen)

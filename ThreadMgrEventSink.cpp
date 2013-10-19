@@ -177,7 +177,7 @@ BOOL CTSFTTS::_InitThreadMgrEventSink()
     ITfSource* pSource = nullptr;
     BOOL ret = FALSE;
 
-    if (FAILED(_pThreadMgr->QueryInterface(IID_ITfSource, (void **)&pSource)) || pSource==nullptr)
+    if ( (_pThreadMgr && FAILED(_pThreadMgr->QueryInterface(IID_ITfSource, (void **)&pSource))) || pSource==nullptr)
     {
         return ret;
     }
@@ -212,7 +212,7 @@ void CTSFTTS::_UninitThreadMgrEventSink()
         return; 
     }
 
-    if (SUCCEEDED(_pThreadMgr->QueryInterface(IID_ITfSource, (void **)&pSource)) && pSource)
+    if ( _pThreadMgr && SUCCEEDED(_pThreadMgr->QueryInterface(IID_ITfSource, (void **)&pSource)) && pSource)
     {
         pSource->UnadviseSink(_threadMgrEventSinkCookie);
         pSource->Release();

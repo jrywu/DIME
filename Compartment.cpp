@@ -22,7 +22,8 @@ CCompartment::CCompartment(_In_ IUnknown* punk, TfClientId tfClientId, _In_ REFG
     _guidCompartment = guidCompartment;
 
     _punk = punk;
-    _punk->AddRef();
+	if(_punk)
+		_punk->AddRef();
 
     _tfClientId = tfClientId;
 }
@@ -33,7 +34,8 @@ CCompartment::CCompartment(_In_ IUnknown* punk, TfClientId tfClientId, _In_ REFG
 
 CCompartment::~CCompartment()
 {
-    _punk->Release();
+    if(_punk)
+		_punk->Release();
 }
 
 //+---------------------------------------------------------------------------
@@ -45,8 +47,9 @@ HRESULT CCompartment::_GetCompartment(_Outptr_ ITfCompartment **ppCompartment)
     HRESULT hr = S_OK;
     ITfCompartmentMgr* pCompartmentMgr = nullptr;
 
-    hr = _punk->QueryInterface(IID_ITfCompartmentMgr, (void **)&pCompartmentMgr);
-    if (SUCCEEDED(hr))
+	if(_punk)
+		hr = _punk->QueryInterface(IID_ITfCompartmentMgr, (void **)&pCompartmentMgr);
+    if (SUCCEEDED(hr) && pCompartmentMgr)
     {
         hr = pCompartmentMgr->GetCompartment(_guidCompartment, ppCompartment);
         pCompartmentMgr->Release();
@@ -65,7 +68,7 @@ HRESULT CCompartment::_GetCompartmentBOOL(_Out_ BOOL &flag)
     ITfCompartment* pCompartment = nullptr;
     flag = FALSE;
 
-    if ((hr = _GetCompartment(&pCompartment)) == S_OK)
+    if ((hr = _GetCompartment(&pCompartment)) == S_OK && pCompartment)
     {
         VARIANT var;
         if ((hr = pCompartment->GetValue(&var)) == S_OK)
@@ -95,7 +98,7 @@ HRESULT CCompartment::_SetCompartmentBOOL(_In_ BOOL flag)
     ITfCompartment* pCompartment = nullptr;
 
     hr = _GetCompartment(&pCompartment);
-    if (SUCCEEDED(hr))
+    if (SUCCEEDED(hr) && pCompartment)
     {
         VARIANT var;
         var.vt = VT_I4;
@@ -118,7 +121,7 @@ HRESULT CCompartment::_GetCompartmentDWORD(_Out_ DWORD &dw)
     dw = 0;
 
     hr = _GetCompartment(&pCompartment);
-    if (SUCCEEDED(hr))
+    if (SUCCEEDED(hr) && pCompartment)
     {
         VARIANT var;
         if ((hr = pCompartment->GetValue(&var)) == S_OK)
@@ -148,7 +151,7 @@ HRESULT CCompartment::_SetCompartmentDWORD(_In_ DWORD dw)
     ITfCompartment* pCompartment = nullptr;
 
     hr = _GetCompartment(&pCompartment);
-    if (SUCCEEDED(hr))
+    if (SUCCEEDED(hr) && pCompartment)
     {
         VARIANT var;
         var.vt = VT_I4;
@@ -176,7 +179,7 @@ HRESULT CCompartment::_ClearCompartment()
     HRESULT hr = S_OK;
     ITfCompartmentMgr* pCompartmentMgr = nullptr;
 
-    if ((hr = _punk->QueryInterface(IID_ITfCompartmentMgr, (void **)&pCompartmentMgr)) == S_OK)
+    if ((hr = _punk->QueryInterface(IID_ITfCompartmentMgr, (void **)&pCompartmentMgr)) == S_OK && pCompartmentMgr)
     {
         hr = pCompartmentMgr->ClearCompartment(_tfClientId, _guidCompartment);
         pCompartmentMgr->Release();
@@ -292,16 +295,16 @@ HRESULT CCompartmentEventSink::_Advise(_In_ IUnknown *punk, _In_ REFGUID guidCom
     ITfSource* pSource = nullptr;
 
     hr = punk->QueryInterface(IID_ITfCompartmentMgr, (void **)&pCompartmentMgr);
-    if (FAILED(hr))
+    if (FAILED(hr) || pCompartmentMgr==nullptr)
     {
         return hr;
     }
 
     hr = pCompartmentMgr->GetCompartment(guidCompartment, &_pCompartment);
-    if (SUCCEEDED(hr))
+    if (SUCCEEDED(hr) && _pCompartment)
     {
         hr = _pCompartment->QueryInterface(IID_ITfSource, (void **)&pSource);
-        if (SUCCEEDED(hr))
+        if (SUCCEEDED(hr) && pSource)
         {
             hr = pSource->AdviseSink(IID_ITfCompartmentEventSink, this, &_dwCookie);
             pSource->Release();
@@ -324,8 +327,13 @@ HRESULT CCompartmentEventSink::_Unadvise()
     HRESULT hr = S_OK;
     ITfSource* pSource = nullptr;
 
+	if (_pCompartment==nullptr)
+    {
+        return hr;
+    }
+
     hr = _pCompartment->QueryInterface(IID_ITfSource, (void **)&pSource);
-    if (SUCCEEDED(hr))
+    if (SUCCEEDED(hr) && pSource)
     {
         hr = pSource->UnadviseSink(_dwCookie);
         pSource->Release();

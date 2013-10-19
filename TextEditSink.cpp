@@ -46,7 +46,7 @@ STDAPI CTSFTTS::OnEndEdit(__RPC__in_opt ITfContext *pContext, TfEditCookie ecRea
             {
                 return E_INVALIDARG;
             }
-            if (FAILED(pContext->GetSelection(ecReadOnly, TF_DEFAULT_SELECTION, 1, &tfSelection, &fetched)) || fetched != 1)
+            if (FAILED(pContext->GetSelection(ecReadOnly, TF_DEFAULT_SELECTION, 1, &tfSelection, &fetched)) || fetched != 1 || tfSelection.range == nullptr)
             {
                 return S_FALSE;
             }

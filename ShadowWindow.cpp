@@ -207,7 +207,7 @@ void CShadowWindow::_InitSettings()
 
 void CShadowWindow::_AdjustWindowPos()
 {
-    if (!IsWindow(_GetWnd()))
+    if (!IsWindow(_GetWnd()) || _pWndOwner==nullptr)
     {
         return;
     }
@@ -308,7 +308,8 @@ void CShadowWindow::_InitShadow()
         if (i <= (size.cy + 1)/2) {
             for (j = SHADOW_ALPHANUMBER; j < size.cx - SHADOW_ALPHANUMBER; j++) {
                 ppxl = GETRGBALPHA(j, i);
-                ppxl->rgbAlpha = bAlpha;
+                if(ppxl)
+					ppxl->rgbAlpha = bAlpha;
             }
         }
 
@@ -316,7 +317,8 @@ void CShadowWindow::_InitShadow()
         if (i <= (size.cx + 1)/2) {
             for (j = SHADOW_ALPHANUMBER; j < size.cy - SHADOW_ALPHANUMBER; j++) {
                 ppxl = GETRGBALPHA(size.cx - 1 - i, j);
-                ppxl->rgbAlpha = bAlpha;
+                if(ppxl)
+					ppxl->rgbAlpha = bAlpha;
             }
         }
     }
@@ -331,19 +333,22 @@ void CShadowWindow::_InitShadow()
             // top-right
             if ((i <= (size.cy + 1)/2) && (j <= (size.cx + 1)/2)) {
                 ppxl = GETRGBALPHA(size.cx - 1 - j, size.cy - 1 - i);
-                ppxl->rgbAlpha = bAlpha;
+                if(ppxl)
+					 ppxl->rgbAlpha = bAlpha;
             }
 
             // bottom-left
             if ((i <= (size.cy + 1)/2) && (j <= (size.cx + 1)/2)) {
                 ppxl = GETRGBALPHA(j, i + 1);
-                ppxl->rgbAlpha = bAlpha;
+                if(ppxl)
+					ppxl->rgbAlpha = bAlpha;
             }
 
             // bottom-right
             if ((i <= (size.cy + 1)/2) && (j <= (size.cx + 1)/2)) {
                 ppxl = GETRGBALPHA(size.cx - 1 - j, i + 1);
-                ppxl->rgbAlpha = bAlpha;
+                if(ppxl)
+					ppxl->rgbAlpha = bAlpha;
             }
         }
     }
