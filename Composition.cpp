@@ -277,7 +277,7 @@ HRESULT CTSFTTS::_InsertAtSelection(TfEditCookie ec, _In_ ITfContext *pContext, 
     ITfInsertAtSelection* pias = nullptr;
     HRESULT hr = S_OK;
 
-    if (ppCompRange == nullptr)
+    if (ppCompRange == nullptr || pContext == nullptr || pstrAddString == nullptr)
     {
         hr = E_INVALIDARG;
         goto Exit;
@@ -286,7 +286,7 @@ HRESULT CTSFTTS::_InsertAtSelection(TfEditCookie ec, _In_ ITfContext *pContext, 
     *ppCompRange = nullptr;
 
     hr = pContext->QueryInterface(IID_ITfInsertAtSelection, (void **)&pias);
-    if (FAILED(hr))
+    if (FAILED(hr) || pias == nullptr)
     {
         goto Exit;
     }
@@ -325,7 +325,7 @@ HRESULT CTSFTTS::_RemoveDummyCompositionForComposing
     if (pComposition)
     {
         hr = pComposition->GetRange(&pRange);
-        if (SUCCEEDED(hr))
+        if (SUCCEEDED(hr) && pRange)
         {
             pRange->SetText(ec, 0, nullptr, 0);
             pRange->Release();
@@ -346,12 +346,18 @@ BOOL CTSFTTS::_SetCompositionLanguage(TfEditCookie ec, _In_ ITfContext *pContext
     HRESULT hr = S_OK;
     BOOL ret = TRUE;
 
+	if (pContext == nullptr || _pComposition == nullptr)
+    {
+		ret = FALSE;
+        goto Exit;
+    }
+
     ITfRange* pRangeComposition = nullptr;
     ITfProperty* pLanguageProperty = nullptr;
 
     // we need a range and the context it lives in
     hr = _pComposition->GetRange(&pRangeComposition);
-    if (FAILED(hr))
+    if (FAILED(hr) || pRangeComposition == nullptr)
     {
         ret = FALSE;
         goto Exit;
@@ -359,7 +365,7 @@ BOOL CTSFTTS::_SetCompositionLanguage(TfEditCookie ec, _In_ ITfContext *pContext
 
     // get our the language property
     hr = pContext->GetProperty(GUID_PROP_LANGID, &pLanguageProperty);
-    if (FAILED(hr))
+    if (FAILED(hr) || pLanguageProperty == nullptr)
     {
         ret = FALSE;
         goto Exit;
@@ -370,7 +376,7 @@ BOOL CTSFTTS::_SetCompositionLanguage(TfEditCookie ec, _In_ ITfContext *pContext
     var.lVal = _langid; 
 
     hr = pLanguageProperty->SetValue(ec, pRangeComposition, &var);
-    if (FAILED(hr))
+    if (FAILED(hr) || pRangeComposition == nullptr)
     {
         ret = FALSE;
         goto Exit;
@@ -435,7 +441,7 @@ void CTSFTTS::_ProbeComposition(_In_ ITfContext *pContext)
 
 	CProbeComposistionEditSession* pProbeComposistionEditSession = new (std::nothrow) CProbeComposistionEditSession(this, pContext);
 
-	if (nullptr != pProbeComposistionEditSession)
+	if (pProbeComposistionEditSession && pContext)
 	{
 		
 		HRESULT hrES = S_OK, hr = S_OK;
@@ -462,7 +468,7 @@ HRESULT CTSFTTS::_ProbeCompositionRangeNotification(_In_ TfEditCookie ec, _In_ I
     ULONG fetched = 0;
     TF_SELECTION tfSelection;
 
-    if ((hr = pContext->GetSelection(ec, TF_DEFAULT_SELECTION, 1, &tfSelection, &fetched)) != S_OK || fetched != 1 ||tfSelection.range==nullptr)
+    if ( pContext == nullptr || (hr = pContext->GetSelection(ec, TF_DEFAULT_SELECTION, 1, &tfSelection, &fetched)) != S_OK || fetched != 1 ||tfSelection.range==nullptr)
 	{
 		_TerminateComposition(ec,pContext);
         return hr;

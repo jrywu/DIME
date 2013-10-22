@@ -128,7 +128,7 @@ void CTSFTTS::_StartComposition(_In_ ITfContext *pContext)
 
 void CTSFTTS::_SaveCompositionContext(_In_ ITfContext *pContext)
 {
-	if(_pContext)
+	if(pContext)
 	{
 		pContext->AddRef();
 		_pContext = pContext;

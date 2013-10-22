@@ -27,7 +27,7 @@ void CTSFTTS::_ClearCompositionDisplayAttributes(TfEditCookie ec, _In_ ITfContex
     }
 
     // get our the display attribute property
-    if (SUCCEEDED(pContext->GetProperty(GUID_PROP_ATTRIBUTE, &pDisplayAttributeProperty)) && pDisplayAttributeProperty)
+    if (pContext && SUCCEEDED(pContext->GetProperty(GUID_PROP_ATTRIBUTE, &pDisplayAttributeProperty)) && pDisplayAttributeProperty)
     {
         // clear the value over the range
         pDisplayAttributeProperty->Clear(ec, pRangeComposition);
@@ -62,7 +62,7 @@ BOOL CTSFTTS::_SetCompositionDisplayAttributes(TfEditCookie ec, _In_ ITfContext 
     hr = E_FAIL;
 
     // get our the display attribute property
-    if (SUCCEEDED(pContext->GetProperty(GUID_PROP_ATTRIBUTE, &pDisplayAttributeProperty)) && pDisplayAttributeProperty)
+    if (pContext && SUCCEEDED(pContext->GetProperty(GUID_PROP_ATTRIBUTE, &pDisplayAttributeProperty)) && pDisplayAttributeProperty)
     {
         VARIANT var;
         // set the value over the range
