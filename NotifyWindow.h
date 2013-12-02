@@ -42,7 +42,7 @@ public:
 	virtual void _OnTimerID(UINT_PTR timerID);
     
 	void _OnLButtonDown(POINT pt);
-    //void _OnLButtonUp(POINT pt);
+    void _OnRButtonDown(POINT pt);
     void _OnMouseMove(POINT pt);
     
     void _AddString(_Inout_ const CStringRange *pNotifyText);

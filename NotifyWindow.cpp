@@ -440,6 +440,9 @@ void CNotifyWindow::_HandleMouseMsg(_In_ UINT mouseMsg, _In_ POINT point)
     case WM_LBUTTONDOWN:
         _OnLButtonDown(point);
         break;
+	case WM_RBUTTONDOWN:
+        _OnRButtonDown(point);
+        break;
     case WM_LBUTTONUP:
         _OnLButtonUp(point);
         break;
@@ -679,6 +682,15 @@ void CNotifyWindow::_OnLButtonDown(POINT pt)
 		_Show(FALSE,0,0);
 		
 	}
+
+}
+
+void CNotifyWindow::_OnRButtonDown(POINT pt)
+{
+	pt;
+	//hide the notify if click outside the notify window.
+	_Show(FALSE,0,0);
+
 
 }
 

@@ -340,7 +340,7 @@ STDAPI CTSFTTS::QueryInterface(REFIID riid, _Outptr_ void **ppvObj)
 
 STDAPI_(ULONG) CTSFTTS::AddRef()
 {
-	//debugPrint(L"CTSFTTS::AddRef(), _refCount = %d", _refCount+1); 
+	debugPrint(L"CTSFTTS::AddRef(), _refCount = %d", _refCount+1); 
     return ++_refCount;
 }
 
@@ -352,7 +352,7 @@ STDAPI_(ULONG) CTSFTTS::AddRef()
 
 STDAPI_(ULONG) CTSFTTS::Release()
 {
-	//debugPrint(L"CTSFTTS::Release(), _refCount = %d", _refCount-1);
+	debugPrint(L"CTSFTTS::Release(), _refCount = %d", _refCount-1);
     LONG cr = --_refCount;
 
     assert(_refCount >= 0);
