@@ -21,6 +21,11 @@
 
 CCandidateWindow::CCandidateWindow(_In_ CANDWNDCALLBACK pfnCallback, _In_ void *pv, _In_ CCandidateRange *pIndexRange, _In_ BOOL isStoreAppMode)
 {
+	
+	debugPrint(L"CCandidateWindow::CCandidateWindow() gdiObjects = %d", GetGuiResources(GetCurrentProcess(), GR_GDIOBJECTS));
+
+	_brshBkColor = nullptr;
+
     _currentSelection = 0;
 
     _SetTextColor(CANDWND_ITEM_COLOR, GetSysColor(COLOR_WINDOW));    // text color is black
@@ -48,6 +53,7 @@ CCandidateWindow::CCandidateWindow(_In_ CANDWNDCALLBACK pfnCallback, _In_ void *
 
 	_x = -32768;
 	_y = -32768;
+
 }
 
 //+---------------------------------------------------------------------------
@@ -58,9 +64,11 @@ CCandidateWindow::CCandidateWindow(_In_ CANDWNDCALLBACK pfnCallback, _In_ void *
 
 CCandidateWindow::~CCandidateWindow()
 {
+	if(_brshBkColor) DeleteObject(_brshBkColor);
     _ClearList();
     _DeleteShadowWnd();
     _DeleteVScrollBarWnd();
+	debugPrint(L"CCandidateWindow::~CCandidateWindow() gdiObjects = %d", GetGuiResources(GetCurrentProcess(), GR_GDIOBJECTS));
 }
 
 //+---------------------------------------------------------------------------
@@ -284,7 +292,9 @@ VOID CCandidateWindow::_SetSelectedTextColor(_In_ COLORREF crColor, _In_ COLORRE
 
 VOID CCandidateWindow::_SetFillColor(_In_ COLORREF fiColor)
 {
-    _brshBkColor = CreateSolidBrush( fiColor);
+	if(_brshBkColor) DeleteObject(_brshBkColor);
+	_brshBkColor = CreateSolidBrush(fiColor);
+
 }
 
 //+---------------------------------------------------------------------------
@@ -303,6 +313,7 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
     {
     case WM_CREATE:
         {
+			debugPrint(L"CCandidateWindow::_WindowProcCallback():WM_CREATE gdiObjects = %d", GetGuiResources(GetCurrentProcess(), GR_GDIOBJECTS));
             HDC dcHandle = nullptr;
 
             dcHandle = GetDC(wndHandle);
@@ -320,6 +331,7 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
                 SelectObject(dcHandle, hFontOld);
                 ReleaseDC(wndHandle, dcHandle);
             }
+			debugPrint(L"CCandidateWindow::_WindowProcCallback():WM_CREATE ended. gdiObjects = %d", GetGuiResources(GetCurrentProcess(), GR_GDIOBJECTS));
         }
         return 0;
 
@@ -393,6 +405,7 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
 
     case WM_PAINT:
         {
+			debugPrint(L"CCandidateWindow::_WindowProcCallback():WM_PAINT gdiObjects = %d", GetGuiResources(GetCurrentProcess(), GR_GDIOBJECTS));
             HDC dcHandle = nullptr;
             PAINTSTRUCT ps;
 
@@ -400,7 +413,10 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
 			_DrawBorder(wndHandle, CANDWND_BORDER_WIDTH);
             _OnPaint(dcHandle, &ps);
             EndPaint(wndHandle, &ps);
+			ReleaseDC(wndHandle, dcHandle);
+			debugPrint(L"CCandidateWindow::_WindowProcCallback():WM_PAINT ended. gdiObjects = %d", GetGuiResources(GetCurrentProcess(), GR_GDIOBJECTS));
         }
+
         return 0;
 
     case WM_SETCURSOR:
@@ -492,8 +508,11 @@ void CCandidateWindow::_OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pPaintStruc
     SetBkMode(dcHandle, TRANSPARENT);
 
     HFONT hFontOld = (HFONT)SelectObject(dcHandle, Global::defaultlFontHandle);
-
-    FillRect(dcHandle, &pPaintStruct->rcPaint, _brshBkColor);
+	
+	if(_brshBkColor) 
+	{
+		FillRect(dcHandle, &pPaintStruct->rcPaint,_brshBkColor);
+	}
 
     UINT currentPageIndex = 0;
     UINT currentPage = 0;
@@ -707,7 +726,8 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT iIndex, _In_ RECT 
     RECT rc;
 	const size_t lenOfPageCount = 16;
 
-	HFONT hFontOld = (HFONT)SelectObject(dcHandle, Global::defaultlFontHandle);
+	//HFONT hFontOld = (HFONT)SelectObject(dcHandle, Global::defaultlFontHandle); // done this in on_paint already
+	
 	GetTextMetrics(dcHandle, &_TextMetric);
 	SIZE FWFontSize;
 	GetTextExtentPoint32(dcHandle,L"¼e", 1, &FWFontSize); //don't trust the TextMetrics. Measurement the font height and width directly.
@@ -778,10 +798,11 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT iIndex, _In_ RECT 
         rc.left   = prc->left + PageCountPosition * cxLine;
         rc.right  = prc->left + (PageCountPosition+1) * cxLine;
 
-        FillRect(dcHandle, &rc, _brshBkColor);
+        if(_brshBkColor) FillRect(dcHandle, &rc, _brshBkColor);
     }
 
-	SelectObject(dcHandle, hFontOld);
+	
+	//SelectObject(dcHandle, hFontOld); //done this in on_paint already
 
 	if(_cxTitle != prc->right - prc->left - VScrollWidth) _ResizeWindow();
 }
@@ -1555,8 +1576,10 @@ Exit:
 }
 void CCandidateWindow::_DeleteShadowWnd()
 {
+	debugPrint(L"CCandidateWindow::_DeleteShadowWnd(), gdiObjects = %d", GetGuiResources(GetCurrentProcess(), GR_GDIOBJECTS));
     if (nullptr != _pShadowWnd)
     {
+
         delete _pShadowWnd;
         _pShadowWnd = nullptr;
     }
@@ -1564,6 +1587,7 @@ void CCandidateWindow::_DeleteShadowWnd()
 
 void CCandidateWindow::_DeleteVScrollBarWnd()
 {
+	debugPrint(L"CCandidateWindow::_DeleteVScrollBarWnd(), gdiObjects = %d", GetGuiResources(GetCurrentProcess(), GR_GDIOBJECTS));
     if (nullptr != _pVScrollBarWnd)
     {
         delete _pVScrollBarWnd;

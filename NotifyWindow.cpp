@@ -22,8 +22,10 @@
 
 CNotifyWindow::CNotifyWindow(_In_ NOTIFYWNDCALLBACK pfnCallback, _In_ void *pv, enum NOTIFY_TYPE notifyType)
 {
-   
+   debugPrint(L"CNotifyWindow::CNotifyWindow() gdiObjects = %d", GetGuiResources(GetCurrentProcess(), GR_GDIOBJECTS));
 	
+   _brshBkColor = nullptr;
+
     _pfnCallback = pfnCallback;
     _pObj = pv;
 
@@ -51,9 +53,10 @@ CNotifyWindow::CNotifyWindow(_In_ NOTIFYWNDCALLBACK pfnCallback, _In_ void *pv, 
 
 CNotifyWindow::~CNotifyWindow()
 {
+	if(_brshBkColor) DeleteObject(_brshBkColor);
 	if(_IsTimer()) _EndTimer();
     _DeleteShadowWnd();
-    
+    debugPrint(L"CNotifyWindow::~CNotifyWindow() gdiObjects = %d", GetGuiResources(GetCurrentProcess(), GR_GDIOBJECTS));
 }
 //+---------------------------------------------------------------------------
 //
@@ -253,9 +256,11 @@ VOID CNotifyWindow::_SetTextColor(_In_ COLORREF crColor, _In_ COLORREF crBkColor
     _crBkColor = crBkColor;
 }
 
-VOID CNotifyWindow::_SetFillColor(_In_ COLORREF crBkColor)
+VOID CNotifyWindow::_SetFillColor(_In_ COLORREF crFiColor)
 {
-    _brshBkColor = CreateSolidBrush(crBkColor);
+	if(_brshBkColor) DeleteObject(_brshBkColor);
+	//_crFiColor = crFiColor;
+    _brshBkColor = CreateSolidBrush(crFiColor);
 }
 
 //+---------------------------------------------------------------------------
@@ -359,7 +364,7 @@ LRESULT CALLBACK CNotifyWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT uM
 
     case WM_PAINT:
         {
-			debugPrint(L"CNotifyWindow::_WindowProcCallback():WM_PAINT");
+			debugPrint(L"CNotifyWindow::_WindowProcCallback():WM_PAINT gdiObjects = %d", GetGuiResources(GetCurrentProcess(), GR_GDIOBJECTS));
             HDC dcHandle = nullptr;
             PAINTSTRUCT ps;
 
@@ -370,6 +375,7 @@ LRESULT CALLBACK CNotifyWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT uM
             EndPaint(wndHandle, &ps);
 
             ReleaseDC(wndHandle, dcHandle);
+			debugPrint(L"CNotifyWindow::_WindowProcCallback():WM_PAINT ended. gdiObjects = %d", GetGuiResources(GetCurrentProcess(), GR_GDIOBJECTS));
         }
         return 0;
 

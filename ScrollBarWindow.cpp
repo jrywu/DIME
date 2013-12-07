@@ -4,7 +4,7 @@
 //
 //
 
-
+//#define DEBUG_PRINT
 #include "Private.h"
 #include "Globals.h"
 #include "BaseWindow.h"
@@ -113,6 +113,7 @@ CScrollBarWindow::~CScrollBarWindow()
 
 BOOL CScrollBarWindow::_Create(ATOM atom, DWORD dwExStyle, DWORD dwStyle, CBaseWindow *pParent, int wndWidth, int wndHeight)
 {
+	debugPrint(L"CScrollBarWindow::_Create(), gdiObjects = %d", GetGuiResources(GetCurrentProcess(), GR_GDIOBJECTS));
     if (!CBaseWindow::_Create(atom, dwExStyle, dwStyle, pParent, wndWidth, wndHeight))
     {
         return FALSE;
@@ -171,6 +172,7 @@ LRESULT CALLBACK CScrollBarWindow::_WindowProcCallback(_In_ HWND wndHandle, _In_
 				_pBtnDn->_OnPaint(dcHandle, &ps);
 
             EndPaint(wndHandle, &ps);
+			ReleaseDC(wndHandle, dcHandle);
         }
         return 0;
     }
@@ -202,6 +204,8 @@ void CScrollBarWindow::_OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps)
 
 	if(&pps)
 		FillRect(dcHandle, &pps->rcPaint, hBrush);
+
+	if(hBrush) DeleteObject(hBrush);
 }
 
 //+---------------------------------------------------------------------------
