@@ -876,7 +876,7 @@ VOID CConfig::LoadConfig()
 				}
 
 				// In store app mode, the dll is loaded into app container which does not even have read right for IME profile in APPDATA.
-				// Here, the read right is granted once to "ALL APPLICATION PACKAGES" when loaded in desktop mode for all metro apps can at least read the user settings in config.ini.				
+				// Here, the read right is granted once to "ALL APPLICATION PACKAGES" when loaded in desktop mode, so as all metro apps can at least read the user settings in config.ini.				
 				if(Global::isWindows8 && ! CTSFTTS::_IsStoreAppMode() && ! _appPermissionSet ) 
 				{
 					EXPLICIT_ACCESS ea;

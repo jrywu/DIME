@@ -1380,9 +1380,14 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 				_pTableDictionaryEngine[imeMode]->ParseConfig(imeMode); //parse config first.		
 
 			}
+			else
+			{ // error on createfile. do cleanup
+				delete _pTableDictionaryFile[imeMode];
+				_pTableDictionaryFile[imeMode] = nullptr;
+			}
 		}
 	}
-	else if(imeMode == IME_MODE_DAYI || imeMode == IME_MODE_ARRAY)		//failed back to load windows preload tabletextservice table.
+	if(_pTableDictionaryEngine[imeMode] == nullptr && (imeMode == IME_MODE_DAYI || imeMode == IME_MODE_ARRAY))		//failed back to load windows preload tabletextservice table.
 	{
 		if (_pTableDictionaryEngine[imeMode] == nullptr)
 		{
