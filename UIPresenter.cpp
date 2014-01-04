@@ -897,6 +897,7 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
 {
 	debugPrint(L"CUIPresenter::_LayoutChangeNotification(), top = %d, bottom = %d, right = %d, left = %d", lpRect->top, lpRect->bottom, lpRect->right, lpRect->left);
 	if(lpRect == nullptr) return;
+
 	RECT compRect = * lpRect;
     RECT candRect = {0, 0, 0, 0};
 	RECT notifyRect = {0, 0, 0, 0};
@@ -906,6 +907,8 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
 	ITfContext *pContext =  _GetContextDocument();
 	ITfContextView * pView = nullptr;
 	HWND parentWndHandle;
+
+	
 	if (pContext && pView && SUCCEEDED(pContext->GetActiveView(&pView)))
 	{
 		POINT pt;

@@ -3,7 +3,7 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-
+//#define DEBUG_PRINT
 
 #include "Private.h"
 #include "Globals.h"
@@ -145,7 +145,7 @@ void CBaseWindow::_Move(int x, int y)
 {
     if (_wndHandle != nullptr)
     {
-		// do not aluter zorder to  to avoid bounce back on child windows (like office share->email)
+		// do not alter zorder to  to avoid bounce back on child windows (like office share->email)
         SetWindowPos(_wndHandle, NULL, x, y, 0, 0, SWP_NOACTIVATE | SWP_NOSIZE |SWP_NOZORDER);
     }
     else
@@ -335,6 +335,10 @@ BOOL CBaseWindow::_GetClientRect(_Inout_ LPRECT lpRect)
 
 HRESULT CBaseWindow::_GetWindowExtent(_In_ const RECT *prcTextExtent, _In_opt_ RECT *prcCandidateExtent, _Inout_ POINT *pptCandidate)
 {
+	debugPrint(L"CBaseWindow::_GetWindowExtent, prcTextExtent top = %d, bottom = %d, right = %d, left = %d",
+		prcTextExtent->top, prcTextExtent->bottom, prcTextExtent->right, prcTextExtent->left);
+	debugPrint(L"CBaseWindow::_GetWindowExtent, prcCandidateExtent top = %d, bottom = %d, right = %d, left = %d", 
+		prcCandidateExtent->top, prcCandidateExtent->bottom, prcCandidateExtent->right, prcCandidateExtent->left);
     
 	if(prcTextExtent == nullptr) return E_INVALIDARG;
 
@@ -360,6 +364,9 @@ HRESULT CBaseWindow::_GetWindowExtent(_In_ const RECT *prcTextExtent, _In_opt_ R
 
 void CBaseWindow::CalcFitPointAroundTextExtent(_In_ const RECT *prcTextExtent, _In_ const RECT *prcWorkArea, _In_ const RECT *prcWindow, _Out_ POINT *ppt)
 {
+	debugPrint(L"CBaseWindow::CalcFitPointAroundTextExtent, prcWorkArea top = %d, bottom = %d, right = %d, left = %d",
+		prcWorkArea->top, prcWorkArea->bottom, prcWorkArea->right, prcWorkArea->left);
+	
 	if(prcTextExtent == nullptr || prcWindow == nullptr || ppt == nullptr) return;
     RECT rcTargetWindow[2];
     DWORD dwFlags[2];
@@ -368,9 +375,17 @@ void CBaseWindow::CalcFitPointAroundTextExtent(_In_ const RECT *prcTextExtent, _
     rcTargetWindow[0] = *prcWindow;
     OffsetRect(&rcTargetWindow[0], prcTextExtent->left, prcTextExtent->bottom);
 
+	debugPrint(L"CBaseWindow::CalcFitPointAroundTextExtent, attach top side: top = %d, bottom = %d, right = %d, left = %d",
+		rcTargetWindow[0].top, rcTargetWindow[0].bottom, rcTargetWindow[0].right, rcTargetWindow[0].left);
+	
+
     // set rcTargetWindow[1] which rectangle attached on top side of text extent
     rcTargetWindow[1] = *prcWindow;
     OffsetRect(&rcTargetWindow[1], prcTextExtent->left, prcTextExtent->top - (prcWindow->bottom - prcWindow->top));
+
+	debugPrint(L"CBaseWindow::CalcFitPointAroundTextExtent, attach bottom side: top = %d, bottom = %d, right = %d, left = %d",
+		rcTargetWindow[1].top, rcTargetWindow[1].bottom, rcTargetWindow[1].right, rcTargetWindow[1].left);
+	
 
     //
     // check target rectangle fit in workarea
@@ -378,6 +393,8 @@ void CBaseWindow::CalcFitPointAroundTextExtent(_In_ const RECT *prcTextExtent, _
     for (DWORD i = 0; i < ARRAYSIZE(rcTargetWindow); i++)
     {
         dwFlags[i] = RectInRect(prcWorkArea, &rcTargetWindow[i]);
+		
+		debugPrint(L"CBaseWindow::CalcFitPointAroundTextExtent, dwFlags[%d] = %x",i, dwFlags[i]);
 
         // generally, rcTargetWindow[0] or rcTargetWindow[1] have neither of these flags
         // but in the case where window is just complete way off the screen e.g. user
@@ -616,6 +633,9 @@ LRESULT CALLBACK CBaseWindow::_WindowProc(_In_ HWND wndHandle, UINT uMsg, _In_ W
 
 void CBaseWindow::GetWorkAreaFromPoint(_In_ const POINT& ptPoint, _Out_ LPRECT lprcWorkArea)
 {
+	debugPrint(L"CBaseWindow::GetWorkAreaFromPoint, point = x = %d, y = %d", ptPoint.x, ptPoint.y);
+
+	
     if (lprcWorkArea == nullptr)
     {
         return;
@@ -626,6 +646,7 @@ void CBaseWindow::GetWorkAreaFromPoint(_In_ const POINT& ptPoint, _Out_ LPRECT l
     lprcWorkArea->right = 0;
     lprcWorkArea->bottom = 0;
 
+	
     HMONITOR hMonitor = MonitorFromPoint(ptPoint, MONITOR_DEFAULTTONEAREST);
     if (hMonitor)
     {
@@ -634,12 +655,30 @@ void CBaseWindow::GetWorkAreaFromPoint(_In_ const POINT& ptPoint, _Out_ LPRECT l
         MonitorInfo.cbSize = sizeof(MONITORINFO);
         if (GetMonitorInfo(hMonitor, &MonitorInfo))
         {
+			debugPrint(L"CBaseWindow::GetWorkAreaFromPoint from GetMonitorInfo rcmonitor top = %d, bottom = %d, right = %d, left = %d",
+				MonitorInfo.rcMonitor.top, MonitorInfo.rcMonitor.bottom, MonitorInfo.rcMonitor.right, MonitorInfo.rcMonitor.left);
             *lprcWorkArea = MonitorInfo.rcWork;
+
+			if(! (ptPoint.x < lprcWorkArea->right && ptPoint.x > lprcWorkArea->left))  // in store app snapeed view. rcworkarea is the desktop view, but not current app
+			{
+				if(ptPoint.x > lprcWorkArea->right)
+					lprcWorkArea->right = MonitorInfo.rcMonitor.right;
+				if(ptPoint.x < lprcWorkArea->left)
+					lprcWorkArea->left = MonitorInfo.rcMonitor.left;
+			}
+
+			debugPrint(L"CBaseWindow::GetWorkAreaFromPoint from GetMonitorInfo rect top = %d, bottom = %d, right = %d, left = %d",
+					lprcWorkArea->top, lprcWorkArea->bottom, lprcWorkArea->right, lprcWorkArea->left);
+	
             return;
         }
     }
+	
 
     SystemParametersInfo(SPI_GETWORKAREA, 0, lprcWorkArea, 0);
+	debugPrint(L"CBaseWindow::GetWorkAreaFromPoint from SystemParametersInfo rect top = %d, bottom = %d, right = %d, left = %d",
+					lprcWorkArea->top, lprcWorkArea->bottom, lprcWorkArea->right, lprcWorkArea->left);
+	
     return;
 }
 
