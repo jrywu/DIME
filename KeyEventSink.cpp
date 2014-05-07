@@ -7,7 +7,7 @@
 
 #include "Private.h"
 #include "Globals.h"
-#include "TSFTTS.h"
+#include "DIME.h"
 #include "UIPresenter.h"
 #include "CompositionProcessorEngine.h"
 #include "KeyHandlerEditSession.h"
@@ -60,19 +60,19 @@ __inline UINT VKeyFromVKPacketAndWchar(UINT vk, WCHAR wch)
 //
 //----------------------------------------------------------------------------
 
-BOOL CTSFTTS::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pCodeOut, _Out_writes_(1) WCHAR *pwch, _Out_opt_ _KEYSTROKE_STATE *pKeyState)
+BOOL CDIME::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pCodeOut, _Out_writes_(1) WCHAR *pwch, _Out_opt_ _KEYSTROKE_STATE *pKeyState)
 {
-	debugPrint(L"CTSFTTS::_IsKeyEaten(), codein = %d", codeIn);
+	debugPrint(L"CDIME::_IsKeyEaten(), codein = %d", codeIn);
     pContext;
     *pCodeOut = codeIn;
 
 
     BOOL isOpen = FALSE;
-	CCompartment CompartmentKeyboardOpen(_pThreadMgr, _tfClientId, Global::TSFTTSGuidCompartmentIMEMode);
+	CCompartment CompartmentKeyboardOpen(_pThreadMgr, _tfClientId, Global::DIMEGuidCompartmentIMEMode);
     CompartmentKeyboardOpen._GetCompartmentBOOL(isOpen);
 
     BOOL isDoubleSingleByte = FALSE;
-    CCompartment CompartmentDoubleSingleByte(_pThreadMgr, _tfClientId, Global::TSFTTSGuidCompartmentDoubleSingleByte);
+    CCompartment CompartmentDoubleSingleByte(_pThreadMgr, _tfClientId, Global::DIMEGuidCompartmentDoubleSingleByte);
     CompartmentDoubleSingleByte._GetCompartmentBOOL(isDoubleSingleByte);
 
   
@@ -196,7 +196,7 @@ BOOL CTSFTTS::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pC
 //
 //----------------------------------------------------------------------------
 
-WCHAR CTSFTTS::ConvertVKey(UINT code)
+WCHAR CDIME::ConvertVKey(UINT code)
 {
     //
     // Map virtual key to scan code
@@ -231,7 +231,7 @@ WCHAR CTSFTTS::ConvertVKey(UINT code)
 //
 //----------------------------------------------------------------------------
 
-BOOL CTSFTTS::_IsKeyboardDisabled()
+BOOL CDIME::_IsKeyboardDisabled()
 {
     ITfDocumentMgr* pDocMgrFocus = nullptr;
     ITfContext* pContext = nullptr;
@@ -269,7 +269,7 @@ BOOL CTSFTTS::_IsKeyboardDisabled()
         pDocMgrFocus->Release();
     }
 
-	debugPrint(L" CTSFTTS::_IsKeyboardDisabled(), isDisabled = %d", isDisabled);
+	debugPrint(L" CDIME::_IsKeyboardDisabled(), isDisabled = %d", isDisabled);
 
     return isDisabled;
 }
@@ -281,7 +281,7 @@ BOOL CTSFTTS::_IsKeyboardDisabled()
 // Called by the system whenever this service gets the keystroke device focus.
 //----------------------------------------------------------------------------
 
-STDAPI CTSFTTS::OnSetFocus(BOOL fForeground)
+STDAPI CDIME::OnSetFocus(BOOL fForeground)
 {
 	fForeground;
 
@@ -295,9 +295,9 @@ STDAPI CTSFTTS::OnSetFocus(BOOL fForeground)
 // Called by the system to query this service wants a potential keystroke.
 //----------------------------------------------------------------------------
 
-STDAPI CTSFTTS::OnTestKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL *pIsEaten)
+STDAPI CDIME::OnTestKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL *pIsEaten)
  {
-	debugPrint(L" CTSFTTS::OnTestKeyDown()");
+	debugPrint(L" CDIME::OnTestKeyDown()");
     Global::UpdateModifiers(wParam, lParam);
 
     _KEYSTROKE_STATE KeystrokeState;
@@ -339,9 +339,9 @@ STDAPI CTSFTTS::OnTestKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam
 // on exit, the application will not handle the keystroke.
 //----------------------------------------------------------------------------
 
-STDAPI CTSFTTS::OnKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL *pIsEaten)
+STDAPI CDIME::OnKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL *pIsEaten)
 {
-	debugPrint(L" CTSFTTS::OnKeyDown()");
+	debugPrint(L" CDIME::OnKeyDown()");
     Global::UpdateModifiers(wParam, lParam);
    
 	_KEYSTROKE_STATE KeystrokeState;
@@ -363,7 +363,7 @@ STDAPI CTSFTTS::OnKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BO
 
     if (*pIsEaten)
     {
-		debugPrint(L" CTSFTTS::OnKeyDown() eating the key");
+		debugPrint(L" CDIME::OnKeyDown() eating the key");
 	
         bool needInvokeKeyHandler = true;
         //
@@ -402,9 +402,9 @@ STDAPI CTSFTTS::OnKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BO
 // Called by the system to query this service wants a potential keystroke.
 //----------------------------------------------------------------------------
 
-STDAPI CTSFTTS::OnTestKeyUp(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL *pIsEaten)
+STDAPI CDIME::OnTestKeyUp(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL *pIsEaten)
 {
-	debugPrint(L" CTSFTTS::OnTestKeyUp()");
+	debugPrint(L" CDIME::OnTestKeyUp()");
     if (pIsEaten == nullptr)
     {
         return E_INVALIDARG;
@@ -428,9 +428,9 @@ STDAPI CTSFTTS::OnTestKeyUp(ITfContext *pContext, WPARAM wParam, LPARAM lParam, 
 // on exit, the application will not handle the keystroke.
 //----------------------------------------------------------------------------
 
-STDAPI CTSFTTS::OnKeyUp(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL *pIsEaten)
+STDAPI CDIME::OnKeyUp(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL *pIsEaten)
 {
-	debugPrint(L" CTSFTTS::OnKeyUp()");
+	debugPrint(L" CDIME::OnKeyUp()");
     Global::UpdateModifiers(wParam, lParam);
 
     WCHAR wch = '\0';
@@ -448,10 +448,10 @@ STDAPI CTSFTTS::OnKeyUp(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL
 // Called when a hotkey (registered by us, or by the system) is typed.
 //----------------------------------------------------------------------------
 
-STDAPI CTSFTTS::OnPreservedKey(ITfContext *pContext, REFGUID rguid, BOOL *pIsEaten)
+STDAPI CDIME::OnPreservedKey(ITfContext *pContext, REFGUID rguid, BOOL *pIsEaten)
 {
 	pContext;
-	debugPrint(L" CTSFTTS::OnPreservedKey()");
+	debugPrint(L" CDIME::OnPreservedKey()");
 	
     CCompositionProcessorEngine *pCompositionProcessorEngine;
     pCompositionProcessorEngine = _pCompositionProcessorEngine;
@@ -469,15 +469,15 @@ STDAPI CTSFTTS::OnPreservedKey(ITfContext *pContext, REFGUID rguid, BOOL *pIsEat
 // Advise a keystroke sink.
 //----------------------------------------------------------------------------
 
-BOOL CTSFTTS::_InitKeyEventSink()
+BOOL CDIME::_InitKeyEventSink()
 {
-	debugPrint(L"CTSFTTS::_InitKeyEventSink()");
+	debugPrint(L"CDIME::_InitKeyEventSink()");
     ITfKeystrokeMgr* pKeystrokeMgr = nullptr;
     HRESULT hr = S_OK;
 
     if ( (_pThreadMgr && FAILED(_pThreadMgr->QueryInterface(IID_ITfKeystrokeMgr, (void **)&pKeystrokeMgr)) )|| pKeystrokeMgr==nullptr )
     {
-		debugPrint(L"CTSFTTS::_InitKeyEventSink() failed");
+		debugPrint(L"CDIME::_InitKeyEventSink() failed");
         return FALSE;
     }
 
@@ -495,14 +495,14 @@ BOOL CTSFTTS::_InitKeyEventSink()
 // Unadvise a keystroke sink.  Assumes we have advised one already.
 //----------------------------------------------------------------------------
 
-void CTSFTTS::_UninitKeyEventSink()
+void CDIME::_UninitKeyEventSink()
 {
-	debugPrint(L"CTSFTTS::_UninitKeyEventSink()");
+	debugPrint(L"CDIME::_UninitKeyEventSink()");
     ITfKeystrokeMgr* pKeystrokeMgr = nullptr;
 
     if ( ( _pThreadMgr && FAILED(_pThreadMgr->QueryInterface(IID_ITfKeystrokeMgr, (void **)&pKeystrokeMgr))) || pKeystrokeMgr == nullptr)
     {
-		debugPrint(L"CTSFTTS::_UninitKeyEventSink() failed");
+		debugPrint(L"CDIME::_UninitKeyEventSink() failed");
         return;
     }
 

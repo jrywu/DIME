@@ -8,7 +8,7 @@
 #include "Private.h"
 #include "DictionarySearch.h"
 #include "BaseStructure.h"
-#include "TSFTTS.h"
+#include "DIME.h"
 
 //+---------------------------------------------------------------------------
 //
@@ -276,7 +276,7 @@ TryAgain:
 		else if(_searchMode == SEARCH_TEXT)  //compare value with searchcode
 		{
 			// Compare Dictionary converted string and input string
-			CTSFTTSArray<CParserStringRange> convertedStrings;
+			CDIMEArray<CParserStringRange> convertedStrings;
 			if (!ParseLine(&pwch[indexTrace], bufLenOneLine, &keyword, &convertedStrings)) //get value
 				return FALSE;
 			
@@ -302,7 +302,7 @@ ReadValue:
 				if (!*ppdret)	return FALSE;
 			}
 			
-			CTSFTTSArray<CParserStringRange> valueStrings;
+			CDIMEArray<CParserStringRange> valueStrings;
 			BOOL isPhraseEntry = (_searchMode == SEARCH_PHRASE) || (_searchMode == SEARCH_SYMBOL) || (_searchMode == SEARCH_PRHASE_FROM_KEYSTROKE);
 			if (!ParseLine(&pwch[indexTrace], bufLenOneLine, &keyword, &valueStrings, isPhraseEntry,
 				(isPhraseEntry)?_pSearchKeyCode:NULL))

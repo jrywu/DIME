@@ -1,4 +1,4 @@
-LIBRARY TSFTTS.dll
+LIBRARY DIME.dll
 
 EXPORTS
         DllGetClassObject    PRIVATE

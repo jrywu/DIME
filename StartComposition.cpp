@@ -8,7 +8,7 @@
 #include "Private.h"
 #include "Globals.h"
 #include "EditSession.h"
-#include "TSFTTS.h"
+#include "DIME.h"
 
 //+---------------------------------------------------------------------------
 //
@@ -19,7 +19,7 @@
 class CStartCompositionEditSession : public CEditSessionBase
 {
 public:
-    CStartCompositionEditSession(_In_ CTSFTTS *pTextService, _In_ ITfContext *pContext) : CEditSessionBase(pTextService, pContext)
+    CStartCompositionEditSession(_In_ CDIME *pTextService, _In_ ITfContext *pContext) : CEditSessionBase(pTextService, pContext)
     {
     }
 
@@ -92,7 +92,7 @@ Exit:
 
 //////////////////////////////////////////////////////////////////////
 //
-// CTSFTTS class
+// CDIME class
 //
 //////////////////////////////////////////////////////////////////////+---------------------------------------------------------------------------
 //
@@ -102,9 +102,9 @@ Exit:
 // focus context.
 //----------------------------------------------------------------------------
 
-void CTSFTTS::_StartComposition(_In_ ITfContext *pContext)
+void CDIME::_StartComposition(_In_ ITfContext *pContext)
 {
-	debugPrint(L"CTSFTTS::_StartComposition()\n");
+	debugPrint(L"CDIME::_StartComposition()\n");
 	_LoadConfig();// update config upon start composition
     CStartCompositionEditSession* pStartCompositionEditSession = new (std::nothrow) CStartCompositionEditSession(this, pContext);
 
@@ -126,7 +126,7 @@ void CTSFTTS::_StartComposition(_In_ ITfContext *pContext)
 // deactivation
 //----------------------------------------------------------------------------
 
-void CTSFTTS::_SaveCompositionContext(_In_ ITfContext *pContext)
+void CDIME::_SaveCompositionContext(_In_ ITfContext *pContext)
 {
 	if(pContext)
 	{

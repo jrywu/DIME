@@ -2,16 +2,16 @@
 
 #include "Private.h"
 #include "ReverseConversionProvider.h"
-#include "TSFTTS.h"
+#include "DIME.h"
 
 
 //---------------------------------------------------------------------------------
 //ITfReverseConversionMgr::GetReverseConversion()
 //  Reverse conversion COM provider for other TSF IM to lookup key sequence from us.
 //---------------------------------------------------------------------------------
-HRESULT CTSFTTS::GetReverseConversion(_In_ LANGID langid, _In_   REFGUID guidProfile, _In_ DWORD dwflag, _Out_ ITfReverseConversion **ppReverseConversion)
+HRESULT CDIME::GetReverseConversion(_In_ LANGID langid, _In_   REFGUID guidProfile, _In_ DWORD dwflag, _Out_ ITfReverseConversion **ppReverseConversion)
 {
-	debugPrint(L"CTSFTTS(ITfReverseConversionMgr)::GetReverseConversion() langid = %d, giudProfile = %d, dwflag = %d", langid, guidProfile, dwflag);
+	debugPrint(L"CDIME(ITfReverseConversionMgr)::GetReverseConversion() langid = %d, giudProfile = %d, dwflag = %d", langid, guidProfile, dwflag);
 	if(_pCompositionProcessorEngine) return E_FAIL;
 	IME_MODE imeMode = _pCompositionProcessorEngine->GetImeModeFromGuidProfile(guidProfile);
 
@@ -20,12 +20,12 @@ HRESULT CTSFTTS::GetReverseConversion(_In_ LANGID langid, _In_   REFGUID guidPro
 
 	if (_pCompositionProcessorEngine == nullptr)
     {
-		debugPrint(L"CTSFTTS::_AddTextProcessorEngine() create new CompositionProcessorEngine .");
+		debugPrint(L"CDIME::_AddTextProcessorEngine() create new CompositionProcessorEngine .");
         _pCompositionProcessorEngine = new (std::nothrow) CCompositionProcessorEngine(this);
     }
 	if (_pCompositionProcessorEngine == nullptr)
 	{
-		debugPrint(L"CTSFTTS(ITfReverseConversionMgr)::GetReverseConversion(); no valid compositionEngine,  return E_NOTIMPL");
+		debugPrint(L"CDIME(ITfReverseConversionMgr)::GetReverseConversion(); no valid compositionEngine,  return E_NOTIMPL");
 		return E_OUTOFMEMORY;
 	}
 	
@@ -40,13 +40,13 @@ HRESULT CTSFTTS::GetReverseConversion(_In_ LANGID langid, _In_   REFGUID guidPro
 	if(_pReverseConversion[imeMode])
 	{
 		*ppReverseConversion = _pReverseConversion[imeMode];
-		debugPrint(L"CTSFTTS(ITfReverseConversionMgr)::GetReverseConversion(); ppReverseConversion ready,  return S_OK");
+		debugPrint(L"CDIME(ITfReverseConversionMgr)::GetReverseConversion(); ppReverseConversion ready,  return S_OK");
 		return S_OK;
 	}
 	else
 	{
 		*ppReverseConversion = nullptr;
-		debugPrint(L"CTSFTTS(ITfReverseConversionMgr)::GetReverseConversion(); no valid ppReverseConversion,  return E_NOTIMPL");
+		debugPrint(L"CDIME(ITfReverseConversionMgr)::GetReverseConversion(); no valid ppReverseConversion,  return E_NOTIMPL");
 		return E_NOTIMPL;
 	}
 }
@@ -94,7 +94,7 @@ HRESULT CReverseConversion::DoReverseConversion(_In_ LPCWSTR lpstrToConvert, _Ou
 	_pReverseConversionList->AddRef();
 	*ppList = _pReverseConversionList;
 	if(_pCompositionProcessorEngine == nullptr) return E_FAIL;
-	CTSFTTSArray<CCandidateListItem> candidateList;
+	CDIMEArray<CCandidateListItem> candidateList;
 	hr = _pCompositionProcessorEngine->GetReverConversionResults(_imeMode, lpstrToConvert, &candidateList);
 	if(SUCCEEDED(hr) && _pReverseConversionList)
 		_pReverseConversionList->SetResultList(&candidateList);
@@ -232,7 +232,7 @@ HRESULT CReverseConversionList::GetString(UINT uIndex, __RPC__deref_out_opt BSTR
 		return S_OK;
 }
 
-void CReverseConversionList::SetResultList(CTSFTTSArray<CCandidateListItem>* pCandidateList)
+void CReverseConversionList::SetResultList(CDIMEArray<CCandidateListItem>* pCandidateList)
 {
 	debugPrint(L"CReverseConversionList(ITfReverseConversionList)::SetResultList()");
 	_resultFound = TRUE;
@@ -277,7 +277,7 @@ void CReverseConversionList::SetResultList(CTSFTTSArray<CCandidateListItem>* pCa
 }
 
 
-void CTSFTTS::ReleaseReverseConversion()
+void CDIME::ReleaseReverseConversion()
 {
  
 	for (UINT i =0 ; i<5 ; i++)

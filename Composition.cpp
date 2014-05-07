@@ -7,7 +7,7 @@
 
 #include "Private.h"
 #include "Globals.h"
-#include "TSFTTS.h"
+#include "DIME.h"
 #include "CompositionProcessorEngine.h"
 #include "UIPresenter.h"
 #include "GetTextExtentEditSession.h"
@@ -20,9 +20,9 @@
 // someone other than this service ends a composition.
 //----------------------------------------------------------------------------
 
-STDAPI CTSFTTS::OnCompositionTerminated(TfEditCookie ecWrite, _In_ ITfComposition *pComposition)
+STDAPI CDIME::OnCompositionTerminated(TfEditCookie ecWrite, _In_ ITfComposition *pComposition)
 {
-	debugPrint(L"CTSFTTS::OnCompositionTerminated()");
+	debugPrint(L"CDIME::OnCompositionTerminated()");
 	HRESULT hr = S_OK;
     ITfContext* pContext = _pContext;
    
@@ -53,7 +53,7 @@ STDAPI CTSFTTS::OnCompositionTerminated(TfEditCookie ecWrite, _In_ ITfCompositio
 //
 //----------------------------------------------------------------------------
 
-BOOL CTSFTTS::_IsComposing()
+BOOL CDIME::_IsComposing()
 {
     return _pComposition != nullptr;
 }
@@ -64,7 +64,7 @@ BOOL CTSFTTS::_IsComposing()
 //
 //----------------------------------------------------------------------------
 
-void CTSFTTS::_SetComposition(_In_ ITfComposition *pComposition)
+void CDIME::_SetComposition(_In_ ITfComposition *pComposition)
 {
     _pComposition = pComposition;
 }
@@ -75,9 +75,9 @@ void CTSFTTS::_SetComposition(_In_ ITfComposition *pComposition)
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFTTS::_AddComposingAndChar(TfEditCookie ec, _In_ ITfContext *pContext, _In_ CStringRange *pstrAddString)
+HRESULT CDIME::_AddComposingAndChar(TfEditCookie ec, _In_ ITfContext *pContext, _In_ CStringRange *pstrAddString)
 {
-	debugPrint(L"CTSFTTS::_AddComposingAndChar()");
+	debugPrint(L"CDIME::_AddComposingAndChar()");
     HRESULT hr = S_OK;
 
     ULONG fetched = 0;
@@ -124,9 +124,9 @@ HRESULT CTSFTTS::_AddComposingAndChar(TfEditCookie ec, _In_ ITfContext *pContext
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFTTS::_AddCharAndFinalize(TfEditCookie ec, _In_ ITfContext *pContext, _In_ CStringRange *pstrAddString)
+HRESULT CDIME::_AddCharAndFinalize(TfEditCookie ec, _In_ ITfContext *pContext, _In_ CStringRange *pstrAddString)
 {
-	debugPrint(L"CTSFTTS::_AddCharAndFinalize()");
+	debugPrint(L"CDIME::_AddCharAndFinalize()");
     HRESULT hr = E_FAIL;
 
     ULONG fetched = 0;
@@ -158,9 +158,9 @@ HRESULT CTSFTTS::_AddCharAndFinalize(TfEditCookie ec, _In_ ITfContext *pContext,
 //
 //----------------------------------------------------------------------------
 
-BOOL CTSFTTS::_FindComposingRange(TfEditCookie ec, _In_ ITfContext *pContext, _In_ ITfRange *pSelection, _Outptr_result_maybenull_ ITfRange **ppRange)
+BOOL CDIME::_FindComposingRange(TfEditCookie ec, _In_ ITfContext *pContext, _In_ ITfRange *pSelection, _Outptr_result_maybenull_ ITfRange **ppRange)
 {
-	debugPrint(L"CTSFTTS::_FindComposingRange()");
+	debugPrint(L"CDIME::_FindComposingRange()");
 
     if (pContext == nullptr || ppRange == nullptr)
     {
@@ -218,7 +218,7 @@ BOOL CTSFTTS::_FindComposingRange(TfEditCookie ec, _In_ ITfContext *pContext, _I
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFTTS::_SetInputString(TfEditCookie ec, _In_ ITfContext *pContext, _Out_opt_ ITfRange *pRange, _In_ CStringRange *pstrAddString, BOOL exist_composing)
+HRESULT CDIME::_SetInputString(TfEditCookie ec, _In_ ITfContext *pContext, _Out_opt_ ITfRange *pRange, _In_ CStringRange *pstrAddString, BOOL exist_composing)
 {
 
     ITfRange* pRangeInsert = nullptr;
@@ -271,7 +271,7 @@ HRESULT CTSFTTS::_SetInputString(TfEditCookie ec, _In_ ITfContext *pContext, _Ou
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFTTS::_InsertAtSelection(TfEditCookie ec, _In_ ITfContext *pContext, _In_ CStringRange *pstrAddString, _Outptr_ ITfRange **ppCompRange)
+HRESULT CDIME::_InsertAtSelection(TfEditCookie ec, _In_ ITfContext *pContext, _In_ CStringRange *pstrAddString, _Outptr_ ITfRange **ppCompRange)
 {
     ITfRange* rangeInsert = nullptr;
     ITfInsertAtSelection* pias = nullptr;
@@ -314,10 +314,10 @@ Exit:
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFTTS::_RemoveDummyCompositionForComposing
+HRESULT CDIME::_RemoveDummyCompositionForComposing
 	(TfEditCookie ec, _In_ ITfComposition *pComposition)
 {
-	debugPrint(L"CTSFTTS::_RemoveDummyCompositionForComposing()\n");
+	debugPrint(L"CDIME::_RemoveDummyCompositionForComposing()\n");
     HRESULT hr = S_OK;
 
     ITfRange* pRange = nullptr;
@@ -341,7 +341,7 @@ HRESULT CTSFTTS::_RemoveDummyCompositionForComposing
 //
 //----------------------------------------------------------------------------
 
-BOOL CTSFTTS::_SetCompositionLanguage(TfEditCookie ec, _In_ ITfContext *pContext)
+BOOL CDIME::_SetCompositionLanguage(TfEditCookie ec, _In_ ITfContext *pContext)
 {
     HRESULT hr = S_OK;
     BOOL ret = TRUE;
@@ -399,7 +399,7 @@ Exit:
 class CProbeComposistionEditSession : public CEditSessionBase
 {
 public:
-    CProbeComposistionEditSession(_In_ CTSFTTS *pTextService, _In_ ITfContext *pContext) : CEditSessionBase(pTextService, pContext)
+    CProbeComposistionEditSession(_In_ CDIME *pTextService, _In_ ITfContext *pContext) : CEditSessionBase(pTextService, pContext)
     {
     }
 
@@ -424,7 +424,7 @@ STDAPI CProbeComposistionEditSession::DoEditSession(TfEditCookie ec)
 
 //////////////////////////////////////////////////////////////////////
 //
-// CTSFTTS class
+// CDIME class
 //
 //////////////////////////////////////////////////////////////////////+---------------------------------------------------------------------------
 //
@@ -434,9 +434,9 @@ STDAPI CProbeComposistionEditSession::DoEditSession(TfEditCookie ec)
 // focus context to get correct caret position.
 //----------------------------------------------------------------------------
 
-void CTSFTTS::_ProbeComposition(_In_ ITfContext *pContext)
+void CDIME::_ProbeComposition(_In_ ITfContext *pContext)
 {
-	debugPrint(L"CTSFTTS::_ProbeComposition() pContext = %x\n", pContext);
+	debugPrint(L"CDIME::_ProbeComposition() pContext = %x\n", pContext);
 
 
 	CProbeComposistionEditSession* pProbeComposistionEditSession = new (std::nothrow) CProbeComposistionEditSession(this, pContext);
@@ -447,7 +447,7 @@ void CTSFTTS::_ProbeComposition(_In_ ITfContext *pContext)
 		HRESULT hrES = S_OK, hr = S_OK;
 		hr = pContext->RequestEditSession(_tfClientId, pProbeComposistionEditSession, TF_ES_ASYNCDONTCARE | TF_ES_READWRITE, &hrES);
 		
-		debugPrint(L"CTSFTTS::_ProbeComposition() RequestEdisession HRESULT = %x, return HRESULT  = %x\n", hrES, hr );
+		debugPrint(L"CDIME::_ProbeComposition() RequestEdisession HRESULT = %x, return HRESULT  = %x\n", hrES, hr );
 
 		pProbeComposistionEditSession->Release();
 	}
@@ -455,9 +455,9 @@ void CTSFTTS::_ProbeComposition(_In_ ITfContext *pContext)
    
 }
 
-HRESULT CTSFTTS::_ProbeCompositionRangeNotification(_In_ TfEditCookie ec, _In_ ITfContext *pContext)
+HRESULT CDIME::_ProbeCompositionRangeNotification(_In_ TfEditCookie ec, _In_ ITfContext *pContext)
 {
-	debugPrint(L"CTSFTTS::_ProbeCompositionRangeNotification(), \n");
+	debugPrint(L"CDIME::_ProbeCompositionRangeNotification(), \n");
 
 
 	HRESULT hr = S_OK;

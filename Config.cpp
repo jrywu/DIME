@@ -5,7 +5,7 @@
 #include <Shlwapi.h>
 #include "Globals.h"
 #include "resource.h"
-#include "TSFTTS.h"
+#include "DIME.h"
 #include "DictionarySearch.h"
 #include "File.h"
 #include "TableDictionaryEngine.h"
@@ -31,7 +31,7 @@ BOOL CConfig::_makePhrase = TRUE;
 BOOL CConfig::_doHanConvert = FALSE;
 BOOL CConfig::_showNotifyDesktop = TRUE;
 
-CTSFTTSArray <LanguageProfileInfo>* CConfig::_reverseConvervsionInfoList = new (std::nothrow) CTSFTTSArray <LanguageProfileInfo>;
+CDIMEArray <LanguageProfileInfo>* CConfig::_reverseConvervsionInfoList = new (std::nothrow) CDIMEArray <LanguageProfileInfo>;
 CLSID CConfig::_reverseConverstionCLSID = CLSID_NULL;
 GUID CConfig::_reverseConversionGUIDProfile = CLSID_NULL;
 WCHAR* CConfig::_reverseConversionDescription = nullptr;
@@ -64,9 +64,9 @@ _stat CConfig::_initTimeStamp = {0,0,0,0,0,0,0,0,0,0,0}; //zero the timestamp
 //----------------------------------------------------------------------------
 // static dialog procedure
 
-HRESULT CTSFTTS::Show(_In_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID inRefGuidProfile)
+HRESULT CDIME::Show(_In_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID inRefGuidProfile)
 {
-	debugPrint(L"CTSFTTS::Show()");
+	debugPrint(L"CDIME::Show()");
 
 	if(_IsStoreAppMode() ||_IsUILessMode() || _IsSecureMode()) return S_OK;
 	
@@ -84,7 +84,7 @@ HRESULT CTSFTTS::Show(_In_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID i
 			profile->GetDefaultLanguageProfile(langid, GUID_TFCAT_TIP_KEYBOARD, &clsid, &guidProfile);
 		}
 		
-		CTSFTTSArray <LanguageProfileInfo> langProfileInfoList;
+		CDIMEArray <LanguageProfileInfo> langProfileInfoList;
 		profile->GetReverseConversionProviders(langid, &langProfileInfoList);
 		CConfig::SetReverseConvervsionInfoList(&langProfileInfoList);
 		
@@ -113,7 +113,7 @@ HRESULT CTSFTTS::Show(_In_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID i
 
 	
 
-	debugPrint(L"CTSFTTS::Show() ,  ITfFnConfigure::Show(), _autoCompose = %d, _threeCodeMode = %d, _doBeep = %d", CConfig::GetAutoCompose(), CConfig::GetThreeCodeMode(), CConfig::GetDoBeep());
+	debugPrint(L"CDIME::Show() ,  ITfFnConfigure::Show(), _autoCompose = %d, _threeCodeMode = %d, _doBeep = %d", CConfig::GetAutoCompose(), CConfig::GetThreeCodeMode(), CConfig::GetDoBeep());
 
 	PROPSHEETPAGE psp;
 	PROPSHEETHEADER psh;
@@ -148,7 +148,7 @@ HRESULT CTSFTTS::Show(_In_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID i
 	psh.hwndParent = hwndParent;
 	psh.nPages = _countof(DlgPage);
 	psh.phpage = hpsp;
-	psh.pszCaption = L"TSFTTS User Settings";
+	psh.pszCaption = L"DIME User Settings";
 	
 	//PropertySheet(&psh);
 	if(_PropertySheet)
@@ -543,22 +543,22 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 		{
 		case IDC_BUTTON_LOAD_MAIN:
 			if(Global::imeMode == IME_MODE_DAYI)
-				StringCchCopy(targetName, MAX_PATH, L"\\TSFTTS\\Dayi.cin");
+				StringCchCopy(targetName, MAX_PATH, L"\\DIME\\Dayi.cin");
 			else if(Global::imeMode == IME_MODE_ARRAY)
-				StringCchCopy(targetName, MAX_PATH, L"\\TSFTTS\\Array.cin");
+				StringCchCopy(targetName, MAX_PATH, L"\\DIME\\Array.cin");
 			else if(Global::imeMode == IME_MODE_PHONETIC)
-				StringCchCopy(targetName, MAX_PATH, L"\\TSFTTS\\Phone.cin");
+				StringCchCopy(targetName, MAX_PATH, L"\\DIME\\Phone.cin");
 			else if(Global::imeMode == IME_MODE_GENERIC)
-				StringCchCopy(targetName, MAX_PATH, L"\\TSFTTS\\Generic.cin");
+				StringCchCopy(targetName, MAX_PATH, L"\\DIME\\Generic.cin");
 			goto LoadFile;
 		case IDC_BUTTON_LOAD_PHRASE:
-			StringCchCopy(targetName, MAX_PATH, L"\\TSFTTS\\Phrase.cin");
+			StringCchCopy(targetName, MAX_PATH, L"\\DIME\\Phrase.cin");
 			goto LoadFile;
 		case IDC_BUTTON_LOAD_ARRAY_SC:
-			StringCchCopy(targetName, MAX_PATH, L"\\TSFTTS\\Array-shortcode.cin");
+			StringCchCopy(targetName, MAX_PATH, L"\\DIME\\Array-shortcode.cin");
 			goto LoadFile;
 		case IDC_BUTTON_LOAD_ARRAY_SP:
-			StringCchCopy(targetName, MAX_PATH, L"\\TSFTTS\\Array-special.cin");
+			StringCchCopy(targetName, MAX_PATH, L"\\DIME\\Array-special.cin");
 			goto LoadFile;
 LoadFile:
 			pathToLoad[0] = L'\0';
@@ -728,33 +728,33 @@ void DrawColor(HWND hwnd, HDC hdc, COLORREF col)
 
 VOID CConfig::WriteConfig()
 {
-	debugPrint(L"CTSFTTS::updateConfig() \n");
+	debugPrint(L"CDIME::updateConfig() \n");
 	WCHAR wszAppData[MAX_PATH] = {'\0'};
 	SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);	
-	WCHAR wzsTSFTTSProfile[MAX_PATH] = {'\0'};
+	WCHAR wzsDIMEProfile[MAX_PATH] = {'\0'};
 	WCHAR *pwszINIFileName = new (std::nothrow) WCHAR[MAX_PATH];
 
 	if (!pwszINIFileName)  goto ErrorExit;
 
 	*pwszINIFileName = L'\0';
 
-	StringCchPrintf(wzsTSFTTSProfile, MAX_PATH, L"%s\\TSFTTS", wszAppData);
-	if(!PathFileExists(wzsTSFTTSProfile))
+	StringCchPrintf(wzsDIMEProfile, MAX_PATH, L"%s\\DIME", wszAppData);
+	if(!PathFileExists(wzsDIMEProfile))
 	{
-		if(CreateDirectory(wzsTSFTTSProfile, NULL)==0) goto ErrorExit;
+		if(CreateDirectory(wzsDIMEProfile, NULL)==0) goto ErrorExit;
 	}
 	else
 	{
 		if(Global::imeMode == IME_MODE_DAYI)
-			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\DayiConfig.ini", wzsTSFTTSProfile);
+			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\DayiConfig.ini", wzsDIMEProfile);
 		else if(Global::imeMode == IME_MODE_ARRAY)
-			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\ArrayConfig.ini", wzsTSFTTSProfile);
+			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\ArrayConfig.ini", wzsDIMEProfile);
 		else if(Global::imeMode == IME_MODE_PHONETIC)
-			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\PhoneConfig.ini", wzsTSFTTSProfile);
+			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\PhoneConfig.ini", wzsDIMEProfile);
 		else if(Global::imeMode == IME_MODE_GENERIC)
-			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\GenericConfig.ini", wzsTSFTTSProfile);
+			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\GenericConfig.ini", wzsDIMEProfile);
 		else
-			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\config.ini", wzsTSFTTSProfile);
+			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\config.ini", wzsDIMEProfile);
 
 		FILE *fp;
 		_wfopen_s(&fp, pwszINIFileName, L"w, ccs=UTF-16LE"); // overwrite the file
@@ -823,10 +823,10 @@ ErrorExit:
 
 VOID CConfig::LoadConfig()
 {	
-	debugPrint(L"CTSFTTS::loadConfig() \n");
+	debugPrint(L"CDIME::loadConfig() \n");
 	WCHAR wszAppData[MAX_PATH] = {'\0'};
 	SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);	
-	WCHAR wzsTSFTTSProfile[MAX_PATH] = {'\0'};
+	WCHAR wzsDIMEProfile[MAX_PATH] = {'\0'};
 	PACL pOldDACL = NULL, pNewDACL = NULL;
 	PSECURITY_DESCRIPTOR pSD = NULL;
 
@@ -836,20 +836,20 @@ VOID CConfig::LoadConfig()
 
 	*pwszINIFileName = L'\0';
 
-	StringCchPrintf(wzsTSFTTSProfile, MAX_PATH, L"%s\\TSFTTS", wszAppData);
-	if(PathFileExists(wzsTSFTTSProfile))
+	StringCchPrintf(wzsDIMEProfile, MAX_PATH, L"%s\\DIME", wszAppData);
+	if(PathFileExists(wzsDIMEProfile))
 	{ 
 		
 		if(Global::imeMode == IME_MODE_DAYI)
-			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\DayiConfig.ini", wzsTSFTTSProfile);
+			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\DayiConfig.ini", wzsDIMEProfile);
 		else if(Global::imeMode == IME_MODE_ARRAY)
-			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\ArrayConfig.ini", wzsTSFTTSProfile);
+			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\ArrayConfig.ini", wzsDIMEProfile);
 		else if(Global::imeMode == IME_MODE_PHONETIC)
-			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\PhoneConfig.ini", wzsTSFTTSProfile);
+			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\PhoneConfig.ini", wzsDIMEProfile);
 		else if(Global::imeMode == IME_MODE_GENERIC)
-			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\GenericConfig.ini", wzsTSFTTSProfile);
+			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\GenericConfig.ini", wzsDIMEProfile);
 		else
-			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\config.ini", wzsTSFTTSProfile);
+			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\config.ini", wzsDIMEProfile);
 
 		if(PathFileExists(pwszINIFileName))
 		{
@@ -877,11 +877,11 @@ VOID CConfig::LoadConfig()
 
 				// In store app mode, the dll is loaded into app container which does not even have read right for IME profile in APPDATA.
 				// Here, the read right is granted once to "ALL APPLICATION PACKAGES" when loaded in desktop mode, so as all metro apps can at least read the user settings in config.ini.				
-				if(Global::isWindows8 && ! CTSFTTS::_IsStoreAppMode() && ! _appPermissionSet ) 
+				if(Global::isWindows8 && ! CDIME::_IsStoreAppMode() && ! _appPermissionSet ) 
 				{
 					EXPLICIT_ACCESS ea;
 					// Get a pointer to the existing DACL (Conditionaly).
-					DWORD dwRes = GetNamedSecurityInfo(wzsTSFTTSProfile, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, &pOldDACL, NULL, &pSD);
+					DWORD dwRes = GetNamedSecurityInfo(wzsDIMEProfile, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, &pOldDACL, NULL, &pSD);
 					if(ERROR_SUCCESS != dwRes) goto ErrorExit;
 					// Initialize an EXPLICIT_ACCESS structure for the new ACE. 
 					ZeroMemory(&ea, sizeof(EXPLICIT_ACCESS));
@@ -896,7 +896,7 @@ VOID CConfig::LoadConfig()
 					dwRes = SetEntriesInAcl(1, &ea, pOldDACL, &pNewDACL);
 					if(ERROR_SUCCESS != dwRes) goto ErrorExit;
 					if(pNewDACL)
-						SetNamedSecurityInfo(wzsTSFTTSProfile, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, pNewDACL, NULL);
+						SetNamedSecurityInfo(wzsDIMEProfile, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, pNewDACL, NULL);
 
 					_appPermissionSet = TRUE;
 					WriteConfig(); // update the config file.
@@ -918,8 +918,8 @@ VOID CConfig::LoadConfig()
 	}
 	else
 	{
-		//TSFTTS roadming profile is not exist. Create one.
-		if(CreateDirectory(wzsTSFTTSProfile, NULL)==0) goto ErrorExit;
+		//DIME roadming profile is not exist. Create one.
+		if(CreateDirectory(wzsDIMEProfile, NULL)==0) goto ErrorExit;
 	}
 
 	
@@ -957,7 +957,7 @@ void CConfig::SetDefaultTextFont()
 }
 
 
-void CConfig::SetReverseConvervsionInfoList (CTSFTTSArray <LanguageProfileInfo> *reverseConvervsionInfoList)
+void CConfig::SetReverseConvervsionInfoList (CDIMEArray <LanguageProfileInfo> *reverseConvervsionInfoList)
 {
 	// clear _reverseConvervsionInfoList first.
 	clearReverseConvervsionInfoList();

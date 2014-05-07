@@ -79,8 +79,8 @@ public:
 	static BOOL GetDoHanConvert() {return _doHanConvert;}
 
 	//reversion conversion
-	static void SetReverseConvervsionInfoList (CTSFTTSArray <LanguageProfileInfo> *reverseConvervsionInfoList);
-	CTSFTTSArray <LanguageProfileInfo> *GetReverseConvervsionInfoList() {return _reverseConvervsionInfoList;}
+	static void SetReverseConvervsionInfoList (CDIMEArray <LanguageProfileInfo> *reverseConvervsionInfoList);
+	CDIMEArray <LanguageProfileInfo> *GetReverseConvervsionInfoList() {return _reverseConvervsionInfoList;}
 	static void SetReverseConverstionCLSID(CLSID reverseConverstionCLSID) { _reverseConverstionCLSID = reverseConverstionCLSID;}
 	static CLSID GetReverseConverstionCLSID() {return _reverseConverstionCLSID;}
 	static void SetReverseConversionGUIDProfile(GUID reverseConversionGUIDProfile) { _reverseConversionGUIDProfile = reverseConversionGUIDProfile;}
@@ -132,7 +132,7 @@ private:
 
 	static struct _stat _initTimeStamp;
 
-	static CTSFTTSArray <LanguageProfileInfo> *_reverseConvervsionInfoList;
+	static CDIMEArray <LanguageProfileInfo> *_reverseConvervsionInfoList;
 	static CLSID _reverseConverstionCLSID;
 	static GUID _reverseConversionGUIDProfile;
 	static WCHAR* _reverseConversionDescription;

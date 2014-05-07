@@ -8,14 +8,14 @@
 #include "Private.h"
 #include "Globals.h"
 #include "EditSession.h"
-#include "TSFTTS.h"
+#include "DIME.h"
 #include "UIPresenter.h"
 #include "CompositionProcessorEngine.h"
 #include "BaseStructure.h"
 
 //////////////////////////////////////////////////////////////////////
 //
-// CTSFTTS class
+// CDIME class
 //
 //////////////////////////////////////////////////////////////////////+---------------------------------------------------------------------------
 //
@@ -25,7 +25,7 @@
 //
 //----------------------------------------------------------------------------
 
-BOOL CTSFTTS::_IsRangeCovered(TfEditCookie ec, _In_ ITfRange *pRangeTest, _In_ ITfRange *pRangeCover)
+BOOL CDIME::_IsRangeCovered(TfEditCookie ec, _In_ ITfRange *pRangeTest, _In_ ITfRange *pRangeCover)
 {
     LONG lResult = 0;;
 
@@ -50,9 +50,9 @@ BOOL CTSFTTS::_IsRangeCovered(TfEditCookie ec, _In_ ITfRange *pRangeTest, _In_ I
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFTTS::_HandleComplete(TfEditCookie ec, _In_ ITfContext *pContext)
+HRESULT CDIME::_HandleComplete(TfEditCookie ec, _In_ ITfContext *pContext)
 {
-	debugPrint(L"CTSFTTS::_HandleComplete()");
+	debugPrint(L"CDIME::_HandleComplete()");
     _DeleteCandidateList(FALSE, pContext);
 
     // just terminate the composition
@@ -67,9 +67,9 @@ HRESULT CTSFTTS::_HandleComplete(TfEditCookie ec, _In_ ITfContext *pContext)
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFTTS::_HandleCancel(TfEditCookie ec, _In_ ITfContext *pContext)
+HRESULT CDIME::_HandleCancel(TfEditCookie ec, _In_ ITfContext *pContext)
 {
-	debugPrint(L"CTSFTTS::_HandleCancel()");
+	debugPrint(L"CDIME::_HandleCancel()");
 
     _RemoveDummyCompositionForComposing(ec, _pComposition);
 
@@ -88,9 +88,9 @@ HRESULT CTSFTTS::_HandleCancel(TfEditCookie ec, _In_ ITfContext *pContext)
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFTTS::_HandleCompositionInput(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch)
+HRESULT CDIME::_HandleCompositionInput(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch)
 {
-	debugPrint(L"CTSFTTS::_HandleCompositionInput(), _candidateMode = %d", _candidateMode );
+	debugPrint(L"CDIME::_HandleCompositionInput(), _candidateMode = %d", _candidateMode );
     ITfRange* pRangeComposition = nullptr;
     TF_SELECTION tfSelection;
     ULONG fetched = 0;
@@ -149,11 +149,11 @@ Exit:
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFTTS::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *pCompositionProcessorEngine, TfEditCookie ec, _In_ ITfContext *pContext)
+HRESULT CDIME::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *pCompositionProcessorEngine, TfEditCookie ec, _In_ ITfContext *pContext)
 {
-	debugPrint(L"CTSFTTS::_HandleCompositionInputWorker()");
+	debugPrint(L"CDIME::_HandleCompositionInputWorker()");
     HRESULT hr = S_OK;
-    CTSFTTSArray<CStringRange> readingStrings;
+    CDIMEArray<CStringRange> readingStrings;
     BOOL isWildcardIncluded = TRUE;
 
     //
@@ -181,7 +181,7 @@ HRESULT CTSFTTS::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine 
 		|| symbolMode // fetch candidate in symobl mode with composition started with '='(DAYI) or 'W' (Array)
 		||  Global::imeMode== IME_MODE_ARRAY) //
 	{
-		CTSFTTSArray<CCandidateListItem> candidateList;
+		CDIMEArray<CCandidateListItem> candidateList;
 	
 		pCompositionProcessorEngine->GetCandidateList(&candidateList, !(pCompositionProcessorEngine->IsSymbol()|| Global::imeMode== IME_MODE_ARRAY ), FALSE);
 		
@@ -238,9 +238,9 @@ HRESULT CTSFTTS::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine 
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFTTS::_HandleCompositionFinalize(TfEditCookie ec, _In_ ITfContext *pContext, BOOL isCandidateList)
+HRESULT CDIME::_HandleCompositionFinalize(TfEditCookie ec, _In_ ITfContext *pContext, BOOL isCandidateList)
 {
-	debugPrint(L"CTSFTTS::_HandleCompositionFinalize()");
+	debugPrint(L"CDIME::_HandleCompositionFinalize()");
     HRESULT hr = S_OK;
 
     if (isCandidateList && _pUIPresenter)
@@ -285,11 +285,11 @@ HRESULT CTSFTTS::_HandleCompositionFinalize(TfEditCookie ec, _In_ ITfContext *pC
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFTTS::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pContext, BOOL isWildcardSearch)
+HRESULT CDIME::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pContext, BOOL isWildcardSearch)
 {
     HRESULT hr = S_OK;
 
-    CTSFTTSArray<CCandidateListItem> candidateList;
+    CDIMEArray<CCandidateListItem> candidateList;
 
     //
     // Get candidate string from composition processor engine
@@ -334,7 +334,7 @@ HRESULT CTSFTTS::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pCo
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFTTS::_HandleCompositionBackspace(TfEditCookie ec, _In_ ITfContext *pContext)
+HRESULT CDIME::_HandleCompositionBackspace(TfEditCookie ec, _In_ ITfContext *pContext)
 {
     ITfRange* pRangeComposition = nullptr;
     TF_SELECTION tfSelection;
@@ -401,7 +401,7 @@ Exit:
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFTTS::_HandleCompositionArrowKey(TfEditCookie ec, _In_ ITfContext *pContext, KEYSTROKE_FUNCTION keyFunction)
+HRESULT CDIME::_HandleCompositionArrowKey(TfEditCookie ec, _In_ ITfContext *pContext, KEYSTROKE_FUNCTION keyFunction)
 {
     ITfRange* pRangeComposition = nullptr;
     TF_SELECTION tfSelection;
@@ -443,7 +443,7 @@ Exit:
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFTTS::_HandleCompositionDoubleSingleByte(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch)
+HRESULT CDIME::_HandleCompositionDoubleSingleByte(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch)
 {
     HRESULT hr = S_OK;
 
@@ -471,7 +471,7 @@ HRESULT CTSFTTS::_HandleCompositionDoubleSingleByte(TfEditCookie ec, _In_ ITfCon
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFTTS::_HandleCompositionAddressChar(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch)
+HRESULT CDIME::_HandleCompositionAddressChar(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch)
 {
 	HRESULT hr = S_OK;
 
@@ -512,7 +512,7 @@ HRESULT CTSFTTS::_HandleCompositionAddressChar(TfEditCookie ec, _In_ ITfContext 
 //    [in] dwKeyFunction - Function regarding virtual key
 //----------------------------------------------------------------------------
 
-HRESULT CTSFTTS::_InvokeKeyHandler(_In_ ITfContext *pContext, UINT code, WCHAR wch, DWORD flags, _KEYSTROKE_STATE keyState)
+HRESULT CDIME::_InvokeKeyHandler(_In_ ITfContext *pContext, UINT code, WCHAR wch, DWORD flags, _KEYSTROKE_STATE keyState)
 {
     flags;
 

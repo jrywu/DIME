@@ -8,7 +8,7 @@
 #include "Private.h"
 #include "TableDictionaryEngine.h"
 #include "DictionarySearch.h"
-#include "TSFTTS.h"
+#include "DIME.h"
 
 CTableDictionaryEngine::CTableDictionaryEngine(LCID locale, _In_ CFile *pDictionaryFile, _In_ DICTIONARY_TYPE dictionaryType )
 {
@@ -33,7 +33,7 @@ CTableDictionaryEngine::CTableDictionaryEngine(LCID locale, _In_ CFile *pDiction
 //
 //----------------------------------------------------------------------------
 
-VOID CTableDictionaryEngine::CollectWord(_In_ CStringRange *pKeyCode, _Inout_ CTSFTTSArray<CStringRange> *pWordStrings)
+VOID CTableDictionaryEngine::CollectWord(_In_ CStringRange *pKeyCode, _Inout_ CDIMEArray<CStringRange> *pWordStrings)
 {
     CDictionaryResult* pdret = nullptr;
 	CDictionarySearch dshSearch(_locale, _pDictionaryFile, pKeyCode, _keywordDelimiter);
@@ -58,7 +58,7 @@ VOID CTableDictionaryEngine::CollectWord(_In_ CStringRange *pKeyCode, _Inout_ CT
     }
 }
 
-VOID CTableDictionaryEngine::CollectWord(_In_ CStringRange *pKeyCode, _Inout_ CTSFTTSArray<CCandidateListItem> *pItemList)
+VOID CTableDictionaryEngine::CollectWord(_In_ CStringRange *pKeyCode, _Inout_ CDIMEArray<CCandidateListItem> *pItemList)
 {
     CDictionaryResult* pdret = nullptr;
     CDictionarySearch dshSearch(_locale, _pDictionaryFile, pKeyCode, _keywordDelimiter);
@@ -90,7 +90,7 @@ VOID CTableDictionaryEngine::CollectWord(_In_ CStringRange *pKeyCode, _Inout_ CT
 //
 //----------------------------------------------------------------------------
 
-VOID CTableDictionaryEngine::CollectWordForWildcard(_In_ CStringRange *pKeyCode, _Inout_ CTSFTTSArray<CCandidateListItem> *pItemList)
+VOID CTableDictionaryEngine::CollectWordForWildcard(_In_ CStringRange *pKeyCode, _Inout_ CDIMEArray<CCandidateListItem> *pItemList)
 {
     CDictionaryResult* pdret = nullptr;
     CDictionarySearch dshSearch(_locale, _pDictionaryFile, pKeyCode, _keywordDelimiter);
@@ -122,7 +122,7 @@ VOID CTableDictionaryEngine::CollectWordForWildcard(_In_ CStringRange *pKeyCode,
 //
 //----------------------------------------------------------------------------
 
-VOID CTableDictionaryEngine::CollectWordFromConvertedStringForWildcard(_In_ CStringRange *pString, _Inout_ CTSFTTSArray<CCandidateListItem> *pItemList)
+VOID CTableDictionaryEngine::CollectWordFromConvertedStringForWildcard(_In_ CStringRange *pString, _Inout_ CDIMEArray<CCandidateListItem> *pItemList)
 {
     CDictionaryResult* pdret = nullptr;
 	CDictionarySearch dshSearch(_locale, _pDictionaryFile, pString, _keywordDelimiter);
@@ -154,7 +154,7 @@ VOID CTableDictionaryEngine::CollectWordFromConvertedStringForWildcard(_In_ CStr
 //
 //----------------------------------------------------------------------------
 
-VOID CTableDictionaryEngine::CollectWordFromConvertedString(_In_ CStringRange *pString, _Inout_ CTSFTTSArray<CCandidateListItem> *pItemList)
+VOID CTableDictionaryEngine::CollectWordFromConvertedString(_In_ CStringRange *pString, _Inout_ CDIMEArray<CCandidateListItem> *pItemList)
 {
     CDictionaryResult* pdret = nullptr;
     CDictionarySearch dshSearch(_locale, _pDictionaryFile, pString, _keywordDelimiter);
@@ -199,7 +199,7 @@ VOID CTableDictionaryEngine::ParseConfig(IME_MODE imeMode)
 // SortListItemByFindKeyCode
 //----------------------------------------------------------------------------
 
-VOID CTableDictionaryEngine::SortListItemByFindKeyCode(_Inout_ CTSFTTSArray<CCandidateListItem> *pItemList)
+VOID CTableDictionaryEngine::SortListItemByFindKeyCode(_Inout_ CDIMEArray<CCandidateListItem> *pItemList)
 {
 	if(pItemList->Count())
 		MergeSortByFindKeyCode(pItemList, 0, pItemList->Count() - 1);
@@ -212,7 +212,7 @@ VOID CTableDictionaryEngine::SortListItemByFindKeyCode(_Inout_ CTSFTTSArray<CCan
 //
 //----------------------------------------------------------------------------
 
-VOID CTableDictionaryEngine::MergeSortByFindKeyCode(_Inout_ CTSFTTSArray<CCandidateListItem> *pItemList, int leftRange, int rightRange)
+VOID CTableDictionaryEngine::MergeSortByFindKeyCode(_Inout_ CDIMEArray<CCandidateListItem> *pItemList, int leftRange, int rightRange)
 {
 	assert(leftRange >= 0);
     assert(rightRange >= 0);
@@ -226,7 +226,7 @@ VOID CTableDictionaryEngine::MergeSortByFindKeyCode(_Inout_ CTSFTTSArray<CCandid
         MergeSortByFindKeyCode(pItemList, leftRange, mid);
         MergeSortByFindKeyCode(pItemList, mid, rightRange);
 
-        CTSFTTSArray<CCandidateListItem> ListItemTemp;
+        CDIMEArray<CCandidateListItem> ListItemTemp;
 
         int leftRangeTemp = 0;
         int midTemp = 0;

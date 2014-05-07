@@ -6,7 +6,7 @@
 //#define DEBUG_PRINT
 
 #include "Private.h"
-#include "TSFTTS.h"
+#include "DIME.h"
 #include "UIPresenter.h"
 
 //+---------------------------------------------------------------------------
@@ -15,9 +15,9 @@
 //
 //----------------------------------------------------------------------------
 
-STDAPI CTSFTTS::OnSetThreadFocus()
+STDAPI CDIME::OnSetThreadFocus()
 {
-	debugPrint(L"CTSFTTS::OnSetThreadFocus()\n");
+	debugPrint(L"CDIME::OnSetThreadFocus()\n");
 	
     if (_pUIPresenter)
     {
@@ -44,9 +44,9 @@ STDAPI CTSFTTS::OnSetThreadFocus()
 //
 //----------------------------------------------------------------------------
 
-STDAPI CTSFTTS::OnKillThreadFocus()
+STDAPI CDIME::OnKillThreadFocus()
 {
-	debugPrint(L"CTSFTTS::OnSetThreadFocus()\n");
+	debugPrint(L"CDIME::OnSetThreadFocus()\n");
     if (_pUIPresenter)
     {
         ITfDocumentMgr* pCandidateListDocumentMgr = nullptr;
@@ -68,7 +68,7 @@ STDAPI CTSFTTS::OnKillThreadFocus()
     return S_OK;
 }
 
-BOOL CTSFTTS::_InitThreadFocusSink()
+BOOL CDIME::_InitThreadFocusSink()
 {
     ITfSource* pSource = nullptr;
 
@@ -88,7 +88,7 @@ BOOL CTSFTTS::_InitThreadFocusSink()
     return TRUE;
 }
 
-void CTSFTTS::_UninitThreadFocusSink()
+void CDIME::_UninitThreadFocusSink()
 {
     ITfSource* pSource = nullptr;
 

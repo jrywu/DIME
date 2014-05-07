@@ -7,7 +7,7 @@
 
 #include "Private.h"
 #include "globals.h"
-#include "TSFTTS.h"
+#include "DIME.h"
 
 //+---------------------------------------------------------------------------
 //
@@ -16,9 +16,9 @@
 // Called by the system whenever anyone releases a write-access document lock.
 //----------------------------------------------------------------------------
 
-STDAPI CTSFTTS::OnEndEdit(__RPC__in_opt ITfContext *pContext, TfEditCookie ecReadOnly, __RPC__in_opt ITfEditRecord *pEditRecord)
+STDAPI CDIME::OnEndEdit(__RPC__in_opt ITfContext *pContext, TfEditCookie ecReadOnly, __RPC__in_opt ITfEditRecord *pEditRecord)
 {
-	debugPrint(L"CTSFTTS::OnEndEdit()\n");
+	debugPrint(L"CDIME::OnEndEdit()\n");
     BOOL isSelectionChanged;
 
     //
@@ -77,16 +77,16 @@ STDAPI CTSFTTS::OnEndEdit(__RPC__in_opt ITfContext *pContext, TfEditCookie ecRea
 // Always release any previous sink.
 //----------------------------------------------------------------------------
 
-BOOL CTSFTTS::_InitTextEditSink(_In_ ITfDocumentMgr *pDocMgr)
+BOOL CDIME::_InitTextEditSink(_In_ ITfDocumentMgr *pDocMgr)
 {
-	debugPrint(L"CTSFTTS::_InitTextEditSink()\n");
+	debugPrint(L"CDIME::_InitTextEditSink()\n");
     ITfSource* pSource = nullptr;
     BOOL ret = TRUE;
 
     // clear out any previous sink first
     if (_textEditSinkCookie != TF_INVALID_COOKIE)
     {
-		debugPrint(L"CTSFTTS::_InitTextEditSink() release old textEditSink first.");
+		debugPrint(L"CDIME::_InitTextEditSink() release old textEditSink first.");
         if (_pTextEditSinkContext && SUCCEEDED(_pTextEditSinkContext->QueryInterface(IID_ITfSource, (void **)&pSource)) && pSource)
         {
             pSource->UnadviseSink(_textEditSinkCookie);
@@ -116,7 +116,7 @@ BOOL CTSFTTS::_InitTextEditSink(_In_ ITfDocumentMgr *pDocMgr)
     ret = FALSE;
     if (SUCCEEDED(_pTextEditSinkContext->QueryInterface(IID_ITfSource, (void **)&pSource)) && pSource)
     {
-		debugPrint(L"CTSFTTS::_InitTextEditSink() advis new textEditSink.");
+		debugPrint(L"CDIME::_InitTextEditSink() advis new textEditSink.");
         if (SUCCEEDED(pSource->AdviseSink(IID_ITfTextEditSink, (ITfTextEditSink *)this, &_textEditSinkCookie)))
         {
             ret = TRUE;
@@ -138,9 +138,9 @@ BOOL CTSFTTS::_InitTextEditSink(_In_ ITfDocumentMgr *pDocMgr)
 }
 
 
-void CTSFTTS::_UnInitTextEditSink()
+void CDIME::_UnInitTextEditSink()
 {
-	debugPrint(L"CTSFTTS::_UnInitTextEditSink()\n");
+	debugPrint(L"CDIME::_UnInitTextEditSink()\n");
     ITfSource* pSource = nullptr;
 
 

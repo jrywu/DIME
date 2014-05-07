@@ -19,7 +19,7 @@
 class CCompositionProcessorEngine
 {
 public:
-    CCompositionProcessorEngine(_In_ CTSFTTS *pTextService);
+    CCompositionProcessorEngine(_In_ CDIME *pTextService);
     ~CCompositionProcessorEngine(void);
 	
 	
@@ -33,12 +33,12 @@ public:
     DWORD_PTR GetVirtualKeyLength() { return _keystrokeBuffer.GetLength(); }
     WCHAR GetVirtualKey(DWORD_PTR dwIndex);
 
-    void GetReadingStrings(_Inout_ CTSFTTSArray<CStringRange> *pReadingStrings, _Out_ BOOL *pIsWildcardIncluded);
-    void GetCandidateList(_Inout_ CTSFTTSArray<CCandidateListItem> *pCandidateList, BOOL isIncrementalWordSearch, BOOL isWildcardSearch);
-    void GetCandidateStringInConverted(CStringRange &searchString, _In_ CTSFTTSArray<CCandidateListItem> *pCandidateList);
+    void GetReadingStrings(_Inout_ CDIMEArray<CStringRange> *pReadingStrings, _Out_ BOOL *pIsWildcardIncluded);
+    void GetCandidateList(_Inout_ CDIMEArray<CCandidateListItem> *pCandidateList, BOOL isIncrementalWordSearch, BOOL isWildcardSearch);
+    void GetCandidateStringInConverted(CStringRange &searchString, _In_ CDIMEArray<CCandidateListItem> *pCandidateList);
 
 	//reverse converion
-	HRESULT GetReverConversionResults(IME_MODE imeMode, _In_ LPCWSTR lpstrToConvert, _Inout_ CTSFTTSArray<CCandidateListItem> *pCandidateList);
+	HRESULT GetReverConversionResults(IME_MODE imeMode, _In_ LPCWSTR lpstrToConvert, _Inout_ CDIMEArray<CCandidateListItem> *pCandidateList);
 
 	//Han covert
 	BOOL GetSCFromTC(CStringRange* stringToConvert, CStringRange* convertedString);
@@ -121,7 +121,7 @@ public:
 private:
 
     BOOL IsVirtualKeyKeystrokeComposition(UINT uCode, _Out_opt_ _KEYSTROKE_STATE *pKeyState, KEYSTROKE_FUNCTION function);
-    BOOL IsVirtualKeyKeystrokeCandidate(UINT uCode, _In_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode, _Out_ BOOL *pfRetCode, _In_ CTSFTTSArray<_KEYSTROKE> *pKeystrokeMetric);
+    BOOL IsVirtualKeyKeystrokeCandidate(UINT uCode, _In_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode, _Out_ BOOL *pfRetCode, _In_ CDIMEArray<_KEYSTROKE> *pKeystrokeMetric);
     BOOL IsKeystrokeRange(UINT uCode, _Out_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode);
 
     void SetInitialCandidateListRange();
@@ -130,7 +130,7 @@ private:
     class XPreservedKey;
     void SetPreservedKey(const CLSID clsid, TF_PRESERVEDKEY & tfPreservedKey, _In_z_ LPCWSTR pwszDescription, _Out_ XPreservedKey *pXPreservedKey);
     BOOL InitPreservedKey(_In_ XPreservedKey *pXPreservedKey, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId);
-    BOOL CheckShiftKeyOnly(_In_ CTSFTTSArray<TF_PRESERVEDKEY> *pTSFPreservedKeyTable);
+    BOOL CheckShiftKeyOnly(_In_ CDIMEArray<TF_PRESERVEDKEY> *pTSFPreservedKeyTable);
   
 
 
@@ -138,7 +138,7 @@ private:
 
 private:
 
-	CTSFTTS* _pTextService;
+	CDIME* _pTextService;
     
 	IME_MODE _imeMode;
 
@@ -161,10 +161,10 @@ private:
 
     TfClientId  _tfClientId;
 
-    CTSFTTSArray<_KEYSTROKE> _KeystrokeComposition;
-    CTSFTTSArray<_KEYSTROKE> _KeystrokeCandidate;
-    CTSFTTSArray<_KEYSTROKE> _KeystrokeCandidateWildcard;
-    CTSFTTSArray<_KEYSTROKE> _KeystrokeCandidateSymbol;
+    CDIMEArray<_KEYSTROKE> _KeystrokeComposition;
+    CDIMEArray<_KEYSTROKE> _KeystrokeCandidate;
+    CDIMEArray<_KEYSTROKE> _KeystrokeCandidateWildcard;
+    CDIMEArray<_KEYSTROKE> _KeystrokeCandidateSymbol;
 
 
     // Preserved key data
@@ -176,7 +176,7 @@ private:
         BOOL UninitPreservedKey(_In_ ITfThreadMgr *pThreadMgr);
 
     public:
-        CTSFTTSArray<TF_PRESERVEDKEY> TSFPreservedKeyTable;
+        CDIMEArray<TF_PRESERVEDKEY> TSFPreservedKeyTable;
         GUID Guid;
         LPCWSTR Description;
     };

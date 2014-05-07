@@ -7,7 +7,7 @@
 
 #include "Private.h"
 #include "Globals.h"
-#include "TSFTTS.h"
+#include "DIME.h"
 #include "UIPresenter.h"
 #include "GetTextExtentEditSession.h"
 
@@ -19,7 +19,7 @@
 // a document.
 //----------------------------------------------------------------------------
 
-STDAPI CTSFTTS::OnInitDocumentMgr(_In_ ITfDocumentMgr *pDocMgr)
+STDAPI CDIME::OnInitDocumentMgr(_In_ ITfDocumentMgr *pDocMgr)
 {
     pDocMgr;
     return E_NOTIMPL;
@@ -33,7 +33,7 @@ STDAPI CTSFTTS::OnInitDocumentMgr(_In_ ITfDocumentMgr *pDocMgr)
 // document.
 //----------------------------------------------------------------------------
 
-STDAPI CTSFTTS::OnUninitDocumentMgr(_In_ ITfDocumentMgr *pDocMgr)
+STDAPI CDIME::OnUninitDocumentMgr(_In_ ITfDocumentMgr *pDocMgr)
 {
     pDocMgr;
     return E_NOTIMPL;
@@ -48,9 +48,9 @@ STDAPI CTSFTTS::OnUninitDocumentMgr(_In_ ITfDocumentMgr *pDocMgr)
 // focus document, or now no document holds the input focus.
 //----------------------------------------------------------------------------
 
-STDAPI CTSFTTS::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMgr *pDocMgrPrevFocus)
+STDAPI CDIME::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMgr *pDocMgrPrevFocus)
 {
-	debugPrint(L"CTSFTTS::OnSetFocus() _isChinese = %d, _lastKeyboardMode = %d\n", _isChinese, _lastKeyboardMode);
+	debugPrint(L"CDIME::OnSetFocus() _isChinese = %d, _lastKeyboardMode = %d\n", _isChinese, _lastKeyboardMode);
     pDocMgrPrevFocus;
 	ITfContext* pContext = nullptr;
 
@@ -132,7 +132,7 @@ STDAPI CTSFTTS::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMg
         _pDocMgrLastFocused->AddRef();
     }
 
-	debugPrint(L"leaving CTSFTTS::OnSetFocus()\n");
+	debugPrint(L"leaving CDIME::OnSetFocus()\n");
     return S_OK;
 }
 
@@ -143,7 +143,7 @@ STDAPI CTSFTTS::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMg
 // Sink called by the framework when a context is pushed.
 //----------------------------------------------------------------------------
 
-STDAPI CTSFTTS::OnPushContext(_In_ ITfContext *pContext)
+STDAPI CDIME::OnPushContext(_In_ ITfContext *pContext)
 {
     pContext;
 
@@ -157,7 +157,7 @@ STDAPI CTSFTTS::OnPushContext(_In_ ITfContext *pContext)
 // Sink called by the framework when a context is popped.
 //----------------------------------------------------------------------------
 
-STDAPI CTSFTTS::OnPopContext(_In_ ITfContext *pContext)
+STDAPI CDIME::OnPopContext(_In_ ITfContext *pContext)
 {
     pContext;
 
@@ -171,9 +171,9 @@ STDAPI CTSFTTS::OnPopContext(_In_ ITfContext *pContext)
 // Advise our sink.
 //----------------------------------------------------------------------------
 
-BOOL CTSFTTS::_InitThreadMgrEventSink()
+BOOL CDIME::_InitThreadMgrEventSink()
 {
-	debugPrint(L"CTSFTTS::_InitThreadMgrEventSink()");
+	debugPrint(L"CDIME::_InitThreadMgrEventSink()");
     ITfSource* pSource = nullptr;
     BOOL ret = FALSE;
 
@@ -202,9 +202,9 @@ Exit:
 // Unadvise our sink.
 //----------------------------------------------------------------------------
 
-void CTSFTTS::_UninitThreadMgrEventSink()
+void CDIME::_UninitThreadMgrEventSink()
 {
-	debugPrint(L"CTSFTTS::_UninitThreadMgrEventSink()");
+	debugPrint(L"CDIME::_UninitThreadMgrEventSink()");
     ITfSource* pSource = nullptr;
 
     if (_threadMgrEventSinkCookie == TF_INVALID_COOKIE)

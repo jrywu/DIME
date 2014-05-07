@@ -8,7 +8,7 @@
 #include "Private.h"
 #include "Globals.h"
 #include "EditSession.h"
-#include "TSFTTS.h"
+#include "DIME.h"
 
 //////////////////////////////////////////////////////////////////////
 //
@@ -25,7 +25,7 @@
 class CEndCompositionEditSession : public CEditSessionBase
 {
 public:
-    CEndCompositionEditSession(_In_ CTSFTTS *pTextService, _In_ ITfContext *pContext) : CEditSessionBase(pTextService, pContext)
+    CEndCompositionEditSession(_In_ CDIME *pTextService, _In_ ITfContext *pContext) : CEditSessionBase(pTextService, pContext)
     {
     }
 
@@ -41,7 +41,7 @@ public:
 
 //////////////////////////////////////////////////////////////////////
 //
-// CTSFTTS class
+// CDIME class
 //
 //////////////////////////////////////////////////////////////////////+---------------------------------------------------------------------------
 //
@@ -49,9 +49,9 @@ public:
 //
 //----------------------------------------------------------------------------
 
-void CTSFTTS::_TerminateComposition(TfEditCookie ec, _In_ ITfContext *pContext, BOOL isCalledFromDeactivate)
+void CDIME::_TerminateComposition(TfEditCookie ec, _In_ ITfContext *pContext, BOOL isCalledFromDeactivate)
 {
-	debugPrint(L"CTSFTTS::_TerminateComposition()\n");
+	debugPrint(L"CDIME::_TerminateComposition()\n");
 
 
     if (_pComposition)
@@ -84,9 +84,9 @@ void CTSFTTS::_TerminateComposition(TfEditCookie ec, _In_ ITfContext *pContext, 
 //
 //----------------------------------------------------------------------------
 
-void CTSFTTS::_EndComposition(_In_opt_ ITfContext *pContext)
+void CDIME::_EndComposition(_In_opt_ ITfContext *pContext)
 {
-	debugPrint(L"CTSFTTS::_EndComposition()\n");
+	debugPrint(L"CDIME::_EndComposition()\n");
     CEndCompositionEditSession *pEditSession = new (std::nothrow) CEndCompositionEditSession(this, pContext);
     HRESULT hr = S_OK;
 

@@ -21,7 +21,7 @@
 //
 //----------------------------------------------------------------------------
 
-CUIPresenter::CUIPresenter(_In_ CTSFTTS *pTextService, CCompositionProcessorEngine *pCompositionProcessorEngine) 
+CUIPresenter::CUIPresenter(_In_ CDIME *pTextService, CCompositionProcessorEngine *pCompositionProcessorEngine) 
 	: CTfTextLayoutSink(pTextService)
 {
 	debugPrint(L"CUIPresenter::CUIPresenter() constructor");
@@ -174,13 +174,13 @@ STDAPI CUIPresenter::GetDescription(BSTR *pbstr)
 
 STDAPI CUIPresenter::GetGUID(GUID *pguid)
 {
-    *pguid = Global::TSFTTSGuidCandUIElement;
+    *pguid = Global::DIMEGuidCandUIElement;
     return S_OK;
 }
 
 //+---------------------------------------------------------------------------
 //
-// ITfTSFTTSUIElement::ITfUIElement::Show
+// ITfDIMEUIElement::ITfUIElement::Show
 //
 //----------------------------------------------------------------------------
 
@@ -565,7 +565,7 @@ void CUIPresenter::_EndCandidateList()
 //
 //----------------------------------------------------------------------------
 
-void CUIPresenter::_SetCandidateText(_In_ CTSFTTSArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode, UINT candWidth)
+void CUIPresenter::_SetCandidateText(_In_ CDIMEArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode, UINT candWidth)
 {
 	debugPrint(L"CUIPresenter::_SetCandidateText() candWidth = %d", candWidth);
     AddCandidateToUI(pCandidateList, isAddFindKeyCode);
@@ -591,7 +591,7 @@ void CUIPresenter::_SetCandidateText(_In_ CTSFTTSArray<CCandidateListItem> *pCan
     }
 }
 
-void CUIPresenter::AddCandidateToUI(_In_ CTSFTTSArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode)
+void CUIPresenter::AddCandidateToUI(_In_ CDIMEArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode)
 {
 	if(pCandidateList == nullptr || _pCandidateWnd == nullptr) return;
     for (UINT index = 0; index < pCandidateList->Count(); index++)
@@ -600,7 +600,7 @@ void CUIPresenter::AddCandidateToUI(_In_ CTSFTTSArray<CCandidateListItem> *pCand
     }
 }
 
-void CUIPresenter::SetPageIndexWithScrollInfo(_In_ CTSFTTSArray<CCandidateListItem> *pCandidateList)
+void CUIPresenter::SetPageIndexWithScrollInfo(_In_ CDIMEArray<CCandidateListItem> *pCandidateList)
 {
 	if(_pIndexRange == nullptr || pCandidateList == nullptr || _pCandidateWnd==nullptr ) return;
     UINT candCntInPage = _pIndexRange->Count();
@@ -1015,7 +1015,7 @@ HRESULT CUIPresenter::_NotifyChangeNotification(enum NOTIFYWND_ACTION action, _I
 			BOOL isEaten;
 			Global::IsShiftKeyDownOnly = TRUE;
 			if(_pTextService)
-				_pTextService->OnPreservedKey(NULL, Global::TSFTTSGuidImeModePreserveKey, &isEaten);
+				_pTextService->OnPreservedKey(NULL, Global::DIMEGuidImeModePreserveKey, &isEaten);
 			Global::IsShiftKeyDownOnly = FALSE;
 			break;
 		case SHOW_NOTIFY:
@@ -1204,7 +1204,7 @@ HRESULT CUIPresenter::OnKillThreadFocus()
     return S_OK;
 }
 
-void CUIPresenter::RemoveSpecificCandidateFromList(_In_ LCID Locale, _Inout_ CTSFTTSArray<CCandidateListItem> &candidateList, _In_ CStringRange &candidateString)
+void CUIPresenter::RemoveSpecificCandidateFromList(_In_ LCID Locale, _Inout_ CDIMEArray<CCandidateListItem> &candidateList, _In_ CStringRange &candidateString)
 {
     for (UINT index = 0; index < candidateList.Count();)
     {

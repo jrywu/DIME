@@ -95,8 +95,8 @@ private:
 
 private:
     INT _currentSelection;
-    CTSFTTSArray<CCandidateListItem> _candidateList;
-    CTSFTTSArray<UINT> _PageIndex;
+    CDIMEArray<CCandidateListItem> _candidateList;
+    CDIMEArray<UINT> _PageIndex;
 
 	COLORREF _crNumberColor;
     COLORREF _crNumberBkColor;

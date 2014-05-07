@@ -125,7 +125,7 @@ extern CRITICAL_SECTION CS;
 extern HFONT defaultlFontHandle;  // Global font object we use everywhere
 
 
-extern const CLSID TSFTTSCLSID;
+extern const CLSID DIMECLSID;
 
 
 extern const GUID TSFDayiGuidProfile;
@@ -133,9 +133,9 @@ extern const GUID TSFArrayGuidProfile;
 extern const GUID TSFPhoneticGuidProfile;
 extern const GUID TSFGenericGuidProfile;
 
-extern const GUID TSFTTSGuidImeModePreserveKey;
-extern const GUID TSFTTSGuidDoubleSingleBytePreserveKey;
-extern const GUID TSFTTSGuidConfigPreserveKey;
+extern const GUID DIMEGuidImeModePreserveKey;
+extern const GUID DIMEGuidDoubleSingleBytePreserveKey;
+extern const GUID DIMEGuidConfigPreserveKey;
 
 LRESULT CALLBACK ThreadKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam);
 BOOL CheckModifiers(UINT uModCurrent, UINT uMod);
@@ -146,20 +146,20 @@ extern BOOL IsShiftKeyDownOnly;
 extern BOOL IsControlKeyDownOnly;
 extern BOOL IsAltKeyDownOnly;
 
-extern const GUID TSFTTSGuidCompartmentIMEMode;
-extern const GUID TSFTTSGuidCompartmentDoubleSingleByte;
+extern const GUID DIMEGuidCompartmentIMEMode;
+extern const GUID DIMEGuidCompartmentDoubleSingleByte;
 
 extern const WCHAR FullWidthCharTable[];
 extern const WCHAR DayiSymbolCharTable[];
 extern const _DAYI_ADDRESS_DIRECT_INPUT dayiAddressCharTable[5];
 
-extern const GUID TSFTTSGuidLangBarIMEMode;
-extern const GUID TSFTTSGuidLangBarDoubleSingleByte;
+extern const GUID DIMEGuidLangBarIMEMode;
+extern const GUID DIMEGuidLangBarDoubleSingleByte;
 
-extern const GUID TSFTTSGuidDisplayAttributeInput;
-extern const GUID TSFTTSGuidDisplayAttributeConverted;
+extern const GUID DIMEGuidDisplayAttributeInput;
+extern const GUID DIMEGuidDisplayAttributeConverted;
 
-extern const GUID TSFTTSGuidCandUIElement;
+extern const GUID DIMEGuidCandUIElement;
 
 extern const WCHAR UnicodeByteOrderMark;
 extern WCHAR KeywordDelimiter;
@@ -192,7 +192,7 @@ inline static void debugPrint(const WCHAR* format,...)
 
 	if (SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE))
 	{
-		StringCchPrintf(wszAppData, MAX_PATH, L"%s\\%s", wszAppData, L"TSFTTS\\");
+		StringCchPrintf(wszAppData, MAX_PATH, L"%s\\%s", wszAppData, L"DIME\\");
 		if (PathFileExists(wszAppData))
 			CreateDirectory(wszAppData, NULL);
 	} 

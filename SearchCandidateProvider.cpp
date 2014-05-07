@@ -8,7 +8,7 @@
 #include "private.h"
 #include "SearchCandidateProvider.h"
 #include <new>
-#include "TSFTTS.h"
+#include "DIME.h"
 #include "CompositionProcessorEngine.h"
 #include "TipCandidateList.h"
 #include "TipCandidateString.h"
@@ -162,13 +162,13 @@ STDMETHODIMP CSearchCandidateProvider::GetSearchCandidates(BSTR bstrQuery, BSTR 
         return hr;
     }
 
-    CCompositionProcessorEngine* pCompositionProcessorEngine = ((CTSFTTS*)_pTip)->GetCompositionProcessorEngine();
+    CCompositionProcessorEngine* pCompositionProcessorEngine = ((CDIME*)_pTip)->GetCompositionProcessorEngine();
     if (nullptr == pCompositionProcessorEngine)
     {
         return hr;
     }
 
-    CTSFTTSArray<CCandidateListItem> candidateList;
+    CDIMEArray<CCandidateListItem> candidateList;
     pCompositionProcessorEngine->GetCandidateList(&candidateList, TRUE, FALSE);
 
     int cCand = min(candidateList.Count(), FAKECANDIDATENUMBER);

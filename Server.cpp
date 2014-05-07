@@ -7,7 +7,7 @@
 
 #include "Private.h"
 #include "Globals.h"
-#include "TSFTTS.h"
+#include "DIME.h"
 
 // from Register.cpp
 BOOL RegisterProfiles();
@@ -177,7 +177,7 @@ STDAPI CClassFactory::LockServer(BOOL fLock)
 void BuildGlobalObjects(void)
 {
 	debugPrint(L"BuildGlobalObjects()");
-    classFactoryObjects[0] = new (std::nothrow) CClassFactory(Global::TSFTTSCLSID, CTSFTTS::CreateInstance);
+    classFactoryObjects[0] = new (std::nothrow) CClassFactory(Global::DIMECLSID, CDIME::CreateInstance);
 }
 
 //+---------------------------------------------------------------------------

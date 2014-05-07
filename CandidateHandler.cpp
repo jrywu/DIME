@@ -1,6 +1,6 @@
 //#define DEBUG_PRINT
 
-#include "TSFTTS.h"
+#include "DIME.h"
 #include "BaseStructure.h"
 #include "UIPresenter.h"
 #include "CompositionProcessorEngine.h"
@@ -12,7 +12,7 @@
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFTTS::_HandleCandidateFinalize(TfEditCookie ec, _In_ ITfContext *pContext)
+HRESULT CDIME::_HandleCandidateFinalize(TfEditCookie ec, _In_ ITfContext *pContext)
 {
 	return _HandleCandidateWorker(ec, pContext);
 }
@@ -23,7 +23,7 @@ HRESULT CTSFTTS::_HandleCandidateFinalize(TfEditCookie ec, _In_ ITfContext *pCon
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFTTS::_HandleCandidateConvert(TfEditCookie ec, _In_ ITfContext *pContext)
+HRESULT CDIME::_HandleCandidateConvert(TfEditCookie ec, _In_ ITfContext *pContext)
 {
     return _HandleCandidateWorker(ec, pContext);
 	
@@ -35,13 +35,13 @@ HRESULT CTSFTTS::_HandleCandidateConvert(TfEditCookie ec, _In_ ITfContext *pCont
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFTTS::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext)
+HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext)
 {
 
-	debugPrint(L"CTSFTTS::_HandleCandidateWorker() \n");
+	debugPrint(L"CDIME::_HandleCandidateWorker() \n");
     HRESULT hr = S_OK;
 	CStringRange commitString, convertedString;
-	CTSFTTSArray<CCandidateListItem> candidatePhraseList;	
+	CDIMEArray<CCandidateListItem> candidatePhraseList;	
 	CStringRange lastChar;
 	CStringRange notify;
 	
@@ -178,7 +178,7 @@ Exit:
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFTTS::_HandleCandidateArrowKey(TfEditCookie ec, _In_ ITfContext *pContext, _In_ KEYSTROKE_FUNCTION keyFunction)
+HRESULT CDIME::_HandleCandidateArrowKey(TfEditCookie ec, _In_ ITfContext *pContext, _In_ KEYSTROKE_FUNCTION keyFunction)
 {
     ec;
     pContext;
@@ -194,7 +194,7 @@ HRESULT CTSFTTS::_HandleCandidateArrowKey(TfEditCookie ec, _In_ ITfContext *pCon
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFTTS::_HandleCandidateSelectByNumber(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode)
+HRESULT CDIME::_HandleCandidateSelectByNumber(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode)
 {
 	int iSelectAsNumber = _pCompositionProcessorEngine->GetCandidateListIndexRange()->GetIndex(uCode, _candidateMode);
     if (iSelectAsNumber == -1)
@@ -219,7 +219,7 @@ HRESULT CTSFTTS::_HandleCandidateSelectByNumber(TfEditCookie ec, _In_ ITfContext
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFTTS::_HandlePhraseFinalize(TfEditCookie ec, _In_ ITfContext *pContext)
+HRESULT CDIME::_HandlePhraseFinalize(TfEditCookie ec, _In_ ITfContext *pContext)
 {
     HRESULT hr = S_OK;
 
@@ -251,7 +251,7 @@ HRESULT CTSFTTS::_HandlePhraseFinalize(TfEditCookie ec, _In_ ITfContext *pContex
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFTTS::_HandlePhraseArrowKey(TfEditCookie ec, _In_ ITfContext *pContext, _In_ KEYSTROKE_FUNCTION keyFunction)
+HRESULT CDIME::_HandlePhraseArrowKey(TfEditCookie ec, _In_ ITfContext *pContext, _In_ KEYSTROKE_FUNCTION keyFunction)
 {
     ec;
     pContext;
@@ -267,7 +267,7 @@ HRESULT CTSFTTS::_HandlePhraseArrowKey(TfEditCookie ec, _In_ ITfContext *pContex
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFTTS::_HandlePhraseSelectByNumber(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode)
+HRESULT CDIME::_HandlePhraseSelectByNumber(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode)
 {
 	int iSelectAsNumber = _pCompositionProcessorEngine->GetCandidateListIndexRange()->GetIndex(uCode, _candidateMode);
     if (iSelectAsNumber == -1)
@@ -292,9 +292,9 @@ HRESULT CTSFTTS::_HandlePhraseSelectByNumber(TfEditCookie ec, _In_ ITfContext *p
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFTTS::_CreateAndStartCandidate(_In_ CCompositionProcessorEngine *pCompositionProcessorEngine, TfEditCookie ec, _In_ ITfContext *pContext)
+HRESULT CDIME::_CreateAndStartCandidate(_In_ CCompositionProcessorEngine *pCompositionProcessorEngine, TfEditCookie ec, _In_ ITfContext *pContext)
 {
-	debugPrint(L"CTSFTTS::_CreateAndStartCandidate(), _candidateMode = %d", _candidateMode);
+	debugPrint(L"CDIME::_CreateAndStartCandidate(), _candidateMode = %d", _candidateMode);
     HRESULT hr = S_OK;
 
 	
@@ -325,11 +325,11 @@ HRESULT CTSFTTS::_CreateAndStartCandidate(_In_ CCompositionProcessorEngine *pCom
 //
 //----------------------------------------------------------------------------
 
-VOID CTSFTTS::_DeleteCandidateList(BOOL isForce, _In_opt_ ITfContext *pContext)
+VOID CDIME::_DeleteCandidateList(BOOL isForce, _In_opt_ ITfContext *pContext)
 {
 	//isForce;
 	pContext;
-	debugPrint(L"CTSFTTS::_DeleteCandidateList()\n");
+	debugPrint(L"CDIME::_DeleteCandidateList()\n");
 	if(_pCompositionProcessorEngine) 
 	{
 	    _pCompositionProcessorEngine->PurgeVirtualKey();

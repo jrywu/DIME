@@ -63,7 +63,7 @@
     <None Include="image\DoubleSingleByteOff.ico">
       <Filter>Resource Files</Filter>
     </None>
-    <None Include="TSFTTS.def">
+    <None Include="DIME.def">
       <Filter>Source Files</Filter>
     </None>
   </ItemGroup>
@@ -173,10 +173,10 @@
     <ClInclude Include="NotifyWindow.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="TSFTTS.h">
+    <ClInclude Include="DIME.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="TSFTTSStructureArray.h">
+    <ClInclude Include="DIMEStructureArray.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Config.h">
@@ -307,7 +307,7 @@
     <ClCompile Include="UIPresenter.cpp">
       <Filter>Source Files\UI</Filter>
     </ClCompile>
-    <ClCompile Include="TSFTTS.cpp">
+    <ClCompile Include="DIME.cpp">
       <Filter>Source Files\Framework</Filter>
     </ClCompile>
     <ClCompile Include="Config.cpp">
@@ -344,7 +344,7 @@
     </Image>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="TSFTTS.rc">
+    <ResourceCompile Include="DIME.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
   </ItemGroup>

@@ -7,12 +7,12 @@
 
 #pragma once
 
-class CTSFTTS;
+class CDIME;
 
 class CTfTextLayoutSink : public ITfTextLayoutSink
 {
 public:
-    CTfTextLayoutSink(_In_ CTSFTTS *pTextService);
+    CTfTextLayoutSink(_In_ CDIME *pTextService);
     virtual ~CTfTextLayoutSink();
 
     // IUnknown methods
@@ -40,7 +40,7 @@ private:
     ITfRange* _pRangeComposition;
     ITfContext* _pContextDocument;
     TfEditCookie _tfEditCookie;
-    CTSFTTS* _pTextService;
+    CDIME* _pTextService;
     DWORD _dwCookieTextLayoutSink;
     LONG _refCount;
 };

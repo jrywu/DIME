@@ -3,8 +3,8 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-#ifndef TSFTTS_H
-#define TSFTTS_H
+#ifndef DIME_H
+#define DIME_H
 
 #pragma once
 
@@ -20,9 +20,9 @@ class CCompositionProcessorEngine;
 class CReverseConversion;
 
 const DWORD WM_CheckGlobalCompartment = WM_USER;
-LRESULT CALLBACK CTSFTTS_WindowProc(HWND wndHandle, UINT uMsg, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK CDIME_WindowProc(HWND wndHandle, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
-class CTSFTTS : 
+class CDIME : 
 	public ITfTextInputProcessorEx,
     public ITfThreadMgrEventSink,
     public ITfTextEditSink,
@@ -37,8 +37,8 @@ class CTSFTTS :
 	public ITfReverseConversionMgr
 {
 public:
-    CTSFTTS();
-    ~CTSFTTS();
+    CDIME();
+    ~CDIME();
 
     // IUnknown
     STDMETHODIMP QueryInterface(REFIID riid, _Outptr_ void **ppvObj);
@@ -240,9 +240,9 @@ private:
 
 	BOOL _AddTextProcessorEngine(LANGID inLangID = 0, GUID inGuidProfile = GUID_NULL);
 
-    BOOL VerifyTSFTTSCLSID(_In_ REFCLSID clsid);
+    BOOL VerifyDIMECLSID(_In_ REFCLSID clsid);
 
-    friend LRESULT CALLBACK CTSFTTS_WindowProc(HWND wndHandle, UINT uMsg, WPARAM wParam, LPARAM lParam);
+    friend LRESULT CALLBACK CDIME_WindowProc(HWND wndHandle, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 	// function for process candidate
 	VOID _DeleteCandidateList(BOOL fForce, _In_opt_ ITfContext *pContext);
@@ -250,7 +250,7 @@ private:
 	//language bar private
     BOOL InitLanguageBar(_In_ CLangBarItemButton *pLanguageBar, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, REFGUID guidCompartment);
     void SetupLanguageBar(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, BOOL isSecureMode);
-	void InitializeTSFTTSCompartment(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId);
+	void InitializeDIMECompartment(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId);
     void CreateLanguageBarButton(DWORD dwEnable, GUID guidLangBar, _In_z_ LPCWSTR pwszDescriptionValue, _In_z_ LPCWSTR pwszTooltipValue, DWORD dwOnIconIndex, DWORD dwOffIconIndex, _Outptr_result_maybenull_ CLangBarItemButton **ppLangBarItemButton, BOOL isSecureMode);
     static HRESULT CompartmentCallback(_In_ void *pv, REFGUID guidCompartment);
     void PrivateCompartmentsUpdated(_In_ ITfThreadMgr *pThreadMgr);

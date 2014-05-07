@@ -8,7 +8,7 @@
 #pragma once
 #include "Globals.h"
 #include "Private.h"
-#include "TSFTTS.h"
+#include "DIME.h"
 
 class CKeyStateCategory;
 
@@ -16,7 +16,7 @@ class CKeyStateCategoryFactory
 {
 public:
     static CKeyStateCategoryFactory* Instance();
-    CKeyStateCategory* MakeKeyStateCategory(KEYSTROKE_CATEGORY keyCategory, _In_ CTSFTTS *pTextService);
+    CKeyStateCategory* MakeKeyStateCategory(KEYSTROKE_CATEGORY keyCategory, _In_ CDIME *pTextService);
     void Release();
 
 protected:
@@ -48,7 +48,7 @@ typedef struct KeyHandlerEditSessionDTO
 class CKeyStateCategory
 {
 public:
-    CKeyStateCategory(_In_ CTSFTTS *pTextService);
+    CKeyStateCategory(_In_ CDIME *pTextService);
 
 protected:
     ~CKeyStateCategory(void);
@@ -102,13 +102,13 @@ protected:
 
 	
 protected:
-    CTSFTTS* _pTextService;
+    CDIME* _pTextService;
 };
 
 class CKeyStateComposing : public CKeyStateCategory
 {
 public:
-    CKeyStateComposing(_In_ CTSFTTS *pTextService);
+    CKeyStateComposing(_In_ CDIME *pTextService);
 
 protected:
     // _HandleCompositionInput
@@ -153,7 +153,7 @@ protected:
 class CKeyStateCandidate : public CKeyStateCategory
 {
 public:
-    CKeyStateCandidate(_In_ CTSFTTS *pTextService);
+    CKeyStateCandidate(_In_ CDIME *pTextService);
 
 protected:
     // HandleKeyFinalizeCandidatelist
@@ -178,7 +178,7 @@ protected:
 class CKeyStatePhrase : public CKeyStateCategory
 {
 public:
-    CKeyStatePhrase(_In_ CTSFTTS *pTextService);
+    CKeyStatePhrase(_In_ CDIME *pTextService);
 
 protected:
     //_HandleCancel
@@ -198,7 +198,7 @@ protected:
 class CKeyStateNull : public CKeyStateCategory
 {
 public:
-    CKeyStateNull(_In_ CTSFTTS *pTextService) : CKeyStateCategory(pTextService) {};
+    CKeyStateNull(_In_ CDIME *pTextService) : CKeyStateCategory(pTextService) {};
 
 protected:
     // _HandleNullInput

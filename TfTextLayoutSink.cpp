@@ -7,10 +7,10 @@
 
 #include "Private.h"
 #include "TfTextLayoutSink.h"
-#include "TSFTTS.h"
+#include "DIME.h"
 #include "GetTextExtentEditSession.h"
 
-CTfTextLayoutSink::CTfTextLayoutSink(_In_ CTSFTTS *pTextService)
+CTfTextLayoutSink::CTfTextLayoutSink(_In_ CDIME *pTextService)
 {
 	debugPrint(L"CTfTextLayoutSink::CTfTextLayoutSink() constructor");
     _pTextService = pTextService;

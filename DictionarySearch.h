@@ -21,7 +21,7 @@ class CDictionaryResult;
 //
 //////////////////////////////////////////////////////////////////////
 
-class CTSFTTS;
+class CDIME;
 class CDictionarySearch : CDictionaryParser
 {
 public:
@@ -55,7 +55,7 @@ private:
 
     CFile* _pFile;
 	enum SEARCH_MODE _searchMode;
-	CTSFTTS *_pTextService;
+	CDIME *_pTextService;
 	IME_MODE _imeMode;
 
 };
@@ -81,7 +81,7 @@ public:
 
     CStringRange _SearchKeyCode;
     CStringRange _FindKeyCode;
-    CTSFTTSArray<CStringRange> _FindPhraseList;
+    CDIMEArray<CStringRange> _FindPhraseList;
 };
 
 enum SEARCH_MODE

@@ -38,6 +38,6 @@ public:
 
 protected:
     long _refCount;
-    CTSFTTSArray<ITfCandidateString*> _tfCandStrList;
+    CDIMEArray<ITfCandidateString*> _tfCandStrList;
 };
 

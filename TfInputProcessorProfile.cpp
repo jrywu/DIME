@@ -59,7 +59,7 @@ HRESULT CTfInputProcessorProfile::GetDefaultLanguageProfile(LANGID langid, REFGU
     }
 }
 
-HRESULT CTfInputProcessorProfile::GetReverseConversionProviders(LANGID langid, CTSFTTSArray <LanguageProfileInfo> *langProfileInfoList)
+HRESULT CTfInputProcessorProfile::GetReverseConversionProviders(LANGID langid, CDIMEArray <LanguageProfileInfo> *langProfileInfoList)
 {
 	debugPrint(L"CTfInputProcessorProfile::GetReverseConversionProviders() langid = %d " , langid);
 	HRESULT hr;

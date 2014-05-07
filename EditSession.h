@@ -10,12 +10,12 @@
 
 #pragma once
 
-class CTSFTTS;
+class CDIME;
 
 class CEditSessionBase : public ITfEditSession
 {
 public:
-    CEditSessionBase(_In_ CTSFTTS *pTextService, _In_ ITfContext *pContext);
+    CEditSessionBase(_In_ CDIME *pTextService, _In_ ITfContext *pContext);
     virtual ~CEditSessionBase();
 
     // IUnknown
@@ -28,7 +28,7 @@ public:
 
 protected:
     ITfContext *_pContext;
-    CTSFTTS *_pTextService;
+    CDIME *_pTextService;
 
 private:
     LONG _refCount;     // COM ref count

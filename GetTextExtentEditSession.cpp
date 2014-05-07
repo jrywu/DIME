@@ -9,7 +9,7 @@
 #include "EditSession.h"
 #include "GetTextExtentEditSession.h"
 #include "TfTextLayoutSink.h"
-#include "TSFTTS.h"
+#include "DIME.h"
 
 //+---------------------------------------------------------------------------
 //
@@ -17,7 +17,7 @@
 //
 //----------------------------------------------------------------------------
 
-CGetTextExtentEditSession::CGetTextExtentEditSession(_In_ CTSFTTS *pTextService, _In_ ITfContext *pContext, _In_ ITfContextView *pContextView, _In_ ITfRange *pRangeComposition, _In_ CTfTextLayoutSink *pTfTextLayoutSink) : CEditSessionBase(pTextService, pContext)
+CGetTextExtentEditSession::CGetTextExtentEditSession(_In_ CDIME *pTextService, _In_ ITfContext *pContext, _In_ ITfContextView *pContextView, _In_ ITfRange *pRangeComposition, _In_ CTfTextLayoutSink *pTfTextLayoutSink) : CEditSessionBase(pTextService, pContext)
 {
 	debugPrint(L"CGetTextExtentEditSession::CGetTextExtentEditSession(): pContext = %x, pTfTextLayoutSink = %x \n",pContext, pTfTextLayoutSink);
 	_pTextService = pTextService;

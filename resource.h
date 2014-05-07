@@ -1,6 +1,6 @@
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
-// Used by TSFTTS.rc
+// Used by DIME.rc
 //
 #define SUBLANG_ENGLISH_US              0x01
 #define LANG_ENGLISH                    0x09
@@ -13,7 +13,7 @@
 #define	IDS_PHONETIC_DESCRIPTION		17
 #define	IDS_GENERIC_DESCRIPTION			18
 
-#define IDIS_TSFTTS                     19
+#define IDIS_DIME                     19
 #define IDS_IME_MODE                    20
 #define IDI_IME_MODE_ON                 21
 #define IDI_IME_MODE_OFF                22

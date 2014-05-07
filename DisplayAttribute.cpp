@@ -7,7 +7,7 @@
 
 #include "Private.h"
 #include "globals.h"
-#include "TSFTTS.h"
+#include "DIME.h"
 
 //+---------------------------------------------------------------------------
 //
@@ -15,7 +15,7 @@
 //
 //----------------------------------------------------------------------------
 
-void CTSFTTS::_ClearCompositionDisplayAttributes(TfEditCookie ec, _In_ ITfContext *pContext)
+void CDIME::_ClearCompositionDisplayAttributes(TfEditCookie ec, _In_ ITfContext *pContext)
 {
     ITfRange* pRangeComposition = nullptr;
     ITfProperty* pDisplayAttributeProperty = nullptr;
@@ -45,7 +45,7 @@ void CTSFTTS::_ClearCompositionDisplayAttributes(TfEditCookie ec, _In_ ITfContex
 //
 //----------------------------------------------------------------------------
 
-BOOL CTSFTTS::_SetCompositionDisplayAttributes(TfEditCookie ec, _In_ ITfContext *pContext, TfGuidAtom gaDisplayAttribute)
+BOOL CDIME::_SetCompositionDisplayAttributes(TfEditCookie ec, _In_ ITfContext *pContext, TfGuidAtom gaDisplayAttribute)
 {
     ITfRange* pRangeComposition = nullptr;
     ITfProperty* pDisplayAttributeProperty = nullptr;
@@ -88,7 +88,7 @@ BOOL CTSFTTS::_SetCompositionDisplayAttributes(TfEditCookie ec, _In_ ITfContext 
 // TfGuidAtom, we do it once when Activate is called.
 //----------------------------------------------------------------------------
 
-BOOL CTSFTTS::_InitDisplayAttributeGuidAtom()
+BOOL CDIME::_InitDisplayAttributeGuidAtom()
 {
     ITfCategoryMgr* pCategoryMgr = nullptr;
     HRESULT hr = CoCreateInstance(CLSID_TF_CategoryMgr, nullptr, CLSCTX_INPROC_SERVER, IID_ITfCategoryMgr, (void**)&pCategoryMgr);
@@ -99,13 +99,13 @@ BOOL CTSFTTS::_InitDisplayAttributeGuidAtom()
     }
 
     // register the display attribute for input text.
-    hr = pCategoryMgr->RegisterGUID(Global::TSFTTSGuidDisplayAttributeInput, &_gaDisplayAttributeInput);
+    hr = pCategoryMgr->RegisterGUID(Global::DIMEGuidDisplayAttributeInput, &_gaDisplayAttributeInput);
 	if (FAILED(hr))
     {
         goto Exit;
     }
     // register the display attribute for the converted text.
-    hr = pCategoryMgr->RegisterGUID(Global::TSFTTSGuidDisplayAttributeConverted, &_gaDisplayAttributeConverted);
+    hr = pCategoryMgr->RegisterGUID(Global::DIMEGuidDisplayAttributeConverted, &_gaDisplayAttributeConverted);
 	if (FAILED(hr))
     {
         goto Exit;

@@ -7,14 +7,14 @@
 
 #include "Private.h"
 #include "Globals.h"
-#include "TSFTTS.h"
+#include "DIME.h"
 #include "CompositionProcessorEngine.h"
 #include "UIPresenter.h"
 
 
-BOOL CTSFTTS::VerifyTSFTTSCLSID(_In_ REFCLSID clsid)
+BOOL CDIME::VerifyDIMECLSID(_In_ REFCLSID clsid)
 {
-    if (IsEqualCLSID(clsid, Global::TSFTTSCLSID))
+    if (IsEqualCLSID(clsid, Global::DIMECLSID))
     {
         return TRUE;
     }
@@ -28,13 +28,13 @@ BOOL CTSFTTS::VerifyTSFTTSCLSID(_In_ REFCLSID clsid)
 // Sink called by the framework when changes activate language profile.
 //----------------------------------------------------------------------------
 
-STDAPI CTSFTTS::OnActivated(_In_ REFCLSID clsid, _In_ REFGUID guidProfile, _In_ BOOL isActivated)
+STDAPI CDIME::OnActivated(_In_ REFCLSID clsid, _In_ REFGUID guidProfile, _In_ BOOL isActivated)
 {
 	guidProfile;
-	debugPrint(L"CTSFTTS::OnActivated() isActivated = %d", isActivated);
+	debugPrint(L"CDIME::OnActivated() isActivated = %d", isActivated);
 
 
-    if (FALSE == VerifyTSFTTSCLSID(clsid))
+    if (FALSE == VerifyDIMECLSID(clsid))
     {
 		debugPrint(L"not our CLSID return now");
         return S_OK;
@@ -88,7 +88,7 @@ STDAPI CTSFTTS::OnActivated(_In_ REFCLSID clsid, _In_ REFGUID guidProfile, _In_ 
 // Advise a active language profile notify sink.
 //----------------------------------------------------------------------------
 
-BOOL CTSFTTS::_InitActiveLanguageProfileNotifySink()
+BOOL CDIME::_InitActiveLanguageProfileNotifySink()
 {
     ITfSource* pSource = nullptr;
     BOOL ret = FALSE;
@@ -119,7 +119,7 @@ Exit:
 // Unadvise a active language profile notify sink.  Assumes we have advised one already.
 //----------------------------------------------------------------------------
 
-void CTSFTTS::_UninitActiveLanguageProfileNotifySink()
+void CDIME::_UninitActiveLanguageProfileNotifySink()
 {
     ITfSource* pSource = nullptr;
 

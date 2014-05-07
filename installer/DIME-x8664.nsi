@@ -3,10 +3,10 @@
 !include x64.nsh
 
 
-!define PRODUCT_NAME "TSFTTS"
+!define PRODUCT_NAME "DIME"
 !define PRODUCT_VERSION "1.0"
 !define PRODUCT_PUBLISHER "Jeremy Wu"
-!define PRODUCT_WEB_SITE "http://github.com/jrywu/TSFTTS"
+!define PRODUCT_WEB_SITE "http://github.com/jrywu/DIME"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
 ; ## HKLM = HKEY_LOCAL_MACHINE
 !define PRODUCT_UNINST_ROOT_KEY "HKLM"
@@ -53,8 +53,8 @@ ManifestDPIAware true
 ; MUI end ------
 
 Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
-OutFile "TSFTTS-x8664.exe"
-InstallDir "$PROGRAMFILES64\TSFTTS"
+OutFile "DIME-x8664.exe"
+InstallDir "$PROGRAMFILES64\DIME"
 ShowInstDetails show
 ShowUnInstDetails show
 
@@ -97,12 +97,12 @@ Function .onInit
   ExecWait '"$INSTDIR\uninst.exe" /S _?=$INSTDIR'
    ${If} ${RunningX64}
   	${DisableX64FSRedirection}
-  	IfFileExists "$SYSDIR\TSFTTS.dll"  0 CheckX64     ;代表反安裝失敗 
+  	IfFileExists "$SYSDIR\DIME.dll"  0 CheckX64     ;代表反安裝失敗 
   		Abort
   CheckX64:
  	${EnableX64FSRedirection}
   ${EndIf}
-  IfFileExists "$SYSDIR\TSFTTS.dll"  0 RemoveFinished     ;代表反安裝失敗 
+  IfFileExists "$SYSDIR\DIME.dll"  0 RemoveFinished     ;代表反安裝失敗 
         Abort
   RemoveFinished:     
     	MessageBox MB_ICONINFORMATION|MB_OK "舊版已移除。"       
@@ -168,19 +168,19 @@ Section "MainSection" SEC01
   SetOverwrite ifnewer
   ${If} ${RunningX64}
   	${DisableX64FSRedirection}
-  	File "system32.x64\TSFTTS.dll"
-  	ExecWait '"$SYSDIR\regsvr32.exe" /s $SYSDIR\TSFTTS.dll'
+  	File "system32.x64\DIME.dll"
+  	ExecWait '"$SYSDIR\regsvr32.exe" /s $SYSDIR\DIME.dll'
   	File "system32.x64\*.dll"
   	${EnableX64FSRedirection}
   ${EndIf}
-  File "system32.x86\TSFTTS.dll"
-  ExecWait '"$SYSDIR\regsvr32.exe" /s $SYSDIR\TSFTTS.dll'
+  File "system32.x86\DIME.dll"
+  ExecWait '"$SYSDIR\regsvr32.exe" /s $SYSDIR\DIME.dll'
   File "system32.x86\*.dll"
   CreateDirectory  "$INSTDIR"
   SetOutPath "$INSTDIR"
   File "*.cin"
-  SetOutPath "$APPDATA\TSFTTS\"
-  ;CreateDirectory "$APPDATA\TSFTTS"
+  SetOutPath "$APPDATA\DIME\"
+  ;CreateDirectory "$APPDATA\DIME"
   File "config.ini"
   
 SectionEnd
@@ -191,9 +191,9 @@ SetOutPath $PROGRAMFILES64
 SectionEnd
 
 Section -AdditionalIcons
-  SetOutPath $SMPROGRAMS\TSFTTS
-  CreateDirectory "$SMPROGRAMS\TSFTTS"
-  CreateShortCut "$SMPROGRAMS\TSFTTS\Uninstall.lnk" "$INSTDIRi\uninst.exe"
+  SetOutPath $SMPROGRAMS\DIME
+  CreateDirectory "$SMPROGRAMS\DIME"
+  CreateShortCut "$SMPROGRAMS\DIME\Uninstall.lnk" "$INSTDIRi\uninst.exe"
 SectionEnd
 
 Section -Post
@@ -207,7 +207,7 @@ Section -Post
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayVersion" "${PRODUCT_VERSION}"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "URLInfoAbout" "${PRODUCT_WEB_SITE}"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "Publisher" "${PRODUCT_PUBLISHER}"
-  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayIcon" "$SYSDIR\TSFTTS.dll"
+  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayIcon" "$SYSDIR\DIME.dll"
   ${If} ${RunningX64}
   	WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "EstimatedSize" 286
   ${Else}
@@ -228,21 +228,21 @@ FunctionEnd
 Section Uninstall
  ${If} ${RunningX64}
   ${DisableX64FSRedirection}
-  ExecWait '"$SYSDIR\regsvr32.exe" /u /s $SYSDIR\TSFTTS.dll'
+  ExecWait '"$SYSDIR\regsvr32.exe" /u /s $SYSDIR\DIME.dll'
   ${EnableX64FSRedirection}
  ${EndIf}
-  ExecWait '"$SYSDIR\regsvr32.exe" /u /s $SYSDIR\TSFTTS.dll'
+  ExecWait '"$SYSDIR\regsvr32.exe" /u /s $SYSDIR\DIME.dll'
   
   ClearErrors
   ${If} ${RunningX64}
   ${DisableX64FSRedirection}
-  IfFileExists "$SYSDIR\TSFTTS.dll"  0 +3 
-  Delete "$SYSDIR\TSFTTS.dll"
+  IfFileExists "$SYSDIR\DIME.dll"  0 +3 
+  Delete "$SYSDIR\DIME.dll"
   IfErrors lbNeedReboot +1
   ${EnableX64FSRedirection}
   ${EndIf}
-  IfFileExists "$SYSDIR\TSFTTS.dll"  0  lbContinueUninstall  
-  Delete "$SYSDIR\TSFTTS.dll"
+  IfFileExists "$SYSDIR\DIME.dll"  0  lbContinueUninstall  
+  Delete "$SYSDIR\DIME.dll"
   IfErrors lbNeedReboot lbContinueUninstall
 
   lbNeedReboot:
@@ -257,7 +257,7 @@ Section Uninstall
   Delete "$INSTDIR\uninst.exe"
   Delete "$INSTDIR\*.cin"
   RMDir /r "$INSTDIR"
-  Delete "$SMPROGRAMS\TSFTTS\Uninstall.lnk"
+  Delete "$SMPROGRAMS\DIME\Uninstall.lnk"
   ${If} ${RunningX64}
   	SetRegView 64
   ${EndIf}

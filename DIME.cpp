@@ -7,7 +7,7 @@
 
 #include "Private.h"
 #include "globals.h"
-#include "TSFTTS.h"
+#include "DIME.h"
 #include "UIPresenter.h"
 #include "CompositionProcessorEngine.h"
 #include "Compartment.h"
@@ -17,7 +17,7 @@
 
 //////////////////////////////////////////////////////////////////////
 //
-// CTSFTTS implementation.
+// CDIME implementation.
 //
 //////////////////////////////////////////////////////////////////////+---------------------------------------------------------------------------
 //
@@ -25,11 +25,11 @@
 //
 //----------------------------------------------------------------------------
 
-DWORD CTSFTTS::_dwActivateFlags =0;
+DWORD CDIME::_dwActivateFlags =0;
 
-BOOL CTSFTTS::_AddTextProcessorEngine(LANGID inLangID, GUID inGuidProfile)
+BOOL CDIME::_AddTextProcessorEngine(LANGID inLangID, GUID inGuidProfile)
  {
-	debugPrint(L"CTSFTTS::_AddTextProcessorEngine()");
+	debugPrint(L"CDIME::_AddTextProcessorEngine()");
     LANGID langid = inLangID;
     GUID guidProfile = inGuidProfile;
 
@@ -62,13 +62,13 @@ BOOL CTSFTTS::_AddTextProcessorEngine(LANGID inLangID, GUID inGuidProfile)
        
         if ((langid == _langid) && IsEqualGUID(guidProfile, _guidProfile))
         {
-			debugPrint(L"CTSFTTS::_AddTextProcessorEngine() _pCompositionProcessorEngine with the coming guidProfile exist, return true.");
+			debugPrint(L"CDIME::_AddTextProcessorEngine() _pCompositionProcessorEngine with the coming guidProfile exist, return true.");
             return TRUE;
         }
 		else
 		{
 
-			debugPrint(L"CTSFTTS::_AddTextProcessorEngine() _pCompositionProcessorEngine with the diff. guidProfile exist, recreate one." );
+			debugPrint(L"CDIME::_AddTextProcessorEngine() _pCompositionProcessorEngine with the diff. guidProfile exist, recreate one." );
 			_LoadConfig(TRUE);
 			_lastKeyboardMode = CConfig::GetActivatedKeyboardMode();
 
@@ -88,7 +88,7 @@ BOOL CTSFTTS::_AddTextProcessorEngine(LANGID inLangID, GUID inGuidProfile)
 		_LoadConfig(TRUE);
 		_lastKeyboardMode = CConfig::GetActivatedKeyboardMode();
 
-		debugPrint(L"CTSFTTS::_AddTextProcessorEngine() create new CompositionProcessorEngine . ");
+		debugPrint(L"CDIME::_AddTextProcessorEngine() create new CompositionProcessorEngine . ");
         
     }
     if (!_pCompositionProcessorEngine)
@@ -99,7 +99,7 @@ BOOL CTSFTTS::_AddTextProcessorEngine(LANGID inLangID, GUID inGuidProfile)
 
 	if(_pUIPresenter == nullptr)
 	{
-		debugPrint(L"CTSFTTS::_AddTextProcessorEngine() create new UIPresenter .");
+		debugPrint(L"CDIME::_AddTextProcessorEngine() create new UIPresenter .");
 		_pUIPresenter = new (std::nothrow) CUIPresenter(this, _pCompositionProcessorEngine);
 	}
 	if (_pUIPresenter == nullptr)
@@ -124,9 +124,9 @@ BOOL CTSFTTS::_AddTextProcessorEngine(LANGID inLangID, GUID inGuidProfile)
 //----------------------------------------------------------------------------
 
 /* static */
-HRESULT CTSFTTS::CreateInstance(_In_ IUnknown *pUnkOuter, REFIID riid, _Outptr_ void **ppvObj)
+HRESULT CDIME::CreateInstance(_In_ IUnknown *pUnkOuter, REFIID riid, _Outptr_ void **ppvObj)
 {
-    CTSFTTS* pTSFTTS = nullptr;
+    CDIME* pDIME = nullptr;
     HRESULT hr = S_OK;
 
     if (ppvObj == nullptr)
@@ -141,15 +141,15 @@ HRESULT CTSFTTS::CreateInstance(_In_ IUnknown *pUnkOuter, REFIID riid, _Outptr_ 
         return CLASS_E_NOAGGREGATION;
     }
 
-    pTSFTTS = new (std::nothrow) CTSFTTS();
-    if (pTSFTTS == nullptr)
+    pDIME = new (std::nothrow) CDIME();
+    if (pDIME == nullptr)
     {
         return E_OUTOFMEMORY;
     }
 
-    hr = pTSFTTS->QueryInterface(riid, ppvObj);
+    hr = pDIME->QueryInterface(riid, ppvObj);
 
-    pTSFTTS->Release();
+    pDIME->Release();
 
     return hr;
 }
@@ -160,7 +160,7 @@ HRESULT CTSFTTS::CreateInstance(_In_ IUnknown *pUnkOuter, REFIID riid, _Outptr_ 
 //
 //----------------------------------------------------------------------------
 
-CTSFTTS::CTSFTTS()
+CDIME::CDIME()
 {
     DllAddRef();
 
@@ -224,7 +224,7 @@ CTSFTTS::CTSFTTS()
 //
 //----------------------------------------------------------------------------
 
-CTSFTTS::~CTSFTTS()
+CDIME::~CDIME()
 {
 	if (_pUIPresenter)
     {
@@ -243,9 +243,9 @@ CTSFTTS::~CTSFTTS()
 //
 //----------------------------------------------------------------------------
 
-STDAPI CTSFTTS::QueryInterface(REFIID riid, _Outptr_ void **ppvObj)
+STDAPI CDIME::QueryInterface(REFIID riid, _Outptr_ void **ppvObj)
 {
-	debugPrint(L"\nCTSFTTS::QueryInterface()");
+	debugPrint(L"\nCDIME::QueryInterface()");
     if (ppvObj == nullptr)
     {
         return E_INVALIDARG;
@@ -256,67 +256,67 @@ STDAPI CTSFTTS::QueryInterface(REFIID riid, _Outptr_ void **ppvObj)
     if (IsEqualIID(riid, IID_IUnknown) ||
         IsEqualIID(riid, IID_ITfTextInputProcessor))
     {
-		debugPrint(L"CTSFTTS::QueryInterface() :IID_IUnknown, IID_ITfTextInputProcessor");
+		debugPrint(L"CDIME::QueryInterface() :IID_IUnknown, IID_ITfTextInputProcessor");
         *ppvObj = (ITfTextInputProcessor *)this;
     }
     else if (IsEqualIID(riid, IID_ITfTextInputProcessorEx))
     {
-		debugPrint(L"CTSFTTS::QueryInterface() :IID_ITfTextInputProcessorEx");
+		debugPrint(L"CDIME::QueryInterface() :IID_ITfTextInputProcessorEx");
         *ppvObj = (ITfTextInputProcessorEx *)this;
     }
     else if (IsEqualIID(riid, IID_ITfThreadMgrEventSink))
     {
-		debugPrint(L"CTSFTTS::QueryInterface() :IID_ITfThreadMgrEventSink");
+		debugPrint(L"CDIME::QueryInterface() :IID_ITfThreadMgrEventSink");
         *ppvObj = (ITfThreadMgrEventSink *)this;
     }
     else if (IsEqualIID(riid, IID_ITfTextEditSink))
     {
-		debugPrint(L"CTSFTTS::QueryInterface() :IID_ITfTextEditSink");
+		debugPrint(L"CDIME::QueryInterface() :IID_ITfTextEditSink");
         *ppvObj = (ITfTextEditSink *)this;
     }
     else if (IsEqualIID(riid, IID_ITfKeyEventSink))
     {
-		debugPrint(L"CTSFTTS::QueryInterface() :IID_ITfKeyEventSink");
+		debugPrint(L"CDIME::QueryInterface() :IID_ITfKeyEventSink");
         *ppvObj = (ITfKeyEventSink *)this;
     }
     else if (IsEqualIID(riid, IID_ITfActiveLanguageProfileNotifySink))
     {
-		debugPrint(L"CTSFTTS::QueryInterface() :IID_ITfActiveLanguageProfileNotifySink");
+		debugPrint(L"CDIME::QueryInterface() :IID_ITfActiveLanguageProfileNotifySink");
         *ppvObj = (ITfActiveLanguageProfileNotifySink *)this;
     }
     else if (IsEqualIID(riid, IID_ITfCompositionSink))
     {
-		debugPrint(L"CTSFTTS::QueryInterface() :IID_ITfCompositionSink");
+		debugPrint(L"CDIME::QueryInterface() :IID_ITfCompositionSink");
         *ppvObj = (ITfKeyEventSink *)this;
     }
     else if (IsEqualIID(riid, IID_ITfDisplayAttributeProvider))
     {
-		debugPrint(L"CTSFTTS::QueryInterface() :IID_ITfDisplayAttributeProvider");
+		debugPrint(L"CDIME::QueryInterface() :IID_ITfDisplayAttributeProvider");
         *ppvObj = (ITfDisplayAttributeProvider *)this;
     }
     else if (IsEqualIID(riid, IID_ITfThreadFocusSink))
     {
-		debugPrint(L"CTSFTTS::QueryInterface() :IID_ITfThreadFocusSink");
+		debugPrint(L"CDIME::QueryInterface() :IID_ITfThreadFocusSink");
         *ppvObj = (ITfThreadFocusSink *)this;
     }
     else if (IsEqualIID(riid, IID_ITfFunctionProvider))
     {
-		debugPrint(L"CTSFTTS::QueryInterface() :IID_ITfFunctionProvider");
+		debugPrint(L"CDIME::QueryInterface() :IID_ITfFunctionProvider");
         *ppvObj = (ITfFunctionProvider *)this;
     }
     else if (IsEqualIID(riid, IID_ITfFnGetPreferredTouchKeyboardLayout))
     {
-		debugPrint(L"CTSFTTS::QueryInterface() :IID_ITfFnGetPreferredTouchKeyboardLayout");
+		debugPrint(L"CDIME::QueryInterface() :IID_ITfFnGetPreferredTouchKeyboardLayout");
         *ppvObj = (ITfFnGetPreferredTouchKeyboardLayout *)this;
     }
 	else if (IsEqualIID(riid, IID_ITfFnConfigure))
     {
-		debugPrint(L"CTSFTTS::QueryInterface() :IID_ITfFnConfigure");
+		debugPrint(L"CDIME::QueryInterface() :IID_ITfFnConfigure");
         *ppvObj = (ITfFnConfigure *)this;
     }
 	else if (IsEqualIID(riid, IID_ITfReverseConversionMgr ))
     {
-		debugPrint(L"CTSFTTS::QueryInterface() :IID_ITfReverseConversionMgr");
+		debugPrint(L"CDIME::QueryInterface() :IID_ITfReverseConversionMgr");
         *ppvObj = (ITfReverseConversionMgr  *)this;
     }
 
@@ -338,9 +338,9 @@ STDAPI CTSFTTS::QueryInterface(REFIID riid, _Outptr_ void **ppvObj)
 //
 //----------------------------------------------------------------------------
 
-STDAPI_(ULONG) CTSFTTS::AddRef()
+STDAPI_(ULONG) CDIME::AddRef()
 {
-	debugPrint(L"CTSFTTS::AddRef(), _refCount = %d", _refCount+1); 
+	debugPrint(L"CDIME::AddRef(), _refCount = %d", _refCount+1); 
     return ++_refCount;
 }
 
@@ -350,9 +350,9 @@ STDAPI_(ULONG) CTSFTTS::AddRef()
 //
 //----------------------------------------------------------------------------
 
-STDAPI_(ULONG) CTSFTTS::Release()
+STDAPI_(ULONG) CDIME::Release()
 {
-	debugPrint(L"CTSFTTS::Release(), _refCount = %d", _refCount-1);
+	debugPrint(L"CDIME::Release(), _refCount = %d", _refCount-1);
     LONG cr = --_refCount;
 
     assert(_refCount >= 0);
@@ -371,9 +371,9 @@ STDAPI_(ULONG) CTSFTTS::Release()
 //
 //----------------------------------------------------------------------------
 
-STDAPI CTSFTTS::ActivateEx(ITfThreadMgr *pThreadMgr, TfClientId tfClientId, DWORD dwFlags)
+STDAPI CDIME::ActivateEx(ITfThreadMgr *pThreadMgr, TfClientId tfClientId, DWORD dwFlags)
 {
-	debugPrint(L"CTSFTTS::ActivateEx(); ITfTextInputProcessorEx::ActivateEx()");
+	debugPrint(L"CDIME::ActivateEx(); ITfTextInputProcessorEx::ActivateEx()");
     _pThreadMgr = pThreadMgr;
 	if(_pThreadMgr)
 		_pThreadMgr->AddRef();
@@ -382,10 +382,10 @@ STDAPI CTSFTTS::ActivateEx(ITfThreadMgr *pThreadMgr, TfClientId tfClientId, DWOR
     _dwActivateFlags = dwFlags;
 
 
-	debugPrint(L"CTSFTTS::ActivateEx(); _InitThreadMgrEventSink.");
+	debugPrint(L"CDIME::ActivateEx(); _InitThreadMgrEventSink.");
     if (!_InitThreadMgrEventSink())
     {
-		debugPrint(L"CTSFTTS::ActivateEx(); _InitThreadMgrEventSink failed.");
+		debugPrint(L"CDIME::ActivateEx(); _InitThreadMgrEventSink failed.");
         goto ExitError;
     }
 
@@ -393,51 +393,51 @@ STDAPI CTSFTTS::ActivateEx(ITfThreadMgr *pThreadMgr, TfClientId tfClientId, DWOR
     ITfDocumentMgr* pDocMgrFocus = nullptr;
     if ( _pThreadMgr && SUCCEEDED(_pThreadMgr->GetFocus(&pDocMgrFocus)) && pDocMgrFocus)
     {
-		debugPrint(L"CTSFTTS::ActivateEx(); _InitTextEditSink.");
+		debugPrint(L"CDIME::ActivateEx(); _InitTextEditSink.");
         _InitTextEditSink(pDocMgrFocus);
         pDocMgrFocus->Release();
     }
 
 
-	debugPrint(L"CTSFTTS::ActivateEx(); _InitKeyEventSink.");
+	debugPrint(L"CDIME::ActivateEx(); _InitKeyEventSink.");
     if (!_InitKeyEventSink())
     {
-		debugPrint(L"CTSFTTS::ActivateEx(); _InitKeyEventSink failed.");
+		debugPrint(L"CDIME::ActivateEx(); _InitKeyEventSink failed.");
         goto ExitError;
     }
 
-	debugPrint(L"CTSFTTS::ActivateEx(); _InitActiveLanguageProfileNotifySink.");
+	debugPrint(L"CDIME::ActivateEx(); _InitActiveLanguageProfileNotifySink.");
     if (!_InitActiveLanguageProfileNotifySink())
     {
-		debugPrint(L"CTSFTTS::ActivateEx(); _InitActiveLanguageProfileNotifySink failed.");
+		debugPrint(L"CDIME::ActivateEx(); _InitActiveLanguageProfileNotifySink failed.");
         goto ExitError;
     }
 
-	debugPrint(L"CTSFTTS::ActivateEx(); _InitThreadFocusSink.");
+	debugPrint(L"CDIME::ActivateEx(); _InitThreadFocusSink.");
     if (!_InitThreadFocusSink())
     {
-		debugPrint(L"CTSFTTS::ActivateEx(); _InitThreadFocusSink failed.");
+		debugPrint(L"CDIME::ActivateEx(); _InitThreadFocusSink failed.");
         goto ExitError;
     }
 
-	debugPrint(L"CTSFTTS::ActivateEx(); _InitDisplayAttributeGuidAtom.");
+	debugPrint(L"CDIME::ActivateEx(); _InitDisplayAttributeGuidAtom.");
     if (!_InitDisplayAttributeGuidAtom())
     {
-		debugPrint(L"CTSFTTS::ActivateEx(); _InitDisplayAttributeGuidAtom failed.");
+		debugPrint(L"CDIME::ActivateEx(); _InitDisplayAttributeGuidAtom failed.");
         goto ExitError;
     }
 
-	debugPrint(L"CTSFTTS::ActivateEx(); _InitFunctionProviderSink.");
+	debugPrint(L"CDIME::ActivateEx(); _InitFunctionProviderSink.");
     if (!_InitFunctionProviderSink())
     {
-		debugPrint(L"CTSFTTS::ActivateEx(); _InitFunctionProviderSink failed.");
+		debugPrint(L"CDIME::ActivateEx(); _InitFunctionProviderSink failed.");
         goto ExitError;
     }
 
-	debugPrint(L"CTSFTTS::ActivateEx(); _AddTextProcessorEngine.");
+	debugPrint(L"CDIME::ActivateEx(); _AddTextProcessorEngine.");
     if (!_AddTextProcessorEngine())
     {
-		debugPrint(L"CTSFTTS::ActivateEx(); _AddTextProcessorEngine failed.");
+		debugPrint(L"CDIME::ActivateEx(); _AddTextProcessorEngine failed.");
         goto ExitError;
     }
 
@@ -454,9 +454,9 @@ ExitError:
 //
 //----------------------------------------------------------------------------
 
-STDAPI CTSFTTS::Deactivate()
+STDAPI CDIME::Deactivate()
 {
-	debugPrint(L"CTSFTTS::Deactivate()");
+	debugPrint(L"CDIME::Deactivate()");
     if (_pCompositionProcessorEngine)
     {
         delete _pCompositionProcessorEngine;
@@ -558,11 +558,11 @@ STDAPI CTSFTTS::Deactivate()
 
 	HideAllLanguageBarIcons();
 
-	CCompartment CompartmentIMEMode(_pThreadMgr, _tfClientId, Global::TSFTTSGuidCompartmentIMEMode);
+	CCompartment CompartmentIMEMode(_pThreadMgr, _tfClientId, Global::DIMEGuidCompartmentIMEMode);
     CompartmentIMEMode._ClearCompartment();
 
 
-    CCompartment CompartmentDoubleSingleByte(_pThreadMgr, _tfClientId, Global::TSFTTSGuidCompartmentDoubleSingleByte);
+    CCompartment CompartmentDoubleSingleByte(_pThreadMgr, _tfClientId, Global::DIMEGuidCompartmentDoubleSingleByte);
     CompartmentDoubleSingleByte._ClearCompartment();
 	
     
@@ -588,12 +588,12 @@ STDAPI CTSFTTS::Deactivate()
 // ITfFunctionProvider::GetType
 //
 //----------------------------------------------------------------------------
-HRESULT CTSFTTS::GetType(__RPC__out GUID *pguid)
+HRESULT CDIME::GetType(__RPC__out GUID *pguid)
 {
     HRESULT hr = E_INVALIDARG;
     if (pguid)
     {
-        *pguid = Global::TSFTTSCLSID;
+        *pguid = Global::DIMECLSID;
         hr = S_OK;
     }
     return hr;
@@ -604,7 +604,7 @@ HRESULT CTSFTTS::GetType(__RPC__out GUID *pguid)
 // ITfFunctionProvider::::GetDescription
 //
 //----------------------------------------------------------------------------
-HRESULT CTSFTTS::GetDescription(__RPC__deref_out_opt BSTR *pbstrDesc)
+HRESULT CDIME::GetDescription(__RPC__deref_out_opt BSTR *pbstrDesc)
 {
     HRESULT hr = E_INVALIDARG;
     if (pbstrDesc != nullptr)
@@ -620,9 +620,9 @@ HRESULT CTSFTTS::GetDescription(__RPC__deref_out_opt BSTR *pbstrDesc)
 // ITfFunctionProvider::::GetFunction
 //
 //----------------------------------------------------------------------------
-HRESULT CTSFTTS::GetFunction(__RPC__in REFGUID rguid, __RPC__in REFIID riid, __RPC__deref_out_opt IUnknown **ppunk)
+HRESULT CDIME::GetFunction(__RPC__in REFGUID rguid, __RPC__in REFIID riid, __RPC__deref_out_opt IUnknown **ppunk)
 {
-	debugPrint(L"CTSFTTS::GetFunction()");
+	debugPrint(L"CDIME::GetFunction()");
     HRESULT hr = E_NOINTERFACE;
 	
     if ((IsEqualGUID(rguid, GUID_NULL)) 
@@ -643,9 +643,9 @@ HRESULT CTSFTTS::GetFunction(__RPC__in REFGUID rguid, __RPC__in REFIID riid, __R
 // ITfFunction::GetDisplayName
 //
 //----------------------------------------------------------------------------
-HRESULT CTSFTTS::GetDisplayName(_Out_ BSTR *pbstrDisplayName)
+HRESULT CDIME::GetDisplayName(_Out_ BSTR *pbstrDisplayName)
 {
-	debugPrint(L"CTSFTTS::GetDisplayName()");
+	debugPrint(L"CDIME::GetDisplayName()");
 	BSTR bstrName;
 
 	if(pbstrDisplayName == NULL)
@@ -679,9 +679,9 @@ HRESULT CTSFTTS::GetDisplayName(_Out_ BSTR *pbstrDisplayName)
 // ITfFnGetPreferredTouchKeyboardLayout::GetLayout
 // The tkblayout will be Optimized layout.
 //----------------------------------------------------------------------------
-HRESULT CTSFTTS::GetLayout(_Out_ TKBLayoutType *ptkblayoutType, _Out_ WORD *pwPreferredLayoutId)
+HRESULT CDIME::GetLayout(_Out_ TKBLayoutType *ptkblayoutType, _Out_ WORD *pwPreferredLayoutId)
 {
-	debugPrint(L"CTSFTTS::GetLayout(), imeMode = %d ", Global::imeMode);
+	debugPrint(L"CDIME::GetLayout(), imeMode = %d ", Global::imeMode);
     HRESULT hr = E_INVALIDARG;
     if ((ptkblayoutType != nullptr) && (pwPreferredLayoutId != nullptr))
     {
@@ -710,11 +710,11 @@ HRESULT CTSFTTS::GetLayout(_Out_ TKBLayoutType *ptkblayoutType, _Out_ WORD *pwPr
 
 //+---------------------------------------------------------------------------
 //
-// CTSFTTS::CreateInstance 
+// CDIME::CreateInstance 
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFTTS::CreateInstance(REFCLSID rclsid, REFIID riid, _Outptr_result_maybenull_ LPVOID* ppv, _Out_opt_ HINSTANCE* phInst, BOOL isComLessMode)
+HRESULT CDIME::CreateInstance(REFCLSID rclsid, REFIID riid, _Outptr_result_maybenull_ LPVOID* ppv, _Out_opt_ HINSTANCE* phInst, BOOL isComLessMode)
 {
     HRESULT hr = S_OK;
     if (phInst == nullptr)
@@ -734,7 +734,7 @@ HRESULT CTSFTTS::CreateInstance(REFCLSID rclsid, REFIID riid, _Outptr_result_may
     }
     else
     {
-        hr = CTSFTTS::ComLessCreateInstance(rclsid, riid, ppv, phInst);
+        hr = CDIME::ComLessCreateInstance(rclsid, riid, ppv, phInst);
     }
 
     return hr;
@@ -742,14 +742,14 @@ HRESULT CTSFTTS::CreateInstance(REFCLSID rclsid, REFIID riid, _Outptr_result_may
 
 //+---------------------------------------------------------------------------
 //
-// CTSFTTS::ComLessCreateInstance
+// CDIME::ComLessCreateInstance
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFTTS::ComLessCreateInstance(REFGUID rclsid, REFIID riid, _Outptr_result_maybenull_ void **ppv, _Out_opt_ HINSTANCE *phInst)
+HRESULT CDIME::ComLessCreateInstance(REFGUID rclsid, REFIID riid, _Outptr_result_maybenull_ void **ppv, _Out_opt_ HINSTANCE *phInst)
 {
     HRESULT hr = S_OK;
-    HINSTANCE TSFTTSDllHandle = nullptr;
+    HINSTANCE DIMEDllHandle = nullptr;
     WCHAR wchPath[MAX_PATH] = {'\0'};
     WCHAR szExpandedPath[MAX_PATH] = {'\0'};
     DWORD dwCnt = 0;
@@ -759,19 +759,19 @@ HRESULT CTSFTTS::ComLessCreateInstance(REFGUID rclsid, REFIID riid, _Outptr_resu
     if (SUCCEEDED(hr))
     {
         *phInst = nullptr;
-        hr = CTSFTTS::GetComModuleName(rclsid, wchPath, ARRAYSIZE(wchPath));
+        hr = CDIME::GetComModuleName(rclsid, wchPath, ARRAYSIZE(wchPath));
         if (SUCCEEDED(hr))
         {
             dwCnt = ExpandEnvironmentStringsW(wchPath, szExpandedPath, ARRAYSIZE(szExpandedPath));
             hr = (0 < dwCnt && dwCnt <= ARRAYSIZE(szExpandedPath)) ? S_OK : E_FAIL;
             if (SUCCEEDED(hr))
             {
-                TSFTTSDllHandle = LoadLibraryEx(szExpandedPath, NULL, 0);
-                hr = TSFTTSDllHandle ? S_OK : E_FAIL;
+                DIMEDllHandle = LoadLibraryEx(szExpandedPath, NULL, 0);
+                hr = DIMEDllHandle ? S_OK : E_FAIL;
                 if (SUCCEEDED(hr))
                 {
-                    *phInst = TSFTTSDllHandle;
-                    FARPROC pfn = GetProcAddress(TSFTTSDllHandle, "DllGetClassObject");
+                    *phInst = DIMEDllHandle;
+                    FARPROC pfn = GetProcAddress(DIMEDllHandle, "DllGetClassObject");
                     hr = pfn ? S_OK : E_FAIL;
                     if (SUCCEEDED(hr))
                     {
@@ -798,11 +798,11 @@ HRESULT CTSFTTS::ComLessCreateInstance(REFGUID rclsid, REFIID riid, _Outptr_resu
 
 //+---------------------------------------------------------------------------
 //
-// CTSFTTS::GetComModuleName
+// CDIME::GetComModuleName
 //
 //----------------------------------------------------------------------------
 
-HRESULT CTSFTTS::GetComModuleName(REFGUID rclsid, _Out_writes_(cchPath)WCHAR* wchPath, DWORD cchPath)
+HRESULT CDIME::GetComModuleName(REFGUID rclsid, _Out_writes_(cchPath)WCHAR* wchPath, DWORD cchPath)
 {
     HRESULT hr = S_OK;
 
@@ -859,12 +859,12 @@ HRESULT CTSFTTS::GetComModuleName(REFGUID rclsid, _Out_writes_(cchPath)WCHAR* wc
 // N.B. For reverse conversion, ITfThreadMgr is NULL, TfClientId is 0 and isSecureMode is ignored.
 //+---------------------------------------------------------------------------
 
-BOOL CTSFTTS::SetupLanguageProfile(LANGID langid, REFGUID guidLanguageProfile, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, BOOL isSecureMode)
+BOOL CDIME::SetupLanguageProfile(LANGID langid, REFGUID guidLanguageProfile, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, BOOL isSecureMode)
 {
     _langid = langid;
 	_guidProfile = guidLanguageProfile;
 
-	debugPrint(L"CTSFTTS::SetupLanguageProfile()\n");
+	debugPrint(L"CDIME::SetupLanguageProfile()\n");
 
     BOOL ret = TRUE;
     if ((tfClientId == 0) && (pThreadMgr == nullptr))
@@ -877,7 +877,7 @@ BOOL CTSFTTS::SetupLanguageProfile(LANGID langid, REFGUID guidLanguageProfile, _
 	{
 		IME_MODE imeMode = _pCompositionProcessorEngine->GetImeModeFromGuidProfile(_guidProfile);
 
-		InitializeTSFTTSCompartment(pThreadMgr, tfClientId);
+		InitializeDIMECompartment(pThreadMgr, tfClientId);
 		SetupLanguageBar(pThreadMgr, tfClientId, isSecureMode);
 
 
@@ -889,11 +889,11 @@ BOOL CTSFTTS::SetupLanguageProfile(LANGID langid, REFGUID guidLanguageProfile, _
 
     
 Exit:
-	debugPrint(L"CTSFTTS::SetupLanguageProfile()finished \n");
+	debugPrint(L"CDIME::SetupLanguageProfile()finished \n");
     return ret;
 }
 
-BOOL CTSFTTS::_IsUILessMode()
+BOOL CDIME::_IsUILessMode()
 {
 	if(_pUIPresenter)
 		return _pUIPresenter->isUILessMode();
@@ -901,7 +901,7 @@ BOOL CTSFTTS::_IsUILessMode()
 		return FALSE;
 }
 
-void CTSFTTS::_LoadConfig(BOOL isForce)
+void CDIME::_LoadConfig(BOOL isForce)
 {
 	CConfig::LoadConfig();
 	if(_pCompositionProcessorEngine) _pCompositionProcessorEngine->UpdateDictionaryFile();

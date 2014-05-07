@@ -23,7 +23,7 @@
 #define IME_DOUBLE_OFF_INDEX        IDI_DOUBLE_SINGLE_BYTE_OFF
 
 
-#define TSFTTS_FONT_DEFAULT L"Microsoft JhengHei"
+#define DIME_FONT_DEFAULT L"Microsoft JhengHei"
 
 //---------------------------------------------------------------------
 // defined Candidated Window

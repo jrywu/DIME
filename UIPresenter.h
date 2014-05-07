@@ -3,8 +3,8 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-#ifndef TSFTTSUIPRESENTER_H
-#define TSFTTSUIPRESENTER_H
+#ifndef DIMEUIPRESENTER_H
+#define DIMEUIPRESENTER_H
 
 
 #pragma once
@@ -13,12 +13,12 @@
 #include "CandidateWindow.h"
 #include "NotifyWindow.h"
 #include "TfTextLayoutSink.h"
-#include "TSFTTS.h"
+#include "DIME.h"
 #include "BaseStructure.h"
 
 class CReadingLine;
 class CCompositionProcessorEngine;
-class CTSFTTS;
+class CDIME;
 
 //+---------------------------------------------------------------------------
 //
@@ -36,7 +36,7 @@ class CUIPresenter :
     public ITfIntegratableCandidateListUIElement
 {
 public:
-    CUIPresenter(_In_ CTSFTTS *pTextService, CCompositionProcessorEngine *pCompositionProcessorEngine);
+    CUIPresenter(_In_ CDIME *pTextService, CCompositionProcessorEngine *pCompositionProcessorEngine);
     virtual ~CUIPresenter();
 
     // IUnknown
@@ -75,7 +75,7 @@ public:
     virtual HRESULT _StartCandidateList(TfClientId tfClientId, _In_ ITfDocumentMgr *pDocumentMgr, _In_ ITfContext *pContextDocument, TfEditCookie ec, _In_ ITfRange *pRangeComposition, UINT wndWidth);
     void _EndCandidateList();
 
-    void _SetCandidateText(_In_ CTSFTTSArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode, UINT candWidth);
+    void _SetCandidateText(_In_ CDIMEArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode, UINT candWidth);
     void _ClearCandidateList();
 	VOID _SetNotifyTextColor(COLORREF crColor, COLORREF crBkColor);
 	VOID _SetCandidateNumberColor(COLORREF crColor, COLORREF crBkColor);
@@ -102,7 +102,7 @@ public:
     virtual HRESULT OnSetThreadFocus();
     virtual HRESULT OnKillThreadFocus();
 
-    void RemoveSpecificCandidateFromList(_In_ LCID Locale, _Inout_ CTSFTTSArray<CCandidateListItem> &candidateList, _In_ CStringRange &srgCandidateString);
+    void RemoveSpecificCandidateFromList(_In_ LCID Locale, _Inout_ CDIMEArray<CCandidateListItem> &candidateList, _In_ CStringRange &srgCandidateString);
     void AdviseUIChangedByArrowKey(_In_ KEYSTROKE_FUNCTION arrowKey);
 
 	void GetCandLocation(_Out_ POINT *lpPoint);
@@ -139,9 +139,9 @@ private:
     void DisposeCandidateWindow();
 	void DisposeNotifyWindow();
 
-    void AddCandidateToUI(_In_ CTSFTTSArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode);
+    void AddCandidateToUI(_In_ CDIMEArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode);
 
-    void SetPageIndexWithScrollInfo(_In_ CTSFTTSArray<CCandidateListItem> *pCandidateList);
+    void SetPageIndexWithScrollInfo(_In_ CDIMEArray<CCandidateListItem> *pCandidateList);
 
 protected:
     CCandidateWindow *_pCandidateWnd;
@@ -155,7 +155,7 @@ private:
     KEYSTROKE_CATEGORY _Category;
     DWORD _updatedFlags;
     DWORD _uiElementId;
-    CTSFTTS* _pTextService;
+    CDIME* _pTextService;
     LONG _refCount;
 	POINT _candLocation;
 	POINT _notifyLocation;
@@ -167,7 +167,7 @@ private:
 
 //////////////////////////////////////////////////////////////////////
 //
-// CTSFTTS candidate key handler methods
+// CDIME candidate key handler methods
 //
 //////////////////////////////////////////////////////////////////////
 

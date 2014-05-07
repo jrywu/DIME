@@ -3,8 +3,8 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-#ifndef TSFTTSBASESTRUCTURE_H
-#define TSFTTSBASESTRUCTURE_H
+#ifndef DIMEBASESTRUCTURE_H
+#define DIMEBASESTRUCTURE_H
 
 #pragma once
 #include <vector>
@@ -152,22 +152,22 @@ HRESULT FindChar(WCHAR wch, _In_ LPCWSTR pwszBuffer, DWORD_PTR dwBufLen, _Out_ D
 BOOL IsSpace(LCID locale, WCHAR wch);
 
 template<class T>
-class CTSFTTSArray
+class CDIMEArray
 
 {
-    typedef typename std::vector<T> CTSFTTSInnerArray;
-    typedef typename std::vector<T>::iterator CTSFTTSInnerIter;
+    typedef typename std::vector<T> CDIMEInnerArray;
+    typedef typename std::vector<T>::iterator CDIMEInnerIter;
 
 public:
-    CTSFTTSArray(): _innerVect()
+    CDIMEArray(): _innerVect()
     {
     }
 
-    explicit CTSFTTSArray(size_t count): _innerVect(count)
+    explicit CDIMEArray(size_t count): _innerVect(count)
     {
     }
 
-    virtual ~CTSFTTSArray()
+    virtual ~CDIMEArray()
     {
     }
 
@@ -196,7 +196,7 @@ public:
         assert(index >= 0);
         assert(index < _innerVect.size());
 
-        CTSFTTSInnerIter iter = _innerVect.begin();
+        CDIMEInnerIter iter = _innerVect.begin();
         _innerVect.erase(iter + index);
     }
 
@@ -225,7 +225,7 @@ public:
     }
 
 private:
-    CTSFTTSInnerArray _innerVect;
+    CDIMEInnerArray _innerVect;
 };
 
 class CCandidateRange
@@ -255,7 +255,7 @@ public:
 		return nullptr;
     }
 private:
-    CTSFTTSArray<DWORD> _CandidateListIndexRange;
+    CDIMEArray<DWORD> _CandidateListIndexRange;
 };
 
 class CStringRange

@@ -40,7 +40,7 @@ CDictionaryParser::~CDictionaryParser()
 //---------------------------------------------------------------------
 
 BOOL CDictionaryParser::ParseLine(_In_reads_(dwBufLen) LPCWSTR pwszBuffer, DWORD_PTR dwBufLen, _Out_ CParserStringRange *psrgKeyword, 
-								  _Inout_opt_ CTSFTTSArray<CParserStringRange> *pValue, _In_opt_ BOOL ttsPhraseSearch, _In_opt_ CStringRange *searchText)
+								  _Inout_opt_ CDIMEArray<CParserStringRange> *pValue, _In_opt_ BOOL ttsPhraseSearch, _In_opt_ CStringRange *searchText)
 {
     LPCWSTR pwszKeyWordDelimiter = nullptr;
     pwszKeyWordDelimiter = GetToken(pwszBuffer, dwBufLen, _keywordDelimiter, psrgKeyword);

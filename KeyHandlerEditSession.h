@@ -13,7 +13,7 @@
 class CKeyHandlerEditSession : public CEditSessionBase
 {
 public:
-    CKeyHandlerEditSession(CTSFTTS *pTextService, ITfContext *pContext, UINT uCode, WCHAR wch, _KEYSTROKE_STATE keyState) : CEditSessionBase(pTextService, pContext)
+    CKeyHandlerEditSession(CDIME *pTextService, ITfContext *pContext, UINT uCode, WCHAR wch, _KEYSTROKE_STATE keyState) : CEditSessionBase(pTextService, pContext)
     {
 		_uCode = uCode;
         _wch = wch;

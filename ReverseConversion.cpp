@@ -1,6 +1,6 @@
 //#define DEBUG_PRINT
 
-#include "TSFTTS.h"
+#include "DIME.h"
 #include "UIPresenter.h"
 
 
@@ -15,7 +15,7 @@
 class CReverseConversionEditSession : public CEditSessionBase
 {
 public:
-    CReverseConversionEditSession(_In_ CTSFTTS *pTextService, _In_ ITfContext *pContext) : CEditSessionBase(pTextService, pContext)
+    CReverseConversionEditSession(_In_ CDIME *pTextService, _In_ ITfContext *pContext) : CEditSessionBase(pTextService, pContext)
     {}
 
     // ITfEditSession
@@ -37,9 +37,9 @@ STDAPI CReverseConversionEditSession::DoEditSession(TfEditCookie ec)
     return S_OK;
 }
 
-void CTSFTTS::_AsyncReverseConversion(_In_ ITfContext* pContext)
+void CDIME::_AsyncReverseConversion(_In_ ITfContext* pContext)
 {
-	debugPrint(L"CTSFTTS::_AsyncReverseConversion() pContext = %x\n", pContext);
+	debugPrint(L"CDIME::_AsyncReverseConversion() pContext = %x\n", pContext);
 	CReverseConversionEditSession* pReverseConversionEditSession = new (std::nothrow) CReverseConversionEditSession(this, pContext);
 
 	if ( pReverseConversionEditSession)
@@ -48,17 +48,17 @@ void CTSFTTS::_AsyncReverseConversion(_In_ ITfContext* pContext)
 		HRESULT hrES = S_OK, hr = S_OK;
 		hr = pContext->RequestEditSession(_tfClientId, pReverseConversionEditSession, TF_ES_ASYNC | TF_ES_READWRITE, &hrES);
 		
-		debugPrint(L"CTSFTTS::_AsyncReverseConversion() RequestEdisession HRESULT = %x, return HRESULT  = %x\n", hrES, hr );
+		debugPrint(L"CDIME::_AsyncReverseConversion() RequestEdisession HRESULT = %x, return HRESULT  = %x\n", hrES, hr );
 
 		pReverseConversionEditSession->Release();
 	}
 	
 }
 
-HRESULT CTSFTTS::_AsyncReverseConversionNotification(_In_ TfEditCookie ec,_In_ ITfContext *pContext)
+HRESULT CDIME::_AsyncReverseConversionNotification(_In_ TfEditCookie ec,_In_ ITfContext *pContext)
 {
 	ec;
-	debugPrint(L"CTSFTTS::_AsyncReverseConversionNotification() pContext = %x\n", pContext);
+	debugPrint(L"CDIME::_AsyncReverseConversionNotification() pContext = %x\n", pContext);
 	BSTR bstr;
 	bstr = SysAllocStringLen(_commitString.Get() , (UINT) _commitString.GetLength());
 	ITfReverseConversionList* reverseConversionList;

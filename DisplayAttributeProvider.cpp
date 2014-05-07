@@ -7,7 +7,7 @@
 
 #include "Private.h"
 #include "globals.h"
-#include "TSFTTS.h"
+#include "DIME.h"
 #include "DisplayAttributeInfo.h"
 #include "EnumDisplayAttributeInfo.h"
 
@@ -17,7 +17,7 @@
 //
 //----------------------------------------------------------------------------
 
-STDAPI CTSFTTS::EnumDisplayAttributeInfo(__RPC__deref_out_opt IEnumTfDisplayAttributeInfo **ppEnum)
+STDAPI CDIME::EnumDisplayAttributeInfo(__RPC__deref_out_opt IEnumTfDisplayAttributeInfo **ppEnum)
 {
     CEnumDisplayAttributeInfo* pAttributeEnum = nullptr;
 
@@ -45,7 +45,7 @@ STDAPI CTSFTTS::EnumDisplayAttributeInfo(__RPC__deref_out_opt IEnumTfDisplayAttr
 //
 //----------------------------------------------------------------------------
 
-STDAPI CTSFTTS::GetDisplayAttributeInfo(__RPC__in REFGUID guidInfo, __RPC__deref_out_opt ITfDisplayAttributeInfo **ppInfo)
+STDAPI CDIME::GetDisplayAttributeInfo(__RPC__in REFGUID guidInfo, __RPC__deref_out_opt ITfDisplayAttributeInfo **ppInfo)
 {
     if (ppInfo == nullptr)
     {
@@ -55,7 +55,7 @@ STDAPI CTSFTTS::GetDisplayAttributeInfo(__RPC__in REFGUID guidInfo, __RPC__deref
     *ppInfo = nullptr;
 
     // Which display attribute GUID?
-    if (IsEqualGUID(guidInfo, Global::TSFTTSGuidDisplayAttributeInput))
+    if (IsEqualGUID(guidInfo, Global::DIMEGuidDisplayAttributeInput))
     {
         *ppInfo = new (std::nothrow) CDisplayAttributeInfoInput();
         if ((*ppInfo) == nullptr)
@@ -63,7 +63,7 @@ STDAPI CTSFTTS::GetDisplayAttributeInfo(__RPC__in REFGUID guidInfo, __RPC__deref
             return E_OUTOFMEMORY;
         }
     }
-    else if (IsEqualGUID(guidInfo, Global::TSFTTSGuidDisplayAttributeConverted))
+    else if (IsEqualGUID(guidInfo, Global::DIMEGuidDisplayAttributeConverted))
     {
         *ppInfo = new (std::nothrow) CDisplayAttributeInfoConverted();
         if ((*ppInfo) == nullptr)

@@ -38,7 +38,7 @@ public:
 	//ITfReverseConversionList 
 	STDMETHODIMP GetLength(__RPC__out UINT *puIndex);
 	STDMETHODIMP GetString(UINT uIndex, __RPC__deref_out_opt BSTR *pbstr);
-	void SetResultList(CTSFTTSArray<CCandidateListItem>* pCandidateList);
+	void SetResultList(CDIMEArray<CCandidateListItem>* pCandidateList);
 private:
 	LONG _refCount;
 	BOOL _resultFound;

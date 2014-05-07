@@ -6,7 +6,7 @@
 //#define DEBUG_PRINT
 
 #include "Private.h"
-#include "TSFTTS.h"
+#include "DIME.h"
 #include "SearchCandidateProvider.h"
 
 //+---------------------------------------------------------------------------
@@ -15,9 +15,9 @@
 //
 //----------------------------------------------------------------------------
 
-BOOL CTSFTTS::_InitFunctionProviderSink()
+BOOL CDIME::_InitFunctionProviderSink()
 {
-	debugPrint(L"CTSFTTS::_InitFunctionProviderSink()");
+	debugPrint(L"CDIME::_InitFunctionProviderSink()");
     ITfSourceSingle* pSourceSingle = nullptr;
     BOOL ret = FALSE;
     if (_pThreadMgr && SUCCEEDED(_pThreadMgr->QueryInterface(IID_ITfSourceSingle, (void **)&pSourceSingle)) && pSourceSingle)
@@ -45,7 +45,7 @@ BOOL CTSFTTS::_InitFunctionProviderSink()
 //
 //----------------------------------------------------------------------------
 
-void CTSFTTS::_UninitFunctionProviderSink()
+void CDIME::_UninitFunctionProviderSink()
 {
     ITfSourceSingle* pSourceSingle = nullptr;
     if (_pThreadMgr && SUCCEEDED(_pThreadMgr->QueryInterface(IID_ITfSourceSingle, (void **)&pSourceSingle)) && pSourceSingle )

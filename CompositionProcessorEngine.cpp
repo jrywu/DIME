@@ -7,7 +7,7 @@
 #include <Shlobj.h>
 #include <Shlwapi.h>
 #include "Private.h"
-#include "TSFTTS.h"
+#include "DIME.h"
 #include "CompositionProcessorEngine.h"
 #include "BaseStructure.h"
 #include "DictionarySearch.h"
@@ -28,7 +28,7 @@
 //
 //----------------------------------------------------------------------------
 
-CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CTSFTTS *pTextService)
+CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CDIME *pTextService)
 {
 	debugPrint(L"CCompositionProcessorEngine::CCompositionProcessorEngine() constructor");
 	_pTextService = pTextService;
@@ -228,7 +228,7 @@ WCHAR CCompositionProcessorEngine::GetVirtualKey(DWORD_PTR dwIndex)
 //
 //----------------------------------------------------------------------------
 
-void CCompositionProcessorEngine::GetReadingStrings(_Inout_ CTSFTTSArray<CStringRange> *pReadingStrings, _Out_ BOOL *pIsWildcardIncluded)
+void CCompositionProcessorEngine::GetReadingStrings(_Inout_ CDIMEArray<CStringRange> *pReadingStrings, _Out_ BOOL *pIsWildcardIncluded)
 {
 	if (!IsDictionaryAvailable(Global::imeMode))
     {
@@ -299,7 +299,7 @@ void CCompositionProcessorEngine::GetReadingStrings(_Inout_ CTSFTTSArray<CString
 //
 //----------------------------------------------------------------------------
 
-void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFTTSArray<CCandidateListItem> *pCandidateList, BOOL isIncrementalWordSearch, BOOL isWildcardSearch)
+void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidateListItem> *pCandidateList, BOOL isIncrementalWordSearch, BOOL isWildcardSearch)
 {
     if (!IsDictionaryAvailable(Global::imeMode) || pCandidateList == nullptr)
     {
@@ -347,7 +347,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFTTSArray<CCandida
 			pwch3code[3] = *(_keystrokeBuffer.Get()+2);    
 			pwch3code[4] = L'*'; pwch3code[5] = L'\0'; 
 			
-			CTSFTTSArray<CCandidateListItem> wCandidateList;
+			CDIMEArray<CCandidateListItem> wCandidateList;
 			CStringRange w3codeMode;		
 			_pTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_TEXT);
 			_pTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&wildcardSearch, pCandidateList);
@@ -454,7 +454,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFTTSArray<CCandida
 		pwch[0] = *(_keystrokeBuffer.Get());	pwch[1] = *(_keystrokeBuffer.Get()+1);       
 		pwch[2] = L'?';		pwch[3] = *(_keystrokeBuffer.Get()+2);      
 		wildcardSearch.Set(pwch, 4);
-		CTSFTTSArray<CCandidateListItem> wCandidateList;
+		CDIMEArray<CCandidateListItem> wCandidateList;
 		
 		_pTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_TEXT);
 		_pTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList);
@@ -536,7 +536,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CTSFTTSArray<CCandida
 //
 //----------------------------------------------------------------------------
 
-void CCompositionProcessorEngine::GetCandidateStringInConverted(CStringRange &searchString, _In_ CTSFTTSArray<CCandidateListItem> *pCandidateList)
+void CCompositionProcessorEngine::GetCandidateStringInConverted(CStringRange &searchString, _In_ CDIMEArray<CCandidateListItem> *pCandidateList)
 {
     if (!IsDictionaryAvailable(Global::imeMode) || pCandidateList == nullptr)
     {
@@ -714,7 +714,7 @@ DWORD_PTR CCompositionProcessorEngine::CollectWordFromArraySpeicalCode(_Outptr_r
 
 	if(Global::imeMode!= IME_MODE_ARRAY || _keystrokeBuffer.GetLength() !=2 ) return 0;
 	
-	CTSFTTSArray<CCandidateListItem> candidateList;
+	CDIMEArray<CCandidateListItem> candidateList;
 
 	if(_pArraySpecialCodeTableDictionaryEngine == nullptr)
 	{
@@ -751,7 +751,7 @@ BOOL CCompositionProcessorEngine::GetArraySpeicalCodeFromConvertedText(_In_ CStr
 
 	if(Global::imeMode!= IME_MODE_ARRAY || _pArraySpecialCodeTableDictionaryEngine == nullptr || inword == nullptr ) return FALSE; 
 
-	CTSFTTSArray<CCandidateListItem> candidateList;
+	CDIMEArray<CCandidateListItem> candidateList;
 	_pArraySpecialCodeTableDictionaryEngine->CollectWordFromConvertedString(inword, &candidateList);
 	if(candidateList.Count() == 1)
 	{
@@ -817,7 +817,7 @@ IME_MODE CCompositionProcessorEngine::GetImeModeFromGuidProfile(REFGUID guidLang
 
 }
 
-HRESULT CCompositionProcessorEngine::GetReverConversionResults(IME_MODE imeMode, _In_ LPCWSTR lpstrToConvert, _Inout_ CTSFTTSArray<CCandidateListItem> *pCandidateList)
+HRESULT CCompositionProcessorEngine::GetReverConversionResults(IME_MODE imeMode, _In_ LPCWSTR lpstrToConvert, _Inout_ CDIMEArray<CCandidateListItem> *pCandidateList)
 {
 	debugPrint(L"CCompositionProcessorEngine::GetReverConversionResults() \n");
 	
@@ -1059,17 +1059,17 @@ void CCompositionProcessorEngine::SetupPreserved(_In_ ITfThreadMgr *pThreadMgr, 
     TF_PRESERVEDKEY preservedKeyImeMode;
     preservedKeyImeMode.uVKey = VK_SHIFT;
     preservedKeyImeMode.uModifiers = _TF_MOD_ON_KEYUP_SHIFT_ONLY;
-    SetPreservedKey(Global::TSFTTSGuidImeModePreserveKey, preservedKeyImeMode, Global::ImeModeDescription, &_PreservedKey_IMEMode);
+    SetPreservedKey(Global::DIMEGuidImeModePreserveKey, preservedKeyImeMode, Global::ImeModeDescription, &_PreservedKey_IMEMode);
 
     TF_PRESERVEDKEY preservedKeyDoubleSingleByte;
     preservedKeyDoubleSingleByte.uVKey = VK_SPACE;
     preservedKeyDoubleSingleByte.uModifiers = TF_MOD_SHIFT;
-    SetPreservedKey(Global::TSFTTSGuidDoubleSingleBytePreserveKey, preservedKeyDoubleSingleByte, Global::DoubleSingleByteDescription, &_PreservedKey_DoubleSingleByte);
+    SetPreservedKey(Global::DIMEGuidDoubleSingleBytePreserveKey, preservedKeyDoubleSingleByte, Global::DoubleSingleByteDescription, &_PreservedKey_DoubleSingleByte);
 	
 	TF_PRESERVEDKEY preservedKeyConfig;
     preservedKeyConfig.uVKey = VK_OEM_5; // '\\'
     preservedKeyConfig.uModifiers = TF_MOD_CONTROL;
-    SetPreservedKey(Global::TSFTTSGuidConfigPreserveKey, preservedKeyConfig, L"Show Config Pages", &_PreservedKey_Config);
+    SetPreservedKey(Global::DIMEGuidConfigPreserveKey, preservedKeyConfig, L"Show Config Pages", &_PreservedKey_Config);
 
 
     InitPreservedKey(&_PreservedKey_IMEMode, pThreadMgr, tfClientId);
@@ -1159,7 +1159,7 @@ BOOL CCompositionProcessorEngine::InitPreservedKey(_In_ XPreservedKey *pXPreserv
 //
 //----------------------------------------------------------------------------
 
-BOOL CCompositionProcessorEngine::CheckShiftKeyOnly(_In_ CTSFTTSArray<TF_PRESERVEDKEY> *pTSFPreservedKeyTable)
+BOOL CCompositionProcessorEngine::CheckShiftKeyOnly(_In_ CDIMEArray<TF_PRESERVEDKEY> *pTSFPreservedKeyTable)
 {
 	if(pTSFPreservedKeyTable == nullptr) return FALSE;
     for (UINT i = 0; i < pTSFPreservedKeyTable->Count(); i++)
@@ -1204,7 +1204,7 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL *pIsE
 		}
 		else
 		{
-			CCompartment CompartmentIMEMode(pThreadMgr, tfClientId, Global::TSFTTSGuidCompartmentIMEMode);
+			CCompartment CompartmentIMEMode(pThreadMgr, tfClientId, Global::DIMEGuidCompartmentIMEMode);
 			CompartmentIMEMode._GetCompartmentBOOL(isOpen);
 			CompartmentIMEMode._SetCompartmentBOOL(isOpen ? FALSE : TRUE);
 		}
@@ -1222,7 +1222,7 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL *pIsE
             return;
         }
         BOOL isDouble = FALSE;
-        CCompartment CompartmentDoubleSingleByte(pThreadMgr, tfClientId, Global::TSFTTSGuidCompartmentDoubleSingleByte);
+        CCompartment CompartmentDoubleSingleByte(pThreadMgr, tfClientId, Global::DIMEGuidCompartmentDoubleSingleByte);
         CompartmentDoubleSingleByte._GetCompartmentBOOL(isDouble);
         CompartmentDoubleSingleByte._SetCompartmentBOOL(isDouble ? FALSE : TRUE);
         *pIsEaten = TRUE;
@@ -1312,17 +1312,17 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 	else 
 		StringCchPrintf(pwszTTSFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\Windows NT\\TableTextService\\TableTextServiceArray.txt");
 	
-	StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\TSFTTS");
+	StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME");
 
 	if(!PathFileExists(pwszCINFileName))
 	{
-	//TSFTTS roadming profile is not exist. Create one.
+	//DIME roadming profile is not exist. Create one.
 		CreateDirectory(pwszCINFileName, NULL);	
 	}
 	// load main table file now
 	if(imeMode == IME_MODE_DAYI) //dayi.cin in personal romaing profile
 	{
-		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\TSFTTS\\Dayi.cin");
+		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\Dayi.cin");
 		if(PathFileExists(pwszCINFileName) &&
 			_pTableDictionaryFile[imeMode] && _pTextService &&
 			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pTableDictionaryFile[imeMode]->GetFileName(), -1) != CSTR_EQUAL)
@@ -1335,7 +1335,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 	}
 	if(imeMode == IME_MODE_ARRAY) //array.cin in personal romaing profile
 	{
-		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\TSFTTS\\Array.cin");
+		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\Array.cin");
 		if(PathFileExists(pwszCINFileName) &&
 			_pTableDictionaryFile[imeMode] && _pTextService &&
 			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pTableDictionaryFile[imeMode]->GetFileName(), -1) != CSTR_EQUAL)
@@ -1348,9 +1348,9 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 	}
 	if(imeMode == IME_MODE_PHONETIC) //phone.cin in personal romaing profile
 	{
-		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\TSFTTS\\Phone.cin");
+		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\Phone.cin");
 		if(!PathFileExists(pwszCINFileName)) //failed back to pre-install Phone.cin in program files.
-			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\TSFTTS\\Phone.cin");
+			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\DIME\\Phone.cin");
 		else if( _pTableDictionaryFile[imeMode] && _pTextService &&
 			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pTableDictionaryFile[imeMode]->GetFileName(), -1) != CSTR_EQUAL)
 		{ //indicate the prevoius table is built with system preload file in program files, and now user provides their own.
@@ -1362,7 +1362,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 	}
 	if(imeMode == IME_MODE_GENERIC) //phone.cin in personal romaing profile
 	{
-		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\TSFTTS\\Generic.cin");
+		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\Generic.cin");
 		// we don't provide preload Generic.cin in program files
 	}
 
@@ -1412,7 +1412,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 
 	// now load phrase table
 	*pwszCINFileName = L'\0';
-	StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\TSFTTS\\Phrase.cin");
+	StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\Phrase.cin");
 	if(PathFileExists(pwszCINFileName) &&	_pPhraseDictionaryFile == nullptr)
 	{ //indicate the prevoius table is built with system preload tts file in program files, and now user provides their own.
 		_pPhraseTableDictionaryEngine = nullptr;
@@ -1461,9 +1461,9 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 	if(imeMode == IME_MODE_ARRAY) //array-special.cin and array-shortcode.cin in personal romaing profile
 	{
 
-		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\TSFTTS\\Array-special.cin");
+		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\Array-special.cin");
 		if(!PathFileExists(pwszCINFileName)) //failed back to preload array-special.cin in program files.
-			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\TSFTTS\\Array-special.cin");
+			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\DIME\\Array-special.cin");
 		else if( _pArraySpecialCodeDictionaryFile && _pTextService &&
 			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pArraySpecialCodeDictionaryFile->GetFileName(), -1) != CSTR_EQUAL)
 		{ //indicate the prevoius table is built with system preload file in program files, and now user provides their own.
@@ -1486,7 +1486,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			}
 		}
 
-		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\TSFTTS\\Array-shortcode.cin");
+		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\Array-shortcode.cin");
 		if(PathFileExists(pwszCINFileName) && _pArrayShortCodeDictionaryFile == nullptr)
 		{
 			_pArrayShortCodeDictionaryFile = new (std::nothrow) CFile();
@@ -1533,7 +1533,7 @@ BOOL CCompositionProcessorEngine::SetupHanCovertTable()
 		if (!pwszCINFileName)  goto ErrorExit;
 		*pwszCINFileName = L'\0';
 
-		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\TSFTTS\\TCSC.cin");
+		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\DIME\\TCSC.cin");
 		if (_pTCSCTableDictionaryFile == nullptr)
 		{
 			_pTCSCTableDictionaryFile = new (std::nothrow) CFile();
@@ -1574,7 +1574,7 @@ BOOL CCompositionProcessorEngine::GetSCFromTC(CStringRange* stringToConvert, CSt
 
 	for (UINT i = 0;i <lenToConvert; i++)
 	{
-		CTSFTTSArray<CCandidateListItem> candidateList;
+		CDIMEArray<CCandidateListItem> candidateList;
 		_pTCSCTableDictionaryEngine->CollectWord(&wcharToCover.Set(stringToConvert->Get() + i, 1), &candidateList);
 		if(candidateList.Count() == 1)
 			StringCchCatN(pwch, lenToConvert +1, candidateList.GetAt(0)->_ItemString.Get(),1); 
@@ -2002,7 +2002,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeComposition(UINT uCode, _
 //
 //----------------------------------------------------------------------------
 
-BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeCandidate(UINT uCode, _In_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode, _Out_ BOOL *pfRetCode, _In_ CTSFTTSArray<_KEYSTROKE> *pKeystrokeMetric)
+BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeCandidate(UINT uCode, _In_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode, _Out_ BOOL *pfRetCode, _In_ CDIMEArray<_KEYSTROKE> *pKeystrokeMetric)
 {
 	candidateMode;
     if (pfRetCode == nullptr || pKeystrokeMetric == nullptr)
