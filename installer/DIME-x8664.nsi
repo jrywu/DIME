@@ -70,22 +70,32 @@ LangString DESC_DOWNLOADING ${LANG_TradChinese} "下載 %s"
 LangString DESC_INSTALLING ${LANG_TradChinese} "安裝中"
 LangString DESC_DOWNLOADING1 ${LANG_TradChinese} "下載中"
 LangString DESC_DOWNLOADFAILED ${LANG_TradChinese} "下載失敗:"
-LangString DESC_VCX86 ${LANG_TradChinese} "Visual C++ 2012 Redistritable Update 3 x86"
-LangString DESC_VCX64 ${LANG_TradChinese} "Visual C++ 2012 Redistritable Update 3 x64"
+LangString DESC_VCX86 ${LANG_TradChinese} "Visual C++ 2013 Redistritable x86"
+LangString DESC_VCX64 ${LANG_TradChinese} "Visual C++ 2013 Redistritable x64"
 LangString DESC_VCX86_DECISION ${LANG_TradChinese} "安裝此輸入法之前，必須先安裝 $(DESC_VCX86)，若你想繼續安裝 \
   ，您的電腦必須連接網路。$\n您要繼續這項安裝嗎？"
 LangString DESC_VCX64_DECISION ${LANG_TradChinese} "安裝此輸入法之前，必須先安裝 $(DESC_VCX64)，若你想繼續安裝 \
   ，您的電腦必須連接網路。$\n您要繼續這項安裝嗎？"
 !define BASE_URL http://download.microsoft.com/download
-!define URL_VC_REDISTX64_2012U3  "${BASE_URL}/1/6/B/16B06F60-3B20-4FF2-B699-5E9B7962F9AE/VSU3/vcredist_x64.exe"
-!define URL_VC_REDISTX86_2012U3  "${BASE_URL}/1/6/B/16B06F60-3B20-4FF2-B699-5E9B7962F9AE/VSU3/vcredist_x86.exe";
+;!define URL_VC_REDISTX64_2012U3  "${BASE_URL}/1/6/B/16B06F60-3B20-4FF2-B699-5E9B7962F9AE/VSU3/vcredist_x64.exe"
+;!define URL_VC_REDISTX86_2012U3  "${BASE_URL}/1/6/B/16B06F60-3B20-4FF2-B699-5E9B7962F9AE/VSU3/vcredist_x86.exe";
+!define URL_VC_REDISTX64_2013  ${BASE_URL}/2/E/6/2E61CFA4-993B-4DD4-91DA-3737CD5CD6E3/vcredist_x64.exe
+!define URL_VC_REDISTX86_2013  ${BASE_URL}/2/E/6/2E61CFA4-993B-4DD4-91DA-3737CD5CD6E3/vcredist_x86.exe
+;{3D6AD258-61EA-35F5-812C-B7A02152996E} for x86 VC 2012 Upate3 {ce085a78-074e-4823-8dc1-8a721b94b76d}
+;{2EDC2FA3-1F34-34E5-9085-588C9EFD1CC6} for x64 VC 2012 Upate3 {a1909659-0a08-4554-8af1-2175904903a1}
+;{7f51bdb9-ee21-49ee-94d6-90afc321780e} for x64 VC 2013
+;{ce085a78-074e-4823-8dc1-8a721b94b76d} for x86 VC 2013
+
+!define VCX86_key "{ce085a78-074e-4823-8dc1-8a721b94b76d}"
+!define VCX64_key "{7f51bdb9-ee21-49ee-94d6-90afc321780e}"
+  
 Var "URL_VCX86"
 Var "URL_VCX64"
 
 Function .onInit
   InitPluginsDir
-  StrCpy $URL_VCX86 "${URL_VC_REDISTX86_2012U3}"
-  StrCpy $URL_VCX64 "${URL_VC_REDISTX64_2012U3}"
+  StrCpy $URL_VCX86 "${URL_VC_REDISTX86_2013}"
+  StrCpy $URL_VCX64 "${URL_VC_REDISTX64_2013}"
     ${If} ${RunningX64}
   	SetRegView 64
   ${EndIf}
@@ -112,12 +122,10 @@ FunctionEnd
 
 Section "CheckVCRedist" VCR
   Push $R0
-  ;{3D6AD258-61EA-35F5-812C-B7A02152996E} for x86 VC 2012 Upate3
-  ;{2EDC2FA3-1F34-34E5-9085-588C9EFD1CC6} for x64 VC 2012 Upate3
   ${If} ${RunningX64}
-  	SetRegView 64
+  	SetRegView 32
   	ClearErrors
-  	ReadRegDword $R0 HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{2EDC2FA3-1F34-34E5-9085-588C9EFD1CC6}" "Version"
+  	ReadRegDword $R0 HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\${VCX64_key}" "Installed"
   	IfErrors 0 VCx64RedistInstalled
   	MessageBox MB_ICONEXCLAMATION|MB_YESNO|MB_DEFBUTTON2 "$(DESC_VCX64_DECISION)" /SD IDNO IDYES +1 IDNO VCRedistInstalledAbort
   	AddSize 7000
@@ -137,9 +145,8 @@ VCx64RedistInstalled:
  SetRegView 32
 ${EndIf}
  ClearErrors
-  ReadRegDword $R0 HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{3D6AD258-61EA-35F5-812C-B7A02152996E}" "Version"
+  ReadRegDword $R0 HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\${VCX86_key}" "Installed"
   IfErrors 0 VCRedistInstalled
-  ;MessageBox MB_ICONQUESTION|MB_YESNO "需要 MS VC++ 2012 x86 Redistributable，您要繼續這項安裝嗎?" IDNO VCRedistInstalledAbort
   MessageBox MB_ICONEXCLAMATION|MB_YESNO|MB_DEFBUTTON2 "$(DESC_VCX86_DECISION)" /SD IDNO IDYES +1 IDNO VCRedistInstalledAbort
   AddSize 7000
   nsisdl::download /TRANSLATE "$(DESC_DOWNLOADING)" "$(DESC_CONNECTING)" \
