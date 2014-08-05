@@ -157,7 +157,7 @@ BOOL CCompositionProcessorEngine::AddVirtualKey(WCHAR wch)
 
     if (_keystrokeBuffer.Get())
     {
-        //delete [] _keystrokeBuffer.Get();
+        delete [] _keystrokeBuffer.Get();
     }
 
     _keystrokeBuffer.Set(pwch, srgKeystrokeBufLen + 1);
@@ -250,11 +250,12 @@ void CCompositionProcessorEngine::GetReadingStrings(_Inout_ CDIMEArray<CStringRa
 
 		PWCHAR pwchRadical;
 		pwchRadical = new (std::nothrow) WCHAR[MAX_READINGSTRING];
+		*pwchRadical = L'\0';
 
 		if(_pTableDictionaryEngine[Global::imeMode]->GetRadicalMap() && 
-			_pTableDictionaryEngine[Global::imeMode]->GetRadicalMap()->size()&& !IsSymbol())
+			_pTableDictionaryEngine[Global::imeMode]->GetRadicalMap()->size() && !IsSymbol())
 		{
-			*pwchRadical = L'\0';
+			
 			for (DWORD index = 0; index < _keystrokeBuffer.GetLength(); index++)
 			{
 				if(_pTableDictionaryEngine[Global::imeMode]->GetRadicalMap()&&
@@ -284,9 +285,12 @@ void CCompositionProcessorEngine::GetReadingStrings(_Inout_ CDIMEArray<CStringRa
 			}
 			if(pNewString) pNewString->Set(pwchRadical, wcslen(pwchRadical));
 		}
-		else
+		else if (_keystrokeBuffer.GetLength())
 		{
-			delete [] pwchRadical;
+			assert(wcslen(pwchRadical) + _keystrokeBuffer.GetLength() < MAX_READINGSTRING - 1);
+			StringCchCatN(pwchRadical, MAX_READINGSTRING, (_keystrokeBuffer.Get()), _keystrokeBuffer.GetLength());
+			if (pNewString) pNewString->Set(pwchRadical, wcslen(pwchRadical));
+
 		}
     }
 
