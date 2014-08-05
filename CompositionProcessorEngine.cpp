@@ -157,7 +157,7 @@ BOOL CCompositionProcessorEngine::AddVirtualKey(WCHAR wch)
 
     if (_keystrokeBuffer.Get())
     {
-        delete [] _keystrokeBuffer.Get();
+        //delete [] _keystrokeBuffer.Get();
     }
 
     _keystrokeBuffer.Set(pwch, srgKeystrokeBufLen + 1);
@@ -602,8 +602,9 @@ void CCompositionProcessorEngine::GetCandidateStringInConverted(CStringRange &se
 BOOL CCompositionProcessorEngine::IsSymbol()
 {
 	if(_keystrokeBuffer.Get() == nullptr) return FALSE;
-	if(Global::imeMode==IME_MODE_DAYI && _pTableDictionaryEngine[IME_MODE_DAYI] &&
-		_pTableDictionaryEngine[IME_MODE_DAYI]->GetDictionaryType() == TTS_CONTROLKEY)
+	if(Global::imeMode==IME_MODE_DAYI)
+		//&& _pTableDictionaryEngine[IME_MODE_DAYI] &&
+		//_pTableDictionaryEngine[IME_MODE_DAYI]->GetDictionaryType() == TTS_DICTIONARY)
 		return (_keystrokeBuffer.GetLength()<3 && *_keystrokeBuffer.Get()==L'=' 
 		&& _pTableDictionaryEngine[IME_MODE_DAYI] 
 		&& _pTableDictionaryEngine[IME_MODE_DAYI]->GetDictionaryType() == TTS_DICTIONARY);	
@@ -624,7 +625,7 @@ BOOL CCompositionProcessorEngine::IsSymbolChar(WCHAR wch)
 	if((_keystrokeBuffer.GetLength() == 1) && 
 		(*_keystrokeBuffer.Get() == L'=') && 
 		Global::imeMode==IME_MODE_DAYI && _pTableDictionaryEngine[IME_MODE_DAYI] &&
-		_pTableDictionaryEngine[IME_MODE_DAYI]->GetDictionaryType() == TTS_CONTROLKEY) 
+		_pTableDictionaryEngine[IME_MODE_DAYI]->GetDictionaryType() == TTS_DICTIONARY) 
 	{
 		for (UINT i = 0; i < wcslen(Global::DayiSymbolCharTable); i++)
 		{
@@ -654,7 +655,7 @@ BOOL CCompositionProcessorEngine::IsSymbolChar(WCHAR wch)
 BOOL CCompositionProcessorEngine::IsDayiAddressChar(WCHAR wch)
 {
 	if(Global::imeMode != IME_MODE_DAYI || ( _pTableDictionaryEngine[IME_MODE_DAYI] &&
-		_pTableDictionaryEngine[IME_MODE_DAYI]->GetDictionaryType() != TTS_CONTROLKEY)) return FALSE;
+		_pTableDictionaryEngine[IME_MODE_DAYI]->GetDictionaryType() != TTS_DICTIONARY)) return FALSE;
 	if(_keystrokeBuffer.Get() == nullptr || (_keystrokeBuffer.Get() && (_keystrokeBuffer.GetLength() == 0))) 
 	{
 		for (int i = 0; i < ARRAYSIZE(Global::dayiAddressCharTable); i++)
