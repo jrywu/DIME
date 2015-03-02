@@ -606,14 +606,15 @@ void CCompositionProcessorEngine::GetCandidateStringInConverted(CStringRange &se
 BOOL CCompositionProcessorEngine::IsSymbol()
 {
 	if(_keystrokeBuffer.Get() == nullptr) return FALSE;
-	if(Global::imeMode==IME_MODE_DAYI)
+	if (Global::imeMode == IME_MODE_DAYI)
 		//&& _pTableDictionaryEngine[IME_MODE_DAYI] &&
 		//_pTableDictionaryEngine[IME_MODE_DAYI]->GetDictionaryType() == TTS_DICTIONARY)
-		return (_keystrokeBuffer.GetLength()<3 && *_keystrokeBuffer.Get()==L'=' 
-		&& _pTableDictionaryEngine[IME_MODE_DAYI] 
-		&& _pTableDictionaryEngine[IME_MODE_DAYI]->GetDictionaryType() == TTS_DICTIONARY);	
-	else if(Global::imeMode==IME_MODE_ARRAY)
-		return (_keystrokeBuffer.GetLength()<3 && towupper(*_keystrokeBuffer.Get())==L'W');	
+		return (_keystrokeBuffer.GetLength() < 3 && *_keystrokeBuffer.Get() == L'='
+		&& _pTableDictionaryEngine[IME_MODE_DAYI]
+		&& _pTableDictionaryEngine[IME_MODE_DAYI]->GetDictionaryType() == TTS_DICTIONARY);
+	else if (Global::imeMode == IME_MODE_ARRAY)
+		return (_keystrokeBuffer.GetLength() < 3 && towupper(*_keystrokeBuffer.Get()) == L'W'
+		&& _pTableDictionaryEngine[IME_MODE_ARRAY]->GetDictionaryType() == TTS_DICTIONARY);
 	else
 		return FALSE;
 }
@@ -644,8 +645,11 @@ BOOL CCompositionProcessorEngine::IsSymbolChar(WCHAR wch)
 	{
 		for (int i = 0; i < 10; i++)
 		{
-			if(wch == ('0' + i))
+			if (wch == ('0' + i))
+			{
 				return TRUE;
+			}
+			
 		}
 	}
     return FALSE;
