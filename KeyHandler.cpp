@@ -178,8 +178,8 @@ HRESULT CDIME::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *p
     //
 	BOOL symbolMode = pCompositionProcessorEngine->IsSymbol();
 	if(CConfig::GetAutoCompose() // auto composing mode: show candidates while composition updated imeediately.
-		|| symbolMode // fetch candidate in symobl mode with composition started with '='(DAYI) or 'W' (Array)
-		||  Global::imeMode== IME_MODE_ARRAY) //
+		|| symbolMode) // fetch candidate in symobl mode with composition started with '='(DAYI) or 'W' (Array)
+	//	||  Global::imeMode== IME_MODE_ARRAY) // Show candidate window when composing.
 	{
 		CDIMEArray<CCandidateListItem> candidateList;
 	
