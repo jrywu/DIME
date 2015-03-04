@@ -273,12 +273,12 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		CheckDlgButton(hDlg, IDC_CHECKBOX_SPACEASPAGEDOWN, (_spaceAsPageDown)?BST_CHECKED:BST_UNCHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_ARROWKEYSWPAGES, (_arrowKeySWPages)?BST_CHECKED:BST_UNCHECKED);
 		// hide autocompose and space as pagedown option in DAYI.
-			
+		/*
 		if(Global::imeMode==IME_MODE_DAYI || Global::imeMode==IME_MODE_ARRAY)
 		{
 			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_AUTOCOMPOSE), SW_HIDE);
 			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_SPACEASPAGEDOWN), SW_HIDE);
-		}
+		}*/
 		if(Global::imeMode==IME_MODE_ARRAY || Global::imeMode==IME_MODE_PHONETIC)
 		{
 			ShowWindow(GetDlgItem(hDlg, IDC_EDIT_MAXWIDTH), SW_HIDE);

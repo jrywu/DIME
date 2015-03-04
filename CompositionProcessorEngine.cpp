@@ -316,7 +316,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
         DWORD_PTR keystrokeBufLen = _keystrokeBuffer.GetLength() + 3;
        
 
-        // check keystroke buffer already has wildcard char which end user want wildcard serach
+        // check keystroke buffer already has wildcard char which end user want wildcard search
         DWORD wildcardIndex = 0;
         BOOL isFindWildcard = FALSE;
 
@@ -490,7 +490,9 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 		}
 		delete [] pwch;
 	}
-    else if(IsSymbol())
+	else if (IsSymbol() && ( 
+		(Global::imeMode == IME_MODE_DAYI && _pTableDictionaryEngine[IME_MODE_DAYI]->GetDictionaryType() == TTS_DICTIONARY) ||
+		(Global::imeMode == IME_MODE_ARRAY && _pTableDictionaryEngine[IME_MODE_ARRAY]->GetDictionaryType() == TTS_DICTIONARY)    ) )
 	{
 		_pTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_SYMBOL);
 		_pTableDictionaryEngine[Global::imeMode]->CollectWord(&_keystrokeBuffer, pCandidateList);
@@ -607,14 +609,13 @@ BOOL CCompositionProcessorEngine::IsSymbol()
 {
 	if(_keystrokeBuffer.Get() == nullptr) return FALSE;
 	if (Global::imeMode == IME_MODE_DAYI)
-		//&& _pTableDictionaryEngine[IME_MODE_DAYI] &&
-		//_pTableDictionaryEngine[IME_MODE_DAYI]->GetDictionaryType() == TTS_DICTIONARY)
-		return (_keystrokeBuffer.GetLength() < 3 && *_keystrokeBuffer.Get() == L'='
-		&& _pTableDictionaryEngine[IME_MODE_DAYI]
-		&& _pTableDictionaryEngine[IME_MODE_DAYI]->GetDictionaryType() == TTS_DICTIONARY);
+		return (_keystrokeBuffer.GetLength() < 3 && *_keystrokeBuffer.Get() == L'=');
+		//&& _pTableDictionaryEngine[IME_MODE_DAYI]
+		//&& _pTableDictionaryEngine[IME_MODE_DAYI]->GetDictionaryType() == TTS_DICTIONARY);
 	else if (Global::imeMode == IME_MODE_ARRAY)
-		return (_keystrokeBuffer.GetLength() < 3 && towupper(*_keystrokeBuffer.Get()) == L'W'
-		&& _pTableDictionaryEngine[IME_MODE_ARRAY]->GetDictionaryType() == TTS_DICTIONARY);
+		return (_keystrokeBuffer.GetLength() == 2 && towupper(*_keystrokeBuffer.Get()) == L'W'
+		&& *(_keystrokeBuffer.Get() + 1) <= ('0' + 9) && *(_keystrokeBuffer.Get() + 1) >= '0'  );
+		
 	else
 		return FALSE;
 }
@@ -643,14 +644,11 @@ BOOL CCompositionProcessorEngine::IsSymbolChar(WCHAR wch)
 	}
 	if((_keystrokeBuffer.GetLength() == 1) && (towupper(*_keystrokeBuffer.Get()) == L'W') && Global::imeMode==IME_MODE_ARRAY) 
 	{
-		for (int i = 0; i < 10; i++)
+		if (wch >= '0' && wch <= ('0' + 9))
 		{
-			if (wch == ('0' + i))
-			{
-				return TRUE;
-			}
-			
+			return TRUE;
 		}
+
 	}
     return FALSE;
 }
@@ -1265,10 +1263,10 @@ void CCompositionProcessorEngine::SetupConfiguration()
 	{
 		CConfig::SetThreeCodeMode(TRUE);
 	}
-	else if(Global::imeMode == IME_MODE_ARRAY)
+/*	else if(Global::imeMode == IME_MODE_ARRAY)
 	{
 		CConfig::SetSpaceAsPageDown(TRUE);
-	}
+	}*/
 	else if(Global::imeMode == IME_MODE_PHONETIC)
 	{
 		CConfig::SetSpaceAsPageDown(TRUE);

@@ -179,11 +179,11 @@ HRESULT CDIME::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *p
 	BOOL symbolMode = pCompositionProcessorEngine->IsSymbol();
 	if(CConfig::GetAutoCompose() // auto composing mode: show candidates while composition updated imeediately.
 		|| symbolMode) // fetch candidate in symobl mode with composition started with '='(DAYI) or 'W' (Array)
-	//	||  Global::imeMode== IME_MODE_ARRAY) // Show candidate window when composing.
 	{
 		CDIMEArray<CCandidateListItem> candidateList;
 	
-		pCompositionProcessorEngine->GetCandidateList(&candidateList, !(pCompositionProcessorEngine->IsSymbol()|| Global::imeMode== IME_MODE_ARRAY ), FALSE);
+		//pCompositionProcessorEngine->GetCandidateList(&candidateList, !(pCompositionProcessorEngine->IsSymbol()|| Global::imeMode== IME_MODE_ARRAY ), FALSE);
+		pCompositionProcessorEngine->GetCandidateList(&candidateList, !(pCompositionProcessorEngine->IsSymbol()), FALSE);
 		
 		UINT nCount = candidateList.Count();
 
@@ -376,9 +376,10 @@ HRESULT CDIME::_HandleCompositionBackspace(TfEditCookie ec, _In_ ITfContext *pCo
 
     if (vKeyLen)
     {
+		BOOL symbolMode = pCompositionProcessorEngine->IsSymbol();
         pCompositionProcessorEngine->RemoveVirtualKey(vKeyLen - 1);
 
-        if (pCompositionProcessorEngine->GetVirtualKeyLength())
+        if (pCompositionProcessorEngine->GetVirtualKeyLength() && !symbolMode)
         {
             _HandleCompositionInputWorker(pCompositionProcessorEngine, ec, pContext);
         }
