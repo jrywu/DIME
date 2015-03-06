@@ -198,7 +198,15 @@ HRESULT CDIME::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *p
 				_pUIPresenter->_SetCandidateNumberColor(CConfig::GetNumberColor(), CConfig::GetItemBGColor());    
 				_pUIPresenter->_SetCandidateFillColor(CConfig::GetItemBGColor());
 				_pUIPresenter->_SetCandidateText(&candidateList, TRUE, pCompositionProcessorEngine->GetCandidateWindowWidth());
-				_candidateMode = CANDIDATE_INCREMENTAL;
+				if (symbolMode)
+				{
+					_candidateMode = CANDIDATE_ORIGINAL;
+				}
+				else
+				{
+					_candidateMode = CANDIDATE_INCREMENTAL;
+				}
+
 				_isCandidateWithWildcard = FALSE;
 			}
 			if(nCount==1 && symbolMode )  //finalized with the only candidate without showing cand.

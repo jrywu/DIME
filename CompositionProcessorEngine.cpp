@@ -610,11 +610,10 @@ BOOL CCompositionProcessorEngine::IsSymbol()
 	if(_keystrokeBuffer.Get() == nullptr) return FALSE;
 	if (Global::imeMode == IME_MODE_DAYI)
 		return (_keystrokeBuffer.GetLength() < 3 && *_keystrokeBuffer.Get() == L'=');
-		//&& _pTableDictionaryEngine[IME_MODE_DAYI]
-		//&& _pTableDictionaryEngine[IME_MODE_DAYI]->GetDictionaryType() == TTS_DICTIONARY);
+
 	else if (Global::imeMode == IME_MODE_ARRAY)
 		return (_keystrokeBuffer.GetLength() == 2 && towupper(*_keystrokeBuffer.Get()) == L'W'
-		&& *(_keystrokeBuffer.Get() + 1) <= ('0' + 9) && *(_keystrokeBuffer.Get() + 1) >= '0'  );
+		&& *(_keystrokeBuffer.Get() + 1) <= L'9' && *(_keystrokeBuffer.Get() + 1) >= L'0');
 		
 	else
 		return FALSE;
@@ -644,7 +643,7 @@ BOOL CCompositionProcessorEngine::IsSymbolChar(WCHAR wch)
 	}
 	if((_keystrokeBuffer.GetLength() == 1) && (towupper(*_keystrokeBuffer.Get()) == L'W') && Global::imeMode==IME_MODE_ARRAY) 
 	{
-		if (wch >= '0' && wch <= ('0' + 9))
+		if (wch >= L'0' && wch <= L'9')
 		{
 			return TRUE;
 		}
@@ -1263,10 +1262,10 @@ void CCompositionProcessorEngine::SetupConfiguration()
 	{
 		CConfig::SetThreeCodeMode(TRUE);
 	}
-/*	else if(Global::imeMode == IME_MODE_ARRAY)
+	else if(Global::imeMode == IME_MODE_ARRAY)
 	{
 		CConfig::SetSpaceAsPageDown(TRUE);
-	}*/
+	}
 	else if(Global::imeMode == IME_MODE_PHONETIC)
 	{
 		CConfig::SetSpaceAsPageDown(TRUE);
@@ -1716,7 +1715,7 @@ void CCompositionProcessorEngine::SetInitialCandidateListRange()
 //     If engine need this virtual key code, returns true. Otherwise returns false.
 //----------------------------------------------------------------------------
 
-BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCHAR *pwch, BOOL fComposing, CANDIDATE_MODE candidateMode, BOOL hasCandidateWithWildcard, _Out_opt_ _KEYSTROKE_STATE *pKeyState)
+BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCHAR *pwch, BOOL fComposing, CANDIDATE_MODE candidateMode, BOOL hasCandidateWithWildcard, UINT candiCount, _Out_opt_ _KEYSTROKE_STATE *pKeyState)
 {
     if (pKeyState)
     {
@@ -1890,13 +1889,14 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
         case VK_RETURN: 
         case VK_SPACE:  if (pKeyState) 
 						{ 
+							
 							if ( (candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)){ // space finalized the associate here instead of choose the first one (selected index = -1 for phrase candidates).
 								if (pKeyState)
 								{
 									pKeyState->Category = CATEGORY_CANDIDATE;
 									pKeyState->Function = FUNCTION_FINALIZE_CANDIDATELIST;
 								}
-							}else if(uCode == VK_SPACE && CConfig::GetSpaceAsPageDown()){
+							}else if(uCode == VK_SPACE && CConfig::GetSpaceAsPageDown() && candiCount >10){
 								pKeyState->Category = CATEGORY_CANDIDATE; 
 								pKeyState->Function = FUNCTION_MOVE_PAGE_DOWN; 
 							}else{

@@ -163,7 +163,10 @@ BOOL CDIME::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pCod
         //
         // eat only keys that CKeyHandlerEditSession can handles.
         //
-        if (pCompositionProcessorEngine->IsVirtualKeyNeed(*pCodeOut, pwch, _IsComposing(), _candidateMode, _isCandidateWithWildcard, pKeyState))
+		UINT candiCount=0;
+		if (_pUIPresenter) _pUIPresenter->GetCount(&candiCount);
+	
+		if (pCompositionProcessorEngine->IsVirtualKeyNeed(*pCodeOut, pwch, _IsComposing(), _candidateMode, _isCandidateWithWildcard, candiCount, pKeyState))
         {
             return TRUE;
         }
