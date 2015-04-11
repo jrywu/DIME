@@ -337,6 +337,8 @@ ReadValue:
 					CConfig::SetArrayForceSP((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ArrayNotifySP", 13)) == CSTR_EQUAL)
 					CConfig::SetArrayNotifySP((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"DayiArticleMode", 15)) == CSTR_EQUAL)
+					CConfig::setDayiArticleMode((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"SpaceAsPageDown", 15)) == CSTR_EQUAL)
 					CConfig::SetSpaceAsPageDown((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ArrowKeySWPages", 15)) == CSTR_EQUAL)

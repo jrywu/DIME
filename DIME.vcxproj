@@ -121,8 +121,10 @@
     <ResourceCompile Include="DIME.rc" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="image\TSFArray.ico" />
     <Image Include="image\TSFDayi.ico" />
     <Image Include="image\TSFGeneric.ico" />
+    <Image Include="image\TSFPhonetic.ico" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{0C8FE010-5146-44D8-AF99-82702C15FEA5}</ProjectGuid>

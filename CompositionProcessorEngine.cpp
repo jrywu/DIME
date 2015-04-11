@@ -687,7 +687,10 @@ WCHAR CCompositionProcessorEngine::GetDayiAddressChar(WCHAR wch)
     {
         if (Global::dayiAddressCharTable[i]._Code == wch)
         {
-			return Global::dayiAddressCharTable[i]._AddressChar;
+			if (CConfig::getDayiArticleMode())  //article mode: input full-shape symbols with address keys
+				return Global::dayiArticleCharTable[i]._AddressChar;
+			else
+				return Global::dayiAddressCharTable[i]._AddressChar;
         }
     }
 	return 0;
@@ -1252,26 +1255,26 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL *pIsE
 //
 //----------------------------------------------------------------------------
 
-void CCompositionProcessorEngine::SetupConfiguration()
+void CCompositionProcessorEngine::SetupConfiguration(IME_MODE imeMode)
 {
     _isWildcard = TRUE;
     _isDisableWildcardAtFirst = TRUE;
     _isKeystrokeSort = FALSE;
 
-	if(Global::imeMode == IME_MODE_DAYI)
+	if(imeMode == IME_MODE_DAYI)
 	{
 		CConfig::SetThreeCodeMode(TRUE);
 	}
-	else if(Global::imeMode == IME_MODE_ARRAY)
+	else if(imeMode == IME_MODE_ARRAY)
 	{
 		CConfig::SetSpaceAsPageDown(TRUE);
 	}
-	else if(Global::imeMode == IME_MODE_PHONETIC)
+	else if(imeMode == IME_MODE_PHONETIC)
 	{
 		CConfig::SetSpaceAsPageDown(TRUE);
 	}
 
-    SetInitialCandidateListRange();
+	SetInitialCandidateListRange(imeMode);
 
 
     return;
@@ -1672,24 +1675,28 @@ CCompositionProcessorEngine::XPreservedKey::~XPreservedKey()
 
 
 
-void CCompositionProcessorEngine::SetInitialCandidateListRange()
+void CCompositionProcessorEngine::SetInitialCandidateListRange(IME_MODE imeMode)
 {
 	_candidateListIndexRange.Clear();
-    for (DWORD i = 1; i <= 10; i++)
+    for (DWORD i = 0; i < 10; i++)
     {
         DWORD* pNewIndexRange = nullptr;
 
         pNewIndexRange = _candidateListIndexRange.Append();
         if (pNewIndexRange != nullptr)
         {
-            if (i != 10)
-            {
-                *pNewIndexRange = i;
-            }
-            else
-            {
-                *pNewIndexRange = 0;
-            }
+			if (imeMode == IME_MODE_DAYI)	*pNewIndexRange = i;
+			else
+			{
+				if (i != 9)
+				{
+					*pNewIndexRange = i+1;
+				}
+				else
+				{
+					*pNewIndexRange = 0;
+				}
+			}
         }
     }
 }
@@ -2117,7 +2124,7 @@ void CCompositionProcessorEngine::UpdateDictionaryFile()
 	if(pCurrentDictioanryFile != _pTableDictionaryFile[Global::imeMode])
 	{ // the table is loaded from TTS previously and now new cin is loaded.
 		SetupKeystroke(Global::imeMode);
-		SetupConfiguration();
+		SetupConfiguration(Global::imeMode);
 	}
 
 	if(_pTableDictionaryFile[Global::imeMode] && _pTableDictionaryEngine[Global::imeMode] &&
@@ -2127,7 +2134,7 @@ void CCompositionProcessorEngine::UpdateDictionaryFile()
 		// the table is loaded from .cin and the cin was updated.
 		_pTableDictionaryEngine[Global::imeMode]->ParseConfig(Global::imeMode);
 		SetupKeystroke(Global::imeMode);
-		SetupConfiguration();
+		SetupConfiguration(Global::imeMode);
 		
 	}
 }

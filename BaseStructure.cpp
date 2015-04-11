@@ -272,11 +272,45 @@ BOOL CCandidateRange::IsRange(UINT vKey, CANDIDATE_MODE candidateMode)
 		{
 			switch (vKey)
 			{
-			case VK_OEM_7:		if (2 == *_CandidateListIndexRange.GetAt(i)) { return TRUE;};
-			case VK_OEM_4:		if (3 == *_CandidateListIndexRange.GetAt(i)) { return TRUE;};
-			case VK_OEM_6:		if (4 == *_CandidateListIndexRange.GetAt(i)) { return TRUE;};
-			case VK_OEM_MINUS:  if (5 == *_CandidateListIndexRange.GetAt(i)) { return TRUE;};
-			case VK_OEM_5:		if (6 == *_CandidateListIndexRange.GetAt(i)) { return TRUE;};
+			case VK_OEM_7:
+				if ((Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT)) == 0)
+				{
+					if (1 == *_CandidateListIndexRange.GetAt(i)) return TRUE;
+				}
+				else
+				{
+					if (6 == *_CandidateListIndexRange.GetAt(i)) return TRUE;
+				};
+
+			case VK_OEM_4:
+				if ((Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT)) == 0)
+				{
+					if (2 == *_CandidateListIndexRange.GetAt(i)) return TRUE;
+				}
+				else
+				{
+					if (7 == *_CandidateListIndexRange.GetAt(i)) return TRUE;
+				};
+			case VK_OEM_6:
+				if ((Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT)) == 0)
+				{
+					if (3 == *_CandidateListIndexRange.GetAt(i)) return TRUE;
+				}
+				else
+				{
+					if (8 == *_CandidateListIndexRange.GetAt(i)) return TRUE;
+				};
+			case VK_OEM_MINUS:
+				if ((Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT)) == 0)
+				{
+					if (4 == *_CandidateListIndexRange.GetAt(i)) return TRUE;
+				}
+				else
+				{
+					if (9 == *_CandidateListIndexRange.GetAt(i)) return TRUE;
+				};
+			case VK_OEM_5:		if (((Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT)) == 0) &&
+									(5 == *_CandidateListIndexRange.GetAt(i))) { return TRUE; };
 			}
 		}
 	}
@@ -309,12 +343,46 @@ int CCandidateRange::GetIndex(UINT vKey, CANDIDATE_MODE candidateMode)
 		for (UINT i = 0; i < _CandidateListIndexRange.Count(); i++)
 		{
 			switch (vKey)
-			{    // 1 selected with space key
-			case VK_OEM_7:		if (2 == *_CandidateListIndexRange.GetAt(i)) { return i;};
-			case VK_OEM_4:		if (3 == *_CandidateListIndexRange.GetAt(i)) { return i;};
-			case VK_OEM_6:		if (4 == *_CandidateListIndexRange.GetAt(i)) { return i;};
-			case VK_OEM_MINUS:  if (5 == *_CandidateListIndexRange.GetAt(i)) { return i;};
-			case VK_OEM_5:		if (6 == *_CandidateListIndexRange.GetAt(i)) { return i;};
+			{    // 0 selected with space key
+			case VK_OEM_7:		
+				if ((Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT)) == 0)
+				{
+					if (1 == *_CandidateListIndexRange.GetAt(i)) return i;
+				}
+				else
+				{
+					if (6 == *_CandidateListIndexRange.GetAt(i)) return i;
+				};
+					
+			case VK_OEM_4:		
+				if ((Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT)) == 0)
+				{
+					if (2 == *_CandidateListIndexRange.GetAt(i)) return i;
+				}
+				else
+				{
+					if (7 == *_CandidateListIndexRange.GetAt(i)) return i;
+				};
+			case VK_OEM_6:
+				if ((Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT)) == 0)
+				{
+					if (3 == *_CandidateListIndexRange.GetAt(i)) return i;
+				}
+				else
+				{
+					if (8 == *_CandidateListIndexRange.GetAt(i)) return i;
+				};
+			case VK_OEM_MINUS:
+				if ((Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT)) == 0)
+				{
+					if (4 == *_CandidateListIndexRange.GetAt(i)) return i;
+				}
+				else
+				{
+					if (9 == *_CandidateListIndexRange.GetAt(i)) return i;
+				};
+			case VK_OEM_5:		if (((Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT)) == 0) &&
+											(5 == *_CandidateListIndexRange.GetAt(i))) { return i;};
 			}
 		}
 

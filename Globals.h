@@ -152,6 +152,7 @@ extern const GUID DIMEGuidCompartmentDoubleSingleByte;
 extern const WCHAR FullWidthCharTable[];
 extern const WCHAR DayiSymbolCharTable[];
 extern const _DAYI_ADDRESS_DIRECT_INPUT dayiAddressCharTable[5];
+extern const _DAYI_ADDRESS_DIRECT_INPUT dayiArticleCharTable[5];
 
 extern const GUID DIMEGuidLangBarIMEMode;
 extern const GUID DIMEGuidLangBarDoubleSingleByte;

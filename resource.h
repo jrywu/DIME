@@ -58,6 +58,7 @@
 #define IDC_BUTTON_LOAD_PHRASE					1127
 #define IDC_BUTTON_LOAD_ARRAY_SP				1128
 #define IDC_BUTTON_LOAD_ARRAY_SC				1129
+#define IDC_CHECKBOX_DAYIARTICLEMODE				1130
 
 // Next default values for new objects
 // 

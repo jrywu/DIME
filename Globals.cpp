@@ -226,6 +226,16 @@ extern const _DAYI_ADDRESS_DIRECT_INPUT dayiAddressCharTable[5] = {
 	{L'-', L'¶m'},
 	{L'\\', L'Âí'}
 };
+//---------------------------------------------------------------------
+// defined directly input full shaped symbols in article modes
+//---------------------------------------------------------------------
+extern const _DAYI_ADDRESS_DIRECT_INPUT dayiArticleCharTable[5] = {
+	{ L'\'', L'¡A' },
+	{ L'[', L'¡C' },
+	{ L']', L'¡H' },
+	{ L'-', L'¡B' },
+	{ L'\\', L'¡F' }
+};
 
 
 //+---------------------------------------------------------------------------

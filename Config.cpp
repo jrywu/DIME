@@ -30,6 +30,7 @@ BOOL CConfig::_activatedKeyboardMode = TRUE;
 BOOL CConfig::_makePhrase = TRUE;
 BOOL CConfig::_doHanConvert = FALSE;
 BOOL CConfig::_showNotifyDesktop = TRUE;
+BOOL CConfig::_dayiArticleMode = TRUE;  // Article mode: input full-shaped symbols with address keys
 
 CDIMEArray <LanguageProfileInfo>* CConfig::_reverseConvervsionInfoList = new (std::nothrow) CDIMEArray <LanguageProfileInfo>;
 CLSID CConfig::_reverseConverstionCLSID = CLSID_NULL;
@@ -256,6 +257,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		CheckDlgButton(hDlg, IDC_CHECKBOX_AUTOCOMPOSE, (_autoCompose)?BST_CHECKED:BST_UNCHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_DOBEEP, (_doBeep)?BST_CHECKED:BST_UNCHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_THREECODEMODE,(_threeCodeMode)?BST_CHECKED:BST_UNCHECKED);
+		CheckDlgButton(hDlg, IDC_CHECKBOX_DAYIARTICLEMODE, (_dayiArticleMode) ? BST_CHECKED : BST_UNCHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_ARRAY_FORCESP,(_arrayForceSP)?BST_CHECKED:BST_UNCHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_ARRAY_NOTIFYSP,(_arrayNotifySP)?BST_CHECKED:BST_UNCHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_PHRASE, (_makePhrase)?BST_CHECKED:BST_UNCHECKED);	
@@ -287,6 +289,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		if(Global::imeMode!=IME_MODE_DAYI)
 		{
 			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_THREECODEMODE), SW_HIDE);
+			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_DAYIARTICLEMODE), SW_HIDE);
 		}
 		if(Global::imeMode!=IME_MODE_ARRAY)
 		{
@@ -364,6 +367,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		case IDC_RADIO_OUTPUT_CHT:
 		case IDC_RADIO_OUTPUT_CHS:
 		case IDC_CHECKBOX_THREECODEMODE:
+		case IDC_CHECKBOX_DAYIARTICLEMODE:
 		case IDC_CHECKBOX_ARRAY_FORCESP:
 		case IDC_CHECKBOX_ARRAY_NOTIFYSP:
 		case IDC_CHECKBOX_PHRASE:
@@ -431,6 +435,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		case PSN_APPLY:	
 			_autoCompose = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_AUTOCOMPOSE) == BST_CHECKED;
 			_threeCodeMode = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_THREECODEMODE) == BST_CHECKED;
+			_dayiArticleMode = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_DAYIARTICLEMODE) == BST_CHECKED;
 			_doBeep = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_DOBEEP) == BST_CHECKED;
 			_makePhrase = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_PHRASE) == BST_CHECKED;
 			_activatedKeyboardMode = IsDlgButtonChecked(hDlg, IDC_RADIO_KEYBOARD_OPEN) == BST_CHECKED;
@@ -799,6 +804,8 @@ VOID CConfig::WriteConfig()
 			fwprintf_s(fp, L"AppPermissionSet = %d\n", _appPermissionSet?1:0);
 		if(Global::imeMode == IME_MODE_DAYI)
 			fwprintf_s(fp, L"ThreeCodeMode = %d\n", _threeCodeMode?1:0);
+			fwprintf_s(fp, L"DayiArticleMode = %d\n", _dayiArticleMode ? 1 : 0);
+		
 		if(Global::imeMode == IME_MODE_ARRAY)
 		{
 			fwprintf_s(fp, L"ArrayForceSP = %d\n", _arrayForceSP?1:0);

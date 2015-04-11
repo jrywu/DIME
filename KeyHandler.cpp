@@ -182,7 +182,6 @@ HRESULT CDIME::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *p
 	{
 		CDIMEArray<CCandidateListItem> candidateList;
 	
-		//pCompositionProcessorEngine->GetCandidateList(&candidateList, !(pCompositionProcessorEngine->IsSymbol()|| Global::imeMode== IME_MODE_ARRAY ), FALSE);
 		pCompositionProcessorEngine->GetCandidateList(&candidateList, !(pCompositionProcessorEngine->IsSymbol()), FALSE);
 		
 		UINT nCount = candidateList.Count();
@@ -306,7 +305,7 @@ HRESULT CDIME::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pCont
     pCompositionProcessorEngine = _pCompositionProcessorEngine;
     pCompositionProcessorEngine->GetCandidateList(&candidateList, FALSE, isWildcardSearch);
 
-    // If there is no candlidate listin the current reading string, we don't do anything. Just wait for
+    // If there is no candlidate listing the current reading string, we don't do anything. Just wait for
     // next char to be ready for the conversion with it.
     int nCount = candidateList.Count();
     if (nCount)

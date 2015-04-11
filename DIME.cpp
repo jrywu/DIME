@@ -884,7 +884,7 @@ BOOL CDIME::SetupLanguageProfile(LANGID langid, REFGUID guidLanguageProfile, _In
 		_pCompositionProcessorEngine->SetupPreserved(pThreadMgr, tfClientId);	
 		_pCompositionProcessorEngine->SetupDictionaryFile(imeMode);
 		_pCompositionProcessorEngine->SetupKeystroke(imeMode);
-		_pCompositionProcessorEngine->SetupConfiguration();
+		_pCompositionProcessorEngine->SetupConfiguration(imeMode);
 	}
 
     

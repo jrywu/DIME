@@ -74,6 +74,10 @@ public:
 	static void SetArrayForceSP(BOOL arrayForceSP) { _arrayForceSP = arrayForceSP;}
 	static BOOL GetArrayForceSP() {return _arrayForceSP;}
 
+	//dayi address/article mode
+	static void setDayiArticleMode(BOOL dayiArticleMode) { _dayiArticleMode = dayiArticleMode; }
+	static BOOL getDayiArticleMode() { return _dayiArticleMode; }
+
 	//convert output string to simplifed chinese
 	static void SetDoHanConvert(BOOL doHanConvert) { _doHanConvert = doHanConvert;}
 	static BOOL GetDoHanConvert() {return _doHanConvert;}
@@ -128,6 +132,8 @@ private:
 	static BOOL _arrayForceSP;
 
 	static BOOL _doHanConvert;
+
+	static BOOL _dayiArticleMode;  // Article mode: input full-shaped symbols with address keys
 
 
 	static struct _stat _initTimeStamp;

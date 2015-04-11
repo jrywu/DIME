@@ -99,7 +99,7 @@ public:
 	_KEYSTROKE _keystrokeTable[MAX_RADICAL];
     
     void SetupPreserved(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId);
-    void SetupConfiguration();
+	void SetupConfiguration(IME_MODE imeMode);
 	void SetupKeystroke(IME_MODE imeMode);
 	BOOL SetupDictionaryFile(IME_MODE imeMode);
 	void ReleaseDictionaryFiles();
@@ -124,7 +124,7 @@ private:
     BOOL IsVirtualKeyKeystrokeCandidate(UINT uCode, _In_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode, _Out_ BOOL *pfRetCode, _In_ CDIMEArray<_KEYSTROKE> *pKeystrokeMetric);
     BOOL IsKeystrokeRange(UINT uCode, _Out_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode);
 
-    void SetInitialCandidateListRange();
+	void SetInitialCandidateListRange(IME_MODE imeMode);
 
 
     class XPreservedKey;

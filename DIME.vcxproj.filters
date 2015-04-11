@@ -342,6 +342,12 @@
     <Image Include="image\TSFGeneric.ico">
       <Filter>Resource Files</Filter>
     </Image>
+    <Image Include="image\TSFArray.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="image\TSFPhonetic.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DIME.rc">
