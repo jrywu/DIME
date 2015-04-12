@@ -196,7 +196,8 @@ HRESULT CDIME::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *p
 				_pUIPresenter->_SetCandidateSelectedTextColor(CConfig::GetSelectedColor(), CConfig::GetSelectedBGColor());    
 				_pUIPresenter->_SetCandidateNumberColor(CConfig::GetNumberColor(), CConfig::GetItemBGColor());    
 				_pUIPresenter->_SetCandidateFillColor(CConfig::GetItemBGColor());
-				_pUIPresenter->_SetCandidateText(&candidateList, TRUE, pCompositionProcessorEngine->GetCandidateWindowWidth());
+				_pUIPresenter->_SetCandidateText(&candidateList, _pCompositionProcessorEngine->GetCandidateListIndexRange(),
+							TRUE, pCompositionProcessorEngine->GetCandidateWindowWidth());
 				if (symbolMode)
 				{
 					_candidateMode = CANDIDATE_ORIGINAL;
@@ -319,13 +320,14 @@ HRESULT CDIME::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pCont
 			 _pUIPresenter->_SetCandidateSelectedTextColor(CConfig::GetSelectedColor(), CConfig::GetSelectedBGColor());    
 			 _pUIPresenter->_SetCandidateNumberColor(CConfig::GetNumberColor(), CConfig::GetItemBGColor());    
 			 _pUIPresenter->_SetCandidateFillColor(CConfig::GetItemBGColor());
-			 _pUIPresenter->_SetCandidateText(&candidateList, FALSE, pCompositionProcessorEngine->GetCandidateWindowWidth());
+			 _pUIPresenter->_SetCandidateText(&candidateList, _pCompositionProcessorEngine->GetCandidateListIndexRange(),
+							FALSE, pCompositionProcessorEngine->GetCandidateWindowWidth());
 		 }
 		
     }
 	else
 	{
-		pCompositionProcessorEngine->DoBeep();
+		DoBeep();
 	}
 	if(nCount==1 )  //finalized with the only candidate without showing cand.
 	{

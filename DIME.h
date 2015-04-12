@@ -173,6 +173,9 @@ public:
 	void _ProbeComposition(_In_ ITfContext *pContext);
 
 	BOOL _IsComposing();
+
+	//warning beeps and messages in notify window
+	void DoBeep();
 private:
 	
 	void _LoadConfig(BOOL isForce = FALSE);
@@ -261,6 +264,7 @@ private:
     void ConversionModeCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr, BOOL *setKeyboardOpenClose = NULL);
     void ShowAllLanguageBarIcons();
     void HideAllLanguageBarIcons();
+	
 
 
 private:

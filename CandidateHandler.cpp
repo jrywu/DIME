@@ -76,7 +76,7 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 		else
 		{
 			hr = S_FALSE;
-			_pCompositionProcessorEngine->DoBeep(); //beep for no valid mapping found
+			DoBeep(); //beep for no valid mapping found
 			goto Exit;
 		}
     }
@@ -118,7 +118,7 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 	//----------------- commit the selected string   
 	if(Global::imeMode == IME_MODE_ARRAY && !_IsUILessMode()  && !arrayUsingSPCode && CConfig::GetArrayForceSP() &&  ArraySPFound )
 	{
-		_pCompositionProcessorEngine->DoBeep();
+		DoBeep();
 		_HandleCancel(ec,pContext);
 		return hr;
 	}
@@ -150,7 +150,8 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 			_pUIPresenter->_SetCandidateSelectedTextColor(CConfig::GetSelectedColor(), CConfig::GetSelectedBGColor());    
 			_pUIPresenter->_SetCandidateNumberColor(CConfig::GetNumberColor(), CConfig::GetItemBGColor());    
 			_pUIPresenter->_SetCandidateFillColor(CConfig::GetItemBGColor());//(HBRUSH)(COLOR_WINDOW+1));    // Background color is window
-			_pUIPresenter->_SetCandidateText(&candidatePhraseList, TRUE, _pCompositionProcessorEngine->GetCandidateWindowWidth());
+			_pUIPresenter->_SetCandidateText(&candidatePhraseList, _pCompositionProcessorEngine->GetCandidateListIndexRange(),
+				TRUE, _pCompositionProcessorEngine->GetCandidateWindowWidth());
 			_pUIPresenter->_SetCandidateSelection(-1, FALSE); // set selected index to -1 if showing phrase candidates
 			_candidateMode = CANDIDATE_PHRASE;
 			_isCandidateWithWildcard = FALSE;	

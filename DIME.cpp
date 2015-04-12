@@ -943,3 +943,22 @@ void CDIME::_LoadConfig(BOOL isForce)
 
 
 }
+
+//+---------------------------------------------------------------------------
+//
+// CDIME::doBeep
+//
+//----------------------------------------------------------------------------
+
+void CDIME::DoBeep()
+{
+	if (CConfig::GetDoBeep())
+		MessageBeep(MB_ICONASTERISK);
+	if (CConfig::GetDoBeepNotify())
+	{
+		CStringRange notify;
+		if (_pUIPresenter)
+			_pUIPresenter->ShowNotifyText( &notify.Set(L"¿ù»~²Õ¦r",4) , 0, 1000, NOTIFY_BEEP);
+	}
+		
+}

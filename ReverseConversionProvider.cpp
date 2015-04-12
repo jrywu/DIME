@@ -95,7 +95,7 @@ HRESULT CReverseConversion::DoReverseConversion(_In_ LPCWSTR lpstrToConvert, _Ou
 	*ppList = _pReverseConversionList;
 	if(_pCompositionProcessorEngine == nullptr) return E_FAIL;
 	CDIMEArray<CCandidateListItem> candidateList;
-	hr = _pCompositionProcessorEngine->GetReverConversionResults(_imeMode, lpstrToConvert, &candidateList);
+	hr = _pCompositionProcessorEngine->GetReverseConversionResults(_imeMode, lpstrToConvert, &candidateList);
 	if(SUCCEEDED(hr) && _pReverseConversionList)
 		_pReverseConversionList->SetResultList(&candidateList);
 	return hr;

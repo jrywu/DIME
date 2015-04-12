@@ -38,7 +38,7 @@ public:
     void GetCandidateStringInConverted(CStringRange &searchString, _In_ CDIMEArray<CCandidateListItem> *pCandidateList);
 
 	//reverse converion
-	HRESULT GetReverConversionResults(IME_MODE imeMode, _In_ LPCWSTR lpstrToConvert, _Inout_ CDIMEArray<CCandidateListItem> *pCandidateList);
+	HRESULT GetReverseConversionResults(IME_MODE imeMode, _In_ LPCWSTR lpstrToConvert, _Inout_ CDIMEArray<CCandidateListItem> *pCandidateList);
 
 	//Han covert
 	BOOL GetSCFromTC(CStringRange* stringToConvert, CStringRange* convertedString);
@@ -73,12 +73,10 @@ public:
 
   
 
-    inline CCandidateRange *GetCandidateListIndexRange() { return &_candidateListIndexRange; }
+    inline CCandidateRange *GetCandidateListIndexRange() { return _pActiveCandidateListIndexRange; }
     inline UINT GetCandidateListPhraseModifier() { return _candidateListPhraseModifier; }
     inline UINT GetCandidateWindowWidth() { return _candidateWndWidth; }
 
-	// Play system warning beep
-	void DoBeep();
 
 	
 	struct _KEYSTROKE
@@ -191,7 +189,9 @@ private:
     BOOL _isWildcard : 1;
     BOOL _isDisableWildcardAtFirst : 1;
     BOOL _isKeystrokeSort : 1;
+	CCandidateRange* _pActiveCandidateListIndexRange;
 	CCandidateRange _candidateListIndexRange;
+	CCandidateRange _phraseCandidateListIndexRange;
     UINT _candidateListPhraseModifier;
     UINT _candidateWndWidth; 
 

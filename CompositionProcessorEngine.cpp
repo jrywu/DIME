@@ -58,7 +58,7 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CDIME *pTextServic
    
     _tfClientId = TF_CLIENTID_NULL;
 
-	
+	_pActiveCandidateListIndexRange = &_candidateListIndexRange; 
  
     _hasWildcardIncludedInKeystrokeBuffer = FALSE;
 
@@ -137,9 +137,9 @@ BOOL CCompositionProcessorEngine::AddVirtualKey(WCHAR wch)
     {
         return FALSE;
     }
-	if((UINT)_keystrokeBuffer.GetLength() >= CConfig::GetMaxCodes() )  // do not eat the key if keystroke buffer length >= _maxcodes
+	if((UINT)_keystrokeBuffer.GetLength() >= CConfig::GetMaxCodes() )  
 	{
-		DoBeep();
+		_pTextService->DoBeep(); // do not eat the key if keystroke buffer length >= _maxcodes
 		return FALSE;
 	}
     //
@@ -234,6 +234,7 @@ void CCompositionProcessorEngine::GetReadingStrings(_Inout_ CDIMEArray<CStringRa
     {
         return;
     }
+
     CStringRange oneKeystroke;
 
     _hasWildcardIncludedInKeystrokeBuffer = FALSE;
@@ -309,6 +310,8 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
     {
         return;
     }
+
+	_pActiveCandidateListIndexRange = &_candidateListIndexRange;  // Reset the active cand list range
 
     if (isIncrementalWordSearch)
     {
@@ -548,6 +551,8 @@ void CCompositionProcessorEngine::GetCandidateStringInConverted(CStringRange &se
     {
         return;
     }
+
+	_pActiveCandidateListIndexRange = &_phraseCandidateListIndexRange;  // Reset the active cand list range
 
     // Search phrase from SECTION_TEXT's converted string list
     CStringRange searchText;
@@ -826,9 +831,9 @@ IME_MODE CCompositionProcessorEngine::GetImeModeFromGuidProfile(REFGUID guidLang
 
 }
 
-HRESULT CCompositionProcessorEngine::GetReverConversionResults(IME_MODE imeMode, _In_ LPCWSTR lpstrToConvert, _Inout_ CDIMEArray<CCandidateListItem> *pCandidateList)
+HRESULT CCompositionProcessorEngine::GetReverseConversionResults(IME_MODE imeMode, _In_ LPCWSTR lpstrToConvert, _Inout_ CDIMEArray<CCandidateListItem> *pCandidateList)
 {
-	debugPrint(L"CCompositionProcessorEngine::GetReverConversionResults() \n");
+	debugPrint(L"CCompositionProcessorEngine::GetReverseConversionResults() \n");
 	
 
 	if(_pTableDictionaryEngine[imeMode] == nullptr)
@@ -1678,11 +1683,14 @@ CCompositionProcessorEngine::XPreservedKey::~XPreservedKey()
 void CCompositionProcessorEngine::SetInitialCandidateListRange(IME_MODE imeMode)
 {
 	_candidateListIndexRange.Clear();
+	_phraseCandidateListIndexRange.Clear();
     for (DWORD i = 0; i < 10; i++)
     {
-        DWORD* pNewIndexRange = nullptr;
+		DWORD* pNewIndexRange = nullptr;
+		DWORD* pNewPhraseIndexRange = nullptr;
 
         pNewIndexRange = _candidateListIndexRange.Append();
+		pNewPhraseIndexRange = _phraseCandidateListIndexRange.Append();
         if (pNewIndexRange != nullptr)
         {
 			if (imeMode == IME_MODE_DAYI)	*pNewIndexRange = i;
@@ -1698,7 +1706,20 @@ void CCompositionProcessorEngine::SetInitialCandidateListRange(IME_MODE imeMode)
 				}
 			}
         }
+		if (pNewPhraseIndexRange != nullptr)
+		{
+			if (i != 9)
+			{
+				*pNewPhraseIndexRange = i + 1;
+			}
+			else
+			{
+				*pNewPhraseIndexRange = 0;
+			}
+
+		}
     }
+	_pActiveCandidateListIndexRange = &_candidateListIndexRange;  // Preset the active cand list range
 }
 
 
@@ -2065,7 +2086,7 @@ BOOL CCompositionProcessorEngine::IsKeystrokeRange(UINT uCode, _Out_ _KEYSTROKE_
     pKeyState->Category = CATEGORY_NONE;
     pKeyState->Function = FUNCTION_NONE;
 
-    if (_candidateListIndexRange.IsRange(uCode, candidateMode))
+	if (_pActiveCandidateListIndexRange->IsRange(uCode, candidateMode))
     {
         if (candidateMode == CANDIDATE_PHRASE)
         {
@@ -2089,7 +2110,8 @@ BOOL CCompositionProcessorEngine::IsKeystrokeRange(UINT uCode, _Out_ _KEYSTROKE_
             if ((GetCandidateListPhraseModifier() == 0 && (Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT) )!= 0) || //shift + 123...
                 (GetCandidateListPhraseModifier() != 0 && Global::CheckModifiers(Global::ModifiersValue, GetCandidateListPhraseModifier())))
             {
-                pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_SELECT_BY_NUMBER;
+                pKeyState->Category = CATEGORY_CANDIDATE; 
+				pKeyState->Function = FUNCTION_SELECT_BY_NUMBER;
                 return TRUE;
             }
             // else next composition
@@ -2103,17 +2125,7 @@ BOOL CCompositionProcessorEngine::IsKeystrokeRange(UINT uCode, _Out_ _KEYSTROKE_
     return FALSE;
 }
 
-//+---------------------------------------------------------------------------
-//
-// CCompositionProcessorEngine::doBeep
-//
-//----------------------------------------------------------------------------
 
-void CCompositionProcessorEngine::DoBeep()
-{
-	if(CConfig::GetDoBeep())
-		MessageBeep(MB_ICONASTERISK);
-}
 
 
 void CCompositionProcessorEngine::UpdateDictionaryFile()

@@ -15,6 +15,7 @@
 
 //static configuration settings initilization
 BOOL CConfig::_doBeep = TRUE;
+BOOL CConfig::_doBeepNotify = FALSE;
 BOOL CConfig::_autoCompose = FALSE;
 BOOL CConfig::_threeCodeMode = TRUE;
 BOOL CConfig::_arrayForceSP = FALSE;
@@ -256,6 +257,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 
 		CheckDlgButton(hDlg, IDC_CHECKBOX_AUTOCOMPOSE, (_autoCompose)?BST_CHECKED:BST_UNCHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_DOBEEP, (_doBeep)?BST_CHECKED:BST_UNCHECKED);
+		CheckDlgButton(hDlg, IDC_CHECKBOX_DOBEEPNOTIFY, (_doBeepNotify) ? BST_CHECKED : BST_UNCHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_THREECODEMODE,(_threeCodeMode)?BST_CHECKED:BST_UNCHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_DAYIARTICLEMODE, (_dayiArticleMode) ? BST_CHECKED : BST_UNCHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_ARRAY_FORCESP,(_arrayForceSP)?BST_CHECKED:BST_UNCHECKED);
@@ -362,6 +364,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 
 		case IDC_CHECKBOX_AUTOCOMPOSE:
 		case IDC_CHECKBOX_DOBEEP:
+		case IDC_CHECKBOX_DOBEEPNOTIFY:
 		case IDC_RADIO_KEYBOARD_OPEN:
 		case IDC_RADIO_KEYBOARD_CLOSE:
 		case IDC_RADIO_OUTPUT_CHT:
@@ -377,7 +380,10 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			PropSheet_Changed(GetParent(hDlg), hDlg);
 			ret = TRUE;
 			break;
-
+		case IDOK:
+			CConfig::WriteConfig();
+			ret = TRUE;
+			break;
 		default:
 			break;
 		}
@@ -429,6 +435,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		ret = TRUE;
 		break;
 
+
 	case WM_NOTIFY:
 		switch(((LPNMHDR)lParam)->code)
 		{
@@ -437,6 +444,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			_threeCodeMode = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_THREECODEMODE) == BST_CHECKED;
 			_dayiArticleMode = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_DAYIARTICLEMODE) == BST_CHECKED;
 			_doBeep = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_DOBEEP) == BST_CHECKED;
+			_doBeepNotify = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_DOBEEPNOTIFY) == BST_CHECKED;
 			_makePhrase = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_PHRASE) == BST_CHECKED;
 			_activatedKeyboardMode = IsDlgButtonChecked(hDlg, IDC_RADIO_KEYBOARD_OPEN) == BST_CHECKED;
 			_doHanConvert = IsDlgButtonChecked(hDlg, IDC_RADIO_OUTPUT_CHS) == BST_CHECKED;
@@ -770,6 +778,7 @@ VOID CConfig::WriteConfig()
 		fwprintf_s(fp, L"SpaceAsPageDown = %d\n", _spaceAsPageDown?1:0);
 		fwprintf_s(fp, L"ArrowKeySWPages = %d\n", _arrowKeySWPages?1:0);
 		fwprintf_s(fp, L"DoBeep = %d\n", _doBeep?1:0);
+		fwprintf_s(fp, L"DoBeepNotify = %d\n", _doBeepNotify ? 1 : 0);
 		fwprintf_s(fp, L"ActivatedKeyboardMode = %d\n", _activatedKeyboardMode?1:0);
 		fwprintf_s(fp, L"MakePhrase = %d\n", _makePhrase?1:0);
 		fwprintf_s(fp, L"MaxCodes = %d\n", _maxCodes);

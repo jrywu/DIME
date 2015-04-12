@@ -1360,6 +1360,7 @@ Exit:
 
 BOOL CCandidateWindow::_AdjustPageIndexForSelection()
 {
+	if (_pIndexRange == nullptr) return FALSE;
     UINT candidateListPageCnt = _pIndexRange->Count();
     UINT* pNewPageIndex = nullptr;
     UINT newPageCnt = 0;

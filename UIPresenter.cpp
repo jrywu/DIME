@@ -565,11 +565,14 @@ void CUIPresenter::_EndCandidateList()
 //
 //----------------------------------------------------------------------------
 
-void CUIPresenter::_SetCandidateText(_In_ CDIMEArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode, UINT candWidth)
+void CUIPresenter::_SetCandidateText(_In_ CDIMEArray<CCandidateListItem> *pCandidateList,_In_ CCandidateRange* pIndexRange, BOOL isAddFindKeyCode, UINT candWidth)
 {
 	debugPrint(L"CUIPresenter::_SetCandidateText() candWidth = %d", candWidth);
     AddCandidateToUI(pCandidateList, isAddFindKeyCode);
 
+	_pIndexRange = pIndexRange;
+
+	
     SetPageIndexWithScrollInfo(pCandidateList);
 
 	if(_pCandidateWnd)
@@ -603,6 +606,9 @@ void CUIPresenter::AddCandidateToUI(_In_ CDIMEArray<CCandidateListItem> *pCandid
 void CUIPresenter::SetPageIndexWithScrollInfo(_In_ CDIMEArray<CCandidateListItem> *pCandidateList)
 {
 	if(_pIndexRange == nullptr || pCandidateList == nullptr || _pCandidateWnd==nullptr ) return;
+
+	_pCandidateWnd->_SetCandIndexRange(_pIndexRange);
+
     UINT candCntInPage = _pIndexRange->Count();
     UINT bufferSize = pCandidateList->Count() / candCntInPage + 1;
     UINT* puPageIndex = new (std::nothrow) UINT[ bufferSize ];
@@ -1415,7 +1421,7 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ UINT dela
 
 	if (_pNotifyWnd) 
 	{
-		if(notifyType == NOTIFY_CHN_ENG && _pNotifyWnd->GetNotifyType() != NOTIFY_CHN_ENG )
+		if (notifyType == NOTIFY_CHN_ENG && _pNotifyWnd->GetNotifyType() != NOTIFY_CHN_ENG)
 			return;
 		else
 			ClearNotify();
@@ -1482,7 +1488,7 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ UINT dela
 						_pNotifyWnd->_Move(_notifyLocation.x, _notifyLocation.y);
 				}
 
-				if(_pTextService && delayShow == 0 && _GetContextDocument() == nullptr ) //means TextLayoutSink is not working. We need to ProbeComposition to start layout
+				if(notifyType==NOTIFY_CHN_ENG &&_pTextService && delayShow == 0 && _GetContextDocument() == nullptr ) //means TextLayoutSink is not working. We need to ProbeComposition to start layout
 					_pTextService->_ProbeComposition(pContext);
 
 			}

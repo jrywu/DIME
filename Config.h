@@ -37,6 +37,8 @@ public:
 	static UINT GetMaxCodes(){return _maxCodes;}
 	static void SetDoBeep(BOOL doBeep) { _doBeep = doBeep;}
 	static BOOL GetDoBeep() {return _doBeep;}
+	static void SetDoBeepNotify(BOOL doBeepNotify) { _doBeepNotify = doBeepNotify; }
+	static BOOL GetDoBeepNotify() { return _doBeepNotify; }
 	static void SetMakePhrase(BOOL makePhrase) { _makePhrase = makePhrase;}
 	static BOOL GetMakePhrase() {return _makePhrase;}
 	static void SetShowNotifyDesktop(BOOL showNotifyDesktop) { _showNotifyDesktop = showNotifyDesktop;}
@@ -108,6 +110,7 @@ private:
 	static BOOL _autoCompose;
 	static BOOL _threeCodeMode;
 	static BOOL _doBeep;
+	static BOOL _doBeepNotify;
 	static BOOL _appPermissionSet;
 	static BOOL _reloadReverseConversion;
 	static BOOL _activatedKeyboardMode;
