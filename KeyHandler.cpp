@@ -491,6 +491,10 @@ HRESULT CDIME::_HandleCompositionAddressChar(TfEditCookie ec, _In_ ITfContext *p
     CCompositionProcessorEngine* pCompositionProcessorEngine = nullptr;
     pCompositionProcessorEngine = _pCompositionProcessorEngine;
 
+	if (pCompositionProcessorEngine == nullptr) return S_FALSE;
+
+	if (_IsComposing())  _HandleCancel(ec, pContext);
+
 	WCHAR addressChar = pCompositionProcessorEngine->GetDayiAddressChar(wch);
 
     CStringRange addressCharString;

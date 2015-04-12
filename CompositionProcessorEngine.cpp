@@ -666,18 +666,16 @@ BOOL CCompositionProcessorEngine::IsDayiAddressChar(WCHAR wch)
 {
 	if(Global::imeMode != IME_MODE_DAYI || ( _pTableDictionaryEngine[IME_MODE_DAYI] &&
 		_pTableDictionaryEngine[IME_MODE_DAYI]->GetDictionaryType() != TTS_DICTIONARY)) return FALSE;
-	if(_keystrokeBuffer.Get() == nullptr || (_keystrokeBuffer.Get() && (_keystrokeBuffer.GetLength() == 0))) 
+	
+	for (int i = 0; i < ARRAYSIZE(Global::dayiAddressCharTable); i++)
 	{
-		for (int i = 0; i < ARRAYSIZE(Global::dayiAddressCharTable); i++)
+		if (Global::dayiAddressCharTable[i]._Code == wch)
 		{
-			if (Global::dayiAddressCharTable[i]._Code == wch)
-			{
-				return TRUE;
-			}
+			return TRUE;
 		}
-
 	}
-    return FALSE;
+
+	return FALSE;
 }
 
 //+---------------------------------------------------------------------------
