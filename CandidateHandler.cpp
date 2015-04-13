@@ -76,6 +76,7 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 		else
 		{
 			hr = S_FALSE;
+			_HandleCancel(ec, pContext);
 			DoBeep(); //beep for no valid mapping found
 			goto Exit;
 		}
@@ -118,8 +119,8 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 	//----------------- commit the selected string   
 	if(Global::imeMode == IME_MODE_ARRAY && !_IsUILessMode()  && !arrayUsingSPCode && CConfig::GetArrayForceSP() &&  ArraySPFound )
 	{
+		_HandleCancel(ec, pContext);
 		DoBeep();
-		_HandleCancel(ec,pContext);
 		return hr;
 	}
 	else

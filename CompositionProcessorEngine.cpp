@@ -139,7 +139,7 @@ BOOL CCompositionProcessorEngine::AddVirtualKey(WCHAR wch)
     }
 	if((UINT)_keystrokeBuffer.GetLength() >= CConfig::GetMaxCodes() )  
 	{
-		_pTextService->DoBeep(); // do not eat the key if keystroke buffer length >= _maxcodes
+		//_pTextService->DoBeep(); // do not eat the key if keystroke buffer length >= _maxcodes
 		return FALSE;
 	}
     //

@@ -345,7 +345,7 @@ HRESULT CBaseWindow::_GetWindowExtent(_In_ const RECT *prcTextExtent, _In_opt_ R
 	RECT rcWorkArea = {0, 0, 0, 0};
 
     // Get work area
-    GetWorkAreaFromPoint(*(LPPOINT)&prcTextExtent->left, &rcWorkArea);
+    GetWorkAreaFromPoint(*(LPPOINT)&prcTextExtent->right, &rcWorkArea);
 
     // Calc candidate window extent
     if (prcCandidateExtent)
@@ -373,7 +373,7 @@ void CBaseWindow::CalcFitPointAroundTextExtent(_In_ const RECT *prcTextExtent, _
 
     // set rcTargetWindow[0] which rectangle attached on bottom side of text extent
     rcTargetWindow[0] = *prcWindow;
-    OffsetRect(&rcTargetWindow[0], prcTextExtent->left, prcTextExtent->bottom);
+    OffsetRect(&rcTargetWindow[0], prcTextExtent->right, prcTextExtent->bottom);
 
 	debugPrint(L"CBaseWindow::CalcFitPointAroundTextExtent, attach top side: top = %d, bottom = %d, right = %d, left = %d",
 		rcTargetWindow[0].top, rcTargetWindow[0].bottom, rcTargetWindow[0].right, rcTargetWindow[0].left);
@@ -381,7 +381,7 @@ void CBaseWindow::CalcFitPointAroundTextExtent(_In_ const RECT *prcTextExtent, _
 
     // set rcTargetWindow[1] which rectangle attached on top side of text extent
     rcTargetWindow[1] = *prcWindow;
-    OffsetRect(&rcTargetWindow[1], prcTextExtent->left, prcTextExtent->top - (prcWindow->bottom - prcWindow->top));
+    OffsetRect(&rcTargetWindow[1], prcTextExtent->right, prcTextExtent->top - (prcWindow->bottom - prcWindow->top));
 
 	debugPrint(L"CBaseWindow::CalcFitPointAroundTextExtent, attach bottom side: top = %d, bottom = %d, right = %d, left = %d",
 		rcTargetWindow[1].top, rcTargetWindow[1].bottom, rcTargetWindow[1].right, rcTargetWindow[1].left);
@@ -401,24 +401,28 @@ void CBaseWindow::CalcFitPointAroundTextExtent(_In_ const RECT *prcTextExtent, _
         // starts input, then drag window way off screen, both of these will be true
         if ((dwFlags[i] & RECT_OVER_TOP) || (dwFlags[i] & RECT_OVER_BOTTOM))
         {
+			debugPrint(L"CBaseWindow::CalcFitPointAroundTextExtent, dwFlags[%d] over top or over bottom ", i);
             continue;
         }
 
         if (dwFlags[i] == RECT_INSIDE)
         {
             *ppt = *(POINT*)&rcTargetWindow[i].left;
+			debugPrint(L"CBaseWindow::CalcFitPointAroundTextExtent, dwFlags[%d] inside rect and ppt.x= %d, ppt.y=%d ", i, ppt->x, ppt->y);
             return;
         }
         else if ((dwFlags[i] & RECT_OVER_LEFT) != 0)
         {
             ppt->x = 0;
             ppt->y = rcTargetWindow[i].top;
+			debugPrint(L"CBaseWindow::CalcFitPointAroundTextExtent, dwFlags[%d] over left and ppt.x= %d, ppt.y=%d ", i, ppt->x, ppt->y);
             return;
         }
         else if ((dwFlags[i] & RECT_OVER_RIGHT) != 0)
         {
-            ppt->x = prcWorkArea->right - (prcWindow->right - prcWindow->left);
+			ppt->x = prcTextExtent->left - (prcWindow->right - prcWindow->left);
             ppt->y = rcTargetWindow[i].top;
+			debugPrint(L"CBaseWindow::CalcFitPointAroundTextExtent, dwFlags[%d] over right and ppt.x= %d, ppt.y=%d ", i, ppt->x, ppt->y);
             return;
         }
     }
@@ -427,26 +431,31 @@ void CBaseWindow::CalcFitPointAroundTextExtent(_In_ const RECT *prcTextExtent, _
     // then "dock" the window to top or bottom of working area.
     if ((dwFlags[0] & RECT_OVER_TOP) != 0)
     {
+		debugPrint(L"CBaseWindow::CalcFitPointAroundTextExtent, dwFlags[0] over top and ppt.y=0 (dock top) ");
         ppt->y = 0;
     }
     else 
     {
         ppt->y = prcWorkArea->bottom - (prcWindow->bottom - prcWindow->top);
+		debugPrint(L"CBaseWindow::CalcFitPointAroundTextExtent, dwFlags[0] is not over top and ppt.y = %d ", ppt->y);
     }
 
     // dock to left/right edge if RECT_OVER_LEFT or RECT_OVER_RIGHT.
     // else just stay where we are
     if ((dwFlags[0] & RECT_OVER_LEFT) != 0)
     {
+		debugPrint(L"CBaseWindow::CalcFitPointAroundTextExtent, dwFlags[0] over left and ppt.x=0 (dock left) ");
         ppt->x = 0;
     }
     else if ((dwFlags[0] & RECT_OVER_RIGHT) != 0)
     {
-        ppt->x = prcWorkArea->right - (prcWindow->right - prcWindow->left);
+		ppt->x = prcTextExtent->left - (prcWindow->right - prcWindow->left);
+		debugPrint(L"CBaseWindow::CalcFitPointAroundTextExtent, dwFlags[0] over right and ppt.x= %d ", ppt->x);
     }
     else
     {
-        ppt->x = prcTextExtent->left;
+        ppt->x = prcTextExtent->right;
+		debugPrint(L"CBaseWindow::CalcFitPointAroundTextExtent, dwFlags[0] is not over right and ppt.x= %d ", ppt->x);
     }
 
     return;

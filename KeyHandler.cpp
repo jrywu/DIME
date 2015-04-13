@@ -132,9 +132,17 @@ HRESULT CDIME::_HandleCompositionInput(TfEditCookie ec, _In_ ITfContext *pContex
     }
 
     // Add virtual key to composition processor engine
-    pCompositionProcessorEngine->AddVirtualKey(wch);
+	if (pCompositionProcessorEngine->AddVirtualKey(wch))
+		_HandleCompositionInputWorker(pCompositionProcessorEngine, ec, pContext);
+	else
+	{
+		_HandleCancel(ec, pContext);  // Add virtual key failed. exceed max codes or something. 
+		DoBeep();
 
-    _HandleCompositionInputWorker(pCompositionProcessorEngine, ec, pContext);
+	}
+	
+
+    
 
 Exit:
     tfSelection.range->Release();
@@ -327,7 +335,9 @@ HRESULT CDIME::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pCont
     }
 	else
 	{
+		_HandleCancel(ec, pContext);
 		DoBeep();
+		
 	}
 	if(nCount==1 )  //finalized with the only candidate without showing cand.
 	{

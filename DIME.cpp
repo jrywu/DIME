@@ -953,7 +953,7 @@ void CDIME::_LoadConfig(BOOL isForce)
 void CDIME::DoBeep()
 {
 	if (CConfig::GetDoBeep())
-		MessageBeep(MB_ICONASTERISK);
+		MessageBeep(MB_ICONERROR);
 	if (CConfig::GetDoBeepNotify())
 	{
 		CStringRange notify;
