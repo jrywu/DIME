@@ -373,7 +373,12 @@ void CBaseWindow::CalcFitPointAroundTextExtent(_In_ const RECT *prcTextExtent, _
 
     // set rcTargetWindow[0] which rectangle attached on bottom side of text extent
     rcTargetWindow[0] = *prcWindow;
-    OffsetRect(&rcTargetWindow[0], prcTextExtent->left, prcTextExtent->bottom);
+	int baseX = prcTextExtent->right;
+	if ((prcTextExtent->right - prcTextExtent->left) > (prcWindow->right - prcWindow->left))
+	// the return text extent area is a large area instead as careet or composition range, like firefox 32bit.
+		baseX = prcTextExtent->left;
+	
+	OffsetRect(&rcTargetWindow[0], baseX, prcTextExtent->bottom);
 
 	debugPrint(L"CBaseWindow::CalcFitPointAroundTextExtent, attach top side: top = %d, bottom = %d, right = %d, left = %d",
 		rcTargetWindow[0].top, rcTargetWindow[0].bottom, rcTargetWindow[0].right, rcTargetWindow[0].left);
@@ -381,7 +386,7 @@ void CBaseWindow::CalcFitPointAroundTextExtent(_In_ const RECT *prcTextExtent, _
 
     // set rcTargetWindow[1] which rectangle attached on top side of text extent
     rcTargetWindow[1] = *prcWindow;
-    OffsetRect(&rcTargetWindow[1], prcTextExtent->left, prcTextExtent->top - (prcWindow->bottom - prcWindow->top));
+	OffsetRect(&rcTargetWindow[1], baseX, prcTextExtent->top - (prcWindow->bottom - prcWindow->top));
 
 	debugPrint(L"CBaseWindow::CalcFitPointAroundTextExtent, attach bottom side: top = %d, bottom = %d, right = %d, left = %d",
 		rcTargetWindow[1].top, rcTargetWindow[1].bottom, rcTargetWindow[1].right, rcTargetWindow[1].left);
@@ -437,7 +442,7 @@ void CBaseWindow::CalcFitPointAroundTextExtent(_In_ const RECT *prcTextExtent, _
     else 
     {
         ppt->y = prcWorkArea->bottom - (prcWindow->bottom - prcWindow->top);
-		debugPrint(L"CBaseWindow::CalcFitPointAroundTextExtent, dwFlags[0] is not over top and ppt.y = %d ", ppt->y);
+		debugPrint(L"CBaseWindow::CalcFitPointAroundTextExtent, dwFlags[0] is over bottom and ppt.y = %d ", ppt->y);
     }
 
     // dock to left/right edge if RECT_OVER_LEFT or RECT_OVER_RIGHT.
