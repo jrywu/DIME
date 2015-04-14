@@ -795,9 +795,14 @@ void CUIPresenter::_MoveUIWindowsToTextExt()
 		ITfContextView * pView = nullptr;
 		HWND parentWndHandle;
 		if (pContext && pView && SUCCEEDED(pContext->GetActiveView(&pView)))
+			pView->GetWnd(&parentWndHandle);
+		else
+		{
+			parentWndHandle = GetActiveWindow();
+		}
+		if (parentWndHandle)
 		{
 			POINT pt;
-			pView->GetWnd(&parentWndHandle);
 			GetCaretPos(&pt);
 			ClientToScreen(parentWndHandle, &pt);
 			debugPrint(L"current caret position from GetCaretPos, x = %d, y = %d", pt.x, pt.y);
