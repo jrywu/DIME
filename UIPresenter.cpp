@@ -802,96 +802,13 @@ void CUIPresenter::_MoveUIWindowsToTextExt()
 			ClientToScreen(parentWndHandle, &pt);
 			debugPrint(L"current caret position from GetCaretPos, x = %d, y = %d", pt.x, pt.y);
 			if(pt.x <compRect.right && pt.x >=compRect.left) 	compRect.left = pt.x;
-			//if(pt.y <=compRect.bottom && pt.y >compRect.top && (compRect.bottom - pt.y < pt.y - compRect.top) ) 	compRect.bottom = pt.y;
-			/*
-			GUITHREADINFO* guiInfo = new GUITHREADINFO;
-			guiInfo->cbSize = sizeof(GUITHREADINFO);
-			GetGUIThreadInfo(NULL, guiInfo);
-			if(guiInfo->hwndCaret)
-			{   //for acient non TSF aware apps with a floating composition window.  The caret position we can get is always the caret in the flaoting comosition window.
-
-			pt.x = guiInfo->rcCaret.left;
-			pt.y = guiInfo->rcCaret.bottom;
-			ClientToScreen(parentWndHandle, &pt);
-			debugPrint(L"current caret position from GetGUIThreadInfo, x = %d, y = %d", pt.x, pt.y);
-			if(pt.x <compRect.right && pt.x >=compRect.left) 	compRect.left = pt.x;
-			//if(pt.y <=compRect.bottom && pt.y >compRect.top && (compRect.bottom - pt.y < pt.y - compRect.top) ) 	compRect.bottom = pt.y;
-			}
-			*/
 		}
 	}
 	else
 		compRect = _rectCompRange;
 
 	_LayoutChangeNotification(&compRect);
-	/*
-	RECT candRect = {0, 0, 0, 0};
-	RECT notifyRect = {0, 0, 0, 0};
-    POINT candPt = {0, 0};
-	POINT notifyPt = {0, 0};
-
 	
-	if(_pCandidateWnd)
-	{
-		_pCandidateWnd->_GetClientRect(&candRect);
-		_pCandidateWnd->_GetWindowExtent(&compRect, &candRect, &candPt);
-		_pCandidateWnd->_Move(candPt.x, candPt.y);
-		_candLocation.x = candPt.x;
-		_candLocation.y = candPt.y;
-		debugPrint(L"move cand to x = %d, y = %d", candPt.x, candPt.y);
-	}
-	if(_pNotifyWnd)
-	{
-		
-		if(_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())
-		{
-			debugPrint(L"notify width = %d, candwidth = %d", _pNotifyWnd->_GetWidth(), _pCandidateWnd->_GetWidth());
-			if(candPt.x < (int) _pNotifyWnd->_GetWidth() )
-			{
-				_pNotifyWnd->_Move(candPt.x + _pCandidateWnd->_GetWidth(), candPt.y);
-				debugPrint(L"move notify to x = %d, y = %d", candPt.x + _pCandidateWnd->_GetWidth(), candPt.y);
-			}
-			else
-			{
-				_pNotifyWnd->_Move(candPt.x-_pNotifyWnd->_GetWidth(), candPt.y);
-				debugPrint(L"move notify to x = %d, y = %d", candPt.x-_pNotifyWnd->_GetWidth(), candPt.y);
-			}
-			_notifyLocation.x = candPt.x;
-			_notifyLocation.y = candPt.y;
-		}
-		else
-		{
-			_pNotifyWnd->_InvalidateRect();
-			_pNotifyWnd->_GetClientRect(&notifyRect);
-			_pNotifyWnd->_GetWindowExtent(&compRect, &notifyRect, &notifyPt);
-			_pNotifyWnd->_Move(notifyPt.x, notifyPt.y);
-			_notifyLocation.x = notifyPt.x;
-			_notifyLocation.y = notifyPt.y;
-		}
-		
-	}
-	/*
-	if(_pCandidateWnd )
-	{
-		_pCandidateWnd->_Move(compRect.left, compRect.bottom);
-		_candLocation.x = compRect.left;
-		_candLocation.y = compRect.bottom;
-	}
-	if(_pNotifyWnd )
-   {
-	   _notifyLocation.x = compRect.left;
-	   _notifyLocation.y = compRect.bottom;
-	   if(_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())
-	   {
-		   if( _notifyLocation.x  < (int) _pNotifyWnd->_GetWidth() ) //no rooom left for notify window in the left of cand. move the notify window to the right
-			   _pNotifyWnd->_Move(_notifyLocation.x  + _pCandidateWnd->_GetWidth() , _notifyLocation.y);
-		   else	
-			   _pNotifyWnd->_Move(_notifyLocation.x  - _pNotifyWnd->_GetWidth() , _notifyLocation.y);
-	   }
-	   else
-		   _pNotifyWnd->_Move(_notifyLocation.x , _notifyLocation.y);
-   }
-   */
 }
 //+---------------------------------------------------------------------------
 //
@@ -916,29 +833,17 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
 
 	
 	if (pContext && pView && SUCCEEDED(pContext->GetActiveView(&pView)))
+		pView->GetWnd(&parentWndHandle);
+	else
+		parentWndHandle = GetActiveWindow();
+	if (parentWndHandle)
 	{
 		POINT pt;
-		pView->GetWnd(&parentWndHandle);
+		
 		GetCaretPos(&pt);
 		ClientToScreen(parentWndHandle, &pt);
 		debugPrint(L"current caret position from GetCaretPos, x = %d, y = %d", pt.x, pt.y);
 		if(pt.x <compRect.right && pt.x >=compRect.left) 	compRect.left = pt.x;
-		//if(pt.y <=compRect.bottom && pt.y >compRect.top && (compRect.bottom - pt.y < pt.y - compRect.top) ) 	compRect.bottom = pt.y;
-		/*
-		GUITHREADINFO* guiInfo = new GUITHREADINFO;
-		guiInfo->cbSize = sizeof(GUITHREADINFO);
-		GetGUIThreadInfo(NULL, guiInfo);
-		if(guiInfo->hwndCaret)
-		{   //for acient non TSF aware apps with a floating composition window.  The caret position we can get is always the caret in the flaoting comosition window.
-
-			pt.x = guiInfo->rcCaret.left;
-			pt.y = guiInfo->rcCaret.bottom;
-			ClientToScreen(parentWndHandle, &pt);
-			debugPrint(L"current caret position from GetGUIThreadInfo, x = %d, y = %d", pt.x, pt.y);
-			if(pt.x <compRect.right && pt.x >=compRect.left) 	compRect.left = pt.x;
-			//if(pt.y <=compRect.bottom && pt.y >compRect.top && (compRect.bottom - pt.y < pt.y - compRect.top) ) 	compRect.bottom = pt.y;
-		}
-		*/
 	}
 	if(_pCandidateWnd && lpRect
 		&& (lpRect->bottom - lpRect->top >1 || lpRect->right - lpRect->left >1)  ) // confirm the extent rect is valid.

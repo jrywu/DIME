@@ -345,7 +345,7 @@ HRESULT CBaseWindow::_GetWindowExtent(_In_ const RECT *prcTextExtent, _In_opt_ R
 	RECT rcWorkArea = {0, 0, 0, 0};
 
     // Get work area
-    GetWorkAreaFromPoint(*(LPPOINT)&prcTextExtent->right, &rcWorkArea);
+    GetWorkAreaFromPoint(*(LPPOINT)&prcTextExtent->left, &rcWorkArea);
 
     // Calc candidate window extent
     if (prcCandidateExtent)
@@ -373,7 +373,7 @@ void CBaseWindow::CalcFitPointAroundTextExtent(_In_ const RECT *prcTextExtent, _
 
     // set rcTargetWindow[0] which rectangle attached on bottom side of text extent
     rcTargetWindow[0] = *prcWindow;
-    OffsetRect(&rcTargetWindow[0], prcTextExtent->right, prcTextExtent->bottom);
+    OffsetRect(&rcTargetWindow[0], prcTextExtent->left, prcTextExtent->bottom);
 
 	debugPrint(L"CBaseWindow::CalcFitPointAroundTextExtent, attach top side: top = %d, bottom = %d, right = %d, left = %d",
 		rcTargetWindow[0].top, rcTargetWindow[0].bottom, rcTargetWindow[0].right, rcTargetWindow[0].left);
@@ -381,7 +381,7 @@ void CBaseWindow::CalcFitPointAroundTextExtent(_In_ const RECT *prcTextExtent, _
 
     // set rcTargetWindow[1] which rectangle attached on top side of text extent
     rcTargetWindow[1] = *prcWindow;
-    OffsetRect(&rcTargetWindow[1], prcTextExtent->right, prcTextExtent->top - (prcWindow->bottom - prcWindow->top));
+    OffsetRect(&rcTargetWindow[1], prcTextExtent->left, prcTextExtent->top - (prcWindow->bottom - prcWindow->top));
 
 	debugPrint(L"CBaseWindow::CalcFitPointAroundTextExtent, attach bottom side: top = %d, bottom = %d, right = %d, left = %d",
 		rcTargetWindow[1].top, rcTargetWindow[1].bottom, rcTargetWindow[1].right, rcTargetWindow[1].left);
