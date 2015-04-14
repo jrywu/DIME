@@ -789,25 +789,13 @@ void CUIPresenter::_MoveUIWindowsToTextExt()
 
 	if (SUCCEEDED(_GetTextExt(&compRect)))
 	{
-
 		debugPrint(L"CUIPresenter::_MoveCandidateWindowToTextExt(), top = %d, bottom = %d, right = %d, left = %d", compRect.top, compRect.bottom, compRect.right, compRect.left);
-		ITfContext *pContext =  _GetContextDocument();
-		ITfContextView * pView = nullptr;
-		HWND parentWndHandle;
-		if (pContext && pView && SUCCEEDED(pContext->GetActiveView(&pView)))
-		{
-			POINT pt;
-			GetCaretPos(&pt);
-			pView->GetWnd(&parentWndHandle);
-			ClientToScreen(parentWndHandle, &pt);
-			debugPrint(L"current caret position from GetCaretPos, x = %d, y = %d", pt.x, pt.y);
-			if(pt.x <compRect.right && pt.x >=compRect.left) 	compRect.left = pt.x;
-		}
+		_LayoutChangeNotification(&compRect);
 	}
 	else
-		compRect = _rectCompRange;
+		_LayoutChangeNotification(&_rectCompRange);
 
-	_LayoutChangeNotification(&compRect);
+	
 	
 }
 //+---------------------------------------------------------------------------
@@ -830,7 +818,7 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
 	ITfContext *pContext =  _GetContextDocument();
 	ITfContextView * pView = nullptr;
 	HWND parentWndHandle;
-
+	POINT caretPt = { 0, 0 };
 	
 	if (pContext && pView && SUCCEEDED(pContext->GetActiveView(&pView)))
 		pView->GetWnd(&parentWndHandle);
@@ -838,17 +826,18 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
 		parentWndHandle = GetActiveWindow();
 	if (parentWndHandle)
 	{
-		POINT pt;
+		GetCaretPos(&caretPt);
+		ClientToScreen(parentWndHandle, &caretPt);
+		debugPrint(L"current caret position from GetCaretPos, x = %d, y = %d", caretPt.x, caretPt.y);
 		
-		GetCaretPos(&pt);
-		ClientToScreen(parentWndHandle, &pt);
-		debugPrint(L"current caret position from GetCaretPos, x = %d, y = %d", pt.x, pt.y);
-		if(pt.x <compRect.right && pt.x >=compRect.left) 	compRect.left = pt.x;
 	}
 	if(_pCandidateWnd && lpRect
 		&& (lpRect->bottom - lpRect->top >1 || lpRect->right - lpRect->left >1)  ) // confirm the extent rect is valid.
 	{
 		_pCandidateWnd->_GetClientRect(&candRect);
+		if (( (compRect.right - compRect.left) > (candRect.right - candRect.left)  ) && caretPt.x <compRect.right && caretPt.x >= compRect.left)
+			compRect.left = caretPt.x;
+
 		_pCandidateWnd->_GetWindowExtent(&compRect, &candRect, &candPt);
 		_pCandidateWnd->_Move(candPt.x, candPt.y);
 		_candLocation.x = candPt.x;
@@ -878,6 +867,9 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
 		else
 		{
 			_pNotifyWnd->_GetClientRect(&notifyRect);
+			if (((compRect.right - compRect.left) > (notifyRect.right - notifyRect.left)) && caretPt.x <compRect.right && caretPt.x >= compRect.left)
+				compRect.left = caretPt.x;
+
 			_pNotifyWnd->_GetWindowExtent(&compRect, &notifyRect, &notifyPt);
 			_pNotifyWnd->_Move(notifyPt.x, notifyPt.y);
 			_notifyLocation.x = notifyPt.x;

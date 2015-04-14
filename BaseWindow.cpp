@@ -333,7 +333,7 @@ BOOL CBaseWindow::_GetClientRect(_Inout_ LPRECT lpRect)
 //
 //----------------------------------------------------------------------------
 
-HRESULT CBaseWindow::_GetWindowExtent(_In_ const RECT *prcTextExtent, _In_opt_ RECT *prcCandidateExtent, _Inout_ POINT *pptCandidate)
+HRESULT CBaseWindow::_GetWindowExtent(_In_ const RECT *prcTextExtent, _In_opt_ RECT *prcCandidateExtent,  _Inout_ POINT *pptCandidate)
 {
 	debugPrint(L"CBaseWindow::_GetWindowExtent, prcTextExtent top = %d, bottom = %d, right = %d, left = %d",
 		prcTextExtent->top, prcTextExtent->bottom, prcTextExtent->right, prcTextExtent->left);
@@ -345,7 +345,11 @@ HRESULT CBaseWindow::_GetWindowExtent(_In_ const RECT *prcTextExtent, _In_opt_ R
 	RECT rcWorkArea = {0, 0, 0, 0};
 
     // Get work area
-    GetWorkAreaFromPoint(*(LPPOINT)&prcTextExtent->left, &rcWorkArea);
+	if ((prcTextExtent->right - prcTextExtent->left) > (prcCandidateExtent->right - prcCandidateExtent->left))
+		// the return text extent area is a large area instead as careet or composition range, like firefox 32bit.
+		GetWorkAreaFromPoint(*(LPPOINT)&prcTextExtent->left, &rcWorkArea);
+	else
+		GetWorkAreaFromPoint(*(LPPOINT)&prcTextExtent->right, &rcWorkArea);
 
     // Calc candidate window extent
     if (prcCandidateExtent)
