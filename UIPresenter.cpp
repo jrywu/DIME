@@ -784,12 +784,12 @@ BOOL CUIPresenter::_MoveCandidatePage(_In_ int offSet)
 
 void CUIPresenter::_MoveUIWindowsToTextExt()
 {
-	debugPrint(L"CUIPresenter::_MoveCandidateWindowToTextExt()");
+	debugPrint(L"CUIPresenter::_MoveUIWindowToTextExt()");
     RECT compRect;
 
 	if (SUCCEEDED(_GetTextExt(&compRect)))
 	{
-		debugPrint(L"CUIPresenter::_MoveCandidateWindowToTextExt(), top = %d, bottom = %d, right = %d, left = %d", compRect.top, compRect.bottom, compRect.right, compRect.left);
+		debugPrint(L"CUIPresenter::_MoveUIWindowToTextExt(), top = %d, bottom = %d, right = %d, left = %d", compRect.top, compRect.bottom, compRect.right, compRect.left);
 		_LayoutChangeNotification(&compRect);
 	}
 	else
@@ -1317,7 +1317,7 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ UINT dela
 
 	if (_pNotifyWnd) 
 	{
-		if (notifyType == NOTIFY_CHN_ENG && _pNotifyWnd->GetNotifyType() != NOTIFY_CHN_ENG)
+		if (notifyType == NOTIFY_CHN_ENG && _pNotifyWnd->GetNotifyType() == NOTIFY_OTHERS)
 			return;
 		else
 			ClearNotify();
@@ -1384,7 +1384,7 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ UINT dela
 						_pNotifyWnd->_Move(_notifyLocation.x, _notifyLocation.y);
 				}
 
-				if(notifyType==NOTIFY_CHN_ENG &&_pTextService && delayShow == 0 && _GetContextDocument() == nullptr ) //means TextLayoutSink is not working. We need to ProbeComposition to start layout
+				if(_pTextService && delayShow == 0 && _GetContextDocument() == nullptr ) //means TextLayoutSink is not working. We need to ProbeComposition to start layout
 					_pTextService->_ProbeComposition(pContext);
 
 			}
