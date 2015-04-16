@@ -15,9 +15,9 @@
 
 //static configuration settings initilization
 BOOL CConfig::_doBeep = TRUE;
-BOOL CConfig::_doBeepNotify = FALSE;
+BOOL CConfig::_doBeepNotify = TRUE;
 BOOL CConfig::_autoCompose = FALSE;
-BOOL CConfig::_threeCodeMode = TRUE;
+BOOL CConfig::_threeCodeMode = FALSE;
 BOOL CConfig::_arrayForceSP = FALSE;
 BOOL CConfig::_arrayNotifySP = TRUE;
 BOOL CConfig::_arrowKeySWPages = TRUE;
@@ -31,7 +31,7 @@ BOOL CConfig::_activatedKeyboardMode = TRUE;
 BOOL CConfig::_makePhrase = TRUE;
 BOOL CConfig::_doHanConvert = FALSE;
 BOOL CConfig::_showNotifyDesktop = TRUE;
-BOOL CConfig::_dayiArticleMode = TRUE;  // Article mode: input full-shaped symbols with address keys
+BOOL CConfig::_dayiArticleMode = FALSE;  // Article mode: input full-shaped symbols with address keys
 
 CDIMEArray <LanguageProfileInfo>* CConfig::_reverseConvervsionInfoList = new (std::nothrow) CDIMEArray <LanguageProfileInfo>;
 CLSID CConfig::_reverseConverstionCLSID = CLSID_NULL;
@@ -602,11 +602,11 @@ LoadFile:
 					if( _wfopen_s(&fpw, pathToWrite, L"w+, ccs=UTF-16LE") ==0 )
 					{
 						WCHAR line[256], key[256], value[256], escapedKey[256], escapedValue[256], 
-							null[2], others[256];
+							sep[256], others[256];
 						BOOL doEscape = FALSE;
 						while( fgetws(line, 256, fpr) != NULL)
 						{
-							if(swscanf_s(line, L"%[^ \t\n]%1[ \t\n]%[^\t\n]%s", key, _countof(key), null, _countof(null), value, _countof(value), others, _countof(others) ) != 3)
+							if(swscanf_s(line, L"%[^ \t\r\n]%[ \t\r\n]%[^ \t\r\n]%s", key, _countof(key), sep, _countof(sep), value, _countof(value), others, _countof(others) ) != 3)
 							{
 								if(!doEscape)
 									fwprintf_s(fpw, L"%s", line);

@@ -356,35 +356,10 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 			
 			CDIMEArray<CCandidateListItem> wCandidateList;
 			CStringRange w3codeMode;		
+			
 			_pTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_TEXT);
-			_pTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&wildcardSearch, pCandidateList);
-			if(pCandidateList && pCandidateList->Count())	
-			{
-				_pTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_TEXT);
-				_pTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&w3codeMode.Set(pwch3code,4), &wCandidateList);
-				if(wCandidateList.Count())
-				{   //append the candidate items got with 3codemode wildcard string to the end of exact match items.
-					for(UINT i = 0; i < wCandidateList.Count(); i++)
-					{
-						if(!CStringRange::WildcardCompare(_pTextService->GetLocale(), &wildcardSearch, &(wCandidateList.GetAt(i)->_FindKeyCode)))
-						{
-							CCandidateListItem* pLI = nullptr;
-							pLI = pCandidateList->Append();
-							if (pLI)
-							{
-								pLI->_ItemString.Set(wCandidateList.GetAt(i)->_ItemString);
-								pLI->_FindKeyCode.Set(wCandidateList.GetAt(i)->_FindKeyCode);
-							}
-						}
-					}
-					wCandidateList.Clear();
-				}
-			}
-			else
-			{
-				_pTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_TEXT);
-				_pTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&w3codeMode.Set(pwch3code,4), pCandidateList);
-			}
+			_pTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&w3codeMode.Set(pwch3code,4), pCandidateList);
+			
 
 
         }
@@ -459,38 +434,11 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
         PWCHAR pwch = new (std::nothrow) WCHAR[ 5 ];
         if (!pwch) return;
 		pwch[0] = *(_keystrokeBuffer.Get());	pwch[1] = *(_keystrokeBuffer.Get()+1);       
-		pwch[2] = L'?';		pwch[3] = *(_keystrokeBuffer.Get()+2);      
+		pwch[2] = L'*';		pwch[3] = *(_keystrokeBuffer.Get()+2);      
 		wildcardSearch.Set(pwch, 4);
-		CDIMEArray<CCandidateListItem> wCandidateList;
 		
-		_pTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_TEXT);
-		_pTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList);
-		if(pCandidateList && pCandidateList->Count())
-		{
-			_pTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&wildcardSearch, &wCandidateList);
-			if(wCandidateList.Count())
-			{   //append the candidate items got with 3codemode wildcard string to the end of exact match items.
-				for(UINT i = 0; i < wCandidateList.Count(); i++)
-				{
-					if(_pTextService && pCandidateList
-						&& !(CStringRange::Compare(_pTextService->GetLocale(), &_keystrokeBuffer, &(wCandidateList.GetAt(i)->_FindKeyCode)) == CSTR_EQUAL))
-					{
-						CCandidateListItem* pLI = nullptr;
-						pLI = pCandidateList->Append();
-						if (pLI)
-						{
-							pLI->_ItemString.Set(wCandidateList.GetAt(i)->_ItemString);
-							pLI->_FindKeyCode.Set(wCandidateList.GetAt(i)->_FindKeyCode);
-						}
-					}
-				}
-				wCandidateList.Clear();
-			}
-		}
-		else //if no exact match items found, send the results from 3codemode 
-		{
-			_pTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&wildcardSearch, pCandidateList);
-		}
+		_pTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&wildcardSearch, pCandidateList);
+		
 		delete [] pwch;
 	}
 	else if (IsSymbol() && ( 
