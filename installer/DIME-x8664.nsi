@@ -83,11 +83,12 @@ LangString DESC_VCX64_DECISION ${LANG_TradChinese} "安裝此輸入法之前，必須先安裝
 !define URL_VC_REDISTX86_2013  ${BASE_URL}/2/E/6/2E61CFA4-993B-4DD4-91DA-3737CD5CD6E3/vcredist_x86.exe
 ;{3D6AD258-61EA-35F5-812C-B7A02152996E} for x86 VC 2012 Upate3 {ce085a78-074e-4823-8dc1-8a721b94b76d}
 ;{2EDC2FA3-1F34-34E5-9085-588C9EFD1CC6} for x64 VC 2012 Upate3 {a1909659-0a08-4554-8af1-2175904903a1}
-;{7f51bdb9-ee21-49ee-94d6-90afc321780e} for x64 VC 2013
+;{929FBD26-9020-399B-9A7A-751D61F0B942} for x64 VC 2013
 ;{13A4EE12-23EA-3371-91EE-EFB36DDFFF3E} for x86 VC 2013
 
+!define VCX64_key "{929FBD26-9020-399B-9A7A-751D61F0B942}"
 !define VCX86_key "{13A4EE12-23EA-3371-91EE-EFB36DDFFF3E}"
-!define VCX64_key "{7f51bdb9-ee21-49ee-94d6-90afc321780e}"
+
   
 Var "URL_VCX86"
 Var "URL_VCX64"
@@ -123,9 +124,9 @@ FunctionEnd
 Section "CheckVCRedist" VCR
   Push $R0
   ${If} ${RunningX64}
-  	SetRegView 32
+  	SetRegView 64
   	ClearErrors
-  	ReadRegDword $R0 HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\${VCX64_key}" "Installed"
+  	ReadRegDword $R0 HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\${VCX64_key}" "Version"
   	IfErrors 0 VCx64RedistInstalled
   	MessageBox MB_ICONEXCLAMATION|MB_YESNO|MB_DEFBUTTON2 "$(DESC_VCX64_DECISION)" /SD IDNO IDYES +1 IDNO VCRedistInstalledAbort
   	AddSize 7000
