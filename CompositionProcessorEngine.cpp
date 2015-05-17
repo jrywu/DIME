@@ -1906,7 +1906,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 									pKeyState->Function = FUNCTION_FINALIZE_CANDIDATELIST;
 								}
 							}
-							else if (uCode == VK_SPACE && CConfig::GetSpaceAsPageDown() && candiCount > 10){
+							else if (uCode == VK_SPACE && candidateMode != CANDIDATE_PHRASE && CConfig::GetSpaceAsPageDown() && candiCount > 10){
 								pKeyState->Category = CATEGORY_CANDIDATE;
 								pKeyState->Function = FUNCTION_MOVE_PAGE_DOWN;
 							}
