@@ -1910,7 +1910,14 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 								pKeyState->Category = CATEGORY_CANDIDATE;
 								pKeyState->Function = FUNCTION_MOVE_PAGE_DOWN;
 							}
-							else{
+							else if (candidateMode == CANDIDATE_PHRASE){
+								if (pKeyState)
+								{
+									pKeyState->Category = CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION;
+									pKeyState->Function = FUNCTION_CANCEL;
+								}
+								return FALSE;
+							}else{
 								pKeyState->Category = CATEGORY_CANDIDATE;
 								pKeyState->Function = FUNCTION_CONVERT;
 							}
