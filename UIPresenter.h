@@ -117,6 +117,7 @@ public:
 
 	BOOL isUILessMode() {return !_isShowMode;}
 private:
+	VOID _LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall);
     virtual HRESULT CALLBACK _CandidateChangeNotification(_In_ enum CANDWND_ACTION action);
 	virtual HRESULT CALLBACK _NotifyChangeNotification(_In_ enum NOTIFYWND_ACTION action, _In_ WPARAM wParam, _In_ LPARAM lParam);
 

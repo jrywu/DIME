@@ -261,7 +261,7 @@ BOOL CCandidateRange::IsRange(UINT vKey, CANDIDATE_MODE candidateMode)
 			}
 		}
 		
-	}else {
+	}else { //DAYI select key.
 		//#define VK_OEM_7          0xDE  //  ''"' for US
 		//#define VK_OEM_4          0xDB  //  '[{' for US
 		//#define VK_OEM_6          0xDD  //  ']}' for US

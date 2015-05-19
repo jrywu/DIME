@@ -2090,7 +2090,8 @@ BOOL CCompositionProcessorEngine::IsKeystrokeRange(UINT uCode, _Out_ _KEYSTROKE_
 			}
 			else
 			{
-				pKeyState->Category = CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION; pKeyState->Function = FUNCTION_FINALIZE_TEXTSTORE_AND_INPUT;
+				pKeyState->Category = CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION; 
+				pKeyState->Function = pKeyState->Function = FUNCTION_CANCEL;  //No shift present, cancel phrsae mode.
 				return FALSE;
 			}
 		}

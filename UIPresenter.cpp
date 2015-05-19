@@ -790,10 +790,10 @@ void CUIPresenter::_MoveUIWindowsToTextExt()
 	if (SUCCEEDED(_GetTextExt(&compRect)))
 	{
 		debugPrint(L"CUIPresenter::_MoveUIWindowToTextExt(), top = %d, bottom = %d, right = %d, left = %d", compRect.top, compRect.bottom, compRect.right, compRect.left);
-		_LayoutChangeNotification(&compRect);
+		_LayoutChangeNotification(&compRect, true);
 	}
 	else
-		_LayoutChangeNotification(&_rectCompRange);
+		_LayoutChangeNotification(&_rectCompRange, true);
 
 	
 	
@@ -805,6 +805,10 @@ void CUIPresenter::_MoveUIWindowsToTextExt()
 //----------------------------------------------------------------------------
 
 VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
+{
+	_LayoutChangeNotification(lpRect, false);
+}
+VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall)
 {
 	debugPrint(L"CUIPresenter::_LayoutChangeNotification(), top = %d, bottom = %d, right = %d, left = %d", lpRect->top, lpRect->bottom, lpRect->right, lpRect->left);
 	if(lpRect == nullptr) return;
@@ -820,10 +824,16 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
 	HWND parentWndHandle;
 	POINT caretPt = { 0, 0 };
 	
-	if (pContext && pView && SUCCEEDED(pContext->GetActiveView(&pView)))
+	if (pContext && SUCCEEDED(pContext->GetActiveView(&pView)))
+	{
+		debugPrint(L"parentWndHandle got from pContext");
 		pView->GetWnd(&parentWndHandle);
+	}
 	else
-		parentWndHandle = GetActiveWindow();
+	{
+		parentWndHandle = GetForegroundWindow();
+	}
+		
 	if (parentWndHandle)
 	{
 		GetCaretPos(&caretPt);
@@ -831,52 +841,73 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
 		debugPrint(L"current caret position from GetCaretPos, x = %d, y = %d", caretPt.x, caretPt.y);
 		
 	}
-	if(_pCandidateWnd && lpRect
-		&& (lpRect->bottom - lpRect->top >1 || lpRect->right - lpRect->left >1)  ) // confirm the extent rect is valid.
+	if (_pCandidateWnd && lpRect)
 	{
-		_pCandidateWnd->_GetClientRect(&candRect);
-		if (( (compRect.right - compRect.left) > (candRect.right - candRect.left)  ) && caretPt.x <compRect.right && caretPt.x >= compRect.left)
-			compRect.left = caretPt.x;
 
-		_pCandidateWnd->_GetWindowExtent(&compRect, &candRect, &candPt);
-		_pCandidateWnd->_Move(candPt.x, candPt.y);
-		_candLocation.x = candPt.x;
-		_candLocation.y = candPt.y;
-		debugPrint(L"move cand to x = %d, y = %d", candPt.x, candPt.y);
-	}
-	if(_pNotifyWnd && lpRect
-		&& (lpRect->bottom - lpRect->top >1  || lpRect->right - lpRect->left >1)  ) // confirm the extent rect is valid.
-	{
-		
-		if(_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())
+		if (lpRect->bottom - lpRect->top > 1 || lpRect->right - lpRect->left > 1 ) // confirm the extent rect is valid.
 		{
-			debugPrint(L"notify width = %d, candwidth = %d", _pNotifyWnd->_GetWidth(), _pCandidateWnd->_GetWidth());
-			if(candPt.x < (int) _pNotifyWnd->_GetWidth() )
+			_pCandidateWnd->_GetClientRect(&candRect);
+			if (((compRect.right - compRect.left) > (candRect.right - candRect.left)) && caretPt.x < compRect.right && caretPt.x >= compRect.left)
+				compRect.left = caretPt.x;
+
+			_pCandidateWnd->_GetWindowExtent(&compRect, &candRect, &candPt);
+			_pCandidateWnd->_Move(candPt.x, candPt.y);
+			_candLocation.x = candPt.x;
+			_candLocation.y = candPt.y;
+			debugPrint(L"move cand to x = %d, y = %d", candPt.x, candPt.y);
+		}
+		else if (firstCall && parentWndHandle)
+		{
+			_pCandidateWnd->_GetClientRect(&candRect);
+			compRect.left = caretPt.x;
+			compRect.right = caretPt.x;
+			compRect.top = caretPt.y;
+			compRect.bottom = caretPt.y;
+
+			_pCandidateWnd->_GetWindowExtent(&compRect, &candRect, &candPt);
+			_pCandidateWnd->_Move(candPt.x, candPt.y);
+			_candLocation.x = candPt.x;
+			_candLocation.y = candPt.y;
+			debugPrint(L"firstCall and compRect is not valid, force move cand to x = %d, y = %d", candPt.x, candPt.y);
+
+		}
+	}
+	if (_pNotifyWnd && lpRect)
+	{
+
+		if (lpRect->bottom - lpRect->top > 1 || lpRect->right - lpRect->left > 1)   // confirm the extent rect is valid.
+		{
+
+			if (_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())
 			{
-				_pNotifyWnd->_Move(candPt.x + _pCandidateWnd->_GetWidth(), candPt.y);
-				debugPrint(L"move notify to x = %d, y = %d", candPt.x + _pCandidateWnd->_GetWidth(), candPt.y);
+				debugPrint(L"notify width = %d, candwidth = %d", _pNotifyWnd->_GetWidth(), _pCandidateWnd->_GetWidth());
+				if (candPt.x < (int)_pNotifyWnd->_GetWidth())
+				{
+					_pNotifyWnd->_Move(candPt.x + _pCandidateWnd->_GetWidth(), candPt.y);
+					debugPrint(L"move notify to x = %d, y = %d", candPt.x + _pCandidateWnd->_GetWidth(), candPt.y);
+				}
+				else
+				{
+					_pNotifyWnd->_Move(candPt.x - _pNotifyWnd->_GetWidth(), candPt.y);
+					debugPrint(L"move notify to x = %d, y = %d", candPt.x - _pNotifyWnd->_GetWidth(), candPt.y);
+				}
+				_notifyLocation.x = candPt.x;
+				_notifyLocation.y = candPt.y;
 			}
 			else
 			{
-				_pNotifyWnd->_Move(candPt.x-_pNotifyWnd->_GetWidth(), candPt.y);
-				debugPrint(L"move notify to x = %d, y = %d", candPt.x-_pNotifyWnd->_GetWidth(), candPt.y);
-			}
-			_notifyLocation.x = candPt.x;
-			_notifyLocation.y = candPt.y;
-		}
-		else
-		{
-			_pNotifyWnd->_GetClientRect(&notifyRect);
-			if (((compRect.right - compRect.left) > (notifyRect.right - notifyRect.left)) && caretPt.x <compRect.right && caretPt.x >= compRect.left)
-				compRect.left = caretPt.x;
+				_pNotifyWnd->_GetClientRect(&notifyRect);
+				if (((compRect.right - compRect.left) > (notifyRect.right - notifyRect.left)) && caretPt.x < compRect.right && caretPt.x >= compRect.left)
+					compRect.left = caretPt.x;
 
-			_pNotifyWnd->_GetWindowExtent(&compRect, &notifyRect, &notifyPt);
-			_pNotifyWnd->_Move(notifyPt.x, notifyPt.y);
-			_notifyLocation.x = notifyPt.x;
-			_notifyLocation.y = notifyPt.y;
-			debugPrint(L"move notify to x = %d, y = %d", notifyPt.x, notifyPt.y);
+				_pNotifyWnd->_GetWindowExtent(&compRect, &notifyRect, &notifyPt);
+				_pNotifyWnd->_Move(notifyPt.x, notifyPt.y);
+				_notifyLocation.x = notifyPt.x;
+				_notifyLocation.y = notifyPt.y;
+				debugPrint(L"move notify to x = %d, y = %d", notifyPt.x, notifyPt.y);
+			}
+
 		}
-		
 	}
 	_rectCompRange = compRect;
 }
@@ -1357,17 +1388,28 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ UINT dela
 				POINT* pt = nullptr;
 				guiInfo->cbSize = sizeof(GUITHREADINFO);
 				GetGUIThreadInfo(NULL, guiInfo);
-				if(guiInfo->hwndCaret)
+				if(guiInfo && parentWndHandle) 
 				{   //for acient non TSF aware apps with a floating composition window.  The caret position we can get is always the caret in the flaoting comosition window.
 					pt = new POINT;
 					if(pt == nullptr) return;
 					pt->x = guiInfo->rcCaret.left;
 					pt->y = guiInfo->rcCaret.bottom;
 					ClientToScreen(parentWndHandle, pt);
-					debugPrint(L"current caret position from GetGUIThreadInfo, x = %d, y = %d, focus hwd = %x", pt->x, pt->y);
+					debugPrint(L"current caret position from GetGUIThreadInfo, x = %d, y = %d", pt->x, pt->y);
 					if(_notifyLocation.x < 0) _notifyLocation.x = pt->x;
 					if(_notifyLocation.y < 0) _notifyLocation.y = pt->y;
 				}
+				else if(parentWndHandle)
+				{
+					POINT caretPt;
+					GetCaretPos(&caretPt);
+					ClientToScreen(parentWndHandle, &caretPt);
+					debugPrint(L"current caret position from GetCaretPos, x = %d, y = %d", caretPt.x, caretPt.y);
+					if (_notifyLocation.x < 0) _notifyLocation.x = caretPt.x;
+					if (_notifyLocation.y < 0) _notifyLocation.y = caretPt.y;
+
+				}
+				
 
 				ShowNotify(TRUE, delayShow, timeToHide);	
 
