@@ -1895,7 +1895,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 			}
 			return FALSE;
 			*/
-		case VK_RETURN:
+		case VK_RETURN: if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_CONVERT; } return TRUE;
 		case VK_SPACE:  if (pKeyState)
 		{
 
