@@ -56,7 +56,7 @@ ColorInfo CConfig::colors[6] =
 	{IDC_COL_SEBG, CANDWND_SELECTED_BK_COLOR}
 };
 
-_stat CConfig::_initTimeStamp = {0,0,0,0,0,0,0,0,0,0,0}; //zero the timestamp
+struct _stat CConfig::_initTimeStamp = {0,0,0,0,0,0,0,0,0,0,0}; //zero the timestamp
 
 
 //+---------------------------------------------------------------------------
@@ -607,7 +607,7 @@ LoadFile:
 						BOOL doEscape = FALSE;
 						while( fgetws(line, 256, fpr) != NULL)
 						{
-							if(swscanf_s(line, L"%[^ \t\r\n]%[ \t\r\n]%[^ \t\r\n]%s", key, _countof(key), sep, _countof(sep), value, _countof(value), others, _countof(others) ) != 3)
+							if (swscanf_s(line, L"%[^ \t\r\n]%[ \t\r\n]%[^ \t\r\n]%s", key, (int)_countof(key), sep, (int)_countof(sep), value, (int)_countof(value), others, (int)_countof(others)) != 3)
 							{
 								if(!doEscape)
 									fwprintf_s(fpw, L"%s", line);
