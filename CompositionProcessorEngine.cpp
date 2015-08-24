@@ -1897,7 +1897,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 			*/
 		case VK_RETURN: if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_CONVERT; } return TRUE;
 		case VK_SPACE:  if (pKeyState)
-		{
+			{
 
 							if ((candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)){ // space finalized the associate here instead of choose the first one (selected index = -1 for phrase candidates).
 								if (pKeyState)
@@ -1923,11 +1923,11 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 							}
 
 							return TRUE;
-		}
+			}
 		case VK_BACK:   if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_CANCEL; } return TRUE;
 
 		case VK_ESCAPE:
-		{
+			{
 						  if (candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)
 						  {
 							  if (pKeyState)
@@ -1946,7 +1946,8 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 							  }
 							  return TRUE;
 						  }
-		}
+			}
+
 		}
 
 		if (candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)

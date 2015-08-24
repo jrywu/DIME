@@ -1055,6 +1055,7 @@ void CDIME::KeyboardOpenCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr, _In_ R
    
 }
 
+#define NOTIFY_DELAY 1500
 void CDIME::OnKeyboardClosed()
 {
 	debugPrint(L"CDIME::OnKeyboardClosed()\n");
@@ -1068,7 +1069,7 @@ void CDIME::OnKeyboardClosed()
 
 	CStringRange notifyText;
 	if ((CConfig::GetShowNotifyDesktop() || _IsStoreAppMode()) && _pUIPresenter)
-		_pUIPresenter->ShowNotifyText(&notifyText.Set(L"英文", 2), 0, 3000 , NOTIFY_CHN_ENG);
+		_pUIPresenter->ShowNotifyText(&notifyText.Set(L"英文", 2), 0, NOTIFY_DELAY, NOTIFY_CHN_ENG);
 }
 
 void CDIME::OnKeyboardOpen()
@@ -1078,7 +1079,7 @@ void CDIME::OnKeyboardOpen()
 	// switching to Chinese mode
 	CStringRange notifyText;
 	if ((CConfig::GetShowNotifyDesktop() || _IsStoreAppMode()) && _pUIPresenter)
-		 _pUIPresenter->ShowNotifyText(&notifyText.Set(L"中文", 2), 0, 3000 , NOTIFY_CHN_ENG);	
+		_pUIPresenter->ShowNotifyText(&notifyText.Set(L"中文", 2), 0, NOTIFY_DELAY, NOTIFY_CHN_ENG);
 }
 
 void CDIME::OnSwitchedToFullShape()
@@ -1093,7 +1094,7 @@ void CDIME::OnSwitchedToFullShape()
 
 	CStringRange notifyText;
 	if ((CConfig::GetShowNotifyDesktop() || _IsStoreAppMode()) && _pUIPresenter)
-		_pUIPresenter->ShowNotifyText(&notifyText.Set(L"全形", 2), 0, 3000 , NOTIFY_SINGLEDOUBLEBYTE);
+		_pUIPresenter->ShowNotifyText(&notifyText.Set(L"全形", 2), 0, NOTIFY_DELAY, NOTIFY_SINGLEDOUBLEBYTE);
 }
 
 void CDIME::OnSwitchedToHalfShape()
@@ -1108,5 +1109,5 @@ void CDIME::OnSwitchedToHalfShape()
 
 	CStringRange notifyText;
 	if((CConfig::GetShowNotifyDesktop() || _IsStoreAppMode()) && _pUIPresenter)
-		 _pUIPresenter->ShowNotifyText(&notifyText.Set(L"半形", 2), 0, 3000 , NOTIFY_SINGLEDOUBLEBYTE);
+		_pUIPresenter->ShowNotifyText(&notifyText.Set(L"半形", 2), 0, NOTIFY_DELAY, NOTIFY_SINGLEDOUBLEBYTE);
 }

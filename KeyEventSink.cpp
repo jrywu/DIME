@@ -144,6 +144,7 @@ BOOL CDIME::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pCod
     // Address characters direct input mode  '[]-\
     //
 	if (isOpen && (_candidateMode == CANDIDATE_NONE || _candidateMode == CANDIDATE_PHRASE)
+		&& codeIn!= VK_SUBTRACT
 		&& pCompositionProcessorEngine && pCompositionProcessorEngine->IsDayiAddressChar(wch))
 	{
 		if (pKeyState)
