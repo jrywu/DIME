@@ -53,6 +53,7 @@ ManifestDPIAware true
 ; MUI end ------
 
 Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
+RequestExecutionLevel admin
 OutFile "DIME-x8664.exe"
 InstallDir "$PROGRAMFILES64\DIME"
 ShowInstDetails show
@@ -199,9 +200,10 @@ SetOutPath $PROGRAMFILES64
 SectionEnd
 
 Section -AdditionalIcons
+  SetShellVarContext all
   SetOutPath $SMPROGRAMS\DIME
   CreateDirectory "$SMPROGRAMS\DIME"
-  CreateShortCut "$SMPROGRAMS\DIME\Uninstall.lnk" "$INSTDIRi\uninst.exe"
+  CreateShortCut "$SMPROGRAMS\DIME\Uninstall.lnk" "$INSTDIR\uninst.exe"
 SectionEnd
 
 Section -Post
@@ -265,7 +267,9 @@ Section Uninstall
   Delete "$INSTDIR\uninst.exe"
   Delete "$INSTDIR\*.cin"
   RMDir /r "$INSTDIR"
+  SetShellVarContext all
   Delete "$SMPROGRAMS\DIME\Uninstall.lnk"
+  RMDir  "$SMPROGRAMS\DIME"
   ${If} ${RunningX64}
   	SetRegView 64
   ${EndIf}
