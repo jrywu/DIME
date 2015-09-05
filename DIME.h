@@ -337,7 +337,7 @@ private:
 	//ReverseConversion Interface object
 	ITfReverseConversion* _pITfReverseConversion[IM_SLOTS];
 
-	CStringRange _commitString;
+	WCHAR _commitString[MAX_COMMIT_LENTH];
 
 	BOOL _isChinese;
 	BOOL _isFullShape;

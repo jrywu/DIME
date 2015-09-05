@@ -60,7 +60,7 @@ HRESULT CDIME::_AsyncReverseConversionNotification(_In_ TfEditCookie ec,_In_ ITf
 	ec;
 	debugPrint(L"CDIME::_AsyncReverseConversionNotification() pContext = %x\n", pContext);
 	BSTR bstr;
-	bstr = SysAllocStringLen(_commitString.Get() , (UINT) _commitString.GetLength());
+	bstr = SysAllocStringLen(_commitString , (UINT) wcslen(_commitString));
 	ITfReverseConversionList* reverseConversionList;
 	if(SUCCEEDED(_pITfReverseConversion[Global::imeMode]->DoReverseConversion(bstr, &reverseConversionList)) && reverseConversionList)
 	{

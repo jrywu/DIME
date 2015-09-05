@@ -72,4 +72,6 @@
 #define IM_SLOTS 6
 
 #define MAX_RADICAL 100
+
+#define MAX_COMMIT_LENTH 1024
 #endif

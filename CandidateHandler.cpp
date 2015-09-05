@@ -84,7 +84,9 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 	
 	
 	commitString.Set(pCandidateString , candidateLen);
-	_commitString = commitString;
+	StringCchCopy(_commitString, 1, L"\0");
+	StringCchCatN(_commitString, MAX_COMMIT_LENTH, pCandidateString, candidateLen);
+	//_commitString = commitString;
 	
 	PWCHAR pwch = new (std::nothrow) WCHAR[2];  // pCandidateString will be destroyed after _detelteCanddiateList was called.
 	if(candidateLen > 1)
@@ -116,7 +118,7 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 	{
 		_pCompositionProcessorEngine->GetSCFromTC(&commitString, &convertedString);
 	}
-	//----------------- commit the selected string   
+	//----------------- commit the selected string  ------------------------------------------------------------------------------------ 
 	if(Global::imeMode == IME_MODE_ARRAY && !_IsUILessMode()  && !arrayUsingSPCode && CConfig::GetArrayForceSP() &&  ArraySPFound )
 	{
 		_HandleCancel(ec, pContext);
