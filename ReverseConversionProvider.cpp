@@ -147,7 +147,7 @@ STDAPI_(ULONG) CReverseConversion::Release()
     return cr;
 }
 
-CReverseConversionList::CReverseConversionList(IME_MODE imeMode, _T_RacialMap* pRadicalMap)
+CReverseConversionList::CReverseConversionList(IME_MODE imeMode, _T_RadicalMap* pRadicalMap)
 {
 	debugPrint(L"CReverseConversionList(ITfReverseConversionList)::CReverseConversionList() constructor, imeMode = %d", imeMode);
 	_refCount = 1;

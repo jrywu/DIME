@@ -262,7 +262,7 @@ void CCompositionProcessorEngine::GetReadingStrings(_Inout_ CDIMEArray<CStringRa
 				if (_pTableDictionaryEngine[Global::imeMode]->GetRadicalMap() &&
 					_pTableDictionaryEngine[Global::imeMode]->GetRadicalMap()->size() && !IsSymbol()) // if radicalMap is valid (size()>0), then convert the keystroke buffer 
 				{
-					_T_RacialMap::iterator item =
+					_T_RadicalMap::iterator item =
 						_pTableDictionaryEngine[Global::imeMode]->GetRadicalMap()->find(towupper(*(_keystrokeBuffer.Get() + index)));
 					if (_pTableDictionaryEngine[Global::imeMode]->GetRadicalMap() &&
 						item != _pTableDictionaryEngine[Global::imeMode]->GetRadicalMap()->end())
@@ -730,7 +730,7 @@ BOOL CCompositionProcessorEngine::GetArraySpeicalCodeFromConvertedText(_In_ CStr
 		{
 			for (UINT i = 0; i < candidateList.GetAt(0)->_FindKeyCode.GetLength(); i++)
 			{ // query keyname from keymap
-				_T_RacialMap::iterator item =
+				_T_RadicalMap::iterator item =
 					_pTableDictionaryEngine[Global::imeMode]->GetRadicalMap()->find(towupper(*(_keystrokeBuffer.Get() + i)));
 				if (item != _pTableDictionaryEngine[Global::imeMode]->GetRadicalMap()->end())
 				{
@@ -838,7 +838,7 @@ void CCompositionProcessorEngine::SetupKeystroke(IME_MODE imeMode)
 		(*_pTableDictionaryEngine[imeMode]->GetRadicalMap())['='] = pwchEqual;
 	}
 
-	for (_T_RacialMap::iterator item = _pTableDictionaryEngine[imeMode]->GetRadicalMap()->begin(); item !=
+	for (_T_RadicalMap::iterator item = _pTableDictionaryEngine[imeMode]->GetRadicalMap()->begin(); item !=
 		_pTableDictionaryEngine[imeMode]->GetRadicalMap()->end(); ++item)
 	{
 		_KEYSTROKE* pKS = nullptr;

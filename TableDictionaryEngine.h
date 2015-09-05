@@ -34,7 +34,7 @@ public:
 
 	VOID SortListItemByFindKeyCode(_Inout_ CDIMEArray<CCandidateListItem> *pItemList);
 
-	_T_RacialMap* GetRadicalMap() { return _pRadicalMap;};
+	_T_RadicalMap* GetRadicalMap() { return _pRadicalMap;};
 	DICTIONARY_TYPE GetDictionaryType() { return _dictionaryType;};
 private:
 	CFile* _pDictionaryFile;
@@ -44,7 +44,7 @@ private:
 	SEARCH_SECTION _searchSection;
 	DICTIONARY_TYPE _dictionaryType;
 
-	_T_RacialMap* _pRadicalMap;
+	_T_RadicalMap* _pRadicalMap;
 
 	VOID MergeSortByFindKeyCode(_Inout_ CDIMEArray<CCandidateListItem> *pItemList, int leftRange, int rightRange);
 

@@ -17,7 +17,7 @@ CTableDictionaryEngine::CTableDictionaryEngine(LCID locale, _In_ CFile *pDiction
 	_searchSection = SEARCH_SECTION_TEXT;
 	_dictionaryType = dictionaryType;
 
-	_pRadicalMap = new _T_RacialMap();
+	_pRadicalMap = new _T_RadicalMap();
 
 	if(dictionaryType == TTS_DICTIONARY)
 		_keywordDelimiter = '=';
@@ -184,7 +184,7 @@ VOID CTableDictionaryEngine::ParseConfig(IME_MODE imeMode)
 {
 	if(_pRadicalMap->size())
 	{
-		for(_T_RacialMap::iterator item = _pRadicalMap->begin(); item != _pRadicalMap->end(); ++item)
+		for(_T_RadicalMap::iterator item = _pRadicalMap->begin(); item != _pRadicalMap->end(); ++item)
 		{
 			delete [] item->second;
 		}

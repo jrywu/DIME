@@ -22,13 +22,13 @@ private:
 	CReverseConversionList* _pReverseConversionList;
 	CCompositionProcessorEngine* _pCompositionProcessorEngine;
 	IME_MODE _imeMode;
-	_T_RacialMap* _pRadicalMap;
+	_T_RadicalMap* _pRadicalMap;
 };
 
 class CReverseConversionList : public ITfReverseConversionList
 {
 public:
-	CReverseConversionList(IME_MODE imeMode, _T_RacialMap* pRadicalMap);
+	CReverseConversionList(IME_MODE imeMode, _T_RadicalMap* pRadicalMap);
 	~CReverseConversionList();
 	// IUnknown methods
 	STDMETHODIMP QueryInterface(REFIID riid, _Outptr_ void **ppvObj);
@@ -44,5 +44,5 @@ private:
 	BOOL _resultFound;
 	WCHAR* _resultString;
 	IME_MODE _imeMode;
-	_T_RacialMap* _pRadicalMap;
+	_T_RadicalMap* _pRadicalMap;
 };

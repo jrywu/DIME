@@ -19,7 +19,7 @@ using std::cout;
 using std::endl;
 using std::map;
 
-typedef  map <WCHAR, PWCH> _T_RacialMap;
+typedef  map <WCHAR, PWCH> _T_RadicalMap;
 
 //---------------------------------------------------------------------
 // defined keyword

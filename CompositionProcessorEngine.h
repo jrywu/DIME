@@ -112,7 +112,7 @@ public:
 	void SetImeMode(IME_MODE imeMode) {_imeMode = imeMode;}
 	IME_MODE GetImeMode() { return _imeMode;}
 
-	_T_RacialMap* GetRadicalMap(IME_MODE imeMode) {if(_pTableDictionaryEngine[imeMode] ) 
+	_T_RadicalMap* GetRadicalMap(IME_MODE imeMode) {if(_pTableDictionaryEngine[imeMode] ) 
 														return _pTableDictionaryEngine[imeMode]->GetRadicalMap();  
 													else return nullptr; }
 

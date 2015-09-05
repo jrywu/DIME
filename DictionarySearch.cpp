@@ -80,7 +80,7 @@ BOOL CDictionarySearch::FindConvertedStringForWildcard(CDictionaryResult **ppdre
 	return FindWorker(TRUE, ppdret, TRUE); // Wildcard
 }
 
-BOOL CDictionarySearch::ParseConfig(IME_MODE imeMode, _T_RacialMap* pRadicalMap)
+BOOL CDictionarySearch::ParseConfig(IME_MODE imeMode, _T_RadicalMap* pRadicalMap)
 {
 	debugPrint(L"CDictionarySearch::ParseConfig() imeMode = %d", imeMode);
 	_imeMode = imeMode;
@@ -94,7 +94,7 @@ BOOL CDictionarySearch::ParseConfig(IME_MODE imeMode, _T_RacialMap* pRadicalMap)
 //
 //----------------------------------------------------------------------------
 
-BOOL CDictionarySearch::FindWorker(BOOL isTextSearch, _Out_ CDictionaryResult **ppdret, BOOL isWildcardSearch, _In_opt_ BOOL parseConfig, _In_opt_ _T_RacialMap* pRadicalMap)
+BOOL CDictionarySearch::FindWorker(BOOL isTextSearch, _Out_ CDictionaryResult **ppdret, BOOL isWildcardSearch, _In_opt_ BOOL parseConfig, _In_opt_ _T_RadicalMap* pRadicalMap)
 {
 	
 	BOOL fileReloaded;
