@@ -85,7 +85,7 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 	
 	commitString.Set(pCandidateString , candidateLen);
 	StringCchCopy(_commitString, 1, L"\0");
-	StringCchCatN(_commitString, MAX_COMMIT_LENTH, pCandidateString, candidateLen);
+	StringCchCatN(_commitString, MAX_COMMIT_LENGTH, pCandidateString, candidateLen);
 	//_commitString = commitString;
 	
 	PWCHAR pwch = new (std::nothrow) WCHAR[2];  // pCandidateString will be destroyed after _detelteCanddiateList was called.

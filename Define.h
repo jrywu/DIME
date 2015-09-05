@@ -73,5 +73,5 @@
 
 #define MAX_RADICAL 100
 
-#define MAX_COMMIT_LENTH 1024
+#define MAX_COMMIT_LENGTH 1024
 #endif
