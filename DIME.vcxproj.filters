@@ -313,9 +313,6 @@
     <ClCompile Include="Config.cpp">
       <Filter>Source Files\Configuration</Filter>
     </ClCompile>
-    <ClCompile Include="TfTextLayoutSink.cpp">
-      <Filter>Source Files\UI\Candidate</Filter>
-    </ClCompile>
     <ClCompile Include="CompositionProcessorEngine.cpp">
       <Filter>Source Files\Framework\Composition\CompositionEngine</Filter>
     </ClCompile>
@@ -333,6 +330,9 @@
     </ClCompile>
     <ClCompile Include="ReverseConversionProvider.cpp">
       <Filter>Source Files\Framework\Composition\ReverseConversion</Filter>
+    </ClCompile>
+    <ClCompile Include="TfTextLayoutSink.cpp">
+      <Filter>Source Files\Framework</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

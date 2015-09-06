@@ -185,12 +185,15 @@ HRESULT CDIME::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *p
     // Get candidate string from composition processor engine
     //
 	BOOL symbolMode = pCompositionProcessorEngine->IsSymbol();
-	if(CConfig::GetAutoCompose() // auto composing mode: show candidates while composition updated imeediately.
+	BOOL autoComposeMode = CConfig::GetAutoCompose();
+	//BOOL arrayShortCodeMOde = pCompositionProcessorEngine->IsArrayShortCode();
+	if (autoComposeMode // auto composing mode: show candidates while composition updated imeediately.
 		|| symbolMode) // fetch candidate in symobl mode with composition started with '='(DAYI) or 'W' (Array)
+		//|| arrayShortCodeMOde)
 	{
 		CDIMEArray<CCandidateListItem> candidateList;
 	
-		pCompositionProcessorEngine->GetCandidateList(&candidateList, !(pCompositionProcessorEngine->IsSymbol()), FALSE);
+		pCompositionProcessorEngine->GetCandidateList(&candidateList, autoComposeMode , FALSE);
 		
 		UINT nCount = candidateList.Count();
 

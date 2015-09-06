@@ -51,6 +51,9 @@ public:
     BOOL IsSymbolChar(WCHAR wch);
 	BOOL IsSymbol();
 
+	
+	
+
 	//Dayi Address characters direct input
 	BOOL IsDayiAddressChar(WCHAR wch);
 	WCHAR GetDayiAddressChar(WCHAR wch);

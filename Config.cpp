@@ -287,6 +287,10 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		{
 			ShowWindow(GetDlgItem(hDlg, IDC_EDIT_MAXWIDTH), SW_HIDE);
 			ShowWindow(GetDlgItem(hDlg, IDC_STATIC_EDIT_MAXWIDTH), SW_HIDE);
+			if (Global::imeMode == IME_MODE_ARRAY)
+			{
+				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_AUTOCOMPOSE), SW_HIDE);
+			}
 		}
 		ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_THREECODEMODE), SW_HIDE);  //Always hide 3code option
 		if(Global::imeMode!=IME_MODE_DAYI)
@@ -891,7 +895,11 @@ VOID CConfig::LoadConfig()
 					delete iniDictionaryFile;
 					SetDefaultTextFont();
 				}
-
+				// force autoCompose in Array
+				if (Global::imeMode == IME_MODE_ARRAY)
+				{
+					_autoCompose = TRUE;
+				}
 				// In store app mode, the dll is loaded into app container which does not even have read right for IME profile in APPDATA.
 				// Here, the read right is granted once to "ALL APPLICATION PACKAGES" when loaded in desktop mode, so as all metro apps can at least read the user settings in config.ini.				
 				if(Global::isWindows8 && ! CDIME::_IsStoreAppMode() && ! _appPermissionSet ) 

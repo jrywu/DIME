@@ -313,7 +313,19 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 
 	_pActiveCandidateListIndexRange = &_candidateListIndexRange;  // Reset the active cand list range
 
-	if (isIncrementalWordSearch)
+	if (isIncrementalWordSearch && IsArrayShortCode()) //array short code mode
+	{
+		if (_pArrayShortCodeTableDictionaryEngine == nullptr)
+		{
+			_pTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_PRHASE_FROM_KEYSTROKE);
+			_pTableDictionaryEngine[Global::imeMode]->CollectWord(&_keystrokeBuffer, pCandidateList);
+		}
+		else
+		{
+			_pArrayShortCodeTableDictionaryEngine->CollectWord(&_keystrokeBuffer, pCandidateList);
+		}
+	}
+	else if (isIncrementalWordSearch && Global::imeMode!= IME_MODE_ARRAY)
 	{
 		CStringRange wildcardSearch;
 		DWORD_PTR keystrokeBufLen = _keystrokeBuffer.GetLength() + 3;
@@ -337,8 +349,8 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 
 		PWCHAR pwch = new (std::nothrow) WCHAR[keystrokeBufLen];
 		if (!pwch)  return;
-		PWCHAR pwch3code = new (std::nothrow) WCHAR[6];
-		if (!pwch3code) return;
+		//PWCHAR pwch3code = new (std::nothrow) WCHAR[6];
+		//if (!pwch3code) return;
 
 		/* three code needs to be in table for correct wording order
 		if (!isFindWildcard  && (Global::imeMode == IME_MODE_DAYI && CConfig::GetThreeCodeMode() && _keystrokeBuffer.GetLength() == 3))
@@ -424,7 +436,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 		}
 
 		delete[] pwch;
-		delete[] pwch3code;
+		//delete[] pwch3code;
 	}
 	else if (isWildcardSearch)
 	{
@@ -453,18 +465,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 		_pTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_SYMBOL);
 		_pTableDictionaryEngine[Global::imeMode]->CollectWord(&_keystrokeBuffer, pCandidateList);
 	}
-	else if (Global::imeMode == IME_MODE_ARRAY && (_keystrokeBuffer.GetLength() < 3)) //array short code mode
-	{
-		if (_pArrayShortCodeTableDictionaryEngine == nullptr)
-		{
-			_pTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_PRHASE_FROM_KEYSTROKE);
-			_pTableDictionaryEngine[Global::imeMode]->CollectWord(&_keystrokeBuffer, pCandidateList);
-		}
-		else
-		{
-			_pArrayShortCodeTableDictionaryEngine->CollectWord(&_keystrokeBuffer, pCandidateList);
-		}
-	}
+	
 	else
 	{
 		_pTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_TEXT);
@@ -1481,6 +1482,8 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 		}
 
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\Array-shortcode.cin");
+		if (!PathFileExists(pwszCINFileName)) //failed back to preload array-shortcode.cin in program files.
+			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\DIME\\Array-shortcode.cin");
 		if (PathFileExists(pwszCINFileName) && _pArrayShortCodeDictionaryFile == nullptr)
 		{
 			_pArrayShortCodeDictionaryFile = new (std::nothrow) CFile();
@@ -1796,6 +1799,12 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 	// CANDIDATE_INCREMENTAL should process Keystroke.Candidate virtual keys.
 	else if (candidateMode == CANDIDATE_INCREMENTAL)
 	{
+		if (IsArrayShortCode() && pKeyState)
+		{
+			pKeyState->Category = CATEGORY_COMPOSING;
+			pKeyState->Function = FUNCTION_CONVERT;
+			return TRUE;
+		}
 		BOOL isRetCode = TRUE;
 		if (IsVirtualKeyKeystrokeCandidate(uCode, pKeyState, candidateMode, &isRetCode, &_KeystrokeCandidate))
 		{
@@ -1805,6 +1814,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 
 	if (!fComposing && candidateMode != CANDIDATE_ORIGINAL && candidateMode != CANDIDATE_PHRASE && candidateMode != CANDIDATE_WITH_NEXT_COMPOSITION)
 	{
+
 		if (IsVirtualKeyKeystrokeComposition(uCode, pKeyState, FUNCTION_INPUT))
 		{
 			return TRUE;
