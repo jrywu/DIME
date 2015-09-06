@@ -62,10 +62,8 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 		candidateLen = _pCompositionProcessorEngine->CollectWordFromArraySpeicalCode(&pCandidateString);
 		if(candidateLen) arrayUsingSPCode = TRUE;
 	}
-	if (candidateLen == 0) 
-	{
-		candidateLen = _pUIPresenter->_GetSelectedCandidateString(&pCandidateString);
-	}
+	candidateLen = 0;
+	candidateLen = _pUIPresenter->_GetSelectedCandidateString(&pCandidateString);
 	if (candidateLen == 0)
     {
 		if(_candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION || _candidateMode == CANDIDATE_PHRASE)
@@ -81,7 +79,13 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 			goto Exit;
 		}
     }
-	
+	if (_pCompositionProcessorEngine->IsArrayShortCode() && candidateLen == 1 && *pCandidateString == 0x2394) // empty position in arry short code table.
+	{
+		hr = S_FALSE;
+		_HandleCancel(ec, pContext);
+		DoBeep(); 
+		goto Exit;
+	}
 	
 	commitString.Set(pCandidateString , candidateLen);
 	StringCchCopy(_commitString, 1, L"\0");
