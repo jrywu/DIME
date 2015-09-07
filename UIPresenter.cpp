@@ -1425,8 +1425,8 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ UINT dela
 					else
 						_pNotifyWnd->_Move(_notifyLocation.x, _notifyLocation.y);
 				}
-
-				if(_pTextService && delayShow == 0 && _GetContextDocument() == nullptr ) //means TextLayoutSink is not working. We need to ProbeComposition to start layout
+				//means TextLayoutSink is not working. We need to ProbeComposition to start layout
+				if(_pTextService && delayShow == 0 && _GetContextDocument() == nullptr && notifyType == NOTIFY_CHN_ENG )
 					_pTextService->_ProbeComposition(pContext);
 
 			}

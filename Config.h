@@ -23,6 +23,8 @@ public:
 	CConfig(){}
 	~CConfig(){clearReverseConvervsionInfoList();}
 	//  configuration set/get
+	static void SetIMEMode(IME_MODE imeMode) { _imeMode = imeMode; }
+	static IME_MODE GetIMEMode() { return _imeMode; }
 	static void SetAutoCompose(BOOL autoCompose) {_autoCompose = autoCompose;}
 	static BOOL GetAutoCompose() {return _autoCompose;}
 	static void SetThreeCodeMode(BOOL threeCodeMode) {_threeCodeMode = threeCodeMode;}
@@ -107,6 +109,7 @@ public:
 
 private:
 	//user setting variables
+	static IME_MODE _imeMode;
 	static BOOL _autoCompose;
 	static BOOL _threeCodeMode;
 	static BOOL _doBeep;

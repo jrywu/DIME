@@ -14,6 +14,7 @@
 #include "CompositionProcessorEngine.h"
 
 //static configuration settings initilization
+IME_MODE CConfig::_imeMode = IME_MODE_NONE;
 BOOL CConfig::_doBeep = TRUE;
 BOOL CConfig::_doBeepNotify = TRUE;
 BOOL CConfig::_autoCompose = FALSE;
@@ -76,6 +77,19 @@ HRESULT CDIME::Show(_In_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID inR
 	LANGID langid = inLangid;
 	GUID guidProfile = inRefGuidProfile;
 	
+	if (guidProfile == GUID_NULL)
+	{// called from hotkey in IME
+		CConfig::SetIMEMode(Global::imeMode);
+	}
+	else if (guidProfile == Global::TSFDayiGuidProfile)
+	{
+		CConfig::SetIMEMode(IME_MODE_DAYI);
+	}
+	else if (guidProfile == Global::TSFPhoneticGuidProfile)
+	{
+		CConfig::SetIMEMode(IME_MODE_PHONETIC);
+	}
+
 	if (SUCCEEDED(profile->CreateInstance()))
 	{
 		if(langid == 0)
@@ -278,27 +292,27 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		CheckDlgButton(hDlg, IDC_CHECKBOX_ARROWKEYSWPAGES, (_arrowKeySWPages)?BST_CHECKED:BST_UNCHECKED);
 		// hide autocompose and space as pagedown option in DAYI.
 		/*
-		if(Global::imeMode==IME_MODE_DAYI || Global::imeMode==IME_MODE_ARRAY)
+		if(_imeMode==IME_MODE_DAYI || _imeMode==IME_MODE_ARRAY)
 		{
 			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_AUTOCOMPOSE), SW_HIDE);
 			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_SPACEASPAGEDOWN), SW_HIDE);
 		}*/
-		if(Global::imeMode==IME_MODE_ARRAY || Global::imeMode==IME_MODE_PHONETIC)
+		if(_imeMode==IME_MODE_ARRAY || _imeMode==IME_MODE_PHONETIC)
 		{
 			ShowWindow(GetDlgItem(hDlg, IDC_EDIT_MAXWIDTH), SW_HIDE);
 			ShowWindow(GetDlgItem(hDlg, IDC_STATIC_EDIT_MAXWIDTH), SW_HIDE);
-			if (Global::imeMode == IME_MODE_ARRAY)
+			if (_imeMode == IME_MODE_ARRAY)
 			{
 				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_AUTOCOMPOSE), SW_HIDE);
 			}
 		}
 		ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_THREECODEMODE), SW_HIDE);  //Always hide 3code option
-		if(Global::imeMode!=IME_MODE_DAYI)
+		if(_imeMode!=IME_MODE_DAYI)
 		{
 		
 			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_DAYIARTICLEMODE), SW_HIDE);
 		}
-		if(Global::imeMode!=IME_MODE_ARRAY)
+		if(_imeMode!=IME_MODE_ARRAY)
 		{
 			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_FORCESP), SW_HIDE);
 			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_NOTIFYSP), SW_HIDE);
@@ -547,7 +561,7 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 	switch(message)
 	{
 	case WM_INITDIALOG:
-		if( Global::imeMode!=IME_MODE_ARRAY)
+		if( _imeMode!=IME_MODE_ARRAY)
 		{
 			ShowWindow(GetDlgItem(hDlg, IDC_BUTTON_LOAD_ARRAY_SC), SW_HIDE);
 			ShowWindow(GetDlgItem(hDlg, IDC_BUTTON_LOAD_ARRAY_SP), SW_HIDE);
@@ -560,13 +574,13 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 		switch(LOWORD(wParam))
 		{
 		case IDC_BUTTON_LOAD_MAIN:
-			if(Global::imeMode == IME_MODE_DAYI)
+			if(_imeMode == IME_MODE_DAYI)
 				StringCchCopy(targetName, MAX_PATH, L"\\DIME\\Dayi.cin");
-			else if(Global::imeMode == IME_MODE_ARRAY)
+			else if(_imeMode == IME_MODE_ARRAY)
 				StringCchCopy(targetName, MAX_PATH, L"\\DIME\\Array.cin");
-			else if(Global::imeMode == IME_MODE_PHONETIC)
+			else if(_imeMode == IME_MODE_PHONETIC)
 				StringCchCopy(targetName, MAX_PATH, L"\\DIME\\Phone.cin");
-			else if(Global::imeMode == IME_MODE_GENERIC)
+			else if(_imeMode == IME_MODE_GENERIC)
 				StringCchCopy(targetName, MAX_PATH, L"\\DIME\\Generic.cin");
 			goto LoadFile;
 		case IDC_BUTTON_LOAD_PHRASE:
@@ -763,13 +777,13 @@ VOID CConfig::WriteConfig()
 	}
 	else
 	{
-		if(Global::imeMode == IME_MODE_DAYI)
+		if(_imeMode == IME_MODE_DAYI)
 			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\DayiConfig.ini", wzsDIMEProfile);
-		else if(Global::imeMode == IME_MODE_ARRAY)
+		else if(_imeMode == IME_MODE_ARRAY)
 			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\ArrayConfig.ini", wzsDIMEProfile);
-		else if(Global::imeMode == IME_MODE_PHONETIC)
+		else if(_imeMode == IME_MODE_PHONETIC)
 			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\PhoneConfig.ini", wzsDIMEProfile);
-		else if(Global::imeMode == IME_MODE_GENERIC)
+		else if(_imeMode == IME_MODE_GENERIC)
 			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\GenericConfig.ini", wzsDIMEProfile);
 		else
 			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\config.ini", wzsDIMEProfile);
@@ -816,11 +830,11 @@ VOID CConfig::WriteConfig()
 
 		if(Global::isWindows8)
 			fwprintf_s(fp, L"AppPermissionSet = %d\n", _appPermissionSet?1:0);
-		if(Global::imeMode == IME_MODE_DAYI)
+		if(_imeMode == IME_MODE_DAYI)
 			fwprintf_s(fp, L"ThreeCodeMode = %d\n", _threeCodeMode?1:0);
 			fwprintf_s(fp, L"DayiArticleMode = %d\n", _dayiArticleMode ? 1 : 0);
 		
-		if(Global::imeMode == IME_MODE_ARRAY)
+		if(_imeMode == IME_MODE_ARRAY)
 		{
 			fwprintf_s(fp, L"ArrayForceSP = %d\n", _arrayForceSP?1:0);
 			fwprintf_s(fp, L"ArrayNotifySP = %d\n", _arrayNotifySP?1:0);
@@ -861,13 +875,13 @@ VOID CConfig::LoadConfig()
 	if(PathFileExists(wzsDIMEProfile))
 	{ 
 		
-		if(Global::imeMode == IME_MODE_DAYI)
+		if(_imeMode == IME_MODE_DAYI)
 			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\DayiConfig.ini", wzsDIMEProfile);
-		else if(Global::imeMode == IME_MODE_ARRAY)
+		else if(_imeMode == IME_MODE_ARRAY)
 			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\ArrayConfig.ini", wzsDIMEProfile);
-		else if(Global::imeMode == IME_MODE_PHONETIC)
+		else if(_imeMode == IME_MODE_PHONETIC)
 			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\PhoneConfig.ini", wzsDIMEProfile);
-		else if(Global::imeMode == IME_MODE_GENERIC)
+		else if(_imeMode == IME_MODE_GENERIC)
 			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\GenericConfig.ini", wzsDIMEProfile);
 		else
 			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\config.ini", wzsDIMEProfile);
@@ -896,7 +910,7 @@ VOID CConfig::LoadConfig()
 					SetDefaultTextFont();
 				}
 				// force autoCompose in Array
-				if (Global::imeMode == IME_MODE_ARRAY)
+				if (_imeMode == IME_MODE_ARRAY)
 				{
 					_autoCompose = TRUE;
 				}

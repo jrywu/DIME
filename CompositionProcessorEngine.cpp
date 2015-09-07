@@ -1226,6 +1226,7 @@ void CCompositionProcessorEngine::SetupConfiguration(IME_MODE imeMode)
 	else if (imeMode == IME_MODE_ARRAY)
 	{
 		CConfig::SetSpaceAsPageDown(TRUE);
+		CConfig::SetAutoCompose(TRUE);
 	}
 	else if (imeMode == IME_MODE_PHONETIC)
 	{
