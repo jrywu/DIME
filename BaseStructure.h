@@ -20,6 +20,7 @@ using std::endl;
 using std::map;
 
 typedef  map <WCHAR, PWCH> _T_RadicalMap;
+typedef  map <WCHAR, DWORD_PTR> _T_RadicalIndexMap;
 
 //---------------------------------------------------------------------
 // defined keyword

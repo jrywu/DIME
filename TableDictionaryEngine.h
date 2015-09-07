@@ -45,6 +45,7 @@ private:
 	DICTIONARY_TYPE _dictionaryType;
 
 	_T_RadicalMap* _pRadicalMap;
+	_T_RadicalIndexMap* _pRadicalIndexMap;
 
 	VOID MergeSortByFindKeyCode(_Inout_ CDIMEArray<CCandidateListItem> *pItemList, int leftRange, int rightRange);
 

@@ -40,7 +40,7 @@ GUID CConfig::_reverseConversionGUIDProfile = CLSID_NULL;
 WCHAR* CConfig::_reverseConversionDescription = nullptr;
 BOOL CConfig::_reloadReverseConversion = FALSE;
 
-WCHAR CConfig::_pFontFaceName[] = {L"Microsoft JhengHei"};
+WCHAR CConfig::_pFontFaceName[] = {L"微軟正黑體"};
 COLORREF CConfig::_itemColor = CANDWND_ITEM_COLOR;
 COLORREF CConfig::_itemBGColor = GetSysColor(COLOR_3DHIGHLIGHT);
 COLORREF CConfig::_selectedColor = CANDWND_SELECTED_ITEM_COLOR;
@@ -355,7 +355,38 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			ReleaseDC(hDlg, hdc);
 			ret = TRUE;
 			break;
+		case IDC_BUTTON_RESTOREDEFAULT:
+			wcsncpy_s(fontname, { L"微軟正黑體" }, _TRUNCATE);
 
+			fontpoint = 12;
+			fontweight = FW_NORMAL;
+			fontitalic = FALSE;
+			SetDlgItemText(hDlg, IDC_EDIT_FONTNAME, fontname);
+			hdc = GetDC(hDlg);
+			hFont = CreateFont(-MulDiv(10, GetDeviceCaps(hdc, LOGPIXELSY), 72), 0, 0, 0,
+				fontweight, fontitalic, FALSE, FALSE, CHINESEBIG5_CHARSET,
+				OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH, fontname);
+			SendMessage(GetDlgItem(hDlg, IDC_EDIT_FONTNAME), WM_SETFONT, (WPARAM)hFont, 0);
+			ReleaseDC(hDlg, hdc);
+			SetDlgItemInt(hDlg, IDC_EDIT_FONTPOINT, fontpoint, FALSE);
+
+			
+			colors[0].color = CANDWND_ITEM_COLOR;
+			colors[1].color = CANDWND_SELECTED_ITEM_COLOR;
+			colors[2].color = GetSysColor(COLOR_3DHIGHLIGHT);
+			colors[3].color = CANDWND_PHRASE_COLOR;
+			colors[4].color = CANDWND_NUM_COLOR;
+			colors[5].color = CANDWND_SELECTED_BK_COLOR;
+
+			hdc = BeginPaint(hDlg, &ps);
+			for (i = 0; i<_countof(colors); i++)
+			{
+				DrawColor(GetDlgItem(hDlg, colors[i].id), hdc, colors[i].color);
+			}
+			EndPaint(hDlg, &ps);
+			PropSheet_Changed(GetParent(hDlg), hDlg);
+			ret = TRUE;
+			break;
 		case IDC_EDIT_MAXWIDTH:
 			switch(HIWORD(wParam))
 			{

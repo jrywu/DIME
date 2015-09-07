@@ -32,16 +32,19 @@ public:
     BOOL FindPhraseForWildcard(_Out_ CDictionaryResult **ppdret);
 	BOOL FindConvertedString(CDictionaryResult **ppdret);
     BOOL FindConvertedStringForWildcard(CDictionaryResult **ppdret);
-	BOOL ParseConfig(IME_MODE imeMode, _In_opt_ _T_RadicalMap* pRadicalMap); 
-	VOID SetSearchSection(SEARCH_SECTION searchSection) { _searchSection =searchSection;}
+	BOOL ParseConfig(IME_MODE imeMode, _Inout_opt_ _T_RadicalMap* pRadicalMap = nullptr, _Inout_opt_ _T_RadicalIndexMap* pRadicalIndexMap = nullptr);
+	VOID SetSearchSection(SEARCH_SECTION searchSection) { _searchSection = searchSection; }
 
     CStringRange* _pSearchKeyCode;
 
     DWORD_PTR _charIndex;      // in character. Always point start of line in dictionary file.
 
+	void setSearchOffset(DWORD_PTR offset);
+
 private:
 	SEARCH_SECTION _searchSection;
-	BOOL FindWorker(BOOL isTextSearch, _Out_ CDictionaryResult **ppdret, BOOL isWildcardSearch, _In_opt_ BOOL parseConfig = FALSE, _In_opt_ _T_RadicalMap* pRadicalMap = nullptr);
+	BOOL FindWorker(BOOL isTextSearch, _Out_ CDictionaryResult **ppdret, BOOL isWildcardSearch, _In_opt_ BOOL parseConfig = FALSE
+		, _Inout_opt_ _T_RadicalMap* pRadicalMap = nullptr, _Inout_opt_ _T_RadicalIndexMap* pRadicalIndexMap = nullptr);
 
     DWORD_PTR GetBufferInWCharLength()
     {
@@ -52,6 +55,7 @@ private:
     {
         return _pFile->GetReadBufferPointer(fileReloaded) + _charIndex;
     }
+	void initialRadialIndexMap(_Inout_ _T_RadicalIndexMap* pRadicalIndexMap);
 
     CFile* _pFile;
 	enum SEARCH_MODE _searchMode;

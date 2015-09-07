@@ -19,6 +19,10 @@ CTableDictionaryEngine::CTableDictionaryEngine(LCID locale, _In_ CFile *pDiction
 
 	_pRadicalMap = new _T_RadicalMap();
 
+	// initialize _pRadicalIndexMap if the dictionary is in cin format
+	_pRadicalIndexMap = (dictionaryType == CIN_DICTIONARY) ? new _T_RadicalIndexMap() : nullptr;
+
+
 	if(dictionaryType == TTS_DICTIONARY)
 		_keywordDelimiter = '=';
 	else if (dictionaryType == CIN_DICTIONARY)
@@ -65,6 +69,13 @@ VOID CTableDictionaryEngine::CollectWord(_In_ CStringRange *pKeyCode, _Inout_ CD
 
 	if(_dictionaryType == TTS_DICTIONARY)
 		dshSearch.SetSearchSection(_searchSection);
+
+	if ((_dictionaryType == CIN_DICTIONARY ) && _pRadicalIndexMap && _pRadicalIndexMap->size())
+	{
+		WCHAR initial = toupper(*pKeyCode->Get());
+		_T_RadicalIndexMap::iterator it = _pRadicalIndexMap->find(initial);
+		if (it != _pRadicalIndexMap->end())	dshSearch.setSearchOffset(it->second);
+	}
 
     while (dshSearch.FindPhrase(&pdret))
     {
@@ -191,7 +202,7 @@ VOID CTableDictionaryEngine::ParseConfig(IME_MODE imeMode)
 		_pRadicalMap->clear();
 	}
 	CDictionarySearch dshSearch(_locale, _pDictionaryFile, NULL, _keywordDelimiter);
-	dshSearch.ParseConfig(imeMode, _pRadicalMap);
+	dshSearch.ParseConfig(imeMode, _pRadicalMap, _pRadicalIndexMap);;
 
 }
 
