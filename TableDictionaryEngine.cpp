@@ -72,7 +72,7 @@ VOID CTableDictionaryEngine::CollectWord(_In_ CStringRange *pKeyCode, _Inout_ CD
 
 	if ((_dictionaryType == CIN_DICTIONARY ) && _pRadicalIndexMap && _pRadicalIndexMap->size())
 	{
-		WCHAR initial = toupper(*pKeyCode->Get());
+		WCHAR initial = towupper(*pKeyCode->Get());
 		_T_RadicalIndexMap::iterator it = _pRadicalIndexMap->find(initial);
 		if (it != _pRadicalIndexMap->end())	dshSearch.setSearchOffset(it->second);
 	}
