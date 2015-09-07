@@ -903,6 +903,7 @@ BOOL CDIME::_IsUILessMode()
 
 void CDIME::_LoadConfig(BOOL isForce)
 {
+	CConfig::SetIMEMode(Global::imeMode);
 	CConfig::LoadConfig();
 	if(_pCompositionProcessorEngine) _pCompositionProcessorEngine->UpdateDictionaryFile();
 

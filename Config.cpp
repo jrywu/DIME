@@ -931,10 +931,10 @@ VOID CConfig::LoadConfig()
 				if ((iniDictionaryFile)->CreateFile(pwszINIFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
 				{
 					CTableDictionaryEngine * iniTableDictionaryEngine;
-					iniTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(MAKELCID(1028, SORT_DEFAULT), iniDictionaryFile, TTS_DICTIONARY);//CHT:1028
+					iniTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(MAKELCID(1028, SORT_DEFAULT), iniDictionaryFile, INI_DICTIONARY);//CHT:1028
 					if (iniTableDictionaryEngine)
 					{
-						iniTableDictionaryEngine->ParseConfig(IME_MODE_NONE); //parse config first.
+						iniTableDictionaryEngine->ParseConfig(_imeMode); //parse config first.
 					}
 					delete iniTableDictionaryEngine; // delete after config.ini config are pasrsed
 					delete iniDictionaryFile;

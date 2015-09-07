@@ -23,7 +23,7 @@ CTableDictionaryEngine::CTableDictionaryEngine(LCID locale, _In_ CFile *pDiction
 	_pRadicalIndexMap = (dictionaryType == CIN_DICTIONARY) ? new _T_RadicalIndexMap() : nullptr;
 
 
-	if(dictionaryType == TTS_DICTIONARY)
+	if(dictionaryType == TTS_DICTIONARY || dictionaryType == INI_DICTIONARY)
 		_keywordDelimiter = '=';
 	else if (dictionaryType == CIN_DICTIONARY)
 		_keywordDelimiter = '\t';
@@ -193,7 +193,7 @@ VOID CTableDictionaryEngine::CollectWordFromConvertedString(_In_ CStringRange *p
 }
 VOID CTableDictionaryEngine::ParseConfig(IME_MODE imeMode)
 {
-	if(_pRadicalMap->size())
+	if ( _dictionaryType != INI_DICTIONARY && _pRadicalMap->size())
 	{
 		for(_T_RadicalMap::iterator item = _pRadicalMap->begin(); item != _pRadicalMap->end(); ++item)
 		{
