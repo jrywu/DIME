@@ -15,6 +15,7 @@
 
 SetCompressor lzma
 ManifestDPIAware true
+BrandingText " "
 
 ; MUI 1.67 compatible ------
 !include "MUI.nsh"
@@ -190,8 +191,8 @@ Section "MainSection" SEC01
   SetOutPath "$INSTDIR"
   File "*.cin"
   SetOutPath "$APPDATA\DIME\"
-  ;CreateDirectory "$APPDATA\DIME"
-  File "config.ini"
+  CreateDirectory "$APPDATA\DIME"
+  ;File "config.ini"
   
 SectionEnd
 
