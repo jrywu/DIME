@@ -939,7 +939,7 @@ void CDIME::_LoadConfig(BOOL isForce)
 			}
 		}
 		CConfig::SetReloadReverseConversion(FALSE);
-		CConfig::WriteConfig();
+		//CConfig::WriteConfig();
 	}
 
 
