@@ -144,14 +144,22 @@ private:
 	IME_MODE _imeMode;
 
     CTableDictionaryEngine* _pTableDictionaryEngine[IM_SLOTS];
+	CTableDictionaryEngine* _pCustomTableDictionaryEngine[IM_SLOTS];
 	CTableDictionaryEngine* _pPhraseTableDictionaryEngine;
 	CTableDictionaryEngine* _pArrayShortCodeTableDictionaryEngine;
+	CTableDictionaryEngine* _pArrayExtBTableDictionaryEngine;
+	CTableDictionaryEngine* _pArrayExtCDTableDictionaryEngine;
+	CTableDictionaryEngine* _pArrayExtETableDictionaryEngine;
 	CTableDictionaryEngine* _pArraySpecialCodeTableDictionaryEngine;
 	CTableDictionaryEngine* _pTCSCTableDictionaryEngine;
 
 	CFile* _pTableDictionaryFile[IM_SLOTS];
+	CFile* _pCustomTableDictionaryFile[IM_SLOTS];
 	CFile* _pPhraseDictionaryFile;
 	CFile* _pArrayShortCodeDictionaryFile;
+	CFile* _pArrayExtBDictionaryFile;
+	CFile* _pArrayExtCDDictionaryFile;
+	CFile* _pArrayExtEDictionaryFile;
 	CFile* _pArraySpecialCodeDictionaryFile;
 	CFile* _pTCSCTableDictionaryFile;
 

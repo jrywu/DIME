@@ -128,10 +128,10 @@ extern HFONT defaultlFontHandle;  // Global font object we use everywhere
 extern const CLSID DIMECLSID;
 
 
-extern const GUID TSFDayiGuidProfile;
-extern const GUID TSFArrayGuidProfile;
-extern const GUID TSFPhoneticGuidProfile;
-extern const GUID TSFGenericGuidProfile;
+extern const GUID DIMEDayiGuidProfile;
+extern const GUID DIMEArrayGuidProfile;
+extern const GUID DIMEPhoneticGuidProfile;
+extern const GUID DIMEGenericGuidProfile;
 
 extern const GUID DIMEGuidImeModePreserveKey;
 extern const GUID DIMEGuidDoubleSingleBytePreserveKey;

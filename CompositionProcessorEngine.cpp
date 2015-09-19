@@ -42,17 +42,31 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CDIME *pTextServic
 	{
 		_pTableDictionaryEngine[i] = nullptr;
 		_pTableDictionaryFile[i] = nullptr;
+		_pCustomTableDictionaryEngine[i] = nullptr;
+		_pCustomTableDictionaryFile[i] = nullptr;
 	}
 
-
-	_pPhraseTableDictionaryEngine = nullptr;
+	//Array
 	_pArrayShortCodeTableDictionaryEngine = nullptr;
-	_pArraySpecialCodeTableDictionaryEngine = nullptr;
-
-	_pPhraseDictionaryFile = nullptr;
-	_pArraySpecialCodeDictionaryFile = nullptr;
 	_pArrayShortCodeDictionaryFile = nullptr;
 
+	_pArraySpecialCodeTableDictionaryEngine = nullptr;
+	_pArraySpecialCodeDictionaryFile = nullptr;
+
+	_pArrayExtBTableDictionaryEngine = nullptr;
+	_pArrayExtBDictionaryFile = nullptr;
+
+	_pArrayExtCDTableDictionaryEngine = nullptr;
+	_pArrayExtCDDictionaryFile = nullptr;
+
+	_pArrayExtETableDictionaryEngine = nullptr;
+	_pArrayExtEDictionaryFile = nullptr;
+
+	//Phrase
+	_pPhraseTableDictionaryEngine = nullptr;
+	_pPhraseDictionaryFile = nullptr;
+
+	//TCSC
 	_pTCSCTableDictionaryEngine = nullptr;
 	_pTCSCTableDictionaryFile = nullptr;
 
@@ -98,12 +112,70 @@ void CCompositionProcessorEngine::ReleaseDictionaryFiles()
 			delete _pTableDictionaryFile[i];
 			_pTableDictionaryFile[i] = nullptr;
 		}
+		if (_pCustomTableDictionaryFile[i])
+		{
+			delete _pCustomTableDictionaryFile[i];
+			_pCustomTableDictionaryFile[i] = nullptr;
+		}
 		if (_pTableDictionaryEngine[i])
 		{   // _pTableDictionaryEngine[i] is only a pointer to either _pTTSDictionaryFile[i] or _pCINTableDictionaryEngine. no need to delete it.
 			_pTableDictionaryEngine[i] = nullptr;
 		}
+		if (_pCustomTableDictionaryEngine[i])
+		{
+			_pCustomTableDictionaryEngine[i] = nullptr;
+		}
 
 	}
+	// Array short-code
+	if (_pArrayShortCodeDictionaryFile)
+	{
+		delete _pArrayShortCodeDictionaryFile;
+		_pArrayShortCodeDictionaryFile = nullptr;
+	}
+	if (_pArrayShortCodeTableDictionaryEngine)
+	{
+		delete _pArrayShortCodeTableDictionaryEngine;
+		_pArrayShortCodeTableDictionaryEngine = nullptr;
+	}
+
+	// Array special-code
+	if (_pArraySpecialCodeDictionaryFile)
+	{
+		delete _pArraySpecialCodeDictionaryFile;
+		_pArraySpecialCodeDictionaryFile = nullptr;
+	}
+	if (_pArraySpecialCodeTableDictionaryEngine)
+	{
+		delete _pArraySpecialCodeTableDictionaryEngine;
+		_pArraySpecialCodeTableDictionaryEngine = nullptr;
+	}
+	// Array ext-B
+	if (_pArrayExtBDictionaryFile)
+	{
+		delete _pArrayExtBDictionaryFile;
+		_pArrayExtBDictionaryFile = nullptr;
+	}
+	if (_pArrayExtBTableDictionaryEngine)
+	{
+		delete _pArrayExtBTableDictionaryEngine;
+		_pArrayExtBTableDictionaryEngine = nullptr;
+	}
+	// Array ext-CD
+	if (_pArrayExtCDDictionaryFile)
+	{
+		delete _pArrayExtCDDictionaryFile;
+		_pArrayExtCDDictionaryFile = nullptr;
+	}
+	if (_pArrayExtETableDictionaryEngine)
+	{
+		delete _pArrayExtETableDictionaryEngine;
+		_pArrayExtETableDictionaryEngine = nullptr;
+	}
+
+
+
+	// TC-SC dictinary
 	if (_pTCSCTableDictionaryEngine)
 	{
 		delete _pTCSCTableDictionaryEngine;
@@ -325,7 +397,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 			_pArrayShortCodeTableDictionaryEngine->CollectWord(&_keystrokeBuffer, pCandidateList);
 		}
 	}
-	else if (isIncrementalWordSearch && Global::imeMode!= IME_MODE_ARRAY)
+	else if (isIncrementalWordSearch && Global::imeMode != IME_MODE_ARRAY)
 	{
 		CStringRange wildcardSearch;
 		DWORD_PTR keystrokeBufLen = _keystrokeBuffer.GetLength() + 3;
@@ -457,19 +529,44 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 
 	delete [] pwch;
 	}*/
-	else if (IsSymbol() && (
-		(Global::imeMode == IME_MODE_DAYI )||
-		//&& _pTableDictionaryEngine[IME_MODE_DAYI]->GetDictionaryType() == TTS_DICTIONARY) ||
-		(Global::imeMode == IME_MODE_ARRAY && _pTableDictionaryEngine[IME_MODE_ARRAY]->GetDictionaryType() == TTS_DICTIONARY)))
+	else if (IsSymbol() && (Global::imeMode == IME_MODE_DAYI|| Global::imeMode == IME_MODE_ARRAY )) 
 	{
-		_pTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_SYMBOL);
+		if (_pTableDictionaryEngine[Global::imeMode]->GetDictionaryType() == TTS_DICTIONARY)
+			_pTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_SYMBOL);
 		_pTableDictionaryEngine[Global::imeMode]->CollectWord(&_keystrokeBuffer, pCandidateList);
 	}
-	
 	else
 	{
 		_pTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_TEXT);
 		_pTableDictionaryEngine[Global::imeMode]->CollectWord(&_keystrokeBuffer, pCandidateList);
+	}
+	//Search Array unicode extensions
+	if (Global::imeMode == IME_MODE_ARRAY && CConfig::GetArrayUnicodeScope() != ARRAY_UNICODE_EXT_A)
+	{
+		switch (CConfig::GetArrayUnicodeScope())
+		{
+		
+		case ARRAY_UNICODE_EXT_AB:
+			if (_pArrayExtBTableDictionaryEngine)	_pArrayExtBTableDictionaryEngine->CollectWord(&_keystrokeBuffer, pCandidateList);
+			break;
+		case ARRAY_UNICODE_EXT_ABCD:
+			if (_pArrayExtBTableDictionaryEngine)	_pArrayExtBTableDictionaryEngine->CollectWord(&_keystrokeBuffer, pCandidateList);
+			if (_pArrayExtCDTableDictionaryEngine)	_pArrayExtCDTableDictionaryEngine->CollectWord(&_keystrokeBuffer, pCandidateList);
+			break;
+		case ARRAY_UNICODE_EXT_ABCDE:
+			if (_pArrayExtBTableDictionaryEngine)	_pArrayExtBTableDictionaryEngine->CollectWord(&_keystrokeBuffer, pCandidateList);
+			if (_pArrayExtCDTableDictionaryEngine)	_pArrayExtCDTableDictionaryEngine->CollectWord(&_keystrokeBuffer, pCandidateList);
+			if (_pArrayExtETableDictionaryEngine)	_pArrayExtETableDictionaryEngine->CollectWord(&_keystrokeBuffer, pCandidateList);
+			break;
+		default:
+			break;
+		}
+
+	}
+	//Search cutom table
+	if (_pCustomTableDictionaryEngine[Global::imeMode])
+	{
+		_pCustomTableDictionaryEngine[Global::imeMode]->CollectWord(&_keystrokeBuffer, pCandidateList);
 	}
 
 	_candidateWndWidth = DEFAULT_CAND_ITEM_LENGTH + TRAILING_SPACE;
@@ -618,7 +715,7 @@ BOOL CCompositionProcessorEngine::IsSymbolChar(WCHAR wch)
 //----------------------------------------------------------------------------
 BOOL CCompositionProcessorEngine::IsDayiAddressChar(WCHAR wch)
 {
-	if (Global::imeMode != IME_MODE_DAYI )
+	if (Global::imeMode != IME_MODE_DAYI)
 		//|| (_pTableDictionaryEngine[IME_MODE_DAYI] && _pTableDictionaryEngine[IME_MODE_DAYI]->GetDictionaryType() != TTS_DICTIONARY)) 
 		return FALSE;
 
@@ -759,22 +856,22 @@ IME_MODE CCompositionProcessorEngine::GetImeModeFromGuidProfile(REFGUID guidLang
 {
 	debugPrint(L"CCompositionProcessorEngine::GetImeModeFromGuidProfile() \n");
 	IME_MODE imeMode = IME_MODE_NONE;
-	if (guidLanguageProfile == Global::TSFDayiGuidProfile)
+	if (guidLanguageProfile == Global::DIMEDayiGuidProfile)
 	{
 		debugPrint(L"CCompositionProcessorEngine::GetImeModeFromGuidProfile() : DAYI Mode");
 		imeMode = IME_MODE_DAYI;
 	}
-	else if (guidLanguageProfile == Global::TSFArrayGuidProfile)
+	else if (guidLanguageProfile == Global::DIMEArrayGuidProfile)
 	{
 		debugPrint(L"CCompositionProcessorEngine::GetImeModeFromGuidProfile() : Array Mode");
 		imeMode = IME_MODE_ARRAY;
 	}
-	else if (guidLanguageProfile == Global::TSFPhoneticGuidProfile)
+	else if (guidLanguageProfile == Global::DIMEPhoneticGuidProfile)
 	{
 		debugPrint(L"CCompositionProcessorEngine::GetImeModeFromGuidProfile() : Phonetic Mode");
 		imeMode = IME_MODE_PHONETIC;
 	}
-	else if (guidLanguageProfile == Global::TSFGenericGuidProfile)
+	else if (guidLanguageProfile == Global::DIMEGenericGuidProfile)
 	{
 		debugPrint(L"CCompositionProcessorEngine::GetImeModeFromGuidProfile() : Generic Mode");
 		imeMode = IME_MODE_GENERIC;
@@ -1453,10 +1550,86 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 		}
 	}
 
-	// now load array special code and short-code table
+	// now load Array unicode ext-b, ext-cd, ext-e , special code and short-code table
 	if (imeMode == IME_MODE_ARRAY) //array-special.cin and array-shortcode.cin in personal romaing profile
 	{
+		//Ext-B
+		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\Array-Ext-B.cin");
+		if (!PathFileExists(pwszCINFileName)) //failed back to preload array-special.cin in program files.
+			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\DIME\\Array-Ext-B.cin");
+		else if (_pArrayExtBDictionaryFile && _pTextService &&
+			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pArrayExtBDictionaryFile->GetFileName(), -1) != CSTR_EQUAL)
+		{ //indicate the prevoius table is built with system preload file in program files, and now user provides their own.
+			delete _pArrayExtBTableDictionaryEngine;
+			_pArrayExtBTableDictionaryEngine = nullptr;
+			delete _pArrayExtBDictionaryFile;
+			_pArrayExtBDictionaryFile = nullptr;
+		}
 
+		if (_pArrayExtBDictionaryFile == nullptr)
+		{
+			_pArrayExtBDictionaryFile = new (std::nothrow) CFile();
+			if (_pArrayExtBDictionaryFile && _pTextService &&
+				_pArrayExtBDictionaryFile->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
+			{
+				_pArrayExtBTableDictionaryEngine =
+					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pArrayExtBDictionaryFile, CIN_DICTIONARY); //cin files use tab as delimiter
+				if (_pArrayExtBTableDictionaryEngine)
+					_pArrayExtBTableDictionaryEngine->ParseConfig(imeMode); // to release the file handle
+			}
+		}
+		//Ext-CD
+		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\Array-Ext-CD.cin");
+		if (!PathFileExists(pwszCINFileName)) //failed back to preload array-special.cin in program files.
+			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\DIME\\Array-Ext-CD.cin");
+		else if (_pArrayExtCDDictionaryFile && _pTextService &&
+			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pArrayExtCDDictionaryFile->GetFileName(), -1) != CSTR_EQUAL)
+		{ //indicate the prevoius table is built with system preload file in program files, and now user provides their own.
+			delete _pArrayExtCDTableDictionaryEngine;
+			_pArrayExtCDTableDictionaryEngine = nullptr;
+			delete _pArrayExtCDDictionaryFile;
+			_pArrayExtCDDictionaryFile = nullptr;
+		}
+
+		if (_pArrayExtCDDictionaryFile == nullptr)
+		{
+			_pArrayExtCDDictionaryFile = new (std::nothrow) CFile();
+			if (_pArrayExtCDDictionaryFile && _pTextService &&
+				_pArrayExtCDDictionaryFile->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
+			{
+				_pArrayExtCDTableDictionaryEngine =
+					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pArrayExtCDDictionaryFile, CIN_DICTIONARY); //cin files use tab as delimiter
+				if (_pArrayExtCDTableDictionaryEngine)
+					_pArrayExtCDTableDictionaryEngine->ParseConfig(imeMode); // to release the file handle
+			}
+		}
+		//Ext-E
+		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\Array-Ext-E.cin");
+		if (!PathFileExists(pwszCINFileName)) //failed back to preload array-special.cin in program files.
+			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\DIME\\Array-Ext-E.cin");
+		else if (_pArrayExtEDictionaryFile && _pTextService &&
+			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pArrayExtEDictionaryFile->GetFileName(), -1) != CSTR_EQUAL)
+		{ //indicate the prevoius table is built with system preload file in program files, and now user provides their own.
+			delete _pArrayExtETableDictionaryEngine;
+			_pArrayExtETableDictionaryEngine = nullptr;
+			delete _pArrayExtEDictionaryFile;
+			_pArrayExtEDictionaryFile = nullptr;
+		}
+
+		if (_pArrayExtEDictionaryFile == nullptr)
+		{
+			_pArrayExtEDictionaryFile = new (std::nothrow) CFile();
+			if (_pArrayExtEDictionaryFile && _pTextService &&
+				_pArrayExtEDictionaryFile->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
+			{
+				_pArrayExtETableDictionaryEngine =
+					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pArrayExtEDictionaryFile, CIN_DICTIONARY); //cin files use tab as delimiter
+				if (_pArrayExtETableDictionaryEngine)
+					_pArrayExtETableDictionaryEngine->ParseConfig(imeMode); // to release the file handle
+			}
+		}
+
+		//Special
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\Array-special.cin");
 		if (!PathFileExists(pwszCINFileName)) //failed back to preload array-special.cin in program files.
 			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\DIME\\Array-special.cin");
@@ -1482,6 +1655,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			}
 		}
 
+		//Short-code
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\Array-shortcode.cin");
 		if (!PathFileExists(pwszCINFileName)) //failed back to preload array-shortcode.cin in program files.
 			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\DIME\\Array-shortcode.cin");
@@ -1500,6 +1674,30 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 		}
 
 	}
+
+	// now load Dayi custom table
+	if (imeMode == IME_MODE_DAYI)
+		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\DAYI-CUSTOM.cin");
+	else if (Global::imeMode == IME_MODE_ARRAY)
+		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\ARRAY-CUSTOM.cin");
+	else if (Global::imeMode == IME_MODE_PHONETIC)
+		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\PHONETIC-CUSTOM.cin");
+	else
+		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\GENERIC-CUSTOM.cin");
+	if (PathFileExists(pwszCINFileName) && _pCustomTableDictionaryEngine[imeMode] == nullptr)
+	{
+		_pCustomTableDictionaryFile[imeMode] = new (std::nothrow) CFile();
+		if (_pCustomTableDictionaryFile[imeMode] && _pTextService &&
+			_pCustomTableDictionaryFile[imeMode]->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
+		{
+			_pCustomTableDictionaryEngine[imeMode] =
+				new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pCustomTableDictionaryFile[imeMode], CIN_DICTIONARY); //cin files use tab as delimiter
+			if (_pCustomTableDictionaryEngine[imeMode])
+				_pCustomTableDictionaryEngine[imeMode]->ParseConfig(imeMode);// to release the file handle
+		}
+
+	}
+
 
 
 	delete[]pwszTTSFileName;
@@ -1832,6 +2030,8 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 			case VK_LEFT:   if (pKeyState) { pKeyState->Category = CATEGORY_COMPOSING; pKeyState->Function = FUNCTION_MOVE_LEFT; } return TRUE;
 			case VK_RIGHT:  if (pKeyState) { pKeyState->Category = CATEGORY_COMPOSING; pKeyState->Function = FUNCTION_MOVE_RIGHT; } return TRUE;
 			case VK_RETURN: if (pKeyState) { pKeyState->Category = CATEGORY_COMPOSING; pKeyState->Function = FUNCTION_CONVERT; } return TRUE;
+			case VK_INSERT:
+			case VK_DELETE:
 			case VK_ESCAPE: if (pKeyState) { pKeyState->Category = CATEGORY_COMPOSING; pKeyState->Function = FUNCTION_CANCEL; } return TRUE;
 			case VK_BACK:   if (pKeyState) { pKeyState->Category = CATEGORY_COMPOSING; pKeyState->Function = FUNCTION_BACKSPACE; } return TRUE;
 			case VK_UP:     if (pKeyState) { pKeyState->Category = CATEGORY_COMPOSING; pKeyState->Function = FUNCTION_MOVE_UP; } return TRUE;
@@ -1908,7 +2108,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 			*/
 		case VK_RETURN: if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_CONVERT; } return TRUE;
 		case VK_SPACE:  if (pKeyState)
-			{
+		{
 
 							if ((candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)){ // space finalized the associate here instead of choose the first one (selected index = -1 for phrase candidates).
 								if (pKeyState)
@@ -1928,17 +2128,19 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 									pKeyState->Function = FUNCTION_CANCEL;
 								}
 								return FALSE;
-							}else{
+							}
+							else{
 								pKeyState->Category = CATEGORY_CANDIDATE;
 								pKeyState->Function = FUNCTION_CONVERT;
 							}
 
 							return TRUE;
-			}
+		}
 		case VK_BACK:   if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_CANCEL; } return TRUE;
-
+		case VK_INSERT:
+		case VK_DELETE:
 		case VK_ESCAPE:
-			{
+		{
 						  if (candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)
 						  {
 							  if (pKeyState)
@@ -1957,7 +2159,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 							  }
 							  return TRUE;
 						  }
-			}
+		}
 
 		}
 
@@ -2102,7 +2304,7 @@ BOOL CCompositionProcessorEngine::IsKeystrokeRange(UINT uCode, _Out_ _KEYSTROKE_
 			}
 			else
 			{
-				pKeyState->Category = CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION; 
+				pKeyState->Category = CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION;
 				pKeyState->Function = pKeyState->Function = FUNCTION_CANCEL;  //No shift present, cancel phrsae mode.
 				return FALSE;
 			}

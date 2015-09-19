@@ -116,6 +116,18 @@ enum IME_MODE
 };
 
 //---------------------------------------------------------------------
+// ARRAY UNICODE SCOPE
+//---------------------------------------------------------------------
+enum ARRAY_UNICODE_SCOPE
+{
+	ARRAY_UNICODE_EXT_A = 0,
+	ARRAY_UNICODE_EXT_AB,
+	ARRAY_UNICODE_EXT_ABCD,
+	ARRAY_UNICODE_EXT_ABCDE,
+};
+
+
+//---------------------------------------------------------------------
 // SEARCH SECTION
 //---------------------------------------------------------------------
 enum SEARCH_SECTION

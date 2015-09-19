@@ -56,7 +56,7 @@ BOOL RegisterProfiles()
     }
     hr = pITfInputProcessorProfileMgr->RegisterProfile(Global::DIMECLSID,
         TEXTSERVICE_LANGID,
-        Global::TSFDayiGuidProfile,
+        Global::DIMEDayiGuidProfile,
         serviceDescripion,
         static_cast<ULONG>(lenOfDesc),
         achIconFile,
@@ -77,7 +77,7 @@ BOOL RegisterProfiles()
     }
     hr = pITfInputProcessorProfileMgr->RegisterProfile(Global::DIMECLSID,
         TEXTSERVICE_LANGID,
-        Global::TSFDayiGuidProfile,
+        Global::DIMEDayiGuidProfile,
         serviceDescripion,
         static_cast<ULONG>(lenOfDesc),
         achIconFile,
@@ -99,7 +99,7 @@ BOOL RegisterProfiles()
     }
 	hr = pITfInputProcessorProfileMgr->RegisterProfile(Global::DIMECLSID,
         TEXTSERVICE_LANGID,
-		Global::TSFArrayGuidProfile,
+		Global::DIMEArrayGuidProfile,
         serviceDescripion,
         static_cast<ULONG>(lenOfDesc),
         achIconFile,
@@ -121,7 +121,7 @@ BOOL RegisterProfiles()
     }
 	hr = pITfInputProcessorProfileMgr->RegisterProfile(Global::DIMECLSID,
         TEXTSERVICE_LANGID,
-		Global::TSFPhoneticGuidProfile,
+		Global::DIMEPhoneticGuidProfile,
         serviceDescripion,
         static_cast<ULONG>(lenOfDesc),
         achIconFile,
@@ -142,7 +142,7 @@ BOOL RegisterProfiles()
     }
 	hr = pITfInputProcessorProfileMgr->RegisterProfile(Global::DIMECLSID,
         TEXTSERVICE_LANGID,
-		Global::TSFGenericGuidProfile,
+		Global::DIMEGenericGuidProfile,
         serviceDescripion,
         static_cast<ULONG>(lenOfDesc),
         achIconFile,
@@ -181,25 +181,25 @@ void UnregisterProfiles()
         goto Exit;
     }
 	//Dayi profile 
-    hr = pITfInputProcessorProfileMgr->UnregisterProfile(Global::DIMECLSID, TEXTSERVICE_LANGID, Global::TSFDayiGuidProfile, 0);
+    hr = pITfInputProcessorProfileMgr->UnregisterProfile(Global::DIMECLSID, TEXTSERVICE_LANGID, Global::DIMEDayiGuidProfile, 0);
     if (FAILED(hr))
     {
         goto Exit;
     }
 	//Array profile 
-    hr = pITfInputProcessorProfileMgr->UnregisterProfile(Global::DIMECLSID, TEXTSERVICE_LANGID, Global::TSFArrayGuidProfile, 0);
+    hr = pITfInputProcessorProfileMgr->UnregisterProfile(Global::DIMECLSID, TEXTSERVICE_LANGID, Global::DIMEArrayGuidProfile, 0);
     if (FAILED(hr))
     {
         goto Exit;
     }
 	//Phonetic profile 
-	hr = pITfInputProcessorProfileMgr->UnregisterProfile(Global::DIMECLSID, TEXTSERVICE_LANGID, Global::TSFPhoneticGuidProfile, 0);
+	hr = pITfInputProcessorProfileMgr->UnregisterProfile(Global::DIMECLSID, TEXTSERVICE_LANGID, Global::DIMEPhoneticGuidProfile, 0);
     if (FAILED(hr))
     {
         goto Exit;
     }
 	//Generic profile 
-	hr = pITfInputProcessorProfileMgr->UnregisterProfile(Global::DIMECLSID, TEXTSERVICE_LANGID, Global::TSFGenericGuidProfile, 0);
+	hr = pITfInputProcessorProfileMgr->UnregisterProfile(Global::DIMECLSID, TEXTSERVICE_LANGID, Global::DIMEGenericGuidProfile, 0);
     if (FAILED(hr))
     {
         goto Exit;

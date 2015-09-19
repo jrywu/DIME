@@ -14,6 +14,7 @@ typedef INT_PTR (__stdcall * _T_PropertySheet)(LPCPROPSHEETHEADER lppsph );
 typedef BOOL (__stdcall * _T_ChooseColor)(_Inout_  LPCHOOSECOLOR lpcc);
 typedef BOOL (__stdcall * _T_ChooseFont)(_Inout_  LPCHOOSEFONT lpcf);
 typedef BOOL (__stdcall * _T_GetOpenFileName)(_Inout_  LPOPENFILENAME  lpofn);
+typedef BOOL(__stdcall * _T_GetSaveFileName)(_Inout_  LPOPENFILENAME  lpofn);
 
 class CConfig
 {
@@ -25,6 +26,8 @@ public:
 	//  configuration set/get
 	static void SetIMEMode(IME_MODE imeMode) { _imeMode = imeMode; }
 	static IME_MODE GetIMEMode() { return _imeMode; }
+	static void SetArrayUnicodeScope(ARRAY_UNICODE_SCOPE arrayUnicodeScope) { _arrayUnicodeScope = arrayUnicodeScope; }
+	static ARRAY_UNICODE_SCOPE GetArrayUnicodeScope() { return _arrayUnicodeScope; }
 	static void SetAutoCompose(BOOL autoCompose) {_autoCompose = autoCompose;}
 	static BOOL GetAutoCompose() {return _autoCompose;}
 	static void SetThreeCodeMode(BOOL threeCodeMode) {_threeCodeMode = threeCodeMode;}
@@ -47,6 +50,9 @@ public:
 	static BOOL GetShowNotifyDesktop() {return _showNotifyDesktop ;}
 	static void SetFontFaceName(WCHAR *pFontFaceName) {StringCchCopy(_pFontFaceName, LF_FACESIZE,pFontFaceName);}
 	static WCHAR* GetFontFaceName(){ return _pFontFaceName;}
+	static void SetLoadTableMode(BOOL loadTableMode) { _loadTableMode = loadTableMode; }
+	static BOOL GetLoadTableMode() { return _loadTableMode; }
+
 	//colors
 	static void SetItemColor(UINT itemColor) { _itemColor = itemColor;}
 	static COLORREF GetItemColor(){return _itemColor;}
@@ -109,7 +115,9 @@ public:
 
 private:
 	//user setting variables
+	static BOOL _loadTableMode;
 	static IME_MODE _imeMode;
+	static ARRAY_UNICODE_SCOPE _arrayUnicodeScope;
 	static BOOL _autoCompose;
 	static BOOL _threeCodeMode;
 	static BOOL _doBeep;
@@ -141,6 +149,7 @@ private:
 
 	static BOOL _dayiArticleMode;  // Article mode: input full-shaped symbols with address keys
 
+	static BOOL _customTableChanged;
 
 	static struct _stat _initTimeStamp;
 
@@ -152,6 +161,10 @@ private:
 	static void clearReverseConvervsionInfoList();
 
 	static ColorInfo colors[6];
+
+	static BOOL importCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToLoad);
+	static BOOL exportCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToWrite);
+	static BOOL parseCINFile(_In_ LPCWSTR pathToLoad, _In_ LPCWSTR pathToWrite, _In_opt_ BOOL customTableMode = FALSE);
 };
 
 

@@ -105,6 +105,7 @@
     <ClCompile Include="ScrollBarWindow.cpp" />
     <ClCompile Include="Server.cpp" />
     <ClCompile Include="ShadowWindow.cpp" />
+    <ClCompile Include="ShowConfig.cpp" />
     <ClCompile Include="StartComposition.cpp" />
     <ClCompile Include="TableDictionaryEngine.cpp" />
     <ClCompile Include="DIME.cpp" />

@@ -383,6 +383,8 @@ ReadValue:
 					CConfig::SetDoHanConvert((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ReloadReversionConversion", 25)) == CSTR_EQUAL)
 					CConfig::SetReloadReverseConversion((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ArrayUnicodeScope", 17)) == CSTR_EQUAL)
+					CConfig::SetArrayUnicodeScope((ARRAY_UNICODE_SCOPE)_wtoi(valueStrings.GetAt(0)->Get()));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ReversionConversionCLSID", 24)) == CSTR_EQUAL)
 				{
 					BSTR pbstr;
@@ -430,6 +432,8 @@ ReadValue:
 					StringCchCopyN(pwszFontFaceName, LF_FACESIZE, valueStrings.GetAt(0)->Get(), valueStrings.GetAt(0)->GetLength());
 					CConfig::SetFontFaceName(pwszFontFaceName);
 				}
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"LoadTableMode", 13)) == CSTR_EQUAL)
+					CConfig::SetLoadTableMode((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
 				goto FindNextLine;
 			}
 			else if (_searchMode == SEARCH_CONTROLKEY && controlKeyType == CIN_CONTROLKEY)  // get value of cin control keys

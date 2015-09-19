@@ -1,8 +1,8 @@
 //#define DEBUG_PRINT
-
 #include <windowsx.h>
 #include <Shlobj.h>
 #include <Shlwapi.h>
+#include <MLang.h>
 #include "Globals.h"
 #include "resource.h"
 #include "DIME.h"
@@ -10,11 +10,12 @@
 #include "File.h"
 #include "TableDictionaryEngine.h"
 #include "Aclapi.h"
-#include "TfInputProcessorProfile.h"
 #include "CompositionProcessorEngine.h"
 
 //static configuration settings initilization
 IME_MODE CConfig::_imeMode = IME_MODE_NONE;
+BOOL CConfig::_loadTableMode = FALSE;
+ARRAY_UNICODE_SCOPE CConfig::_arrayUnicodeScope = ARRAY_UNICODE_EXT_A;
 BOOL CConfig::_doBeep = TRUE;
 BOOL CConfig::_doBeepNotify = TRUE;
 BOOL CConfig::_autoCompose = FALSE;
@@ -33,6 +34,7 @@ BOOL CConfig::_makePhrase = TRUE;
 BOOL CConfig::_doHanConvert = FALSE;
 BOOL CConfig::_showNotifyDesktop = TRUE;
 BOOL CConfig::_dayiArticleMode = FALSE;  // Article mode: input full-shaped symbols with address keys
+BOOL CConfig::_customTableChanged = FALSE;
 
 CDIMEArray <LanguageProfileInfo>* CConfig::_reverseConvervsionInfoList = new (std::nothrow) CDIMEArray <LanguageProfileInfo>;
 CLSID CConfig::_reverseConverstionCLSID = CLSID_NULL;
@@ -60,122 +62,6 @@ ColorInfo CConfig::colors[6] =
 struct _stat CConfig::_initTimeStamp = {0,0,0,0,0,0,0,0,0,0,0}; //zero the timestamp
 
 
-//+---------------------------------------------------------------------------
-//
-// ITfFnConfigure::Show
-//
-//----------------------------------------------------------------------------
-// static dialog procedure
-
-HRESULT CDIME::Show(_In_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID inRefGuidProfile)
-{
-	debugPrint(L"CDIME::Show()");
-
-	if(_IsStoreAppMode() ||_IsUILessMode() || _IsSecureMode()) return S_OK;
-	
-	CTfInputProcessorProfile* profile = new CTfInputProcessorProfile();
-	LANGID langid = inLangid;
-	GUID guidProfile = inRefGuidProfile;
-	
-	if (guidProfile == GUID_NULL)
-	{// called from hotkey in IME
-		CConfig::SetIMEMode(Global::imeMode);
-	}
-	else if (guidProfile == Global::TSFDayiGuidProfile)
-	{
-		CConfig::SetIMEMode(IME_MODE_DAYI);
-	}
-	else if (guidProfile == Global::TSFPhoneticGuidProfile)
-	{
-		CConfig::SetIMEMode(IME_MODE_PHONETIC);
-	}
-
-	if (SUCCEEDED(profile->CreateInstance()))
-	{
-		if(langid == 0)
-			profile->GetCurrentLanguage(&langid);
-		if(guidProfile == GUID_NULL)
-		{
-			CLSID clsid;
-			profile->GetDefaultLanguageProfile(langid, GUID_TFCAT_TIP_KEYBOARD, &clsid, &guidProfile);
-		}
-		
-		CDIMEArray <LanguageProfileInfo> langProfileInfoList;
-		profile->GetReverseConversionProviders(langid, &langProfileInfoList);
-		CConfig::SetReverseConvervsionInfoList(&langProfileInfoList);
-		
-	}
-	delete profile;
-
-	_LoadConfig();
-	
-	if(_IsComposing() && _pContext) _EndComposition(_pContext);
-	_DeleteCandidateList(TRUE, _pContext);
-
-	
-
-	// comctl32.dll and comdlg32.dll can't be loaded into immersivemode (app container), thus use late binding here.
-	HINSTANCE dllCtlHandle = NULL;       
-	dllCtlHandle = LoadLibrary(L"comctl32.dll");
-	
-	_T_CreatePropertySheetPage _CreatePropertySheetPage = NULL;
-	_T_PropertySheet _PropertySheet = NULL;
-
-    if(dllCtlHandle)
-    {
-        _CreatePropertySheetPage = reinterpret_cast<_T_CreatePropertySheetPage> ( GetProcAddress(dllCtlHandle, "CreatePropertySheetPageW"));
-		_PropertySheet =  reinterpret_cast<_T_PropertySheet> (GetProcAddress(dllCtlHandle, "PropertySheetW"));
-    }
-
-	
-
-	debugPrint(L"CDIME::Show() ,  ITfFnConfigure::Show(), _autoCompose = %d, _threeCodeMode = %d, _doBeep = %d", CConfig::GetAutoCompose(), CConfig::GetThreeCodeMode(), CConfig::GetDoBeep());
-
-	PROPSHEETPAGE psp;
-	PROPSHEETHEADER psh;
-	struct {
-		int id;
-		DLGPROC DlgProc;
-	} DlgPage[] = {
-		{IDD_DIALOG_COMMON,	CConfig::CommonPropertyPageWndProc},
-		{IDD_DIALOG_DICTIONARY,	CConfig::DictionaryPropertyPageWndProc},
-		
-	};
-	HPROPSHEETPAGE hpsp[_countof(DlgPage)];
-	int i;
-
-	ZeroMemory(&psp, sizeof(PROPSHEETPAGE));
-	psp.dwSize = sizeof(PROPSHEETPAGE);
-	psp.dwFlags = PSP_PREMATURE;
-	psp.hInstance = Global::dllInstanceHandle;
-	
-	for(i=0; i<_countof(DlgPage); i++)
-	{
-		psp.pszTemplate = MAKEINTRESOURCE(DlgPage[i].id);
-		psp.pfnDlgProc = DlgPage[i].DlgProc;
-		if(_CreatePropertySheetPage)
-			hpsp[i] = (*_CreatePropertySheetPage)(&psp);
-	}
-
-	ZeroMemory(&psh, sizeof(PROPSHEETHEADER));
-	psh.dwSize = sizeof(PROPSHEETHEADER);
-	psh.dwFlags = PSH_DEFAULT | PSH_NOCONTEXTHELP;
-	psh.hInstance = Global::dllInstanceHandle;
-	psh.hwndParent = hwndParent;
-	psh.nPages = _countof(DlgPage);
-	psh.phpage = hpsp;
-	psh.pszCaption = L"DIME User Settings";
-	
-	//PropertySheet(&psh);
-	if(_PropertySheet)
-		(*_PropertySheet)(&psh);
-
-	FreeLibrary(dllCtlHandle);
-
-
-
-	return S_OK;
-}
 
 INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -299,8 +185,8 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		}*/
 		if(_imeMode==IME_MODE_ARRAY || _imeMode==IME_MODE_PHONETIC)
 		{
-			ShowWindow(GetDlgItem(hDlg, IDC_EDIT_MAXWIDTH), SW_HIDE);
-			ShowWindow(GetDlgItem(hDlg, IDC_STATIC_EDIT_MAXWIDTH), SW_HIDE);
+			//ShowWindow(GetDlgItem(hDlg, IDC_EDIT_MAXWIDTH), SW_HIDE);
+			//ShowWindow(GetDlgItem(hDlg, IDC_STATIC_EDIT_MAXWIDTH), SW_HIDE);
 			if (_imeMode == IME_MODE_ARRAY)
 			{
 				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_AUTOCOMPOSE), SW_HIDE);
@@ -314,8 +200,20 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		}
 		if(_imeMode!=IME_MODE_ARRAY)
 		{
+			ShowWindow(GetDlgItem(hDlg, IDC_STATIC_ARRAY_UNICODE_SCOPE), SW_HIDE);
+			ShowWindow(GetDlgItem(hDlg, IDC_COMBO_ARRAY_UNICODE_SCOPE), SW_HIDE);
 			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_FORCESP), SW_HIDE);
 			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_NOTIFYSP), SW_HIDE);
+		}
+		else
+		{ // set Array unicode scope combobox
+			hwnd = GetDlgItem(hDlg, IDC_COMBO_ARRAY_UNICODE_SCOPE);
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"Unicode Extension-A");
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"Unicode Extension-AB");
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"Unicode Extension-ABCD");
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"Unicode Extension-ABCDE");
+			SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_arrayUnicodeScope, 0);
+
 		}
 		ret = TRUE;
 		break;
@@ -406,6 +304,18 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 				PropSheet_Changed(GetParent(hDlg), hDlg);
 				ret = TRUE;
 				_reloadReverseConversion = TRUE;
+				break;
+			default:
+				break;
+			}
+			break;
+
+		case IDC_COMBO_ARRAY_UNICODE_SCOPE:
+			switch (HIWORD(wParam))
+			{
+			case CBN_SELCHANGE:
+				PropSheet_Changed(GetParent(hDlg), hDlg);
+				ret = TRUE;
 				break;
 			default:
 				break;
@@ -546,6 +456,11 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 				StringCchCopy(_reverseConversionDescription, wcslen( _reverseConvervsionInfoList->GetAt(sel)->description)+1,  _reverseConvervsionInfoList->GetAt(sel)->description);
 			}
 
+			hwnd = GetDlgItem(hDlg, IDC_COMBO_ARRAY_UNICODE_SCOPE);
+			_arrayUnicodeScope = (ARRAY_UNICODE_SCOPE)SendMessage(hwnd, CB_GETCURSEL, 0, 0);
+			debugPrint(L"selected arrray unicode scope item is %d", _arrayUnicodeScope);
+			
+
 			CConfig::WriteConfig();
 			ret = TRUE;
 			break;
@@ -575,27 +490,59 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 	HINSTANCE dllDlgHandle = NULL;       
 	dllDlgHandle = LoadLibrary(L"comdlg32.dll");
 	_T_GetOpenFileName _GetOpenFileName = NULL;
+	_T_GetSaveFileName _GetSaveFileName = NULL;
 
-	WCHAR targetName[MAX_PATH];
-	WCHAR wszAppData[MAX_PATH];
-	WCHAR pathToLoad[MAX_PATH];
-	WCHAR pathToWrite[MAX_PATH];
+	WCHAR custromTableName[MAX_PATH] = L"\0";
+	WCHAR targetName[MAX_PATH] = L"\0";;
+	WCHAR wszAppData[MAX_PATH] = L"\0";;
+	WCHAR wszUserDoc[MAX_PATH] = L"\0";
+	WCHAR pathToLoad[MAX_PATH] = L"\0";;
+	WCHAR pathToWrite[MAX_PATH] = L"\0";;
 		
+	enum {
+		LOAD_CIN_TABLE,
+		IMPORT_CUSTOM_TABLE,
+		EXPORT_CUSTOM_TABLE,
+		OPEN_NULL
+	}openFileType = OPEN_NULL;
+
+
 	//CSIDL_APPDATA  personal roadming application data.
 	SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);
+	SHGetSpecialFolderPath(NULL, wszUserDoc, CSIDL_MYDOCUMENTS, TRUE);
 
 	if(dllDlgHandle)
 	{
 		_GetOpenFileName = reinterpret_cast<_T_GetOpenFileName> ( GetProcAddress(dllDlgHandle, "GetOpenFileNameW"));
+		_GetSaveFileName = reinterpret_cast<_T_GetSaveFileName> (GetProcAddress(dllDlgHandle, "GetSaveFileNameW"));
 	}
 
 	switch(message)
 	{
 	case WM_INITDIALOG:
-		if( _imeMode!=IME_MODE_ARRAY)
+		if (_imeMode == IME_MODE_DAYI)
+			StringCchPrintf(custromTableName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\DAYI-Custom.txt");
+		else if (_imeMode == IME_MODE_ARRAY)
+			StringCchPrintf(custromTableName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\ARRAY-Custom.txt");
+		else if (_imeMode == IME_MODE_PHONETIC)
+			StringCchPrintf(custromTableName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\PHONETIC-Custom.txt");
+		else if (_imeMode == IME_MODE_GENERIC)
+			StringCchPrintf(custromTableName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\GENERIC-Custom.txt");
+		importCustomTableFile(hDlg, custromTableName);
+		_customTableChanged = FALSE;
+
+		if (!(_loadTableMode || _imeMode == IME_MODE_GENERIC ))
+		{
+			ShowWindow(GetDlgItem(hDlg, IDC_BUTTON_LOAD_MAIN), SW_HIDE);
+			ShowWindow(GetDlgItem(hDlg, IDC_BUTTON_LOAD_PHRASE), SW_HIDE);
+		}
+		if (! (_loadTableMode && _imeMode == IME_MODE_ARRAY))
 		{
 			ShowWindow(GetDlgItem(hDlg, IDC_BUTTON_LOAD_ARRAY_SC), SW_HIDE);
 			ShowWindow(GetDlgItem(hDlg, IDC_BUTTON_LOAD_ARRAY_SP), SW_HIDE);
+			ShowWindow(GetDlgItem(hDlg, IDC_BUTTON_LOAD_ARRAY_EXT_B), SW_HIDE);
+			ShowWindow(GetDlgItem(hDlg, IDC_BUTTON_LOAD_ARRAY_EXT_CD), SW_HIDE);
+			ShowWindow(GetDlgItem(hDlg, IDC_BUTTON_LOAD_ARRAY_EXT_E), SW_HIDE);
 		}
 	
 		ret = TRUE;
@@ -605,6 +552,7 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 		switch(LOWORD(wParam))
 		{
 		case IDC_BUTTON_LOAD_MAIN:
+			openFileType = LOAD_CIN_TABLE;
 			if(_imeMode == IME_MODE_DAYI)
 				StringCchCopy(targetName, MAX_PATH, L"\\DIME\\Dayi.cin");
 			else if(_imeMode == IME_MODE_ARRAY)
@@ -615,128 +563,94 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 				StringCchCopy(targetName, MAX_PATH, L"\\DIME\\Generic.cin");
 			goto LoadFile;
 		case IDC_BUTTON_LOAD_PHRASE:
+			openFileType = LOAD_CIN_TABLE;
 			StringCchCopy(targetName, MAX_PATH, L"\\DIME\\Phrase.cin");
 			goto LoadFile;
 		case IDC_BUTTON_LOAD_ARRAY_SC:
+			openFileType = LOAD_CIN_TABLE;
 			StringCchCopy(targetName, MAX_PATH, L"\\DIME\\Array-shortcode.cin");
 			goto LoadFile;
 		case IDC_BUTTON_LOAD_ARRAY_SP:
+			openFileType = LOAD_CIN_TABLE;
 			StringCchCopy(targetName, MAX_PATH, L"\\DIME\\Array-special.cin");
+			goto LoadFile;
+		case IDC_BUTTON_LOAD_ARRAY_EXT_B:
+			openFileType = LOAD_CIN_TABLE;
+			StringCchCopy(targetName, MAX_PATH, L"\\DIME\\Array-Ext-B.cin");
+			goto LoadFile;
+		case IDC_BUTTON_LOAD_ARRAY_EXT_CD:
+			openFileType = LOAD_CIN_TABLE;
+			StringCchCopy(targetName, MAX_PATH, L"\\DIME\\Array-Ext-CD.cin");
+			goto LoadFile;
+		case IDC_BUTTON_LOAD_ARRAY_EXT_E:
+			openFileType = LOAD_CIN_TABLE;
+			StringCchCopy(targetName, MAX_PATH, L"\\DIME\\Array-Ext-E.cin");
+			goto LoadFile;
+		case IDC_BUTTON_EXPORT_CUSTOM:
+			openFileType = EXPORT_CUSTOM_TABLE;
+			StringCchCopy(targetName, MAX_PATH, L"\\CUSTOM.txt");
+			goto LoadFile;
+		case IDC_BUTTON_IMPORT_CUSTOM:
+			openFileType = IMPORT_CUSTOM_TABLE;
+			_customTableChanged = TRUE;
+			if (_imeMode == IME_MODE_DAYI)
+				StringCchCopy(targetName, MAX_PATH, L"\\DIME\\DAYI-CUSTOM.txt");
+			else if (_imeMode == IME_MODE_ARRAY)
+				StringCchCopy(targetName, MAX_PATH, L"\\DIME\\ARRAY-CUSTOM.txt");
+			else if (_imeMode == IME_MODE_PHONETIC)
+				StringCchCopy(targetName, MAX_PATH, L"\\DIME\\PHONETIC-CUSTOM.txt");
+			else
+				StringCchCopy(targetName, MAX_PATH, L"\\DIME\\GENERIC-CUSTOM.txt");
 			goto LoadFile;
 LoadFile:
 			pathToLoad[0] = L'\0';
+			StringCchPrintf(pathToLoad, MAX_PATH, L"%s%s", wszUserDoc, L"\\customTable.txt");
 			ZeroMemory(&ofn, sizeof(OPENFILENAMEW));
 			ofn.lStructSize = sizeof(OPENFILENAMEW);
 			ofn.hwndOwner = hDlg;
 			ofn.lpstrFile = pathToLoad;
 			ofn.nMaxFile = MAX_PATH;
-			ofn.Flags = OFN_FILEMUSTEXIST;
-			ofn.lpstrFilter = L"CIN Files\0*.cin\0\0";
+			ofn.Flags = (openFileType != EXPORT_CUSTOM_TABLE) ? OFN_FILEMUSTEXIST : OFN_OVERWRITEPROMPT;
+			ofn.lpstrFilter = (openFileType == LOAD_CIN_TABLE) ? L"CIN TXT Files(*.txt, *.cin)\0*.cin;*.txt\0\0" : L"詞庫文字檔(*.txt)\0*.txt\0\0";
 			
-			if(_GetOpenFileName && (_GetOpenFileName)(&ofn) != 0)
+
+			if (openFileType == EXPORT_CUSTOM_TABLE && _GetSaveFileName && (_GetSaveFileName)(&ofn) != 0)
 			{
-				PropSheet_Changed(GetParent(hDlg), hDlg);
+				exportCustomTableFile(hDlg, pathToLoad);
+			}
+			else if (openFileType != EXPORT_CUSTOM_TABLE  && _GetOpenFileName && (_GetOpenFileName)(&ofn) != 0)
+			{
+				//PropSheet_Changed(GetParent(hDlg), hDlg);
 				debugPrint(L"file name: %s selected", pathToLoad);
 
 				StringCchPrintf(pathToWrite, MAX_PATH, L"%s%s", wszAppData, targetName);
 				
-				FILE *fpr, *fpw;
-				errno_t ret;
-				ret = _wfopen_s(&fpr, pathToLoad, L"r, ccs=UTF-8");
-				if(ret != 0)
+				if (openFileType == IMPORT_CUSTOM_TABLE)
 				{
-					MessageBox(GetFocus(), L"指定檔案無法開啟!!", L"File open error!", MB_ICONERROR);
+					importCustomTableFile(hDlg, pathToLoad);
 				}
 				else
 				{
-					if( _wfopen_s(&fpw, pathToWrite, L"w+, ccs=UTF-16LE") ==0 )
-					{
-						WCHAR line[256], key[256], value[256], escapedKey[256], escapedValue[256], 
-							sep[256], others[256];
-						BOOL doEscape = FALSE;
-						while( fgetws(line, 256, fpr) != NULL)
-						{
-							if (swscanf_s(line, L"%[^ \t\r\n]%[ \t\r\n]%[^ \t\r\n]%s", key, (int)_countof(key), sep, (int)_countof(sep), value, (int)_countof(value), others, (int)_countof(others)) != 3)
-							{
-								if(!doEscape)
-									fwprintf_s(fpw, L"%s", line);
-							}
-							else 
-							{
-								if(	(CompareString(1028, NORM_IGNORECASE , key, (int) wcslen(key), L"%keyname", 8) == CSTR_EQUAL
-									&& CompareString(1028, NORM_IGNORECASE , value, (int) wcslen(value), L"begin", 5) == CSTR_EQUAL)||
-									(CompareString(1028, NORM_IGNORECASE , key, (int) wcslen(key), L"%chardef", 8) == CSTR_EQUAL
-									&& CompareString(1028, NORM_IGNORECASE , value, (int) wcslen(value), L"begin", 5)== CSTR_EQUAL))
-								{
-									doEscape = TRUE;
-									fwprintf_s(fpw, L"%s %s\n", key, value);
-									continue;
-								}
-								else if((CompareString(1028, NORM_IGNORECASE , key, (int) wcslen(key), L"%keyname", 8)== CSTR_EQUAL
-									&& CompareString(1028, NORM_IGNORECASE , value, (int) wcslen(value), L"end", 3)== CSTR_EQUAL)||
-									(CompareString(1028, NORM_IGNORECASE , key, (int) wcslen(key), L"%chardef", 8)== CSTR_EQUAL
-									&& CompareString(1028, NORM_IGNORECASE , value, (int) wcslen(value), L"end", 3)== CSTR_EQUAL))
-								{
-									doEscape = FALSE;
-									fwprintf_s(fpw, L"%s %s\n", key, value);
-									continue;
-								}
-
-								if(doEscape)
-								{
-									StringCchCopy(escapedKey, _countof(escapedKey), L"\"");
-									for(UINT i = 0; i < wcslen(key); i++)
-									{
-										if(key[i] == '"') //escape " .
-										{
-											StringCchCat(escapedKey, _countof(escapedKey), L"\\\"");
-										}
-										else if (key[i] == '\\') // escaoe \ .
-										{
-											StringCchCat(escapedKey, _countof(escapedKey), L"\\\\");
-										}
-										else
-										{
-											StringCchCatN(escapedKey, _countof(escapedKey),&key[i], 1);
-										}
-									}
-									StringCchCat(escapedKey, _countof(escapedKey), L"\"");
-									StringCchCopy(escapedValue, _countof(escapedValue), L"\"");
-									for(UINT i = 0; i < wcslen(value); i++)
-									{
-										if(value[i] == '"') //escape " .
-										{
-											StringCchCat(escapedValue, _countof(escapedValue), L"\\\"");
-										}
-										else if (value[i] == '\\') // escaoe \ .
-										{
-											StringCchCat(escapedValue, _countof(escapedValue), L"\\\\");
-										}
-										else
-										{
-											StringCchCatN(escapedValue, _countof(escapedValue),&value[i], 1);
-										}
-									}
-									StringCchCat(escapedValue, _countof(escapedValue), L"\"");
-									fwprintf_s(fpw, L"%s\t%s\n", escapedKey, escapedValue);
-								}
-								else
-									fwprintf_s(fpw, L"%s\t%s\n", key, value);
-							}
-						}
-						fclose(fpw);
-						MessageBox(GetFocus(), L"檔案載入完成。", L"File loaded!", MB_ICONINFORMATION);
-
-					}
+					if (parseCINFile(pathToLoad, pathToWrite))
+						MessageBox(GetFocus(), L"自訂碼表載入完成。", L"DIME 自訂碼表", MB_ICONINFORMATION);
 					else
-					{
-						MessageBox(GetFocus(), L"檔案載入發生錯誤 !!", L"File open error!", MB_ICONERROR);
-					}
+						MessageBox(GetFocus(), L"自訂碼表載入發生錯誤 !!", L"DIME 自訂碼表", MB_ICONERROR);
+					
+
 				}
-				fclose(fpr);
 				
-				
-				
+			}
+			break;
+		case IDC_EDIT_CUSTOM_TABLE:
+			switch (HIWORD(wParam))
+			{
+			case EN_CHANGE:
+				PropSheet_Changed(GetParent(hDlg), hDlg);
+				_customTableChanged = TRUE;
+				ret = TRUE;
+				break;
+			default:
+				break;
 			}
 			break;
 
@@ -749,9 +663,38 @@ LoadFile:
 		switch(((LPNMHDR)lParam)->code)
 		{
 		case PSN_APPLY:	
-			
+			if (_customTableChanged)
+			{
+				if (_imeMode == IME_MODE_DAYI)
+				{
+					StringCchPrintf(pathToLoad, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\DAYI-CUSTOM.txt");
+					StringCchPrintf(pathToWrite, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\DAYI-CUSTOM.cin");
+				}
+				else if (_imeMode == IME_MODE_ARRAY)
+				{
+					StringCchPrintf(pathToLoad, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\ARRAY-CUSTOM.txt");
+					StringCchPrintf(pathToWrite, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\ARRAY-CUSTOM.cin");
 
-			CConfig::WriteConfig();
+				}
+				else if (_imeMode == IME_MODE_PHONETIC)
+				{
+					StringCchPrintf(pathToLoad, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\PHONETIC-CUSTOM.txt");
+					StringCchPrintf(pathToWrite, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\PHONETIC-CUSTOM.cin");
+				}
+				else
+				{
+					StringCchPrintf(pathToLoad, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\GENERIC-CUSTOM.txt");
+					StringCchPrintf(pathToWrite, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\GENERIC-CUSTOM.cin");
+				}
+				exportCustomTableFile(hDlg, pathToLoad);
+				// parse custom.txt file to UTF-16 and internal format
+				if (parseCINFile(pathToLoad, pathToWrite, TRUE))
+					MessageBox(GetFocus(), L"自訂詞庫載入完成。", L"DIME 自訂詢庫", MB_ICONINFORMATION);
+				else
+					MessageBox(GetFocus(), L"自訂詞庫載入發生錯誤 !!", L"DIME 自訂詢庫", MB_ICONERROR);
+			}
+
+			//CConfig::WriteConfig();
 			ret = TRUE;
 			break;
 
@@ -867,10 +810,11 @@ VOID CConfig::WriteConfig()
 		
 		if(_imeMode == IME_MODE_ARRAY)
 		{
+			fwprintf_s(fp, L"ArrayUnicodeScope = %d\n", _arrayUnicodeScope);
 			fwprintf_s(fp, L"ArrayForceSP = %d\n", _arrayForceSP?1:0);
 			fwprintf_s(fp, L"ArrayNotifySP = %d\n", _arrayNotifySP?1:0);
 		}
-		
+		if (_loadTableMode) fwprintf_s(fp, L"LoadTableMode = 1\n");
 
 
 		fclose(fp);
@@ -983,6 +927,11 @@ VOID CConfig::LoadConfig()
 		else
 		{
 			//should do IM specific default here.
+			if (_imeMode == IME_MODE_ARRAY)
+			{
+				_maxCodes = 5;
+
+			}
 			WriteConfig(); // config.ini is not there. create one.
 		}
 	}
@@ -1057,4 +1006,234 @@ void CConfig::clearReverseConvervsionInfoList()
 		delete [] infoItem->description;
 	}
 	_reverseConvervsionInfoList->Clear();
+}
+
+BOOL CConfig::importCustomTableFile(HWND hDlg, LPCWSTR pathToLoad)
+{
+	BOOL success = FALSE;
+
+	if (PathFileExists(pathToLoad)) //failed back to try preload Dayi.cin in program files.
+	{
+		success = TRUE;
+		HANDLE hCustomTable = NULL;
+		DWORD dwDataLen = 0;
+		LPCWSTR customText = nullptr;
+		if ((hCustomTable = CreateFile(pathToLoad, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL)) == INVALID_HANDLE_VALUE)
+		{	// Error
+			success = FALSE;
+			goto Cleanup;
+		}
+		// Get file size
+		if ((dwDataLen = GetFileSize(hCustomTable, NULL)) == INVALID_FILE_SIZE)
+		{	// Error
+			success = FALSE;
+			goto Cleanup;
+		}
+		// Create a buffer for the custom table text
+		size_t bufsize = dwDataLen + 1;
+		customText = new (std::nothrow) WCHAR[bufsize];
+		ZeroMemory((LPVOID)customText, (dwDataLen + 1) * sizeof (WCHAR));
+		// Read the file
+		if (!ReadFile(hCustomTable, (LPVOID)customText, dwDataLen, &dwDataLen, NULL))
+		{	// Error
+			success = FALSE;
+			goto Cleanup;
+		}
+
+		if (!IsTextUnicode(customText, dwDataLen, NULL))
+		{
+			WCHAR* outWStr = nullptr;
+			//mlangToUnicode((CHAR*)customText, &dwDataLen, WText);
+			UINT codepage = 0;
+
+			//IMultiLanguage intilization
+			CoInitialize(NULL);
+			IMultiLanguage2 *lang = NULL;
+			HRESULT hr = CoCreateInstance(CLSID_CMultiLanguage, NULL,
+				CLSCTX_ALL, IID_IMultiLanguage2, (LPVOID*)&lang);
+
+
+			int detectEncCount = 1;
+			DetectEncodingInfo detectEnc;
+			INT inlen = dwDataLen;
+			lang->DetectInputCodepage(MLDETECTCP_HTML, 0, (char *)customText, &inlen, &detectEnc, &detectEncCount);
+			codepage = detectEnc.nCodePage;
+
+			DWORD pdwMode = 0;
+			UINT outlen = 0;
+			UINT uinlen = dwDataLen;
+			if (SUCCEEDED(hr)) {
+				hr = lang->ConvertStringToUnicode(&pdwMode, codepage, (char *)customText, &uinlen, NULL, &outlen);
+				outWStr = new (std::nothrow) WCHAR[outlen + 1];
+				ZeroMemory(outWStr, (outlen + 1)*sizeof(WCHAR));
+			}
+
+			//convert to unicode
+			if (SUCCEEDED(hr)) {
+				hr = lang->ConvertStringToUnicode(&pdwMode, codepage, (char *)customText, &uinlen, outWStr, &outlen);
+			}
+
+			if (lang)
+				lang->Release();
+			CoUninitialize();
+
+			SetDlgItemTextW(hDlg, IDC_EDIT_CUSTOM_TABLE, outWStr);
+			if (outWStr) delete[]outWStr;
+
+		}
+		else
+		{
+			SetDlgItemTextW(hDlg, IDC_EDIT_CUSTOM_TABLE, customText);
+		}
+
+	Cleanup:
+		if (hCustomTable) CloseHandle(hCustomTable);
+		if (customText) delete[]customText;
+	}
+	return success;
+}
+
+
+BOOL CConfig::exportCustomTableFile(HWND hDlg, LPCWSTR pathToWrite)
+{
+	//write the edittext context into custom.txt
+	BOOL success = TRUE;
+	int len;
+	LPWSTR buf;
+	HANDLE hCustomTableFile;
+	DWORD lpNumberOfBytesWritten = 0;
+
+	len = GetWindowTextLength(GetDlgItem(hDlg, IDC_EDIT_CUSTOM_TABLE));
+	buf = new (std::nothrow) WCHAR[len + 1];
+	ZeroMemory(buf, (len + 1)*sizeof(WCHAR));
+	GetDlgItemText(hDlg, IDC_EDIT_CUSTOM_TABLE, buf, len + 1);
+
+	// Create a file to save the encrypted data
+	if ((hCustomTableFile = CreateFile(pathToWrite, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) == INVALID_HANDLE_VALUE)
+	{	// Error
+		success = FALSE;
+		goto Cleanup;
+	}
+
+	// Write the ciphered text to the file
+	WCHAR byteOrder = 0xFEFF;
+	if (!WriteFile(hCustomTableFile, (LPCVOID)&byteOrder, (DWORD)sizeof(WCHAR), &lpNumberOfBytesWritten, NULL))
+	{	// Error
+		success = FALSE;
+		goto Cleanup;
+	}
+	if (!WriteFile(hCustomTableFile, (LPCVOID)buf, (DWORD)len*sizeof(WCHAR), &lpNumberOfBytesWritten, NULL))
+	{	// Error
+		success = FALSE;
+		goto Cleanup;
+	}
+Cleanup:
+	if (hCustomTableFile) CloseHandle(hCustomTableFile);
+	if (buf) delete[]buf;
+
+	return success;
+}
+
+BOOL CConfig::parseCINFile(LPCWSTR pathToLoad, LPCWSTR pathToWrite, BOOL customTableMode)
+{
+	FILE *fpr, *fpw;
+	errno_t ret;
+	BOOL success = TRUE;
+	ret = _wfopen_s(&fpr, pathToLoad, (customTableMode) ? L"r, ccs=UTF-16LE" : L"r, ccs=UTF-8"); // custom table custom.txt in romaing profile is in UTF-16LE encoding.
+	if (ret != 0)
+	{
+		MessageBox(GetFocus(), L"指定檔案無法開啟!!", L"File open error!", MB_ICONERROR);
+	}
+	else
+	{
+		if (_wfopen_s(&fpw, pathToWrite, L"w+, ccs=UTF-16LE") == 0)
+		{
+			WCHAR line[MAX_COMMIT_LENGTH], key[MAX_KEY_LENGTH], value[MAX_VALUE_LENGTH], escapedKey[MAX_KEY_LENGTH], escapedValue[MAX_VALUE_LENGTH],
+				sep[MAX_KEY_LENGTH], others[MAX_COMMIT_LENGTH];
+			BOOL doEscape = FALSE;
+
+			if (customTableMode) fwprintf_s(fpw, L"%s", L"%chardef begin\n");
+
+			while (fgetws(line, 256, fpr) != NULL)
+			{
+				if (swscanf_s(line, L"%[^ \t\r\n]%[ \t\r\n]%[^ \t\r\n]%s", key, (int)_countof(key), sep, (int)_countof(sep), value, (int)_countof(value), others, (int)_countof(others)) != 3)
+				{
+					if (!doEscape)
+						fwprintf_s(fpw, L"%s", line);
+				}
+				else
+				{
+					if ((CompareString(1028, NORM_IGNORECASE, key, (int)wcslen(key), L"%keyname", 8) == CSTR_EQUAL
+						&& CompareString(1028, NORM_IGNORECASE, value, (int)wcslen(value), L"begin", 5) == CSTR_EQUAL) ||
+						(CompareString(1028, NORM_IGNORECASE, key, (int)wcslen(key), L"%chardef", 8) == CSTR_EQUAL
+						&& CompareString(1028, NORM_IGNORECASE, value, (int)wcslen(value), L"begin", 5) == CSTR_EQUAL))
+					{
+						doEscape = TRUE;
+						fwprintf_s(fpw, L"%s %s\n", key, value);
+						continue;
+					}
+					else if ((CompareString(1028, NORM_IGNORECASE, key, (int)wcslen(key), L"%keyname", 8) == CSTR_EQUAL
+						&& CompareString(1028, NORM_IGNORECASE, value, (int)wcslen(value), L"end", 3) == CSTR_EQUAL) ||
+						(CompareString(1028, NORM_IGNORECASE, key, (int)wcslen(key), L"%chardef", 8) == CSTR_EQUAL
+						&& CompareString(1028, NORM_IGNORECASE, value, (int)wcslen(value), L"end", 3) == CSTR_EQUAL))
+					{
+						doEscape = FALSE;
+						fwprintf_s(fpw, L"%s %s\n", key, value);
+						continue;
+					}
+
+					if (doEscape)
+					{
+						StringCchCopy(escapedKey, _countof(escapedKey), L"\"");
+						for (UINT i = 0; i < wcslen(key); i++)
+						{
+							if (key[i] == '"') //escape " .
+							{
+								StringCchCat(escapedKey, _countof(escapedKey), L"\\\"");
+							}
+							else if (key[i] == '\\') // escaoe \ .
+							{
+								StringCchCat(escapedKey, _countof(escapedKey), L"\\\\");
+							}
+							else
+							{
+								StringCchCatN(escapedKey, _countof(escapedKey), &key[i], 1);
+							}
+						}
+						StringCchCat(escapedKey, _countof(escapedKey), L"\"");
+						StringCchCopy(escapedValue, _countof(escapedValue), L"\"");
+						for (UINT i = 0; i < wcslen(value); i++)
+						{
+							if (value[i] == '"') //escape " .
+							{
+								StringCchCat(escapedValue, _countof(escapedValue), L"\\\"");
+							}
+							else if (value[i] == '\\') // escaoe \ .
+							{
+								StringCchCat(escapedValue, _countof(escapedValue), L"\\\\");
+							}
+							else
+							{
+								StringCchCatN(escapedValue, _countof(escapedValue), &value[i], 1);
+							}
+						}
+						StringCchCat(escapedValue, _countof(escapedValue), L"\"");
+						fwprintf_s(fpw, L"%s\t%s\n", escapedKey, escapedValue);
+					}
+					else
+						fwprintf_s(fpw, L"%s\t%s\n", key, value);
+				}
+			}
+			if (customTableMode) fwprintf_s(fpw, L"%s", L"%chardef end\n");
+			fclose(fpw);
+			
+
+		}
+		else
+		{
+			success = FALSE;
+		}
+	}
+	fclose(fpr);
+	return success;
 }
