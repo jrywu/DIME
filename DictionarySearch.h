@@ -40,6 +40,7 @@ public:
     DWORD_PTR _charIndex;      // in character. Always point start of line in dictionary file.
 
 	void setSearchOffset(DWORD_PTR offset);
+	void setSortedSearchResultFound(BOOL sortedSearchResultFound) { _sortedSearchResultFound = sortedSearchResultFound; }
 
 private:
 	SEARCH_SECTION _searchSection;
@@ -59,6 +60,7 @@ private:
 
     CFile* _pFile;
 	enum SEARCH_MODE _searchMode;
+	BOOL _sortedSearchResultFound;
 	CDIME *_pTextService;
 	IME_MODE _imeMode;
 

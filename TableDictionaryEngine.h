@@ -44,6 +44,8 @@ private:
 	SEARCH_SECTION _searchSection;
 	DICTIONARY_TYPE _dictionaryType;
 
+	BOOL _sortedCIN;
+
 	_T_RadicalMap* _pRadicalMap;
 	_T_RadicalIndexMap* _pRadicalIndexMap;
 

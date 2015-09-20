@@ -44,10 +44,10 @@ BOOL CDictionaryParser::ParseLine(_In_reads_(dwBufLen) LPCWSTR pwszBuffer, DWORD
 {
     LPCWSTR pwszKeyWordDelimiter = nullptr;
     pwszKeyWordDelimiter = GetToken(pwszBuffer, dwBufLen, _keywordDelimiter, psrgKeyword);
-    if (!(pwszKeyWordDelimiter))
-    {
-        return FALSE;    // End of file
-    }
+	if (!(pwszKeyWordDelimiter))
+	{
+		return FALSE;    // no delimiter found in line.
+	}
 
     dwBufLen -= (pwszKeyWordDelimiter - pwszBuffer);
     pwszBuffer = pwszKeyWordDelimiter + 1;

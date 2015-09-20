@@ -191,7 +191,7 @@ HRESULT CDIME::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *p
 	{
 		CDIMEArray<CCandidateListItem> candidateList;
 	
-		pCompositionProcessorEngine->GetCandidateList(&candidateList, !symbolMode , FALSE);
+		pCompositionProcessorEngine->GetCandidateList(&candidateList, !symbolMode, isWildcardIncluded);
 		
 		UINT nCount = candidateList.Count();
 

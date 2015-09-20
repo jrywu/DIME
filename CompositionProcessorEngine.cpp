@@ -1924,11 +1924,8 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 
 	if (fComposing || candidateMode == CANDIDATE_INCREMENTAL || candidateMode == CANDIDATE_NONE)
 	{
-		if (IsVirtualKeyKeystrokeComposition(uCode, pKeyState, FUNCTION_NONE))
-		{
-			return TRUE;
-		}
-		else if ((IsWildcard() && IsWildcardChar(*pwch) && !IsDisableWildcardAtFirst()) ||
+		
+		if ((IsWildcard() && IsWildcardChar(*pwch) && !IsDisableWildcardAtFirst()) ||
 			(IsWildcard() && IsWildcardChar(*pwch) && IsDisableWildcardAtFirst() && _keystrokeBuffer.GetLength()))
 		{
 			if (pKeyState)
@@ -1938,7 +1935,11 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 			}
 			return TRUE;
 		}
-		else if (_hasWildcardIncludedInKeystrokeBuffer && uCode == VK_SPACE)
+		if (IsVirtualKeyKeystrokeComposition(uCode, pKeyState, FUNCTION_NONE))
+		{
+			return TRUE;
+		}
+		else if (_hasWildcardIncludedInKeystrokeBuffer && ( uCode == VK_SPACE || uCode == VK_RETURN || candidateMode == CANDIDATE_INCREMENTAL))
 		{
 			if (pKeyState) { pKeyState->Category = CATEGORY_COMPOSING; pKeyState->Function = FUNCTION_CONVERT_WILDCARD; } return TRUE;
 		}

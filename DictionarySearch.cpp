@@ -23,6 +23,7 @@ CDictionarySearch::CDictionarySearch(LCID locale, _In_ CFile *pFile, _In_ CStrin
 	_charIndex = 0;
 	_searchSection = SEARCH_SECTION_TEXT;
 	_searchMode = SEARCH_NONE;
+	_sortedSearchResultFound = FALSE;
 }
 
 //+---------------------------------------------------------------------------
@@ -133,7 +134,11 @@ TryAgain:
 	else
 	{
 		CParserStringRange keyword;
-		if (pwch[indexTrace] == 0xFEFF) indexTrace++; //bypass unicode byte order signature
+		if (pwch[indexTrace] == 0xFEFF)
+		{
+			dwTotalBufLen--;
+			indexTrace++; //bypass unicode byte order signature
+		}
 		WCHAR ch = pwch[indexTrace];
 		switch (ch)
 		{
@@ -150,9 +155,20 @@ TryAgain:
 		}
 		if (!ParseLine(&pwch[indexTrace], bufLenOneLine, &keyword))
 		{
-			if(controlKeyType == NOT_CONTROLKEY) //Control key may have key without value.
-
-				return FALSE;    // error
+			if (controlKeyType == NOT_CONTROLKEY) //Control key may have key without value.
+			{
+				if (controlKeyType == NOT_CONTROLKEY) //Control key may have key without value.
+				{
+					if (parseConfig)
+						return cinSorted;
+					else
+							return FALSE;    // error for key without value
+				}
+			}
+		}
+		if (!isWildcardSearch && _sortedSearchResultFound && (CStringRange::Compare(_locale, &keyword, _pSearchKeyCode) != CSTR_EQUAL))
+		{  //return FALSE to stop search if keyword is not same with the search keyword in sorted search mode with previous result found already.
+			return FALSE;
 		}
 
 		if (controlKeyType != NOT_CONTROLKEY)
@@ -529,7 +545,7 @@ ReadValue:
 
 FindNextLine:
 	dwTotalBufLen -= bufLenOneLine;
-	if (dwTotalBufLen == 0 )
+	if (dwTotalBufLen == 0 )// End of file
 	{
 		indexTrace += bufLenOneLine;
 		_charIndex += indexTrace;
@@ -539,7 +555,14 @@ FindNextLine:
 			delete *ppdret;
 			*ppdret = nullptr;
 		}
-		return (isFound ? TRUE : FALSE);        // End of file
+		if (parseConfig)
+		{
+			return cinSorted;
+		}
+		else
+		{
+			return (isFound ? TRUE : FALSE);        
+		}
 	}
 
 	indexTrace += bufLenOneLine;

@@ -22,6 +22,7 @@ CTableDictionaryEngine::CTableDictionaryEngine(LCID locale, _In_ CFile *pDiction
 	// initialize _pRadicalIndexMap if the dictionary is in cin format
 	_pRadicalIndexMap = (dictionaryType == CIN_DICTIONARY) ? new _T_RadicalIndexMap() : nullptr;
 
+	_sortedCIN = FALSE;
 
 	if(dictionaryType == TTS_DICTIONARY || dictionaryType == INI_DICTIONARY)
 		_keywordDelimiter = '=';
@@ -70,15 +71,20 @@ VOID CTableDictionaryEngine::CollectWord(_In_ CStringRange *pKeyCode, _Inout_ CD
 	if(_dictionaryType == TTS_DICTIONARY)
 		dshSearch.SetSearchSection(_searchSection);
 
-	if ((_dictionaryType == CIN_DICTIONARY ) && _pRadicalIndexMap && _pRadicalIndexMap->size())
+	if (_sortedCIN)
 	{
 		WCHAR initial = towupper(*pKeyCode->Get());
 		_T_RadicalIndexMap::iterator it = _pRadicalIndexMap->find(initial);
-		if (it != _pRadicalIndexMap->end())	dshSearch.setSearchOffset(it->second);
+		if (it != _pRadicalIndexMap->end())
+		{
+			dshSearch.setSearchOffset(it->second);
+		}
 	}
 
     while (dshSearch.FindPhrase(&pdret))
     {
+		if (_sortedCIN && pdret->_FindPhraseList.Count()) dshSearch.setSortedSearchResultFound(TRUE);
+
         for (UINT iIndex = 0; iIndex < pdret->_FindPhraseList.Count(); iIndex++)
         {
             CCandidateListItem* pLI = nullptr;
@@ -202,7 +208,11 @@ VOID CTableDictionaryEngine::ParseConfig(IME_MODE imeMode)
 		_pRadicalMap->clear();
 	}
 	CDictionarySearch dshSearch(_locale, _pDictionaryFile, NULL, _keywordDelimiter);
-	dshSearch.ParseConfig(imeMode, _pRadicalMap, _pRadicalIndexMap);;
+	if (dshSearch.ParseConfig(imeMode, _pRadicalMap, _pRadicalIndexMap) && _dictionaryType == CIN_DICTIONARY && _pRadicalIndexMap && _pRadicalIndexMap->size())
+	{
+		_sortedCIN = TRUE;
+	}
+	
 
 }
 
