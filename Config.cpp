@@ -1119,13 +1119,14 @@ BOOL CConfig::exportCustomTableFile(HWND hDlg, LPCWSTR pathToWrite)
 		goto Cleanup;
 	}
 
-	// Write the ciphered text to the file
+	//Write Byte order makr to the file if the first byte of buf is not BOM
 	WCHAR byteOrder = 0xFEFF;
-	if (!WriteFile(hCustomTableFile, (LPCVOID)&byteOrder, (DWORD)sizeof(WCHAR), &lpNumberOfBytesWritten, NULL))
+	if (buf[0] != byteOrder && !WriteFile(hCustomTableFile, (LPCVOID)&byteOrder, (DWORD)sizeof(WCHAR), &lpNumberOfBytesWritten, NULL))
 	{	// Error
 		success = FALSE;
 		goto Cleanup;
 	}
+	// Write the custom table text to the file
 	if (!WriteFile(hCustomTableFile, (LPCVOID)buf, (DWORD)len*sizeof(WCHAR), &lpNumberOfBytesWritten, NULL))
 	{	// Error
 		success = FALSE;
