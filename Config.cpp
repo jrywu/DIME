@@ -689,10 +689,10 @@ LoadFile:
 				}
 				exportCustomTableFile(hDlg, pathToLoad);
 				// parse custom.txt file to UTF-16 and internal format
-				if (parseCINFile(pathToLoad, pathToWrite, TRUE))
-					MessageBox(GetFocus(), L"自訂詞庫載入完成。", L"DIME 自訂詞庫", MB_ICONINFORMATION);
-				else
-					MessageBox(GetFocus(), L"自訂詞庫載入發生錯誤 !!", L"DIME 自訂詞庫", MB_ICONERROR);
+				if (!parseCINFile(pathToLoad, pathToWrite, TRUE))
+					//MessageBox(GetFocus(), L"自建詞庫載入完成。", L"DIME 自訂詞庫", MB_ICONINFORMATION);
+				//else
+					MessageBox(GetFocus(), L"自建詞庫載入發生錯誤 !!", L"DIME 自訂詞庫", MB_ICONERROR);
 			}
 
 			//CConfig::WriteConfig();
