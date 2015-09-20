@@ -901,19 +901,19 @@ BOOL CDIME::_IsUILessMode()
 		return FALSE;
 }
 
-void CDIME::_LoadConfig(BOOL isForce)
+void CDIME::_LoadConfig(BOOL isForce, IME_MODE imeMode)
 {
-	if(isForce) // _LoadConfig is trigger in show config by ctrl-\ hotkey 
-		CConfig::SetIMEMode(Global::imeMode);
-	CConfig::LoadConfig();
+	//if(isForce) // _LoadConfig is trigger in show config by ctrl-\ hotkey 
+	//CConfig::SetIMEMode(Global::imeMode);
+	CConfig::LoadConfig(imeMode);
 	if(_pCompositionProcessorEngine) _pCompositionProcessorEngine->UpdateDictionaryFile();
 
 	if(CConfig::GetReloadReverseConversion() || isForce)
 	{
-		if(_pITfReverseConversion[Global::imeMode])
+		if(_pITfReverseConversion[imeMode])
 		{
-			_pITfReverseConversion[Global::imeMode]->Release();
-			_pITfReverseConversion[Global::imeMode] = nullptr;
+			_pITfReverseConversion[imeMode]->Release();
+			_pITfReverseConversion[imeMode] = nullptr;
 		}
 		if(!IsEqualCLSID(CConfig::GetReverseConverstionCLSID(), CLSID_NULL) && !IsEqualCLSID(CConfig::GetReverseConversionGUIDProfile(), CLSID_NULL))
 		{
@@ -922,14 +922,14 @@ void CDIME::_LoadConfig(BOOL isForce)
 				IID_ITfReverseConversionMgr, (void**)&pITfReverseConversionMgr)) && pITfReverseConversionMgr)
 			{
 				if(SUCCEEDED( pITfReverseConversionMgr->GetReverseConversion(_langid, 
-					CConfig::GetReverseConversionGUIDProfile(), NULL, &_pITfReverseConversion[Global::imeMode])) && _pITfReverseConversion[Global::imeMode])
+					CConfig::GetReverseConversionGUIDProfile(), NULL, &_pITfReverseConversion[imeMode])) && _pITfReverseConversion[imeMode])
 				{   //test if the interface can really do reverse conversion
 					BSTR bstr;
 					bstr = SysAllocStringLen(L"¤@" , (UINT) 1);
 					ITfReverseConversionList* reverseConversionList = nullptr;
-					if(FAILED(_pITfReverseConversion[Global::imeMode]->DoReverseConversion(bstr, &reverseConversionList)) || reverseConversionList == nullptr)
+					if(FAILED(_pITfReverseConversion[imeMode]->DoReverseConversion(bstr, &reverseConversionList)) || reverseConversionList == nullptr)
 					{
-						_pITfReverseConversion[Global::imeMode] = nullptr;
+						_pITfReverseConversion[imeMode] = nullptr;
 					}
 					else
 					{

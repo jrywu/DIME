@@ -104,7 +104,7 @@ public:
 
 
 	static VOID WriteConfig();
-	static VOID LoadConfig();
+	static VOID LoadConfig(IME_MODE imeMode);
 	
 	static void SetDefaultTextFont();
 

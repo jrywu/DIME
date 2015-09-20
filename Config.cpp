@@ -486,6 +486,7 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 	BOOL ret = FALSE;
 	//HWND hwnd;
 	OPENFILENAMEW ofn;
+
 	
 	HINSTANCE dllDlgHandle = NULL;       
 	dllDlgHandle = LoadLibrary(L"comdlg32.dll");
@@ -689,9 +690,9 @@ LoadFile:
 				exportCustomTableFile(hDlg, pathToLoad);
 				// parse custom.txt file to UTF-16 and internal format
 				if (parseCINFile(pathToLoad, pathToWrite, TRUE))
-					MessageBox(GetFocus(), L"自訂詞庫載入完成。", L"DIME 自訂詢庫", MB_ICONINFORMATION);
+					MessageBox(GetFocus(), L"自訂詞庫載入完成。", L"DIME 自訂詞庫", MB_ICONINFORMATION);
 				else
-					MessageBox(GetFocus(), L"自訂詞庫載入發生錯誤 !!", L"DIME 自訂詢庫", MB_ICONERROR);
+					MessageBox(GetFocus(), L"自訂詞庫載入發生錯誤 !!", L"DIME 自訂詞庫", MB_ICONERROR);
 			}
 
 			//CConfig::WriteConfig();
@@ -788,18 +789,18 @@ VOID CConfig::WriteConfig()
 		fwprintf_s(fp, L"SelectedItemColor = 0x%06X\n", _selectedColor);
 		fwprintf_s(fp, L"SelectedBGItemColor = 0x%06X\n", _selectedBGColor);
 		//reversion conversion
-		fwprintf_s(fp, L"ReloadReversionConversion = %d\n", _reloadReverseConversion);
+		fwprintf_s(fp, L"ReloadReverseConversion = %d\n", _reloadReverseConversion);
 		BSTR pbstr;
 		if (SUCCEEDED(StringFromCLSID(_reverseConverstionCLSID, &pbstr)))
 		{
-			fwprintf_s(fp, L"ReversionConversionCLSID = %s\n", pbstr);
+			fwprintf_s(fp, L"ReverseConversionCLSID = %s\n", pbstr);
 		}
 		if (SUCCEEDED(StringFromCLSID(_reverseConversionGUIDProfile, &pbstr)))
 		{
-			fwprintf_s(fp, L"ReversionConversionGUIDProfile = %s\n", pbstr);
+			fwprintf_s(fp, L"ReverseConversionGUIDProfile = %s\n", pbstr);
 		}
 		
-		fwprintf_s(fp, L"ReversionConversionDescription = %s\n", _reverseConversionDescription);
+		fwprintf_s(fp, L"ReverseConversionDescription = %s\n", _reverseConversionDescription);
 
 
 		if(Global::isWindows8)
@@ -831,7 +832,7 @@ ErrorExit:
 //
 //----------------------------------------------------------------------------
 
-VOID CConfig::LoadConfig()
+VOID CConfig::LoadConfig(IME_MODE imeMode)
 {	
 	debugPrint(L"CDIME::loadConfig() \n");
 	WCHAR wszAppData[MAX_PATH] = {'\0'};
@@ -850,42 +851,45 @@ VOID CConfig::LoadConfig()
 	if(PathFileExists(wzsDIMEProfile))
 	{ 
 		
-		if(_imeMode == IME_MODE_DAYI)
+		if(imeMode == IME_MODE_DAYI)
 			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\DayiConfig.ini", wzsDIMEProfile);
-		else if(_imeMode == IME_MODE_ARRAY)
+		else if(imeMode == IME_MODE_ARRAY)
 			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\ArrayConfig.ini", wzsDIMEProfile);
-		else if(_imeMode == IME_MODE_PHONETIC)
+		else if(imeMode == IME_MODE_PHONETIC)
 			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\PhoneConfig.ini", wzsDIMEProfile);
-		else if(_imeMode == IME_MODE_GENERIC)
+		else if(imeMode == IME_MODE_GENERIC)
 			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\GenericConfig.ini", wzsDIMEProfile);
 		else
 			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\config.ini", wzsDIMEProfile);
 
 		if(PathFileExists(pwszINIFileName))
 		{
+			debugPrint(L"CDIME::loadConfig() confi file = %s exists\n", pwszINIFileName);
 			struct _stat initTimeStamp;
-			if (_wstat(pwszINIFileName, &initTimeStamp) || //error for retrieving timestamp
-				(long(initTimeStamp.st_mtime>>32) != long(_initTimeStamp.st_mtime>>32)) ||  // or the timestamp not match previous saved one.
-				(long(initTimeStamp.st_mtime) != long(_initTimeStamp.st_mtime)) )			// then load the config. skip otherwise
+			BOOL failed = _wstat(pwszINIFileName, &initTimeStamp) == -1;  //error for retrieving timestamp
+			BOOL updated = initTimeStamp.st_mtime != _initTimeStamp.st_mtime;
+			debugPrint(L"CDIME::loadConfig() wstat failed = %d, config file updated = %d\n", failed, updated);
+			if (failed || updated)
 			{
-				_initTimeStamp.st_mtime = initTimeStamp.st_mtime;
-
 				CFile *iniDictionaryFile;
 				iniDictionaryFile = new (std::nothrow) CFile();
-				if ((iniDictionaryFile)->CreateFile(pwszINIFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))	
+				if ((iniDictionaryFile)->CreateFile(pwszINIFileName, GENERIC_READ, OPEN_EXISTING, 0) )
 				{
 					CTableDictionaryEngine * iniTableDictionaryEngine;
 					iniTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(MAKELCID(1028, SORT_DEFAULT), iniDictionaryFile, INI_DICTIONARY);//CHT:1028
 					if (iniTableDictionaryEngine)
 					{
-						iniTableDictionaryEngine->ParseConfig(_imeMode); //parse config first.
+						_loadTableMode = FALSE; // reset _loadTableMode first. If no _loadTableMode is exist we should not should load tables buttons
+						iniTableDictionaryEngine->ParseConfig(imeMode); //parse config first.
+						debugPrint(L"CDIME::loadConfig() parsed. _loadTableMode = %d\n", _loadTableMode);
 					}
 					delete iniTableDictionaryEngine; // delete after config.ini config are pasrsed
 					delete iniDictionaryFile;
 					SetDefaultTextFont();
+					_initTimeStamp.st_mtime = initTimeStamp.st_mtime;
 				}
 				// force autoCompose in Array
-				if (_imeMode == IME_MODE_ARRAY)
+				if (imeMode == IME_MODE_ARRAY)
 				{
 					_autoCompose = TRUE;
 				}
@@ -927,7 +931,7 @@ VOID CConfig::LoadConfig()
 		else
 		{
 			//should do IM specific default here.
-			if (_imeMode == IME_MODE_ARRAY)
+			if (imeMode == IME_MODE_ARRAY)
 			{
 				_maxCodes = 5;
 

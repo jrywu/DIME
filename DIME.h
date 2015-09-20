@@ -178,7 +178,7 @@ public:
 	void DoBeep();
 private:
 	
-	void _LoadConfig(BOOL isForce = FALSE);
+	void _LoadConfig(BOOL isForce = FALSE, IME_MODE imeMode = Global::imeMode);
 
     // functions for the composition object.
     HRESULT _HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *pCompositionProcessorEngine, TfEditCookie ec, _In_ ITfContext *pContext);

@@ -381,11 +381,11 @@ ReadValue:
 					CConfig::SetMakePhrase((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"DoHanConvert", 12)) == CSTR_EQUAL)
 					CConfig::SetDoHanConvert((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ReloadReversionConversion", 25)) == CSTR_EQUAL)
-					CConfig::SetReloadReverseConversion((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ArrayUnicodeScope", 17)) == CSTR_EQUAL)
 					CConfig::SetArrayUnicodeScope((ARRAY_UNICODE_SCOPE)_wtoi(valueStrings.GetAt(0)->Get()));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ReversionConversionCLSID", 24)) == CSTR_EQUAL)
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ReloadReverseConversion", 23)) == CSTR_EQUAL)
+					CConfig::SetReloadReverseConversion((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ReverseConversionCLSID", 22)) == CSTR_EQUAL)
 				{
 					BSTR pbstr;
 					pbstr = SysAllocStringLen( valueStrings.GetAt(0)->Get(), (UINT) valueStrings.GetAt(0)->GetLength());
@@ -394,7 +394,7 @@ ReadValue:
 						CConfig::SetReverseConverstionCLSID(clsid);
 					SysFreeString(pbstr);
 				}
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ReversionConversionGUIDProfile", 30)) == CSTR_EQUAL)
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ReverseConversionGUIDProfile", 28)) == CSTR_EQUAL)
 				{
 					BSTR pbstr;
 					pbstr = SysAllocStringLen( valueStrings.GetAt(0)->Get(), (UINT) valueStrings.GetAt(0)->GetLength());
@@ -403,7 +403,7 @@ ReadValue:
 						CConfig::SetReverseConversionGUIDProfile(clsid);
 					SysFreeString(pbstr);
 				}
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ReversionConversionDescription", 30)) == CSTR_EQUAL)
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ReverseConversionDescription", 28)) == CSTR_EQUAL)
 				{
 					WCHAR *pwszReverseConversionDescription = new (std::nothrow) WCHAR[valueStrings.GetAt(0)->GetLength() + 1];
 					StringCchCopyN(pwszReverseConversionDescription, valueStrings.GetAt(0)->GetLength() +1, valueStrings.GetAt(0)->Get(), valueStrings.GetAt(0)->GetLength());
