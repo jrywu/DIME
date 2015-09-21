@@ -43,6 +43,7 @@ public:
 	//Han covert
 	BOOL GetSCFromTC(CStringRange* stringToConvert, CStringRange* convertedString);
 	BOOL GetTCFromSC(CStringRange* stringToConvert, CStringRange* convertedString);
+	int GetTCFreq(CStringRange* stringToFind);
 
     // Preserved key handler
     void OnPreservedKey(REFGUID rguid, _Out_ BOOL *pIsEaten, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId);
@@ -105,6 +106,7 @@ public:
 	BOOL SetupDictionaryFile(IME_MODE imeMode);
 	void ReleaseDictionaryFiles();
 	BOOL SetupHanCovertTable();
+	BOOL SetupTCFreqTable();
 
 	void UpdateDictionaryFile();
 
@@ -152,6 +154,7 @@ private:
 	CTableDictionaryEngine* _pArrayExtETableDictionaryEngine;
 	CTableDictionaryEngine* _pArraySpecialCodeTableDictionaryEngine;
 	CTableDictionaryEngine* _pTCSCTableDictionaryEngine;
+	CTableDictionaryEngine* _pTCFreqTableDictionaryEngine;
 
 	CFile* _pTableDictionaryFile[IM_SLOTS];
 	CFile* _pCustomTableDictionaryFile[IM_SLOTS];
@@ -162,7 +165,9 @@ private:
 	CFile* _pArrayExtEDictionaryFile;
 	CFile* _pArraySpecialCodeDictionaryFile;
 	CFile* _pTCSCTableDictionaryFile;
+	CFile* _pTCFreqTableDictionaryFile;
 
+	void sortListItemByFindWordFreq(_Inout_ CDIMEArray<CCandidateListItem> *pCandidateList);
 
     CStringRange _keystrokeBuffer;
 
@@ -194,12 +199,13 @@ private:
     XPreservedKey _PreservedKey_DoubleSingleByte;
 	XPreservedKey _PreservedKey_Config;
  
-
+	
 
     // Configuration data
     BOOL _isWildcard : 1;
     BOOL _isDisableWildcardAtFirst : 1;
     BOOL _isKeystrokeSort : 1;
+	BOOL _isWildCardWordFreqSort : 1;
 	CCandidateRange* _pActiveCandidateListIndexRange;
 	CCandidateRange _candidateListIndexRange;
 	CCandidateRange _phraseCandidateListIndexRange;

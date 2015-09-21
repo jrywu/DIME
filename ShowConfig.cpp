@@ -49,7 +49,7 @@ HRESULT CDIME::Show(_In_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID inR
 	}
 	delete profile;
 
-	_LoadConfig(TRUE,CConfig::GetIMEMode());  // prevent set _imeMode being set if config triggered by control panel options button
+	_LoadConfig(FALSE,CConfig::GetIMEMode());  // prevent set _imeMode being set if config triggered by control panel options button
 
 	if (_IsComposing() && _pContext) _EndComposition(_pContext);
 	_DeleteCandidateList(TRUE, _pContext);

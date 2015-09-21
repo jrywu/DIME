@@ -69,6 +69,8 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CDIME *pTextServic
 	//TCSC
 	_pTCSCTableDictionaryEngine = nullptr;
 	_pTCSCTableDictionaryFile = nullptr;
+	_pTCFreqTableDictionaryEngine = nullptr;
+	_pTCFreqTableDictionaryFile = nullptr;
 
 	_tfClientId = TF_CLIENTID_NULL;
 
@@ -79,6 +81,8 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CDIME *pTextServic
 	_isWildcard = TRUE;
 	_isDisableWildcardAtFirst = TRUE;
 	_isKeystrokeSort = FALSE;
+
+	_isWildCardWordFreqSort = TRUE;
 
 
 
@@ -185,6 +189,16 @@ void CCompositionProcessorEngine::ReleaseDictionaryFiles()
 	{
 		delete _pTCSCTableDictionaryFile;
 		_pTCSCTableDictionaryFile = nullptr;
+	}
+	if (_pTCFreqTableDictionaryEngine)
+	{
+		delete _pTCFreqTableDictionaryEngine;
+		_pTCFreqTableDictionaryEngine = nullptr;
+	}
+	if (_pTCFreqTableDictionaryFile)
+	{
+		delete _pTCFreqTableDictionaryFile;
+		_pTCFreqTableDictionaryFile = nullptr;
 	}
 
 
@@ -421,7 +435,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 
 		PWCHAR pwch = new (std::nothrow) WCHAR[keystrokeBufLen];
 		if (!pwch)  return;
-		
+
 		StringCchCopyN(pwch, keystrokeBufLen, _keystrokeBuffer.Get(), _keystrokeBuffer.GetLength());
 		if (!isFindWildcard)
 		{
@@ -480,7 +494,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 
 		delete[] pwch;
 	}
-	else if (IsSymbol() && (Global::imeMode == IME_MODE_DAYI|| Global::imeMode == IME_MODE_ARRAY )) 
+	else if (IsSymbol() && (Global::imeMode == IME_MODE_DAYI || Global::imeMode == IME_MODE_ARRAY))
 	{
 		if (_pTableDictionaryEngine[Global::imeMode]->GetDictionaryType() == TTS_DICTIONARY)
 			_pTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_SYMBOL);
@@ -488,8 +502,19 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 	}
 	else if (isWildcardSearch)
 	{
+		//Search IM table
 		_pTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_TEXT);
 		_pTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList);
+
+		//Sort candidate list with TC frequency table
+		if (_isWildCardWordFreqSort)
+		{
+			sortListItemByFindWordFreq(pCandidateList);
+		}
+
+		//Search cutom table
+		if (_pCustomTableDictionaryEngine[Global::imeMode])
+			_pCustomTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList);
 
 		//Search Array unicode extensions
 		if (Global::imeMode == IME_MODE_ARRAY && CConfig::GetArrayUnicodeScope() != ARRAY_UNICODE_EXT_A)
@@ -514,15 +539,18 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 			}
 
 		}
-		//Search cutom table
-		if (_pCustomTableDictionaryEngine[Global::imeMode])
-			_pCustomTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList);
+
 
 	}
 	else
 	{
 		_pTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_TEXT);
 		_pTableDictionaryEngine[Global::imeMode]->CollectWord(&_keystrokeBuffer, pCandidateList);
+
+		//Search cutom table
+		if (_pCustomTableDictionaryEngine[Global::imeMode])
+			_pCustomTableDictionaryEngine[Global::imeMode]->CollectWord(&_keystrokeBuffer, pCandidateList);
+
 
 		//Search Array unicode extensions
 		if (Global::imeMode == IME_MODE_ARRAY && CConfig::GetArrayUnicodeScope() != ARRAY_UNICODE_EXT_A)
@@ -546,13 +574,10 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 				break;
 			}
 		}
-		//Search cutom table
-		if (_pCustomTableDictionaryEngine[Global::imeMode])
-			_pCustomTableDictionaryEngine[Global::imeMode]->CollectWord(&_keystrokeBuffer, pCandidateList);
 
 	}
-	
-	
+
+
 	_candidateWndWidth = DEFAULT_CAND_ITEM_LENGTH + TRAILING_SPACE;
 	for (UINT index = 0; index < pCandidateList->Count();)
 	{
@@ -1299,6 +1324,7 @@ void CCompositionProcessorEngine::SetupConfiguration(IME_MODE imeMode)
 	_isWildcard = TRUE;
 	_isDisableWildcardAtFirst = TRUE;
 	_isKeystrokeSort = FALSE;
+	_isWildCardWordFreqSort = TRUE;
 
 	if (imeMode == IME_MODE_DAYI)
 	{
@@ -1657,6 +1683,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 
 		}
 
+
 	}
 
 	// now load Dayi custom table
@@ -1733,12 +1760,74 @@ BOOL CCompositionProcessorEngine::SetupHanCovertTable()
 	}
 	return FALSE;
 }
+
+BOOL CCompositionProcessorEngine::SetupTCFreqTable()
+{
+	debugPrint(L"CCompositionProcessorEngine::SetupTCFreqTable() \n");
+	WCHAR wszProgramFiles[MAX_PATH];
+
+	if (GetEnvironmentVariable(L"ProgramW6432", wszProgramFiles, MAX_PATH) == 0)
+	{//on 64-bit vista only 32bit app has this enviroment variable.  Which means the call failed when the apps running is 64-bit.
+		//on 32-bit windows, this will definitely failed.  Get ProgramFiles enviroment variable now will retrive the correct program files path.
+		GetEnvironmentVariable(L"ProgramFiles", wszProgramFiles, MAX_PATH);
+	}
+
+
+	debugPrint(L"CCompositionProcessorEngine::SetupTCFreqTable() :wszProgramFiles = %s", wszProgramFiles);
+
+	WCHAR *pwszCINFileName = new (std::nothrow) WCHAR[MAX_PATH];
+	if (!pwszCINFileName)  goto ErrorExit;
+	*pwszCINFileName = L'\0';
+
+	StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\DIME\\TCFreq.cin");
+	if (_pTCFreqTableDictionaryFile == nullptr)
+	{
+		_pTCFreqTableDictionaryFile = new (std::nothrow) CFile();
+		if (_pTCFreqTableDictionaryFile && _pTextService &&
+			(_pTCFreqTableDictionaryFile)->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
+		{
+			_pTCFreqTableDictionaryEngine =
+				new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pTCFreqTableDictionaryFile, CIN_DICTIONARY); //cin files use tab as delimiter
+		}
+	}
+
+
+	delete[]pwszCINFileName;
+	return TRUE;
+ErrorExit:
+	if (pwszCINFileName)  delete[]pwszCINFileName;
+
+	return FALSE;
+}
 BOOL CCompositionProcessorEngine::GetTCFromSC(CStringRange* stringToConvert, CStringRange* convertedString)
 {
 	stringToConvert; convertedString;
 	//not yet implemented
 	return FALSE;
 }
+int CCompositionProcessorEngine::GetTCFreq(CStringRange* stringToFind)
+{
+	debugPrint(L"CCompositionProcessorEngine::GetTCFreq()");
+
+	if (_pTCFreqTableDictionaryEngine == nullptr) SetupTCFreqTable();
+	if (_pTCFreqTableDictionaryEngine == nullptr) return -1;
+
+	if (stringToFind->GetLength() > 1) return (int)stringToFind->GetLength();
+
+	CDIMEArray<CCandidateListItem> candidateList;
+	_pTCFreqTableDictionaryEngine->CollectWord(stringToFind, &candidateList);
+	if (candidateList.Count() == 1)
+	{
+		return _wtoi(candidateList.GetAt(0)->_ItemString.Get());
+	}
+	else
+	{
+		return 0;
+	}
+	
+
+}
+
 BOOL CCompositionProcessorEngine::GetSCFromTC(CStringRange* stringToConvert, CStringRange* convertedString)
 {
 	debugPrint(L"CCompositionProcessorEngine::GetSCFromTC()");
@@ -1924,7 +2013,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 
 	if (fComposing || candidateMode == CANDIDATE_INCREMENTAL || candidateMode == CANDIDATE_NONE)
 	{
-		
+
 		if ((IsWildcard() && IsWildcardChar(*pwch) && !IsDisableWildcardAtFirst()) ||
 			(IsWildcard() && IsWildcardChar(*pwch) && IsDisableWildcardAtFirst() && _keystrokeBuffer.GetLength()))
 		{
@@ -1939,7 +2028,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 		{
 			return TRUE;
 		}
-		else if (_hasWildcardIncludedInKeystrokeBuffer && ( uCode == VK_SPACE || uCode == VK_RETURN || candidateMode == CANDIDATE_INCREMENTAL))
+		else if (_hasWildcardIncludedInKeystrokeBuffer && (uCode == VK_SPACE || uCode == VK_RETURN || candidateMode == CANDIDATE_INCREMENTAL))
 		{
 			if (pKeyState) { pKeyState->Category = CATEGORY_COMPOSING; pKeyState->Function = FUNCTION_CONVERT_WILDCARD; } return TRUE;
 		}
@@ -2339,4 +2428,26 @@ void CCompositionProcessorEngine::UpdateDictionaryFile()
 		SetupConfiguration(Global::imeMode);
 
 	}
+}
+
+void CCompositionProcessorEngine::sortListItemByFindWordFreq(_Inout_ CDIMEArray<CCandidateListItem> *pCandidateList)
+{
+	if (pCandidateList == nullptr || pCandidateList->Count() == 0) return;
+
+	UINT count = pCandidateList->Count();
+	for (UINT i = 0; i < count; i++)
+	{
+		CCandidateListItem *pLI = nullptr;
+		pLI = pCandidateList->Append();
+		if (pLI)
+		{
+			pLI->_ItemString = pCandidateList->GetAt(i)->_ItemString;
+			pLI->_FindKeyCode = pCandidateList->GetAt(i)->_FindKeyCode;
+			pLI->_WordFrequency = GetTCFreq(&pCandidateList->GetAt(i)->_ItemString);
+		}
+	}
+	for (UINT i = 0; i < count; i++) pCandidateList->RemoveAt(0);
+	if (_pTableDictionaryEngine[Global::imeMode])
+		_pTableDictionaryEngine[Global::imeMode]->SortListItemByWordFrequency(pCandidateList);
+
 }

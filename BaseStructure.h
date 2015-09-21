@@ -303,11 +303,13 @@ struct CCandidateListItem
 {
     CStringRange _ItemString;
     CStringRange _FindKeyCode;
+	int _WordFrequency;
 
 	CCandidateListItem& CCandidateListItem::operator =( const CCandidateListItem& rhs)
 	{
 		_ItemString = rhs._ItemString;
 		_FindKeyCode = rhs._FindKeyCode;
+		_WordFrequency = rhs._WordFrequency;
 		return *this;
 	}
 };

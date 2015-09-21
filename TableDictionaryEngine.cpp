@@ -302,3 +302,95 @@ VOID CTableDictionaryEngine::MergeSortByFindKeyCode(_Inout_ CDIMEArray<CCandidat
     }
 }
 
+//+---------------------------------------------------------------------------
+// SortListItemByWordFrequency
+//----------------------------------------------------------------------------
+
+VOID CTableDictionaryEngine::SortListItemByWordFrequency(_Inout_ CDIMEArray<CCandidateListItem> *pItemList)
+{
+	if (pItemList->Count())
+		MergeSortByWordFrequency(pItemList, 0, pItemList->Count() - 1);
+}
+
+//+---------------------------------------------------------------------------
+// MergeSortByWordFrequency
+//
+//    Mergesort the array of element in CCandidateListItem::_WordFrequency
+//
+//----------------------------------------------------------------------------
+
+VOID CTableDictionaryEngine::MergeSortByWordFrequency(_Inout_ CDIMEArray<CCandidateListItem> *pItemList, int leftRange, int rightRange)
+{
+	assert(leftRange >= 0);
+	assert(rightRange >= 0);
+
+	int candidateCount = (rightRange - leftRange + 1);
+
+	if (candidateCount > 2)
+	{
+		int mid = leftRange + (candidateCount / 2);
+
+		MergeSortByWordFrequency(pItemList, leftRange, mid);
+		MergeSortByWordFrequency(pItemList, mid, rightRange);
+
+		CDIMEArray<CCandidateListItem> ListItemTemp;
+
+		int leftRangeTemp = 0;
+		int midTemp = 0;
+		for (leftRangeTemp = leftRange, midTemp = mid; leftRangeTemp != mid || midTemp != rightRange;)
+		{
+			int psrgLeftTemp = 0;
+			int psrgMidTemp = 0;
+
+			psrgLeftTemp = pItemList->GetAt(leftRangeTemp)->_WordFrequency;
+			psrgMidTemp = pItemList->GetAt(midTemp)->_WordFrequency;
+
+			psrgLeftTemp = (psrgLeftTemp < 0) ? 0 : psrgLeftTemp;
+			psrgMidTemp = (psrgMidTemp < 0) ? 0 : psrgMidTemp;
+
+			CCandidateListItem* pLI = nullptr;
+			pLI = ListItemTemp.Append();
+			if (pLI)
+			{
+				if (leftRangeTemp == mid)
+				{
+					*pLI = *pItemList->GetAt(midTemp++);
+				}
+				else if (midTemp == rightRange || psrgLeftTemp > psrgMidTemp)
+				{
+					*pLI = *pItemList->GetAt(leftRangeTemp++);
+				}
+				else
+				{
+					*pLI = *pItemList->GetAt(midTemp++);
+				}
+			}
+		}
+
+		leftRangeTemp = leftRange;
+		for (UINT count = 0; count < ListItemTemp.Count(); count++)
+		{
+			*pItemList->GetAt(leftRangeTemp++) = *ListItemTemp.GetAt(count);
+		}
+	}
+	else if (candidateCount == 2)
+	{
+		int psrgLeft = 0;
+		int psrgLeftNext = 0;
+
+		psrgLeft = pItemList->GetAt(leftRange)->_WordFrequency;
+		psrgLeftNext = pItemList->GetAt(leftRange + 1)->_WordFrequency;
+
+		psrgLeft = (psrgLeft < 0) ? 0 : psrgLeft;
+		psrgLeftNext = (psrgLeftNext < 0) ? 0 : psrgLeftNext;
+
+		
+		if (psrgLeft < psrgLeftNext) 
+		{
+			CCandidateListItem ListItem;
+			ListItem = *pItemList->GetAt(leftRange);
+			*pItemList->GetAt(leftRange) = *pItemList->GetAt(leftRange + 1);
+			*pItemList->GetAt(leftRange + 1) = ListItem;
+		}
+	}
+}

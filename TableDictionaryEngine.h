@@ -33,6 +33,7 @@ public:
 	VOID SetSearchSection(SEARCH_SECTION searchSection) { _searchSection =searchSection;}
 
 	VOID SortListItemByFindKeyCode(_Inout_ CDIMEArray<CCandidateListItem> *pItemList);
+	VOID SortListItemByWordFrequency(_Inout_ CDIMEArray<CCandidateListItem> *pItemList);
 
 	_T_RadicalMap* GetRadicalMap() { return _pRadicalMap;};
 	DICTIONARY_TYPE GetDictionaryType() { return _dictionaryType;};
@@ -50,6 +51,7 @@ private:
 	_T_RadicalIndexMap* _pRadicalIndexMap;
 
 	VOID MergeSortByFindKeyCode(_Inout_ CDIMEArray<CCandidateListItem> *pItemList, int leftRange, int rightRange);
+	VOID MergeSortByWordFrequency(_Inout_ CDIMEArray<CCandidateListItem> *pItemList, int leftRange, int rightRange);
 
 };
 #endif
