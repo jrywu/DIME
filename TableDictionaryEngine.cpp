@@ -10,6 +10,7 @@
 #include "DictionarySearch.h"
 #include "DIME.h"
 
+
 CTableDictionaryEngine::CTableDictionaryEngine(LCID locale, _In_ CFile *pDictionaryFile, _In_ DICTIONARY_TYPE dictionaryType )
 {
 	_locale = locale;
@@ -112,6 +113,9 @@ VOID CTableDictionaryEngine::CollectWordForWildcard(_In_ CStringRange *pKeyCode,
     CDictionaryResult* pdret = nullptr;
     CDictionarySearch dshSearch(_locale, _pDictionaryFile, pKeyCode, _keywordDelimiter);
 	
+	BOOL dupped = FALSE;
+
+	
 	if(_dictionaryType == TTS_DICTIONARY)
 		dshSearch.SetSearchSection(_searchSection);
 
@@ -119,26 +123,40 @@ VOID CTableDictionaryEngine::CollectWordForWildcard(_In_ CStringRange *pKeyCode,
     {
         for (UINT iIndex = 0; iIndex < pdret->_FindPhraseList.Count(); iIndex++)
         {
-            CCandidateListItem* pLI = nullptr;
-            pLI = pItemList->Append();
-            if (pLI)
-            {
-                pLI->_ItemString.Set(*pdret->_FindPhraseList.GetAt(iIndex));
-                pLI->_FindKeyCode.Set(pdret->_FindKeyCode.Get(), pdret->_FindKeyCode.GetLength());
-				if (wordFreqTableDictionaryEngine)
+			//check if the itemText is dupped.
+			for (UINT i = 0; i < pItemList->Count(); i++)
+			{
+				if (CStringRange::Compare(_locale, &pItemList->GetAt(i)->_ItemString, pdret->_FindPhraseList.GetAt(iIndex)) == CSTR_EQUAL)
 				{
-					if (pLI->_ItemString.GetLength() > 1) 
-						pLI->_WordFrequency = (int)pLI->_ItemString.GetLength();
-					else
-					{
-						CDIMEArray<CCandidateListItem> candidateList;
-						wordFreqTableDictionaryEngine->CollectWord(&pLI->_ItemString, &candidateList);
-						pLI->_WordFrequency = (candidateList.Count() == 1)
-							? _wtoi(candidateList.GetAt(0)->_ItemString.Get()) : 0;
-					}
+					dupped = TRUE;
+					break;
 				}
+			}
 
-            }
+
+			if (!dupped)
+			{
+				CCandidateListItem* pLI = nullptr;
+				pLI = pItemList->Append();
+				if (pLI)
+				{
+					pLI->_ItemString.Set(*pdret->_FindPhraseList.GetAt(iIndex));
+					pLI->_FindKeyCode.Set(pdret->_FindKeyCode.Get(), pdret->_FindKeyCode.GetLength());
+					if (wordFreqTableDictionaryEngine)
+					{
+						if (pLI->_ItemString.GetLength() > 1)
+							pLI->_WordFrequency = (int)pLI->_ItemString.GetLength();
+						else
+						{
+							CDIMEArray<CCandidateListItem> candidateList;
+							wordFreqTableDictionaryEngine->CollectWord(&pLI->_ItemString, &candidateList);
+							pLI->_WordFrequency = (candidateList.Count() == 1)
+								? _wtoi(candidateList.GetAt(0)->_ItemString.Get()) : 0;
+						}
+					}
+
+				}
+			}
         }
 
         delete pdret;
