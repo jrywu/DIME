@@ -121,6 +121,7 @@ VOID CTableDictionaryEngine::CollectWordForWildcard(_In_ CStringRange *pKeyCode,
 
     while (dshSearch.FindPhraseForWildcard(&pdret))
     {
+		dupped = FALSE;
         for (UINT iIndex = 0; iIndex < pdret->_FindPhraseList.Count(); iIndex++)
         {
 			//check if the itemText is dupped.
