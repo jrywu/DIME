@@ -107,7 +107,7 @@ VOID CTableDictionaryEngine::CollectWord(_In_ CStringRange *pKeyCode, _Inout_ CD
 //
 //----------------------------------------------------------------------------
 
-VOID CTableDictionaryEngine::CollectWordForWildcard(_In_ CStringRange *pKeyCode, _Inout_ CDIMEArray<CCandidateListItem> *pItemList)
+VOID CTableDictionaryEngine::CollectWordForWildcard(_In_ CStringRange *pKeyCode, _Inout_ CDIMEArray<CCandidateListItem> *pItemList, _In_opt_ CTableDictionaryEngine* wordFreqTableDictionaryEngine)
 {
     CDictionaryResult* pdret = nullptr;
     CDictionarySearch dshSearch(_locale, _pDictionaryFile, pKeyCode, _keywordDelimiter);
@@ -125,6 +125,19 @@ VOID CTableDictionaryEngine::CollectWordForWildcard(_In_ CStringRange *pKeyCode,
             {
                 pLI->_ItemString.Set(*pdret->_FindPhraseList.GetAt(iIndex));
                 pLI->_FindKeyCode.Set(pdret->_FindKeyCode.Get(), pdret->_FindKeyCode.GetLength());
+				if (wordFreqTableDictionaryEngine)
+				{
+					if (pLI->_ItemString.GetLength() > 1) 
+						pLI->_WordFrequency = (int)pLI->_ItemString.GetLength();
+					else
+					{
+						CDIMEArray<CCandidateListItem> candidateList;
+						wordFreqTableDictionaryEngine->CollectWord(&pLI->_ItemString, &candidateList);
+						pLI->_WordFrequency = (candidateList.Count() == 1)
+							? _wtoi(candidateList.GetAt(0)->_ItemString.Get()) : 0;
+					}
+				}
+
             }
         }
 

@@ -167,7 +167,7 @@ private:
 	CFile* _pTCSCTableDictionaryFile;
 	CFile* _pTCFreqTableDictionaryFile;
 
-	void sortListItemByFindWordFreq(_Inout_ CDIMEArray<CCandidateListItem> *pCandidateList);
+	//void sortListItemByFindWordFreq(_Inout_ CDIMEArray<CCandidateListItem> *pCandidateList);
 
     CStringRange _keystrokeBuffer;
 

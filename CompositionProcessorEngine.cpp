@@ -79,7 +79,7 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CDIME *pTextServic
 	_hasWildcardIncludedInKeystrokeBuffer = FALSE;
 
 	_isWildcard = TRUE;
-	_isDisableWildcardAtFirst = TRUE;
+	_isDisableWildcardAtFirst = FALSE;
 	_isKeystrokeSort = FALSE;
 
 	_isWildCardWordFreqSort = TRUE;
@@ -396,6 +396,24 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 	{
 		return;
 	}
+	//Check if only * in _keystrokebuffer
+	if (_keystrokeBuffer.GetLength() == 1 && IsWildcardAllChar(*_keystrokeBuffer.Get()))
+	{
+		CCandidateListItem *pLI = nullptr;
+		pLI = pCandidateList->Append();
+		pLI->_FindKeyCode = _keystrokeBuffer;
+		pLI->_ItemString = _keystrokeBuffer;
+		return;
+	}
+
+	//Check if all wildcard
+	BOOL allWildCard = TRUE;
+	for (UINT i = 0; i < (UINT) _keystrokeBuffer.GetLength(); i++)
+	{
+		allWildCard = IsWildcardChar(*(_keystrokeBuffer.Get() + i));
+		if (!allWildCard) break;
+	}
+	if (allWildCard) return;
 
 	_pActiveCandidateListIndexRange = &_candidateListIndexRange;  // Reset the active cand list range
 
@@ -502,15 +520,18 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 	}
 	else if (isWildcardSearch)
 	{
+		//Prepare for Sort candidate list with TC frequency table
+		if (_isWildCardWordFreqSort && _pTCFreqTableDictionaryEngine == nullptr) SetupTCFreqTable();
+
 		//Search IM table
 		_pTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_TEXT);
-		_pTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList);
+		_pTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList, _pTCFreqTableDictionaryEngine);
 
 		//Sort candidate list with TC frequency table
-		if (_isWildCardWordFreqSort)
-		{
-			sortListItemByFindWordFreq(pCandidateList);
-		}
+		if (_isWildCardWordFreqSort && _pTCFreqTableDictionaryEngine)
+			_pTableDictionaryEngine[Global::imeMode]->SortListItemByWordFrequency(pCandidateList);
+			//sortListItemByFindWordFreq(pCandidateList);
+		
 
 		//Search cutom table
 		if (_pCustomTableDictionaryEngine[Global::imeMode])
@@ -1322,7 +1343,7 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL *pIsE
 void CCompositionProcessorEngine::SetupConfiguration(IME_MODE imeMode)
 {
 	_isWildcard = TRUE;
-	_isDisableWildcardAtFirst = TRUE;
+	_isDisableWildcardAtFirst = FALSE;
 	_isKeystrokeSort = FALSE;
 	_isWildCardWordFreqSort = TRUE;
 
@@ -2013,9 +2034,9 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 
 	if (fComposing || candidateMode == CANDIDATE_INCREMENTAL || candidateMode == CANDIDATE_NONE)
 	{
-
+		
 		if ((IsWildcard() && IsWildcardChar(*pwch) && !IsDisableWildcardAtFirst()) ||
-			(IsWildcard() && IsWildcardChar(*pwch) && IsDisableWildcardAtFirst() && _keystrokeBuffer.GetLength()))
+			(IsWildcard() && IsWildcardChar(*pwch) && !(IsDisableWildcardAtFirst() && _keystrokeBuffer.GetLength() == 0 && IsWildcardAllChar(*pwch))))
 		{
 			if (pKeyState)
 			{
@@ -2024,7 +2045,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 			}
 			return TRUE;
 		}
-		if (IsVirtualKeyKeystrokeComposition(uCode, pKeyState, FUNCTION_NONE))
+		if ( !(IsWildcard() && IsWildcardChar(*pwch)) && IsVirtualKeyKeystrokeComposition(uCode, pKeyState, FUNCTION_NONE))
 		{
 			return TRUE;
 		}
@@ -2088,7 +2109,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 	if (!fComposing && candidateMode != CANDIDATE_ORIGINAL && candidateMode != CANDIDATE_PHRASE && candidateMode != CANDIDATE_WITH_NEXT_COMPOSITION)
 	{
 
-		if (IsVirtualKeyKeystrokeComposition(uCode, pKeyState, FUNCTION_INPUT))
+		if (!(IsWildcard() && IsWildcardChar(*pwch)) && IsVirtualKeyKeystrokeComposition(uCode, pKeyState, FUNCTION_INPUT))
 		{
 			return TRUE;
 		}
@@ -2429,7 +2450,7 @@ void CCompositionProcessorEngine::UpdateDictionaryFile()
 
 	}
 }
-
+/*
 void CCompositionProcessorEngine::sortListItemByFindWordFreq(_Inout_ CDIMEArray<CCandidateListItem> *pCandidateList)
 {
 	if (pCandidateList == nullptr || pCandidateList->Count() == 0) return;
@@ -2451,3 +2472,4 @@ void CCompositionProcessorEngine::sortListItemByFindWordFreq(_Inout_ CDIMEArray<
 		_pTableDictionaryEngine[Global::imeMode]->SortListItemByWordFrequency(pCandidateList);
 
 }
+*/

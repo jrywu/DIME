@@ -1135,6 +1135,8 @@ BOOL CCandidateWindow::_MovePage(_In_ int offSet, _In_ BOOL isNotify)
 	}
 	else if(newPage >= static_cast<int>(_PageIndex.Count()))
     {
+		_currentSelection = 0;
+		_InvalidateRect();
         return FALSE;
     }
 	if(_currentSelection <0 ) _currentSelection = 0;//reset the selection postition for phrase cand (_currentselection is -1);
