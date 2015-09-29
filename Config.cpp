@@ -605,7 +605,10 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 			goto LoadFile;
 LoadFile:
 			pathToLoad[0] = L'\0';
-			StringCchPrintf(pathToLoad, MAX_PATH, L"%s%s", wszUserDoc, L"\\customTable.txt");
+			if (openFileType == EXPORT_CUSTOM_TABLE)
+				StringCchPrintf(pathToLoad, MAX_PATH, L"%s%s", wszUserDoc, L"\\customTable.txt");
+			//else
+				//StringCchPrintf(pathToLoad, MAX_PATH, L"%s%s", wszUserDoc, L"\\");
 			ZeroMemory(&ofn, sizeof(OPENFILENAMEW));
 			ofn.lStructSize = sizeof(OPENFILENAMEW);
 			ofn.hwndOwner = hDlg;
@@ -1112,7 +1115,7 @@ BOOL CConfig::exportCustomTableFile(HWND hDlg, LPCWSTR pathToWrite)
 	ZeroMemory(buf, (len + 1)*sizeof(WCHAR));
 	GetDlgItemText(hDlg, IDC_EDIT_CUSTOM_TABLE, buf, len + 1);
 
-	// Create a file to save the encrypted data
+	// Create a file to save custom table
 	if ((hCustomTableFile = CreateFile(pathToWrite, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) == INVALID_HANDLE_VALUE)
 	{	// Error
 		success = FALSE;
