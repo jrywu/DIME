@@ -274,6 +274,10 @@ void CCompositionProcessorEngine::RemoveVirtualKey(DWORD_PTR dwIndex)
 	}
 
 	_keystrokeBuffer.Set(_keystrokeBuffer.Get(), srgKeystrokeBufLen - 1);
+	if (srgKeystrokeBufLen == 1) // no more virtual keys in buffer after backspace
+	{
+		_hasWildcardIncludedInKeystrokeBuffer = FALSE;
+	}
 }
 
 //+---------------------------------------------------------------------------
@@ -397,27 +401,49 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 		return;
 	}
 	//Check if only * in _keystrokebuffer
-	if (_keystrokeBuffer.GetLength() == 1 && IsWildcardAllChar(*_keystrokeBuffer.Get()))
-	{
-		CCandidateListItem *pLI = nullptr;
-		pLI = pCandidateList->Append();
-		pLI->_FindKeyCode = _keystrokeBuffer;
-		pLI->_ItemString = _keystrokeBuffer;
-		return;
-	}
+	UINT virtualKeyLen = (UINT)GetVirtualKeyLength();
 
-	//Check if all wildcard
-	BOOL allWildCard = TRUE;
-	for (UINT i = 0; i < (UINT) _keystrokeBuffer.GetLength(); i++)
+	if (virtualKeyLen > 0)
 	{
-		allWildCard = IsWildcardChar(*(_keystrokeBuffer.Get() + i));
-		if (!allWildCard) break;
+		if (virtualKeyLen == 1 && IsWildcardAllChar(*_keystrokeBuffer.Get()))
+		{
+			CCandidateListItem *pLI = nullptr;
+			pLI = pCandidateList->Append();
+			pLI->_FindKeyCode = _keystrokeBuffer;
+			pLI->_ItemString = _keystrokeBuffer;
+			return;
+		}
+
+		//Check if all wildcard
+		BOOL allWildCard = TRUE;
+		for (UINT i = 0; i < virtualKeyLen; i++)
+		{
+			allWildCard = IsWildcardChar(*(_keystrokeBuffer.Get() + i));
+			if (!allWildCard) break;
+		}
+		if (allWildCard) 
+			return;
 	}
-	if (allWildCard) return;
 
 	_pActiveCandidateListIndexRange = &_candidateListIndexRange;  // Reset the active cand list range
 
-	if (isIncrementalWordSearch && IsArrayShortCode()) //array short code mode
+	// check keystroke buffer already has wildcard char which end user want wildcard search
+	DWORD wildcardIndex = 0;
+	BOOL isFindWildcard = FALSE;
+
+	if (IsWildcard())
+	{
+		for (wildcardIndex = 0; wildcardIndex < _keystrokeBuffer.GetLength(); wildcardIndex++)
+		{
+			if (IsWildcardChar(*(_keystrokeBuffer.Get() + wildcardIndex)))
+			{
+				isFindWildcard = TRUE;
+				break;
+			}
+		}
+	}
+
+	if (isIncrementalWordSearch && IsArrayShortCode() && !isFindWildcard) //array short code mode
 	{
 		if (_pArrayShortCodeTableDictionaryEngine == nullptr)
 		{
@@ -434,22 +460,6 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 		CStringRange wildcardSearch;
 		DWORD_PTR keystrokeBufLen = _keystrokeBuffer.GetLength() + 3;
 
-
-		// check keystroke buffer already has wildcard char which end user want wildcard search
-		DWORD wildcardIndex = 0;
-		BOOL isFindWildcard = FALSE;
-
-		if (IsWildcard())
-		{
-			for (wildcardIndex = 0; wildcardIndex < _keystrokeBuffer.GetLength(); wildcardIndex++)
-			{
-				if (IsWildcardChar(*(_keystrokeBuffer.Get() + wildcardIndex)))
-				{
-					isFindWildcard = TRUE;
-					break;
-				}
-			}
-		}
 
 		PWCHAR pwch = new (std::nothrow) WCHAR[keystrokeBufLen];
 		if (!pwch)  return;
@@ -2034,7 +2044,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 
 	if (fComposing || candidateMode == CANDIDATE_INCREMENTAL || candidateMode == CANDIDATE_NONE)
 	{
-		
+
 		if ((IsWildcard() && IsWildcardChar(*pwch) && !IsDisableWildcardAtFirst()) ||
 			(IsWildcard() && IsWildcardChar(*pwch) && !(IsDisableWildcardAtFirst() && _keystrokeBuffer.GetLength() == 0 && IsWildcardAllChar(*pwch))))
 		{
@@ -2045,11 +2055,12 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 			}
 			return TRUE;
 		}
-		if ( !(IsWildcard() && IsWildcardChar(*pwch)) && IsVirtualKeyKeystrokeComposition(uCode, pKeyState, FUNCTION_NONE))
+		if (!(IsWildcard() && IsWildcardChar(*pwch)) && IsVirtualKeyKeystrokeComposition(uCode, pKeyState, FUNCTION_NONE))
 		{
 			return TRUE;
 		}
-		else if (_hasWildcardIncludedInKeystrokeBuffer && (uCode == VK_SPACE || uCode == VK_RETURN || candidateMode == CANDIDATE_INCREMENTAL))
+		else if (_hasWildcardIncludedInKeystrokeBuffer && uCode != VK_SHIFT && uCode != VK_BACK &&
+			(uCode == VK_SPACE || uCode == VK_RETURN || (candidateMode == CANDIDATE_INCREMENTAL && Global::imeMode != IME_MODE_ARRAY)))
 		{
 			if (pKeyState) { pKeyState->Category = CATEGORY_COMPOSING; pKeyState->Function = FUNCTION_CONVERT_WILDCARD; } return TRUE;
 		}
@@ -2093,7 +2104,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 	// CANDIDATE_INCREMENTAL should process Keystroke.Candidate virtual keys.
 	else if (candidateMode == CANDIDATE_INCREMENTAL)
 	{
-		if (Global::imeMode == IME_MODE_ARRAY && pKeyState && uCode == VK_SPACE)
+		if (Global::imeMode == IME_MODE_ARRAY && pKeyState && (uCode == VK_SPACE || uCode == VK_RETURN))
 		{
 			pKeyState->Category = CATEGORY_COMPOSING;
 			pKeyState->Function = FUNCTION_CONVERT;
@@ -2144,8 +2155,11 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 		{
 			switch (uCode)
 			{
+			case VK_LEFT:   if (pKeyState) { pKeyState->Category = CATEGORY_COMPOSING; pKeyState->Function = FUNCTION_MOVE_LEFT; } return TRUE;
+			case VK_RIGHT:  if (pKeyState) { pKeyState->Category = CATEGORY_COMPOSING; pKeyState->Function = FUNCTION_MOVE_RIGHT; } return TRUE;
 				// VK_LEFT, VK_RIGHT - set *pIsEaten = FALSE for application could move caret left or right.
 				// and for CUAS, invoke _HandleCompositionCancel() edit session due to ignore CUAS default key handler for send out terminate composition
+				/*
 			case VK_LEFT:
 			case VK_RIGHT:
 			{
@@ -2155,7 +2169,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 								 pKeyState->Function = FUNCTION_CANCEL;
 							 }
 			}
-				return FALSE;
+				return FALSE;*/
 
 			case VK_RETURN: if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_CONVERT; } return TRUE;
 			case VK_ESCAPE: if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_CANCEL; } return TRUE;
