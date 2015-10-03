@@ -80,7 +80,7 @@ HRESULT CDIME::Show(_In_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID inR
 		DLGPROC DlgProc;
 	} DlgPage[] = {
 		{ IDD_DIALOG_COMMON, CConfig::CommonPropertyPageWndProc },
-		{ IDD_DIALOG_DICTIONARY, CConfig::DictionaryPropertyPageWndProc },
+		{ IDD_DIALOG_DICTIONARY, CConfig::DictionaryPropertyPageWndProc }
 
 	};
 	HPROPSHEETPAGE hpsp[_countof(DlgPage)];
