@@ -60,17 +60,15 @@ STDAPI CDIME::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMgr 
 	{
 		pDocMgrFocus->GetTop(&pContext);	
 
-
-		debugPrint(L"CDIME::OnSetFocus() Set isChinese = lastkeyboardMode = %d,", _isChinese);
-		_lastKeyboardMode = _isChinese;
-		debugPrint(L"CDIME::OnSetFocus() Set keyboard mode to last state = %d", _lastKeyboardMode);
-		ConversionModeCompartmentUpdated(_pThreadMgr, &_lastKeyboardMode);
-
-
 		if (pContext && !(_newlyActivated && !Global::isWindows8))
 		{	
+
+			debugPrint(L"CDIME::OnSetFocus() Set isChinese = lastkeyboardMode = %d,", _isChinese);
+			_lastKeyboardMode = _isChinese;
+			debugPrint(L"CDIME::OnSetFocus() Set keyboard mode to last state = %d", _lastKeyboardMode);
+			ConversionModeCompartmentUpdated(_pThreadMgr, &_lastKeyboardMode);
 			debugPrint(L"CDIME::OnSetFocus() show chi/eng notify _isChinese = %d", _isChinese);
-			showChnEngNotify(_isChinese);
+			showChnEngNotify(_isChinese, 500);
 		}
 		else if (_newlyActivated)
 			_newlyActivated = FALSE;
