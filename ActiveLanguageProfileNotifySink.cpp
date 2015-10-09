@@ -44,7 +44,7 @@ STDAPI CDIME::OnActivated(_In_ REFCLSID clsid, _In_ REFGUID guidProfile, _In_ BO
 	{
 		if (_pCompositionProcessorEngine == nullptr) return S_OK;
 		Global::imeMode = _pCompositionProcessorEngine->GetImeModeFromGuidProfile(guidProfile);
-		//CConfig::SetIMEMode(Global::imeMode);
+		CConfig::SetIMEMode(Global::imeMode);
 		_LoadConfig(TRUE);//force reversion coversion settings to be reload
 
 		debugPrint(L"activating with imeMode = %d", Global::imeMode);

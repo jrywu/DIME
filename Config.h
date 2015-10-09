@@ -26,8 +26,8 @@ public:
 	//  configuration set/get
 	static void SetIMEMode(IME_MODE imeMode) { _imeMode = imeMode; }
 	static IME_MODE GetIMEMode() { return _imeMode; }
-	static void SetArrayUnicodeScope(ARRAY_UNICODE_SCOPE arrayUnicodeScope) { _arrayUnicodeScope = arrayUnicodeScope; }
-	static ARRAY_UNICODE_SCOPE GetArrayUnicodeScope() { return _arrayUnicodeScope; }
+	static void SetArrayUnicodeScope(CHARSET_SCOPE arrayUnicodeScope) { _arrayUnicodeScope = arrayUnicodeScope; }
+	static CHARSET_SCOPE GetArrayUnicodeScope() { return _arrayUnicodeScope; }
 	static void SetAutoCompose(BOOL autoCompose) {_autoCompose = autoCompose;}
 	static BOOL GetAutoCompose() {return _autoCompose;}
 	static void SetThreeCodeMode(BOOL threeCodeMode) {_threeCodeMode = threeCodeMode;}
@@ -117,7 +117,7 @@ private:
 	//user setting variables
 	static BOOL _loadTableMode;
 	static IME_MODE _imeMode;
-	static ARRAY_UNICODE_SCOPE _arrayUnicodeScope;
+	static CHARSET_SCOPE _arrayUnicodeScope;
 	static BOOL _autoCompose;
 	static BOOL _threeCodeMode;
 	static BOOL _doBeep;

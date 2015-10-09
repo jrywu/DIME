@@ -116,14 +116,15 @@ enum IME_MODE
 };
 
 //---------------------------------------------------------------------
-// ARRAY UNICODE SCOPE
+// UNICODE SCOPE
 //---------------------------------------------------------------------
-enum ARRAY_UNICODE_SCOPE
+enum CHARSET_SCOPE
 {
-	ARRAY_UNICODE_EXT_A = 0,
-	ARRAY_UNICODE_EXT_AB,
-	ARRAY_UNICODE_EXT_ABCD,
-	ARRAY_UNICODE_EXT_ABCDE,
+	CHARSET_UNICODE_EXT_A = 0,
+	CHARSET_UNICODE_EXT_AB,
+	CHARSET_UNICODE_EXT_ABCD,
+	CHARSET_UNICODE_EXT_ABCDE,
+	CHARSET_BIG5
 };
 
 

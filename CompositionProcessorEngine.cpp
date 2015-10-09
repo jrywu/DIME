@@ -548,19 +548,19 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 			_pCustomTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList);
 
 		//Search Array unicode extensions
-		if (Global::imeMode == IME_MODE_ARRAY && CConfig::GetArrayUnicodeScope() != ARRAY_UNICODE_EXT_A)
+		if (Global::imeMode == IME_MODE_ARRAY && CConfig::GetArrayUnicodeScope() != CHARSET_UNICODE_EXT_A)
 		{
 			switch (CConfig::GetArrayUnicodeScope())
 			{
 
-			case ARRAY_UNICODE_EXT_AB:
+			case CHARSET_UNICODE_EXT_AB:
 				if (_pArrayExtBTableDictionaryEngine)	_pArrayExtBTableDictionaryEngine->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList);
 				break;
-			case ARRAY_UNICODE_EXT_ABCD:
+			case CHARSET_UNICODE_EXT_ABCD:
 				if (_pArrayExtBTableDictionaryEngine)	_pArrayExtBTableDictionaryEngine->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList);
 				if (_pArrayExtCDTableDictionaryEngine)	_pArrayExtCDTableDictionaryEngine->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList);
 				break;
-			case ARRAY_UNICODE_EXT_ABCDE:
+			case CHARSET_UNICODE_EXT_ABCDE:
 				if (_pArrayExtBTableDictionaryEngine)	_pArrayExtBTableDictionaryEngine->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList);
 				if (_pArrayExtCDTableDictionaryEngine)	_pArrayExtCDTableDictionaryEngine->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList);
 				if (_pArrayExtETableDictionaryEngine)	_pArrayExtETableDictionaryEngine->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList);
@@ -584,19 +584,19 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 
 
 		//Search Array unicode extensions
-		if (Global::imeMode == IME_MODE_ARRAY && CConfig::GetArrayUnicodeScope() != ARRAY_UNICODE_EXT_A)
+		if (Global::imeMode == IME_MODE_ARRAY && CConfig::GetArrayUnicodeScope() != CHARSET_UNICODE_EXT_A)
 		{
 			switch (CConfig::GetArrayUnicodeScope())
 			{
 
-			case ARRAY_UNICODE_EXT_AB:
+			case CHARSET_UNICODE_EXT_AB:
 				if (_pArrayExtBTableDictionaryEngine)	_pArrayExtBTableDictionaryEngine->CollectWord(&_keystrokeBuffer, pCandidateList);
 				break;
-			case ARRAY_UNICODE_EXT_ABCD:
+			case CHARSET_UNICODE_EXT_ABCD:
 				if (_pArrayExtBTableDictionaryEngine)	_pArrayExtBTableDictionaryEngine->CollectWord(&_keystrokeBuffer, pCandidateList);
 				if (_pArrayExtCDTableDictionaryEngine)	_pArrayExtCDTableDictionaryEngine->CollectWord(&_keystrokeBuffer, pCandidateList);
 				break;
-			case ARRAY_UNICODE_EXT_ABCDE:
+			case CHARSET_UNICODE_EXT_ABCDE:
 				if (_pArrayExtBTableDictionaryEngine)	_pArrayExtBTableDictionaryEngine->CollectWord(&_keystrokeBuffer, pCandidateList);
 				if (_pArrayExtCDTableDictionaryEngine)	_pArrayExtCDTableDictionaryEngine->CollectWord(&_keystrokeBuffer, pCandidateList);
 				if (_pArrayExtETableDictionaryEngine)	_pArrayExtETableDictionaryEngine->CollectWord(&_keystrokeBuffer, pCandidateList);
