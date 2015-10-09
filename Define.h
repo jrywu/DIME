@@ -84,4 +84,5 @@
 #define MAX_KEY_LENGTH 64
 #define MAX_VALUE_LENGTH 960
 
+#define CHN_ENG_NOTIFY_DELAY 1500
 #endif

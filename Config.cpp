@@ -898,7 +898,7 @@ VOID CConfig::LoadConfig(IME_MODE imeMode)
 				}
 				// In store app mode, the dll is loaded into app container which does not even have read right for IME profile in APPDATA.
 				// Here, the read right is granted once to "ALL APPLICATION PACKAGES" when loaded in desktop mode, so as all metro apps can at least read the user settings in config.ini.				
-				if(Global::isWindows8 && ! CDIME::_IsStoreAppMode() && ! _appPermissionSet ) 
+				if(Global::isWindows8 && ! CDIME::_IsStoreAppMode() && ! _appPermissionSet && imeMode != IME_MODE_NONE) 
 				{
 					EXPLICIT_ACCESS ea;
 					// Get a pointer to the existing DACL (Conditionaly).
@@ -939,7 +939,8 @@ VOID CConfig::LoadConfig(IME_MODE imeMode)
 				_maxCodes = 5;
 
 			}
-			WriteConfig(); // config.ini is not there. create one.
+			if (imeMode != IME_MODE_NONE)
+				WriteConfig(); // config.ini is not there. create one.
 		}
 	}
 	else

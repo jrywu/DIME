@@ -149,6 +149,15 @@ enum NOTIFY_TYPE
 	NOTIFY_OTHERS
 };
 
+enum PROCESS_INTEGRITY_LEVEL
+{
+	PROCESS_INTEGRITY_LEVEL_HIGH,
+	PROCESS_INTEGRITY_LEVEL_LOW,
+	PROCESS_INTEGRITY_LEVEL_MEDIUM,
+	PROCESS_INTEGRITY_LEVEL_UNKNOWN,
+	PROCESS_INTEGRITY_LEVEL_SYSTEM
+};
+
 //---------------------------------------------------------------------
 // structure
 //---------------------------------------------------------------------

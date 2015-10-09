@@ -14,7 +14,7 @@
 #include "RegKey.h"
 #include "TfInputProcessorProfile.h"
 #include <Prsht.h>
-
+#include <Psapi.h>
 //////////////////////////////////////////////////////////////////////
 //
 // CDIME implementation.
@@ -215,6 +215,67 @@ CDIME::CDIME()
 	_isChinese = FALSE;
 	_lastKeyboardMode = FALSE;
 	_isFullShape = FALSE;
+
+	// Get Process Integrity level
+	DWORD err = 0;
+	_processIntegrityLevel = PROCESS_INTEGRITY_LEVEL_UNKNOWN;
+	try {
+		HANDLE hToken = NULL;
+		if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken))
+			throw GetLastError();
+
+		DWORD cbBuf = 0;
+		if (GetTokenInformation(hToken, TokenIntegrityLevel, NULL, 0, &cbBuf) != 0)
+			throw GetLastError();
+		TOKEN_MANDATORY_LABEL * pTml =
+			reinterpret_cast<TOKEN_MANDATORY_LABEL*> (new char[cbBuf]);
+		if (pTml &&
+			GetTokenInformation(
+			hToken,
+			TokenIntegrityLevel,
+			pTml,
+			cbBuf,
+			&cbBuf)) {
+			CloseHandle(hToken);
+			hToken = NULL;
+			DWORD ridIl = *GetSidSubAuthority(pTml->Label.Sid, 0);
+			if (ridIl < SECURITY_MANDATORY_LOW_RID)
+				_processIntegrityLevel = PROCESS_INTEGRITY_LEVEL_UNKNOWN;
+			else if (ridIl >= SECURITY_MANDATORY_LOW_RID &&
+				ridIl < SECURITY_MANDATORY_MEDIUM_RID)
+				_processIntegrityLevel = PROCESS_INTEGRITY_LEVEL_LOW;
+			else if (ridIl >= SECURITY_MANDATORY_MEDIUM_RID &&
+				ridIl < SECURITY_MANDATORY_HIGH_RID)
+				_processIntegrityLevel = PROCESS_INTEGRITY_LEVEL_MEDIUM;
+			else if (ridIl >= SECURITY_MANDATORY_HIGH_RID &&
+				ridIl < SECURITY_MANDATORY_SYSTEM_RID)
+				_processIntegrityLevel = PROCESS_INTEGRITY_LEVEL_HIGH;
+			else if (ridIl >= SECURITY_MANDATORY_SYSTEM_RID)
+				_processIntegrityLevel = PROCESS_INTEGRITY_LEVEL_SYSTEM;
+			if (ridIl > SECURITY_MANDATORY_LOW_RID &&
+				ridIl != SECURITY_MANDATORY_MEDIUM_RID &&
+				ridIl != SECURITY_MANDATORY_HIGH_RID &&
+				ridIl != SECURITY_MANDATORY_SYSTEM_RID)
+				_processIntegrityLevel = PROCESS_INTEGRITY_LEVEL_LOW;
+			delete[] reinterpret_cast<char*>(pTml);
+			pTml = NULL;
+		}
+		else {
+			throw GetLastError();
+		}
+	}
+	catch (DWORD dwErr) {
+		err = dwErr;
+		debugPrint(L"Error %d", GetLastError());
+	}
+	catch (std::bad_alloc e) {
+		err = ERROR_OUTOFMEMORY;
+		debugPrint(L"Error %d", err);
+	}
+	//Retrieve current process name
+	GetModuleBaseName(GetCurrentProcess(), NULL, _processName, MAX_PATH);
+
+	_newlyActivated = FALSE;
 
 }
 

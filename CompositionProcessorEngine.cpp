@@ -1313,8 +1313,8 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL *pIsE
 			CompartmentIMEMode._SetCompartmentBOOL(isOpen ? FALSE : TRUE);
 		}
 
-
-
+		//show notify
+		if (_pTextService) _pTextService->showChnEngNotify(!isOpen);
 
 		*pIsEaten = TRUE;
 	}
@@ -1329,6 +1329,8 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL *pIsE
 		CCompartment CompartmentDoubleSingleByte(pThreadMgr, tfClientId, Global::DIMEGuidCompartmentDoubleSingleByte);
 		CompartmentDoubleSingleByte._GetCompartmentBOOL(isDouble);
 		CompartmentDoubleSingleByte._SetCompartmentBOOL(isDouble ? FALSE : TRUE);
+		//show notify
+		if (_pTextService) _pTextService->showFullHalfShapeNotify(!isDouble);
 		*pIsEaten = TRUE;
 	}
 	else if (IsEqualGUID(rguid, _PreservedKey_Config.Guid) && _pTextService)

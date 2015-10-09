@@ -59,12 +59,21 @@ STDAPI CDIME::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMgr 
 	if(pDocMgrFocus && !_UpdateLanguageBarOnSetFocus(pDocMgrFocus))
 	{
 		pDocMgrFocus->GetTop(&pContext);	
-		if(_pUIPresenter && pContext && (CConfig::GetShowNotifyDesktop() ))
-		{	
-			CStringRange notify;
-			_pUIPresenter->ShowNotifyText(&notify.Set(_isChinese?L"中文":L"英文",2), 500, 3000, NOTIFY_CHN_ENG);
-		}
 
+
+		debugPrint(L"CDIME::OnSetFocus() Set isChinese = lastkeyboardMode = %d,", _isChinese);
+		_lastKeyboardMode = _isChinese;
+		debugPrint(L"CDIME::OnSetFocus() Set keyboard mode to last state = %d", _lastKeyboardMode);
+		ConversionModeCompartmentUpdated(_pThreadMgr, &_lastKeyboardMode);
+
+
+		if (pContext && !(_newlyActivated && !Global::isWindows8))
+		{	
+			debugPrint(L"CDIME::OnSetFocus() show chi/eng notify _isChinese = %d", _isChinese);
+			showChnEngNotify(_isChinese);
+		}
+		else if (_newlyActivated)
+			_newlyActivated = FALSE;
 	}
 
 

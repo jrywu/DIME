@@ -312,13 +312,8 @@ STDAPI CDIME::OnTestKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, 
 	
 	if (_pUIPresenter)
 	{
-		if(CConfig::GetShowNotifyDesktop() || _IsStoreAppMode() )
-		{
-			CStringRange notify;
-			_pUIPresenter->ShowNotifyText(&notify.Set(_isChinese?L"中文":L"英文",2), 3000, 3000, NOTIFY_CHN_ENG);
-		}
-		else 
-			_pUIPresenter->ClearNotify();
+		_pUIPresenter->ClearNotify();
+		showChnEngNotify(_isChinese, 3000);
 	}
 
 
@@ -355,13 +350,8 @@ STDAPI CDIME::OnKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL
 
 	if (_pUIPresenter)
 	{
-		if(CConfig::GetShowNotifyDesktop() || _IsStoreAppMode() )
-		{
-			CStringRange notify;
-			_pUIPresenter->ShowNotifyText(&notify.Set(_isChinese?L"中文":L"英文",2), 3000, 3000, NOTIFY_CHN_ENG);
-		}
-		else 
-			_pUIPresenter->ClearNotify();
+		_pUIPresenter->ClearNotify();
+		showChnEngNotify(_isChinese, 3000);
 	}
 
     *pIsEaten = _IsKeyEaten(pContext, (UINT)wParam, &code, &wch, &KeystrokeState);

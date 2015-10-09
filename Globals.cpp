@@ -219,7 +219,8 @@ extern const WCHAR DayiSymbolCharTable[] = L" !@\\\"#$%&L\'()+:<>[]^-_`{}|~?";
 //---------------------------------------------------------------------
 // defined directly input address characters
 //---------------------------------------------------------------------
-extern const _DAYI_ADDRESS_DIRECT_INPUT dayiAddressCharTable[5] = {
+extern const _DAYI_ADDRESS_DIRECT_INPUT dayiAddressCharTable[6] = {
+	{ L'`', L'«Ñ' },
 	{L'\'', L'¸¹'},
 	{L'[', L'¸ô'},
 	{L']', L'µó'},
@@ -229,7 +230,8 @@ extern const _DAYI_ADDRESS_DIRECT_INPUT dayiAddressCharTable[5] = {
 //---------------------------------------------------------------------
 // defined directly input full shaped symbols in article modes
 //---------------------------------------------------------------------
-extern const _DAYI_ADDRESS_DIRECT_INPUT dayiArticleCharTable[5] = {
+extern const _DAYI_ADDRESS_DIRECT_INPUT dayiArticleCharTable[6] = {
+	{ L'`', L'¡G' },
 	{ L'\'', L'¡A' },
 	{ L'[', L'¡C' },
 	{ L']', L'¡H' },

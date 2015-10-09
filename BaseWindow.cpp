@@ -608,39 +608,40 @@ void CBaseWindow::_SetTimerObject(_In_opt_ CBaseWindow *pUIObj, UINT uElapse, _I
 /* static */
 LRESULT CALLBACK CBaseWindow::_WindowProc(_In_ HWND wndHandle, UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam)
 {
-    if (uMsg == WM_CREATE && lParam)
-    {
-        _SetThis(wndHandle, ((CREATESTRUCT*)lParam)->lpCreateParams);
-    }
+	if (uMsg == WM_CREATE && lParam)
+	{
+		_SetThis(wndHandle, ((CREATESTRUCT*)lParam)->lpCreateParams);
+	}
 
-    CBaseWindow* pv = _GetThis(wndHandle);
-    if (pv == nullptr)
-    {
-        return DefWindowProc(wndHandle, uMsg, wParam, lParam);
-    }
+	CBaseWindow* pv = _GetThis(wndHandle);
+	if (wndHandle == nullptr || pv == nullptr)
+	{
+		return DefWindowProc(wndHandle, uMsg, wParam, lParam);
+	}
 
-    if (uMsg == WM_TIMER)
-    {
-        switch (wParam)
-        {
-        case DEFAULT_TIMER_ID:
-            if (pv->_GetTimerObject())
-            {
-                pv->_GetTimerObject()->_OnTimer();
-            }
-            break;
+	if (uMsg == WM_TIMER)
+	{
+		switch (wParam)
+		{
+		case DEFAULT_TIMER_ID:
+			if (pv->_GetTimerObject())
+			{
+				pv->_GetTimerObject()->_OnTimer();
+			}
+			break;
 		default:
 			if (pv->_GetTimerObject())
-            {
-				pv->_GetTimerObject()->_OnTimerID((UINT_PTR) wParam);
-            }
-        }
-        return 0;
-    }
-    else
-    {
-        return pv->_WindowProcCallback(wndHandle, uMsg, wParam, lParam);
-    }
+			{
+				pv->_GetTimerObject()->_OnTimerID((UINT_PTR)wParam);
+			}
+		}
+		return 0;
+	}
+	else if (pv->_pUIWnd != nullptr)
+	{
+		return pv->_WindowProcCallback(wndHandle, uMsg, wParam, lParam);
+	}
+	return S_FALSE;
 }
 
 //+---------------------------------------------------------------------------
