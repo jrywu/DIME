@@ -166,6 +166,8 @@ public:
 	void OnKeyboardOpen();
 	void OnSwitchedToFullShape();
 	void OnSwitchedToHalfShape();
+	void showChnEngNotify(BOOL isChinese, UINT delayShow = 0);
+	void showFullHalfShapeNotify(BOOL isFullShape, UINT delayShow = 0);
 
 	
 	// function for probe caret position when showing notify 
@@ -177,13 +179,12 @@ public:
 	//warning beeps and messages in notify window
 	void DoBeep();
 
+	//integrity level and process name specific functions
 	BOOL isHighIntegrityProcess(){ return (_processIntegrityLevel == PROCESS_INTEGRITY_LEVEL_HIGH || _processIntegrityLevel == PROCESS_INTEGRITY_LEVEL_SYSTEM); }
 	BOOL isLowIntegrityProcess() { return (_processIntegrityLevel == PROCESS_INTEGRITY_LEVEL_LOW || _processIntegrityLevel == PROCESS_INTEGRITY_LEVEL_UNKNOWN); }
 	BOOL isWin7IEProcess() { return  !Global::isWindows8 && (CompareString(GetLocale(), NORM_IGNORECASE, _processName, -1, L"IEXPLORE.EXE", -1) == CSTR_EQUAL); }
 	PROCESS_INTEGRITY_LEVEL GetProcessIntegrityLevel() { return _processIntegrityLevel; }
 
-	void showChnEngNotify(BOOL isChinese, UINT delayShow = 0);
-	void showFullHalfShapeNotify(BOOL isFullShape, UINT delayShow = 0);
 private:
 	PROCESS_INTEGRITY_LEVEL _processIntegrityLevel;
 	WCHAR _processName[MAX_PATH];

@@ -101,50 +101,72 @@ void CDIME::SetupLanguageBar(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientI
 	debugPrint(L"SetupLanguageBar()");
 
 
-	if(pThreadMgr == nullptr) return;
-	
-    DWORD dwEnable = 1;
+	if (pThreadMgr == nullptr) return;
+
+	DWORD dwEnable = 1;
 	//win8 only to show IME
-	if(Global::isWindows8){
+	if (Global::isWindows8){
 		CreateLanguageBarButton(dwEnable, GUID_LBI_INPUTMODE, Global::LangbarImeModeDescription, Global::ImeModeDescription, Global::ImeModeOnIcoIndex, Global::ImeModeOffIcoIndex, &_pLanguageBar_IMEModeW8, isSecureMode);
 		InitLanguageBar(_pLanguageBar_IMEModeW8, pThreadMgr, tfClientId, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
-		_pCompartmentKeyboardOpenEventSink = new (std::nothrow) CCompartmentEventSink(CompartmentCallback, this);
-		
+		if (_pCompartmentKeyboardOpenEventSink == nullptr)
+		{
+
+			_pCompartmentKeyboardOpenEventSink = new (std::nothrow) CCompartmentEventSink(CompartmentCallback, this);
+			if (_pCompartmentKeyboardOpenEventSink)
+			{
+				_pCompartmentKeyboardOpenEventSink->_Advise(pThreadMgr, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
+			}
+		}
+
+
 	}
-	
-    CreateLanguageBarButton(dwEnable, Global::DIMEGuidLangBarIMEMode, Global::LangbarImeModeDescription, Global::ImeModeDescription, Global::ImeModeOnIcoIndex, Global::ImeModeOffIcoIndex, &_pLanguageBar_IMEMode, isSecureMode);
-    CreateLanguageBarButton(dwEnable, Global::DIMEGuidLangBarDoubleSingleByte, Global::LangbarDoubleSingleByteDescription, Global::DoubleSingleByteDescription, Global::DoubleSingleByteOnIcoIndex, Global::DoubleSingleByteOffIcoIndex, &_pLanguageBar_DoubleSingleByte, isSecureMode);
+
+	if (_pLanguageBar_IMEMode == nullptr)
+	{
+		CreateLanguageBarButton(dwEnable, Global::DIMEGuidLangBarIMEMode, Global::LangbarImeModeDescription, Global::ImeModeDescription, Global::ImeModeOnIcoIndex, Global::ImeModeOffIcoIndex, &_pLanguageBar_IMEMode, isSecureMode);
+		InitLanguageBar(_pLanguageBar_IMEMode, pThreadMgr, tfClientId, Global::DIMEGuidCompartmentIMEMode);
+	}
+
+	if (_pLanguageBar_DoubleSingleByte == nullptr)
+	{
+		CreateLanguageBarButton(dwEnable, Global::DIMEGuidLangBarDoubleSingleByte, Global::LangbarDoubleSingleByteDescription, Global::DoubleSingleByteDescription, Global::DoubleSingleByteOnIcoIndex, Global::DoubleSingleByteOffIcoIndex, &_pLanguageBar_DoubleSingleByte, isSecureMode);
+		InitLanguageBar(_pLanguageBar_DoubleSingleByte, pThreadMgr, tfClientId, Global::DIMEGuidCompartmentDoubleSingleByte);
+	}
+
+
+	if (_pCompartmentConversion == nullptr)
+		_pCompartmentConversion = new (std::nothrow) CCompartment(pThreadMgr, tfClientId, GUID_COMPARTMENT_KEYBOARD_INPUTMODE_CONVERSION);
+
+	if (_pCompartmentIMEModeEventSink == nullptr)
+	{
+		_pCompartmentIMEModeEventSink = new (std::nothrow) CCompartmentEventSink(CompartmentCallback, this);
+		if (_pCompartmentIMEModeEventSink)
+		{
+			_pCompartmentIMEModeEventSink->_Advise(pThreadMgr, Global::DIMEGuidCompartmentIMEMode);
+		}
+	}
+
+	if (_pCompartmentConversionEventSink == nullptr)
+	{
+		_pCompartmentConversionEventSink = new (std::nothrow) CCompartmentEventSink(CompartmentCallback, this);
+		if (_pCompartmentConversionEventSink)
+		{
+			_pCompartmentConversionEventSink->_Advise(pThreadMgr, GUID_COMPARTMENT_KEYBOARD_INPUTMODE_CONVERSION);
+		}
+	}
+
+	if (_pCompartmentDoubleSingleByteEventSink == nullptr)
+	{
+		_pCompartmentDoubleSingleByteEventSink = new (std::nothrow) CCompartmentEventSink(CompartmentCallback, this);
+
+		if (_pCompartmentDoubleSingleByteEventSink)
+		{
+			_pCompartmentDoubleSingleByteEventSink->_Advise(pThreadMgr, Global::DIMEGuidCompartmentDoubleSingleByte);
+		}
+	}
 
 	
-    
-	InitLanguageBar(_pLanguageBar_IMEMode, pThreadMgr, tfClientId,  Global::DIMEGuidCompartmentIMEMode);
-    InitLanguageBar(_pLanguageBar_DoubleSingleByte, pThreadMgr, tfClientId, Global::DIMEGuidCompartmentDoubleSingleByte);
-
-
-    _pCompartmentConversion = new (std::nothrow) CCompartment(pThreadMgr, tfClientId, GUID_COMPARTMENT_KEYBOARD_INPUTMODE_CONVERSION);
-	
-	_pCompartmentIMEModeEventSink = new (std::nothrow) CCompartmentEventSink(CompartmentCallback, this);
-    _pCompartmentConversionEventSink = new (std::nothrow) CCompartmentEventSink(CompartmentCallback, this);
-    _pCompartmentDoubleSingleByteEventSink = new (std::nothrow) CCompartmentEventSink(CompartmentCallback, this);
-
-	if (_pCompartmentIMEModeEventSink)
-    {
-        _pCompartmentIMEModeEventSink->_Advise(pThreadMgr, Global::DIMEGuidCompartmentIMEMode);
-    }
-	if (_pCompartmentKeyboardOpenEventSink && Global::isWindows8)
-    {
-        _pCompartmentKeyboardOpenEventSink->_Advise(pThreadMgr, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
-    }
-    if (_pCompartmentConversionEventSink)
-    {
-        _pCompartmentConversionEventSink->_Advise(pThreadMgr, GUID_COMPARTMENT_KEYBOARD_INPUTMODE_CONVERSION);
-    }
-    if (_pCompartmentDoubleSingleByteEventSink)
-    {
-        _pCompartmentDoubleSingleByteEventSink->_Advise(pThreadMgr, Global::DIMEGuidCompartmentDoubleSingleByte);
-    }
-   
-    return;
+	return;
 }
 
 //+---------------------------------------------------------------------------

@@ -754,7 +754,7 @@ HRESULT CDIME::GetLayout(_Out_ TKBLayoutType *ptkblayoutType, _Out_ WORD *pwPref
 		else if(Global::imeMode==IME_MODE_PHONETIC)
 		{
 			*ptkblayoutType = TKBLT_CLASSIC;
-			*pwPreferredLayoutId = TKBL_CLASSIC_TRADITIONAL_CHINESE_PHONETIC;
+			*pwPreferredLayoutId = TKBL_OPT_TRADITIONAL_CHINESE_PHONETIC;
 		}
 		else
 		{
@@ -924,7 +924,7 @@ BOOL CDIME::SetupLanguageProfile(LANGID langid, REFGUID guidLanguageProfile, _In
 {
     _langid = langid;
 	_guidProfile = guidLanguageProfile;
-
+	
 	debugPrint(L"CDIME::SetupLanguageProfile()\n");
 
     BOOL ret = TRUE;
@@ -937,6 +937,14 @@ BOOL CDIME::SetupLanguageProfile(LANGID langid, REFGUID guidLanguageProfile, _In
 	if(_pCompositionProcessorEngine)
 	{
 		IME_MODE imeMode = _pCompositionProcessorEngine->GetImeModeFromGuidProfile(_guidProfile);
+
+		if (pThreadMgr)  // pThreadMgr = Null for reverse conversion
+		{
+			Global::imeMode = imeMode;
+			debugPrint(L"CDIME::SetupLanguageProfile() imeMode = %d \n", imeMode);
+		}
+		
+		
 
 		InitializeDIMECompartment(pThreadMgr, tfClientId);
 		SetupLanguageBar(pThreadMgr, tfClientId, isSecureMode);
