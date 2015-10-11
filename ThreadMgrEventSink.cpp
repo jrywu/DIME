@@ -60,7 +60,7 @@ STDAPI CDIME::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMgr 
 	{
 		pDocMgrFocus->GetTop(&pContext);	
 
-		if (pContext && !(_newlyActivated && !Global::isWindows8))
+		if (pContext && !(_newlyActivated && !Global::isWindows8 && isWin7IEProcess()))
 		{	
 
 			debugPrint(L"CDIME::OnSetFocus() Set isChinese = lastkeyboardMode = %d,", _isChinese);
