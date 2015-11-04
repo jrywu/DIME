@@ -400,17 +400,18 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 	{
 		return;
 	}
-	//Check if only * in _keystrokebuffer
+	//Check if only *, ? in _keystrokebuffer
 	UINT virtualKeyLen = (UINT)GetVirtualKeyLength();
 
 	if (virtualKeyLen > 0)
 	{
-		if (virtualKeyLen == 1 && IsWildcardAllChar(*_keystrokeBuffer.Get()))
+		if (virtualKeyLen == 1 && IsWildcardChar(*_keystrokeBuffer.Get()))
 		{
 			CCandidateListItem *pLI = nullptr;
 			pLI = pCandidateList->Append();
 			pLI->_FindKeyCode = _keystrokeBuffer;
 			pLI->_ItemString = _keystrokeBuffer;
+			_hasWildcardIncludedInKeystrokeBuffer = FALSE;
 			return;
 		}
 
@@ -422,7 +423,12 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 			if (!allWildCard) break;
 		}
 		if (allWildCard) 
+		{
+			_hasWildcardIncludedInKeystrokeBuffer = FALSE;
 			return;
+		}
+
+			
 	}
 
 	_pActiveCandidateListIndexRange = &_candidateListIndexRange;  // Reset the active cand list range

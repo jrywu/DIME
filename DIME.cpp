@@ -162,6 +162,7 @@ HRESULT CDIME::CreateInstance(_In_ IUnknown *pUnkOuter, REFIID riid, _Outptr_ vo
 
 CDIME::CDIME()
 {
+	debugPrint(L"CDIME:CDIME() constructor");
     DllAddRef();
 
     _pThreadMgr = nullptr;
@@ -287,6 +288,7 @@ CDIME::CDIME()
 
 CDIME::~CDIME()
 {
+	debugPrint(L"CDIME:~CDIME() destructor");
 	if (_pUIPresenter)
     {
         delete _pUIPresenter;
@@ -753,8 +755,8 @@ HRESULT CDIME::GetLayout(_Out_ TKBLayoutType *ptkblayoutType, _Out_ WORD *pwPref
 		}
 		else if(Global::imeMode==IME_MODE_PHONETIC)
 		{
-			*ptkblayoutType = TKBLT_CLASSIC;
-			*pwPreferredLayoutId = TKBL_CLASSIC_TRADITIONAL_CHINESE_PHONETIC;
+			*ptkblayoutType = TKBLT_OPTIMIZED;
+			*pwPreferredLayoutId = TKBL_OPT_TRADITIONAL_CHINESE_PHONETIC;
 		}
 		else
 		{
