@@ -68,8 +68,9 @@ STDAPI CDIME::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMgr 
 			debugPrint(L"CDIME::OnSetFocus() Set keyboard mode to last state = %d", _lastKeyboardMode);
 			ConversionModeCompartmentUpdated(_pThreadMgr, &_lastKeyboardMode);
 			debugPrint(L"CDIME::OnSetFocus() show chi/eng notify _isChinese = %d", _isChinese);
-			if (!isBlackListedProcessForProbeComposition()) 	showChnEngNotify(_isChinese, 500);  //only show chn/eng notify for processes no black listed (may cause strange behaviour like firefox).
-			showChnEngNotify(_isChinese, 500);
+			if (!isBlackListedProcessForProbeComposition()) 	
+				showChnEngNotify(_isChinese, 500);  //only show chn/eng notify for processes no black listed (may cause strange behaviour like firefox).
+			
 		}
 		else if (_newlyActivated)
 			_newlyActivated = FALSE;
