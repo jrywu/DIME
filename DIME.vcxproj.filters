@@ -179,13 +179,13 @@
     <ClInclude Include="DIMEStructureArray.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Config.h">
-      <Filter>Source Files\Configuration</Filter>
-    </ClInclude>
     <ClInclude Include="ReverseConversionProvider.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="PhoneticComposition.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Config.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

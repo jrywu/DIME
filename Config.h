@@ -103,6 +103,9 @@ public:
 	static void SetReverseConversionDescription(WCHAR* reverseConversionDescription) { _reverseConversionDescription = reverseConversionDescription;}
 	static WCHAR* GetReverseConversionDescription() {return _reverseConversionDescription;}
 
+	//phonetic keyboard layout
+	static void setPhoneticKeyboardLayout(PHONETIC_KEYBOARD_LAYOUT layout) { _phoneticKeyboardLayout = layout; }
+	static PHONETIC_KEYBOARD_LAYOUT getPhoneticKeyboardLayout() { return _phoneticKeyboardLayout; }
 
 	static VOID WriteConfig();
 	static VOID LoadConfig(IME_MODE imeMode);
@@ -149,6 +152,8 @@ private:
 	static BOOL _doHanConvert;
 
 	static BOOL _dayiArticleMode;  // Article mode: input full-shaped symbols with address keys
+
+	static PHONETIC_KEYBOARD_LAYOUT _phoneticKeyboardLayout;
 
 	static BOOL _customTableChanged;
 

@@ -35,6 +35,7 @@ BOOL CConfig::_doHanConvert = FALSE;
 BOOL CConfig::_showNotifyDesktop = TRUE;
 BOOL CConfig::_dayiArticleMode = FALSE;  // Article mode: input full-shaped symbols with address keys
 BOOL CConfig::_customTableChanged = FALSE;
+PHONETIC_KEYBOARD_LAYOUT CConfig::_phoneticKeyboardLayout = PHONETIC_STANDARD_KEYBOARD_LAYOUT;
 
 CDIMEArray <LanguageProfileInfo>* CConfig::_reverseConvervsionInfoList = new (std::nothrow) CDIMEArray <LanguageProfileInfo>;
 CLSID CConfig::_reverseConverstionCLSID = CLSID_NULL;
@@ -183,11 +184,21 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			{
 				ShowWindow(GetDlgItem(hDlg, IDC_EDIT_MAXWIDTH), SW_HIDE);
 				ShowWindow(GetDlgItem(hDlg, IDC_STATIC_EDIT_MAXWIDTH), SW_HIDE);
+				hwnd = GetDlgItem(hDlg, IDC_COMBO_PHONETIC_KEYBOARD);
+				SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"標準鍵盤");
+				SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"倚天鍵盤");
+				SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_phoneticKeyboardLayout, 0);
 			}
 			if (_imeMode == IME_MODE_ARRAY)
 			{
 				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_AUTOCOMPOSE), SW_HIDE);
 			}
+		}
+
+		if (_imeMode != IME_MODE_PHONETIC)
+		{
+			ShowWindow(GetDlgItem(hDlg, IDC_STATIC_PHONETIC_KEYBOARD), SW_HIDE);
+			ShowWindow(GetDlgItem(hDlg, IDC_COMBO_PHONETIC_KEYBOARD), SW_HIDE);
 		}
 		
 		if (_imeMode != IME_MODE_DAYI)
@@ -318,7 +329,17 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 				break;
 			}
 			break;
-
+		case IDC_COMBO_PHONETIC_KEYBOARD:
+			switch (HIWORD(wParam))
+			{
+			case CBN_SELCHANGE:
+				PropSheet_Changed(GetParent(hDlg), hDlg);
+				ret = TRUE;
+				break;
+			default:
+				break;
+			}
+			break;
 		case IDC_CHECKBOX_AUTOCOMPOSE:
 		case IDC_CHECKBOX_DOBEEP:
 		case IDC_CHECKBOX_DOBEEPNOTIFY:
@@ -453,9 +474,19 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 				StringCchCopy(_reverseConversionDescription, wcslen(_reverseConvervsionInfoList->GetAt(sel)->description) + 1, _reverseConvervsionInfoList->GetAt(sel)->description);
 			}
 
-			hwnd = GetDlgItem(hDlg, IDC_COMBO_ARRAY_UNICODE_SCOPE);
-			_arrayUnicodeScope = (CHARSET_SCOPE)SendMessage(hwnd, CB_GETCURSEL, 0, 0);
-			debugPrint(L"selected arrray unicode scope item is %d", _arrayUnicodeScope);
+			if (_imeMode == IME_MODE_ARRAY)
+			{
+				hwnd = GetDlgItem(hDlg, IDC_COMBO_ARRAY_UNICODE_SCOPE);
+				_arrayUnicodeScope = (CHARSET_SCOPE)SendMessage(hwnd, CB_GETCURSEL, 0, 0);
+				debugPrint(L"selected arrray unicode scope item is %d", _arrayUnicodeScope);
+			}
+
+			if (_imeMode == IME_MODE_PHONETIC)
+			{
+				hwnd = GetDlgItem(hDlg, IDC_COMBO_PHONETIC_KEYBOARD);
+				_phoneticKeyboardLayout = (PHONETIC_KEYBOARD_LAYOUT)SendMessage(hwnd, CB_GETCURSEL, 0, 0);
+				debugPrint(L"selected phonetic keyboard layout is %d", _phoneticKeyboardLayout);
+			}
 
 
 			CConfig::WriteConfig();
@@ -690,8 +721,6 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 				exportCustomTableFile(hDlg, pathToLoad);
 				// parse custom.txt file to UTF-16 and internal format
 				if (!parseCINFile(pathToLoad, pathToWrite, TRUE))
-					//MessageBox(GetFocus(), L"自建詞庫載入完成。", L"DIME 自訂詞庫", MB_ICONINFORMATION);
-					//else
 					MessageBox(GetFocus(), L"自建詞庫載入發生錯誤 !!", L"DIME 自訂詞庫", MB_ICONERROR);
 			}
 
@@ -817,6 +846,12 @@ VOID CConfig::WriteConfig()
 				fwprintf_s(fp, L"ArrayForceSP = %d\n", _arrayForceSP ? 1 : 0);
 				fwprintf_s(fp, L"ArrayNotifySP = %d\n", _arrayNotifySP ? 1 : 0);
 			}
+
+			if (_imeMode == IME_MODE_PHONETIC)
+			{
+				fwprintf_s(fp, L"PhoneticKeyboardLayout = %d\n", _phoneticKeyboardLayout);
+			}
+
 			if (_loadTableMode) fwprintf_s(fp, L"LoadTableMode = 1\n");
 
 

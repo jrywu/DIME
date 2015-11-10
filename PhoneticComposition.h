@@ -27,87 +27,96 @@ enum PHONETIC_SMBOLS
 	vpG = 0x0009, vpK = 0x000a, vpH = 0x000b,
 	vpJ = 0x000c, vpQ = 0x000d, vpX = 0x000e,
 	vpZH = 0x000f, vpCH = 0x0010, vpSH = 0x0011, vpR = 0x0012,
-	vpZ = 0x0013, vpC = 0x0014, vpS = 0x0015,
+	vpZ = 0x0013, vpC = 0x0014, vpS = 0x0015, 
 	vpAnyConsonant = 0x0016,
 	//3 middle vowels + 1 wildcard (vpAnyMidVowel).
-	vpI = 0x0020, vpU = 0x0040, vpV = 0x0060,
+	vpI = 0x0020, vpU = 0x0040, vpV = 0x0060, 
 	vpAnyMiddleVowel = 0x0080,
 	//13 vowels + 1 wildcard (vpAnyVowel).
 	vpA = 0x0100, vpO = 0x0200, vpER = 0x0300, vpE = 0x0400,
 	vpAI = 0x0500, vpEI = 0x0600, vpAO = 0x0700, vpOU = 0x0800,
 	vpAN = 0x0900, vpEN = 0x0A00, vpANG = 0x0B00, vpENG = 0x0C00,
-	vpERR = 0x0D00,
+	vpERR = 0x0D00, 
 	vpAnyVowel = 0x0E00,
 	//5 tones + 1 wildcard
-	vpTone1 = 0x0000, vpTone2 = 0x1000, vpTone3 = 0x2000, vpTone4 = 0x3000, vpTone5 = 0x4000,
+	vpTone1 = 0x0000, vpTone2 = 0x1000, vpTone3 = 0x2000, vpTone4 = 0x3000, vpTone5 = 0x4000, 
 	vpAnyTone = 0x5000,
 	// wildcard 
 	vpAny = 0x8000
 };
 
-UINT vpStandardKeyTable[97] =
+UINT vpStandardKeyTable[MAX_RADICAL+1] =
 {
+// Skip for 32 control characters in ascii table
+// The table contains possible stroke from ascii code 0x20 (0d32) to 0x60 (0d96)
+
 	0,
-	0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0,     // 0x20
-	// '!',  '"',  '#',  '$',  '%',  '&',  ''',  '(',
-	0, 0, 0, 0, 0, 0, 0, 0,
-	// ')',  '*',  '+',  ',',  '-',  '.',  '/',  '0',   
-	0, vpAny, 0, vpE, vpERR, vpOU, vpENG, vpAN,
-	// '1',  '2',  '3',  '4',  '5',  '6',  '7',  '8',
-	vpB, vpD, vpTone3, vpTone4, vpZH, vpTone2, vpTone5, vpA,
-	// '9',  ':',  ';',  '<',  '=',  '>',  '?',  '@',  
-	vpAI, 0, vpANG, 0, 0, 0, vpAny, 0,
-	// 'A',  'B',  'C',  'D',  'E',  'F',  'G',  'H',
-	vpM, vpR, vpH, vpK, vpG, vpQ, vpSH, vpC,
-	// 'I',  'J',  'K',  'L',  'M',  'N',  'O',  'P',
-	vpO, vpU, vpER, vpAO, vpV, vpS, vpEI, vpEN,
-	// 'Q',  'R',  'S',  'T',  'U',  'V',  'W',  'X',  
-	vpP, vpJ, vpN, vpCH, vpI, vpX, vpT, vpL,
-	// 'Y',  'Z',  '[',  '\',  ']',  '^',  '_',  '`'
-	vpZ, vpF, 0, 0, 0, 0, 0, 0
+// '!',  '"',  '#',  '$',  '%',  '&',  ''',  '(',
+   0,    0,    0,    0,    0,    0,    0,    0,
+
+// ')',  '*',  '+',  ',',  '-',  '.',  '/',  '0',   
+   0,    0,     0,   vpE,  vpERR,vpOU, vpENG,vpAN,  
+
+// '1',  '2',  '3',  '4',  '5',  '6',  '7',  '8',
+   vpB,  vpD,vpTone3,vpTone4,vpZH,vpTone2,vpTone5,vpA,
+
+// '9',  ':',  ';',  '<',  '=',  '>',  '?',  '@',  
+   vpAI, 0,    vpANG,0,    0,    0,    vpAny,    0,
+
+// 'A',  'B',  'C',  'D',  'E',  'F',  'G',  'H',
+   vpM,  vpR,  vpH,  vpK,  vpG,  vpQ,  vpSH, vpC,
+
+// 'I',  'J',  'K',  'L',  'M',  'N',  'O',  'P',
+   vpO,  vpU,  vpER, vpAO, vpV,  vpS,  vpEI, vpEN,
+
+// 'Q',  'R',  'S',  'T',  'U',  'V',  'W',  'X',  
+   vpP,  vpJ,  vpN,  vpCH, vpI,  vpX,  vpT,  vpL,
+
+// 'Y',  'Z',  '[',  '\',  ']',  '^',  '_',  '`'
+   vpZ,  vpF,  0,    0,    0,    0,    0,    0
+};
+WCHAR vpEtenKeyToStandardKeyTable[MAX_RADICAL + 1] =
+{
+   0,
+
+// '!',  '"',  '#',  '$',  '%',  '&',  ''',  '(',
+   0,    0,    0,    0,    0,    0,    'H',  0,
+
+// ')',  '*',  '+',  ',',  '-',  '.',  '/',  '0',
+   0,     0,    0,  '5',  '/',  'V',  'G',  ';',
+
+// '1',  '2',  '3',  '4',  '5',  '6',  '7',  '8',
+   '7',  '6',  '3',  '4',   0,    0,   'F',  '0',
+
+// '9',  ':',  ';',  '<',  '=',  '>',  '?',  '@',  
+   'P',   0,   'Y',   0,   '-',   0,   '?',   0,
+
+// 'A',  'B',  'C',  'D',  'E',  'F',  'G',  'H',
+   '8',  '1',  'V',  '2',  'U',  'Z',  'R',  'C',
+
+// 'I',  'J',  'K',  'L',  'M',  'N',  'O',  'P',
+   '9',  'B',  'D',  'X',  'A',  'S',  'I',  'Q',
+
+// 'Q',  'R',  'S',  'T',  'U',  'V',  'W',  'X',  
+   'O',  'K',  'N',  'W',  'M',  'E',  ',',  'J',
+
+// 'Y',  'Z',  '[',  '\',  ']',  '^',  '_',  '`'
+   '.',  'L',   0,    0,    0,    0,    0,    0
 };
 
-UINT vpEtenKeyTable[97] =
-{
-	0,
-	0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0,     // 0x20 
-	// '!',  '"',  '#',  '$',  '%',  '&',  ''',  '(',
-	0, 0, 0, 0, 0, 0, vpC, 0,
-	// ')',  '*',  '+',  ',',  '-',  '.',  '/',  '0',
-	0, vpAny, 0, vpZH, vpENG, vpCH, vpSH, vpANG,
-	// '1',  '2',  '3',  '4',  '5',  '6',  '7',  '8',
-	vpTone5, vpTone2, vpTone3, vpTone4, 0, 0, vpQ, vpAN,
-	// '9',  ':',  ';',  '<',  '=',  '>',  '?',  '@',  
-	vpEN, 0, vpZ, 0, vpERR, 0, vpAny, 0,
-	// 'A',  'B',  'C',  'D',  'E',  'F',  'G',  'H',
-	vpA, vpB, vpX, vpD, vpI, vpF, vpJ, vpH,
-	// 'I',  'J',  'K',  'L',  'M',  'N',  'O',  'P',
-	vpAI, vpR, vpK, vpL, vpM, vpN, vpO, vpP,
-	// 'Q',  'R',  'S',  'T',  'U',  'V',  'W',  'X',  
-	vpEI, vpER, vpS, vpT, vpV, vpG, vpE, vpU,
-	// 'Y',  'Z',  '[',  '\',  ']',  '^',  '_',  '`'
-	vpOU, vpAO, 0, 0, 0, 0, 0, 0
-};
-
-const WCHAR vpStandardLayoutCode[42] = { ' ',
-'1', 'q', 'a', 'z',
-'2', 'w', 's', 'x',
-'e', 'd', 'c',
-'r', 'f', 'v',
-'5', 't', 'g', 'b',
-'y', 'h', 'n',
-'u', 'j', 'm',
-'8', 'i', 'k', ',',
-'9', 'o', 'l', '.',
-'0', 'p', ';', '/',
-'-',
-'6', '3', '4', '7' };
+const WCHAR vpStandardLayoutCode[42] = {' ', 
+										'1', 'q', 'a', 'z', 
+										'2', 'w', 's', 'x', 
+										'e', 'd', 'c', 
+										'r', 'f', 'v', 
+										'5', 't', 'g', 'b', 
+										'y', 'h', 'n', 
+										'u', 'j', 'm', 
+										'8', 'i', 'k', ',',
+										'9', 'o', 'l', '.', 
+										'0', 'p', ';' , '/' , 
+										'-', 
+										'6', '3', '4', '7' };
 
 
 

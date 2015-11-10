@@ -48,26 +48,7 @@ BOOL RegisterProfiles()
 
     size_t lenOfDesc = 0;
 	WCHAR serviceDescripion[50]={'\0'};;
-	LoadString(Global::dllInstanceHandle, IDS_DAYI_DESCRIPTION, serviceDescripion, 50);
-    hr = StringCchLength(serviceDescripion, STRSAFE_MAX_CCH, &lenOfDesc);
-    if (hr != S_OK)
-    {
-        goto Exit;
-    }
-    hr = pITfInputProcessorProfileMgr->RegisterProfile(Global::DIMECLSID,
-        TEXTSERVICE_LANGID,
-        Global::DIMEDayiGuidProfile,
-        serviceDescripion,
-        static_cast<ULONG>(lenOfDesc),
-        achIconFile,
-        cchA,
-        (UINT)TEXTSERVICE_DAYI_ICON_INDEX, NULL, 0, TRUE, 0);
-
-    if (FAILED(hr))
-    {
-        goto Exit;
-    }
-	*serviceDescripion=L'\0';
+	/*
 	//Dayi profile registration
 	LoadString(Global::dllInstanceHandle, IDS_DAYI_DESCRIPTION, serviceDescripion, 50);
     hr = StringCchLength(serviceDescripion, STRSAFE_MAX_CCH, &lenOfDesc);
@@ -88,7 +69,7 @@ BOOL RegisterProfiles()
     {
         goto Exit;
     }
-
+	*/
 	//Array profile registration
 	*serviceDescripion=L'\0';
 	LoadString(Global::dllInstanceHandle, IDS_ARRAY_DESCRIPTION, serviceDescripion, 50);

@@ -215,7 +215,7 @@ private:
     static const int OUT_OF_FILE_INDEX = -1;
 	
 	private:  //phonetic composition
-	PHONETIC_KEYBOARD_LAYOUT phoneticKeyboardLayout;
+	//PHONETIC_KEYBOARD_LAYOUT phoneticKeyboardLayout;
 	UINT phoneticSyllable;
 	UINT addPhoneticKey(WCHAR* pwch);
 	UINT removeLastPhoneticSymbol();
@@ -225,7 +225,7 @@ private:
 
 	public:
 		//Phonetic composingkey
-		BOOL isPhoneticComposingKey();
+	BOOL isPhoneticComposingKey();
 };
 #endif
 

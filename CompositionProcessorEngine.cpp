@@ -47,7 +47,7 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CDIME *pTextServic
 		_pCustomTableDictionaryFile[i] = nullptr;
 	}
 
-	phoneticKeyboardLayout = PHONETIC_STANDARD_KEYBOARD_LAYOUT;
+	//phoneticKeyboardLayout = PHONETIC_STANDARD_KEYBOARD_LAYOUT;
 	phoneticSyllable = 0;
 
 	//Array
@@ -462,13 +462,13 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 			allWildCard = IsWildcardChar(*(_keystrokeBuffer.Get() + i));
 			if (!allWildCard) break;
 		}
-		if (allWildCard) 
+		if (allWildCard)
 		{
 			_hasWildcardIncludedInKeystrokeBuffer = FALSE;
 			return;
 		}
 
-			
+
 	}
 
 	_pActiveCandidateListIndexRange = &_candidateListIndexRange;  // Reset the active cand list range
@@ -593,7 +593,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 			noToneKeyStroke = buildKeyStrokesFromPhoneticSyllable(phoneticSyllable&(~vpToneMask));
 		}
 
-		
+
 
 
 		// search custom table with priority
@@ -614,8 +614,8 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 		//Sort candidate list with TC frequency table
 		if (_isWildCardWordFreqSort && _pTCFreqTableDictionaryEngine)
 			_pTableDictionaryEngine[Global::imeMode]->SortListItemByWordFrequency(pCandidateList);
-			//sortListItemByFindWordFreq(pCandidateList);
-		
+		//sortListItemByFindWordFreq(pCandidateList);
+
 
 		//Search cutom table with out priority
 		if (_pCustomTableDictionaryEngine[Global::imeMode] && !customPhrasePriority)
@@ -1050,7 +1050,7 @@ void CCompositionProcessorEngine::SetupKeystroke(IME_MODE imeMode)
 
 	_KeystrokeComposition.Clear();
 
-	for (int i = 0; i < MAX_RADICAL; i++)
+	for (int i = 0; i < MAX_RADICAL + 1; i++)
 	{
 		_KEYSTROKE* pKS = nullptr;
 		pKS = _KeystrokeComposition.Append();
@@ -1073,9 +1073,10 @@ void CCompositionProcessorEngine::SetupKeystroke(IME_MODE imeMode)
 		_pTableDictionaryEngine[imeMode]->GetRadicalMap()->end(); ++item)
 	{
 		_KEYSTROKE* pKS = nullptr;
-		//pKS = _KeystrokeComposition.Append();
-		if (item->first > MAX_RADICAL) continue;
-		pKS = _KeystrokeComposition.GetAt(item->first);
+
+		WCHAR c = towupper(item->first);
+		if (c < 32 || c > MAX_RADICAL + 32) continue;
+		pKS = _KeystrokeComposition.GetAt(c - 32);
 		if (pKS == nullptr)
 			break;
 
@@ -1952,7 +1953,7 @@ int CCompositionProcessorEngine::GetTCFreq(CStringRange* stringToFind)
 	{
 		return 0;
 	}
-	
+
 
 }
 
@@ -2261,13 +2262,13 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 			case VK_LEFT:
 			case VK_RIGHT:
 			{
-							 if (pKeyState)
-							 {
-								 pKeyState->Category = CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION;
-								 pKeyState->Function = FUNCTION_CANCEL;
-							 }
+			if (pKeyState)
+			{
+			pKeyState->Category = CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION;
+			pKeyState->Function = FUNCTION_CANCEL;
 			}
-				return FALSE;*/
+			}
+			return FALSE;*/
 
 			case VK_RETURN: if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_CONVERT; } return TRUE;
 			case VK_ESCAPE: if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_CANCEL; } return TRUE;
@@ -2421,29 +2422,38 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeComposition(PWCH pwch, _O
 	pKeyState->Category = CATEGORY_NONE;
 	pKeyState->Function = FUNCTION_NONE;
 
-	
-		_KEYSTROKE *pKeystroke = nullptr;
 
-		WCHAR c = towupper(*pwch);
-		if (c > MAX_RADICAL) return FALSE;
-		pKeystroke = _KeystrokeComposition.GetAt(c);
+	_KEYSTROKE *pKeystroke = nullptr;
 
-		if (pKeystroke != nullptr && pKeystroke->Function != FUNCTION_NONE)
+
+	WCHAR c = towupper(*pwch);
+	if (c < 32 || c > 32 + MAX_RADICAL) return FALSE;
+
+	//Convert ETEN keyboard to standard keyboard first if keyboard layout is ETEN
+	if (Global::imeMode == IME_MODE_PHONETIC && CConfig::getPhoneticKeyboardLayout() == PHONETIC_ETEN_KEYBOARD_LAYOUT)
+	{
+		c = vpEtenKeyToStandardKeyTable[c - 32];
+		if (c == 0) c = 32;  // set c = 32 (0 after -32) when key is not mapped.
+	}
+
+	pKeystroke = _KeystrokeComposition.GetAt(c - 32);
+
+	if (pKeystroke != nullptr && pKeystroke->Function != FUNCTION_NONE)
+	{
+		if (function == FUNCTION_NONE)
 		{
-			if (function == FUNCTION_NONE)
-			{
-				pKeyState->Category = CATEGORY_COMPOSING;
-				pKeyState->Function = pKeystroke->Function;
-				return TRUE;
-			}
-			else if (function == pKeystroke->Function)
-			{
-				pKeyState->Category = CATEGORY_COMPOSING;
-				pKeyState->Function = pKeystroke->Function;
-				return TRUE;
-			}
+			pKeyState->Category = CATEGORY_COMPOSING;
+			pKeyState->Function = pKeystroke->Function;
+			return TRUE;
 		}
-	
+		else if (function == pKeystroke->Function)
+		{
+			pKeyState->Category = CATEGORY_COMPOSING;
+			pKeyState->Function = pKeystroke->Function;
+			return TRUE;
+		}
+	}
+
 
 	return FALSE;
 }
@@ -2571,23 +2581,23 @@ void CCompositionProcessorEngine::UpdateDictionaryFile()
 /*
 void CCompositionProcessorEngine::sortListItemByFindWordFreq(_Inout_ CDIMEArray<CCandidateListItem> *pCandidateList)
 {
-	if (pCandidateList == nullptr || pCandidateList->Count() == 0) return;
+if (pCandidateList == nullptr || pCandidateList->Count() == 0) return;
 
-	UINT count = pCandidateList->Count();
-	for (UINT i = 0; i < count; i++)
-	{
-		CCandidateListItem *pLI = nullptr;
-		pLI = pCandidateList->Append();
-		if (pLI)
-		{
-			pLI->_ItemString = pCandidateList->GetAt(i)->_ItemString;
-			pLI->_FindKeyCode = pCandidateList->GetAt(i)->_FindKeyCode;
-			pLI->_WordFrequency = GetTCFreq(&pCandidateList->GetAt(i)->_ItemString);
-		}
-	}
-	for (UINT i = 0; i < count; i++) pCandidateList->RemoveAt(0);
-	if (_pTableDictionaryEngine[Global::imeMode])
-		_pTableDictionaryEngine[Global::imeMode]->SortListItemByWordFrequency(pCandidateList);
+UINT count = pCandidateList->Count();
+for (UINT i = 0; i < count; i++)
+{
+CCandidateListItem *pLI = nullptr;
+pLI = pCandidateList->Append();
+if (pLI)
+{
+pLI->_ItemString = pCandidateList->GetAt(i)->_ItemString;
+pLI->_FindKeyCode = pCandidateList->GetAt(i)->_FindKeyCode;
+pLI->_WordFrequency = GetTCFreq(&pCandidateList->GetAt(i)->_ItemString);
+}
+}
+for (UINT i = 0; i < count; i++) pCandidateList->RemoveAt(0);
+if (_pTableDictionaryEngine[Global::imeMode])
+_pTableDictionaryEngine[Global::imeMode]->SortListItemByWordFrequency(pCandidateList);
 
 }
 */
@@ -2595,15 +2605,14 @@ void CCompositionProcessorEngine::sortListItemByFindWordFreq(_Inout_ CDIMEArray<
 UINT CCompositionProcessorEngine::addPhoneticKey(WCHAR* pwch)
 {
 	WCHAR c = towupper(*pwch);
-	if (c > MAX_RADICAL) return phoneticSyllable;
+	if (c < 32 || c > MAX_RADICAL + 32) return phoneticSyllable;
 
 	UINT s, m;
-	if (phoneticKeyboardLayout == PHONETIC_STANDARD_KEYBOARD_LAYOUT)
-		s = vpStandardKeyTable[c];
-	else  if (phoneticKeyboardLayout == PHONETIC_ETEN_KEYBOARD_LAYOUT)
-		s = vpEtenKeyTable[c];
-	else
-		return phoneticSyllable;
+	if (CConfig::getPhoneticKeyboardLayout() == PHONETIC_ETEN_KEYBOARD_LAYOUT)
+		c = vpEtenKeyToStandardKeyTable[c - 32];
+
+	s = vpStandardKeyTable[(c == 0) ? 0 : c - 32];
+
 
 	if (s == vpAny)
 	{
@@ -2622,15 +2631,22 @@ UINT CCompositionProcessorEngine::addPhoneticKey(WCHAR* pwch)
 	}
 
 
-	if ((m = (s & vpToneMask)) != 0)
+	if ((m = (s & vpToneMask)) != 0 && phoneticSyllable != 0) // do not add tones to empty syllable
 		phoneticSyllable = (phoneticSyllable & (~vpToneMask)) | m;
-	else if ((m = (s & vpVowelMask)) != 0)
-		phoneticSyllable = (phoneticSyllable & (~vpVowelMask)) | m;
-	else if ((m = (s & vpMiddleVowelMask)) != 0)
-		phoneticSyllable = (phoneticSyllable & (~vpMiddleVowelMask)) | m;
-	else if ((m = (s & vpConsonantMask)) != 0)
-		phoneticSyllable = (phoneticSyllable & (~vpConsonantMask)) | m;
+	else
+	{
+		UINT oldSyllable = phoneticSyllable;
+		if ((m = (s & vpVowelMask)) != 0)
+			phoneticSyllable = (phoneticSyllable & (~vpVowelMask)) | m;
+		else if ((m = (s & vpMiddleVowelMask)) != 0)
+			phoneticSyllable = (phoneticSyllable & (~vpMiddleVowelMask)) | m;
+		else if ((m = (s & vpConsonantMask)) != 0)
+			phoneticSyllable = (phoneticSyllable & (~vpConsonantMask)) | m;
 
+		if ((phoneticSyllable & vpToneMask) && oldSyllable != phoneticSyllable)
+			phoneticSyllable = phoneticSyllable & (~vpToneMask);// clear tones if it's already present
+
+	}
 
 	return phoneticSyllable;
 
@@ -2675,14 +2691,10 @@ BOOL CCompositionProcessorEngine::isPhoneticComposingKey()
 	if (len == 0)
 		return FALSE;
 	WCHAR wch = *(_keystrokeBuffer.Get() + len - 1);
-	if (phoneticKeyboardLayout == PHONETIC_STANDARD_KEYBOARD_LAYOUT)
-	{
-		if (wch == '3' || wch == '4' || wch == '6' || wch == '7') return TRUE;
-	}
-	else if (phoneticKeyboardLayout == PHONETIC_ETEN_KEYBOARD_LAYOUT)
-	{
-		if (wch == '1' || wch == '2' || wch == '3' || wch == '4') return TRUE;
-	}
+
+	if (wch == '3' || wch == '4' || wch == '6' || wch == '7')
+		return TRUE;
+
 	return FALSE;
 
 }
