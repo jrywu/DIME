@@ -185,6 +185,9 @@
     <ClInclude Include="ReverseConversionProvider.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="PhoneticComposition.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DictionaryParser.cpp">

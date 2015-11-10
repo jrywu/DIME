@@ -19,7 +19,7 @@ CHARSET_SCOPE CConfig::_arrayUnicodeScope = CHARSET_UNICODE_EXT_A;
 BOOL CConfig::_doBeep = TRUE;
 BOOL CConfig::_doBeepNotify = TRUE;
 BOOL CConfig::_autoCompose = FALSE;
-BOOL CConfig::_threeCodeMode = FALSE;
+BOOL CConfig::_customTablePriority = FALSE;
 BOOL CConfig::_arrayForceSP = FALSE;
 BOOL CConfig::_arrayNotifySP = TRUE;
 BOOL CConfig::_arrowKeySWPages = TRUE;
@@ -158,7 +158,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		CheckDlgButton(hDlg, IDC_CHECKBOX_AUTOCOMPOSE, (_autoCompose) ? BST_CHECKED : BST_UNCHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_DOBEEP, (_doBeep) ? BST_CHECKED : BST_UNCHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_DOBEEPNOTIFY, (_doBeepNotify) ? BST_CHECKED : BST_UNCHECKED);
-		CheckDlgButton(hDlg, IDC_CHECKBOX_THREECODEMODE, (_threeCodeMode) ? BST_CHECKED : BST_UNCHECKED);
+		CheckDlgButton(hDlg, IDC_CHECKBOX_CUSTOM_TABLE_PRIORITY, (_customTablePriority) ? BST_CHECKED : BST_UNCHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_DAYIARTICLEMODE, (_dayiArticleMode) ? BST_CHECKED : BST_UNCHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_ARRAY_FORCESP, (_arrayForceSP) ? BST_CHECKED : BST_UNCHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_ARRAY_NOTIFYSP, (_arrayNotifySP) ? BST_CHECKED : BST_UNCHECKED);
@@ -176,23 +176,20 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		}
 		CheckDlgButton(hDlg, IDC_CHECKBOX_SPACEASPAGEDOWN, (_spaceAsPageDown) ? BST_CHECKED : BST_UNCHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_ARROWKEYSWPAGES, (_arrowKeySWPages) ? BST_CHECKED : BST_UNCHECKED);
-		// hide autocompose and space as pagedown option in DAYI.
-		/*
-		if(_imeMode==IME_MODE_DAYI || _imeMode==IME_MODE_ARRAY)
-		{
-		ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_AUTOCOMPOSE), SW_HIDE);
-		ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_SPACEASPAGEDOWN), SW_HIDE);
-		}*/
+		
 		if (_imeMode == IME_MODE_ARRAY || _imeMode == IME_MODE_PHONETIC)
 		{
-			//ShowWindow(GetDlgItem(hDlg, IDC_EDIT_MAXWIDTH), SW_HIDE);
-			//ShowWindow(GetDlgItem(hDlg, IDC_STATIC_EDIT_MAXWIDTH), SW_HIDE);
+			if (_imeMode == IME_MODE_PHONETIC)
+			{
+				ShowWindow(GetDlgItem(hDlg, IDC_EDIT_MAXWIDTH), SW_HIDE);
+				ShowWindow(GetDlgItem(hDlg, IDC_STATIC_EDIT_MAXWIDTH), SW_HIDE);
+			}
 			if (_imeMode == IME_MODE_ARRAY)
 			{
 				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_AUTOCOMPOSE), SW_HIDE);
 			}
 		}
-		ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_THREECODEMODE), SW_HIDE);  //Always hide 3code option
+		
 		if (_imeMode != IME_MODE_DAYI)
 		{
 
@@ -329,7 +326,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		case IDC_RADIO_KEYBOARD_CLOSE:
 		case IDC_RADIO_OUTPUT_CHT:
 		case IDC_RADIO_OUTPUT_CHS:
-		case IDC_CHECKBOX_THREECODEMODE:
+		case IDC_CHECKBOX_CUSTOM_TABLE_PRIORITY:
 		case IDC_CHECKBOX_DAYIARTICLEMODE:
 		case IDC_CHECKBOX_ARRAY_FORCESP:
 		case IDC_CHECKBOX_ARRAY_NOTIFYSP:
@@ -401,7 +398,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		{
 		case PSN_APPLY:
 			_autoCompose = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_AUTOCOMPOSE) == BST_CHECKED;
-			_threeCodeMode = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_THREECODEMODE) == BST_CHECKED;
+			_customTablePriority = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_CUSTOM_TABLE_PRIORITY) == BST_CHECKED;
 			_dayiArticleMode = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_DAYIARTICLEMODE) == BST_CHECKED;
 			_doBeep = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_DOBEEP) == BST_CHECKED;
 			_doBeepNotify = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_DOBEEPNOTIFY) == BST_CHECKED;
@@ -791,6 +788,7 @@ VOID CConfig::WriteConfig()
 			fwprintf_s(fp, L"ItemBGColor = 0x%06X\n", _itemBGColor);
 			fwprintf_s(fp, L"SelectedItemColor = 0x%06X\n", _selectedColor);
 			fwprintf_s(fp, L"SelectedBGItemColor = 0x%06X\n", _selectedBGColor);
+			fwprintf_s(fp, L"CustomTablePriority = %d\n", _customTablePriority ? 1 : 0);
 			//reversion conversion
 			fwprintf_s(fp, L"ReloadReverseConversion = %d\n", _reloadReverseConversion);
 			BSTR pbstr;
@@ -809,8 +807,9 @@ VOID CConfig::WriteConfig()
 			if (Global::isWindows8)
 				fwprintf_s(fp, L"AppPermissionSet = %d\n", _appPermissionSet ? 1 : 0);
 			if (_imeMode == IME_MODE_DAYI)
-				fwprintf_s(fp, L"ThreeCodeMode = %d\n", _threeCodeMode ? 1 : 0);
-			fwprintf_s(fp, L"DayiArticleMode = %d\n", _dayiArticleMode ? 1 : 0);
+			{
+				fwprintf_s(fp, L"DayiArticleMode = %d\n", _dayiArticleMode ? 1 : 0);
+			}
 
 			if (_imeMode == IME_MODE_ARRAY)
 			{
@@ -939,6 +938,12 @@ VOID CConfig::LoadConfig(IME_MODE imeMode)
 				_maxCodes = 5;
 
 			}
+			else if(imeMode == IME_MODE_PHONETIC)
+			{
+				_spaceAsPageDown = 1;
+				_makePhrase = 1;
+			}
+
 			if (imeMode != IME_MODE_NONE)
 				WriteConfig(); // config.ini is not there. create one.
 		}

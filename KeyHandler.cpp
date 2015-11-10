@@ -136,9 +136,13 @@ HRESULT CDIME::_HandleCompositionInput(TfEditCookie ec, _In_ ITfContext *pContex
 		_HandleCompositionInputWorker(pCompositionProcessorEngine, ec, pContext);
 	else
 	{
-		_HandleCancel(ec, pContext);  // Add virtual key failed. exceed max codes or something. 
-		DoBeep();
-
+		if (Global::imeMode == IME_MODE_PHONETIC)
+			DoBeep(BEEP_WARNING);
+		else
+		{
+			_HandleCancel(ec, pContext);  // Add virtual key failed. exceed max codes or something. 
+			DoBeep(BEEP_COMPOSITION_ERROR);
+		}
 	}
 	
 
@@ -187,6 +191,7 @@ HRESULT CDIME::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *p
 	BOOL symbolMode = pCompositionProcessorEngine->IsSymbol();
 	BOOL autoComposeMode = CConfig::GetAutoCompose();
 	if (autoComposeMode  // auto composing mode: show candidates while composition updated imeediately.
+		|| (Global::imeMode == IME_MODE_PHONETIC && _pCompositionProcessorEngine->isPhoneticComposingKey())
 		|| symbolMode) // fetch candidate in symobl mode with composition started with '='(DAYI) or 'W' (Array)
 	{
 		CDIMEArray<CCandidateListItem> candidateList;
@@ -207,7 +212,7 @@ HRESULT CDIME::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *p
 				_pUIPresenter->_SetCandidateFillColor(CConfig::GetItemBGColor());
 				_pUIPresenter->_SetCandidateText(&candidateList, _pCompositionProcessorEngine->GetCandidateListIndexRange(),
 							TRUE, pCompositionProcessorEngine->GetCandidateWindowWidth());
-				if (symbolMode)
+				if (symbolMode || Global::imeMode == IME_MODE_PHONETIC)
 				{
 					_candidateMode = CANDIDATE_ORIGINAL;
 				}
@@ -227,20 +232,27 @@ HRESULT CDIME::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *p
 
 
 		}
-		else if (_pUIPresenter)
+		else
 		{
-			_pUIPresenter->_ClearCandidateList();
-			_pUIPresenter->Show(FALSE);  // hide the candidate window if now candidates in autocompose mode
-		}
-		else if (readingStrings.Count() && isWildcardIncluded)
-		{
-			
-			hr = _CreateAndStartCandidate(pCompositionProcessorEngine, ec, pContext);
-			if (SUCCEEDED(hr))
+			if (Global::imeMode == IME_MODE_PHONETIC)
+				DoBeep(BEEP_COMPOSITION_ERROR);
+
+			if (_pUIPresenter)
 			{
+
 				_pUIPresenter->_ClearCandidateList();
-				_candidateMode = CANDIDATE_INCREMENTAL;
-				_isCandidateWithWildcard = FALSE;
+				_pUIPresenter->Show(FALSE);  // hide the candidate window if now candidates in autocompose mode
+			}
+			else if (readingStrings.Count() && isWildcardIncluded)
+			{
+
+				hr = _CreateAndStartCandidate(pCompositionProcessorEngine, ec, pContext);
+				if (SUCCEEDED(hr))
+				{
+					_pUIPresenter->_ClearCandidateList();
+					_candidateMode = CANDIDATE_INCREMENTAL;
+					_isCandidateWithWildcard = FALSE;
+				}
 			}
 		}
 
@@ -336,8 +348,13 @@ HRESULT CDIME::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pCont
     }
 	else
 	{
-		_HandleCancel(ec, pContext);
-		DoBeep();
+		if (Global::imeMode == IME_MODE_PHONETIC)
+			DoBeep(BEEP_WARNING);
+		else
+		{
+			_HandleCancel(ec, pContext);
+			DoBeep(BEEP_COMPOSITION_ERROR);
+		}
 		
 	}
 	if(nCount==1 )  //finalized with the only candidate without showing cand.
@@ -399,7 +416,8 @@ HRESULT CDIME::_HandleCompositionBackspace(TfEditCookie ec, _In_ ITfContext *pCo
 		BOOL symbolMode = pCompositionProcessorEngine->IsSymbol();
         pCompositionProcessorEngine->RemoveVirtualKey(vKeyLen - 1);
 
-        if (pCompositionProcessorEngine->GetVirtualKeyLength() && !symbolMode)
+		if ((pCompositionProcessorEngine->GetVirtualKeyLength() && !symbolMode) &&
+			!(Global::imeMode == IME_MODE_PHONETIC && _candidateMode != CANDIDATE_NONE))
         {
             _HandleCompositionInputWorker(pCompositionProcessorEngine, ec, pContext);
         }

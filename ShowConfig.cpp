@@ -71,7 +71,7 @@ HRESULT CDIME::Show(_In_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID inR
 
 
 
-	debugPrint(L"CDIME::Show() ,  ITfFnConfigure::Show(), _autoCompose = %d, _threeCodeMode = %d, _doBeep = %d", CConfig::GetAutoCompose(), CConfig::GetThreeCodeMode(), CConfig::GetDoBeep());
+	debugPrint(L"CDIME::Show() ,  ITfFnConfigure::Show(), _autoCompose = %d,  _doBeep = %d", CConfig::GetAutoCompose(),  CConfig::GetDoBeep());
 
 	PROPSHEETPAGE psp;
 	PROPSHEETHEADER psh;

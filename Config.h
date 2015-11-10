@@ -30,8 +30,6 @@ public:
 	static CHARSET_SCOPE GetArrayUnicodeScope() { return _arrayUnicodeScope; }
 	static void SetAutoCompose(BOOL autoCompose) {_autoCompose = autoCompose;}
 	static BOOL GetAutoCompose() {return _autoCompose;}
-	static void SetThreeCodeMode(BOOL threeCodeMode) {_threeCodeMode = threeCodeMode;}
-	static BOOL GetThreeCodeMode() {return _threeCodeMode;}
 	static void SetFontSize(UINT fontSize) {_fontSize = fontSize;}
 	static UINT GetFontSize() {return _fontSize;}
 	static void SetFontWeight(UINT fontWeight) {_fontWeight = fontWeight;}
@@ -52,6 +50,9 @@ public:
 	static WCHAR* GetFontFaceName(){ return _pFontFaceName;}
 	static void SetLoadTableMode(BOOL loadTableMode) { _loadTableMode = loadTableMode; }
 	static BOOL GetLoadTableMode() { return _loadTableMode; }
+	//custom table priority 
+	static void setCustomTablePriority(BOOL priority) { _customTablePriority = priority; }
+	static BOOL getCustomTablePriority() { return _customTablePriority; }
 
 	//colors
 	static void SetItemColor(UINT itemColor) { _itemColor = itemColor;}
@@ -119,7 +120,7 @@ private:
 	static IME_MODE _imeMode;
 	static CHARSET_SCOPE _arrayUnicodeScope;
 	static BOOL _autoCompose;
-	static BOOL _threeCodeMode;
+	static BOOL _customTablePriority;
 	static BOOL _doBeep;
 	static BOOL _doBeepNotify;
 	static BOOL _appPermissionSet;

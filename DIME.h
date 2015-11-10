@@ -177,7 +177,7 @@ public:
 	BOOL _IsComposing();
 
 	//warning beeps and messages in notify window
-	void DoBeep();
+	void DoBeep(BEEP_TYPE type);
 
 	//integrity level and process name specific functions
 	BOOL isHighIntegrityProcess(){ return (_processIntegrityLevel == PROCESS_INTEGRITY_LEVEL_HIGH || _processIntegrityLevel == PROCESS_INTEGRITY_LEVEL_SYSTEM); }

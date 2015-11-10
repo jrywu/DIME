@@ -39,6 +39,7 @@
     <ClInclude Include="KeyStateCategory.h" />
     <ClInclude Include="BaseStructure.h" />
     <ClInclude Include="NotifyWindow.h" />
+    <ClInclude Include="PhoneticComposition.h" />
     <ClInclude Include="ReverseConversionProvider.h" />
     <ClInclude Include="SearchCandidateProvider.h" />
     <ClInclude Include="DictionaryParser.h" />

@@ -123,7 +123,7 @@ public:
 
 private:
 
-    BOOL IsVirtualKeyKeystrokeComposition(UINT uCode, _Out_opt_ _KEYSTROKE_STATE *pKeyState, KEYSTROKE_FUNCTION function);
+    BOOL IsVirtualKeyKeystrokeComposition(PWCH pwch, _Out_opt_ _KEYSTROKE_STATE *pKeyState, KEYSTROKE_FUNCTION function);
     BOOL IsVirtualKeyKeystrokeCandidate(UINT uCode, _In_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode, _Out_ BOOL *pfRetCode, _In_ CDIMEArray<_KEYSTROKE> *pKeystrokeMetric);
     BOOL IsKeystrokeRange(UINT uCode, _Out_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode);
 
@@ -213,6 +213,19 @@ private:
     UINT _candidateWndWidth; 
 
     static const int OUT_OF_FILE_INDEX = -1;
+	
+	private:  //phonetic composition
+	PHONETIC_KEYBOARD_LAYOUT phoneticKeyboardLayout;
+	UINT phoneticSyllable;
+	UINT addPhoneticKey(WCHAR* pwch);
+	UINT removeLastPhoneticSymbol();
+	
+	CStringRange buildKeyStrokesFromPhoneticSyllable(UINT syllable);
+	WCHAR VPSymbolToStandardLayoutChar(UINT syllable);
+
+	public:
+		//Phonetic composingkey
+		BOOL isPhoneticComposingKey();
 };
 #endif
 

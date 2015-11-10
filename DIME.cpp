@@ -1023,11 +1023,11 @@ void CDIME::_LoadConfig(BOOL isForce, IME_MODE imeMode)
 //
 //----------------------------------------------------------------------------
 
-void CDIME::DoBeep()
+void CDIME::DoBeep(BEEP_TYPE type)
 {
 	if (CConfig::GetDoBeep())
 		MessageBeep(MB_OK);
-	if (CConfig::GetDoBeepNotify())
+	if (CConfig::GetDoBeepNotify() && type == BEEP_COMPOSITION_ERROR)
 	{
 		CStringRange notify;
 		if (_pUIPresenter)

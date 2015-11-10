@@ -75,15 +75,20 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 		{
 			hr = S_FALSE;
 			_HandleCancel(ec, pContext);
-			DoBeep(); //beep for no valid mapping found
+			DoBeep(BEEP_COMPOSITION_ERROR); //beep for no valid mapping found
 			goto Exit;
 		}
     }
 	if (_pCompositionProcessorEngine->IsArrayShortCode() && candidateLen == 1 && *pCandidateString == 0x2394) // empty position in arry short code table.
 	{
 		hr = S_FALSE;
-		_HandleCancel(ec, pContext);
-		DoBeep(); 
+		if (Global::imeMode == IME_MODE_PHONETIC)
+			DoBeep(BEEP_WARNING);
+		else
+		{
+			_HandleCancel(ec, pContext);
+			DoBeep(BEEP_COMPOSITION_ERROR); //beep for no valid mapping found
+		}
 		goto Exit;
 	}
 	
@@ -127,7 +132,7 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 	if(Global::imeMode == IME_MODE_ARRAY && !_IsUILessMode()  && !arrayUsingSPCode && CConfig::GetArrayForceSP() &&  ArraySPFound )
 	{
 		_HandleCancel(ec, pContext);
-		DoBeep();
+		DoBeep(BEEP_COMPOSITION_ERROR);
 		return hr;
 	}
 	else

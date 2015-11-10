@@ -10,6 +10,7 @@
 #include "DIME.h"
 #include "CompositionProcessorEngine.h"
 #include "BaseStructure.h"
+#include "PhoneticComposition.h"
 #include "DictionarySearch.h"
 #include "Globals.h"
 #include "Compartment.h"
@@ -45,6 +46,9 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CDIME *pTextServic
 		_pCustomTableDictionaryEngine[i] = nullptr;
 		_pCustomTableDictionaryFile[i] = nullptr;
 	}
+
+	phoneticKeyboardLayout = PHONETIC_STANDARD_KEYBOARD_LAYOUT;
+	phoneticSyllable = 0;
 
 	//Array
 	_pArrayShortCodeTableDictionaryEngine = nullptr;
@@ -223,32 +227,61 @@ BOOL CCompositionProcessorEngine::AddVirtualKey(WCHAR wch)
 	{
 		return FALSE;
 	}
-	if ((UINT)_keystrokeBuffer.GetLength() >= CConfig::GetMaxCodes())
+	if (Global::imeMode == IME_MODE_PHONETIC)
 	{
-		//_pTextService->DoBeep(); // do not eat the key if keystroke buffer length >= _maxcodes
-		return FALSE;
+		UINT oldSyllable = phoneticSyllable;
+		//DWORD_PTR len = _keystrokeBuffer.GetLength();
+
+		if (oldSyllable != addPhoneticKey(&wch))
+		{
+			CStringRange csr = buildKeyStrokesFromPhoneticSyllable(phoneticSyllable);
+			if (csr.GetLength()){
+				if (_keystrokeBuffer.Get())
+				{
+					delete[] _keystrokeBuffer.Get();
+				}
+
+				_keystrokeBuffer = csr;
+			}
+			return TRUE;
+		}
+		else
+		{
+			_pTextService->DoBeep(BEEP_COMPOSITION_ERROR);
+			return FALSE;
+		}
+
 	}
-	//
-	// append one keystroke in buffer.
-	//
-	DWORD_PTR srgKeystrokeBufLen = _keystrokeBuffer.GetLength();
-	PWCHAR pwch = new (std::nothrow) WCHAR[srgKeystrokeBufLen + 1];
-	if (!pwch)
+	else
 	{
-		return FALSE;
+
+		if ((UINT)_keystrokeBuffer.GetLength() >= CConfig::GetMaxCodes())
+		{
+			_pTextService->DoBeep(BEEP_WARNING); // do not eat the key if keystroke buffer length >= _maxcodes
+			return FALSE;
+		}
+		//
+		// append one keystroke in buffer.
+		//
+		DWORD_PTR srgKeystrokeBufLen = _keystrokeBuffer.GetLength();
+		PWCHAR pwch = new (std::nothrow) WCHAR[srgKeystrokeBufLen + 1];
+		if (!pwch)
+		{
+			return FALSE;
+		}
+
+		memcpy(pwch, _keystrokeBuffer.Get(), srgKeystrokeBufLen * sizeof(WCHAR));
+		pwch[srgKeystrokeBufLen] = wch;
+
+		if (_keystrokeBuffer.Get())
+		{
+			delete[] _keystrokeBuffer.Get();
+		}
+
+		_keystrokeBuffer.Set(pwch, srgKeystrokeBufLen + 1);
+
+		return TRUE;
 	}
-
-	memcpy(pwch, _keystrokeBuffer.Get(), srgKeystrokeBufLen * sizeof(WCHAR));
-	pwch[srgKeystrokeBufLen] = wch;
-
-	if (_keystrokeBuffer.Get())
-	{
-		delete[] _keystrokeBuffer.Get();
-	}
-
-	_keystrokeBuffer.Set(pwch, srgKeystrokeBufLen + 1);
-
-	return TRUE;
 }
 
 //+---------------------------------------------------------------------------
@@ -278,6 +311,12 @@ void CCompositionProcessorEngine::RemoveVirtualKey(DWORD_PTR dwIndex)
 	{
 		_hasWildcardIncludedInKeystrokeBuffer = FALSE;
 	}
+
+
+	if (Global::imeMode == IME_MODE_PHONETIC)
+	{
+		phoneticSyllable = removeLastPhoneticSymbol();
+	}
 }
 
 //+---------------------------------------------------------------------------
@@ -296,6 +335,7 @@ void CCompositionProcessorEngine::PurgeVirtualKey()
 	{
 		delete[] _keystrokeBuffer.Get();
 		_keystrokeBuffer.Set(NULL, 0);
+		if (Global::imeMode == IME_MODE_PHONETIC) phoneticSyllable = 0;
 	}
 }
 
@@ -485,10 +525,14 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 		{
 			return;
 		}
+		BOOL customTablePriority = CConfig::getCustomTablePriority();
+		//search custom table with priority
+		if (_pCustomTableDictionaryEngine[Global::imeMode] && customTablePriority)
+			_pCustomTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&wildcardSearch, pCandidateList);
 		_pTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_TEXT);
 		_pTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&wildcardSearch, pCandidateList);
-		//Search cutom table
-		if (_pCustomTableDictionaryEngine[Global::imeMode])
+		//search custom table without priority
+		if (_pCustomTableDictionaryEngine[Global::imeMode] && !customTablePriority)
 			_pCustomTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&wildcardSearch, pCandidateList);
 
 
@@ -536,10 +580,34 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 	}
 	else if (isWildcardSearch)
 	{
+
 		//Prepare for Sort candidate list with TC frequency table
 		if (_isWildCardWordFreqSort && _pTCFreqTableDictionaryEngine == nullptr) SetupTCFreqTable();
 
+
+		BOOL phoneticAnyTone = FALSE;
+		CStringRange noToneKeyStroke;
+		if (Global::imeMode == IME_MODE_PHONETIC && ((phoneticSyllable&vpToneMask) == vpAnyTone))
+		{
+			phoneticAnyTone = TRUE;
+			noToneKeyStroke = buildKeyStrokesFromPhoneticSyllable(phoneticSyllable&(~vpToneMask));
+		}
+
+		
+
+
+		// search custom table with priority
+		BOOL customPhrasePriority = CConfig::getCustomTablePriority();
+		if (_pCustomTableDictionaryEngine[Global::imeMode] && customPhrasePriority)
+		{
+			if (phoneticAnyTone)
+				_pCustomTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&noToneKeyStroke, pCandidateList);
+			_pCustomTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList);
+		}
+
 		//Search IM table
+		if (phoneticAnyTone)
+			_pTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&noToneKeyStroke, pCandidateList, _pTCFreqTableDictionaryEngine);
 		_pTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_TEXT);
 		_pTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList, _pTCFreqTableDictionaryEngine);
 
@@ -549,9 +617,13 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 			//sortListItemByFindWordFreq(pCandidateList);
 		
 
-		//Search cutom table
-		if (_pCustomTableDictionaryEngine[Global::imeMode])
+		//Search cutom table with out priority
+		if (_pCustomTableDictionaryEngine[Global::imeMode] && !customPhrasePriority)
+		{
+			if (phoneticAnyTone)
+				_pCustomTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&noToneKeyStroke, pCandidateList);
 			_pCustomTableDictionaryEngine[Global::imeMode]->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList);
+		}
 
 		//Search Array unicode extensions
 		if (Global::imeMode == IME_MODE_ARRAY && CConfig::GetArrayUnicodeScope() != CHARSET_UNICODE_EXT_A)
@@ -582,10 +654,15 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 	else
 	{
 		_pTableDictionaryEngine[Global::imeMode]->SetSearchSection(SEARCH_SECTION_TEXT);
+		// search custom table with priority
+		BOOL customPhrasePriority = CConfig::getCustomTablePriority();
+		if (_pCustomTableDictionaryEngine[Global::imeMode] && customPhrasePriority)
+			_pCustomTableDictionaryEngine[Global::imeMode]->CollectWord(&_keystrokeBuffer, pCandidateList);
+
 		_pTableDictionaryEngine[Global::imeMode]->CollectWord(&_keystrokeBuffer, pCandidateList);
 
-		//Search cutom table
-		if (_pCustomTableDictionaryEngine[Global::imeMode])
+		// search custom table without priority
+		if (_pCustomTableDictionaryEngine[Global::imeMode] && !customPhrasePriority)
 			_pCustomTableDictionaryEngine[Global::imeMode]->CollectWord(&_keystrokeBuffer, pCandidateList);
 
 
@@ -973,6 +1050,16 @@ void CCompositionProcessorEngine::SetupKeystroke(IME_MODE imeMode)
 
 	_KeystrokeComposition.Clear();
 
+	for (int i = 0; i < MAX_RADICAL; i++)
+	{
+		_KEYSTROKE* pKS = nullptr;
+		pKS = _KeystrokeComposition.Append();
+		pKS->Function = FUNCTION_NONE;
+		pKS->Modifiers = 0;
+		pKS->Printable = 0;
+		pKS->VirtualKey = 0;
+	}
+
 	if (imeMode == IME_MODE_DAYI && _pTableDictionaryEngine[imeMode]->GetRadicalMap() &&
 		(_pTableDictionaryEngine[imeMode]->GetRadicalMap()->find('=') == _pTableDictionaryEngine[imeMode]->GetRadicalMap()->end()))
 	{ //dayi symbol prompt
@@ -986,7 +1073,9 @@ void CCompositionProcessorEngine::SetupKeystroke(IME_MODE imeMode)
 		_pTableDictionaryEngine[imeMode]->GetRadicalMap()->end(); ++item)
 	{
 		_KEYSTROKE* pKS = nullptr;
-		pKS = _KeystrokeComposition.Append();
+		//pKS = _KeystrokeComposition.Append();
+		if (item->first > MAX_RADICAL) continue;
+		pKS = _KeystrokeComposition.GetAt(item->first);
 		if (pKS == nullptr)
 			break;
 
@@ -1978,7 +2067,8 @@ void CCompositionProcessorEngine::SetInitialCandidateListRange(IME_MODE imeMode)
 {
 	_candidateListIndexRange.Clear();
 	_phraseCandidateListIndexRange.Clear();
-	for (DWORD i = 0; i < 10; i++)
+	DWORD pageSize = (imeMode == IME_MODE_PHONETIC) ? 9 : 10;
+	for (DWORD i = 0; i < pageSize; i++)
 	{
 		DWORD* pNewIndexRange = nullptr;
 		DWORD* pNewPhraseIndexRange = nullptr;
@@ -2063,7 +2153,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 			}
 			return TRUE;
 		}
-		if (!(IsWildcard() && IsWildcardChar(*pwch)) && IsVirtualKeyKeystrokeComposition(uCode, pKeyState, FUNCTION_NONE))
+		if (!(IsWildcard() && IsWildcardChar(*pwch)) && IsVirtualKeyKeystrokeComposition(pwch, pKeyState, FUNCTION_NONE))
 		{
 			return TRUE;
 		}
@@ -2095,7 +2185,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 		{
 			return TRUE;
 		}
-		if (IsVirtualKeyKeystrokeComposition(uCode, pKeyState, FUNCTION_INPUT))
+		if (IsVirtualKeyKeystrokeComposition(pwch, pKeyState, FUNCTION_INPUT))
 		{
 			if (candidateMode != CANDIDATE_ORIGINAL)
 			{
@@ -2128,7 +2218,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 	if (!fComposing && candidateMode != CANDIDATE_ORIGINAL && candidateMode != CANDIDATE_PHRASE && candidateMode != CANDIDATE_WITH_NEXT_COMPOSITION)
 	{
 
-		if (!(IsWildcard() && IsWildcardChar(*pwch)) && IsVirtualKeyKeystrokeComposition(uCode, pKeyState, FUNCTION_INPUT))
+		if (!(IsWildcard() && IsWildcardChar(*pwch)) && IsVirtualKeyKeystrokeComposition(pwch, pKeyState, FUNCTION_INPUT))
 		{
 			return TRUE;
 		}
@@ -2227,18 +2317,22 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 		case VK_SPACE:  if (pKeyState)
 		{
 
-							if ((candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)){ // space finalized the associate here instead of choose the first one (selected index = -1 for phrase candidates).
+							if ((candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)) // space finalized the associate here instead of choose the first one (selected index = -1 for phrase candidates).
+							{
 								if (pKeyState)
 								{
 									pKeyState->Category = CATEGORY_CANDIDATE;
 									pKeyState->Function = FUNCTION_FINALIZE_CANDIDATELIST;
 								}
 							}
-							else if (uCode == VK_SPACE && candidateMode != CANDIDATE_PHRASE && CConfig::GetSpaceAsPageDown() && candiCount > 10){
+							else if (uCode == VK_SPACE && candidateMode != CANDIDATE_PHRASE && CConfig::GetSpaceAsPageDown()
+								&& (candiCount > UINT((Global::imeMode == IME_MODE_PHONETIC) ? 9 : 10)))
+							{
 								pKeyState->Category = CATEGORY_CANDIDATE;
 								pKeyState->Function = FUNCTION_MOVE_PAGE_DOWN;
 							}
-							else if (candidateMode == CANDIDATE_PHRASE){
+							else if (candidateMode == CANDIDATE_PHRASE)
+							{
 								if (pKeyState)
 								{
 									pKeyState->Category = CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION;
@@ -2246,7 +2340,8 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 								}
 								return FALSE;
 							}
-							else{
+							else
+							{
 								pKeyState->Category = CATEGORY_CANDIDATE;
 								pKeyState->Function = FUNCTION_CONVERT;
 							}
@@ -2282,7 +2377,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 
 		if (candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)
 		{
-			if (IsVirtualKeyKeystrokeComposition(uCode, NULL, FUNCTION_NONE))
+			if (IsVirtualKeyKeystrokeComposition(pwch, NULL, FUNCTION_NONE))
 			{
 				if (pKeyState) { pKeyState->Category = CATEGORY_COMPOSING; pKeyState->Function = FUNCTION_FINALIZE_TEXTSTORE_AND_INPUT; } return TRUE;
 			}
@@ -2297,7 +2392,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 		return FALSE;
 	}
 
-	if (*pwch && !IsVirtualKeyKeystrokeComposition(uCode, pKeyState, FUNCTION_NONE))
+	if (*pwch && !IsVirtualKeyKeystrokeComposition(pwch, pKeyState, FUNCTION_NONE))
 	{
 		if (pKeyState)
 		{
@@ -2316,7 +2411,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 //
 //----------------------------------------------------------------------------
 
-BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeComposition(UINT uCode, _Out_opt_ _KEYSTROKE_STATE *pKeyState, KEYSTROKE_FUNCTION function)
+BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeComposition(PWCH pwch, _Out_opt_ _KEYSTROKE_STATE *pKeyState, KEYSTROKE_FUNCTION function)
 {
 	if (pKeyState == nullptr)
 	{
@@ -2326,13 +2421,14 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeComposition(UINT uCode, _
 	pKeyState->Category = CATEGORY_NONE;
 	pKeyState->Function = FUNCTION_NONE;
 
-	for (UINT i = 0; i < _KeystrokeComposition.Count(); i++)
-	{
+	
 		_KEYSTROKE *pKeystroke = nullptr;
 
-		pKeystroke = _KeystrokeComposition.GetAt(i);
+		WCHAR c = towupper(*pwch);
+		if (c > MAX_RADICAL) return FALSE;
+		pKeystroke = _KeystrokeComposition.GetAt(c);
 
-		if ((pKeystroke->VirtualKey == uCode) && Global::CheckModifiers(Global::ModifiersValue, pKeystroke->Modifiers))
+		if (pKeystroke != nullptr && pKeystroke->Function != FUNCTION_NONE)
 		{
 			if (function == FUNCTION_NONE)
 			{
@@ -2347,7 +2443,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeComposition(UINT uCode, _
 				return TRUE;
 			}
 		}
-	}
+	
 
 	return FALSE;
 }
@@ -2495,3 +2591,117 @@ void CCompositionProcessorEngine::sortListItemByFindWordFreq(_Inout_ CDIMEArray<
 
 }
 */
+
+UINT CCompositionProcessorEngine::addPhoneticKey(WCHAR* pwch)
+{
+	WCHAR c = towupper(*pwch);
+	if (c > MAX_RADICAL) return phoneticSyllable;
+
+	UINT s, m;
+	if (phoneticKeyboardLayout == PHONETIC_STANDARD_KEYBOARD_LAYOUT)
+		s = vpStandardKeyTable[c];
+	else  if (phoneticKeyboardLayout == PHONETIC_ETEN_KEYBOARD_LAYOUT)
+		s = vpEtenKeyTable[c];
+	else
+		return phoneticSyllable;
+
+	if (s == vpAny)
+	{
+		if (phoneticSyllable == 0)
+			phoneticSyllable |= vpAnyConsonant; //no syllable present, add wildcard as vpAnyConsonant.
+		else if ((phoneticSyllable & vpConsonantMask) && !(phoneticSyllable & (vpMiddleVowelMask | vpVowelMask | vpToneMask)))
+			phoneticSyllable |= vpAnyMiddleVowel; // consonant is present and no middle vowel present, add wildcard as vpAnyMiddleVowel
+		else if (phoneticSyllable & (vpMiddleVowelMask) && !(phoneticSyllable & (vpVowelMask | vpToneMask)))
+			phoneticSyllable |= vpAnyTone;
+		else if (phoneticSyllable & (vpMiddleVowelMask | vpToneMask) && !(phoneticSyllable & vpVowelMask))
+			phoneticSyllable |= vpAnyVowel;
+		else if (phoneticSyllable & (vpMiddleVowelMask | vpVowelMask) && !(phoneticSyllable & vpToneMask))
+			phoneticSyllable |= vpAnyTone;
+
+		return phoneticSyllable;
+	}
+
+
+	if ((m = (s & vpToneMask)) != 0)
+		phoneticSyllable = (phoneticSyllable & (~vpToneMask)) | m;
+	else if ((m = (s & vpVowelMask)) != 0)
+		phoneticSyllable = (phoneticSyllable & (~vpVowelMask)) | m;
+	else if ((m = (s & vpMiddleVowelMask)) != 0)
+		phoneticSyllable = (phoneticSyllable & (~vpMiddleVowelMask)) | m;
+	else if ((m = (s & vpConsonantMask)) != 0)
+		phoneticSyllable = (phoneticSyllable & (~vpConsonantMask)) | m;
+
+
+	return phoneticSyllable;
+
+}
+
+UINT CCompositionProcessorEngine::removeLastPhoneticSymbol()
+{
+	if (phoneticSyllable & vpToneMask)
+		return (phoneticSyllable & ~vpToneMask);
+	else if (phoneticSyllable & vpVowelMask)
+		return (phoneticSyllable & ~vpVowelMask);
+	else if (phoneticSyllable & vpMiddleVowelMask)
+		return (phoneticSyllable & ~vpMiddleVowelMask);
+	else
+		return 0;
+}
+
+WCHAR CCompositionProcessorEngine::VPSymbolToStandardLayoutChar(UINT syllable)
+{
+	if (syllable == vpAnyConsonant || syllable == vpAnyMiddleVowel || syllable == vpAnyVowel || syllable == vpAnyTone)
+		return '?';
+	UINT oridinal = 0, ss;
+	if ((ss = (syllable & vpConsonantMask)) != 0)
+		oridinal = ss;
+	else if ((ss = (syllable & vpMiddleVowelMask)) != 0)
+		oridinal = (ss >> 5) + 21;
+	else if ((ss = (syllable & vpVowelMask)) != 0)
+		oridinal = (ss >> 8) + 24;
+	else if ((ss = (syllable & vpToneMask)) != 0)
+		oridinal = (ss >> 12) + 37;
+
+	if (oridinal > 41) return 0;
+	return vpStandardLayoutCode[oridinal];
+}
+
+
+BOOL CCompositionProcessorEngine::isPhoneticComposingKey()
+{
+	if (_keystrokeBuffer.Get() == nullptr || Global::imeMode != IME_MODE_PHONETIC)
+		return FALSE;
+	UINT len = (UINT)_keystrokeBuffer.GetLength();
+	if (len == 0)
+		return FALSE;
+	WCHAR wch = *(_keystrokeBuffer.Get() + len - 1);
+	if (phoneticKeyboardLayout == PHONETIC_STANDARD_KEYBOARD_LAYOUT)
+	{
+		if (wch == '3' || wch == '4' || wch == '6' || wch == '7') return TRUE;
+	}
+	else if (phoneticKeyboardLayout == PHONETIC_ETEN_KEYBOARD_LAYOUT)
+	{
+		if (wch == '1' || wch == '2' || wch == '3' || wch == '4') return TRUE;
+	}
+	return FALSE;
+
+}
+
+CStringRange CCompositionProcessorEngine::buildKeyStrokesFromPhoneticSyllable(UINT syllable)
+{
+	PWCHAR buf = new (std::nothrow) WCHAR[5];
+	WCHAR *b = buf;
+	if (syllable & vpConsonantMask)
+		*b++ = VPSymbolToStandardLayoutChar(syllable&vpConsonantMask);
+	if (syllable & vpMiddleVowelMask)
+		*b++ = VPSymbolToStandardLayoutChar(syllable&vpMiddleVowelMask);
+	if (syllable & vpVowelMask)
+		*b++ = VPSymbolToStandardLayoutChar(syllable&vpVowelMask);
+	if (syllable & vpToneMask)
+		*b++ = VPSymbolToStandardLayoutChar(syllable&vpToneMask);
+	*b = 0;
+
+	CStringRange csr;
+	csr.Set(buf, wcslen(buf));
+	return csr;
+}
