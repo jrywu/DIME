@@ -335,8 +335,10 @@ void CCompositionProcessorEngine::PurgeVirtualKey()
 	{
 		delete[] _keystrokeBuffer.Get();
 		_keystrokeBuffer.Set(NULL, 0);
-		if (Global::imeMode == IME_MODE_PHONETIC) phoneticSyllable = 0;
+		
 	}
+	if (Global::imeMode == IME_MODE_PHONETIC) phoneticSyllable = 0;
+	_hasWildcardIncludedInKeystrokeBuffer = FALSE;
 }
 
 WCHAR CCompositionProcessorEngine::GetVirtualKey(DWORD_PTR dwIndex)
@@ -711,6 +713,8 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 			index++;
 		}
 	}
+
+	_hasWildcardIncludedInKeystrokeBuffer = FALSE; //remove has wildcard flag anyway
 }
 
 //+---------------------------------------------------------------------------
