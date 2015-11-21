@@ -74,7 +74,7 @@ BOOL CFile::CreateFile(_In_ PCWSTR pFileName, DWORD desiredAccess,
 
     StringCchCopyN(_pFileName, fullPathLen + 1, pFileName, fullPathLen);
 
-    _fileHandle = ::CreateFile(pFileName, desiredAccess, sharedMode,
+	_fileHandle = ::CreateFile(_pFileName, desiredAccess, sharedMode,
         lpSecurityAttributes, creationDisposition, flagsAndAttributes, templateFileHandle);
 
     if (_fileHandle == INVALID_HANDLE_VALUE)
@@ -122,7 +122,6 @@ BOOL CFile::SetupReadBuffer()
 		|| !IsTextUnicode(pWideBuffer, dwNumberOfByteRead, NULL))
 	{
 		delete [] pWideBuffer;
-		_pReadBuffer = nullptr;
 		ret = FALSE;
 		goto errorExit;
 	}
