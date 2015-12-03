@@ -69,8 +69,8 @@ BOOL CDIME::_AddTextProcessorEngine(LANGID inLangID, GUID inGuidProfile)
 		{
 
 			debugPrint(L"CDIME::_AddTextProcessorEngine() _pCompositionProcessorEngine with the diff. guidProfile exist, recreate one." );
-			_LoadConfig(TRUE);
-			_lastKeyboardMode = CConfig::GetActivatedKeyboardMode();
+			//_LoadConfig(TRUE);
+			//_lastKeyboardMode = CConfig::GetActivatedKeyboardMode();
 
 			if(_pUIPresenter) _pUIPresenter->ClearAll();
 
@@ -85,8 +85,8 @@ BOOL CDIME::_AddTextProcessorEngine(LANGID inLangID, GUID inGuidProfile)
     {		
 		_pCompositionProcessorEngine = new (std::nothrow) CCompositionProcessorEngine(this);
 
-		_LoadConfig(TRUE);
-		_lastKeyboardMode = CConfig::GetActivatedKeyboardMode();
+		//_LoadConfig(TRUE);
+		//_lastKeyboardMode = CConfig::GetActivatedKeyboardMode();
 
 		debugPrint(L"CDIME::_AddTextProcessorEngine() create new CompositionProcessorEngine . ");
         
@@ -974,10 +974,9 @@ BOOL CDIME::_IsUILessMode()
 
 void CDIME::_LoadConfig(BOOL isForce, IME_MODE imeMode)
 {
-	//if(isForce) // _LoadConfig is trigger in show config by ctrl-\ hotkey 
-	//CConfig::SetIMEMode(Global::imeMode);
 	CConfig::LoadConfig(imeMode);
-	if(_pCompositionProcessorEngine) _pCompositionProcessorEngine->UpdateDictionaryFile();
+	if (!isForce)
+		if(_pCompositionProcessorEngine) _pCompositionProcessorEngine->UpdateDictionaryFile();
 
 	if(CConfig::GetReloadReverseConversion() || isForce)
 	{
