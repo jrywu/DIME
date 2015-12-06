@@ -1531,29 +1531,29 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 	if (imeMode == IME_MODE_DAYI) //dayi.cin in personal romaing profile
 	{
 		BOOL cinFound = FALSE;
-		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\Dayi.cin");
-		if (!PathFileExists(pwszCINFileName)) //failed back to try preload Dayi.cin in program files.
-		{
-			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\DIME\\Dayi.cin");
-			if (PathFileExists(pwszCINFileName)) // failed to find Dayi.in in program files either
-			{
-				cinFound = TRUE;
-			}
-		}
-		else
-		{
-			cinFound = TRUE;
-		}
+StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\Dayi.cin");
+if (!PathFileExists(pwszCINFileName)) //failed back to try preload Dayi.cin in program files.
+{
+	StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\DIME\\Dayi.cin");
+	if (PathFileExists(pwszCINFileName)) // failed to find Dayi.in in program files either
+	{
+		cinFound = TRUE;
+	}
+}
+else
+{
+	cinFound = TRUE;
+}
 
-		if (cinFound &&
-			_pTableDictionaryFile[imeMode] && _pTextService &&
-			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pTableDictionaryFile[imeMode]->GetFileName(), -1) != CSTR_EQUAL)
-		{ // cin found in Program files or in user roaming profile.
-			delete _pTableDictionaryEngine[imeMode];
-			_pTableDictionaryEngine[imeMode] = nullptr;
-			delete _pTableDictionaryFile[imeMode];
-			_pTableDictionaryFile[imeMode] = nullptr;
-		}
+if (cinFound &&
+	_pTableDictionaryFile[imeMode] && _pTextService &&
+	CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pTableDictionaryFile[imeMode]->GetFileName(), -1) != CSTR_EQUAL)
+{ // cin found in Program files or in user roaming profile.
+	delete _pTableDictionaryEngine[imeMode];
+	_pTableDictionaryEngine[imeMode] = nullptr;
+	delete _pTableDictionaryFile[imeMode];
+	_pTableDictionaryFile[imeMode] = nullptr;
+}
 	}
 	if (imeMode == IME_MODE_ARRAY) //array.cin in personal romaing profile
 	{
@@ -1622,6 +1622,20 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 				_pTableDictionaryFile[imeMode] = nullptr;
 			}
 		}
+	}
+	else
+	{
+		if (_pTableDictionaryFile[imeMode])
+		{
+			delete _pTableDictionaryFile[imeMode];
+			_pTableDictionaryFile[imeMode] = nullptr;
+		}
+		if (_pTableDictionaryEngine[imeMode])
+		{
+			delete _pTableDictionaryEngine[imeMode];
+			_pTableDictionaryEngine[imeMode] = nullptr;
+		}
+
 	}
 	if (_pTableDictionaryEngine[imeMode] == nullptr && (imeMode == IME_MODE_DAYI || imeMode == IME_MODE_ARRAY))		//failed back to load windows preload tabletextservice table.
 	{
@@ -2418,7 +2432,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 
 BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeComposition(UINT uCode, PWCH pwch, _Out_opt_ _KEYSTROKE_STATE *pKeyState, KEYSTROKE_FUNCTION function)
 {
-	if (pKeyState == nullptr)
+	if (!IsDictionaryAvailable(_imeMode) || pKeyState == nullptr || _KeystrokeComposition.Count() == 0)
 	{
 		return FALSE;
 	}
@@ -2441,6 +2455,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeComposition(UINT uCode, P
 	}
 
 	pKeystroke = _KeystrokeComposition.GetAt(c - 32);
+	if (c >= 'A' && c <= 'Z' && (Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT)) != 0) return FALSE; //  input English with shift-a~z 
 
 	if (pKeystroke != nullptr && pKeystroke->Function != FUNCTION_NONE && uCode == pKeystroke->VirtualKey)
 	{

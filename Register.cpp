@@ -4,6 +4,7 @@
 //
 //
 
+#define NO_DAYI
 
 #include "Private.h"
 #include "Globals.h"
@@ -48,7 +49,8 @@ BOOL RegisterProfiles()
 
     size_t lenOfDesc = 0;
 	WCHAR serviceDescripion[50]={'\0'};;
-	/*
+
+#ifndef NO_DAYI
 	//Dayi profile registration
 	LoadString(Global::dllInstanceHandle, IDS_DAYI_DESCRIPTION, serviceDescripion, 50);
     hr = StringCchLength(serviceDescripion, STRSAFE_MAX_CCH, &lenOfDesc);
@@ -69,7 +71,7 @@ BOOL RegisterProfiles()
     {
         goto Exit;
     }
-	*/
+#endif	
 	//Array profile registration
 	*serviceDescripion=L'\0';
 	LoadString(Global::dllInstanceHandle, IDS_ARRAY_DESCRIPTION, serviceDescripion, 50);
@@ -161,12 +163,14 @@ void UnregisterProfiles()
     {
         goto Exit;
     }
+#ifndef NO_DAYI
 	//Dayi profile 
     hr = pITfInputProcessorProfileMgr->UnregisterProfile(Global::DIMECLSID, TEXTSERVICE_LANGID, Global::DIMEDayiGuidProfile, 0);
     if (FAILED(hr))
     {
         goto Exit;
     }
+#endif
 	//Array profile 
     hr = pITfInputProcessorProfileMgr->UnregisterProfile(Global::DIMECLSID, TEXTSERVICE_LANGID, Global::DIMEArrayGuidProfile, 0);
     if (FAILED(hr))
