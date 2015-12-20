@@ -335,7 +335,7 @@ void CCompositionProcessorEngine::PurgeVirtualKey()
 	{
 		delete[] _keystrokeBuffer.Get();
 		_keystrokeBuffer.Set(NULL, 0);
-		
+
 	}
 	if (Global::imeMode == IME_MODE_PHONETIC) phoneticSyllable = 0;
 	_hasWildcardIncludedInKeystrokeBuffer = FALSE;
@@ -698,7 +698,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 	for (UINT index = 0; index < pCandidateList->Count();)
 	{
 		CCandidateListItem *pLI = pCandidateList->GetAt(index);
-		
+
 		if (pLI)
 		{
 			UINT len = (UINT)pLI->_ItemString.GetLength();
@@ -1488,36 +1488,39 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 	debugPrint(L"CCompositionProcessorEngine::SetupDictionaryFile() \n");
 
 
-	WCHAR wszProgramFiles[MAX_PATH];
-	WCHAR wszAppData[MAX_PATH];
+	WCHAR pwszProgramFiles[MAX_PATH];
+	WCHAR pwszAppData[MAX_PATH];
 
-	if (GetEnvironmentVariable(L"ProgramW6432", wszProgramFiles, MAX_PATH) == 0)
+	if (GetEnvironmentVariable(L"ProgramW6432", pwszProgramFiles, MAX_PATH) == 0)
 	{//on 64-bit vista only 32bit app has this enviroment variable.  Which means the call failed when the apps running in 64-bit.
 		//on 32-bit windows, this will definitely failed.  Get ProgramFiles enviroment variable now will retrive the correct program files path.
-		GetEnvironmentVariable(L"ProgramFiles", wszProgramFiles, MAX_PATH);
+		GetEnvironmentVariable(L"ProgramFiles", pwszProgramFiles, MAX_PATH);
 	}
 
 	//CSIDL_APPDATA  personal roadming application data.
-	SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);
+	SHGetSpecialFolderPath(NULL, pwszAppData, CSIDL_APPDATA, TRUE);
 
-	debugPrint(L"CCompositionProcessorEngine::SetupDictionaryFile() :wszProgramFiles = %s", wszProgramFiles);
+	debugPrint(L"CCompositionProcessorEngine::SetupDictionaryFile() :pwszProgramFiles = %s", pwszProgramFiles);
 
 	WCHAR *pwszTTSFileName = new (std::nothrow) WCHAR[MAX_PATH];
 	WCHAR *pwszCINFileName = new (std::nothrow) WCHAR[MAX_PATH];
+	WCHAR *pwszCINFileNameProgramFiles = new (std::nothrow) WCHAR[MAX_PATH];
 
 	if (!pwszTTSFileName)  goto ErrorExit;
 	if (!pwszCINFileName)  goto ErrorExit;
+	if (!pwszCINFileNameProgramFiles)  goto ErrorExit;
 
 	*pwszTTSFileName = L'\0';
 	*pwszCINFileName = L'\0';
+	*pwszCINFileNameProgramFiles = L'\0';
 
 	//tableTextService (TTS) dictionary file 
 	if (imeMode != IME_MODE_ARRAY)
-		StringCchPrintf(pwszTTSFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\Windows NT\\TableTextService\\TableTextServiceDaYi.txt");
+		StringCchPrintf(pwszTTSFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Windows NT\\TableTextService\\TableTextServiceDaYi.txt");
 	else
-		StringCchPrintf(pwszTTSFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\Windows NT\\TableTextService\\TableTextServiceArray.txt");
+		StringCchPrintf(pwszTTSFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Windows NT\\TableTextService\\TableTextServiceArray.txt");
 
-	StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME");
+	StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME");
 
 	if (!PathFileExists(pwszCINFileName))
 	{
@@ -1528,37 +1531,41 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 	if (imeMode == IME_MODE_DAYI) //dayi.cin in personal romaing profile
 	{
 		BOOL cinFound = FALSE;
-StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\Dayi.cin");
-if (!PathFileExists(pwszCINFileName)) //failed back to try preload Dayi.cin in program files.
-{
-	StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\DIME\\Dayi.cin");
-	if (PathFileExists(pwszCINFileName)) // failed to find Dayi.in in program files either
-	{
-		cinFound = TRUE;
-	}
-}
-else
-{
-	cinFound = TRUE;
-}
+		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Dayi.cin");
+		if (!PathFileExists(pwszCINFileName)) //failed back to try preload Dayi.cin in program files.
+		{
+			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Dayi.cin");
+			if (PathFileExists(pwszCINFileName)) // failed to find Dayi.in in program files either
+			{
+				cinFound = TRUE;
+			}
+		}
+		else
+		{
+			cinFound = TRUE;
+		}
 
-if (cinFound &&
-	_pTableDictionaryFile[imeMode] && _pTextService &&
-	CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pTableDictionaryFile[imeMode]->GetFileName(), -1) != CSTR_EQUAL)
-{ // cin found in Program files or in user roaming profile.
-	delete _pTableDictionaryEngine[imeMode];
-	_pTableDictionaryEngine[imeMode] = nullptr;
-	delete _pTableDictionaryFile[imeMode];
-	_pTableDictionaryFile[imeMode] = nullptr;
-}
+		if (cinFound &&
+			_pTableDictionaryFile[imeMode] && _pTextService &&
+			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pTableDictionaryFile[imeMode]->GetFileName(), -1) != CSTR_EQUAL)
+		{ // cin found in Program files or in user roaming profile.
+			delete _pTableDictionaryEngine[imeMode];
+			_pTableDictionaryEngine[imeMode] = nullptr;
+			delete _pTableDictionaryFile[imeMode];
+			_pTableDictionaryFile[imeMode] = nullptr;
+		}
 	}
 	if (imeMode == IME_MODE_ARRAY) //array.cin in personal romaing profile
 	{
 		BOOL cinFound = FALSE;
-		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\Array.cin");
+		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Array.cin");
+		StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array.cin");
+		if (PathFileExists(pwszCINFileNameProgramFiles) && !PathFileExists(pwszCINFileName))
+			CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, TRUE);
+
 		if (!PathFileExists(pwszCINFileName)) //failed back to try preload Dayi.cin in program files.
 		{
-			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\DIME\\Array.cin");
+			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array.cin");
 			if (PathFileExists(pwszCINFileName)) // failed to find Array.in in program files either
 			{
 				cinFound = TRUE;
@@ -1581,9 +1588,13 @@ if (cinFound &&
 	}
 	if (imeMode == IME_MODE_PHONETIC) //phone.cin in personal romaing profile
 	{
-		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\Phone.cin");
+		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Phone.cin");
+		StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Phone.cin");
+		if (PathFileExists(pwszCINFileNameProgramFiles) && !PathFileExists(pwszCINFileName))
+			CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, TRUE);
+
 		if (!PathFileExists(pwszCINFileName)) //failed back to pre-install Phone.cin in program files.
-			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\DIME\\Phone.cin");
+			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Phone.cin");
 		else if (_pTableDictionaryFile[imeMode] && _pTextService &&
 			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pTableDictionaryFile[imeMode]->GetFileName(), -1) != CSTR_EQUAL)
 		{ //indicate the prevoius table is built with system preload file in program files, and now user provides their own.
@@ -1595,7 +1606,7 @@ if (cinFound &&
 	}
 	if (imeMode == IME_MODE_GENERIC) //phone.cin in personal romaing profile
 	{
-		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\Generic.cin");
+		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Generic.cin");
 		// we don't provide preload Generic.cin in program files
 	}
 
@@ -1659,7 +1670,7 @@ if (cinFound &&
 
 	// now load phrase table
 	*pwszCINFileName = L'\0';
-	StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\Phrase.cin");
+	StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Phrase.cin");
 	if (PathFileExists(pwszCINFileName) && _pPhraseDictionaryFile == nullptr)
 	{ //indicate the prevoius table is built with system preload tts file in program files, and now user provides their own.
 		_pPhraseTableDictionaryEngine = nullptr;
@@ -1708,9 +1719,13 @@ if (cinFound &&
 	if (imeMode == IME_MODE_ARRAY) //array-special.cin and array-shortcode.cin in personal romaing profile
 	{
 		//Ext-B
-		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\Array-Ext-B.cin");
+		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Array-Ext-B.cin");
+		StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-Ext-B.cin");
+		if (PathFileExists(pwszCINFileNameProgramFiles) && !PathFileExists(pwszCINFileName))
+			CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, TRUE);
+
 		if (!PathFileExists(pwszCINFileName)) //failed back to preload array-special.cin in program files.
-			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\DIME\\Array-Ext-B.cin");
+			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-Ext-B.cin");
 		else if (_pArrayExtBDictionaryFile && _pTextService &&
 			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pArrayExtBDictionaryFile->GetFileName(), -1) != CSTR_EQUAL)
 		{ //indicate the prevoius table is built with system preload file in program files, and now user provides their own.
@@ -1733,9 +1748,13 @@ if (cinFound &&
 			}
 		}
 		//Ext-CD
-		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\Array-Ext-CD.cin");
+		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Array-Ext-CD.cin");
+		StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-Ext-CD.cin");
+		if (PathFileExists(pwszCINFileNameProgramFiles) && !PathFileExists(pwszCINFileName))
+			CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, TRUE);
+
 		if (!PathFileExists(pwszCINFileName)) //failed back to preload array-special.cin in program files.
-			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\DIME\\Array-Ext-CD.cin");
+			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-Ext-CD.cin");
 		else if (_pArrayExtCDDictionaryFile && _pTextService &&
 			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pArrayExtCDDictionaryFile->GetFileName(), -1) != CSTR_EQUAL)
 		{ //indicate the prevoius table is built with system preload file in program files, and now user provides their own.
@@ -1758,9 +1777,13 @@ if (cinFound &&
 			}
 		}
 		//Ext-E
-		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\Array-Ext-E.cin");
+		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Array-Ext-E.cin");
+		StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-Ext-E.cin");
+		if (PathFileExists(pwszCINFileNameProgramFiles) && !PathFileExists(pwszCINFileName))
+			CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, TRUE);
+
 		if (!PathFileExists(pwszCINFileName)) //failed back to preload array-special.cin in program files.
-			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\DIME\\Array-Ext-E.cin");
+			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-Ext-E.cin");
 		else if (_pArrayExtEDictionaryFile && _pTextService &&
 			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pArrayExtEDictionaryFile->GetFileName(), -1) != CSTR_EQUAL)
 		{ //indicate the prevoius table is built with system preload file in program files, and now user provides their own.
@@ -1784,9 +1807,13 @@ if (cinFound &&
 		}
 
 		//Special
-		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\Array-special.cin");
+		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Array-special.cin");
+		StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-special.cin");
+		if (PathFileExists(pwszCINFileNameProgramFiles) && !PathFileExists(pwszCINFileName))
+			CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, TRUE);
+
 		if (!PathFileExists(pwszCINFileName)) //failed back to preload array-special.cin in program files.
-			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\DIME\\Array-special.cin");
+			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-special.cin");
 		else if (_pArraySpecialCodeDictionaryFile && _pTextService &&
 			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pArraySpecialCodeDictionaryFile->GetFileName(), -1) != CSTR_EQUAL)
 		{ //indicate the prevoius table is built with system preload file in program files, and now user provides their own.
@@ -1810,9 +1837,13 @@ if (cinFound &&
 		}
 
 		//Short-code
-		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\Array-shortcode.cin");
+		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Array-shortcode.cin");
+		StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-shortcode.cin");
+		if (PathFileExists(pwszCINFileNameProgramFiles) && !PathFileExists(pwszCINFileName))
+			CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, TRUE);
+
 		if (!PathFileExists(pwszCINFileName)) //failed back to preload array-shortcode.cin in program files.
-			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\DIME\\Array-shortcode.cin");
+			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-shortcode.cin");
 		if (PathFileExists(pwszCINFileName) && _pArrayShortCodeDictionaryFile == nullptr)
 		{
 			_pArrayShortCodeDictionaryFile = new (std::nothrow) CFile();
@@ -1832,13 +1863,13 @@ if (cinFound &&
 
 	// now load Dayi custom table
 	if (imeMode == IME_MODE_DAYI)
-		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\DAYI-CUSTOM.cin");
+		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\DAYI-CUSTOM.cin");
 	else if (Global::imeMode == IME_MODE_ARRAY)
-		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\ARRAY-CUSTOM.cin");
+		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\ARRAY-CUSTOM.cin");
 	else if (Global::imeMode == IME_MODE_PHONETIC)
-		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\PHONETIC-CUSTOM.cin");
+		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\PHONETIC-CUSTOM.cin");
 	else
-		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\GENERIC-CUSTOM.cin");
+		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\GENERIC-CUSTOM.cin");
 	if (PathFileExists(pwszCINFileName) && _pCustomTableDictionaryEngine[imeMode] == nullptr)
 	{
 		_pCustomTableDictionaryFile[imeMode] = new (std::nothrow) CFile();
@@ -1861,6 +1892,7 @@ if (cinFound &&
 ErrorExit:
 	if (pwszTTSFileName)  delete[]pwszTTSFileName;
 	if (pwszCINFileName)  delete[]pwszCINFileName;
+	if (pwszCINFileNameProgramFiles) delete[]pwszCINFileNameProgramFiles;
 	return FALSE;
 }
 
@@ -1870,6 +1902,7 @@ BOOL CCompositionProcessorEngine::SetupHanCovertTable()
 	if (CConfig::GetDoHanConvert() && _pTCSCTableDictionaryEngine == nullptr)
 	{
 		WCHAR wszProgramFiles[MAX_PATH];
+		WCHAR wszAppData[MAX_PATH];
 
 		if (GetEnvironmentVariable(L"ProgramW6432", wszProgramFiles, MAX_PATH) == 0)
 		{//on 64-bit vista only 32bit app has this enviroment variable.  Which means the call failed when the apps running is 64-bit.
@@ -1877,14 +1910,25 @@ BOOL CCompositionProcessorEngine::SetupHanCovertTable()
 			GetEnvironmentVariable(L"ProgramFiles", wszProgramFiles, MAX_PATH);
 		}
 
+		//CSIDL_APPDATA  personal roadming application data.
+		SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);
 
 		debugPrint(L"CCompositionProcessorEngine::SetupDictionaryFile() :wszProgramFiles = %s", wszProgramFiles);
 
 		WCHAR *pwszCINFileName = new (std::nothrow) WCHAR[MAX_PATH];
-		if (!pwszCINFileName)  goto ErrorExit;
-		*pwszCINFileName = L'\0';
+		WCHAR *pwszCINFileNameProgramFiles = new (std::nothrow) WCHAR[MAX_PATH];
 
-		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\DIME\\TCSC.cin");
+		if (pwszCINFileName == NULL || pwszCINFileNameProgramFiles == NULL)  goto ErrorExit;
+		*pwszCINFileName = L'\0';
+		*pwszCINFileNameProgramFiles = L'\0';
+
+		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\TCSC.cin");
+		StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", wszProgramFiles, L"\\DIME\\TCSC.cin");
+		if (PathFileExists(pwszCINFileNameProgramFiles) && !PathFileExists(pwszCINFileName))
+			CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, TRUE);
+		if (!PathFileExists(pwszCINFileName)) //failed back to try program files
+			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\DIME\\TCSC.cin");
+
 		if (_pTCSCTableDictionaryFile == nullptr)
 		{
 			_pTCSCTableDictionaryFile = new (std::nothrow) CFile();
@@ -1909,6 +1953,7 @@ BOOL CCompositionProcessorEngine::SetupTCFreqTable()
 {
 	debugPrint(L"CCompositionProcessorEngine::SetupTCFreqTable() \n");
 	WCHAR wszProgramFiles[MAX_PATH];
+	WCHAR wszAppData[MAX_PATH];
 
 	if (GetEnvironmentVariable(L"ProgramW6432", wszProgramFiles, MAX_PATH) == 0)
 	{//on 64-bit vista only 32bit app has this enviroment variable.  Which means the call failed when the apps running is 64-bit.
@@ -1916,14 +1961,24 @@ BOOL CCompositionProcessorEngine::SetupTCFreqTable()
 		GetEnvironmentVariable(L"ProgramFiles", wszProgramFiles, MAX_PATH);
 	}
 
+	//CSIDL_APPDATA  personal roadming application data.
+	SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);
 
 	debugPrint(L"CCompositionProcessorEngine::SetupTCFreqTable() :wszProgramFiles = %s", wszProgramFiles);
 
 	WCHAR *pwszCINFileName = new (std::nothrow) WCHAR[MAX_PATH];
-	if (!pwszCINFileName)  goto ErrorExit;
+	WCHAR *pwszCINFileNameProgramFiles = new (std::nothrow) WCHAR[MAX_PATH];
+	if (pwszCINFileName == NULL || pwszCINFileNameProgramFiles == NULL)  goto ErrorExit;
 	*pwszCINFileName = L'\0';
+	*pwszCINFileNameProgramFiles = L'\0';
 
-	StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\DIME\\TCFreq.cin");
+	StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\TCFreq.cin");
+	StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", wszProgramFiles, L"\\DIME\\TCFreq.cin");
+	if (PathFileExists(pwszCINFileNameProgramFiles) && !PathFileExists(pwszCINFileName))
+		CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, TRUE);
+	if (!PathFileExists(pwszCINFileName)) //failed back to try program files
+		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\DIME\\TCFreq.cin");
+
 	if (_pTCFreqTableDictionaryFile == nullptr)
 	{
 		_pTCFreqTableDictionaryFile = new (std::nothrow) CFile();
@@ -2333,60 +2388,60 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 		case VK_SPACE:  if (pKeyState)
 		{
 
-							if ((candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)) // space finalized the associate here instead of choose the first one (selected index = -1 for phrase candidates).
-							{
-								if (pKeyState)
-								{
-									pKeyState->Category = CATEGORY_CANDIDATE;
-									pKeyState->Function = FUNCTION_FINALIZE_CANDIDATELIST;
-								}
-							}
-							else if (uCode == VK_SPACE && candidateMode != CANDIDATE_PHRASE && CConfig::GetSpaceAsPageDown()
-								&& (candiCount > UINT((Global::imeMode == IME_MODE_PHONETIC) ? 9 : 10)))
-							{
-								pKeyState->Category = CATEGORY_CANDIDATE;
-								pKeyState->Function = FUNCTION_MOVE_PAGE_DOWN;
-							}
-							else if (candidateMode == CANDIDATE_PHRASE)
-							{
-								if (pKeyState)
-								{
-									pKeyState->Category = CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION;
-									pKeyState->Function = FUNCTION_CANCEL;
-								}
-								return FALSE;
-							}
-							else
-							{
-								pKeyState->Category = CATEGORY_CANDIDATE;
-								pKeyState->Function = FUNCTION_CONVERT;
-							}
+			if ((candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)) // space finalized the associate here instead of choose the first one (selected index = -1 for phrase candidates).
+			{
+				if (pKeyState)
+				{
+					pKeyState->Category = CATEGORY_CANDIDATE;
+					pKeyState->Function = FUNCTION_FINALIZE_CANDIDATELIST;
+				}
+			}
+			else if (uCode == VK_SPACE && candidateMode != CANDIDATE_PHRASE && CConfig::GetSpaceAsPageDown()
+				&& (candiCount > UINT((Global::imeMode == IME_MODE_PHONETIC) ? 9 : 10)))
+			{
+				pKeyState->Category = CATEGORY_CANDIDATE;
+				pKeyState->Function = FUNCTION_MOVE_PAGE_DOWN;
+			}
+			else if (candidateMode == CANDIDATE_PHRASE)
+			{
+				if (pKeyState)
+				{
+					pKeyState->Category = CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION;
+					pKeyState->Function = FUNCTION_CANCEL;
+				}
+				return FALSE;
+			}
+			else
+			{
+				pKeyState->Category = CATEGORY_CANDIDATE;
+				pKeyState->Function = FUNCTION_CONVERT;
+			}
 
-							return TRUE;
+			return TRUE;
 		}
 		case VK_BACK:   if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_CANCEL; } return TRUE;
 		case VK_INSERT:
 		case VK_DELETE:
 		case VK_ESCAPE:
 		{
-						  if (candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)
-						  {
-							  if (pKeyState)
-							  {
-								  pKeyState->Category = CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION;
-								  pKeyState->Function = FUNCTION_FINALIZE_TEXTSTORE;
-							  }
-							  return TRUE;
-						  }
-						  else
-						  {
-							  if (pKeyState)
-							  {
-								  pKeyState->Category = CATEGORY_CANDIDATE;
-								  pKeyState->Function = FUNCTION_CANCEL;
-							  }
-							  return TRUE;
-						  }
+			if (candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)
+			{
+				if (pKeyState)
+				{
+					pKeyState->Category = CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION;
+					pKeyState->Function = FUNCTION_FINALIZE_TEXTSTORE;
+				}
+				return TRUE;
+			}
+			else
+			{
+				if (pKeyState)
+				{
+					pKeyState->Category = CATEGORY_CANDIDATE;
+					pKeyState->Function = FUNCTION_CANCEL;
+				}
+				return TRUE;
+			}
 		}
 
 		}
