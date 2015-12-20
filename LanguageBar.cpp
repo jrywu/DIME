@@ -1090,7 +1090,6 @@ void CDIME::OnKeyboardClosed()
 		_EndComposition(_pContext);
 	}
 	_DeleteCandidateList(TRUE,_pContext);
-
 }
 
 void CDIME::OnKeyboardOpen()
@@ -1109,6 +1108,8 @@ void CDIME::OnSwitchedToFullShape()
 		_EndComposition(_pContext);
 	}
 	_DeleteCandidateList(FALSE,_pContext);
+	if (CConfig::GetDoubleSingleByteMode() != DOUBLE_SINGLE_BYTE_SHIFT_SPACE)
+		CConfig::SetDoubleSingleByteMode(DOUBLE_SINGLE_BYTE_ALWAYS_DOUBLE);
 }
 
 void CDIME::OnSwitchedToHalfShape()
@@ -1120,6 +1121,8 @@ void CDIME::OnSwitchedToHalfShape()
 		_EndComposition(_pContext);
 	}
 	_DeleteCandidateList(TRUE,_pContext);
+	if (CConfig::GetDoubleSingleByteMode() != DOUBLE_SINGLE_BYTE_SHIFT_SPACE)
+		CConfig::SetDoubleSingleByteMode(DOUBLE_SINGLE_BYTE_ALWAYS_SINGLE);
 }
 
 void CDIME::showChnEngNotify(BOOL isChinese, UINT delayShow)

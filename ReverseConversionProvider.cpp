@@ -15,7 +15,7 @@ HRESULT CDIME::GetReverseConversion(_In_ LANGID langid, _In_   REFGUID guidProfi
 	if(_pCompositionProcessorEngine) return E_FAIL;
 	IME_MODE imeMode = _pCompositionProcessorEngine->GetImeModeFromGuidProfile(guidProfile);
 
-	if(imeMode == IME_MODE_NONE)
+	if (imeMode == IME_MODE_NONE || imeMode == Global::imeMode) //return E_NOTIMPL if imeMode is IME_MODE_NONE or imeMode requested is current imeMode
 		return E_NOTIMPL;
 
 	if (_pCompositionProcessorEngine == nullptr)

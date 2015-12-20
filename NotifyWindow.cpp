@@ -283,14 +283,13 @@ LRESULT CALLBACK CNotifyWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT uM
             if (dcHandle)
             {
 				HFONT hFontOld = (HFONT)SelectObject(dcHandle, Global::defaultlFontHandle);
-                GetTextMetrics(dcHandle, &_TextMetric);
 
 				if(_notifyText.GetLength())
 				{
 					SIZE size;
 					GetTextExtentPoint32(dcHandle,_notifyText.Get(), (UINT)_notifyText.GetLength(), &size); //don't trust the TextMetrics. Measurement the font height and width directly.
 
-					_cxTitle = size.cx + _TextMetric.tmAveCharWidth * 5/2;
+					_cxTitle = size.cx + size.cx / (int)_notifyText.GetLength();
 					_cyTitle = size.cy *3/2;
 				}
 				else
@@ -493,7 +492,7 @@ void CNotifyWindow::_DrawText(_In_ HDC dcHandle, _In_ RECT *prc)
 	int _oldCxTitle = _cxTitle;
 	SIZE size;
 	GetTextExtentPoint32(dcHandle, _notifyText.Get(), (UINT)_notifyText.GetLength(), &size);
-	_cxTitle = size.cx  + _TextMetric.tmAveCharWidth * 5/2;
+	_cxTitle = size.cx + size.cx / (int)_notifyText.GetLength();
 	_cyTitle = size.cy * 3/2;
 	debugPrint(L"CNotifyWindow::_DrawText(), _cxTitle = %d, _cyTitle=%d, text size x = %d, y = %d", _cxTitle, _cyTitle, size.cx, size.cy);
 	
@@ -509,7 +508,7 @@ void CNotifyWindow::_DrawText(_In_ HDC dcHandle, _In_ RECT *prc)
 
     SetTextColor(dcHandle, _crTextColor);// NOTIFYWND_TEXT_COLOR);
     SetBkColor(dcHandle, _crBkColor);//NOTIFYWND_TEXT_BK_COLOR);
-    ExtTextOut(dcHandle, _TextMetric.tmAveCharWidth, _cyTitle/5, ETO_OPAQUE, &rc, _notifyText.Get(), (DWORD)_notifyText.GetLength(), NULL);
+	ExtTextOut(dcHandle, size.cx / (int)_notifyText.GetLength() / 2, _cyTitle / 5, ETO_OPAQUE, &rc, _notifyText.Get(), (DWORD)_notifyText.GetLength(), NULL);
 
 	SelectObject(dcHandle, hFontOld);
 	if(_oldCxTitle != _cxTitle)

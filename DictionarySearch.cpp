@@ -377,6 +377,8 @@ ReadValue:
 					CConfig::SetSpaceAsPageDown((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ArrowKeySWPages", 15)) == CSTR_EQUAL)
 					CConfig::SetArrowKeySWPages((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ClearOnBeep", 11)) == CSTR_EQUAL)
+					CConfig::SetClearOnBeep((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"DoBeep", 6)) == CSTR_EQUAL)
 					CConfig::SetDoBeep((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"DoBeepNotify", 12)) == CSTR_EQUAL)
@@ -387,6 +389,8 @@ ReadValue:
 					CConfig::SetFontWeight(_wtoi(valueStrings.GetAt(0)->Get()));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"FontItalic", 10)) == CSTR_EQUAL)
 					CConfig::SetFontItalic((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"DoubleSingleByteMode", 20)) == CSTR_EQUAL)
+					CConfig::SetDoubleSingleByteMode((DOUBLE_SINGLE_BYTE_MODE)_wtoi(valueStrings.GetAt(0)->Get()));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"MaxCodes", 8)) == CSTR_EQUAL)
 					CConfig::SetMaxCodes(_wtoi(valueStrings.GetAt(0)->Get()));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ActivatedKeyboardMode", 21)) == CSTR_EQUAL)

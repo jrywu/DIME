@@ -698,17 +698,14 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 	for (UINT index = 0; index < pCandidateList->Count();)
 	{
 		CCandidateListItem *pLI = pCandidateList->GetAt(index);
-		CStringRange startItemString;
-		CStringRange endItemString;
-
+		
 		if (pLI)
 		{
-			startItemString.Set(pLI->_ItemString.Get(), 1);
-			endItemString.Set(pLI->_ItemString.Get() + pLI->_ItemString.GetLength() - 1, 1);
-
-			if (pLI->_ItemString.GetLength() > _candidateWndWidth - TRAILING_SPACE)
+			UINT len = (UINT)pLI->_ItemString.GetLength();
+			if (len > MAX_CAND_ITEM_LENGTH) len = MAX_CAND_ITEM_LENGTH;
+			if (len > _candidateWndWidth - TRAILING_SPACE)
 			{
-				_candidateWndWidth = (UINT)pLI->_ItemString.GetLength() + TRAILING_SPACE;
+				_candidateWndWidth = len + TRAILING_SPACE;
 			}
 			index++;
 		}
@@ -1420,7 +1417,7 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL *pIsE
 	}
 	else if (IsEqualGUID(rguid, _PreservedKey_DoubleSingleByte.Guid))
 	{
-		if (!CheckShiftKeyOnly(&_PreservedKey_DoubleSingleByte.TSFPreservedKeyTable))
+		if (CConfig::GetDoubleSingleByteMode() != DOUBLE_SINGLE_BYTE_SHIFT_SPACE || !CheckShiftKeyOnly(&_PreservedKey_DoubleSingleByte.TSFPreservedKeyTable))
 		{
 			*pIsEaten = FALSE;
 			return;

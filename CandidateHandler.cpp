@@ -86,7 +86,7 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 			DoBeep(BEEP_WARNING);
 		else
 		{
-			_HandleCancel(ec, pContext);
+			if (CConfig::GetClearOnBeep()) _HandleCancel(ec, pContext);
 			DoBeep(BEEP_COMPOSITION_ERROR); //beep for no valid mapping found
 		}
 		goto Exit;

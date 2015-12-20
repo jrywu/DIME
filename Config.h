@@ -36,8 +36,13 @@ public:
 	static UINT GetFontWeight() {return _fontWeight;}
 	static BOOL GetFontItalic() {return _fontItalic;}
 	static void SetFontItalic(BOOL fontItalic) {_fontItalic = fontItalic;}
+	static void SetDoubleSingleByteMode(DOUBLE_SINGLE_BYTE_MODE doubleSingleMode) { _doubleSingleByteMode = doubleSingleMode; }
+	static DOUBLE_SINGLE_BYTE_MODE GetDoubleSingleByteMode() { return _doubleSingleByteMode; }
 	static void SetMaxCodes(UINT maxCodes) { _maxCodes = maxCodes;}
 	static UINT GetMaxCodes(){return _maxCodes;}
+	// clear composing on beep when error 
+	static void SetClearOnBeep(BOOL doBeep) { _clearOnBeep = doBeep; }
+	static BOOL GetClearOnBeep() { return _clearOnBeep; }
 	static void SetDoBeep(BOOL doBeep) { _doBeep = doBeep;}
 	static BOOL GetDoBeep() {return _doBeep;}
 	static void SetDoBeepNotify(BOOL doBeepNotify) { _doBeepNotify = doBeepNotify; }
@@ -124,6 +129,7 @@ private:
 	static CHARSET_SCOPE _arrayUnicodeScope;
 	static BOOL _autoCompose;
 	static BOOL _customTablePriority;
+	static BOOL _clearOnBeep;
 	static BOOL _doBeep;
 	static BOOL _doBeepNotify;
 	static BOOL _appPermissionSet;
@@ -154,6 +160,8 @@ private:
 	static BOOL _dayiArticleMode;  // Article mode: input full-shaped symbols with address keys
 
 	static PHONETIC_KEYBOARD_LAYOUT _phoneticKeyboardLayout;
+
+	static DOUBLE_SINGLE_BYTE_MODE _doubleSingleByteMode;
 
 	static BOOL _customTableChanged;
 

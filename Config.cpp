@@ -16,6 +16,7 @@
 IME_MODE CConfig::_imeMode = IME_MODE_NONE;
 BOOL CConfig::_loadTableMode = FALSE;
 CHARSET_SCOPE CConfig::_arrayUnicodeScope = CHARSET_UNICODE_EXT_A;
+BOOL CConfig::_clearOnBeep = TRUE;
 BOOL CConfig::_doBeep = TRUE;
 BOOL CConfig::_doBeepNotify = TRUE;
 BOOL CConfig::_autoCompose = FALSE;
@@ -36,6 +37,7 @@ BOOL CConfig::_showNotifyDesktop = TRUE;
 BOOL CConfig::_dayiArticleMode = FALSE;  // Article mode: input full-shaped symbols with address keys
 BOOL CConfig::_customTableChanged = FALSE;
 PHONETIC_KEYBOARD_LAYOUT CConfig::_phoneticKeyboardLayout = PHONETIC_STANDARD_KEYBOARD_LAYOUT;
+DOUBLE_SINGLE_BYTE_MODE CConfig::_doubleSingleByteMode = DOUBLE_SINGLE_BYTE_SHIFT_SPACE;
 
 CDIMEArray <LanguageProfileInfo>* CConfig::_reverseConvervsionInfoList = new (std::nothrow) CDIMEArray <LanguageProfileInfo>;
 CLSID CConfig::_reverseConverstionCLSID = CLSID_NULL;
@@ -157,6 +159,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		CheckDlgButton(hDlg, IDC_CHECKBOX_SHOWNOTIFY, (_showNotifyDesktop) ? BST_CHECKED : BST_UNCHECKED);
 
 		CheckDlgButton(hDlg, IDC_CHECKBOX_AUTOCOMPOSE, (_autoCompose) ? BST_CHECKED : BST_UNCHECKED);
+		CheckDlgButton(hDlg, IDC_CHECKBOX_CLEAR_ONBEEP, (_clearOnBeep) ? BST_CHECKED : BST_UNCHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_DOBEEP, (_doBeep) ? BST_CHECKED : BST_UNCHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_DOBEEPNOTIFY, (_doBeepNotify) ? BST_CHECKED : BST_UNCHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_CUSTOM_TABLE_PRIORITY, (_customTablePriority) ? BST_CHECKED : BST_UNCHECKED);
@@ -178,6 +181,14 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		CheckDlgButton(hDlg, IDC_CHECKBOX_SPACEASPAGEDOWN, (_spaceAsPageDown) ? BST_CHECKED : BST_UNCHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_ARROWKEYSWPAGES, (_arrowKeySWPages) ? BST_CHECKED : BST_UNCHECKED);
 		
+
+		hwnd = GetDlgItem(hDlg, IDC_COMBO_DOUBLE_SINGLE_BYTE);
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"以 Shift-Space 熱鍵切換");
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"半型");
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"全型");
+		SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_doubleSingleByteMode, 0);
+
+
 		if (_imeMode == IME_MODE_ARRAY || _imeMode == IME_MODE_PHONETIC)
 		{
 			if (_imeMode == IME_MODE_PHONETIC)
@@ -191,6 +202,8 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			}
 			if (_imeMode == IME_MODE_ARRAY)
 			{
+				ShowWindow(GetDlgItem(hDlg, IDC_EDIT_MAXWIDTH), SW_HIDE);
+				ShowWindow(GetDlgItem(hDlg, IDC_STATIC_EDIT_MAXWIDTH), SW_HIDE);
 				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_AUTOCOMPOSE), SW_HIDE);
 			}
 		}
@@ -305,6 +318,18 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			}
 			break;
 
+		case IDC_COMBO_DOUBLE_SINGLE_BYTE:
+			switch (HIWORD(wParam))
+			{
+			case CBN_SELCHANGE:
+				PropSheet_Changed(GetParent(hDlg), hDlg);
+				ret = TRUE;
+				break;
+			default:
+				break;
+			}
+			break;
+
 		case IDC_COMBO_REVERSE_CONVERSION:
 			switch (HIWORD(wParam))
 			{
@@ -341,6 +366,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			}
 			break;
 		case IDC_CHECKBOX_AUTOCOMPOSE:
+		case IDC_CHECKBOX_CLEAR_ONBEEP:
 		case IDC_CHECKBOX_DOBEEP:
 		case IDC_CHECKBOX_DOBEEPNOTIFY:
 		case IDC_RADIO_KEYBOARD_OPEN:
@@ -421,6 +447,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			_autoCompose = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_AUTOCOMPOSE) == BST_CHECKED;
 			_customTablePriority = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_CUSTOM_TABLE_PRIORITY) == BST_CHECKED;
 			_dayiArticleMode = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_DAYIARTICLEMODE) == BST_CHECKED;
+			_clearOnBeep = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_CLEAR_ONBEEP) == BST_CHECKED;
 			_doBeep = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_DOBEEP) == BST_CHECKED;
 			_doBeepNotify = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_DOBEEPNOTIFY) == BST_CHECKED;
 			_makePhrase = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_PHRASE) == BST_CHECKED;
@@ -454,6 +481,12 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			_phraseColor = colors[3].color;
 			_numberColor = colors[4].color;
 			_selectedBGColor = colors[5].color;
+
+			hwnd = GetDlgItem(hDlg, IDC_COMBO_DOUBLE_SINGLE_BYTE);
+			_doubleSingleByteMode = (DOUBLE_SINGLE_BYTE_MODE)SendMessage(hwnd, CB_GETCURSEL, 0, 0);
+			debugPrint(L"selected double single byte mode is %d", _doubleSingleByteMode);
+
+
 
 			hwnd = GetDlgItem(hDlg, IDC_COMBO_REVERSE_CONVERSION);
 			sel = (UINT)SendMessage(hwnd, CB_GETCURSEL, 0, 0);
@@ -800,11 +833,13 @@ VOID CConfig::WriteConfig()
 			fwprintf_s(fp, L"AutoCompose = %d\n", _autoCompose ? 1 : 0);
 			fwprintf_s(fp, L"SpaceAsPageDown = %d\n", _spaceAsPageDown ? 1 : 0);
 			fwprintf_s(fp, L"ArrowKeySWPages = %d\n", _arrowKeySWPages ? 1 : 0);
+			fwprintf_s(fp, L"ClearOnBeep = %d\n", _clearOnBeep ? 1 : 0);
 			fwprintf_s(fp, L"DoBeep = %d\n", _doBeep ? 1 : 0);
 			fwprintf_s(fp, L"DoBeepNotify = %d\n", _doBeepNotify ? 1 : 0);
 			fwprintf_s(fp, L"ActivatedKeyboardMode = %d\n", _activatedKeyboardMode ? 1 : 0);
 			fwprintf_s(fp, L"MakePhrase = %d\n", _makePhrase ? 1 : 0);
 			fwprintf_s(fp, L"MaxCodes = %d\n", _maxCodes);
+			fwprintf_s(fp, L"DoubleSingleByteMode = %d\n", _doubleSingleByteMode);
 			fwprintf_s(fp, L"ShowNotifyDesktop = %d\n", _showNotifyDesktop ? 1 : 0);
 			fwprintf_s(fp, L"DoHanConvert = %d\n", _doHanConvert ? 1 : 0);
 			fwprintf_s(fp, L"FontSize = %d\n", _fontSize);

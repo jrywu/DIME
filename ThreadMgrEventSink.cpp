@@ -60,6 +60,14 @@ STDAPI CDIME::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMgr 
 	{
 		pDocMgrFocus->GetTop(&pContext);	
 
+		//Update double single byte mode
+		if (CConfig::GetDoubleSingleByteMode() != DOUBLE_SINGLE_BYTE_SHIFT_SPACE)
+		{
+			CCompartment CompartmentDoubleSingleByte(_pThreadMgr, _tfClientId, Global::DIMEGuidCompartmentDoubleSingleByte);
+			CompartmentDoubleSingleByte._SetCompartmentBOOL(CConfig::GetDoubleSingleByteMode() == DOUBLE_SINGLE_BYTE_ALWAYS_DOUBLE);
+		}
+
+		//Update keyboard mode
 		if (pContext && !(_newlyActivated && !Global::isWindows8 && isWin7IEProcess()))
 		{	
 

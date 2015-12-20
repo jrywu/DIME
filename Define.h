@@ -63,6 +63,7 @@
 // candidate width
 //---------------------------------------------------------------------
 #define DEFAULT_CAND_ITEM_LENGTH 3
+#define MAX_CAND_ITEM_LENGTH 13//6+6+1
 #define TRAILING_SPACE 1
 
 

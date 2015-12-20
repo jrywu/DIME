@@ -140,7 +140,8 @@ HRESULT CDIME::_HandleCompositionInput(TfEditCookie ec, _In_ ITfContext *pContex
 			DoBeep(BEEP_WARNING);
 		else
 		{
-			_HandleCancel(ec, pContext);  // Add virtual key failed. exceed max codes or something. 
+			// Add virtual key failed. exceed max codes or something. 
+			if (CConfig::GetClearOnBeep()) _HandleCancel(ec, pContext);
 			DoBeep(BEEP_COMPOSITION_ERROR);
 		}
 	}
@@ -352,7 +353,8 @@ HRESULT CDIME::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pCont
 			DoBeep(BEEP_WARNING);
 		else
 		{
-			_HandleCancel(ec, pContext);
+			// Add virtual key failed. exceed max codes or something. 
+			if (CConfig::GetClearOnBeep()) _HandleCancel(ec, pContext);
 			DoBeep(BEEP_COMPOSITION_ERROR);
 		}
 		

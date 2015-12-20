@@ -305,7 +305,7 @@ VOID CCandidateWindow::_SetFillColor(_In_ COLORREF fiColor)
 //----------------------------------------------------------------------------
 
 const int PageCountPosition = 1;
-const int StringPosition = 3;
+const int StringPosition = 2;
 
 LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam)
 {
@@ -320,13 +320,19 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
             if (dcHandle)
             {
                 HFONT hFontOld = (HFONT)SelectObject(dcHandle, Global::defaultlFontHandle);
-                GetTextMetrics(dcHandle, &_TextMetric);
+                
+				PWCHAR pwszTestString = new (std::nothrow) WCHAR[_wndWidth + 1];
+				pwszTestString[0] = L'\0';
+				for (UINT i = 0; i < _wndWidth; i++) StringCchCatN(pwszTestString, _wndWidth + 1, L"¼e", 1);
 
-				SIZE FWFontSize;
-				GetTextExtentPoint32(dcHandle,L"¼e", 1, &FWFontSize); //don't trust the TextMetrics. Measurement the font height and width directly.
+				SIZE candSize;
+				GetTextExtentPoint32(dcHandle, pwszTestString, _wndWidth, &candSize); //don't trust the TextMetrics. Measurement the font height and width directly.
+				delete[]pwszTestString;
 
-				_cxTitle = FWFontSize.cx*_wndWidth + _TextMetric.tmAveCharWidth *StringPosition;
-				_cyRow =   FWFontSize.cy + FWFontSize.cy/4;
+
+
+				_cxTitle = candSize.cx + StringPosition * (candSize.cx / _wndWidth);
+				_cyRow = candSize.cy * 5 / 4;
 
                 SelectObject(dcHandle, hFontOld);
                 ReleaseDC(wndHandle, dcHandle);
@@ -713,46 +719,47 @@ void CCandidateWindow::_OnVScroll(DWORD dwSB, _In_ DWORD nPos)
 //
 //----------------------------------------------------------------------------
 
-void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT iIndex, _In_ RECT *prc)
+void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, _In_ RECT *prc)
 {
 	debugPrint(L"CCandidateWindow::_DrawList(), _wndWidth = %d", _wndWidth);
 
 	if(_pIndexRange == nullptr || prc == nullptr) return;
 	
-    int pageCount = 0;
+    int indexInPage = 0;
     int candidateListPageCnt = _pIndexRange->Count();
 	int VScrollWidth = GetSystemMetrics(SM_CXVSCROLL) *3/2;
 
     RECT rc;
-	const size_t lenOfPageCount = 16;
-
-	//HFONT hFontOld = (HFONT)SelectObject(dcHandle, Global::defaultlFontHandle); // done this in on_paint already
+	const size_t numStringLen = 2;
 	
 	GetTextMetrics(dcHandle, &_TextMetric);
-	SIZE FWFontSize;
-	GetTextExtentPoint32(dcHandle,L"¼e", 1, &FWFontSize); //don't trust the TextMetrics. Measurement the font height and width directly.
+	PWCHAR pwszTestString = new (std::nothrow) WCHAR[_wndWidth + 1];
+	pwszTestString[0] = L'\0';
+	for (UINT i = 0; i < _wndWidth; i++) StringCchCatN(pwszTestString, _wndWidth + 1, L"¼e", 1);
 
-	int cxLine = _TextMetric.tmAveCharWidth;
-	int cyLine = FWFontSize.cy + FWFontSize.cy /4;
+	SIZE candSize;
+	GetTextExtentPoint32(dcHandle, pwszTestString, _wndWidth, &candSize); //don't trust the TextMetrics. Measurement the font height and width directly.
+	delete[]pwszTestString;
 
-	int fistLineOffset = cyLine /4;
-	
-	_cxTitle = FWFontSize.cx*_wndWidth + cxLine *StringPosition;
+	int cxLine = max((int)_TextMetric.tmAveCharWidth, (int)candSize.cx / (int)_wndWidth);
+	int cyLine = candSize.cy * 5 / 4;
+
+	int fistLineOffset = cyLine / 4;
+
+	_cxTitle = candSize.cx + StringPosition * cxLine;
 	_cyRow = cyLine;
 
-	int cyOffset = FWFontSize.cy/8  + fistLineOffset ; //offset in line + blank before 1st line.
+	int cyOffset = candSize.cy / 8 + fistLineOffset; //offset in line + blank before 1st line.
 	
-	//int oldCxTitle = _cxTitle;
-
 
     for (;
-        (iIndex < _candidateList.Count()) && (pageCount < candidateListPageCnt);
-        iIndex++, pageCount++)
+		(currentPageIndex < _candidateList.Count()) && (indexInPage < candidateListPageCnt);
+		currentPageIndex++, indexInPage++)
     {
-        WCHAR pageCountString[lenOfPageCount] = {'\0'};
+        WCHAR wszNumString[numStringLen] = {'\0'};
         CCandidateListItem* pItemList = nullptr;
 
-        rc.top = prc->top + pageCount * cyLine + fistLineOffset;
+		rc.top = prc->top + indexInPage * cyLine + fistLineOffset;
         rc.bottom = rc.top + cyLine;
 
 
@@ -763,14 +770,14 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT iIndex, _In_ RECT 
         SetTextColor(dcHandle, _crNumberColor);
         SetBkColor(dcHandle, _crNumberBkColor);
 
-        StringCchPrintf(pageCountString, ARRAYSIZE(pageCountString), L"%d", (LONG)*_pIndexRange->GetAt(pageCount));
-        ExtTextOut(dcHandle, PageCountPosition * cxLine, pageCount * cyLine + cyOffset, ETO_OPAQUE, &rc, pageCountString, lenOfPageCount, NULL);
+		StringCchPrintf(wszNumString, ARRAYSIZE(wszNumString), L"%d", (LONG)*_pIndexRange->GetAt(indexInPage));
+		ExtTextOut(dcHandle, PageCountPosition * cxLine, indexInPage * cyLine + cyOffset, ETO_OPAQUE, &rc, wszNumString, numStringLen, NULL);
 
         rc.left = prc->left + StringPosition * cxLine;
         rc.right = prc->right - VScrollWidth;
 
         // Candidate Font Color And BK
-        if (_currentSelection != (INT)iIndex)
+        if (_currentSelection != (INT)currentPageIndex)
         {
             SetTextColor(dcHandle, _crTextColor);
             SetBkColor(dcHandle, _crBkColor); 
@@ -781,18 +788,32 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT iIndex, _In_ RECT 
             SetBkColor(dcHandle, _crSelectedBkColor);
         }
 
-		pItemList = _candidateList.GetAt(iIndex);
+		pItemList = _candidateList.GetAt(currentPageIndex);
 		if(pItemList == nullptr) continue;
 		SIZE size;
-		GetTextExtentPoint32(dcHandle,pItemList->_ItemString.Get(), (int)pItemList->_ItemString.GetLength(), &size);
-		_cxTitle = max(_cxTitle, size.cx + TRAILING_SPACE * FWFontSize.cx + cxLine * StringPosition);
+		WCHAR itemText[MAX_CAND_ITEM_LENGTH + 3] = { '\0' };
+		int itemLength = (int)pItemList->_ItemString.GetLength();
+		if (itemLength > MAX_CAND_ITEM_LENGTH) // if the legnth of item text > MAX_CAND_ITEM_LENGTH (13) , truncate the item text as "First 6 chars of itemtext"+"..."+"last 6 chars of itemtext"
+		{
+			StringCchCatN(itemText, MAX_CAND_ITEM_LENGTH + 3, pItemList->_ItemString.Get(), 6);
+			StringCchCatN(itemText, MAX_CAND_ITEM_LENGTH + 3, L"¡K", 1);
+			StringCchCatN(itemText, MAX_CAND_ITEM_LENGTH + 3, (pItemList->_ItemString.Get() + itemLength - 6), 6);
+			itemLength = MAX_CAND_ITEM_LENGTH;
+		}
+		else
+			StringCchCopyN(itemText, MAX_CAND_ITEM_LENGTH + 3, pItemList->_ItemString.Get(), itemLength);
 
-        ExtTextOut(dcHandle, StringPosition * cxLine, pageCount * cyLine + cyOffset, 
-			ETO_OPAQUE, &rc, pItemList->_ItemString.Get(), (DWORD)pItemList->_ItemString.GetLength(), NULL);
+		if ((int)pItemList->_ItemString.GetLength() > _wndWidth)
+		{
+			GetTextExtentPoint32(dcHandle, pItemList->_ItemString.Get(), (int)pItemList->_ItemString.GetLength(), &size);
+			_cxTitle = max(_cxTitle, size.cx + StringPosition * cxLine);
+		}
+
+		ExtTextOut(dcHandle, StringPosition * cxLine, indexInPage * cyLine + cyOffset, ETO_OPAQUE, &rc, itemText, (DWORD)itemLength, NULL);
     }
-    for (; (pageCount < candidateListPageCnt); pageCount++)
+	for (; (indexInPage < candidateListPageCnt); indexInPage++)
     {
-        rc.top    = prc->top + pageCount * cyLine + fistLineOffset;
+		rc.top = prc->top + indexInPage * cyLine + fistLineOffset;
         rc.bottom = rc.top + cyLine;
 
         rc.left   = prc->left + PageCountPosition * cxLine;
@@ -800,9 +821,6 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT iIndex, _In_ RECT 
 
         if(_brshBkColor) FillRect(dcHandle, &rc, _brshBkColor);
     }
-
-	
-	//SelectObject(dcHandle, hFontOld); //done this in on_paint already
 
 	if(_cxTitle != prc->right - prc->left - VScrollWidth) _ResizeWindow();
 }
