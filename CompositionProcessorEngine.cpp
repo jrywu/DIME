@@ -1486,6 +1486,7 @@ void CCompositionProcessorEngine::SetupConfiguration(IME_MODE imeMode)
 BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 {
 	debugPrint(L"CCompositionProcessorEngine::SetupDictionaryFile() \n");
+	BOOL bRet = FALSE;
 
 
 	WCHAR pwszProgramFiles[MAX_PATH];
@@ -1885,20 +1886,20 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 	}
 
 
-
-	delete[]pwszTTSFileName;
-	delete[]pwszCINFileName;
-	return TRUE;
+	bRet = TRUE;
 ErrorExit:
 	if (pwszTTSFileName)  delete[]pwszTTSFileName;
 	if (pwszCINFileName)  delete[]pwszCINFileName;
 	if (pwszCINFileNameProgramFiles) delete[]pwszCINFileNameProgramFiles;
-	return FALSE;
+	return bRet;
 }
 
 BOOL CCompositionProcessorEngine::SetupHanCovertTable()
 {
 	debugPrint(L"CCompositionProcessorEngine::SetupHanCovertTable() \n");
+
+	BOOL bRet = FALSE;
+
 	if (CConfig::GetDoHanConvert() && _pTCSCTableDictionaryEngine == nullptr)
 	{
 		WCHAR wszProgramFiles[MAX_PATH];
@@ -1939,19 +1940,21 @@ BOOL CCompositionProcessorEngine::SetupHanCovertTable()
 					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pTCSCTableDictionaryFile, CIN_DICTIONARY); //cin files use tab as delimiter
 			}
 		}
-
-
-		delete[]pwszCINFileName;
-		return TRUE;
+		bRet = TRUE;
 	ErrorExit:
 		if (pwszCINFileName)  delete[]pwszCINFileName;
+		if (pwszCINFileNameProgramFiles) delete[]pwszCINFileNameProgramFiles;
+
 	}
-	return FALSE;
+	return bRet;
 }
 
 BOOL CCompositionProcessorEngine::SetupTCFreqTable()
 {
 	debugPrint(L"CCompositionProcessorEngine::SetupTCFreqTable() \n");
+
+	BOOL bRet = FALSE;
+
 	WCHAR wszProgramFiles[MAX_PATH];
 	WCHAR wszAppData[MAX_PATH];
 
@@ -1990,13 +1993,11 @@ BOOL CCompositionProcessorEngine::SetupTCFreqTable()
 		}
 	}
 
-
-	delete[]pwszCINFileName;
-	return TRUE;
+	bRet = TRUE;
 ErrorExit:
 	if (pwszCINFileName)  delete[]pwszCINFileName;
-
-	return FALSE;
+	if (pwszCINFileNameProgramFiles) delete[]pwszCINFileNameProgramFiles;
+	return bRet;
 }
 BOOL CCompositionProcessorEngine::GetTCFromSC(CStringRange* stringToConvert, CStringRange* convertedString)
 {

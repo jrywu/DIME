@@ -803,10 +803,14 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
 		else
 			StringCchCopyN(itemText, MAX_CAND_ITEM_LENGTH + 3, pItemList->_ItemString.Get(), itemLength);
 
-		if ((int)pItemList->_ItemString.GetLength() > _wndWidth)
+		if (itemLength > (int)_wndWidth)
 		{
 			GetTextExtentPoint32(dcHandle, pItemList->_ItemString.Get(), (int)pItemList->_ItemString.GetLength(), &size);
-			_cxTitle = max(_cxTitle, size.cx + StringPosition * cxLine);
+			if (_cxTitle < (int)size.cx + StringPosition * cxLine)
+			{
+				_cxTitle = size.cx + StringPosition * cxLine;
+				_wndWidth = itemLength;
+			}
 		}
 
 		ExtTextOut(dcHandle, StringPosition * cxLine, indexInPage * cyLine + cyOffset, ETO_OPAQUE, &rc, itemText, (DWORD)itemLength, NULL);
@@ -1401,8 +1405,8 @@ BOOL CCandidateWindow::_AdjustPageIndexForSelection()
     //      (_currentSelection - 1) / candidateListPageCnt + 1
     // A + B is (_CandidateListCount - 2) / candidateListPageCnt + 1
 
-    BOOL isBefore = _currentSelection;
-    BOOL isAfter = _candidateList.Count() > _currentSelection + candidateListPageCnt;
+	BOOL isBefore = _currentSelection > 0; //has to consider _currentSelection = -1 for assciated phrase
+	BOOL isAfter = (_currentSelection <0 && _candidateList.Count() > candidateListPageCnt) || _candidateList.Count() > _currentSelection + candidateListPageCnt;
 
     // only have current page
     if (!isBefore && !isAfter) 
@@ -1430,8 +1434,8 @@ BOOL CCandidateWindow::_AdjustPageIndexForSelection()
         return FALSE;
     }
     pNewPageIndex[0] = 0;
-    UINT firstPage = _currentSelection % candidateListPageCnt;
-    if (firstPage && newPageCnt > 1) 
+	UINT firstPage = (_currentSelection < 0) ? candidateListPageCnt : _currentSelection % candidateListPageCnt;
+	if (firstPage && newPageCnt > 1)
     {
         pNewPageIndex[1] = firstPage;
     }
