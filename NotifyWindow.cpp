@@ -146,7 +146,9 @@ void CNotifyWindow::_ResizeWindow()
 void CNotifyWindow::_Move(int x, int y)
 {
 	debugPrint(L"CNotifyWindow::_Move(), x = %d, y= %d", x, y);
-	//if(_notifyType == NOTIFY_CHN_ENG && !_IsCapture() && _IsWindowVisible() && x >=0 && y >= 0) _StartCapture(); //capture may cause font selection pull down menu behaves wierd.
+	
+	if (_x == x && _y == y) return;
+
 	_x = x;
 	_y = y;
     CBaseWindow::_Move(_x, _y);

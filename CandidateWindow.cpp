@@ -214,6 +214,8 @@ void CCandidateWindow::_Move(int x, int y)
 {
 	debugPrint(L"CCandidateWindow::_Move() x =%d, y=%d", x,y);
     
+	if (_x == x && _y == y) return;
+
 	_x = x;
 	_y = y;
 	CBaseWindow::_Move(x, y);
