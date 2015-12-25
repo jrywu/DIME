@@ -350,6 +350,7 @@ private:
 	ITfReverseConversion* _pITfReverseConversion[IM_SLOTS];
 
 	WCHAR _commitString[MAX_COMMIT_LENGTH];
+	WCHAR _commitKeyCode[MAX_KEY_LENGTH];
 
 	BOOL _isChinese;
 	BOOL _isFullShape;
