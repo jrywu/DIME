@@ -166,26 +166,22 @@ HRESULT CDIME::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *p
 {
 	debugPrint(L"CDIME::_HandleCompositionInputWorker()");
     HRESULT hr = S_OK;
-    CDIMEArray<CStringRange> readingStrings;
+    
+	CStringRange readingString;
     BOOL isWildcardIncluded = TRUE;
 
     //
     // Get reading string from composition processor engine
     //
-    pCompositionProcessorEngine->GetReadingStrings(&readingStrings, &isWildcardIncluded);
+    pCompositionProcessorEngine->GetReadingString(&readingString, &isWildcardIncluded);
 
-    for (UINT index = 0; index < readingStrings.Count(); index++)
-    {
-		hr = _AddComposingAndChar(ec, pContext, readingStrings.GetAt(index));
-
-		if(readingStrings.GetAt(index)) delete [] readingStrings.GetAt(index)->Get();
+   
+	hr = _AddComposingAndChar(ec, pContext, &readingString);
 		
-        if (FAILED(hr))
-        {
-            return hr;
-        }
+    if (FAILED(hr))
+    {
+        return hr;
     }
-
     //
     // Get candidate string from composition processor engine
     //
@@ -244,7 +240,7 @@ HRESULT CDIME::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *p
 				_pUIPresenter->_ClearCandidateList();
 				_pUIPresenter->Show(FALSE);  // hide the candidate window if now candidates in autocompose mode
 			}
-			else if (readingStrings.Count() && isWildcardIncluded)
+			else if (readingString.GetLength() && isWildcardIncluded)
 			{
 
 				hr = _CreateAndStartCandidate(pCompositionProcessorEngine, ec, pContext);
@@ -343,7 +339,7 @@ HRESULT CDIME::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pCont
 			 _pUIPresenter->_SetCandidateNumberColor(CConfig::GetNumberColor(), CConfig::GetItemBGColor());    
 			 _pUIPresenter->_SetCandidateFillColor(CConfig::GetItemBGColor());
 			 _pUIPresenter->_SetCandidateText(&candidateList, _pCompositionProcessorEngine->GetCandidateListIndexRange(),
-							FALSE, pCompositionProcessorEngine->GetCandidateWindowWidth());
+							TRUE, pCompositionProcessorEngine->GetCandidateWindowWidth());
 		 }
 		
     }

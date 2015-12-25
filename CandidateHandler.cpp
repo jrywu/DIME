@@ -108,9 +108,24 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 	}
 	lastChar.Set(pwch, 1 );
 	//-----------------do reverse conversion notify. We should not show notify in UI-less mode, thus cancel reverse conversion notify in UILess Mode
-	if(_pITfReverseConversion[Global::imeMode] && !_IsUILessMode())
+	if (!_IsUILessMode())
 	{
-		_AsyncReverseConversion(pContext); //asynchronized the reverse conversion with editsession for better perfomance
+		if (_pITfReverseConversion[Global::imeMode])
+		{
+			_AsyncReverseConversion(pContext); //asynchronized the reverse conversion with editsession for better perfomance
+		}
+		//-----------------or complete real key code when input with wildcard
+		else if (_isCandidateWithWildcard)
+		{
+			const WCHAR* pCandidateKeyCode = nullptr;
+			DWORD_PTR keyCodeLen = _pUIPresenter->_GetSelectedCandidateKeyCode(&pCandidateKeyCode);
+			StringCchCopy(_commitKeyCode, 1, L"\0");
+			StringCchCatN(_commitKeyCode, MAX_KEY_LENGTH, pCandidateKeyCode, keyCodeLen);
+			CStringRange commitKeyCode, convertedKeyCode;
+			_pCompositionProcessorEngine->GetReadingString(&convertedKeyCode, NULL, &commitKeyCode.Set(_commitKeyCode, wcslen(_commitKeyCode)));
+			_pUIPresenter->ShowNotifyText(&convertedKeyCode);
+		}
+
 	}
 	//-----------------do  array spcial code notify. We should not show notify in UI-less mode, thus cancel forceSP mode in UILess Mode---
 	BOOL ArraySPFound = FALSE;            

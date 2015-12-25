@@ -351,35 +351,34 @@ WCHAR CCompositionProcessorEngine::GetVirtualKey(DWORD_PTR dwIndex)
 }
 //+---------------------------------------------------------------------------
 //
-// GetReadingStrings
+// GetReadingString
 // Retrieves string from Composition Processor Engine.
 // param
-//     [out] pReadingStrings - Specified returns pointer of CUnicodeString.
+//     [out] pReadingString - Specified returns pointer of CUnicodeString.
 // returns
 //     none
 //
 //----------------------------------------------------------------------------
 
-void CCompositionProcessorEngine::GetReadingStrings(_Inout_ CDIMEArray<CStringRange> *pReadingStrings, _Out_ BOOL *pIsWildcardIncluded)
+void CCompositionProcessorEngine::GetReadingString(_Inout_ CStringRange *pReadingString, _Out_ BOOL *pIsWildcardIncluded, _In_opt_ CStringRange *pKeyCode)
 {
+	debugPrint(L"CCompositionProcessorEngine::GetReadingStrings() ");
 	if (!IsDictionaryAvailable(Global::imeMode))
 	{
+		debugPrint(L"CCompositionProcessorEngine::GetReadingStrings() dictionary is not available.");
 		return;
 	}
+
+	CStringRange* pKeyStrokeBuffer = nullptr;
+	pKeyStrokeBuffer = (pKeyCode == nullptr) ? &_keystrokeBuffer : pKeyCode;
+	*pReadingString = *pKeyStrokeBuffer;
 
 	CStringRange oneKeystroke;
 
 	_hasWildcardIncludedInKeystrokeBuffer = FALSE;
 
-	if (pReadingStrings && pReadingStrings->Count() == 0 && _keystrokeBuffer.GetLength())
+	if (pKeyStrokeBuffer->GetLength())
 	{
-		CStringRange* pNewString = nullptr;
-
-		pNewString = pReadingStrings->Append();
-		if (pNewString)
-		{
-			*pNewString = _keystrokeBuffer;
-		}
 
 		PWCHAR pwchRadical;
 		pwchRadical = new (std::nothrow) WCHAR[MAX_READINGSTRING];
@@ -389,13 +388,13 @@ void CCompositionProcessorEngine::GetReadingStrings(_Inout_ CDIMEArray<CStringRa
 			_pTableDictionaryEngine[Global::imeMode]->GetRadicalMap()->size() && !IsSymbol())
 		{
 
-			for (DWORD index = 0; index < _keystrokeBuffer.GetLength(); index++)
+			for (DWORD index = 0; index < pKeyStrokeBuffer->GetLength(); index++)
 			{
 				if (_pTableDictionaryEngine[Global::imeMode]->GetRadicalMap() &&
 					_pTableDictionaryEngine[Global::imeMode]->GetRadicalMap()->size() && !IsSymbol()) // if radicalMap is valid (size()>0), then convert the keystroke buffer 
 				{
 					_T_RadicalMap::iterator item =
-						_pTableDictionaryEngine[Global::imeMode]->GetRadicalMap()->find(towupper(*(_keystrokeBuffer.Get() + index)));
+						_pTableDictionaryEngine[Global::imeMode]->GetRadicalMap()->find(towupper(*(pKeyStrokeBuffer->Get() + index)));
 					if (_pTableDictionaryEngine[Global::imeMode]->GetRadicalMap() &&
 						item != _pTableDictionaryEngine[Global::imeMode]->GetRadicalMap()->end())
 					{
@@ -405,29 +404,29 @@ void CCompositionProcessorEngine::GetReadingStrings(_Inout_ CDIMEArray<CStringRa
 					else
 					{
 						assert(wcslen(pwchRadical) + 1 < MAX_READINGSTRING - 1);
-						StringCchCatN(pwchRadical, MAX_READINGSTRING, (_keystrokeBuffer.Get() + index), 1);
+						StringCchCatN(pwchRadical, MAX_READINGSTRING, (pKeyStrokeBuffer->Get() + index), 1);
 					}
 				}
 
-				oneKeystroke.Set(_keystrokeBuffer.Get() + index, 1);
+				oneKeystroke.Set(pKeyStrokeBuffer->Get() + index, 1);
 
 				if (IsWildcard() && IsWildcardChar(*oneKeystroke.Get()))
 				{
 					_hasWildcardIncludedInKeystrokeBuffer = TRUE;
 				}
 			}
-			if (pNewString) pNewString->Set(pwchRadical, wcslen(pwchRadical));
+			pReadingString->Set(pwchRadical, wcslen(pwchRadical));
 		}
-		else if (_keystrokeBuffer.GetLength())
+		else if (pKeyStrokeBuffer->GetLength())
 		{
-			assert(wcslen(pwchRadical) + _keystrokeBuffer.GetLength() < MAX_READINGSTRING - 1);
-			StringCchCatN(pwchRadical, MAX_READINGSTRING, (_keystrokeBuffer.Get()), _keystrokeBuffer.GetLength());
-			if (pNewString) pNewString->Set(pwchRadical, wcslen(pwchRadical));
-
+			assert(wcslen(pwchRadical) + pKeyStrokeBuffer->GetLength() < MAX_READINGSTRING - 1);
+			StringCchCatN(pwchRadical, MAX_READINGSTRING, (pKeyStrokeBuffer->Get()), pKeyStrokeBuffer->GetLength());
+			pReadingString->Set(pwchRadical, wcslen(pwchRadical));
 		}
-	}
 
-	*pIsWildcardIncluded = _hasWildcardIncludedInKeystrokeBuffer;
+	}
+	if (pIsWildcardIncluded)
+		*pIsWildcardIncluded = _hasWildcardIncludedInKeystrokeBuffer;
 }
 
 //+---------------------------------------------------------------------------

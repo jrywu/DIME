@@ -85,6 +85,7 @@ public:
 	VOID _SetCandidateNotifyColor(COLORREF crColor, COLORREF crBkColor);
 	BOOL IsCandShown();
 
+	DWORD_PTR CUIPresenter::_GetSelectedCandidateKeyCode(_Outptr_result_maybenull_ const WCHAR **ppwchCandidateString);
     DWORD_PTR _GetSelectedCandidateString(_Outptr_result_maybenull_ const WCHAR **ppwchCandidateString);
     BOOL _SetCandidateSelectionInPage(int nPos) { return _pCandidateWnd->_SetSelectionInPage(nPos); }
 

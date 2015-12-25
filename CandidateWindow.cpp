@@ -1024,6 +1024,31 @@ DWORD CCandidateWindow::_GetSelectedCandidateString(_Outptr_result_maybenull_ co
     return (DWORD)pItemList->_ItemString.GetLength();
 }
 
+// +-------------------------------------------------------------------------- -
+//
+// _GetSelectedCandidateKeyCode
+//
+//----------------------------------------------------------------------------
+
+DWORD CCandidateWindow::_GetSelectedCandidateKeyCode(_Outptr_result_maybenull_ const WCHAR **ppwchCandidateString)
+{
+	CCandidateListItem* pItemList = nullptr;
+
+	if (_currentSelection < 0 || (UINT)_currentSelection >= _candidateList.Count())
+	{
+		*ppwchCandidateString = nullptr;
+		return 0;
+	}
+
+	pItemList = _candidateList.GetAt(_currentSelection);
+	if (pItemList == nullptr) return 0;
+	if (ppwchCandidateString)
+	{
+		*ppwchCandidateString = pItemList->_FindKeyCode.Get();
+	}
+	return (DWORD)pItemList->_FindKeyCode.GetLength();
+}
+
 //+---------------------------------------------------------------------------
 //
 // _SetSelectionInPage

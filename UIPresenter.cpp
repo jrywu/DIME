@@ -683,6 +683,22 @@ void CUIPresenter::_SetCandidateFillColor(COLORREF fiColor)
 		_pCandidateWnd->_SetFillColor(fiColor);
 }
 
+
+// +-------------------------------------------------------------------------- -
+//
+// _GetSelectedCandidateKeyCode
+//
+//----------------------------------------------------------------------------
+
+DWORD_PTR CUIPresenter::_GetSelectedCandidateKeyCode(_Outptr_result_maybenull_ const WCHAR **ppwchCandidateString)
+{
+	if (_pCandidateWnd)
+		return _pCandidateWnd->_GetSelectedCandidateKeyCode(ppwchCandidateString);
+	else
+		return 0;
+}
+
+
 //+---------------------------------------------------------------------------
 //
 // _GetSelectedCandidateString
