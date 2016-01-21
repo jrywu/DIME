@@ -255,7 +255,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			cf.lStructSize = sizeof(CHOOSEFONT);
 			cf.hwndOwner = hDlg;
 			cf.lpLogFont = &lf;
-			cf.Flags = CF_INITTOLOGFONTSTRUCT | CF_NOVERTFONTS | CF_SELECTSCRIPT;
+			cf.Flags = CF_INITTOLOGFONTSTRUCT | CF_NOVERTFONTS;// should not include CF_SELECTSCRIPT so as user can change the characterset
 
 			//if(ChooseFont(&cf) == TRUE)
 			if (_ChooseFont && ((*_ChooseFont)(&cf) == TRUE))
