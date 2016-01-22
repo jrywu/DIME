@@ -550,7 +550,7 @@ void CUIPresenter::_EndCandidateList()
     
 	EndUIElement();
 	_ClearCandidateList();
-	ClearNotify();
+	//ClearNotify(); //should not clear notify to preserve array special code notify
 	_UpdateUIElement();
 
     DisposeCandidateWindow();

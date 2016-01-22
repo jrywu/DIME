@@ -147,7 +147,7 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 	if(Global::imeMode == IME_MODE_ARRAY && !_IsUILessMode()  && !arrayUsingSPCode && CConfig::GetArrayForceSP() &&  ArraySPFound )
 	{
 		_HandleCancel(ec, pContext);
-		DoBeep(BEEP_COMPOSITION_ERROR);
+		DoBeep(BEEP_WARNING);
 		return hr;
 	}
 	else
@@ -193,10 +193,8 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 
 	}
 	else
-	{
 		_DeleteCandidateList(TRUE, pContext); // endCanddiateUI if not doing associated phrase.
-	}
-	
+		
 Exit:
     return hr;
 }

@@ -37,7 +37,7 @@ BOOL CConfig::_showNotifyDesktop = TRUE;
 BOOL CConfig::_dayiArticleMode = FALSE;  // Article mode: input full-shaped symbols with address keys
 BOOL CConfig::_customTableChanged = FALSE;
 PHONETIC_KEYBOARD_LAYOUT CConfig::_phoneticKeyboardLayout = PHONETIC_STANDARD_KEYBOARD_LAYOUT;
-DOUBLE_SINGLE_BYTE_MODE CConfig::_doubleSingleByteMode = DOUBLE_SINGLE_BYTE_SHIFT_SPACE;
+DOUBLE_SINGLE_BYTE_MODE CConfig::_doubleSingleByteMode = DOUBLE_SINGLE_BYTE_ALWAYS_SINGLE;
 
 CDIMEArray <LanguageProfileInfo>* CConfig::_reverseConvervsionInfoList = new (std::nothrow) CDIMEArray <LanguageProfileInfo>;
 CLSID CConfig::_reverseConverstionCLSID = CLSID_NULL;
