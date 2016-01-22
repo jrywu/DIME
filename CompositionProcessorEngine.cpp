@@ -946,20 +946,21 @@ BOOL CCompositionProcessorEngine::GetArraySpeicalCodeFromConvertedText(_In_ CStr
 		PWCHAR pwch;
 		pwch = new (std::nothrow) WCHAR[MAX_READINGSTRING];
 		*pwch = L'\0';
-		if (_pTableDictionaryEngine[Global::imeMode]->GetRadicalMap() &&
-			candidateList.GetAt(0)->_FindKeyCode.GetLength() && _pTableDictionaryEngine[Global::imeMode]->GetRadicalMap()->size())
+		_T_RadicalMap* pRadicalMap = _pTableDictionaryEngine[Global::imeMode]->GetRadicalMap();
+		if (pRadicalMap && pRadicalMap->size() &&
+			candidateList.GetAt(0)->_FindKeyCode.GetLength() )
 		{
 			for (UINT i = 0; i < candidateList.GetAt(0)->_FindKeyCode.GetLength(); i++)
 			{ // query keyname from keymap
 				_T_RadicalMap::iterator item =
-					_pTableDictionaryEngine[Global::imeMode]->GetRadicalMap()->find(towupper(*(_keystrokeBuffer.Get() + i)));
-				if (item != _pTableDictionaryEngine[Global::imeMode]->GetRadicalMap()->end())
+					pRadicalMap->find(towupper(*(candidateList.GetAt(0)->_FindKeyCode.Get() + i)));
+				if (item != pRadicalMap->end())
 				{
 					assert(wcslen(pwch) + wcslen(item->second) < MAX_READINGSTRING - 1);
 					StringCchCat(pwch, MAX_READINGSTRING, item->second);
 				}
 			}
-			csrReslt->Set(pwch, candidateList.GetAt(0)->_FindKeyCode.GetLength());
+			csrReslt->Set(pwch, wcslen(pwch));
 			return TRUE;
 		}
 		else
