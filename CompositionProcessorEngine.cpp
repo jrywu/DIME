@@ -2474,6 +2474,12 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 		return FALSE;
 	}
 
+	if (candidateMode == CANDIDATE_PHRASE && !(GetCandidateListPhraseModifier() == 0 && uCode == VK_SHIFT) && pKeyState)  // cancel assciated phrase with anykey except shift
+	{
+		pKeyState->Category = CATEGORY_CANDIDATE;
+		pKeyState->Function = FUNCTION_CANCEL;
+	}
+
 	return FALSE;
 }
 

@@ -327,7 +327,10 @@ STDAPI CDIME::OnTestKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, 
         KeystrokeState.Category = CATEGORY_COMPOSING;
         _InvokeKeyHandler(pContext, code, wch, (DWORD)lParam, KeystrokeState);
     }
-
+	else if (KeystrokeState.Category == CATEGORY_CANDIDATE && KeystrokeState.Function == FUNCTION_CANCEL) //cancel associated phrase with anykey.
+	{
+		_InvokeKeyHandler(pContext, code, wch, (DWORD)lParam, KeystrokeState);
+	}
     return S_OK;
 }
 
