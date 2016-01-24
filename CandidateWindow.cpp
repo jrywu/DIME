@@ -816,6 +816,7 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
 		}
 
 		ExtTextOut(dcHandle, StringPosition * cxLine, indexInPage * cyLine + cyOffset, ETO_OPAQUE, &rc, itemText, (DWORD)itemLength, NULL);
+	
     }
 	for (; (indexInPage < candidateListPageCnt); indexInPage++)
     {

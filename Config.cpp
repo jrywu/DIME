@@ -125,7 +125,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		SetDlgItemText(hDlg, IDC_EDIT_FONTNAME, fontname);
 		hdc = GetDC(hDlg);
 		hFont = CreateFont(-MulDiv(10, GetDeviceCaps(hdc, LOGPIXELSY), 72), 0, 0, 0,
-			fontweight, fontitalic, FALSE, FALSE, CHINESEBIG5_CHARSET,
+			fontweight, fontitalic, FALSE, FALSE, DEFAULT_CHARSET,
 			OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH, fontname);
 		SendMessage(GetDlgItem(hDlg, IDC_EDIT_FONTNAME), WM_SETFONT, (WPARAM)hFont, 0);
 		ReleaseDC(hDlg, hdc);
@@ -249,7 +249,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			hFont = (HFONT)SendMessage(GetDlgItem(hDlg, IDC_EDIT_FONTNAME), WM_GETFONT, 0, 0);
 			GetObject(hFont, sizeof(LOGFONT), &lf);
 			lf.lfHeight = -MulDiv(GetDlgItemInt(hDlg, IDC_EDIT_FONTPOINT, NULL, FALSE), GetDeviceCaps(hdc, LOGPIXELSY), 72);
-			lf.lfCharSet = CHINESEBIG5_CHARSET;
+			lf.lfCharSet = DEFAULT_CHARSET;
 
 			ZeroMemory(&cf, sizeof(cf));
 			cf.lStructSize = sizeof(CHOOSEFONT);
@@ -283,7 +283,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			SetDlgItemText(hDlg, IDC_EDIT_FONTNAME, fontname);
 			hdc = GetDC(hDlg);
 			hFont = CreateFont(-MulDiv(10, GetDeviceCaps(hdc, LOGPIXELSY), 72), 0, 0, 0,
-				fontweight, fontitalic, FALSE, FALSE, CHINESEBIG5_CHARSET,
+				fontweight, fontitalic, FALSE, FALSE, DEFAULT_CHARSET,
 				OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH, fontname);
 			SendMessage(GetDlgItem(hDlg, IDC_EDIT_FONTNAME), WM_SETFONT, (WPARAM)hFont, 0);
 			ReleaseDC(hDlg, hdc);
@@ -1063,13 +1063,14 @@ void CConfig::SetDefaultTextFont()
 	if (Global::defaultlFontHandle == nullptr)
 	{
 		Global::defaultlFontHandle = CreateFont(-MulDiv(_fontSize, GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72),
-			0, 0, 0, _fontWeight, _fontItalic, 0, 0, CHINESEBIG5_CHARSET, 0, 0, 0, 0, _pFontFaceName);
+			0, 0, 0, _fontWeight, _fontItalic, 0, 0, DEFAULT_CHARSET, 0, 0, 0, 0, _pFontFaceName);
 		if (!Global::defaultlFontHandle)
 		{
 			LOGFONT lf;
 			SystemParametersInfo(SPI_GETICONTITLELOGFONT, sizeof(LOGFONT), &lf, 0);
 			// Fall back to the default GUI font on failure.
-			Global::defaultlFontHandle = CreateFont(-MulDiv(_fontSize, GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72), 0, 0, 0, FW_MEDIUM, 0, 0, 0, CHINESEBIG5_CHARSET, 0, 0, 0, 0, lf.lfFaceName);
+			Global::defaultlFontHandle = CreateFont(-MulDiv(_fontSize, GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72), 
+				0, 0, 0, FW_MEDIUM, 0, 0, 0, DEFAULT_CHARSET, 0, 0, 0, 0, lf.lfFaceName);
 		}
 	}
 }

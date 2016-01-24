@@ -2274,7 +2274,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 	// CANDIDATE_INCREMENTAL should process Keystroke.Candidate virtual keys.
 	else if (candidateMode == CANDIDATE_INCREMENTAL)
 	{
-		if (Global::imeMode == IME_MODE_ARRAY && pKeyState && (uCode == VK_SPACE || uCode == VK_RETURN))
+		if (Global::imeMode == IME_MODE_ARRAY && pKeyState && (uCode == VK_SPACE))
 		{
 			pKeyState->Category = CATEGORY_COMPOSING;
 			pKeyState->Function = FUNCTION_CONVERT;
