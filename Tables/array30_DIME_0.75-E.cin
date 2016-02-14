@@ -133,9 +133,11 @@ YUQHI	𫢄
 KAI	𫢅
 KAGI	𫢆
 KEI	𫢇
+KDDI	𫢇
 KJI	𫢈
 IFI	𫢉
 KKDI	𫢊
+,DI	𫢊
 KAZI	𫢋
 KJYI	𫢌
 OKI	𫢍
@@ -648,6 +650,7 @@ MAJBI	𫩁
 WJJBI	𫩁
 Y;PBI	𫩂
 SDLBI	𫩃
+SDHBI	𫩃
 ZSDBI	𫩄
 ZSLBI	𫩄
 BBYFI	𫩅
@@ -903,7 +906,45 @@ R;R;I	𫬔
 ;ZYWI	𫬝
 ;APRI	𫬞
 ;FUMI	𫬟
-;FJMI	𫬟
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 ;QDSI	𫬠
 ;MFZI	𫬡
 ;;Z;I	𫬢
@@ -1189,9 +1230,9 @@ WOFI	𫰔
 WKLGI	𫰕
 WKGLI	𫰕
 WCI	𫰖
-A/WI	𫰗
 AJEWI	𫰗
 WLFEI	𫰘
+WAFEI	𫰘
 WKLFI	𫰙
 WB;I	𫰚
 WBQI	𫰛
@@ -1642,8 +1683,7 @@ DBGFI	𫶤
 DFE/I	𫶥
 DYX.I	𫶦
 DXY.I	𫶦
-LDSI	𫶧
-DDSI	𫶧
+OOOOI	𫶧
 IVEDI	𫶨
 IVDDI	𫶨
 WJKXI	𫶩
@@ -1892,7 +1932,8 @@ NCLI	𫹶
 NBBI	𫹷
 XNGHI	𫹸
 XNGAI	𫹸
-XNGNI	𫹹
+XGHNI	𫹹
+XGANI	𫹹
 NGI	𫹺
 AVNI	𫹻
 NQCI	𫹼
@@ -1909,7 +1950,7 @@ PFANI	𫺄
 PQNI	𫺄
 KHFNI	𫺅
 NKQFI	𫺆
-KIBNI	𫺇
+KIGNI	𫺇
 KKHNI	𫺇
 NCWI	𫺈
 IZNI	𫺉
@@ -2034,6 +2075,7 @@ EUXI	𫻴
 OF;XI	𫻵
 O;AXI	𫻵
 ZSZXI	𫻶
+XQXI	𫻶
 XA;XI	𫻶
 AX;XI	𫻶
 RLPXI	𫻷
@@ -2238,6 +2280,7 @@ Q..I	𫾫
 AE.I	𫾬
 OV.I	𫾭
 KAD.I	𫾮
+IDS.I	𫾮
 NAF.I	𫾯
 TGH.I	𫾰
 TGC.I	𫾰
@@ -2426,8 +2469,8 @@ PNK;I	𬁎
 Y.F.I	𬁏
 HBF.I	𬁏
 PUIVI	𬁐
-PA.PI	𬁑
-PA.HI	𬁑
+P.RPI	𬁑
+P.RHI	𬁑
 PBGBI	𬁒
 PFFPI	𬁓
 PACFI	𬁔
@@ -2521,7 +2564,7 @@ EAVI	𬂞
 VLLI	𬂟
 VAZSI	𬂠
 VATI	𬂡
-VHSHI	𬂢
+VLSHI	𬂢
 VDSHI	𬂢
 VKEI	𬂣
 VSFI	𬂤
@@ -2630,6 +2673,7 @@ VOATI	𬄂
 VOZTI	𬄃
 VLEVI	𬄄
 VCPRI	𬄅
+VCPQI	𬄅
 VIZVI	𬄆
 VKZVI	𬄆
 VAP,I	𬄇
@@ -2739,6 +2783,7 @@ QHJKI	𬅤
 .GFKI	𬅦
 AAJJI	𬅧
 KJKJI	𬅧
+DQJKI	𬅨
 DA;KI	𬅨
 RLPKI	𬅩
 NTKKI	𬅪
@@ -2888,6 +2933,7 @@ CVADI	𬇪
 COTSI	𬇫
 CACZI	𬇬
 CCLCI	𬇭
+CSBSI	𬇮
 CLBSI	𬇮
 CIEI	𬇯
 CHJNI	𬇰
@@ -2933,7 +2979,6 @@ CAXTI	𬈖
 CO.WI	𬈗
 CRKCI	𬈘
 CZACI	𬈙
-CRJDI	𬈚
 CRUDI	𬈚
 CZLCI	𬈛
 CFJCI	𬈜
@@ -2975,13 +3020,12 @@ CO;PI	𬈻
 COFPI	𬈻
 CKJYI	𬈼
 C.GII	𬈽
-CAFMI	𬈾
 CLFMI	𬈾
 CNADI	𬈿
 CHZDI	𬉀
 CYC/I	𬉁
 C,RKI	𬉂
-CYIEI	𬉃
+CYDEI	𬉃
 CNA/I	𬉄
 YDLCI	𬉅
 CB,WI	𬉆
@@ -3076,6 +3120,7 @@ AEG,I	𬉻
 ,ZFHI	𬊍
 ,QMI	𬊎
 PLH,I	𬊏
+PLA,I	𬊏
 EBZ,I	𬊐
 ,;;DI	𬊑
 ,;LRI	𬊒
@@ -3390,7 +3435,6 @@ QHZHI	𬎦
 KKQHI	𬎧
 LGVHI	𬎨
 GLVHI	𬎨
-SVQHI	𬎨
 OAEHI	𬎩
 OFAHI	𬎩
 I;QHI	𬎪
@@ -3481,6 +3525,7 @@ HALEI	𬏶
 HFFMI	𬏷
 HJAHI	𬏸
 HOJDI	𬏹
+HU.I	𬏺
 H/KKI	𬏺
 HUKKI	𬏺
 H/.I	𬏺
@@ -3618,6 +3663,7 @@ JAKZI	𬑨
 JOFFI	𬑩
 JJBZI	𬑪
 JVAFI	𬑫
+JAVFI	𬑫
 JO.SI	𬑬
 BGDDI	𬑭
 BGDFI	𬑮
@@ -3823,6 +3869,7 @@ YPFFI	𬔧
 YPFZI	𬔧
 YAICI	𬔨
 YACCI	𬔨
+YAKCI	𬔨
 YDYKI	𬔩
 YKFMI	𬔪
 YV/MI	𬔫
@@ -4019,6 +4066,8 @@ XQII	𬗖
 XOOI	𬗗
 XAJKI	𬗘
 XAJHI	𬗘
+XZJKI	𬗘
+XZJHI	𬗘
 X;GZI	𬗙
 X;AZI	𬗙
 XLPI	𬗚
@@ -4115,7 +4164,6 @@ X.OKI	𬘦
 XY.EI	𬘧
 XRNI	𬘨
 XLRBI	𬘩
-XARBI	𬘩
 XINAI	𬘪
 XNASI	𬘫
 XRUI	𬘬
@@ -4264,6 +4312,7 @@ AERFI	𬚦
 AEY.I	𬚧
 AEA.I	𬚨
 DGGEI	𬚩
+DGDEI	𬚩
 TR.I	𬚪
 G;TFI	𬚫
 OST.I	𬚬
@@ -4282,7 +4331,6 @@ AF;KI	𬚸
 LF;KI	𬚸
 ULGVI	𬚹
 UGLVI	𬚹
-USVI	𬚹
 JKKKI	𬚺
 UAZ;I	𬚻
 ULZ;I	𬚻
@@ -4434,6 +4482,7 @@ FKX;I	𬜷
 FNZI	𬜸
 FWHI	𬜹
 FXGRI	𬜺
+FXTHI	𬜺
 FAKFI	𬜻
 RKKFI	𬜻
 FAJLI	𬜼
@@ -4467,7 +4516,6 @@ FNAAI	𬝖
 FNAHI	𬝖
 FNYXI	𬝗
 FIXXI	𬝘
-FFXXI	𬝘
 FJLQI	𬝙
 FRXI	𬝚
 FAEAI	𬝛
@@ -4495,7 +4543,6 @@ FKXFI	𬝭
 F,HFI	𬝮
 FNOKI	𬝯
 FJHTI	𬝰
-FJKTI	𬝰
 TGEZI	𬝱
 FWLEI	𬝲
 FBRXI	𬝳
@@ -4647,6 +4694,7 @@ EPUDI	𬟳
 /DI	𬟴
 /HSI	𬟵
 /DSI	𬟵
+/LSI	𬟵
 /RHI	𬟶
 /FDI	𬟷
 /ZBI	𬟸
@@ -4758,8 +4806,6 @@ YKHDI	𬡔
 YKEDI	𬡔
 YK.VI	𬡕
 YKSVI	𬡖
-YKLVI	𬡖
-YKGVI	𬡖
 Y,LXI	𬡗
 YKIFI	𬡘
 YKFFI	𬡙
@@ -4918,7 +4964,6 @@ Y;I	𬣚
 YFBI	𬣛
 YLQI	𬣜
 YLKI	𬣝
-YLAAI	𬣝
 YNAI	𬣞
 YHFI	𬣟
 YRAI	𬣠
@@ -4936,7 +4981,6 @@ YPFLI	𬣫
 YP;I	𬣬
 YCTI	𬣭
 YM;I	𬣮
-YKARI	𬣯
 YKLRI	𬣯
 YLJI	𬣰
 YHDDI	𬣱
@@ -4952,7 +4996,6 @@ YPAFI	𬣸
 Y;CI	𬣹
 Y.QI	𬣺
 YLRBI	𬣻
-YARBI	𬣻
 YHTXI	𬣼
 YQFNI	𬣽
 YRPI	𬣾
@@ -5093,7 +5136,6 @@ MRAI	𬥴
 MOGSI	𬥵
 MTBI	𬥶
 MJTDI	𬥷
-M.TDI	𬥷
 M;;DI	𬥸
 MIF;I	𬥹
 MQPWI	𬥺
@@ -5329,7 +5371,7 @@ CRLNI	𬩅
 CWPNI	𬩆
 BIRNI	𬩇
 WLONI	𬩈
-V;NNI	𬩉
+V;TNI	𬩉
 VV.NI	𬩊
 VHYNI	𬩋
 CASNI	𬩌
@@ -5482,7 +5524,7 @@ IJFI	𬫉
 IKLFI	𬫊
 I.ABI	𬫋
 ILZBI	𬫋
-IL.BI	𬫋
+I.ABI	𬫋
 IOAAI	𬫌
 IOAHI	𬫌
 IAFXI	𬫍
@@ -5518,7 +5560,7 @@ I/FGI	𬫤
 ILVFI	𬫥
 II;JI	𬫦
 YHLII	𬫧
-,,III	𬫨
+,,II	𬫨
 INOAI	𬫩
 INOHI	𬫩
 IYXDI	𬫪
@@ -5602,7 +5644,6 @@ ILQKI	𬬮
 ILAXI	𬬮
 IQKI	𬬮
 ILRI	𬬯
-IARI	𬬯
 IKGSI	𬬰
 IOI	𬬱
 I.DKI	𬬲
@@ -5628,15 +5669,12 @@ IZFI	𬭃
 IA/I	𬭄
 I.QI	𬭅
 ISVI	𬭆
-ILGVI	𬭆
-IGLVI	𬭆
 IIAXI	𬭇
 INLQI	𬭈
 IY.EI	𬭉
 IVRI	𬭊
 IAFXI	𬭋
 I;AZI	𬭌
-I;GZI	𬭌
 IPAFI	𬭍
 INZXI	𬭎
 ITPI	𬭏
@@ -5861,6 +5899,8 @@ ZT.NI	𬰔
 ZRF,I	𬰕
 ZOSMI	𬰖
 RJDGI	𬰗
+RUQGI	𬰗
+RUOAI	𬰘
 RJDAI	𬰘
 EETI	𬰙
 EEYI	𬰚
@@ -6189,9 +6229,9 @@ TG,DI	𬴺
 TG,DI	𬴻
 TGPDI	𬴼
 OXQI	𬴽
-OXEAI	𬴾
+OEAI	𬴾
 OXAEI	𬴿
-OXQI	𬵀
+OQI	𬵀
 U,AGI	𬵁
 U,CI	𬵂
 U,ZI	𬵃
@@ -6218,7 +6258,7 @@ U,KQI	𬵕
 U,XZI	𬵖
 U,ZI	𬵗
 U,FAI	𬵘
-OXU,I	𬵙
+OU,I	𬵙
 U,LAI	𬵚
 U,NKI	𬵛
 U,AWI	𬵜
@@ -6269,6 +6309,7 @@ UAFI	𬶆
 UAKEI	𬶇
 UAUI	𬶈
 UAOFI	𬶉
+UAAHI	𬶊
 UAAAI	𬶊
 UAL;I	𬶋
 UAKXI	𬶌
@@ -6279,7 +6320,6 @@ UAS,I	𬶐
 UAZNI	𬶑
 UADGI	𬶒
 UALBI	𬶓
-UAABI	𬶓
 UAO;I	𬶔
 UAKLI	𬶕
 UAZSI	𬶖
@@ -6382,6 +6422,7 @@ ARY,I	𬷱
 RCQ,I	𬷲
 WTS,I	𬷳
 IUE,I	𬷴
+IUW,I	𬷴
 YVO,I	𬷵
 YP;,I	𬷶
 ,,J,I	𬷷
@@ -6403,7 +6444,6 @@ ORLAI	𬸆
 B;LAI	𬸇
 AXRAI	𬸈
 QSHAI	𬸉
-KARAI	𬸊
 KLRAI	𬸊
 OFQAI	𬸋
 .VLAI	𬸌
@@ -6442,9 +6482,7 @@ LJ,AI	𬸩
 LJLAI	𬸩
 L,PAI	𬸪
 Y;GAI	𬸫
-VOHAI	𬸬
-VODAI	𬸬
-VOLAI	𬸬
+VAOAI	𬸬
 FPLAI	𬸭
 FBAAI	𬸮
 FBLAI	𬸮
@@ -6564,11 +6602,11 @@ LJP;I	𬹰
 YGDEI	𬹱
 YKDPI	𬹲
 Y.MDI	𬹳
+Y.DDI	𬹳
 IBEDI	𬹴
 KHBDI	𬹴
 EILVI	𬹵
 EIGVI	𬹵
-EISVI	𬹵
 EIYXI	𬹶
 EINFI	𬹷
 EI,QI	𬹸
@@ -6583,7 +6621,6 @@ WBEII	𬺀
 EIARI	𬺁
 EIAMI	𬺂
 EIDSI	𬺃
-EIA;I	𬺄
 EIL;I	𬺄
 EINI	𬺅
 EICUI	𬺆
