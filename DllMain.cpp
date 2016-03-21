@@ -7,7 +7,7 @@
 //#define DEBUG_PRINT
 #include "Private.h"
 #include "Globals.h"
-
+#pragma warning(disable : 4996)
 //+---------------------------------------------------------------------------
 //
 // DllMain
