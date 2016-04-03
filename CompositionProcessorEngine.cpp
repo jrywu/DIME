@@ -1517,9 +1517,9 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 
 	//tableTextService (TTS) dictionary file 
 	if (imeMode != IME_MODE_ARRAY)
-		StringCchPrintf(pwszTTSFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Windows NT\\TableTextService\\TableTextServiceDaYi.txt");
+		StringCchPrintf(pwszTTSFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\TableTextServiceDaYi.txt");
 	else
-		StringCchPrintf(pwszTTSFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Windows NT\\TableTextService\\TableTextServiceArray.txt");
+		StringCchPrintf(pwszTTSFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\TableTextServiceArray.txt");
 
 	StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME");
 
@@ -1653,6 +1653,17 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			_pTableDictionaryFile[imeMode] = new (std::nothrow) CFile();
 			if (_pTableDictionaryFile[imeMode] == nullptr)  goto ErrorExit;
 
+			if (!PathFileExists(pwszTTSFileName))
+			{
+				if (imeMode != IME_MODE_ARRAY)
+					StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Windows NT\\TableTextService\\TableTextServiceDaYi.txt");
+				else
+					StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Windows NT\\TableTextService\\TableTextServiceArray.txt");
+				CopyFile(pwszCINFileNameProgramFiles, pwszTTSFileName, TRUE);
+
+			}
+
+
 			if (!(_pTableDictionaryFile[imeMode])->CreateFile(pwszTTSFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
 			{
 				goto ErrorExit;
@@ -1700,6 +1711,16 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 		{
 			_pPhraseDictionaryFile = new (std::nothrow) CFile();
 			if (_pPhraseDictionaryFile == nullptr)  goto ErrorExit;
+
+			if (!PathFileExists(pwszTTSFileName))
+			{
+				if (imeMode != IME_MODE_ARRAY)
+					StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Windows NT\\TableTextService\\TableTextServiceDaYi.txt");
+				else
+					StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Windows NT\\TableTextService\\TableTextServiceArray.txt");
+				CopyFile(pwszCINFileNameProgramFiles, pwszTTSFileName, TRUE);
+
+			}
 
 			if (!_pPhraseDictionaryFile->CreateFile(pwszTTSFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
 			{
