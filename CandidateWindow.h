@@ -17,7 +17,8 @@
 
 enum CANDWND_ACTION
 {
-    CAND_ITEM_SELECT
+    CAND_ITEM_SELECT,
+	CAND_CANCEL
 };
 
 typedef HRESULT (*CANDWNDCALLBACK)(void *pv, enum CANDWND_ACTION action);

@@ -4,6 +4,8 @@
 //
 //
 //#define DEBUG_PRINT
+//May need to disable when debugging
+#define CANCEL_CAND_ON_KILL_FOCUS
 
 #include "Private.h"
 #include "CandidateWindow.h"
@@ -1013,35 +1015,39 @@ HRESULT CUIPresenter::_CandidateChangeNotification(_In_ enum CANDWND_ACTION acti
     TfClientId tfClientId = _pTextService->_GetClientId();
     ITfThreadMgr* pThreadMgr = nullptr;
     ITfDocumentMgr* pDocumentMgr = nullptr;
-    ITfContext* pContext = nullptr;
-
+	ITfContext* pContext = _GetContextDocument();
     _KEYSTROKE_STATE KeyState;
 	KeyState.Category = CATEGORY_CANDIDATE;
-    KeyState.Function = FUNCTION_FINALIZE_CANDIDATELIST; // select from the UI. send FUNCTION_FINALIZE_CANDIDATELIST to the keyhandler
+	// select from the UI. send FUNCTION_FINALIZE_CANDIDATELIST or FUNCTION_CANCEL to the keyhandler 
+	KeyState.Function = (CAND_CANCEL == action) ? FUNCTION_CANCEL : FUNCTION_FINALIZE_CANDIDATELIST;
+	
 
-    if (CAND_ITEM_SELECT != action)
+	if (!(CAND_ITEM_SELECT == action || CAND_CANCEL == action))
     {
         goto Exit;
     }
 
-    pThreadMgr = _pTextService->_GetThreadMgr();
-    if (nullptr == pThreadMgr)
-    {
-        goto Exit;
-    }
+	if (pContext == nullptr)
+	{
+		pThreadMgr = _pTextService->_GetThreadMgr();
+		if (nullptr == pThreadMgr)
+		{
+			goto Exit;
+		}
 
-    hr = pThreadMgr->GetFocus(&pDocumentMgr);
-    if (FAILED(hr) || pDocumentMgr == nullptr)
-    {
-        goto Exit;
-    }
+		hr = pThreadMgr->GetFocus(&pDocumentMgr);
+		if (FAILED(hr) || pDocumentMgr == nullptr)
+		{
+			goto Exit;
+		}
 
-    hr = pDocumentMgr->GetTop(&pContext);
-    if (FAILED(hr) || pContext == nullptr)
-    {
-        pDocumentMgr->Release();
-        goto Exit;
-    }
+		hr = pDocumentMgr->GetTop(&pContext);
+		if (FAILED(hr) || pContext == nullptr)
+		{
+			pDocumentMgr->Release();
+			goto Exit;
+		}
+	}
 
     CKeyHandlerEditSession *pEditSession = new (std::nothrow) CKeyHandlerEditSession(_pTextService, pContext, 0, 0, KeyState);
     if (pEditSession && pContext)
@@ -1148,6 +1154,11 @@ HRESULT CUIPresenter::OnSetThreadFocus()
 HRESULT CUIPresenter::OnKillThreadFocus()
 {
 	debugPrint(L"CUIPresenter::OnKillThreadFocus()");
+
+#ifdef CANCEL_CAND_ON_KILL_FOCUS
+	if (_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())
+		_CandidateChangeNotification(CAND_CANCEL);
+#endif
 
 	 ToHideUIWindows();
     _inFocus = FALSE;

@@ -597,8 +597,10 @@ void CCandidateWindow::_OnLButtonDown(POINT pt)
         if (PtInRect(&rc, pt))
         {
             _pVScrollBarWnd->_OnLButtonDown(pt);
+			return;
         }
     }
+	_pfnCallback(_pObj, CAND_CANCEL);
 }
 
 //+---------------------------------------------------------------------------
