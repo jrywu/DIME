@@ -1689,7 +1689,8 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 	}
 	//create CFile object
 	if (_pPhraseTableDictionaryEngine == nullptr  ||
-		(_pTableDictionaryEngine[imeMode]->GetDictionaryType() == TTS_DICTIONARY && _pPhraseTableDictionaryEngine != _pTableDictionaryEngine[imeMode]))
+		((_pTableDictionaryEngine[imeMode] && _pTableDictionaryEngine[imeMode]->GetDictionaryType() == TTS_DICTIONARY)
+		&& _pPhraseTableDictionaryEngine != _pTableDictionaryEngine[imeMode]))
 	{
 		if (PathFileExists(pwszCINFileName))
 		{
