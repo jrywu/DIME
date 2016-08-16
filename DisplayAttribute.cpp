@@ -3,7 +3,7 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-
+//#define DEBUG_PRINT
 
 #include "Private.h"
 #include "globals.h"
@@ -47,6 +47,7 @@ void CDIME::_ClearCompositionDisplayAttributes(TfEditCookie ec, _In_ ITfContext 
 
 BOOL CDIME::_SetCompositionDisplayAttributes(TfEditCookie ec, _In_ ITfContext *pContext, TfGuidAtom gaDisplayAttribute)
 {
+	debugPrint(L"CDIME::_SetCompositionDisplayAttributes()");
     ITfRange* pRangeComposition = nullptr;
     ITfProperty* pDisplayAttributeProperty = nullptr;
     HRESULT hr = S_OK;
@@ -56,6 +57,11 @@ BOOL CDIME::_SetCompositionDisplayAttributes(TfEditCookie ec, _In_ ITfContext *p
 		hr = _pComposition->GetRange(&pRangeComposition);
     if (FAILED(hr) || pRangeComposition==nullptr )
     {
+		if (FAILED(hr))
+			debugPrint(L"CDIME::_SetCompositionDisplayAttributes()  _pComposition->GetRange() failed hr = %x", hr);
+		else
+			debugPrint(L"CDIME::_SetCompositionDisplayAttributes()  null pRangeComposition");
+
         return FALSE;
     }
 
@@ -64,6 +70,7 @@ BOOL CDIME::_SetCompositionDisplayAttributes(TfEditCookie ec, _In_ ITfContext *p
     // get our the display attribute property
     if (pContext && SUCCEEDED(pContext->GetProperty(GUID_PROP_ATTRIBUTE, &pDisplayAttributeProperty)) && pDisplayAttributeProperty)
     {
+		debugPrint(L"CDIME::_SetCompositionDisplayAttributes()  SUCCEEDED(pContext->GetProperty()");
         VARIANT var;
         // set the value over the range
         // the application will use this guid atom to lookup the acutal rendering information
@@ -71,6 +78,8 @@ BOOL CDIME::_SetCompositionDisplayAttributes(TfEditCookie ec, _In_ ITfContext *p
         var.lVal = gaDisplayAttribute; 
 
         hr = pDisplayAttributeProperty->SetValue(ec, pRangeComposition, &var);
+		if (FAILED(hr))
+			debugPrint(L"CDIME::_SetCompositionDisplayAttributes()  pDisplayAttributeProperty->SetValue() failed hr = %x", hr);
 
         pDisplayAttributeProperty->Release();
     }

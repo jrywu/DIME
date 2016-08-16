@@ -35,6 +35,7 @@ STDAPI CDIME::OnCompositionTerminated(TfEditCookie ecWrite, _In_ ITfComposition 
         pContext->AddRef();
 	}
 	
+
 	_EndComposition(pContext);
 	_DeleteCandidateList(TRUE, pContext);
 	
@@ -67,6 +68,7 @@ BOOL CDIME::_IsComposing()
 void CDIME::_SetComposition(_In_ ITfComposition *pComposition)
 {
     _pComposition = pComposition;
+	lastReadingString.Set(nullptr, 0); //reset lastReadingString
 }
 
 //+---------------------------------------------------------------------------
@@ -77,7 +79,7 @@ void CDIME::_SetComposition(_In_ ITfComposition *pComposition)
 
 HRESULT CDIME::_AddComposingAndChar(TfEditCookie ec, _In_ ITfContext *pContext, _In_ CStringRange *pstrAddString)
 {
-	debugPrint(L"CDIME::_AddComposingAndChar()");
+	debugPrint(L"CDIME::_AddComposingAndChar() reading string = %s", pstrAddString->Get());
     HRESULT hr = S_OK;
 
     ULONG fetched = 0;
@@ -93,18 +95,22 @@ HRESULT CDIME::_AddComposingAndChar(TfEditCookie ec, _In_ ITfContext *pContext, 
     hr = pContext->GetStart(ec, &pAheadSelection);
     if (SUCCEEDED(hr) && pAheadSelection)
     {
+		debugPrint(L"CDIME::_AddComposingAndChar() SUCCEEDED( pContext->GetStart( &pAheadSelection))");
         hr = pAheadSelection->ShiftEndToRange(ec, tfSelection.range, TF_ANCHOR_START);
         if (SUCCEEDED(hr))
         {
+			debugPrint(L"CDIME::_AddComposingAndChar() SUCCEEDED( pAheadSelection->ShiftEndToRange())");
             ITfRange* pRange = nullptr;
-            BOOL exist_composing = _FindComposingRange(ec, pContext, pAheadSelection, &pRange);
+			BOOL exist_composing = _FindComposingRange(ec, pContext, pAheadSelection, &pRange);
 
-            _SetInputString(ec, pContext, pRange, pstrAddString, exist_composing);
+			if (FAILED(_SetInputString(ec, pContext, pRange, pstrAddString, exist_composing)))
+				debugPrint(L"CDIME::_AddComposingAndChar() _SetInputString() failed.");
+			
+			if (pRange)
+				pRange->Release();
 
-            if (pRange)
-            {
-                pRange->Release();
-            }
+			lastReadingString = *pstrAddString;
+            
         }
     }
 
@@ -164,6 +170,7 @@ BOOL CDIME::_FindComposingRange(TfEditCookie ec, _In_ ITfContext *pContext, _In_
 
     if (pContext == nullptr || ppRange == nullptr)
     {
+		debugPrint(L"CDIME::_FindComposingRange() failed with null pContext or pRange");
         return FALSE;
     }
 
@@ -176,12 +183,20 @@ BOOL CDIME::_FindComposingRange(TfEditCookie ec, _In_ ITfContext *pContext, _In_
     HRESULT hr = pContext->GetProperty(GUID_PROP_COMPOSING, &pPropComp);
     if (FAILED(hr) || pPropComp == nullptr)
     {
+		if (FAILED(hr))
+			debugPrint(L"CDIME::_FindComposingRange()  pContext->GetProperty() failed");
+		else
+			debugPrint(L"CDIME::_FindComposingRange() failed with null pPropComp");
         return FALSE;
     }
 
     hr = pPropComp->EnumRanges(ec, &enumComp, pSelection);
     if (FAILED(hr) || enumComp == nullptr)
     {
+		if (FAILED(hr))
+			debugPrint(L"CDIME::_FindComposingRange()  pPropComp->EnumRanges failed");
+		else
+			debugPrint(L"CDIME::_FindComposingRange() failed with null enumComp");
         pPropComp->Release();
         return FALSE;
     }
@@ -192,15 +207,54 @@ BOOL CDIME::_FindComposingRange(TfEditCookie ec, _In_ ITfContext *pContext, _In_
 
     while (enumComp->Next(1, ppRange, &fetched) == S_OK && fetched == 1)
     {
+		debugPrint(L"CDIME::_FindComposingRange() enumComp->Next() ");
         hr = pPropComp->GetValue(ec, *ppRange, &var);
         if (hr == S_OK)
         {
             if (var.vt == VT_I4 && var.lVal != 0)
             {
-                isCompExist = TRUE;
-                break;
+				WCHAR rangeText[4096];
+				rangeText[0] = NULL;
+				ULONG fetched = 0;
+				hr = (*ppRange)->GetText(ec, 0, rangeText, 4096, &fetched);
+				if (SUCCEEDED(hr))
+				{
+					if (lastReadingString.GetLength() > 0) // The last reading string is null when composing is just started and the range should be empty.
+					{
+						debugPrint(L"CDIME::_FindComposingRange() text in range = %s with %d character, last reading string = %s with %d characters",
+							rangeText, fetched, lastReadingString.Get(), lastReadingString.GetLength());
+						UINT cmpCount = (int)lastReadingString.GetLength();
+						BOOL rangeMatchReadingString = FALSE;
+						if (fetched > 0 && fetched > cmpCount)
+						{
+							LONG shifted = 0;
+							// range contains other characters than last reading string, and these characters should be skipped with shifting the start anchor
+							(*ppRange)->ShiftStart(ec, fetched - cmpCount, &shifted, NULL);
+							debugPrint(L"CDIME::_FindComposingRange() shift start anchor with %d characters", shifted);
+							rangeText[0] = NULL;
+							hr = (*ppRange)->GetText(ec, 0, rangeText, 4096, &fetched);
+							if (SUCCEEDED(hr))
+								debugPrint(L"CDIME::_FindComposingRange() text in range with shited anchor = %s with %d character", rangeText, fetched);
+						}
+						// The range we are composing should always matched with the last reading string.
+						rangeMatchReadingString = CompareString(GetLocale(), 0, rangeText, cmpCount, lastReadingString.Get(), cmpCount) == CSTR_EQUAL;
+				
+						if (rangeMatchReadingString)
+						{
+							isCompExist = TRUE;
+							debugPrint(L"CDIME::_FindComposingRange() text in this range mathced with last reading string. isCompExist = TRUE");
+							break;
+						}
+					}
+					
+				}
+				else
+				{
+					debugPrint(L"CDIME::_FindComposingRange() cannot getText from range isCompExist = TRUE");
+				}
             }
         }
+		debugPrint(L"CDIME::_FindComposingRange() release *ppRange");
         if(*ppRange)
 			(*ppRange)->Release();
         *ppRange = nullptr;
@@ -220,25 +274,42 @@ BOOL CDIME::_FindComposingRange(TfEditCookie ec, _In_ ITfContext *pContext, _In_
 
 HRESULT CDIME::_SetInputString(TfEditCookie ec, _In_ ITfContext *pContext, _Out_opt_ ITfRange *pRange, _In_ CStringRange *pstrAddString, BOOL exist_composing)
 {
-
+	debugPrint(L"CDIME::_SetInputString() exist_composing = %x", exist_composing);
     ITfRange* pRangeInsert = nullptr;
+	HRESULT hr = S_OK;
     if (!exist_composing)
     {
         _InsertAtSelection(ec, pContext, pstrAddString, &pRangeInsert);
         if (pRangeInsert == nullptr)
         {
-            return S_OK;
+            return hr;
         }
         pRange = pRangeInsert;
     }
     if (pRange != nullptr)
     {
-        pRange->SetText(ec, 0, pstrAddString->Get(), (LONG)pstrAddString->GetLength());
+        hr = pRange->SetText(ec, 0, pstrAddString->Get(), (LONG)pstrAddString->GetLength());
+		if (FAILED(hr))
+		{
+			debugPrint(L"CDIME::_SetInputString() pRange->SetText() failed with hr = %x", hr);			
+			goto exit;
+		}
+
     }
+	
+	if (!_SetCompositionLanguage(ec, pContext))
+	{
+		debugPrint(L"CDIME::_SetInputString() _SetCompositionLanguage failed");
+		hr = E_FAIL;
+		goto exit;
+	}
 
-    _SetCompositionLanguage(ec, pContext);
-
-	_SetCompositionDisplayAttributes(ec, pContext, _gaDisplayAttributeConverted);// _gaDisplayAttributeInput);
+	if (!_SetCompositionDisplayAttributes(ec, pContext, _gaDisplayAttributeConverted))
+	{
+		debugPrint(L"CDIME::_SetInputString() _SetCompositionDisplayAttributes() failed");
+		hr = E_FAIL;
+		goto exit;
+	}
 
     // update the selection, we'll make it an insertion point just past
     // the inserted text.
@@ -247,7 +318,12 @@ HRESULT CDIME::_SetInputString(TfEditCookie ec, _In_ ITfContext *pContext, _Out_
 
     if ((pRange != nullptr) && (pRange->Clone(&pSelection) == S_OK))
     {
-        pSelection->Collapse(ec, TF_ANCHOR_END);
+        hr = pSelection->Collapse(ec, TF_ANCHOR_END);
+		if (FAILED(hr))
+		{
+			debugPrint(L"CDIME::_SetInputString() pSelection->Collapse() failed, hr = %x", hr);
+			goto exit;
+		}
 
         sel.range = pSelection;
         sel.style.ase = TF_AE_NONE;
@@ -256,13 +332,11 @@ HRESULT CDIME::_SetInputString(TfEditCookie ec, _In_ ITfContext *pContext, _Out_
         pSelection->Release();
     }
 
+exit:
     if (pRangeInsert)
-    {
         pRangeInsert->Release();
-    }
 
-
-    return S_OK;
+    return hr;
 }
 
 //+---------------------------------------------------------------------------
@@ -273,12 +347,14 @@ HRESULT CDIME::_SetInputString(TfEditCookie ec, _In_ ITfContext *pContext, _Out_
 
 HRESULT CDIME::_InsertAtSelection(TfEditCookie ec, _In_ ITfContext *pContext, _In_ CStringRange *pstrAddString, _Outptr_ ITfRange **ppCompRange)
 {
+	debugPrint(L"CDIME::_InsertAtSelection()");
     ITfRange* rangeInsert = nullptr;
     ITfInsertAtSelection* pias = nullptr;
     HRESULT hr = S_OK;
 
     if (ppCompRange == nullptr || pContext == nullptr || pstrAddString == nullptr)
     {
+		debugPrint(L"CDIME::_InsertAtSelection() failed with null ppCompRange or pContext or pstrAddstring");
         hr = E_INVALIDARG;
         goto Exit;
     }
@@ -288,6 +364,7 @@ HRESULT CDIME::_InsertAtSelection(TfEditCookie ec, _In_ ITfContext *pContext, _I
     hr = pContext->QueryInterface(IID_ITfInsertAtSelection, (void **)&pias);
     if (FAILED(hr) || pias == nullptr)
     {
+		debugPrint(L"CDIME::_InsertAtSelection() failed with null pias or QueryInterface failed");
         goto Exit;
     }
 
@@ -295,11 +372,17 @@ HRESULT CDIME::_InsertAtSelection(TfEditCookie ec, _In_ ITfContext *pContext, _I
 
     if ( FAILED(hr) || rangeInsert == nullptr)
     {
+		debugPrint(L"CDIME::_InsertAtSelection() InsertTextAtSelection failed");
         rangeInsert = nullptr;
         pias->Release();
         goto Exit;
     }
-
+	WCHAR rangeText[256];
+	rangeText[0] = NULL;
+	ULONG fetched = 0;
+	hr = rangeInsert->GetText(ec, 0, rangeText, 256, &fetched);
+	if (SUCCEEDED(hr) && rangeText)
+		debugPrint(L"CDIME::_InsertAtSelection() text in range = %s", rangeText);
     *ppCompRange = rangeInsert;
     pias->Release();
     hr = S_OK;
@@ -343,11 +426,13 @@ HRESULT CDIME::_RemoveDummyCompositionForComposing
 
 BOOL CDIME::_SetCompositionLanguage(TfEditCookie ec, _In_ ITfContext *pContext)
 {
+	debugPrint(L"CDIME::_SetCompositionLanguage()");
     HRESULT hr = S_OK;
     BOOL ret = TRUE;
 
 	if (pContext == nullptr || _pComposition == nullptr)
     {
+		debugPrint(L"CDIME::_SetCompositionLanguage() failed with null pContext or _pComposition");
 		ret = FALSE;
         goto Exit;
     }
@@ -359,6 +444,11 @@ BOOL CDIME::_SetCompositionLanguage(TfEditCookie ec, _In_ ITfContext *pContext)
     hr = _pComposition->GetRange(&pRangeComposition);
     if (FAILED(hr) || pRangeComposition == nullptr)
     {
+		if (FAILED(hr))
+			debugPrint(L"CDIME::_SetCompositionLanguage() _pComposition->GetRange() failed");
+		else
+			debugPrint(L"CDIME::_SetCompositionLanguage() failed with null pRangeComposition");
+
         ret = FALSE;
         goto Exit;
     }
@@ -367,6 +457,11 @@ BOOL CDIME::_SetCompositionLanguage(TfEditCookie ec, _In_ ITfContext *pContext)
     hr = pContext->GetProperty(GUID_PROP_LANGID, &pLanguageProperty);
     if (FAILED(hr) || pLanguageProperty == nullptr)
     {
+		if (FAILED(hr))
+			debugPrint(L"CDIME::_SetCompositionLanguage() pContext->GetProperty() failed hr = %x", hr);
+		else
+			debugPrint(L"CDIME::_SetCompositionLanguage() failed with null pLanguageProperty");
+
         ret = FALSE;
         goto Exit;
     }
@@ -378,6 +473,11 @@ BOOL CDIME::_SetCompositionLanguage(TfEditCookie ec, _In_ ITfContext *pContext)
     hr = pLanguageProperty->SetValue(ec, pRangeComposition, &var);
     if (FAILED(hr) || pRangeComposition == nullptr)
     {
+		if (FAILED(hr))
+			debugPrint(L"CDIME::_SetCompositionLanguage() pLanguageProperty->SetValue() failed hr = %x", hr);
+		else
+			debugPrint(L"CDIME::_SetCompositionLanguage() failed with null pRangeComposition ");
+
         ret = FALSE;
         goto Exit;
     }

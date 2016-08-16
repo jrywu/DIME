@@ -43,22 +43,26 @@ STDAPI CStartCompositionEditSession::DoEditSession(TfEditCookie ec)
 
     if (FAILED(_pContext->QueryInterface(IID_ITfInsertAtSelection, (void **)&pInsertAtSelection)))
     {
+		debugPrint(L"CStartCompositionEditSession::DoEditSession() FAILED(_pContext->QueryInterface(IID_ITfInsertAtSelection))");
         goto Exit;
     }
 
     if (FAILED(pInsertAtSelection->InsertTextAtSelection(ec, TF_IAS_QUERYONLY, NULL, 0, &pRangeInsert)))
     {
+		debugPrint(L"CStartCompositionEditSession::DoEditSession() FAILED(pInsertAtSelection->InsertTextAtSelection())");
         goto Exit;
     }
 
     if (FAILED(_pContext->QueryInterface(IID_ITfContextComposition, (void **)&pContextComposition)))
     {
+		debugPrint(L"CStartCompositionEditSession::DoEditSession() FAILED(_pContext->QueryInterface(IID_ITfContextComposition))");
         goto Exit;
     }
 
     if (_pTextService && _pContext &&
 		SUCCEEDED(pContextComposition->StartComposition(ec, pRangeInsert, _pTextService, &pComposition)) && pComposition)
     {
+		debugPrint(L"CStartCompositionEditSession::DoEditSession() pContextComposition->StartComposition() Succeeded");
         _pTextService->_SetComposition(pComposition);
 
         // set selection to the adjusted range
@@ -69,6 +73,7 @@ STDAPI CStartCompositionEditSession::DoEditSession(TfEditCookie ec)
 
         _pContext->SetSelection(ec, 1, &tfSelection);
         _pTextService->_SaveCompositionContext(_pContext);
+
     }
 
 Exit:
