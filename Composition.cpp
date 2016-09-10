@@ -215,7 +215,7 @@ BOOL CDIME::_FindComposingRange(TfEditCookie ec, _In_ ITfContext *pContext, _In_
             {
 				WCHAR rangeText[4096];
 				rangeText[0] = NULL;
-				ULONG fetched = 0;
+				fetched = 0;
 				hr = (*ppRange)->GetText(ec, 0, rangeText, 4096, &fetched);
 				if (SUCCEEDED(hr))
 				{

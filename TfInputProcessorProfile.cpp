@@ -85,8 +85,8 @@ HRESULT CTfInputProcessorProfile::GetReverseConversionProviders(LANGID langid, C
 				if(SUCCEEDED(CoCreateInstance(langProfile.clsid, nullptr, CLSCTX_INPROC_SERVER, IID_ITfReverseConversionMgr, (void**)&pITfReverseConversionMgr)))
 				{
 					ITfReverseConversion* pITfReverseConversion;
-					HRESULT hr;
 					hr = pITfReverseConversionMgr->GetReverseConversion(langid, langProfile.guidProfile, NULL, &pITfReverseConversion);
+
 					if(SUCCEEDED(hr))
 					{
 						LanguageProfileInfo *pLangProfileInfo = nullptr;

@@ -24,7 +24,7 @@ BrandingText " "
 !define MUI_ABORTWARNING
 !define MUI_ICON "${NSISDIR}\Contrib\Graphics\Icons\modern-install.ico"
 !define MUI_UNICON "${NSISDIR}\Contrib\Graphics\Icons\modern-uninstall.ico"
-!define MUI_HEADERIMAGE 
+!define MUI_HEADERIMAGE
 !define MUI_HEADERIMAGE_NOSTRETCH
 
 ; Language Selection Dialog Settings
@@ -72,8 +72,8 @@ LangString DESC_DOWNLOADING ${LANG_TradChinese} "下載 %s"
 LangString DESC_INSTALLING ${LANG_TradChinese} "安裝中"
 LangString DESC_DOWNLOADING1 ${LANG_TradChinese} "下載中"
 LangString DESC_DOWNLOADFAILED ${LANG_TradChinese} "下載失敗:"
-LangString DESC_VCX86 ${LANG_TradChinese} "Visual C++ 2013 Redistritable x86"
-LangString DESC_VCX64 ${LANG_TradChinese} "Visual C++ 2013 Redistritable x64"
+LangString DESC_VCX86 ${LANG_TradChinese} "Visual C++ 2015 Redistritable x86"
+LangString DESC_VCX64 ${LANG_TradChinese} "Visual C++ 2015 Redistritable x64"
 LangString DESC_VCX86_DECISION ${LANG_TradChinese} "安裝此輸入法之前，必須先安裝 $(DESC_VCX86)，若你想繼續安裝 \
   ，您的電腦必須連接網路。$\n您要繼續這項安裝嗎？"
 LangString DESC_VCX64_DECISION ${LANG_TradChinese} "安裝此輸入法之前，必須先安裝 $(DESC_VCX64)，若你想繼續安裝 \
@@ -81,25 +81,34 @@ LangString DESC_VCX64_DECISION ${LANG_TradChinese} "安裝此輸入法之前，必須先安裝
 !define BASE_URL http://download.microsoft.com/download
 ;!define URL_VC_REDISTX64_2012U3  "${BASE_URL}/1/6/B/16B06F60-3B20-4FF2-B699-5E9B7962F9AE/VSU3/vcredist_x64.exe"
 ;!define URL_VC_REDISTX86_2012U3  "${BASE_URL}/1/6/B/16B06F60-3B20-4FF2-B699-5E9B7962F9AE/VSU3/vcredist_x86.exe";
-!define URL_VC_REDISTX64_2013  ${BASE_URL}/2/E/6/2E61CFA4-993B-4DD4-91DA-3737CD5CD6E3/vcredist_x64.exe
-!define URL_VC_REDISTX86_2013  ${BASE_URL}/2/E/6/2E61CFA4-993B-4DD4-91DA-3737CD5CD6E3/vcredist_x86.exe
+;!define URL_VC_REDISTX64_2013  ${BASE_URL}/2/E/6/2E61CFA4-993B-4DD4-91DA-3737CD5CD6E3/vcredist_x64.exe
+;!define URL_VC_REDISTX86_2013  ${BASE_URL}/2/E/6/2E61CFA4-993B-4DD4-91DA-3737CD5CD6E3/vcredist_x86.exe
 ;!define URL_VC_REDISTX64_2015  ${BASE_URL}/9/3/F/93FCF1E7-E6A4-478B-96E7-D4B285925B00/vc_redist.x64.exe
 ;!define URL_VC_REDISTX86_2015  ${BASE_URL}/9/3/F/93FCF1E7-E6A4-478B-96E7-D4B285925B00/vc_redist.x86.exe
+;U2
+;!define URL_VC_REDISTX86_2015 ${BASE_URL}/2/5/e/25e2436f-46a4-4854-b3ac-cfcb69cde2da/vc_redist.x86.exe
+;!define URL_VC_REDISTX64_2015 ${BASE_URL}/a/3/6/a365bea0-3cc9-4f50-912a-3efaf5e96316/vc_redist.x64.exe
+;U3
+!define URL_VC_REDISTX64_2015 ${BASE_URL}/0/6/4/064F84EA-D1DB-4EAA-9A5C-CC2F0FF6A638/vc_redist.x64.exe
+!define URL_VC_REDISTX86_2015 ${BASE_URL}/0/6/4/064F84EA-D1DB-4EAA-9A5C-CC2F0FF6A638/vc_redist.x86.exe
 
+; VC2013 12.0.21005
+;!define VC2013X64_key "{A749D8E6-B613-3BE3-8F5F-045C84EBA29B}"
+;!define VC2013X86_key "{13A4EE12-23EA-3371-91EE-EFB36DDFFF3E}"
+; VC2015 14.0.23026
+;!define VC2015X64_key {0D3E9E15-DE7A-300B-96F1-B4AF12B96488}
+;!define VC2015X86_key  {A2563E55-3BEC-3828-8D67-E5E8B9E8B675}
+; VC2015 14.0.24123
+!define VC2015X64_key {FDBE9DB4-7A91-3A28-B27E-705EF7CFAE57}
+!define VC2015X86_key {06AE3BCC-7612-39D3-9F3B-B6601D877D02}
 
-!define VC2013X64_key "{A749D8E6-B613-3BE3-8F5F-045C84EBA29B}"
-!define VC2013X86_key "{13A4EE12-23EA-3371-91EE-EFB36DDFFF3E}"
-;define VC2015X64_key {0D3E9E15-DE7A-300B-96F1-B4AF12B96488}
-;define VC2015X86_key  {A2563E55-3BEC-3828-8D67-E5E8B9E8B675}
-
-  
 Var "URL_VCX86"
 Var "URL_VCX64"
 
 Function .onInit
   InitPluginsDir
-  StrCpy $URL_VCX86 "${URL_VC_REDISTX86_2013}"
-  StrCpy $URL_VCX64 "${URL_VC_REDISTX64_2013}"
+  StrCpy $URL_VCX86 "${URL_VC_REDISTX86_2015}"
+  StrCpy $URL_VCX64 "${URL_VC_REDISTX64_2015}"
     ${If} ${RunningX64}
   	SetRegView 64
   ${EndIf}
@@ -111,16 +120,16 @@ Function .onInit
   ExecWait '"$INSTDIR\uninst.exe" /S _?=$INSTDIR'
    ${If} ${RunningX64}
   	${DisableX64FSRedirection}
-  	IfFileExists "$SYSDIR\DIME.dll"  0 CheckX64     ;代表反安裝失敗 
+  	IfFileExists "$SYSDIR\DIME.dll"  0 CheckX64     ;代表反安裝失敗
   		Abort
   CheckX64:
  	${EnableX64FSRedirection}
   ${EndIf}
-  IfFileExists "$SYSDIR\DIME.dll"  0 RemoveFinished     ;代表反安裝失敗 
+  IfFileExists "$SYSDIR\DIME.dll"  0 RemoveFinished     ;代表反安裝失敗
         Abort
-  RemoveFinished:     
-    	MessageBox MB_ICONINFORMATION|MB_OK "舊版已移除。"       
-StartInstall:     
+  RemoveFinished:
+    	MessageBox MB_ICONINFORMATION|MB_OK "舊版已移除。"
+StartInstall:
 ;!insertmacro MUI_LANGDLL_DISPLAY
 FunctionEnd
 
@@ -129,7 +138,7 @@ Section "CheckVCRedist" VCR
   ${If} ${RunningX64}
   	SetRegView 64
   	ClearErrors
-  	ReadRegDword $R0 HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\${VC2013X64_key}" "Version"
+  	ReadRegDword $R0 HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\${VC2015X64_key}" "Version"
   	IfErrors 0 VCx64RedistInstalled
   	MessageBox MB_ICONEXCLAMATION|MB_YESNO|MB_DEFBUTTON2 "$(DESC_VCX64_DECISION)" /SD IDNO IDYES +1 IDNO VCRedistInstalledAbort
   	AddSize 7000
@@ -143,13 +152,13 @@ Section "CheckVCRedist" VCR
     	Abort
      lbl_continue64:
       DetailPrint "$(DESC_INSTALLING) $(DESC_VCX64)..."
-      nsExec::ExecToStack "$PLUGINSDIR\vcredist_x64.exe /q"
+      nsExec::ExecToStack "$PLUGINSDIR\vcredist_x64.exe /quiet"
       ;pop $DOTNET_RETURN_CODE
 VCx64RedistInstalled:
  SetRegView 32
 ${EndIf}
  ClearErrors
-  ReadRegDword $R0 HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\${VC2013X86_key}" "Version"
+  ReadRegDword $R0 HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\${VC2015X86_key}" "Version"
   IfErrors 0 VCRedistInstalled
   MessageBox MB_ICONEXCLAMATION|MB_YESNO|MB_DEFBUTTON2 "$(DESC_VCX86_DECISION)" /SD IDNO IDYES +1 IDNO VCRedistInstalledAbort
   AddSize 7000
@@ -161,10 +170,10 @@ ${EndIf}
     StrCmp "$0" "success" lbl_continue
     DetailPrint "$(DESC_DOWNLOADFAILED) $0"
     Abort
- 
+
     lbl_continue:
       DetailPrint "$(DESC_INSTALLING) $(DESC_VCX86)..."
-      nsExec::ExecToStack "$PLUGINSDIR\vcredist_x86.exe /q"
+      nsExec::ExecToStack "$PLUGINSDIR\vcredist_x86.exe /quiet"
       ;pop $DOTNET_RETURN_CODE
   Goto VCRedistInstalled
 VCRedistInstalledAbort:
@@ -193,7 +202,7 @@ Section "MainSection" SEC01
   SetOutPath "$APPDATA\DIME\"
   CreateDirectory "$APPDATA\DIME"
   ;File "config.ini"
-  
+
 SectionEnd
 
 Section "Modules" SEC02
@@ -227,7 +236,7 @@ Section -Post
    ${EndIf}
 SectionEnd
 
-Function un.onUninstSuccess  
+Function un.onUninstSuccess
   MessageBox MB_ICONINFORMATION|MB_OK "$(^Name)已移除成功。" /SD IDOK
 FunctionEnd
 
@@ -244,16 +253,16 @@ Section Uninstall
   ${EnableX64FSRedirection}
  ${EndIf}
   ExecWait '"$SYSDIR\regsvr32.exe" /u /s $SYSDIR\DIME.dll'
-  
+
   ClearErrors
   ${If} ${RunningX64}
   ${DisableX64FSRedirection}
-  IfFileExists "$SYSDIR\DIME.dll"  0 +3 
+  IfFileExists "$SYSDIR\DIME.dll"  0 +3
   Delete "$SYSDIR\DIME.dll"
   IfErrors lbNeedReboot +1
   ${EnableX64FSRedirection}
   ${EndIf}
-  IfFileExists "$SYSDIR\DIME.dll"  0  lbContinueUninstall  
+  IfFileExists "$SYSDIR\DIME.dll"  0  lbContinueUninstall
   Delete "$SYSDIR\DIME.dll"
   IfErrors lbNeedReboot lbContinueUninstall
 
@@ -265,7 +274,7 @@ Section Uninstall
   MessageBox MB_ICONSTOP|MB_OK "請將所有程式關閉，再嘗試執行本安裝程式。若仍看到此畫面，請重新開機。" IDOK +1
   Quit
   lbContinueUninstall:
-  
+
   Delete "$INSTDIR\uninst.exe"
   Delete "$INSTDIR\*.cin"
   RMDir /r "$INSTDIR"

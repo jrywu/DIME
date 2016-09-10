@@ -589,7 +589,7 @@ void CCandidateWindow::_OnLButtonDown(POINT pt)
 
     if (_pVScrollBarWnd)
     {
-        RECT rc = {0, 0, 0, 0};
+        rc = {0, 0, 0, 0};
 
         _pVScrollBarWnd->_GetClientRect(&rc);
         MapWindowPoints(_GetWnd(), _pVScrollBarWnd->_GetWnd(), &pt, 1);

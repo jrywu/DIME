@@ -202,10 +202,10 @@ private:
 	
 
     // Configuration data
-    BOOL _isWildcard : 1;
-    BOOL _isDisableWildcardAtFirst : 1;
-    BOOL _isKeystrokeSort : 1;
-	BOOL _isWildCardWordFreqSort : 1;
+    BOOL _isWildcard;
+    BOOL _isDisableWildcardAtFirst;
+    BOOL _isKeystrokeSort;
+	BOOL _isWildCardWordFreqSort;
 	CCandidateRange* _pActiveCandidateListIndexRange;
 	CCandidateRange _candidateListIndexRange;
 	CCandidateRange _phraseCandidateListIndexRange;
