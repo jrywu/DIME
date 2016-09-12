@@ -137,12 +137,11 @@ STDAPI CEnumDisplayAttributeInfo::Clone(_Out_ IEnumTfDisplayAttributeInfo **ppEn
 
 const int MAX_DISPLAY_ATTRIBUTE_INFO = 2;
 
-STDAPI CEnumDisplayAttributeInfo::Next(ULONG ulCount, __RPC__out_ecount_part(ulCount, *pcFetched) ITfDisplayAttributeInfo **rgInfo, __RPC__out ULONG *pcFetched)
+STDAPI CEnumDisplayAttributeInfo::Next(ULONG ulCount, __RPC__out_ecount_part(ulCount, *pcFetched) ITfDisplayAttributeInfo **rgInfo, _Inout_opt_ ULONG *pcFetched)
 {
-    ULONG fetched;
+    ULONG fetched = 0;
 
-    fetched = 0;
-
+    
     if (ulCount == 0)
     {
         return S_OK;

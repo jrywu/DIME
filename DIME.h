@@ -56,7 +56,7 @@ public:
     // ITfThreadMgrEventSink
     STDMETHODIMP OnInitDocumentMgr(_In_ ITfDocumentMgr *pDocMgr);
     STDMETHODIMP OnUninitDocumentMgr(_In_ ITfDocumentMgr *pDocMgr);
-    STDMETHODIMP OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMgr *pDocMgrPrevFocus);
+    STDMETHODIMP OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_opt_ ITfDocumentMgr *pDocMgrPrevFocus);
     STDMETHODIMP OnPushContext(_In_ ITfContext *pContext);
     STDMETHODIMP OnPopContext(_In_ ITfContext *pContext);
 
@@ -97,7 +97,7 @@ public:
     STDMETHODIMP GetLayout(_Out_ TKBLayoutType *ptkblayoutType, _Out_ WORD *pwPreferredLayoutId);
 
 	//ITfFnConfigure 
-	STDMETHODIMP Show(_In_ HWND hwndParent, _In_ LANGID langid, _In_ REFGUID rguidProfile);
+	STDMETHODIMP Show(_In_opt_ HWND hwndParent, _In_ LANGID langid, _In_ REFGUID rguidProfile);
 	
 	//ITfReverseConversionMgr 
 	STDMETHODIMP GetReverseConversion(_In_ LANGID langid, _In_   REFGUID guidProfile, _In_ DWORD dwflag, _Out_ ITfReverseConversion **ppReverseConversion);

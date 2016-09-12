@@ -26,7 +26,7 @@ public:
 
     // IEnumTfDisplayAttributeInfo
     STDMETHODIMP Clone(_Out_ IEnumTfDisplayAttributeInfo **ppEnum);
-    STDMETHODIMP Next(ULONG ulCount, __RPC__out_ecount_part(ulCount, *pcFetched) ITfDisplayAttributeInfo **rgInfo, __RPC__out ULONG *pcFetched);
+    STDMETHODIMP Next(ULONG ulCount, __RPC__out_ecount_part(ulCount, *pcFetched) ITfDisplayAttributeInfo **rgInfo, _Inout_opt_ ULONG *pcFetched);
     STDMETHODIMP Reset();
     STDMETHODIMP Skip(ULONG ulCount);
 

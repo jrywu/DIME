@@ -15,7 +15,7 @@
 //
 //---------------------------------------------------------------------
 
-CDictionaryParser::CDictionaryParser(LCID locale, WCHAR keywordDelimiter)
+CDictionaryParser::CDictionaryParser(LCID locale, _In_ WCHAR keywordDelimiter)
 {
     _locale = locale;
 	_keywordDelimiter = keywordDelimiter;
@@ -262,6 +262,7 @@ BOOL CDictionaryParser::RemoveStringDelimiter(_Inout_opt_ CStringRange *pString)
 			if(pwszKeyWordDelimiter)
 			{	
 				PWCHAR pwchNoEscape = new (std::nothrow) WCHAR[pString->GetLength() + 1];
+				if (pwchNoEscape == nullptr) return FALSE;
 				*pwchNoEscape = L'\0';
 				const WCHAR *pwch = pString->Get();
 				DWORD_PTR index = 0;

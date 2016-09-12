@@ -48,7 +48,7 @@ STDAPI CDIME::OnUninitDocumentMgr(_In_ ITfDocumentMgr *pDocMgr)
 // focus document, or now no document holds the input focus.
 //----------------------------------------------------------------------------
 
-STDAPI CDIME::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMgr *pDocMgrPrevFocus)
+STDAPI CDIME::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_opt_ ITfDocumentMgr *pDocMgrPrevFocus)
 {
 	debugPrint(L"CDIME::OnSetFocus() _isChinese = %d, _lastKeyboardMode = %d\n", _isChinese, _lastKeyboardMode);
     pDocMgrPrevFocus;
@@ -120,7 +120,7 @@ STDAPI CDIME::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_ ITfDocumentMgr 
         ITfDocumentMgr* pCandidateListDocumentMgr = nullptr;
         ITfContext* pTfContext = _pUIPresenter->_GetContextDocument();
         if (pTfContext && 
-			SUCCEEDED(pTfContext->GetDocumentMgr(&pCandidateListDocumentMgr) && pCandidateListDocumentMgr ))
+			SUCCEEDED(pTfContext->GetDocumentMgr(&pCandidateListDocumentMgr)) && pCandidateListDocumentMgr )
         {
             if (pCandidateListDocumentMgr != pDocMgrFocus)
             {

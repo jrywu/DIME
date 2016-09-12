@@ -87,13 +87,16 @@ void CDIME::_TerminateComposition(TfEditCookie ec, _In_ ITfContext *pContext, BO
 void CDIME::_EndComposition(_In_opt_ ITfContext *pContext)
 {
 	debugPrint(L"CDIME::_EndComposition()\n");
-    CEndCompositionEditSession *pEditSession = new (std::nothrow) CEndCompositionEditSession(this, pContext);
-    HRESULT hr = S_OK;
 
-    if (pEditSession && pContext)
-    {
-        pContext->RequestEditSession(_tfClientId, pEditSession, TF_ES_ASYNCDONTCARE | TF_ES_READWRITE, &hr);
-        pEditSession->Release();
-    }
+	if (pContext == nullptr) return;
+
+	CEndCompositionEditSession *pEditSession = new (std::nothrow) CEndCompositionEditSession(this, pContext);
+	HRESULT hr = S_OK;
+	if (pEditSession)
+	{
+		pContext->RequestEditSession(_tfClientId, pEditSession, TF_ES_ASYNCDONTCARE | TF_ES_READWRITE, &hr);
+		pEditSession->Release();
+	}
+
 }
 

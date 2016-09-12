@@ -709,17 +709,15 @@ HRESULT CDIME::GetFunction(__RPC__in REFGUID rguid, __RPC__in REFIID riid, __RPC
 HRESULT CDIME::GetDisplayName(_Out_ BSTR *pbstrDisplayName)
 {
 	debugPrint(L"CDIME::GetDisplayName()");
-	BSTR bstrName;
-
-	if(pbstrDisplayName == NULL)
-	{
-		return E_INVALIDARG;
-	}
-
-	*pbstrDisplayName = NULL;
-
 	
-	bstrName = new (std::nothrow) WCHAR[64];
+	if(pbstrDisplayName == NULL)
+		return E_INVALIDARG;
+	
+
+	BSTR bstrName = new (std::nothrow) WCHAR[64];
+	if (bstrName == NULL)	return E_OUTOFMEMORY;
+
+	*bstrName = { 0 };
 	if(Global::imeMode == IME_MODE_DAYI)
 		LoadString(Global::dllInstanceHandle, IDS_DAYI_DESCRIPTION, bstrName, 64);
 	if(Global::imeMode == IME_MODE_ARRAY)
@@ -728,11 +726,9 @@ HRESULT CDIME::GetDisplayName(_Out_ BSTR *pbstrDisplayName)
 		LoadString(Global::dllInstanceHandle, IDS_PHONETIC_DESCRIPTION, bstrName, 64);
 	if(Global::imeMode == IME_MODE_GENERIC)
 		LoadString(Global::dllInstanceHandle, IDS_GENERIC_DESCRIPTION, bstrName, 64);
-
-	if(bstrName == NULL)	return E_OUTOFMEMORY;
 	
-	*pbstrDisplayName = bstrName;
-
+	*pbstrDisplayName = SysAllocString(bstrName);
+	delete[] bstrName;
 	return S_OK;
 
 }
@@ -997,7 +993,7 @@ void CDIME::_LoadConfig(BOOL isForce, IME_MODE imeMode)
 					BSTR bstr;
 					bstr = SysAllocStringLen(L"¤@" , (UINT) 1);
 					ITfReverseConversionList* reverseConversionList = nullptr;
-					if(FAILED(_pITfReverseConversion[imeMode]->DoReverseConversion(bstr, &reverseConversionList)) || reverseConversionList == nullptr)
+					if(bstr && FAILED(_pITfReverseConversion[imeMode]->DoReverseConversion(bstr, &reverseConversionList)) || reverseConversionList == nullptr)
 					{
 						_pITfReverseConversion[imeMode] = nullptr;
 					}

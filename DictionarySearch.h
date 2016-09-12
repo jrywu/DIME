@@ -25,7 +25,7 @@ class CDIME;
 class CDictionarySearch : CDictionaryParser
 {
 public:
-    CDictionarySearch(LCID locale, _In_ CFile *pFile, _In_ CStringRange *pSearchKeyCode, _In_ WCHAR keywordDelimiter);
+    CDictionarySearch(LCID locale, _In_ CFile *pFile, _In_opt_ CStringRange *pSearchKeyCode, _In_ WCHAR keywordDelimiter);
     virtual ~CDictionarySearch();
 
     BOOL FindPhrase(_Out_ CDictionaryResult **ppdret);
@@ -44,7 +44,7 @@ public:
 
 private:
 	SEARCH_SECTION _searchSection;
-	BOOL FindWorker(BOOL isTextSearch, _Out_ CDictionaryResult **ppdret, BOOL isWildcardSearch, _In_opt_ BOOL parseConfig = FALSE
+	BOOL FindWorker(BOOL isTextSearch, _Out_opt_ CDictionaryResult **ppdret, _In_ BOOL isWildcardSearch, _In_ BOOL parseConfig = FALSE
 		, _Inout_opt_ _T_RadicalMap* pRadicalMap = nullptr, _Inout_opt_ _T_RadicalIndexMap* pRadicalIndexMap = nullptr);
 
     DWORD_PTR GetBufferInWCharLength()

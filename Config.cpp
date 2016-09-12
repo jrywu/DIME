@@ -71,8 +71,8 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 	BOOL ret = FALSE;
 	HWND hwnd;
 	size_t i;
-	WCHAR num[16];
-	WCHAR fontname[LF_FACESIZE];
+	WCHAR num[16] = { 0 };
+	WCHAR fontname[LF_FACESIZE] = { 0 };
 	int fontpoint = 12, fontweight = FW_NORMAL, x, y;
 	BOOL fontitalic = FALSE;
 	CHOOSEFONT cf;
@@ -949,7 +949,7 @@ VOID CConfig::LoadConfig(IME_MODE imeMode)
 			{
 				CFile *iniDictionaryFile;
 				iniDictionaryFile = new (std::nothrow) CFile();
-				if ((iniDictionaryFile)->CreateFile(pwszINIFileName, GENERIC_READ, OPEN_EXISTING, 0))
+				if (iniDictionaryFile && (iniDictionaryFile)->CreateFile(pwszINIFileName, GENERIC_READ, OPEN_EXISTING, 0))
 				{
 					CTableDictionaryEngine * iniTableDictionaryEngine;
 					iniTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(MAKELCID(1028, SORT_DEFAULT), iniDictionaryFile, INI_DICTIONARY);//CHT:1028
@@ -1066,7 +1066,7 @@ void CConfig::SetDefaultTextFont()
 			0, 0, 0, _fontWeight, _fontItalic, 0, 0, DEFAULT_CHARSET, 0, 0, 0, 0, _pFontFaceName);
 		if (!Global::defaultlFontHandle)
 		{
-			LOGFONT lf;
+			LOGFONT lf = { 0 };
 			SystemParametersInfo(SPI_GETICONTITLELOGFONT, sizeof(LOGFONT), &lf, 0);
 			// Fall back to the default GUI font on failure.
 			Global::defaultlFontHandle = CreateFont(-MulDiv(_fontSize, GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72), 
@@ -1091,9 +1091,12 @@ void CConfig::SetReverseConvervsionInfoList(CDIMEArray <LanguageProfileInfo> *re
 		_infoItem->clsid = infoItem->clsid;
 		_infoItem->guidProfile = infoItem->guidProfile;
 		PWCH _description = new (std::nothrow) WCHAR[wcslen(infoItem->description) + 1];
-		*_description = L'\0';
-		StringCchCopy(_description, wcslen(infoItem->description) + 1, infoItem->description);
-		_infoItem->description = _description;
+		if (_description)
+		{
+			*_description = L'\0';
+			StringCchCopy(_description, wcslen(infoItem->description) + 1, infoItem->description);
+			_infoItem->description = _description;
+		}
 	}
 }
 
@@ -1108,7 +1111,7 @@ void CConfig::clearReverseConvervsionInfoList()
 	_reverseConvervsionInfoList->Clear();
 }
 
-BOOL CConfig::importCustomTableFile(HWND hDlg, LPCWSTR pathToLoad)
+BOOL CConfig::importCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToLoad)
 {
 	BOOL success = FALSE;
 
@@ -1124,7 +1127,7 @@ BOOL CConfig::importCustomTableFile(HWND hDlg, LPCWSTR pathToLoad)
 			goto Cleanup;
 		}
 		// Get file size
-		if ((dwDataLen = GetFileSize(hCustomTable, NULL)) == INVALID_FILE_SIZE)
+		if (hCustomTable && (dwDataLen = GetFileSize(hCustomTable, NULL)) == INVALID_FILE_SIZE)
 		{	// Error
 			success = FALSE;
 			goto Cleanup;
@@ -1132,9 +1135,14 @@ BOOL CConfig::importCustomTableFile(HWND hDlg, LPCWSTR pathToLoad)
 		// Create a buffer for the custom table text
 		size_t bufsize = dwDataLen + 1;
 		customText = new (std::nothrow) WCHAR[bufsize];
+		if (customText == nullptr)
+		{// Error
+			success = FALSE;
+			goto Cleanup;
+		}
 		ZeroMemory((LPVOID)customText, (dwDataLen + 1) * sizeof (WCHAR));
 		// Read the file
-		if (!ReadFile(hCustomTable, (LPVOID)customText, dwDataLen, &dwDataLen, NULL))
+		if (hCustomTable && !ReadFile(hCustomTable, (LPVOID)customText, dwDataLen, &dwDataLen, NULL))
 		{	// Error
 			success = FALSE;
 			goto Cleanup;
@@ -1147,7 +1155,11 @@ BOOL CConfig::importCustomTableFile(HWND hDlg, LPCWSTR pathToLoad)
 			UINT codepage = 0;
 
 			//IMultiLanguage intilization
-			CoInitialize(NULL);
+			if(FAILED(CoInitialize(NULL)))
+			{	// Error
+				success = FALSE;
+				goto Cleanup;
+			}
 			IMultiLanguage2 *lang = NULL;
 			HRESULT hr = CoCreateInstance(CLSID_CMultiLanguage, NULL,
 				CLSCTX_ALL, IID_IMultiLanguage2, (LPVOID*)&lang);
@@ -1165,6 +1177,11 @@ BOOL CConfig::importCustomTableFile(HWND hDlg, LPCWSTR pathToLoad)
 			if (SUCCEEDED(hr)) {
 				hr = lang->ConvertStringToUnicode(&pdwMode, codepage, (char *)customText, &uinlen, NULL, &outlen);
 				outWStr = new (std::nothrow) WCHAR[outlen + 1];
+				if (outWStr == nullptr)
+				{// Error
+					success = FALSE;
+					goto Cleanup;
+				}
 				ZeroMemory(outWStr, (outlen + 1)*sizeof(WCHAR));
 			}
 
@@ -1177,11 +1194,14 @@ BOOL CConfig::importCustomTableFile(HWND hDlg, LPCWSTR pathToLoad)
 				lang->Release();
 			CoUninitialize();
 
-			SetDlgItemTextW(hDlg, IDC_EDIT_CUSTOM_TABLE, outWStr);
-			if (outWStr) delete[]outWStr;
+			if (outWStr)
+			{
+				SetDlgItemTextW(hDlg, IDC_EDIT_CUSTOM_TABLE, outWStr);
+				delete[]outWStr;
+			}
 
 		}
-		else
+		else if(customText)
 		{
 			SetDlgItemTextW(hDlg, IDC_EDIT_CUSTOM_TABLE, customText);
 		}
@@ -1194,17 +1214,23 @@ BOOL CConfig::importCustomTableFile(HWND hDlg, LPCWSTR pathToLoad)
 }
 
 
-BOOL CConfig::exportCustomTableFile(HWND hDlg, LPCWSTR pathToWrite)
+BOOL CConfig::exportCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToWrite)
 {
 	//write the edittext context into custom.txt
 	BOOL success = TRUE;
 	int len;
 	LPWSTR buf;
-	HANDLE hCustomTableFile;
+	HANDLE hCustomTableFile = NULL;
 	DWORD lpNumberOfBytesWritten = 0;
 
 	len = GetWindowTextLength(GetDlgItem(hDlg, IDC_EDIT_CUSTOM_TABLE));
 	buf = new (std::nothrow) WCHAR[len + 1];
+	if (buf == nullptr)
+	{
+		// Error
+		success = FALSE;
+		goto Cleanup;
+	}
 	ZeroMemory(buf, (len + 1)*sizeof(WCHAR));
 	GetDlgItemText(hDlg, IDC_EDIT_CUSTOM_TABLE, buf, len + 1);
 
@@ -1235,7 +1261,7 @@ Cleanup:
 	return success;
 }
 
-BOOL CConfig::parseCINFile(LPCWSTR pathToLoad, LPCWSTR pathToWrite, BOOL customTableMode)
+BOOL CConfig::parseCINFile(_In_ LPCWSTR pathToLoad, _In_ LPCWSTR pathToWrite, _In_ BOOL customTableMode)
 {
 	FILE *fpr, *fpw;
 	errno_t ret;
@@ -1249,8 +1275,8 @@ BOOL CConfig::parseCINFile(LPCWSTR pathToLoad, LPCWSTR pathToWrite, BOOL customT
 	{
 		if (_wfopen_s(&fpw, pathToWrite, L"w+, ccs=UTF-16LE") == 0)
 		{
-			WCHAR line[MAX_COMMIT_LENGTH], key[MAX_KEY_LENGTH], value[MAX_VALUE_LENGTH], escapedKey[MAX_KEY_LENGTH], escapedValue[MAX_VALUE_LENGTH],
-				sep[MAX_KEY_LENGTH], others[MAX_COMMIT_LENGTH];
+			WCHAR line[MAX_COMMIT_LENGTH] = { 0 }, key[MAX_KEY_LENGTH] = { 0 }, value[MAX_VALUE_LENGTH] = { 0 }, escapedKey[MAX_KEY_LENGTH] = { 0 }, 
+				escapedValue[MAX_VALUE_LENGTH] = { 0 },	sep[MAX_KEY_LENGTH] = { 0 }, others[MAX_COMMIT_LENGTH] = { 0 };
 			BOOL doEscape = FALSE;
 
 			if (customTableMode) fwprintf_s(fpw, L"%s", L"%chardef begin\n");

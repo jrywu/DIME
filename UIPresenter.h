@@ -82,11 +82,11 @@ public:
     VOID _SetCandidateTextColor(COLORREF crColor, COLORREF crBkColor);
 	VOID _SetCandidateSelectedTextColor(COLORREF crColor, COLORREF crBkColor);
     VOID _SetCandidateFillColor(COLORREF fiColor);
-	VOID _SetCandidateNotifyColor(COLORREF crColor, COLORREF crBkColor);
+	//VOID _SetCandidateNotifyColor(COLORREF crColor, COLORREF crBkColor);
 	BOOL IsCandShown();
 
-	DWORD_PTR CUIPresenter::_GetSelectedCandidateKeyCode(_Outptr_result_maybenull_ const WCHAR **ppwchCandidateString);
-    DWORD_PTR _GetSelectedCandidateString(_Outptr_result_maybenull_ const WCHAR **ppwchCandidateString);
+	DWORD_PTR _GetSelectedCandidateKeyCode(_Inout_ const WCHAR **ppwchCandidateString);
+    DWORD_PTR _GetSelectedCandidateString(_Inout_ const WCHAR **ppwchCandidateString);
     BOOL _SetCandidateSelectionInPage(int nPos) { return _pCandidateWnd->_SetSelectionInPage(nPos); }
 
     BOOL _MoveCandidateSelection(_In_ int offSet);
@@ -108,7 +108,7 @@ public:
 
 	void GetCandLocation(_Out_ POINT *lpPoint);
 
-	HRESULT MakeNotifyWindow(_In_ ITfContext *pContextDocument, _In_opt_ CStringRange *pNotifyText =nullptr, enum NOTIFY_TYPE notifyType = NOTIFY_OTHERS);
+	HRESULT MakeNotifyWindow(_In_ ITfContext *pContextDocument, _In_opt_ CStringRange *pNotifyText =nullptr, _In_ enum NOTIFY_TYPE notifyType = NOTIFY_OTHERS);
 	void SetNotifyText(_In_ CStringRange *pNotifyText);
 	void ShowNotify(_In_ BOOL showMode, _In_opt_ UINT delayShow = 0, _In_opt_ UINT timeToHide = 0);
 	void ClearNotify();

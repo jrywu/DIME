@@ -360,7 +360,7 @@ WCHAR CCompositionProcessorEngine::GetVirtualKey(DWORD_PTR dwIndex)
 //
 //----------------------------------------------------------------------------
 
-void CCompositionProcessorEngine::GetReadingString(_Inout_ CStringRange *pReadingString, _Out_ BOOL *pIsWildcardIncluded, _In_opt_ CStringRange *pKeyCode)
+void CCompositionProcessorEngine::GetReadingString(_Inout_ CStringRange *pReadingString, _Inout_opt_ BOOL *pIsWildcardIncluded, _In_opt_ CStringRange *pKeyCode)
 {
 	debugPrint(L"CCompositionProcessorEngine::GetReadingStrings() ");
 	if (!IsDictionaryAvailable(Global::imeMode))
@@ -382,6 +382,7 @@ void CCompositionProcessorEngine::GetReadingString(_Inout_ CStringRange *pReadin
 
 		PWCHAR pwchRadical;
 		pwchRadical = new (std::nothrow) WCHAR[MAX_READINGSTRING];
+		if (pwchRadical == NULL) return; // should not happen
 		*pwchRadical = L'\0';
 
 		if (_pTableDictionaryEngine[Global::imeMode]->GetRadicalMap() &&
@@ -891,13 +892,14 @@ BOOL CCompositionProcessorEngine::IsArrayShortCode()
 // checkArraySpeicalCode
 //
 //----------------------------------------------------------------------------
-DWORD_PTR CCompositionProcessorEngine::CollectWordFromArraySpeicalCode(_Outptr_result_maybenull_ const WCHAR **ppwchSpecialCodeResultString)
+DWORD_PTR CCompositionProcessorEngine::CollectWordFromArraySpeicalCode(_Inout_opt_ const WCHAR **ppwchSpecialCodeResultString)
 {
 	if (!IsDictionaryAvailable(Global::imeMode))
 	{
 		return 0;
 	}
-	*ppwchSpecialCodeResultString = nullptr;
+	if(ppwchSpecialCodeResultString)
+		*ppwchSpecialCodeResultString = nullptr;
 
 	if (Global::imeMode != IME_MODE_ARRAY || _keystrokeBuffer.GetLength() != 2) return 0;
 
@@ -913,7 +915,7 @@ DWORD_PTR CCompositionProcessorEngine::CollectWordFromArraySpeicalCode(_Outptr_r
 		_pArraySpecialCodeTableDictionaryEngine->CollectWord(&_keystrokeBuffer, &candidateList);
 	}
 
-	if (candidateList.Count() == 1)
+	if (candidateList.Count() == 1 && ppwchSpecialCodeResultString)
 	{
 		*ppwchSpecialCodeResultString = candidateList.GetAt(0)->_ItemString.Get();
 		return  candidateList.GetAt(0)->_ItemString.GetLength();
@@ -929,10 +931,11 @@ DWORD_PTR CCompositionProcessorEngine::CollectWordFromArraySpeicalCode(_Outptr_r
 // checkArraySpeicalCode
 //
 //----------------------------------------------------------------------------
-BOOL CCompositionProcessorEngine::GetArraySpeicalCodeFromConvertedText(_In_ CStringRange *inword, _Out_ CStringRange *csrReslt)
+BOOL CCompositionProcessorEngine::GetArraySpeicalCodeFromConvertedText(_In_ CStringRange *inword, _Inout_opt_ CStringRange *csrReslt)
 {
 	if (!IsDictionaryAvailable(Global::imeMode))
 	{
+		csrReslt = inword;
 		return FALSE;
 	}
 
@@ -945,6 +948,11 @@ BOOL CCompositionProcessorEngine::GetArraySpeicalCodeFromConvertedText(_In_ CStr
 
 		PWCHAR pwch;
 		pwch = new (std::nothrow) WCHAR[MAX_READINGSTRING];
+		if (pwch == NULL)
+		{
+			csrReslt = inword;
+			return FALSE;
+		}
 		*pwch = L'\0';
 		_T_RadicalMap* pRadicalMap = _pTableDictionaryEngine[Global::imeMode]->GetRadicalMap();
 		if (pRadicalMap && pRadicalMap->size() &&
@@ -965,11 +973,12 @@ BOOL CCompositionProcessorEngine::GetArraySpeicalCodeFromConvertedText(_In_ CStr
 		}
 		else
 		{
-			delete pwch;
+			delete[] pwch;
 			csrReslt = inword;
 
 		}
 	}
+		
 
 	return FALSE;
 
@@ -1065,9 +1074,12 @@ void CCompositionProcessorEngine::SetupKeystroke(IME_MODE imeMode)
 		(_pTableDictionaryEngine[imeMode]->GetRadicalMap()->find('=') == _pTableDictionaryEngine[imeMode]->GetRadicalMap()->end()))
 	{ //dayi symbol prompt
 		WCHAR *pwchEqual = new (std::nothrow) WCHAR[2];
-		pwchEqual[0] = L'=';
-		pwchEqual[1] = L'\0';
-		(*_pTableDictionaryEngine[imeMode]->GetRadicalMap())['='] = pwchEqual;
+		if (pwchEqual)
+		{
+			pwchEqual[0] = L'=';
+			pwchEqual[1] = L'\0';
+			(*_pTableDictionaryEngine[imeMode]->GetRadicalMap())['='] = pwchEqual;
+		}
 	}
 
 	for (_T_RadicalMap::iterator item = _pTableDictionaryEngine[imeMode]->GetRadicalMap()->begin(); item !=
@@ -2061,6 +2073,7 @@ BOOL CCompositionProcessorEngine::GetSCFromTC(CStringRange* stringToConvert, CSt
 
 	UINT lenToConvert = (UINT)stringToConvert->GetLength();
 	PWCHAR pwch = new (std::nothrow) WCHAR[lenToConvert + 1];
+	if (pwch == nullptr) return FALSE;
 	*pwch = L'\0';
 	CStringRange wcharToCover;
 
@@ -2512,7 +2525,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 //
 //----------------------------------------------------------------------------
 
-BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeComposition(UINT uCode, PWCH pwch, _Out_opt_ _KEYSTROKE_STATE *pKeyState, KEYSTROKE_FUNCTION function)
+BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeComposition(UINT uCode, PWCH pwch, _Inout_opt_ _KEYSTROKE_STATE *pKeyState, KEYSTROKE_FUNCTION function)
 {
 	if (!IsDictionaryAvailable(_imeMode) || pKeyState == nullptr || _KeystrokeComposition.Count() == 0)
 	{
@@ -2802,19 +2815,21 @@ BOOL CCompositionProcessorEngine::isPhoneticComposingKey()
 
 CStringRange CCompositionProcessorEngine::buildKeyStrokesFromPhoneticSyllable(UINT syllable)
 {
-	PWCHAR buf = new (std::nothrow) WCHAR[5];
-	WCHAR *b = buf;
-	if (syllable & vpConsonantMask)
-		*b++ = VPSymbolToStandardLayoutChar(syllable&vpConsonantMask);
-	if (syllable & vpMiddleVowelMask)
-		*b++ = VPSymbolToStandardLayoutChar(syllable&vpMiddleVowelMask);
-	if (syllable & vpVowelMask)
-		*b++ = VPSymbolToStandardLayoutChar(syllable&vpVowelMask);
-	if (syllable & vpToneMask)
-		*b++ = VPSymbolToStandardLayoutChar(syllable&vpToneMask);
-	*b = 0;
-
 	CStringRange csr;
-	csr.Set(buf, wcslen(buf));
+	PWCHAR buf = new (std::nothrow) WCHAR[5];
+	if (buf)
+	{
+		WCHAR *b = buf;
+		if (syllable & vpConsonantMask)
+			*b++ = VPSymbolToStandardLayoutChar(syllable&vpConsonantMask);
+		if (syllable & vpMiddleVowelMask)
+			*b++ = VPSymbolToStandardLayoutChar(syllable&vpMiddleVowelMask);
+		if (syllable & vpVowelMask)
+			*b++ = VPSymbolToStandardLayoutChar(syllable&vpVowelMask);
+		if (syllable & vpToneMask)
+			*b++ = VPSymbolToStandardLayoutChar(syllable&vpToneMask);
+		*b = 0;
+		csr.Set(buf, wcslen(buf));
+	}
 	return csr;
 }

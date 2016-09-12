@@ -16,7 +16,7 @@ public:
 	STDMETHODIMP_(ULONG) AddRef(void);
 	STDMETHODIMP_(ULONG) Release(void);
 	//ITfReverseConversion 
-	STDMETHODIMP DoReverseConversion(_In_ LPCWSTR lpstrToConvert, _Out_ ITfReverseConversionList **ppList);
+	STDMETHODIMP DoReverseConversion(_In_ LPCWSTR lpstrToConvert, _Inout_opt_ ITfReverseConversionList **ppList);
 private:
 	LONG _refCount;
 	CReverseConversionList* _pReverseConversionList;
@@ -37,7 +37,7 @@ public:
 	
 	//ITfReverseConversionList 
 	STDMETHODIMP GetLength(__RPC__out UINT *puIndex);
-	STDMETHODIMP GetString(UINT uIndex, __RPC__deref_out_opt BSTR *pbstr);
+	STDMETHODIMP GetString(UINT uIndex, _Inout_ BSTR *pbstr);
 	void SetResultList(CDIMEArray<CCandidateListItem>* pCandidateList);
 private:
 	LONG _refCount;

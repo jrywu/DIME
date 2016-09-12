@@ -11,7 +11,7 @@
 //----------------------------------------------------------------------------
 // static dialog procedure
 
-HRESULT CDIME::Show(_In_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID inRefGuidProfile)
+HRESULT CDIME::Show(_In_opt_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID inRefGuidProfile)
 {
 	debugPrint(L"CDIME::Show()");
 
@@ -122,7 +122,8 @@ HRESULT CDIME::Show(_In_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID inR
 	if (_PropertySheet)
 		(*_PropertySheet)(&psh);
 
-	FreeLibrary(dllCtlHandle);
+	if(dllCtlHandle)
+		FreeLibrary(dllCtlHandle);
 
 
 
