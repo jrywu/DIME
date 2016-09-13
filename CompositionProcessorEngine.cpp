@@ -2235,7 +2235,7 @@ void CCompositionProcessorEngine::SetInitialCandidateListRange(IME_MODE imeMode)
 //     If engine need this virtual key code, returns true. Otherwise returns false.
 //----------------------------------------------------------------------------
 
-BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCHAR *pwch, BOOL fComposing, CANDIDATE_MODE candidateMode, BOOL hasCandidateWithWildcard, UINT candiCount, _Out_opt_ _KEYSTROKE_STATE *pKeyState)
+BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCHAR *pwch, BOOL fComposing, CANDIDATE_MODE candidateMode, BOOL hasCandidateWithWildcard, UINT candiCount, _Inout_opt_ _KEYSTROKE_STATE *pKeyState)
 {
 	if (pKeyState)
 	{
@@ -2617,7 +2617,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeCandidate(UINT uCode, _In
 //
 //----------------------------------------------------------------------------
 
-BOOL CCompositionProcessorEngine::IsKeystrokeRange(UINT uCode, _Out_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode)
+BOOL CCompositionProcessorEngine::IsKeystrokeRange(UINT uCode, _Inout_opt_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode)
 {
 	if (pKeyState == nullptr)
 	{

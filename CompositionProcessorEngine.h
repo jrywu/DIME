@@ -24,7 +24,7 @@ public:
 	
 	
 
-	BOOL IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCHAR *pwch, BOOL fComposing, CANDIDATE_MODE candidateMode, BOOL hasCandidateWithWildcard, UINT candiCount, _Out_opt_ _KEYSTROKE_STATE *pKeyState);
+	BOOL IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCHAR *pwch, BOOL fComposing, CANDIDATE_MODE candidateMode, BOOL hasCandidateWithWildcard, UINT candiCount, _Inout_opt_ _KEYSTROKE_STATE *pKeyState);
 
     BOOL AddVirtualKey(WCHAR wch);
     void RemoveVirtualKey(DWORD_PTR dwIndex);
@@ -125,7 +125,7 @@ private:
 
     BOOL IsVirtualKeyKeystrokeComposition(UINT uCode, PWCH pwch, _Inout_opt_ _KEYSTROKE_STATE *pKeyState, KEYSTROKE_FUNCTION function);
     BOOL IsVirtualKeyKeystrokeCandidate(UINT uCode, _In_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode, _Out_ BOOL *pfRetCode, _In_ CDIMEArray<_KEYSTROKE> *pKeystrokeMetric);
-    BOOL IsKeystrokeRange(UINT uCode, _Out_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode);
+    BOOL IsKeystrokeRange(UINT uCode, _Inout_opt_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode);
 
 	void SetInitialCandidateListRange(IME_MODE imeMode);
 

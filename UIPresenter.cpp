@@ -1297,7 +1297,7 @@ Exit:
     return hr;
 }
 
-HRESULT CUIPresenter::MakeNotifyWindow(_In_ ITfContext *pContextDocument, _In_opt_ CStringRange * notifyText, _In_ enum NOTIFY_TYPE notifyType)
+HRESULT CUIPresenter::MakeNotifyWindow(_In_ ITfContext *pContextDocument, _In_ CStringRange * notifyText, _In_ enum NOTIFY_TYPE notifyType)
 {
 	HRESULT hr = S_OK;
 

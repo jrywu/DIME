@@ -60,7 +60,7 @@ __inline UINT VKeyFromVKPacketAndWchar(UINT vk, WCHAR wch)
 //
 //----------------------------------------------------------------------------
 
-BOOL CDIME::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pCodeOut, _Out_writes_(1) WCHAR *pwch, _Out_opt_ _KEYSTROKE_STATE *pKeyState)
+BOOL CDIME::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pCodeOut, _Out_writes_(1) WCHAR *pwch, _Inout_opt_ _KEYSTROKE_STATE *pKeyState)
 {
 	debugPrint(L"CDIME::_IsKeyEaten(), codein = %d", codeIn);
     pContext;
@@ -305,7 +305,7 @@ STDAPI CDIME::OnTestKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, 
 	debugPrint(L" CDIME::OnTestKeyDown()");
     Global::UpdateModifiers(wParam, lParam);
 
-    _KEYSTROKE_STATE KeystrokeState;
+	_KEYSTROKE_STATE KeystrokeState = { CATEGORY_NONE, FUNCTION_NONE };
     WCHAR wch = '\0';
     UINT code = 0;
 
@@ -347,7 +347,7 @@ STDAPI CDIME::OnKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL
 	debugPrint(L" CDIME::OnKeyDown()");
     Global::UpdateModifiers(wParam, lParam);
    
-	_KEYSTROKE_STATE KeystrokeState;
+	_KEYSTROKE_STATE KeystrokeState = { CATEGORY_NONE, FUNCTION_NONE };
     WCHAR wch = '\0';
     UINT code = 0;
 
