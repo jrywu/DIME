@@ -212,11 +212,11 @@ HRESULT CTfTextLayoutSink::_UnadviseTextLayoutSink()
     return hr;
 }
 
-HRESULT CTfTextLayoutSink::_GetTextExt(_Out_ RECT *lpRect)
+HRESULT CTfTextLayoutSink::_GetTextExt(_Inout_ RECT *lpRect)
 {
 	debugPrint (L"CTfTextLayoutSink::_GetTextExt()");
 
-	if(_pContextDocument == nullptr) return E_ABORT;
+	if(lpRect == nullptr || _pContextDocument == nullptr) return E_ABORT;
     HRESULT hr = S_OK;
     BOOL isClipped = TRUE;
     ITfContextView* pContextView = nullptr;

@@ -20,7 +20,7 @@
 //
 //----------------------------------------------------------------------------
 
-CNotifyWindow::CNotifyWindow(_In_ NOTIFYWNDCALLBACK pfnCallback, _In_ void *pv, enum NOTIFY_TYPE notifyType)
+CNotifyWindow::CNotifyWindow(_In_ NOTIFYWNDCALLBACK pfnCallback, _In_ void *pv, _In_ enum NOTIFY_TYPE notifyType)
 {
    debugPrint(L"CNotifyWindow::CNotifyWindow() gdiObjects = %d", GetGuiResources(GetCurrentProcess(), GR_GDIOBJECTS));
 	
@@ -325,7 +325,8 @@ LRESULT CALLBACK CNotifyWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT uM
                 _pShadowWnd->_OnOwnerWndMoved((pWndPos->flags & SWP_NOSIZE) == 0);
             }
 
-            _FireMessageToLightDismiss(wndHandle, pWndPos);
+			if(pWndPos)
+				_FireMessageToLightDismiss(wndHandle, pWndPos);
         }
         break;
 

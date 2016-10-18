@@ -29,7 +29,7 @@ public:
     CNotifyWindow(_In_ NOTIFYWNDCALLBACK pfnCallback, _In_ void *pv, _In_ enum NOTIFY_TYPE notifyType);
     virtual ~CNotifyWindow();
 
-	BOOL _Create(_In_ UINT fontHeight,  _In_opt_ HWND parentWndHandle, CStringRange* notifytext=nullptr);
+	BOOL _Create(_In_ UINT fontHeight,  _In_opt_ HWND parentWndHandle, _In_opt_ CStringRange* notifytext=nullptr);
 
     void _Move(int x, int y);
     void _Show(BOOL isShowWnd, UINT delayShow = 0, UINT timeToHide = 0);

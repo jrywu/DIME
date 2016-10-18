@@ -79,7 +79,7 @@ CReverseConversion::~CReverseConversion()
 }
 
 //ITfReverseConversion
-HRESULT CReverseConversion::DoReverseConversion(_In_ LPCWSTR lpstrToConvert, _Out_ ITfReverseConversionList **ppList)
+HRESULT CReverseConversion::DoReverseConversion(_In_ LPCWSTR lpstrToConvert, _Inout_opt_ ITfReverseConversionList **ppList)
 {
 
 	debugPrint(L"CReverseConversion(ITfReverseConversion)::DoReverseConversion() strint to conver = %s", lpstrToConvert);
@@ -92,7 +92,8 @@ HRESULT CReverseConversion::DoReverseConversion(_In_ LPCWSTR lpstrToConvert, _Ou
 	}
 
 	_pReverseConversionList->AddRef();
-	*ppList = _pReverseConversionList;
+	if(ppList)
+		*ppList = _pReverseConversionList;
 	if(_pCompositionProcessorEngine == nullptr) return E_FAIL;
 	CDIMEArray<CCandidateListItem> candidateList;
 	hr = _pCompositionProcessorEngine->GetReverseConversionResults(_imeMode, lpstrToConvert, &candidateList);
@@ -218,7 +219,7 @@ HRESULT CReverseConversionList::GetLength(__RPC__out UINT *puIndex)
 	debugPrint(L"CReverseConversionList(ITfReverseConversionList)::GetLength() puIndex = %d", *puIndex);
 	return S_OK;
 }
-HRESULT CReverseConversionList::GetString(UINT uIndex, __RPC__deref_out_opt BSTR *pbstr)
+HRESULT CReverseConversionList::GetString(UINT uIndex, _Inout_ BSTR *pbstr)
 {
 	debugPrint(L"CReverseConversionList(ITfReverseConversionList)::GetString() uIndex = %d", uIndex);
 	

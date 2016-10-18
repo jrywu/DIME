@@ -141,7 +141,8 @@ errorExit:
     return ret;
 }
 
-const WCHAR* CFile::GetReadBufferPointer(BOOL *fileReloaded)
+_Ret_maybenull_
+const WCHAR* CFile::GetReadBufferPointer(_Inout_opt_ BOOL *fileReloaded)
 {
 	debugPrint(L" CFile::GetReadBufferPointer()");
 	if(fileReloaded) *fileReloaded = FALSE;

@@ -26,7 +26,7 @@ public:
     HRESULT _StartLayout(_In_ ITfContext *pContextDocument, TfEditCookie ec, _In_ ITfRange *pRangeComposition);
     VOID _EndLayout();
 
-    HRESULT _GetTextExt(_Out_ RECT *lpRect);
+    HRESULT _GetTextExt(_Inout_ RECT *lpRect);
     ITfContext* _GetContextDocument() { return _pContextDocument; };
 
 	virtual VOID _LayoutChangeNotification(_In_ RECT *lpRect) = 0;

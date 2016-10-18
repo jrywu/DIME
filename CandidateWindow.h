@@ -59,9 +59,9 @@ public:
     UINT _GetSelection()  { return _currentSelection;}
     void _SetScrollInfo(_In_ int nMax, _In_ int nPage);
 
-    DWORD _GetCandidateString(_In_ int iIndex, _Outptr_result_maybenull_z_ const WCHAR **ppwchCandidateString);
-    DWORD _GetSelectedCandidateString(_Outptr_result_maybenull_ const WCHAR **ppwchCandidateString);
-	DWORD _GetSelectedCandidateKeyCode(_Outptr_result_maybenull_ const WCHAR **ppwchCandidateString);
+    DWORD _GetCandidateString(_In_ int iIndex, _Inout_opt_ const WCHAR **ppwchCandidateString);
+    DWORD _GetSelectedCandidateString(_Inout_opt_ const WCHAR **ppwchCandidateString);
+	DWORD _GetSelectedCandidateKeyCode(_Inout_opt_ const WCHAR **ppwchCandidateString);
 
     BOOL _MoveSelection(_In_ int offSet, _In_ BOOL isNotify);
     BOOL _SetSelection(_In_ int iPage, _In_ BOOL isNotify);
@@ -83,7 +83,7 @@ private:
     HRESULT _CurrentPageHasEmptyItems(_Inout_ BOOL *pfHasEmptyItems);
 
 	// LightDismiss feature support, it will fire messages lightdismiss-related to the light dismiss layout.
-    void _FireMessageToLightDismiss(_In_ HWND wndHandle, _In_ WINDOWPOS *pWndPos);
+    void _FireMessageToLightDismiss(_In_ HWND wndHandle, _In_opt_ WINDOWPOS *pWndPos);
 
     BOOL _CreateMainWindow(_In_opt_ HWND parentWndHandle);
     BOOL _CreateBackGroundShadowWindow();

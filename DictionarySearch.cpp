@@ -16,7 +16,7 @@
 //
 //----------------------------------------------------------------------------
 
-CDictionarySearch::CDictionarySearch(LCID locale, _In_ CFile *pFile, _In_ CStringRange *pSearchKeyCode, _In_ WCHAR keywordDelimiter) : CDictionaryParser(locale, keywordDelimiter)
+CDictionarySearch::CDictionarySearch(LCID locale, _In_ CFile *pFile, _In_opt_ CStringRange *pSearchKeyCode, _In_ WCHAR keywordDelimiter) : CDictionaryParser(locale, keywordDelimiter)
 {
 	_pFile = pFile;
 	_pSearchKeyCode = pSearchKeyCode;
@@ -81,7 +81,7 @@ BOOL CDictionarySearch::FindConvertedStringForWildcard(CDictionaryResult **ppdre
 	return FindWorker(TRUE, ppdret, TRUE); // Wildcard
 }
 
-BOOL CDictionarySearch::ParseConfig(IME_MODE imeMode, _T_RadicalMap* pRadicalMap, _T_RadicalIndexMap* pRadicalIndexMap)
+BOOL CDictionarySearch::ParseConfig(IME_MODE imeMode, _Inout_opt_ _T_RadicalMap* pRadicalMap, _Inout_opt_ _T_RadicalIndexMap* pRadicalIndexMap)
 {
 	debugPrint(L"CDictionarySearch::ParseConfig() imeMode = %d", imeMode);
 	_imeMode = imeMode;
@@ -95,8 +95,8 @@ BOOL CDictionarySearch::ParseConfig(IME_MODE imeMode, _T_RadicalMap* pRadicalMap
 //
 //----------------------------------------------------------------------------
 
-BOOL CDictionarySearch::FindWorker(BOOL isTextSearch, CDictionaryResult **ppdret, BOOL isWildcardSearch, BOOL parseConfig,
-									_T_RadicalMap* pRadicalMap, _T_RadicalIndexMap* pRadicalIndexMap)
+BOOL CDictionarySearch::FindWorker(BOOL isTextSearch, _Out_opt_ CDictionaryResult **ppdret, _In_ BOOL isWildcardSearch, _In_ BOOL parseConfig,
+	_Inout_opt_ _T_RadicalMap* pRadicalMap, _Inout_opt_ _T_RadicalIndexMap* pRadicalIndexMap)
 {
 	
 	BOOL fileReloaded;
@@ -589,7 +589,7 @@ FindNextLine:
 
 
 
-void CDictionarySearch::initialRadialIndexMap(_T_RadicalIndexMap* pRadicalIndexMap)
+void CDictionarySearch::initialRadialIndexMap(_Inout_ _T_RadicalIndexMap* pRadicalIndexMap)
 {
 	if (pRadicalIndexMap)
 	{

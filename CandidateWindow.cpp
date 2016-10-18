@@ -324,6 +324,9 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
                 HFONT hFontOld = (HFONT)SelectObject(dcHandle, Global::defaultlFontHandle);
                 
 				PWCHAR pwszTestString = new (std::nothrow) WCHAR[_wndWidth + 1];
+
+				if (pwszTestString == NULL) return 0;
+
 				pwszTestString[0] = L'\0';
 				for (UINT i = 0; i < _wndWidth; i++) StringCchCatN(pwszTestString, _wndWidth + 1, L"¼e", 1);
 
@@ -737,16 +740,20 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
 	const size_t numStringLen = 2;
 	
 	GetTextMetrics(dcHandle, &_TextMetric);
+	SIZE candSize = { 0,0 };
 	PWCHAR pwszTestString = new (std::nothrow) WCHAR[_wndWidth + 1];
-	pwszTestString[0] = L'\0';
-	for (UINT i = 0; i < _wndWidth; i++) StringCchCatN(pwszTestString, _wndWidth + 1, L"¼e", 1);
+	if (pwszTestString)
+	{
+		pwszTestString[0] = L'\0';
+		for (UINT i = 0; i < _wndWidth; i++) StringCchCatN(pwszTestString, _wndWidth + 1, L"¼e", 1);
+		GetTextExtentPoint32(dcHandle, pwszTestString, _wndWidth, &candSize); //don't trust the TextMetrics. Measurement the font height and width directly.
+		delete[]pwszTestString;
 
-	SIZE candSize;
-	GetTextExtentPoint32(dcHandle, pwszTestString, _wndWidth, &candSize); //don't trust the TextMetrics. Measurement the font height and width directly.
-	delete[]pwszTestString;
+	}
 
+	
 	int cxLine = max((int)_TextMetric.tmAveCharWidth, (int)candSize.cx / (int)_wndWidth);
-	int cyLine = candSize.cy * 5 / 4;
+	int cyLine = candSize.cy * 5 / 4; 
 
 	int fistLineOffset = cyLine / 4;
 
@@ -977,21 +984,23 @@ void CCandidateWindow::_SetScrollInfo(_In_ int nMax, _In_ int nPage)
 //
 //----------------------------------------------------------------------------
 
-DWORD CCandidateWindow::_GetCandidateString(_In_ int iIndex, _Outptr_result_maybenull_z_ const WCHAR **ppwchCandidateString)
+DWORD CCandidateWindow::_GetCandidateString(_In_ int iIndex, _Inout_opt_ const WCHAR **ppwchCandidateString)
 {
     CCandidateListItem* pItemList = nullptr;
 
-    if (iIndex < 0 )
+    if (iIndex < 0)
     {
-        *ppwchCandidateString = nullptr;
+		if (ppwchCandidateString)
+			*ppwchCandidateString = nullptr;
         return 0;
     }
 
     UINT index = static_cast<UINT>(iIndex);
 	
-	if (index >= _candidateList.Count())
+	if (index >= _candidateList.Count() )
     {
-        *ppwchCandidateString = nullptr;
+		if(ppwchCandidateString)
+			*ppwchCandidateString = nullptr;
         return 0;
     }
 
@@ -1010,13 +1019,14 @@ DWORD CCandidateWindow::_GetCandidateString(_In_ int iIndex, _Outptr_result_mayb
 //
 //----------------------------------------------------------------------------
 
-DWORD CCandidateWindow::_GetSelectedCandidateString(_Outptr_result_maybenull_ const WCHAR **ppwchCandidateString)
+DWORD CCandidateWindow::_GetSelectedCandidateString(_Inout_opt_ const WCHAR **ppwchCandidateString)
 {
     CCandidateListItem* pItemList = nullptr;
 
     if (_currentSelection < 0 || (UINT) _currentSelection >= _candidateList.Count())
     {
-        *ppwchCandidateString = nullptr;
+		if(ppwchCandidateString)
+			*ppwchCandidateString = nullptr;
         return 0;
     }
 
@@ -1035,13 +1045,14 @@ DWORD CCandidateWindow::_GetSelectedCandidateString(_Outptr_result_maybenull_ co
 //
 //----------------------------------------------------------------------------
 
-DWORD CCandidateWindow::_GetSelectedCandidateKeyCode(_Outptr_result_maybenull_ const WCHAR **ppwchCandidateString)
+DWORD CCandidateWindow::_GetSelectedCandidateKeyCode(_Inout_opt_ const WCHAR **ppwchCandidateString)
 {
 	CCandidateListItem* pItemList = nullptr;
 
 	if (_currentSelection < 0 || (UINT)_currentSelection >= _candidateList.Count())
 	{
-		*ppwchCandidateString = nullptr;
+		if(ppwchCandidateString)
+			*ppwchCandidateString = nullptr;
 		return 0;
 	}
 
@@ -1537,7 +1548,7 @@ HRESULT CCandidateWindow::_CurrentPageHasEmptyItems(_Inout_ BOOL *hasEmptyItems)
 //      fire EVENT_OBJECT_IME_xxx to let LightDismiss know about IME window.
 //----------------------------------------------------------------------------
 
-void CCandidateWindow::_FireMessageToLightDismiss(_In_ HWND wndHandle, _In_ WINDOWPOS *pWndPos)
+void CCandidateWindow::_FireMessageToLightDismiss(_In_ HWND wndHandle, _In_opt_ WINDOWPOS *pWndPos)
 {
     if (nullptr == pWndPos)
     {

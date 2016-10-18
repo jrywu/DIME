@@ -30,8 +30,8 @@ static CClassFactory* classFactoryObjects[1] = { nullptr };
 
 void DllAddRef(void)
 {
-	debugPrint(L"DllAddRef() Global::dllRefCount = %d ", Global::dllRefCount +1);
-    InterlockedIncrement(&Global::dllRefCount);
+	LONG refCount = InterlockedIncrement(&Global::dllRefCount);
+	debugPrint(L"DllAddRef() Global::dllRefCount = %d ", refCount);
 }
 
 //+---------------------------------------------------------------------------
@@ -42,8 +42,9 @@ void DllAddRef(void)
 
 void DllRelease(void)
 {
-	debugPrint(L"DllRelease() Global::dllRefCount = %d ", Global::dllRefCount -1);
-    if (InterlockedDecrement(&Global::dllRefCount) < 0)
+	LONG refCount = InterlockedDecrement(&Global::dllRefCount);
+	debugPrint(L"DllRelease() Global::dllRefCount = %d ", refCount);
+    if (refCount < 0)
     {
         EnterCriticalSection(&Global::CS);
 
@@ -72,7 +73,7 @@ public:
     STDMETHODIMP_(ULONG) Release(void);
 
     // IClassFactory methods
-    STDMETHODIMP CreateInstance(_In_opt_ IUnknown *pUnkOuter, _In_ REFIID riid, _COM_Outptr_ void **ppvObj);
+    STDMETHODIMP CreateInstance(_In_opt_ IUnknown *pUnkOuter, _In_ REFIID riid, _Inout_ void **ppvObj);
     STDMETHODIMP LockServer(BOOL fLock);
 
     // Constructor
@@ -141,10 +142,11 @@ STDAPI_(ULONG) CClassFactory::Release()
 //
 //----------------------------------------------------------------------------
 
-STDAPI CClassFactory::CreateInstance(_In_opt_ IUnknown *pUnkOuter, _In_ REFIID riid, _COM_Outptr_ void **ppvObj)
+STDAPI CClassFactory::CreateInstance(_In_opt_ IUnknown *pUnkOuter, _In_ REFIID riid, _Inout_ void **ppvObj)
 {
 	debugPrint(L"CClassFactory::CreateInstance() riid = %d", riid);
-    return _pfnCreateInstance(pUnkOuter, riid, ppvObj);
+	return _pfnCreateInstance(pUnkOuter, riid, ppvObj);
+	
 }
 
 //+---------------------------------------------------------------------------

@@ -42,7 +42,7 @@ CCompartment::~CCompartment()
 // _GetCompartment
 //----------------------------------------------------------------------------
 
-HRESULT CCompartment::_GetCompartment(_Outptr_ ITfCompartment **ppCompartment)
+HRESULT CCompartment::_GetCompartment(_Inout_opt_ ITfCompartment **ppCompartment)
 {
     HRESULT hr = S_OK;
     ITfCompartmentMgr* pCompartmentMgr = nullptr;
@@ -51,7 +51,8 @@ HRESULT CCompartment::_GetCompartment(_Outptr_ ITfCompartment **ppCompartment)
 		hr = _punk->QueryInterface(IID_ITfCompartmentMgr, (void **)&pCompartmentMgr);
     if (SUCCEEDED(hr) && pCompartmentMgr)
     {
-        hr = pCompartmentMgr->GetCompartment(_guidCompartment, ppCompartment);
+		if(ppCompartment)
+			hr = pCompartmentMgr->GetCompartment(_guidCompartment, ppCompartment);
         pCompartmentMgr->Release();
     }
 

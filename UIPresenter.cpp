@@ -508,6 +508,7 @@ HRESULT CUIPresenter::_StartCandidateList(TfClientId tfClientId, _In_ ITfDocumen
 	pDocumentMgr;tfClientId;
     HRESULT hr = E_FAIL;
 	CStringRange notify;
+	RECT rcTextExt = { 0,0,0,0 };
 
     if (FAILED(_StartLayout(pContextDocument, ec, pRangeComposition)))
     {
@@ -525,7 +526,7 @@ HRESULT CUIPresenter::_StartCandidateList(TfClientId tfClientId, _In_ ITfDocumen
 
 	Show(_isShowMode);
 
-    RECT rcTextExt;
+
     if (SUCCEEDED(_GetTextExt(&rcTextExt)))
     {
         _LayoutChangeNotification(&rcTextExt);
@@ -692,7 +693,7 @@ void CUIPresenter::_SetCandidateFillColor(COLORREF fiColor)
 //
 //----------------------------------------------------------------------------
 
-DWORD_PTR CUIPresenter::_GetSelectedCandidateKeyCode(_Outptr_result_maybenull_ const WCHAR **ppwchCandidateString)
+DWORD_PTR CUIPresenter::_GetSelectedCandidateKeyCode(_Inout_ const WCHAR **ppwchCandidateString)
 {
 	if (_pCandidateWnd)
 		return _pCandidateWnd->_GetSelectedCandidateKeyCode(ppwchCandidateString);
@@ -707,7 +708,7 @@ DWORD_PTR CUIPresenter::_GetSelectedCandidateKeyCode(_Outptr_result_maybenull_ c
 //
 //----------------------------------------------------------------------------
 
-DWORD_PTR CUIPresenter::_GetSelectedCandidateString(_Outptr_result_maybenull_ const WCHAR **ppwchCandidateString)
+DWORD_PTR CUIPresenter::_GetSelectedCandidateString(_Inout_ const WCHAR **ppwchCandidateString)
 {
 	if(_pCandidateWnd)
 		return _pCandidateWnd->_GetSelectedCandidateString(ppwchCandidateString);
@@ -803,7 +804,7 @@ BOOL CUIPresenter::_MoveCandidatePage(_In_ int offSet)
 void CUIPresenter::_MoveUIWindowsToTextExt()
 {
 	debugPrint(L"CUIPresenter::_MoveUIWindowToTextExt()");
-    RECT compRect;
+	RECT compRect = { 0,0,0,0 };
 
 	if (SUCCEEDED(_GetTextExt(&compRect)))
 	{
@@ -930,7 +931,7 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall)
 	_rectCompRange = compRect;
 }
 
-void CUIPresenter::GetCandLocation(POINT *lpPoint)
+void CUIPresenter::GetCandLocation(_Out_ POINT *lpPoint)
 {
 	if(lpPoint)
 	{
@@ -957,7 +958,7 @@ VOID CUIPresenter::_LayoutDestroyNotification()
 //
 //----------------------------------------------------------------------------
 
-HRESULT CUIPresenter::_NotifyChangeNotification(enum NOTIFYWND_ACTION action, _In_ WPARAM wParam, _In_ LPARAM lParam)
+HRESULT CUIPresenter::_NotifyChangeNotification(_In_ enum NOTIFYWND_ACTION action, _In_ WPARAM wParam, _In_ LPARAM lParam)
 {
 
 	debugPrint(L"CUIPresenter::_NotifyChangeNotification() action = %d, _inFocus =%d", action, _inFocus);
@@ -983,7 +984,7 @@ HRESULT CUIPresenter::_NotifyChangeNotification(enum NOTIFYWND_ACTION action, _I
 					{
 						if (SUCCEEDED(pThreadMgr->GetFocus(&pDocumentMgr)) && pDocumentMgr)
 						{
-							if(SUCCEEDED(pDocumentMgr->GetTop(&pContext) && pContext))
+							if(SUCCEEDED(pDocumentMgr->GetTop(&pContext)) && pContext)
 							{
 								ShowNotify(TRUE, 0, (UINT) wParam);
 								_pTextService->_ProbeComposition(pContext);
@@ -1091,7 +1092,7 @@ HRESULT CUIPresenter::_CandWndCallback(_In_ void *pv, _In_ enum CANDWND_ACTION a
 //----------------------------------------------------------------------------
 
 // static
-HRESULT CUIPresenter::_NotifyWndCallback(_In_ void *pv, enum NOTIFYWND_ACTION action, _In_ WPARAM wParam, _In_ LPARAM lParam)
+HRESULT CUIPresenter::_NotifyWndCallback(_In_ void *pv,_In_ enum NOTIFYWND_ACTION action, _In_ WPARAM wParam, _In_ LPARAM lParam)
 {
 	
     CUIPresenter* fakeThis = (CUIPresenter*)pv;
@@ -1296,7 +1297,7 @@ Exit:
     return hr;
 }
 
-HRESULT CUIPresenter::MakeNotifyWindow(_In_ ITfContext *pContextDocument, CStringRange * notifyText, enum NOTIFY_TYPE notifyType)
+HRESULT CUIPresenter::MakeNotifyWindow(_In_ ITfContext *pContextDocument, _In_ CStringRange * notifyText, _In_ enum NOTIFY_TYPE notifyType)
 {
 	HRESULT hr = S_OK;
 
@@ -1365,7 +1366,7 @@ void CUIPresenter::ClearNotify()
 	}
 	
 }
-void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_ UINT delayShow, _In_ UINT timeToHide,  _In_ enum NOTIFY_TYPE notifyType)
+void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_opt_ UINT delayShow, _In_ UINT timeToHide,  _In_ enum NOTIFY_TYPE notifyType)
 {
 	//if(pNotifyText) debugPrint(L"CUIPresenter::ShowNotifyText(): text = %s, delayShow = %d, timeTimeHide = %d, notifyType= %d, _inFoucs = %d, ", pNotifyText->Get(), delayShow, timeToHide, notifyType, _inFocus);
 	ITfContext* pContext = _GetContextDocument();

@@ -24,7 +24,7 @@ public:
 	
 	
 
-	BOOL IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCHAR *pwch, BOOL fComposing, CANDIDATE_MODE candidateMode, BOOL hasCandidateWithWildcard, UINT candiCount, _Out_opt_ _KEYSTROKE_STATE *pKeyState);
+	BOOL IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCHAR *pwch, BOOL fComposing, CANDIDATE_MODE candidateMode, BOOL hasCandidateWithWildcard, UINT candiCount, _Inout_opt_ _KEYSTROKE_STATE *pKeyState);
 
     BOOL AddVirtualKey(WCHAR wch);
     void RemoveVirtualKey(DWORD_PTR dwIndex);
@@ -33,7 +33,7 @@ public:
     DWORD_PTR GetVirtualKeyLength() { return _keystrokeBuffer.GetLength(); }
     WCHAR GetVirtualKey(DWORD_PTR dwIndex);
 
-	void GetReadingString(_Inout_ CStringRange *pReadingString, _Out_ BOOL *pIsWildcardIncluded, _In_opt_ CStringRange *pKeyCode = nullptr);
+	void GetReadingString(_Inout_ CStringRange *pReadingString, _Inout_opt_ BOOL *pIsWildcardIncluded, _In_opt_ CStringRange *pKeyCode = nullptr);
     void GetCandidateList(_Inout_ CDIMEArray<CCandidateListItem> *pCandidateList, BOOL isIncrementalWordSearch, BOOL isWildcardSearch);
     void GetCandidateStringInConverted(CStringRange &searchString, _In_ CDIMEArray<CCandidateListItem> *pCandidateList);
 
@@ -61,8 +61,8 @@ public:
 
 	//Array short code and special code
 	BOOL IsArrayShortCode();
-	DWORD_PTR CollectWordFromArraySpeicalCode(_Outptr_result_maybenull_ const WCHAR **ppwchSpecialCodeResultString);
-	BOOL GetArraySpeicalCodeFromConvertedText(_In_ CStringRange *inword, _Out_ CStringRange *csrResult);
+	DWORD_PTR CollectWordFromArraySpeicalCode(_Inout_opt_ const WCHAR **ppwchSpecialCodeResultString);
+	BOOL GetArraySpeicalCodeFromConvertedText(_In_ CStringRange *inword, _Inout_opt_ CStringRange *csrResult);
 	
     BOOL IsDoubleSingleByte(WCHAR wch);
     BOOL IsWildcard() { return _isWildcard; }
@@ -123,9 +123,9 @@ public:
 
 private:
 
-    BOOL IsVirtualKeyKeystrokeComposition(UINT uCode, PWCH pwch, _Out_opt_ _KEYSTROKE_STATE *pKeyState, KEYSTROKE_FUNCTION function);
+    BOOL IsVirtualKeyKeystrokeComposition(UINT uCode, PWCH pwch, _Inout_opt_ _KEYSTROKE_STATE *pKeyState, KEYSTROKE_FUNCTION function);
     BOOL IsVirtualKeyKeystrokeCandidate(UINT uCode, _In_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode, _Out_ BOOL *pfRetCode, _In_ CDIMEArray<_KEYSTROKE> *pKeystrokeMetric);
-    BOOL IsKeystrokeRange(UINT uCode, _Out_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode);
+    BOOL IsKeystrokeRange(UINT uCode, _Inout_opt_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode);
 
 	void SetInitialCandidateListRange(IME_MODE imeMode);
 

@@ -64,7 +64,7 @@ HRESULT CTfInputProcessorProfile::GetReverseConversionProviders(LANGID langid, C
 	debugPrint(L"CTfInputProcessorProfile::GetReverseConversionProviders() langid = %d " , langid);
 	HRESULT hr;
 	IEnumTfLanguageProfiles* pEnumProf = 0;
-	if(_pInputProcessorProfile == nullptr) return E_FAIL;
+	if(_pInputProcessorProfile == nullptr) return E_OUTOFMEMORY;
 	hr = _pInputProcessorProfile->EnumLanguageProfiles(langid, &pEnumProf);
 	if (SUCCEEDED(hr) && pEnumProf)
 	{
@@ -94,6 +94,7 @@ HRESULT CTfInputProcessorProfile::GetReverseConversionProviders(LANGID langid, C
 						if(langProfileInfoList)
 							pLangProfileInfo = langProfileInfoList->Append();;
 						pwchDescription = new (std::nothrow) WCHAR[wcslen(bstrDescription)+1];
+						if (pwchDescription == nullptr) return S_FALSE;
 						StringCchCopy(pwchDescription, wcslen(bstrDescription)+1, bstrDescription);
 						if(pLangProfileInfo)
 						{

@@ -61,6 +61,7 @@ HRESULT CDIME::_AsyncReverseConversionNotification(_In_ TfEditCookie ec,_In_ ITf
 	debugPrint(L"CDIME::_AsyncReverseConversionNotification() pContext = %x\n", pContext);
 	BSTR bstr;
 	bstr = SysAllocStringLen(_commitString , (UINT) wcslen(_commitString));
+	if (bstr == nullptr) return E_OUTOFMEMORY;
 	ITfReverseConversionList* reverseConversionList;
 	if(SUCCEEDED(_pITfReverseConversion[Global::imeMode]->DoReverseConversion(bstr, &reverseConversionList)) && reverseConversionList)
 	{

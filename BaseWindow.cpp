@@ -333,31 +333,35 @@ BOOL CBaseWindow::_GetClientRect(_Inout_ LPRECT lpRect)
 //
 //----------------------------------------------------------------------------
 
-HRESULT CBaseWindow::_GetWindowExtent(_In_ const RECT *prcTextExtent, _In_opt_ RECT *prcCandidateExtent,  _Inout_ POINT *pptCandidate)
+HRESULT CBaseWindow::_GetWindowExtent(_In_ const RECT *prcTextExtent, _In_opt_ RECT *prcCandidateExtent, _Inout_ POINT *pptCandidate)
 {
-	debugPrint(L"CBaseWindow::_GetWindowExtent, prcTextExtent top = %d, bottom = %d, right = %d, left = %d",
-		prcTextExtent->top, prcTextExtent->bottom, prcTextExtent->right, prcTextExtent->left);
-	debugPrint(L"CBaseWindow::_GetWindowExtent, prcCandidateExtent top = %d, bottom = %d, right = %d, left = %d", 
-		prcCandidateExtent->top, prcCandidateExtent->bottom, prcCandidateExtent->right, prcCandidateExtent->left);
-    
-	if(prcTextExtent == nullptr) return E_INVALIDARG;
+	if (prcTextExtent)
+		debugPrint(L"CBaseWindow::_GetWindowExtent, prcTextExtent top = %d, bottom = %d, right = %d, left = %d",
+			prcTextExtent->top, prcTextExtent->bottom, prcTextExtent->right, prcTextExtent->left);
+	else
+		debugPrint(L"CBaseWindow::_GetWindowExtent, prcTextExtent is null");
+	if (prcCandidateExtent)
+		debugPrint(L"CBaseWindow::_GetWindowExtent, prcCandidateExtent top = %d, bottom = %d, right = %d, left = %d",
+			prcCandidateExtent->top, prcCandidateExtent->bottom, prcCandidateExtent->right, prcCandidateExtent->left);
+	else
+		debugPrint(L"CBaseWindow::_GetWindowExtent, prcCandidateExtent is null");
 
-	RECT rcWorkArea = {0, 0, 0, 0};
+	if (prcTextExtent == nullptr || prcCandidateExtent == nullptr)
+		return E_INVALIDARG;
+	RECT rcWorkArea = { 0, 0, 0, 0 };
 
-    // Get work area
+	// Get work area
 	if ((prcTextExtent->right - prcTextExtent->left) > (prcCandidateExtent->right - prcCandidateExtent->left))
 		// the return text extent area is a large area instead as careet or composition range, like firefox 32bit.
 		GetWorkAreaFromPoint(*(LPPOINT)&prcTextExtent->left, &rcWorkArea);
 	else
 		GetWorkAreaFromPoint(*(LPPOINT)&prcTextExtent->right, &rcWorkArea);
+	// Calc candidate window extent
+	CalcFitPointAroundTextExtent(prcTextExtent, &rcWorkArea, prcCandidateExtent, pptCandidate);
+	
+	return S_OK;
 
-    // Calc candidate window extent
-    if (prcCandidateExtent)
-    {
-        CalcFitPointAroundTextExtent(prcTextExtent, &rcWorkArea, prcCandidateExtent, pptCandidate);
-    }
 
-    return S_OK;
 }
 
 //+---------------------------------------------------------------------------

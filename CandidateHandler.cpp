@@ -99,6 +99,8 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 	//_commitString = commitString;
 	
 	PWCHAR pwch = new (std::nothrow) WCHAR[2];  // pCandidateString will be destroyed after _detelteCanddiateList was called.
+	if (pwch == NULL) //should not happen.
+		goto Exit;
 	if(candidateLen > 1)
 	{	
 		StringCchCopyN(pwch, 2, pCandidateString + candidateLen -1, 1); 
@@ -120,7 +122,8 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 			const WCHAR* pCandidateKeyCode = nullptr;
 			DWORD_PTR keyCodeLen = _pUIPresenter->_GetSelectedCandidateKeyCode(&pCandidateKeyCode);
 			StringCchCopy(_commitKeyCode, 1, L"\0");
-			StringCchCatN(_commitKeyCode, MAX_KEY_LENGTH, pCandidateKeyCode, keyCodeLen);
+			if(pCandidateKeyCode)
+				StringCchCatN(_commitKeyCode, MAX_KEY_LENGTH, pCandidateKeyCode, keyCodeLen);
 			CStringRange commitKeyCode, convertedKeyCode;
 			_pCompositionProcessorEngine->GetReadingString(&convertedKeyCode, NULL, &commitKeyCode.Set(_commitKeyCode, wcslen(_commitKeyCode)));
 			_pUIPresenter->ShowNotifyText(&convertedKeyCode);

@@ -13,7 +13,7 @@ public:
     CCompartment(_In_ IUnknown *punk, TfClientId tfClientId, _In_ REFGUID guidCompartment);
     ~CCompartment();
 
-    HRESULT _GetCompartment(_Outptr_ ITfCompartment **ppCompartment);
+    HRESULT _GetCompartment(_Inout_opt_ ITfCompartment **ppCompartment);
     HRESULT _GetCompartmentBOOL(_Out_ BOOL &flag);
     HRESULT _SetCompartmentBOOL(_In_ BOOL flag);
     HRESULT _GetCompartmentDWORD(_Out_ DWORD &dw);
