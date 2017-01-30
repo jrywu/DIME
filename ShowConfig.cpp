@@ -2,7 +2,7 @@
 #include "Globals.h"
 #include "DIME.h"
 #include "TfInputProcessorProfile.h"
-
+#include "BuildInfo.h"
 
 //+---------------------------------------------------------------------------
 //
@@ -108,15 +108,20 @@ HRESULT CDIME::Show(_In_opt_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID
 	psh.phpage = hpsp;
 	psh.pszCaption = L"DIME User Settings";
 
-	if (CConfig::GetIMEMode() == IME_MODE_DAYI)
-		psh.pszCaption = L"DIME 大易輸入法設定";
-	else if (CConfig::GetIMEMode() == IME_MODE_ARRAY)
-		psh.pszCaption = L"DIME 行列輸入法設定";
-	else if (CConfig::GetIMEMode() == IME_MODE_GENERIC)
-		psh.pszCaption = L"DIME 自建輸入法設定";
-	else if (CConfig::GetIMEMode() == IME_MODE_PHONETIC)
-		psh.pszCaption = L"DIME 傳統注音輸入法設定";
+	WCHAR dialogCaption[MAX_PATH] = { 0 };
 
+	if (CConfig::GetIMEMode() == IME_MODE_DAYI)
+		StringCchCat(dialogCaption, MAX_PATH,  L"DIME 大易輸入法設定");
+	else if (CConfig::GetIMEMode() == IME_MODE_ARRAY)
+		StringCchCat(dialogCaption, MAX_PATH, L"DIME 行列輸入法設定");
+	else if (CConfig::GetIMEMode() == IME_MODE_GENERIC)
+		StringCchCat(dialogCaption, MAX_PATH, L"DIME 自建輸入法設定");
+	else if (CConfig::GetIMEMode() == IME_MODE_PHONETIC)
+		StringCchCat(dialogCaption, MAX_PATH, L"DIME 傳統注音輸入法設定");
+
+	StringCchPrintf(dialogCaption, MAX_PATH, L"%s v%d.%d.%d.%d", dialogCaption,
+		 BUILD_VER_MAJOR, BUILD_VER_MINOR, BUILD_COMMIT_COUNT, BUILD_DATE_1);
+	psh.pszCaption = dialogCaption;
 
 	//PropertySheet(&psh);
 	if (_PropertySheet)

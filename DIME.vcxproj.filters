@@ -43,11 +43,11 @@
     <Filter Include="Source Files\Configuration">
       <UniqueIdentifier>{48586160-0527-48f2-aedd-ea9cd7773da9}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Framework\Composition\CompositionEngine">
-      <UniqueIdentifier>{be47d1ab-bedd-4d3d-b929-b5ed30cb06fd}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\Framework\Composition\ReverseConversion">
       <UniqueIdentifier>{7f3f60b0-0a73-4e36-bc8f-bcf4a41b09dd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Framework\Composition\Interface">
+      <UniqueIdentifier>{be47d1ab-bedd-4d3d-b929-b5ed30cb06fd}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -301,9 +301,6 @@
     <ClCompile Include="ScrollBarWindow.cpp">
       <Filter>Source Files\UI</Filter>
     </ClCompile>
-    <ClCompile Include="CandidateHandler.cpp">
-      <Filter>Source Files\Framework\Composition</Filter>
-    </ClCompile>
     <ClCompile Include="BaseStructure.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -317,10 +314,7 @@
       <Filter>Source Files\Configuration</Filter>
     </ClCompile>
     <ClCompile Include="CompositionProcessorEngine.cpp">
-      <Filter>Source Files\Framework\Composition\CompositionEngine</Filter>
-    </ClCompile>
-    <ClCompile Include="TfInputProcessorProfile.cpp">
-      <Filter>Source Files\Framework\Composition\CompositionEngine</Filter>
+      <Filter>Source Files\Framework\Composition\Interface</Filter>
     </ClCompile>
     <ClCompile Include="ReverseConversion.cpp">
       <Filter>Source Files\Framework\Composition\ReverseConversion</Filter>
@@ -339,6 +333,12 @@
     </ClCompile>
     <ClCompile Include="ShowConfig.cpp">
       <Filter>Source Files\Configuration</Filter>
+    </ClCompile>
+    <ClCompile Include="CandidateHandler.cpp">
+      <Filter>Source Files\Framework\Composition\Interface</Filter>
+    </ClCompile>
+    <ClCompile Include="TfInputProcessorProfile.cpp">
+      <Filter>Source Files\Framework</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
