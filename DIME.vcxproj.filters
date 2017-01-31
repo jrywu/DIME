@@ -46,7 +46,7 @@
     <Filter Include="Source Files\Framework\Composition\ReverseConversion">
       <UniqueIdentifier>{7f3f60b0-0a73-4e36-bc8f-bcf4a41b09dd}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Framework\Composition\Interface">
+    <Filter Include="Source Files\Framework\Interface">
       <UniqueIdentifier>{be47d1ab-bedd-4d3d-b929-b5ed30cb06fd}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
@@ -314,7 +314,7 @@
       <Filter>Source Files\Configuration</Filter>
     </ClCompile>
     <ClCompile Include="CompositionProcessorEngine.cpp">
-      <Filter>Source Files\Framework\Composition\Interface</Filter>
+      <Filter>Source Files\Framework\Interface</Filter>
     </ClCompile>
     <ClCompile Include="ReverseConversion.cpp">
       <Filter>Source Files\Framework\Composition\ReverseConversion</Filter>
@@ -335,7 +335,7 @@
       <Filter>Source Files\Configuration</Filter>
     </ClCompile>
     <ClCompile Include="CandidateHandler.cpp">
-      <Filter>Source Files\Framework\Composition\Interface</Filter>
+      <Filter>Source Files\Framework\Interface</Filter>
     </ClCompile>
     <ClCompile Include="TfInputProcessorProfile.cpp">
       <Filter>Source Files\Framework</Filter>
