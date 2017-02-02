@@ -13,24 +13,6 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="Source Files\DLL">
-      <UniqueIdentifier>{a367038d-4951-4ca3-b64a-dd4e254b3b3c}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\Framework">
-      <UniqueIdentifier>{9a5abf50-5cc5-41d4-a67b-9dc3a6a7e8c8}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\Framework\Composition">
-      <UniqueIdentifier>{798856de-69d9-4698-9f52-8ae36ad43449}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\Framework\Composition\Display">
-      <UniqueIdentifier>{1a80ba50-d93b-4a60-972f-3d7bf4d72fc0}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\Framework\LanguageBar">
-      <UniqueIdentifier>{b5decd04-2d7f-4134-bbcf-9cb601f78322}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\Framework\Composition\Dictionary">
-      <UniqueIdentifier>{1f776a05-57d4-4932-bfd7-bdbd516c8cc6}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\UI">
       <UniqueIdentifier>{4f0b1137-faa2-40de-8bf5-0a32f764b257}</UniqueIdentifier>
     </Filter>
@@ -40,14 +22,38 @@
     <Filter Include="Source Files\UI\NotifyWindow">
       <UniqueIdentifier>{6a37624e-fbca-42cc-a414-c390a08e1ff1}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Configuration">
+    <Filter Include="Source Files\TextService">
+      <UniqueIdentifier>{9a5abf50-5cc5-41d4-a67b-9dc3a6a7e8c8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\TextService\LanguageBar">
+      <UniqueIdentifier>{b5decd04-2d7f-4134-bbcf-9cb601f78322}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\TextService\IMInterface">
+      <UniqueIdentifier>{ca4a6ee8-df86-482a-bf90-fbdef267711f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\TextService\IMInterface\Handler">
+      <UniqueIdentifier>{60ffe632-a978-4c44-b5f8-883982b976ae}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\TextService\IMInterface\Handler\Dictionary">
+      <UniqueIdentifier>{1f776a05-57d4-4932-bfd7-bdbd516c8cc6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\TextService\DLLEntry">
+      <UniqueIdentifier>{a367038d-4951-4ca3-b64a-dd4e254b3b3c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\TextService\Configuration">
       <UniqueIdentifier>{48586160-0527-48f2-aedd-ea9cd7773da9}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Framework\Composition\ReverseConversion">
+    <Filter Include="Source Files\TextService\IMInterface\Composition">
+      <UniqueIdentifier>{798856de-69d9-4698-9f52-8ae36ad43449}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\TextService\IMInterface\Composition\Display">
+      <UniqueIdentifier>{1a80ba50-d93b-4a60-972f-3d7bf4d72fc0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\TextService\IMInterface\Composition\ReverseConversion">
       <UniqueIdentifier>{7f3f60b0-0a73-4e36-bc8f-bcf4a41b09dd}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Framework\Interface">
-      <UniqueIdentifier>{be47d1ab-bedd-4d3d-b929-b5ed30cb06fd}</UniqueIdentifier>
+    <Filter Include="Source Files\TextService\IMInterface\Initialization">
+      <UniqueIdentifier>{4f70b0d0-6403-4885-88b3-9412e9f379a8}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -191,16 +197,16 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DictionaryParser.cpp">
-      <Filter>Source Files\Framework\Composition\Dictionary</Filter>
+      <Filter>Source Files\TextService\IMInterface\Handler\Dictionary</Filter>
     </ClCompile>
     <ClCompile Include="DictionarySearch.cpp">
-      <Filter>Source Files\Framework\Composition\Dictionary</Filter>
+      <Filter>Source Files\TextService\IMInterface\Handler\Dictionary</Filter>
     </ClCompile>
     <ClCompile Include="CandidateWindow.cpp">
       <Filter>Source Files\UI\Candidate</Filter>
     </ClCompile>
     <ClCompile Include="File.cpp">
-      <Filter>Source Files\Framework\Composition\Dictionary</Filter>
+      <Filter>Source Files\TextService\IMInterface\Handler\Dictionary</Filter>
     </ClCompile>
     <ClCompile Include="TipCandidateString.cpp">
       <Filter>Source Files\UI\Candidate</Filter>
@@ -209,19 +215,19 @@
       <Filter>Source Files\UI\Candidate</Filter>
     </ClCompile>
     <ClCompile Include="TableDictionaryEngine.cpp">
-      <Filter>Source Files\Framework\Composition\Dictionary</Filter>
+      <Filter>Source Files\TextService\IMInterface\Handler\Dictionary</Filter>
     </ClCompile>
     <ClCompile Include="Compartment.cpp">
-      <Filter>Source Files\Framework\LanguageBar</Filter>
+      <Filter>Source Files\TextService\LanguageBar</Filter>
     </ClCompile>
     <ClCompile Include="LanguageBar.cpp">
-      <Filter>Source Files\Framework\LanguageBar</Filter>
+      <Filter>Source Files\TextService\LanguageBar</Filter>
     </ClCompile>
     <ClCompile Include="Register.cpp">
-      <Filter>Source Files\DLL</Filter>
+      <Filter>Source Files\TextService\DLLEntry</Filter>
     </ClCompile>
     <ClCompile Include="DllMain.cpp">
-      <Filter>Source Files\DLL</Filter>
+      <Filter>Source Files\TextService\DLLEntry</Filter>
     </ClCompile>
     <ClCompile Include="SearchCandidateProvider.cpp">
       <Filter>Source Files\UI\Candidate</Filter>
@@ -230,58 +236,37 @@
       <Filter>Source Files\UI\Candidate</Filter>
     </ClCompile>
     <ClCompile Include="RegKey.cpp">
-      <Filter>Source Files\DLL</Filter>
+      <Filter>Source Files\TextService\DLLEntry</Filter>
     </ClCompile>
     <ClCompile Include="Server.cpp">
-      <Filter>Source Files\DLL</Filter>
+      <Filter>Source Files\TextService\DLLEntry</Filter>
     </ClCompile>
     <ClCompile Include="Composition.cpp">
-      <Filter>Source Files\Framework\Composition</Filter>
+      <Filter>Source Files\TextService\IMInterface\Composition</Filter>
     </ClCompile>
     <ClCompile Include="EndComposition.cpp">
-      <Filter>Source Files\Framework\Composition</Filter>
+      <Filter>Source Files\TextService\IMInterface\Composition</Filter>
     </ClCompile>
     <ClCompile Include="DisplayAttributeInfo.cpp">
-      <Filter>Source Files\Framework\Composition\Display</Filter>
+      <Filter>Source Files\TextService\IMInterface\Composition\Display</Filter>
     </ClCompile>
     <ClCompile Include="DisplayAttributeProvider.cpp">
-      <Filter>Source Files\Framework\Composition\Display</Filter>
+      <Filter>Source Files\TextService\IMInterface\Composition\Display</Filter>
     </ClCompile>
     <ClCompile Include="EnumDisplayAttributeInfo.cpp">
-      <Filter>Source Files\Framework\Composition\Display</Filter>
-    </ClCompile>
-    <ClCompile Include="EditSession.cpp">
-      <Filter>Source Files\Framework\Composition</Filter>
+      <Filter>Source Files\TextService\IMInterface\Composition\Display</Filter>
     </ClCompile>
     <ClCompile Include="StartComposition.cpp">
-      <Filter>Source Files\Framework\Composition</Filter>
-    </ClCompile>
-    <ClCompile Include="ActiveLanguageProfileNotifySink.cpp">
-      <Filter>Source Files\Framework</Filter>
+      <Filter>Source Files\TextService\IMInterface\Composition</Filter>
     </ClCompile>
     <ClCompile Include="FunctionProviderSink.cpp">
-      <Filter>Source Files\Framework</Filter>
-    </ClCompile>
-    <ClCompile Include="KeyEventSink.cpp">
-      <Filter>Source Files\Framework</Filter>
-    </ClCompile>
-    <ClCompile Include="TextEditSink.cpp">
-      <Filter>Source Files\Framework</Filter>
+      <Filter>Source Files\TextService</Filter>
     </ClCompile>
     <ClCompile Include="ThreadFocusSink.cpp">
-      <Filter>Source Files\Framework</Filter>
+      <Filter>Source Files\TextService</Filter>
     </ClCompile>
     <ClCompile Include="ThreadMgrEventSink.cpp">
-      <Filter>Source Files\Framework</Filter>
-    </ClCompile>
-    <ClCompile Include="KeyHandler.cpp">
-      <Filter>Source Files\Framework\Composition</Filter>
-    </ClCompile>
-    <ClCompile Include="KeyHandlerEditSession.cpp">
-      <Filter>Source Files\Framework\Composition</Filter>
-    </ClCompile>
-    <ClCompile Include="KeyStateCategory.cpp">
-      <Filter>Source Files\Framework\Composition</Filter>
+      <Filter>Source Files\TextService</Filter>
     </ClCompile>
     <ClCompile Include="Globals.cpp">
       <Filter>Source Files</Filter>
@@ -307,38 +292,59 @@
     <ClCompile Include="UIPresenter.cpp">
       <Filter>Source Files\UI</Filter>
     </ClCompile>
-    <ClCompile Include="DIME.cpp">
-      <Filter>Source Files\Framework</Filter>
-    </ClCompile>
     <ClCompile Include="Config.cpp">
-      <Filter>Source Files\Configuration</Filter>
-    </ClCompile>
-    <ClCompile Include="CompositionProcessorEngine.cpp">
-      <Filter>Source Files\Framework\Interface</Filter>
+      <Filter>Source Files\TextService\Configuration</Filter>
     </ClCompile>
     <ClCompile Include="ReverseConversion.cpp">
-      <Filter>Source Files\Framework\Composition\ReverseConversion</Filter>
+      <Filter>Source Files\TextService\IMInterface\Composition\ReverseConversion</Filter>
     </ClCompile>
     <ClCompile Include="DisplayAttribute.cpp">
-      <Filter>Source Files\Framework\Composition\Display</Filter>
+      <Filter>Source Files\TextService\IMInterface\Composition\Display</Filter>
     </ClCompile>
     <ClCompile Include="GetTextExtentEditSession.cpp">
       <Filter>Source Files\UI</Filter>
     </ClCompile>
     <ClCompile Include="ReverseConversionProvider.cpp">
-      <Filter>Source Files\Framework\Composition\ReverseConversion</Filter>
+      <Filter>Source Files\TextService\IMInterface\Composition\ReverseConversion</Filter>
     </ClCompile>
     <ClCompile Include="TfTextLayoutSink.cpp">
-      <Filter>Source Files\Framework</Filter>
+      <Filter>Source Files\TextService</Filter>
     </ClCompile>
     <ClCompile Include="ShowConfig.cpp">
-      <Filter>Source Files\Configuration</Filter>
-    </ClCompile>
-    <ClCompile Include="CandidateHandler.cpp">
-      <Filter>Source Files\Framework\Interface</Filter>
+      <Filter>Source Files\TextService\Configuration</Filter>
     </ClCompile>
     <ClCompile Include="TfInputProcessorProfile.cpp">
-      <Filter>Source Files\Framework</Filter>
+      <Filter>Source Files\TextService</Filter>
+    </ClCompile>
+    <ClCompile Include="KeyEventSink.cpp">
+      <Filter>Source Files\TextService\IMInterface</Filter>
+    </ClCompile>
+    <ClCompile Include="KeyHandler.cpp">
+      <Filter>Source Files\TextService\IMInterface\Handler</Filter>
+    </ClCompile>
+    <ClCompile Include="KeyHandlerEditSession.cpp">
+      <Filter>Source Files\TextService\IMInterface\Handler</Filter>
+    </ClCompile>
+    <ClCompile Include="KeyStateCategory.cpp">
+      <Filter>Source Files\TextService\IMInterface\Handler</Filter>
+    </ClCompile>
+    <ClCompile Include="CandidateHandler.cpp">
+      <Filter>Source Files\TextService\IMInterface\Handler</Filter>
+    </ClCompile>
+    <ClCompile Include="CompositionProcessorEngine.cpp">
+      <Filter>Source Files\TextService\IMInterface\Handler</Filter>
+    </ClCompile>
+    <ClCompile Include="ActiveLanguageProfileNotifySink.cpp">
+      <Filter>Source Files\TextService\IMInterface\Initialization</Filter>
+    </ClCompile>
+    <ClCompile Include="DIME.cpp">
+      <Filter>Source Files\TextService\IMInterface\Initialization</Filter>
+    </ClCompile>
+    <ClCompile Include="TextEditSink.cpp">
+      <Filter>Source Files\TextService\IMInterface\Composition</Filter>
+    </ClCompile>
+    <ClCompile Include="EditSession.cpp">
+      <Filter>Source Files\TextService</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
