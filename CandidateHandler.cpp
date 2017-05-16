@@ -171,10 +171,6 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 
 		if (candidatePhraseList.Count())
 		{
-			CStringRange emptyComposition;
-			if (!_IsComposing())
-				_StartComposition(pContext);  //StartCandidateList require a valid selection from a valid pComposition to determine the location to show the candidate window
-			_AddComposingAndChar(ec, pContext, &emptyComposition.Set(L" ",1)); 
 
 			_pUIPresenter->_ClearCandidateList();
 			_pUIPresenter->_SetCandidateTextColor(CConfig::GetPhraseColor(), CConfig::GetItemBGColor());    // Text color is green
@@ -182,10 +178,17 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 			_pUIPresenter->_SetCandidateNumberColor(CConfig::GetNumberColor(), CConfig::GetItemBGColor());    
 			_pUIPresenter->_SetCandidateFillColor(CConfig::GetItemBGColor());//(HBRUSH)(COLOR_WINDOW+1));    // Background color is window
 			_pUIPresenter->_SetCandidateText(&candidatePhraseList, _pCompositionProcessorEngine->GetCandidateListIndexRange(),
-				TRUE, _pCompositionProcessorEngine->GetCandidateWindowWidth());
+				FALSE, _pCompositionProcessorEngine->GetCandidateWindowWidth());
 			_pUIPresenter->_SetCandidateSelection(-1, FALSE); // set selected index to -1 if showing phrase candidates
 			_candidateMode = CANDIDATE_PHRASE;
 			_isCandidateWithWildcard = FALSE;	
+			
+			//StartCandidateList require a valid selection from a valid pComposition to determine the location to show the candidate window
+			//Moved after setCandidateText or candidatePhraseList can be corrupt after probe comosition.
+			CStringRange emptyComposition;
+			if (!_IsComposing())
+				_StartComposition(pContext); 
+			_AddComposingAndChar(ec, pContext, &emptyComposition.Set(L" ",1)); 
 			
 		}
 		else

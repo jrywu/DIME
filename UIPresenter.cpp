@@ -571,6 +571,17 @@ void CUIPresenter::_EndCandidateList()
 void CUIPresenter::_SetCandidateText(_In_ CDIMEArray<CCandidateListItem> *pCandidateList,_In_ CCandidateRange* pIndexRange, BOOL isAddFindKeyCode, UINT candWidth)
 {
 	debugPrint(L"CUIPresenter::_SetCandidateText() candWidth = %d", candWidth);
+
+#ifdef DEBUG_PRINT
+	for (UINT i = 0; i < pCandidateList->Count(); i++)
+	{
+		WCHAR key[255], value[255];
+		StringCchCopyNW(key, 255, pCandidateList->GetAt(i)->_ItemString.Get(), pCandidateList->GetAt(i)->_ItemString.GetLength());
+		StringCchCopyNW(value, 255, pCandidateList->GetAt(i)->_FindKeyCode.Get(), pCandidateList->GetAt(i)->_FindKeyCode.GetLength());
+		debugPrint(L"Cand item %d:%s:%s", i, key, value);
+	}
+#endif
+
     AddCandidateToUI(pCandidateList, isAddFindKeyCode);
 
 	_pIndexRange = pIndexRange;
@@ -599,11 +610,22 @@ void CUIPresenter::_SetCandidateText(_In_ CDIMEArray<CCandidateListItem> *pCandi
 
 void CUIPresenter::AddCandidateToUI(_In_ CDIMEArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode)
 {
+
+	debugPrint(L"UIPresenter:AddCandidateToUI()");
 	if(pCandidateList == nullptr || _pCandidateWnd == nullptr) return;
     for (UINT index = 0; index < pCandidateList->Count(); index++)
     {
+		/*
+		CCandidateListItem *pCandidateItem;
+		pCandidateItem = pCandidateList->GetAt(index);
+		WCHAR key[255], value[255];
+		StringCchCopyNW(key, 255, pCandidateItem->_ItemString.Get(), pCandidateItem->_ItemString.GetLength());
+		StringCchCopyNW(value, 255, pCandidateItem->_FindKeyCode.Get(), pCandidateItem->_FindKeyCode.GetLength());
+		debugPrint(L"Cand item:%s:%s", key, value);
+		*/
 		_pCandidateWnd->_AddString(pCandidateList->GetAt(index), isAddFindKeyCode);
     }
+
 }
 
 void CUIPresenter::SetPageIndexWithScrollInfo(_In_ CDIMEArray<CCandidateListItem> *pCandidateList)
