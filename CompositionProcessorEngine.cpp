@@ -1511,7 +1511,8 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 	}
 
 	//CSIDL_APPDATA  personal roadming application data.
-	SHGetSpecialFolderPath(NULL, pwszAppData, CSIDL_APPDATA, TRUE);
+	if(pwszAppData)
+		SHGetSpecialFolderPath(NULL, pwszAppData, CSIDL_APPDATA, TRUE);
 
 	debugPrint(L"CCompositionProcessorEngine::SetupDictionaryFile() :pwszProgramFiles = %s", pwszProgramFiles);
 

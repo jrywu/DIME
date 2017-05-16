@@ -365,8 +365,8 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
             {
                 _pVScrollBarWnd->_OnOwnerWndMoved((pWndPos->flags & SWP_NOSIZE) == 0);
             }
-
-            _FireMessageToLightDismiss(wndHandle, pWndPos);
+			if(pWndPos)
+				_FireMessageToLightDismiss(wndHandle, pWndPos);
         }
         break;
 

@@ -2,6 +2,8 @@
 // Microsoft Visual C++ generated include file.
 // Used by DIME.rc
 //
+#define IDR_VERSION                    1
+
 #define SUBLANG_ENGLISH_US              0x01
 #define LANG_ENGLISH                    0x09
 #define IDI_DAYI						11
@@ -20,7 +22,7 @@
 #define IDS_DOUBLE_SINGLE_BYTE          23
 #define IDI_DOUBLE_SINGLE_BYTE_ON       24
 #define IDI_DOUBLE_SINGLE_BYTE_OFF      25
-#define IDR_VERSION2                    107
+
 
 
 #ifndef IDC_STATIC
