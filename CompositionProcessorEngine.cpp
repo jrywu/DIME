@@ -438,6 +438,7 @@ void CCompositionProcessorEngine::GetReadingString(_Inout_ CStringRange *pReadin
 
 void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidateListItem> *pCandidateList, BOOL isIncrementalWordSearch, BOOL isWildcardSearch)
 {
+	debugPrint(L"CCompositionProcessorEngine::GetCandidateList() ");
 	if (!IsDictionaryAvailable(Global::imeMode) || pCandidateList == nullptr)
 	{
 		return;
@@ -722,6 +723,8 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 
 void CCompositionProcessorEngine::GetCandidateStringInConverted(CStringRange &searchString, _In_ CDIMEArray<CCandidateListItem> *pCandidateList)
 {
+	debugPrint(L"CCompositionProcessorEngine::GetCandidateStringInConverted() ");
+
 	if (!IsDictionaryAvailable(Global::imeMode) || pCandidateList == nullptr)
 	{
 		return;
@@ -1445,7 +1448,7 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL *pIsE
 	else if (IsEqualGUID(rguid, _PreservedKey_Config.Guid) && _pTextService)
 	{
 		// call config dialog
-		_pTextService->Show(NULL, 0, GUID_NULL);
+		_pTextService->Show(GetForegroundWindow(), 0, GUID_NULL);
 	}
 
 	else
@@ -1463,6 +1466,7 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL *pIsE
 
 void CCompositionProcessorEngine::SetupConfiguration(IME_MODE imeMode)
 {
+	debugPrint(L"CCompositionProcessorEngine::SetupConfiguration() \n");
 	_isWildcard = TRUE;
 	_isDisableWildcardAtFirst = FALSE;
 	_isKeystrokeSort = FALSE;
@@ -1513,8 +1517,6 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 	//CSIDL_APPDATA  personal roadming application data.
 	if(pwszAppData)
 		SHGetSpecialFolderPath(NULL, pwszAppData, CSIDL_APPDATA, TRUE);
-
-	debugPrint(L"CCompositionProcessorEngine::SetupDictionaryFile() :pwszProgramFiles = %s", pwszProgramFiles);
 
 	WCHAR *pwszTTSFileName = new (std::nothrow) WCHAR[MAX_PATH];
 	WCHAR *pwszCINFileName = new (std::nothrow) WCHAR[MAX_PATH];
@@ -1643,21 +1645,21 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 				delete _pTableDictionaryFile[imeMode];
 				_pTableDictionaryFile[imeMode] = nullptr;
 			}
-		}
-	}
-	else
-	{
-		if (_pTableDictionaryFile[imeMode])
+		}/*
+		else
 		{
-			delete _pTableDictionaryFile[imeMode];
-			_pTableDictionaryFile[imeMode] = nullptr;
-		}
-		if (_pTableDictionaryEngine[imeMode])
-		{
-			delete _pTableDictionaryEngine[imeMode];
-			_pTableDictionaryEngine[imeMode] = nullptr;
-		}
+			if (_pTableDictionaryFile[imeMode])
+			{
+				delete _pTableDictionaryFile[imeMode];
+				_pTableDictionaryFile[imeMode] = nullptr;
+			}
+			if (_pTableDictionaryEngine[imeMode])
+			{
+				delete _pTableDictionaryEngine[imeMode];
+				_pTableDictionaryEngine[imeMode] = nullptr;
+			}
 
+		}*/
 	}
 	if (_pTableDictionaryEngine[imeMode] == nullptr && (imeMode == IME_MODE_DAYI || imeMode == IME_MODE_ARRAY))		//failed back to load windows preload tabletextservice table.
 	{
@@ -2174,6 +2176,8 @@ CCompositionProcessorEngine::XPreservedKey::~XPreservedKey()
 
 void CCompositionProcessorEngine::SetInitialCandidateListRange(IME_MODE imeMode)
 {
+	debugPrint(L"CCompositionProcessorEngine::SetInitialCandidateListRange()");
+
 	_candidateListIndexRange.Clear();
 	_phraseCandidateListIndexRange.Clear();
 	DWORD pageSize = (imeMode == IME_MODE_PHONETIC) ? 9 : 10;
@@ -2673,11 +2677,15 @@ BOOL CCompositionProcessorEngine::IsKeystrokeRange(UINT uCode, _Inout_opt_ _KEYS
 
 void CCompositionProcessorEngine::UpdateDictionaryFile()
 {
+	debugPrint(L"CCompositionProcessorEngine::UpdateDictionaryFile()");
+
 	CFile* pCurrentDictioanryFile = _pTableDictionaryFile[Global::imeMode];
 
 	SetupDictionaryFile(_imeMode);
 	if (pCurrentDictioanryFile != _pTableDictionaryFile[Global::imeMode])
 	{ // the table is loaded from TTS previously and now new cin is loaded.
+		
+		debugPrint(L"CCompositionProcessorEngine::UpdateDictionaryFile() the table is loaded from TTS previously and now new cin is loaded");
 		SetupKeystroke(Global::imeMode);
 		SetupConfiguration(Global::imeMode);
 	}
@@ -2686,6 +2694,8 @@ void CCompositionProcessorEngine::UpdateDictionaryFile()
 		_pTableDictionaryEngine[Global::imeMode]->GetDictionaryType() == CIN_DICTIONARY &&
 		_pTableDictionaryFile[Global::imeMode]->IsFileUpdated())
 	{
+		debugPrint(L"CCompositionProcessorEngine::UpdateDictionaryFile() the table is loaded from .cin and the cin was updated.");
+
 		// the table is loaded from .cin and the cin was updated.
 		_pTableDictionaryEngine[Global::imeMode]->ParseConfig(Global::imeMode);
 		SetupKeystroke(Global::imeMode);

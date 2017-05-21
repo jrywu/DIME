@@ -229,8 +229,12 @@ HRESULT CDIME::_HandleCandidateArrowKey(TfEditCookie ec, _In_ ITfContext *pConte
 
 HRESULT CDIME::_HandleCandidateSelectByNumber(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode)
 {
+	debugPrint(L"CDIME::_HandleCandidateSelectByNumber() \n");
+
 	int iSelectAsNumber = _pCompositionProcessorEngine->GetCandidateListIndexRange()->GetIndex(uCode, _candidateMode);
-    if (iSelectAsNumber == -1)
+	debugPrint(L"CDIME::_HandleCandidateSelectByNumber() iSelectAsNumber = %d", iSelectAsNumber);
+
+	if (iSelectAsNumber == -1)
     {
         return S_FALSE;
     }
