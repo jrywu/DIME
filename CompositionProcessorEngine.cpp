@@ -1515,7 +1515,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 	}
 
 	//CSIDL_APPDATA  personal roadming application data.
-	if(pwszAppData)
+	if (pwszAppData)
 		SHGetSpecialFolderPath(NULL, pwszAppData, CSIDL_APPDATA, TRUE);
 
 	WCHAR *pwszTTSFileName = new (std::nothrow) WCHAR[MAX_PATH];
@@ -1547,13 +1547,9 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 	if (imeMode == IME_MODE_DAYI) //dayi.cin in personal romaing profile
 	{
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Dayi.cin");
-		if (PathFileExists(pwszCINFileName) && (
-			_pTableDictionaryFile[imeMode]->IsFileUpdated() ||
-			(_pTableDictionaryFile[imeMode] && _pTextService &&
-			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pTableDictionaryFile[imeMode]->GetFileName(), -1) != CSTR_EQUAL) ) )
-		{ // cin found in Program files or in user roaming profile.
-			delete _pTableDictionaryEngine[imeMode];
-			_pTableDictionaryEngine[imeMode] = nullptr;
+		if (PathFileExists(pwszCINFileName) && _pTableDictionaryFile[imeMode] && _pTextService &&
+			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pTableDictionaryFile[imeMode]->GetFileName(), -1) != CSTR_EQUAL)
+		{ // cin filename is different. force reload the cin file
 			delete _pTableDictionaryFile[imeMode];
 			_pTableDictionaryFile[imeMode] = nullptr;
 		}
@@ -1579,13 +1575,9 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			cinFound = TRUE;
 		}
 
-		if (cinFound && (
-			_pTableDictionaryFile[imeMode]->IsFileUpdated() ||
-			(_pTableDictionaryFile[imeMode] && _pTextService &&
-			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pTableDictionaryFile[imeMode]->GetFileName(), -1) != CSTR_EQUAL)))
-		{ //indicate the prevoius table is built with system preload file in program files, and now user provides their own.
-			delete _pTableDictionaryEngine[imeMode];
-			_pTableDictionaryEngine[imeMode] = nullptr;
+		if (PathFileExists(pwszCINFileName) && _pTableDictionaryFile[imeMode] && _pTextService &&
+			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pTableDictionaryFile[imeMode]->GetFileName(), -1) != CSTR_EQUAL)
+		{ // cin filename is different. force reload the cin file
 			delete _pTableDictionaryFile[imeMode];
 			_pTableDictionaryFile[imeMode] = nullptr;
 		}
@@ -1610,13 +1602,9 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 		{
 			cinFound = TRUE;
 		}
-		if (cinFound && (
-			_pTableDictionaryFile[imeMode]->IsFileUpdated() ||
-			(_pTableDictionaryFile[imeMode] && _pTextService &&
-				CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pTableDictionaryFile[imeMode]->GetFileName(), -1) != CSTR_EQUAL)))
-		{ //indicate the prevoius table is built with system preload file in program files, and now user provides their own.
-			delete _pTableDictionaryEngine[imeMode];
-			_pTableDictionaryEngine[imeMode] = nullptr;
+		if (PathFileExists(pwszCINFileName) && _pTableDictionaryFile[imeMode] && _pTextService &&
+			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pTableDictionaryFile[imeMode]->GetFileName(), -1) != CSTR_EQUAL)
+		{ // cin filename is different. force reload the cin file
 			delete _pTableDictionaryFile[imeMode];
 			_pTableDictionaryFile[imeMode] = nullptr;
 		}
@@ -1625,27 +1613,19 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 	{
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Generic.cin");
 		// we don't provide preload Generic.cin in program files
-		if (PathFileExists(pwszCINFileName) && 	_pTableDictionaryFile[imeMode]->IsFileUpdated() )
-		{ // cin found in Program files or in user roaming profile.
-			delete _pTableDictionaryEngine[imeMode];
-			_pTableDictionaryEngine[imeMode] = nullptr;
-			delete _pTableDictionaryFile[imeMode];
-			_pTableDictionaryFile[imeMode] = nullptr;
-		}
 	}
 
-	if (PathFileExists(pwszCINFileName) &&
-		(_pTableDictionaryFile[imeMode] == nullptr) ||
-		 (_pTableDictionaryFile[imeMode] && _pTableDictionaryEngine[imeMode]->GetDictionaryType() )
-		)  //create cin CFile object
+	if (PathFileExists(pwszCINFileName))  //create cin CFile object
 	{
-		//create CFile object
 		if (_pTableDictionaryFile[imeMode] == nullptr)
 		{
+			//create CFile object
 			_pTableDictionaryFile[imeMode] = new (std::nothrow) CFile();
 			if ((_pTableDictionaryFile[imeMode]) && _pTextService &&
 				(_pTableDictionaryFile[imeMode])->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
 			{
+				if (_pTableDictionaryEngine[imeMode])
+					delete _pTableDictionaryEngine[imeMode];
 				_pTableDictionaryEngine[imeMode] = //cin files use tab as delimiter
 					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pTableDictionaryFile[imeMode], CIN_DICTIONARY);
 				_pTableDictionaryEngine[imeMode]->ParseConfig(imeMode); //parse config first.		
@@ -1655,9 +1635,14 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			{ // error on createfile. do cleanup
 				delete _pTableDictionaryFile[imeMode];
 				_pTableDictionaryFile[imeMode] = nullptr;
+				goto ErrorExit;
 			}
 		}
-		
+		else if (_pTableDictionaryEngine[imeMode] && _pTableDictionaryFile[imeMode]->IsFileUpdated())
+		{
+			_pTableDictionaryEngine[imeMode]->ParseConfig(imeMode); //parse config to reload updated dictionary
+		}
+
 	}
 	if (_pTableDictionaryEngine[imeMode] == nullptr && (imeMode == IME_MODE_DAYI || imeMode == IME_MODE_ARRAY))		//failed back to load windows preload tabletextservice table.
 	{
@@ -1696,61 +1681,68 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 	// now load phrase table
 	*pwszCINFileName = L'\0';
 	StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Phrase.cin");
-	if (PathFileExists(pwszCINFileName) && _pPhraseDictionaryFile == nullptr)
-	{ //indicate the prevoius table is built with system preload tts file in program files, and now user provides their own.
-		_pPhraseTableDictionaryEngine = nullptr;
-	}
-	//create CFile object
-	if (_pPhraseTableDictionaryEngine == nullptr  ||
-		((_pTableDictionaryEngine[imeMode] && _pTableDictionaryEngine[imeMode]->GetDictionaryType() == TTS_DICTIONARY)
-		&& _pPhraseTableDictionaryEngine != _pTableDictionaryEngine[imeMode]))
+
+	if (PathFileExists(pwszCINFileName))
 	{
-		if (PathFileExists(pwszCINFileName))
+		if (_pPhraseDictionaryFile == nullptr ||
+			(_pPhraseTableDictionaryEngine && _pPhraseTableDictionaryEngine->GetDictionaryType() == TTS_DICTIONARY) )
 		{
+			if (_pPhraseDictionaryFile)
+				delete _pPhraseDictionaryFile;
 			_pPhraseDictionaryFile = new (std::nothrow) CFile();
 			if (_pPhraseDictionaryFile && _pTextService && _pPhraseDictionaryFile->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
 			{
+				if (_pPhraseTableDictionaryEngine)
+					delete _pPhraseTableDictionaryEngine;
 				_pPhraseTableDictionaryEngine =
 					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pPhraseDictionaryFile, CIN_DICTIONARY); //cin files use tab as delimiter
 				_pPhraseTableDictionaryEngine->ParseConfig(imeMode); //parse config first.				
 
 			}
 		}
-		else if ((imeMode == IME_MODE_DAYI || imeMode == IME_MODE_ARRAY) && _pTableDictionaryFile[imeMode] &&
-			_pTableDictionaryEngine[imeMode]->GetDictionaryType() == TTS_DICTIONARY)
+		else if (_pPhraseDictionaryFile->IsFileUpdated())
 		{
-			_pPhraseTableDictionaryEngine = _pTableDictionaryEngine[imeMode];
-		}
-		else
-		{
-			_pPhraseDictionaryFile = new (std::nothrow) CFile();
-			if (_pPhraseDictionaryFile == nullptr)  goto ErrorExit;
-
-			if (!PathFileExists(pwszTTSFileName))
-			{
-				if (imeMode != IME_MODE_ARRAY)
-					StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Windows NT\\TableTextService\\TableTextServiceDaYi.txt");
-				else
-					StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Windows NT\\TableTextService\\TableTextServiceArray.txt");
-				CopyFile(pwszCINFileNameProgramFiles, pwszTTSFileName, TRUE);
-
-			}
-
-			if (!_pPhraseDictionaryFile->CreateFile(pwszTTSFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
-			{
-				goto ErrorExit;
-			}
-			else if (_pTextService) // no user provided phrase table present and we are not in ARRAY or DAYI, thus we load TTS DAYI table to provide phrase table
-			{
-				_pPhraseTableDictionaryEngine =
-					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pPhraseDictionaryFile, TTS_DICTIONARY); //TTS file use '=' as delimiter
-				if (!_pPhraseTableDictionaryEngine)  goto ErrorExit;
-
-				_pPhraseTableDictionaryEngine->ParseConfig(imeMode); //parse config first.
-
-			}
+			_pPhraseTableDictionaryEngine->ParseConfig(imeMode); //parse config to reload updated dictionary
 		}
 	}
+	else if (_pPhraseTableDictionaryEngine == nullptr &&
+		(imeMode == IME_MODE_DAYI || imeMode == IME_MODE_ARRAY) && _pTableDictionaryFile[imeMode] &&
+		_pTableDictionaryEngine[imeMode]->GetDictionaryType() == TTS_DICTIONARY)
+	{
+		_pPhraseTableDictionaryEngine = _pTableDictionaryEngine[imeMode];
+	}
+	else
+	{
+		_pPhraseDictionaryFile = new (std::nothrow) CFile();
+		if (_pPhraseDictionaryFile == nullptr)  goto ErrorExit;
+
+		if (!PathFileExists(pwszTTSFileName))
+		{
+			if (imeMode != IME_MODE_ARRAY)
+				StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Windows NT\\TableTextService\\TableTextServiceDaYi.txt");
+			else
+				StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Windows NT\\TableTextService\\TableTextServiceArray.txt");
+			CopyFile(pwszCINFileNameProgramFiles, pwszTTSFileName, TRUE);
+
+		}
+
+		if (!_pPhraseDictionaryFile->CreateFile(pwszTTSFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
+		{
+			goto ErrorExit;
+		}
+		else if (_pTextService) // no user provided phrase table present and we are not in ARRAY or DAYI, thus we load TTS DAYI table to provide phrase table
+		{
+			if (_pPhraseTableDictionaryEngine)
+				delete _pPhraseTableDictionaryEngine;
+			_pPhraseTableDictionaryEngine =
+				new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pPhraseDictionaryFile, TTS_DICTIONARY); //TTS file use '=' as delimiter
+			if (!_pPhraseTableDictionaryEngine)  goto ErrorExit;
+
+			_pPhraseTableDictionaryEngine->ParseConfig(imeMode); //parse config first.
+
+		}
+	}
+
 
 	// now load Array unicode ext-b, ext-cd, ext-e , special code and short-code table
 	if (imeMode == IME_MODE_ARRAY) //array-special.cin and array-shortcode.cin in personal romaing profile
@@ -1765,24 +1757,30 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-Ext-B.cin");
 		else if (_pArrayExtBDictionaryFile && _pTextService &&
 			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pArrayExtBDictionaryFile->GetFileName(), -1) != CSTR_EQUAL)
-		{ //indicate the prevoius table is built with system preload file in program files, and now user provides their own.
-			delete _pArrayExtBTableDictionaryEngine;
-			_pArrayExtBTableDictionaryEngine = nullptr;
+		{ // cin filename is different. force reload the cin file
 			delete _pArrayExtBDictionaryFile;
 			_pArrayExtBDictionaryFile = nullptr;
 		}
 
-		if (PathFileExists(pwszCINFileName) &&
-			(_pArrayExtBDictionaryFile == nullptr || _pArrayExtBDictionaryFile->IsFileUpdated())) 
+		if (PathFileExists(pwszCINFileName))
 		{
-			_pArrayExtBDictionaryFile = new (std::nothrow) CFile();
-			if (_pArrayExtBDictionaryFile && _pTextService &&
-				_pArrayExtBDictionaryFile->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
+			if (_pArrayExtBDictionaryFile == nullptr)
 			{
-				_pArrayExtBTableDictionaryEngine =
-					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pArrayExtBDictionaryFile, CIN_DICTIONARY); //cin files use tab as delimiter
-				if (_pArrayExtBTableDictionaryEngine)
-					_pArrayExtBTableDictionaryEngine->ParseConfig(imeMode); // to release the file handle
+				_pArrayExtBDictionaryFile = new (std::nothrow) CFile();
+				if (_pArrayExtBDictionaryFile && _pTextService &&
+					_pArrayExtBDictionaryFile->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
+				{
+					if (_pArrayExtBTableDictionaryEngine)
+						delete _pArrayExtBTableDictionaryEngine;
+					_pArrayExtBTableDictionaryEngine =
+						new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pArrayExtBDictionaryFile, CIN_DICTIONARY); //cin files use tab as delimiter
+					if (_pArrayExtBTableDictionaryEngine)
+						_pArrayExtBTableDictionaryEngine->ParseConfig(imeMode); // to release the file handle
+				}
+			}
+			else if (_pArrayExtBTableDictionaryEngine && _pArrayExtBDictionaryFile->IsFileUpdated())
+			{
+				_pArrayExtBTableDictionaryEngine->ParseConfig(imeMode); // parse config to reload dictionary
 			}
 		}
 		//Ext-CD
@@ -1795,24 +1793,30 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-Ext-CD.cin");
 		else if (_pArrayExtCDDictionaryFile && _pTextService &&
 			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pArrayExtCDDictionaryFile->GetFileName(), -1) != CSTR_EQUAL)
-		{ //indicate the prevoius table is built with system preload file in program files, and now user provides their own.
-			delete _pArrayExtCDTableDictionaryEngine;
-			_pArrayExtCDTableDictionaryEngine = nullptr;
+		{ // cin filename is different. force reload the cin file
 			delete _pArrayExtCDDictionaryFile;
 			_pArrayExtCDDictionaryFile = nullptr;
 		}
 
-		if (PathFileExists(pwszCINFileName) && 
-			(_pArrayExtCDDictionaryFile == nullptr || _pArrayExtCDDictionaryFile->IsFileUpdated()))
+		if (PathFileExists(pwszCINFileName))
 		{
-			_pArrayExtCDDictionaryFile = new (std::nothrow) CFile();
-			if (_pArrayExtCDDictionaryFile && _pTextService &&
-				_pArrayExtCDDictionaryFile->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
+			if (_pArrayExtCDDictionaryFile == nullptr)
 			{
-				_pArrayExtCDTableDictionaryEngine =
-					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pArrayExtCDDictionaryFile, CIN_DICTIONARY); //cin files use tab as delimiter
-				if (_pArrayExtCDTableDictionaryEngine)
-					_pArrayExtCDTableDictionaryEngine->ParseConfig(imeMode); // to release the file handle
+				_pArrayExtCDDictionaryFile = new (std::nothrow) CFile();
+				if (_pArrayExtCDDictionaryFile && _pTextService &&
+					_pArrayExtCDDictionaryFile->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
+				{
+					if (_pArrayExtCDTableDictionaryEngine)
+						delete _pArrayExtCDTableDictionaryEngine;
+					_pArrayExtCDTableDictionaryEngine =
+						new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pArrayExtCDDictionaryFile, CIN_DICTIONARY); //cin files use tab as delimiter
+					if (_pArrayExtCDTableDictionaryEngine)
+						_pArrayExtCDTableDictionaryEngine->ParseConfig(imeMode); // to release the file handle
+				}
+			}
+			else if (_pArrayExtCDTableDictionaryEngine&&_pArrayExtCDDictionaryFile->IsFileUpdated())
+			{
+				_pArrayExtCDTableDictionaryEngine->ParseConfig(imeMode); // parse config to reload dictionary
 			}
 		}
 		//Ext-E
@@ -1825,24 +1829,28 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-Ext-E.cin");
 		else if (_pArrayExtEDictionaryFile && _pTextService &&
 			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pArrayExtEDictionaryFile->GetFileName(), -1) != CSTR_EQUAL)
-		{ //indicate the prevoius table is built with system preload file in program files, and now user provides their own.
-			delete _pArrayExtETableDictionaryEngine;
-			_pArrayExtETableDictionaryEngine = nullptr;
+		{ // cin filename is different. force reload the cin file
 			delete _pArrayExtEDictionaryFile;
 			_pArrayExtEDictionaryFile = nullptr;
 		}
 
-		if (PathFileExists(pwszCINFileName) &&
-			(_pArrayExtEDictionaryFile == nullptr || _pArrayExtEDictionaryFile->IsFileUpdated()))
+		if (PathFileExists(pwszCINFileName))
 		{
-			_pArrayExtEDictionaryFile = new (std::nothrow) CFile();
-			if (_pArrayExtEDictionaryFile && _pTextService &&
-				_pArrayExtEDictionaryFile->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
+			if (_pArrayExtEDictionaryFile == nullptr)
 			{
-				_pArrayExtETableDictionaryEngine =
-					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pArrayExtEDictionaryFile, CIN_DICTIONARY); //cin files use tab as delimiter
-				if (_pArrayExtETableDictionaryEngine)
-					_pArrayExtETableDictionaryEngine->ParseConfig(imeMode); // to release the file handle
+				_pArrayExtEDictionaryFile = new (std::nothrow) CFile();
+				if (_pArrayExtEDictionaryFile && _pTextService &&
+					_pArrayExtEDictionaryFile->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
+				{
+					_pArrayExtETableDictionaryEngine =
+						new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pArrayExtEDictionaryFile, CIN_DICTIONARY); //cin files use tab as delimiter
+					if (_pArrayExtETableDictionaryEngine)
+						_pArrayExtETableDictionaryEngine->ParseConfig(imeMode); // to release the file handle
+				}
+			}
+			else if (_pArrayExtETableDictionaryEngine && _pArrayExtEDictionaryFile->IsFileUpdated())
+			{
+				_pArrayExtETableDictionaryEngine->ParseConfig(imeMode); // parse config to reload dictionary
 			}
 		}
 
@@ -1857,23 +1865,29 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 		else if (_pArraySpecialCodeDictionaryFile && _pTextService &&
 			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pArraySpecialCodeDictionaryFile->GetFileName(), -1) != CSTR_EQUAL)
 		{ //indicate the prevoius table is built with system preload file in program files, and now user provides their own.
-			delete _pArraySpecialCodeTableDictionaryEngine;
-			_pArraySpecialCodeTableDictionaryEngine = nullptr;
 			delete _pArraySpecialCodeDictionaryFile;
 			_pArraySpecialCodeDictionaryFile = nullptr;
 		}
 
-		if (PathFileExists(pwszCINFileName) && 
-			(_pArraySpecialCodeDictionaryFile == nullptr || _pArraySpecialCodeDictionaryFile->IsFileUpdated()) )
+		if (PathFileExists(pwszCINFileName))
 		{
-			_pArraySpecialCodeDictionaryFile = new (std::nothrow) CFile();
-			if (_pArraySpecialCodeDictionaryFile && _pTextService &&
-				_pArraySpecialCodeDictionaryFile->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
+			if (_pArraySpecialCodeDictionaryFile == nullptr)
 			{
-				_pArraySpecialCodeTableDictionaryEngine =
-					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pArraySpecialCodeDictionaryFile, CIN_DICTIONARY); //cin files use tab as delimiter
-				if (_pArraySpecialCodeTableDictionaryEngine)
-					_pArraySpecialCodeTableDictionaryEngine->ParseConfig(imeMode); // to release the file handle
+				_pArraySpecialCodeDictionaryFile = new (std::nothrow) CFile();
+				if (_pArraySpecialCodeDictionaryFile && _pTextService &&
+					_pArraySpecialCodeDictionaryFile->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
+				{
+					if (_pArraySpecialCodeTableDictionaryEngine)
+						_pArraySpecialCodeTableDictionaryEngine;
+					_pArraySpecialCodeTableDictionaryEngine =
+						new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pArraySpecialCodeDictionaryFile, CIN_DICTIONARY); //cin files use tab as delimiter
+					if (_pArraySpecialCodeTableDictionaryEngine)
+						_pArraySpecialCodeTableDictionaryEngine->ParseConfig(imeMode); // to release the file handle
+				}
+			}
+			else if (_pArraySpecialCodeTableDictionaryEngine && _pArraySpecialCodeDictionaryFile->IsFileUpdated())
+			{
+				_pArraySpecialCodeTableDictionaryEngine->ParseConfig(imeMode); // parse config to reload dictionary
 			}
 		}
 
@@ -1885,19 +1899,32 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 
 		if (!PathFileExists(pwszCINFileName)) //failed back to preload array-shortcode.cin in program files.
 			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-shortcode.cin");
-		if (PathFileExists(pwszCINFileName) && 
-			( _pArrayShortCodeDictionaryFile == nullptr || _pArrayShortCodeDictionaryFile->IsFileUpdated() ))
+		else if (_pArrayShortCodeDictionaryFile && _pTextService &&
+			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pArrayShortCodeDictionaryFile->GetFileName(), -1) != CSTR_EQUAL)
+		{ //indicate the prevoius table is built with system preload file in program files, and now user provides their own.
+			delete _pArrayShortCodeDictionaryFile;
+			_pArrayShortCodeDictionaryFile = nullptr;
+		}
+		if (PathFileExists(pwszCINFileName))
 		{
-			_pArrayShortCodeDictionaryFile = new (std::nothrow) CFile();
-			if (_pArrayShortCodeDictionaryFile && _pTextService &&
-				_pArrayShortCodeDictionaryFile->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
+			if (_pArrayShortCodeDictionaryFile == nullptr)
 			{
-				_pArrayShortCodeTableDictionaryEngine =
-					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pArrayShortCodeDictionaryFile, CIN_DICTIONARY); //cin files use tab as delimiter
-				if (_pArrayShortCodeTableDictionaryEngine)
-					_pArrayShortCodeTableDictionaryEngine->ParseConfig(imeMode);// to release the file handle
+				_pArrayShortCodeDictionaryFile = new (std::nothrow) CFile();
+				if (_pArrayShortCodeDictionaryFile && _pTextService &&
+					_pArrayShortCodeDictionaryFile->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
+				{
+					if (_pArrayShortCodeTableDictionaryEngine)
+						delete _pArrayShortCodeTableDictionaryEngine;
+					_pArrayShortCodeTableDictionaryEngine =
+						new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pArrayShortCodeDictionaryFile, CIN_DICTIONARY); //cin files use tab as delimiter
+					if (_pArrayShortCodeTableDictionaryEngine)
+						_pArrayShortCodeTableDictionaryEngine->ParseConfig(imeMode);// to release the file handle
+				}
 			}
-
+			else if (_pArrayShortCodeTableDictionaryEngine && _pArrayShortCodeDictionaryFile->IsFileUpdated())
+			{
+				_pArrayShortCodeTableDictionaryEngine->ParseConfig(imeMode); // parse config to reload dictionary
+			}
 		}
 
 
@@ -1912,19 +1939,26 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\PHONETIC-CUSTOM.cin");
 	else
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\GENERIC-CUSTOM.cin");
-	if (PathFileExists(pwszCINFileName) && 
-		(_pCustomTableDictionaryEngine[imeMode] == nullptr || _pCustomTableDictionaryFile[imeMode]->IsFileUpdated()))
+	if (PathFileExists(pwszCINFileName))
 	{
-		_pCustomTableDictionaryFile[imeMode] = new (std::nothrow) CFile();
-		if (_pCustomTableDictionaryFile[imeMode] && _pTextService &&
-			_pCustomTableDictionaryFile[imeMode]->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
+		if (_pCustomTableDictionaryEngine[imeMode] == nullptr)
 		{
-			_pCustomTableDictionaryEngine[imeMode] =
-				new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pCustomTableDictionaryFile[imeMode], CIN_DICTIONARY); //cin files use tab as delimiter
-			if (_pCustomTableDictionaryEngine[imeMode])
-				_pCustomTableDictionaryEngine[imeMode]->ParseConfig(imeMode);// to release the file handle
+			_pCustomTableDictionaryFile[imeMode] = new (std::nothrow) CFile();
+			if (_pCustomTableDictionaryFile[imeMode] && _pTextService &&
+				_pCustomTableDictionaryFile[imeMode]->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
+			{
+				if (_pCustomTableDictionaryEngine[imeMode])
+					delete _pCustomTableDictionaryEngine[imeMode];
+				_pCustomTableDictionaryEngine[imeMode] =
+					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pCustomTableDictionaryFile[imeMode], CIN_DICTIONARY); //cin files use tab as delimiter
+				if (_pCustomTableDictionaryEngine[imeMode])
+					_pCustomTableDictionaryEngine[imeMode]->ParseConfig(imeMode);// to release the file handle
+			}
 		}
-
+		else if (_pCustomTableDictionaryEngine && _pCustomTableDictionaryFile[imeMode]->IsFileUpdated())
+		{ 
+			_pCustomTableDictionaryEngine[imeMode]->ParseConfig(imeMode); 
+		}
 	}
 
 
