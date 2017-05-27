@@ -1546,24 +1546,11 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 	// load main table file now
 	if (imeMode == IME_MODE_DAYI) //dayi.cin in personal romaing profile
 	{
-		BOOL cinFound = FALSE;
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Dayi.cin");
-		if (!PathFileExists(pwszCINFileName)) //failed back to try preload Dayi.cin in program files.
-		{
-			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Dayi.cin");
-			if (PathFileExists(pwszCINFileName)) // failed to find Dayi.in in program files either
-			{
-				cinFound = TRUE;
-			}
-		}
-		else
-		{
-			cinFound = TRUE;
-		}
-
-		if (cinFound &&
-			_pTableDictionaryFile[imeMode] && _pTextService &&
-			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pTableDictionaryFile[imeMode]->GetFileName(), -1) != CSTR_EQUAL)
+		if (PathFileExists(pwszCINFileName) && (
+			_pTableDictionaryFile[imeMode]->IsFileUpdated() ||
+			(_pTableDictionaryFile[imeMode] && _pTextService &&
+			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pTableDictionaryFile[imeMode]->GetFileName(), -1) != CSTR_EQUAL) ) )
 		{ // cin found in Program files or in user roaming profile.
 			delete _pTableDictionaryEngine[imeMode];
 			_pTableDictionaryEngine[imeMode] = nullptr;
@@ -1571,7 +1558,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			_pTableDictionaryFile[imeMode] = nullptr;
 		}
 	}
-	if (imeMode == IME_MODE_ARRAY) //array.cin in personal romaing profile
+	else if (imeMode == IME_MODE_ARRAY) //array.cin in personal romaing profile
 	{
 		BOOL cinFound = FALSE;
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Array.cin");
@@ -1592,9 +1579,10 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			cinFound = TRUE;
 		}
 
-		if (cinFound &&
-			_pTableDictionaryFile[imeMode] && _pTextService &&
-			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pTableDictionaryFile[imeMode]->GetFileName(), -1) != CSTR_EQUAL)
+		if (cinFound && (
+			_pTableDictionaryFile[imeMode]->IsFileUpdated() ||
+			(_pTableDictionaryFile[imeMode] && _pTextService &&
+			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pTableDictionaryFile[imeMode]->GetFileName(), -1) != CSTR_EQUAL)))
 		{ //indicate the prevoius table is built with system preload file in program files, and now user provides their own.
 			delete _pTableDictionaryEngine[imeMode];
 			_pTableDictionaryEngine[imeMode] = nullptr;
@@ -1602,17 +1590,30 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			_pTableDictionaryFile[imeMode] = nullptr;
 		}
 	}
-	if (imeMode == IME_MODE_PHONETIC) //phone.cin in personal romaing profile
+	else if (imeMode == IME_MODE_PHONETIC) //phone.cin in personal romaing profile
 	{
+		BOOL cinFound = FALSE;
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Phone.cin");
 		StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Phone.cin");
 		if (PathFileExists(pwszCINFileNameProgramFiles) && !PathFileExists(pwszCINFileName))
 			CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, TRUE);
 
 		if (!PathFileExists(pwszCINFileName)) //failed back to pre-install Phone.cin in program files.
+		{
 			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Phone.cin");
-		else if (_pTableDictionaryFile[imeMode] && _pTextService &&
-			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pTableDictionaryFile[imeMode]->GetFileName(), -1) != CSTR_EQUAL)
+			if (PathFileExists(pwszCINFileName)) // failed to find Array.in in program files either
+			{
+				cinFound = TRUE;
+			}
+		}
+		else
+		{
+			cinFound = TRUE;
+		}
+		if (cinFound && (
+			_pTableDictionaryFile[imeMode]->IsFileUpdated() ||
+			(_pTableDictionaryFile[imeMode] && _pTextService &&
+				CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pTableDictionaryFile[imeMode]->GetFileName(), -1) != CSTR_EQUAL)))
 		{ //indicate the prevoius table is built with system preload file in program files, and now user provides their own.
 			delete _pTableDictionaryEngine[imeMode];
 			_pTableDictionaryEngine[imeMode] = nullptr;
@@ -1620,13 +1621,23 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			_pTableDictionaryFile[imeMode] = nullptr;
 		}
 	}
-	if (imeMode == IME_MODE_GENERIC) //phone.cin in personal romaing profile
+	else if (imeMode == IME_MODE_GENERIC) //phone.cin in personal romaing profile
 	{
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Generic.cin");
 		// we don't provide preload Generic.cin in program files
+		if (PathFileExists(pwszCINFileName) && 	_pTableDictionaryFile[imeMode]->IsFileUpdated() )
+		{ // cin found in Program files or in user roaming profile.
+			delete _pTableDictionaryEngine[imeMode];
+			_pTableDictionaryEngine[imeMode] = nullptr;
+			delete _pTableDictionaryFile[imeMode];
+			_pTableDictionaryFile[imeMode] = nullptr;
+		}
 	}
 
-	if (PathFileExists(pwszCINFileName))  //create cin CFile object
+	if (PathFileExists(pwszCINFileName) &&
+		(_pTableDictionaryFile[imeMode] == nullptr) ||
+		 (_pTableDictionaryFile[imeMode] && _pTableDictionaryEngine[imeMode]->GetDictionaryType() )
+		)  //create cin CFile object
 	{
 		//create CFile object
 		if (_pTableDictionaryFile[imeMode] == nullptr)
@@ -1645,21 +1656,8 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 				delete _pTableDictionaryFile[imeMode];
 				_pTableDictionaryFile[imeMode] = nullptr;
 			}
-		}/*
-		else
-		{
-			if (_pTableDictionaryFile[imeMode])
-			{
-				delete _pTableDictionaryFile[imeMode];
-				_pTableDictionaryFile[imeMode] = nullptr;
-			}
-			if (_pTableDictionaryEngine[imeMode])
-			{
-				delete _pTableDictionaryEngine[imeMode];
-				_pTableDictionaryEngine[imeMode] = nullptr;
-			}
-
-		}*/
+		}
+		
 	}
 	if (_pTableDictionaryEngine[imeMode] == nullptr && (imeMode == IME_MODE_DAYI || imeMode == IME_MODE_ARRAY))		//failed back to load windows preload tabletextservice table.
 	{
@@ -1774,7 +1772,8 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			_pArrayExtBDictionaryFile = nullptr;
 		}
 
-		if (_pArrayExtBDictionaryFile == nullptr)
+		if (PathFileExists(pwszCINFileName) &&
+			(_pArrayExtBDictionaryFile == nullptr || _pArrayExtBDictionaryFile->IsFileUpdated())) 
 		{
 			_pArrayExtBDictionaryFile = new (std::nothrow) CFile();
 			if (_pArrayExtBDictionaryFile && _pTextService &&
@@ -1803,7 +1802,8 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			_pArrayExtCDDictionaryFile = nullptr;
 		}
 
-		if (_pArrayExtCDDictionaryFile == nullptr)
+		if (PathFileExists(pwszCINFileName) && 
+			(_pArrayExtCDDictionaryFile == nullptr || _pArrayExtCDDictionaryFile->IsFileUpdated()))
 		{
 			_pArrayExtCDDictionaryFile = new (std::nothrow) CFile();
 			if (_pArrayExtCDDictionaryFile && _pTextService &&
@@ -1832,7 +1832,8 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			_pArrayExtEDictionaryFile = nullptr;
 		}
 
-		if (_pArrayExtEDictionaryFile == nullptr)
+		if (PathFileExists(pwszCINFileName) &&
+			(_pArrayExtEDictionaryFile == nullptr || _pArrayExtEDictionaryFile->IsFileUpdated()))
 		{
 			_pArrayExtEDictionaryFile = new (std::nothrow) CFile();
 			if (_pArrayExtEDictionaryFile && _pTextService &&
@@ -1862,7 +1863,8 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			_pArraySpecialCodeDictionaryFile = nullptr;
 		}
 
-		if (_pArraySpecialCodeDictionaryFile == nullptr)
+		if (PathFileExists(pwszCINFileName) && 
+			(_pArraySpecialCodeDictionaryFile == nullptr || _pArraySpecialCodeDictionaryFile->IsFileUpdated()) )
 		{
 			_pArraySpecialCodeDictionaryFile = new (std::nothrow) CFile();
 			if (_pArraySpecialCodeDictionaryFile && _pTextService &&
@@ -1883,7 +1885,8 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 
 		if (!PathFileExists(pwszCINFileName)) //failed back to preload array-shortcode.cin in program files.
 			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-shortcode.cin");
-		if (PathFileExists(pwszCINFileName) && _pArrayShortCodeDictionaryFile == nullptr)
+		if (PathFileExists(pwszCINFileName) && 
+			( _pArrayShortCodeDictionaryFile == nullptr || _pArrayShortCodeDictionaryFile->IsFileUpdated() ))
 		{
 			_pArrayShortCodeDictionaryFile = new (std::nothrow) CFile();
 			if (_pArrayShortCodeDictionaryFile && _pTextService &&
@@ -1909,7 +1912,8 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\PHONETIC-CUSTOM.cin");
 	else
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\GENERIC-CUSTOM.cin");
-	if (PathFileExists(pwszCINFileName) && _pCustomTableDictionaryEngine[imeMode] == nullptr)
+	if (PathFileExists(pwszCINFileName) && 
+		(_pCustomTableDictionaryEngine[imeMode] == nullptr || _pCustomTableDictionaryFile[imeMode]->IsFileUpdated()))
 	{
 		_pCustomTableDictionaryFile[imeMode] = new (std::nothrow) CFile();
 		if (_pCustomTableDictionaryFile[imeMode] && _pTextService &&
@@ -2683,13 +2687,13 @@ void CCompositionProcessorEngine::UpdateDictionaryFile()
 
 	SetupDictionaryFile(_imeMode);
 	if (pCurrentDictioanryFile != _pTableDictionaryFile[Global::imeMode])
-	{ // the table is loaded from TTS previously and now new cin is loaded.
+	{ // the table is updated.
 		
 		debugPrint(L"CCompositionProcessorEngine::UpdateDictionaryFile() the table is loaded from TTS previously and now new cin is loaded");
 		SetupKeystroke(Global::imeMode);
 		SetupConfiguration(Global::imeMode);
 	}
-
+	/*
 	if (_pTableDictionaryFile[Global::imeMode] && _pTableDictionaryEngine[Global::imeMode] &&
 		_pTableDictionaryEngine[Global::imeMode]->GetDictionaryType() == CIN_DICTIONARY &&
 		_pTableDictionaryFile[Global::imeMode]->IsFileUpdated())
@@ -2701,7 +2705,7 @@ void CCompositionProcessorEngine::UpdateDictionaryFile()
 		SetupKeystroke(Global::imeMode);
 		SetupConfiguration(Global::imeMode);
 
-	}
+	}*/
 }
 /*
 void CCompositionProcessorEngine::sortListItemByFindWordFreq(_Inout_ CDIMEArray<CCandidateListItem> *pCandidateList)
