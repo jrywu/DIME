@@ -5,7 +5,7 @@
 //
 
 //#define DEBUG_PRINT
-
+//#define ALWAYS_SHOW_SCROLL
 #include "Globals.h"
 #include "BaseWindow.h"
 #include "CandidateWindow.h"
@@ -260,9 +260,20 @@ void CCandidateWindow::_Show(BOOL isShowWnd)
     if (_pShadowWnd)
 		_pShadowWnd->_Show(isShowWnd);
 	if (_pVScrollBarWnd)
+#ifdef ALWAYS_SHOW_SCROLL
+		_pVScrollBarWnd->_Show(isShowWnd && _pVScrollBarWnd->_IsEnabled());
+#else
 		_pVScrollBarWnd->_Show(FALSE);
-
+#endif
     CBaseWindow::_Show(isShowWnd);
+	if (isShowWnd && !_IsCapture())
+	{
+		SetCapture(_GetWnd());
+	}
+	if (!isShowWnd && _IsCapture())
+	{
+		ReleaseCapture();
+	}
 }
 
 //+---------------------------------------------------------------------------
@@ -410,8 +421,10 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
         {
             _pShadowWnd->_Show((BOOL)wParam);
         }
-
-        
+		if (_pVScrollBarWnd)
+		{
+			_pVScrollBarWnd->_Show((BOOL)wParam);
+		}
         break;
 
     case WM_PAINT:
@@ -590,7 +603,7 @@ void CCandidateWindow::_OnLButtonDown(POINT pt)
 
     SetCursor(LoadCursor(NULL, IDC_ARROW));
 
-    if (_pVScrollBarWnd)
+    if (_pVScrollBarWnd && _pVScrollBarWnd->_IsEnabled())
     {
         rc = {0, 0, 0, 0};
 
@@ -641,50 +654,46 @@ void CCandidateWindow::_OnLButtonUp(POINT pt)
 
 void CCandidateWindow::_OnMouseMove(POINT pt)
 {
-    RECT rcWindow = {0, 0, 0, 0};
-
-    _GetClientRect(&rcWindow);
-
-    if (_pVScrollBarWnd && PtInRect(&rcWindow, pt))
-	{
-		//if(!_IsCapture())	_StartCapture();
-		SetCapture(_GetWnd());
-		_pVScrollBarWnd->_Show(TRUE);
+	RECT rcWindow = { 0, 0, 0, 0 }, rc = { 0, 0, 0, 0 };
+	_GetClientRect(&rcWindow);
+#ifndef ALWAYS_SHOW_SCROLL
+	if (PtInRect(&rcWindow, pt))
+	{		
+		if(_pVScrollBarWnd)
+		 _pVScrollBarWnd->_Show(_pVScrollBarWnd->_IsEnabled());
 	}
 	else
 	{
-		ReleaseCapture();
-		//if(!_IsCapture())	_EndCapture();
-		_pVScrollBarWnd->_Show(FALSE);
-
+		if (_pVScrollBarWnd)
+	 		_pVScrollBarWnd->_Show(FALSE);
 	}
-	
-	RECT rc = {0, 0, 0, 0};
+#endif
 
-    rc.left   = rcWindow.left;
-    rc.right  = rcWindow.right  - GetSystemMetrics(SM_CXVSCROLL) * 3/2 - CANDWND_BORDER_WIDTH;
+	rc.left = rcWindow.left;
+	rc.right = rcWindow.right - GetSystemMetrics(SM_CXVSCROLL) * 3 / 2 - CANDWND_BORDER_WIDTH;
 
-    rc.top    = rcWindow.top;
-    rc.bottom = rcWindow.bottom;
+	rc.top = rcWindow.top;
+	rc.bottom = rcWindow.bottom;
 
-    if (PtInRect(&rc, pt))
-    {
-        SetCursor(LoadCursor(NULL, IDC_HAND));
-        return;
-    }
+	if (PtInRect(&rc, pt))
+	{
+		SetCursor(LoadCursor(NULL, IDC_HAND));
+	}
+	else
+	{
+		SetCursor(LoadCursor(NULL, IDC_ARROW));
 
-    SetCursor(LoadCursor(NULL, IDC_ARROW));
+		if (_pVScrollBarWnd)
+		{
+			_pVScrollBarWnd->_GetClientRect(&rc);
+			MapWindowPoints(_GetWnd(), _pVScrollBarWnd->_GetWnd(), &pt, 1);
 
-    if (_pVScrollBarWnd)
-    {
-        _pVScrollBarWnd->_GetClientRect(&rc);
-        MapWindowPoints(_GetWnd(), _pVScrollBarWnd->_GetWnd(), &pt, 1);
-
-        if (PtInRect(&rc, pt))
-        {
-            _pVScrollBarWnd->_OnMouseMove(pt);
-        }
-    }
+			if (PtInRect(&rc, pt))
+			{
+				_pVScrollBarWnd->_OnMouseMove(pt);
+			}
+		}
+	}
 }
 
 //+---------------------------------------------------------------------------
@@ -934,8 +943,9 @@ void CCandidateWindow::_AddString(_Inout_ CCandidateListItem *pCandidateItem, _I
     {
         pLI->_FindKeyCode.Set(pwchWildcard, itemWildcard);
     }
+#ifndef ALWAYS_SHOW_SCROLL
 	if(_pVScrollBarWnd) _pVScrollBarWnd->_Show(FALSE); // hide the scrollbar in the beginning
-
+#endif
     return;
 }
 
@@ -1198,7 +1208,8 @@ BOOL CCandidateWindow::_MovePage(_In_ int offSet, _In_ BOOL isNotify)
 	}
 	else if(newPage >= static_cast<int>(_PageIndex.Count()))
     {
-		_currentSelection = 0;
+		newPage = currentPage;
+		//_currentSelection = 0;
 		_InvalidateRect();
         return FALSE;
     }

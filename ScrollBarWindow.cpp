@@ -384,15 +384,30 @@ void CScrollBarWindow::_Show(BOOL isShowWnd)
 
 void CScrollBarWindow::_Enable(BOOL isEnable)
 {
+	debugPrint(L"CScrollBarWindow::_Enable(), isEnable = %d, _scrollInfo.nMax = %d, _scrollInfo.nPage =%d, _scrollInfo.nPos = %d ",
+		isEnable, _scrollInfo.nMax, _scrollInfo.nPage, _scrollInfo.nPos);
     if (_IsEnabled() != isEnable)
     {
         CBaseWindow::_Enable(isEnable);
-		
-		if(_pBtnUp)
-			_pBtnUp->_Enable(isEnable);
-		if(_pBtnDn)
-			_pBtnDn->_Enable(isEnable);
     }
+	if (_scrollInfo.nMax > _scrollInfo.nPage)
+	{
+		if (_pBtnUp)
+		{
+			BOOL upEnable = _scrollInfo.nPos >= _scrollInfo.nPage;
+			debugPrint(L"CScrollBarWindow::_Enable() upEnable =%d", upEnable);
+			_pBtnUp->_Enable(upEnable);
+		}
+		if (_pBtnDn)
+		{
+			int lastPageCount = _scrollInfo.nMax % _scrollInfo.nPage;
+			if (lastPageCount == 0)
+				lastPageCount = _scrollInfo.nPage;
+			BOOL downEnable = _scrollInfo.nPos < _scrollInfo.nMax - lastPageCount;
+			debugPrint(L"CScrollBarWindow::_Enable() downEnable =%d, lastPageCount = %d", downEnable, lastPageCount);
+			_pBtnDn->_Enable(downEnable);
+		}
+	}
 }
 
 //+---------------------------------------------------------------------------
@@ -437,11 +452,12 @@ void CScrollBarWindow::_SetScrollInfo(_In_ CScrollInfo *lpsi)
 
     BOOL isEnable = (_scrollInfo.nMax > _scrollInfo.nPage);
 
-    _Enable(isEnable);
 
     _scrollDir = SCROLL_NONE_DIR;
 
     _SetCurPos(_scrollInfo.nPos, -1);
+
+	_Enable(isEnable);
 }
 
 //+---------------------------------------------------------------------------
@@ -544,14 +560,19 @@ void CScrollBarWindow::_GetScrollArea(_Out_ RECT *prc)
 
 void CScrollBarWindow::_SetCurPos(int nPos, int dwSB)
 {
-    int posMax = (_scrollInfo.nMax <= _scrollInfo.nPage) ? 0 : _scrollInfo.nMax - _scrollInfo.nPage;
+	debugPrint(L"CScrollButtonWindow::_SetCurPos() nPos = %d, dwSB = %d", nPos, dwSB);
+    //int posMax = (_scrollInfo.nMax <= _scrollInfo.nPage) ? 0 : _scrollInfo.nMax - _scrollInfo.nPage;
 
-    nPos = min(nPos, posMax);
+	nPos = min(nPos, _scrollInfo.nMax-1);// posMax);
     nPos = max(nPos, 0);
 
     _scrollInfo.nPos = nPos;
 
-    if (_IsWindowVisible()) {
+	BOOL enabled = _scrollInfo.nMax > _scrollInfo.nPage;
+	_Enable(enabled);
+
+    if (enabled && _IsWindowVisible())
+	{
         _InvalidateRect();
     }
 
@@ -602,12 +623,12 @@ void CScrollButtonWindow::_OnLButtonDown(POINT pt)
     switch (subTypeOfControl)
     {
     case DFCS_SCROLLDOWN:
-        _NotifyCommand(WM_VSCROLL, SB_LINEDOWN, 0);
-        pParent->_ShiftLine(+1, FALSE);
+        _NotifyCommand(WM_VSCROLL, SB_PAGEDOWN, 0);
+        pParent->_ShiftPage(+1, FALSE);
         break;
     case DFCS_SCROLLUP:
-        _NotifyCommand(WM_VSCROLL, SB_LINEUP, 0);
-        pParent->_ShiftLine(-1, FALSE);
+        _NotifyCommand(WM_VSCROLL, SB_PAGEUP, 0);
+        pParent->_ShiftPage(-1, FALSE);
         break;
     }
 

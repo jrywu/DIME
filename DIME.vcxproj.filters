@@ -283,9 +283,6 @@
     <ClCompile Include="ButtonWindow.cpp">
       <Filter>Source Files\UI</Filter>
     </ClCompile>
-    <ClCompile Include="ScrollBarWindow.cpp">
-      <Filter>Source Files\UI</Filter>
-    </ClCompile>
     <ClCompile Include="BaseStructure.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -345,6 +342,9 @@
     </ClCompile>
     <ClCompile Include="EditSession.cpp">
       <Filter>Source Files\TextService</Filter>
+    </ClCompile>
+    <ClCompile Include="ScrollBarWindow.cpp">
+      <Filter>Source Files\UI\Candidate</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
