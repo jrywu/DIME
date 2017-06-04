@@ -73,7 +73,7 @@ public:
     BOOL IsKeystrokeSort() { return _isKeystrokeSort; }
 
     // Dictionary engine
-	BOOL IsDictionaryAvailable(IME_MODE imeMode) { return (_pTableDictionaryEngine[imeMode] && !_pTableDictionaryEngine[imeMode] ->GetRadicalMap()->empty() ? TRUE : FALSE);}
+	BOOL IsDictionaryAvailable(IME_MODE imeMode) { return (_pTableDictionaryEngine[imeMode] && _pTableDictionaryEngine[imeMode]->GetRadicalMap()&&!_pTableDictionaryEngine[imeMode] ->GetRadicalMap()->empty() ? TRUE : FALSE);}
 
   
 

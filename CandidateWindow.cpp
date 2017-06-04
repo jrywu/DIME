@@ -654,6 +654,10 @@ void CCandidateWindow::_OnLButtonUp(POINT pt)
 
 void CCandidateWindow::_OnMouseMove(POINT pt)
 {
+	if (!_IsCapture())
+	{
+		SetCapture(_GetWnd());
+	}
 	RECT rcWindow = { 0, 0, 0, 0 }, rc = { 0, 0, 0, 0 };
 	_GetClientRect(&rcWindow);
 #ifndef ALWAYS_SHOW_SCROLL

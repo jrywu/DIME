@@ -1711,7 +1711,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 	{
 		_pPhraseTableDictionaryEngine = _pTableDictionaryEngine[imeMode];
 	}
-	else
+	else if (_pPhraseTableDictionaryEngine == nullptr)
 	{
 		_pPhraseDictionaryFile = new (std::nothrow) CFile();
 		if (_pPhraseDictionaryFile == nullptr)  goto ErrorExit;
