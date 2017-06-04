@@ -34,9 +34,6 @@
     <Filter Include="Source Files\TextService\IMInterface\Handler">
       <UniqueIdentifier>{60ffe632-a978-4c44-b5f8-883982b976ae}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\TextService\IMInterface\Handler\Dictionary">
-      <UniqueIdentifier>{1f776a05-57d4-4932-bfd7-bdbd516c8cc6}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\TextService\DLLEntry">
       <UniqueIdentifier>{a367038d-4951-4ca3-b64a-dd4e254b3b3c}</UniqueIdentifier>
     </Filter>
@@ -54,6 +51,9 @@
     </Filter>
     <Filter Include="Source Files\TextService\IMInterface\Initialization">
       <UniqueIdentifier>{4f70b0d0-6403-4885-88b3-9412e9f379a8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\TextService\IMInterface\Dictionary">
+      <UniqueIdentifier>{1f776a05-57d4-4932-bfd7-bdbd516c8cc6}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -197,16 +197,16 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DictionaryParser.cpp">
-      <Filter>Source Files\TextService\IMInterface\Handler\Dictionary</Filter>
+      <Filter>Source Files\TextService\IMInterface\Dictionary</Filter>
     </ClCompile>
     <ClCompile Include="DictionarySearch.cpp">
-      <Filter>Source Files\TextService\IMInterface\Handler\Dictionary</Filter>
+      <Filter>Source Files\TextService\IMInterface\Dictionary</Filter>
     </ClCompile>
     <ClCompile Include="CandidateWindow.cpp">
       <Filter>Source Files\UI\Candidate</Filter>
     </ClCompile>
     <ClCompile Include="File.cpp">
-      <Filter>Source Files\TextService\IMInterface\Handler\Dictionary</Filter>
+      <Filter>Source Files\TextService\IMInterface\Dictionary</Filter>
     </ClCompile>
     <ClCompile Include="TipCandidateString.cpp">
       <Filter>Source Files\UI\Candidate</Filter>
@@ -215,7 +215,7 @@
       <Filter>Source Files\UI\Candidate</Filter>
     </ClCompile>
     <ClCompile Include="TableDictionaryEngine.cpp">
-      <Filter>Source Files\TextService\IMInterface\Handler\Dictionary</Filter>
+      <Filter>Source Files\TextService\IMInterface\Dictionary</Filter>
     </ClCompile>
     <ClCompile Include="Compartment.cpp">
       <Filter>Source Files\TextService\LanguageBar</Filter>

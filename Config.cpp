@@ -19,6 +19,7 @@ CHARSET_SCOPE CConfig::_arrayUnicodeScope = CHARSET_UNICODE_EXT_A;
 BOOL CConfig::_clearOnBeep = TRUE;
 BOOL CConfig::_doBeep = TRUE;
 BOOL CConfig::_doBeepNotify = TRUE;
+BOOL CConfig::_doBeepOnCandi = FALSE;
 BOOL CConfig::_autoCompose = FALSE;
 BOOL CConfig::_customTablePriority = FALSE;
 BOOL CConfig::_arrayForceSP = FALSE;
@@ -162,6 +163,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		CheckDlgButton(hDlg, IDC_CHECKBOX_CLEAR_ONBEEP, (_clearOnBeep) ? BST_CHECKED : BST_UNCHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_DOBEEP, (_doBeep) ? BST_CHECKED : BST_UNCHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_DOBEEPNOTIFY, (_doBeepNotify) ? BST_CHECKED : BST_UNCHECKED);
+		CheckDlgButton(hDlg, IDC_CHECKBOX_DOBEEP_CANDI, (_doBeepOnCandi) ? BST_CHECKED : BST_UNCHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_CUSTOM_TABLE_PRIORITY, (_customTablePriority) ? BST_CHECKED : BST_UNCHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_DAYIARTICLEMODE, (_dayiArticleMode) ? BST_CHECKED : BST_UNCHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_ARRAY_FORCESP, (_arrayForceSP) ? BST_CHECKED : BST_UNCHECKED);
@@ -216,7 +218,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		
 		if (_imeMode != IME_MODE_DAYI)
 		{
-
+			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_DOBEEP_CANDI), SW_HIDE);
 			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_DAYIARTICLEMODE), SW_HIDE);
 		}
 		if (_imeMode != IME_MODE_ARRAY)
@@ -450,6 +452,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			_clearOnBeep = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_CLEAR_ONBEEP) == BST_CHECKED;
 			_doBeep = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_DOBEEP) == BST_CHECKED;
 			_doBeepNotify = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_DOBEEPNOTIFY) == BST_CHECKED;
+			_doBeepOnCandi = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_DOBEEP_CANDI) == BST_CHECKED;
 			_makePhrase = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_PHRASE) == BST_CHECKED;
 			_activatedKeyboardMode = IsDlgButtonChecked(hDlg, IDC_RADIO_KEYBOARD_OPEN) == BST_CHECKED;
 			_doHanConvert = IsDlgButtonChecked(hDlg, IDC_RADIO_OUTPUT_CHS) == BST_CHECKED;
@@ -835,6 +838,7 @@ VOID CConfig::WriteConfig()
 		fwprintf_s(fp, L"ClearOnBeep = %d\n", _clearOnBeep ? 1 : 0);
 		fwprintf_s(fp, L"DoBeep = %d\n", _doBeep ? 1 : 0);
 		fwprintf_s(fp, L"DoBeepNotify = %d\n", _doBeepNotify ? 1 : 0);
+		fwprintf_s(fp, L"DoBeepOnCandi = %d\n", _doBeepOnCandi ? 1 : 0);
 		fwprintf_s(fp, L"ActivatedKeyboardMode = %d\n", _activatedKeyboardMode ? 1 : 0);
 		fwprintf_s(fp, L"MakePhrase = %d\n", _makePhrase ? 1 : 0);
 		fwprintf_s(fp, L"MaxCodes = %d\n", _maxCodes);

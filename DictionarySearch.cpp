@@ -383,6 +383,8 @@ ReadValue:
 					CConfig::SetDoBeep((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"DoBeepNotify", 12)) == CSTR_EQUAL)
 					CConfig::SetDoBeepNotify((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"DoBeepOnCandi", 13)) == CSTR_EQUAL)
+					CConfig::SetDoBeepOnCandi((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"FontSize", 10)) == CSTR_EQUAL)
 					CConfig::SetFontSize(_wtoi(valueStrings.GetAt(0)->Get()));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"FontWeight", 10)) == CSTR_EQUAL)

@@ -47,6 +47,8 @@ public:
 	static BOOL GetDoBeep() {return _doBeep;}
 	static void SetDoBeepNotify(BOOL doBeepNotify) { _doBeepNotify = doBeepNotify; }
 	static BOOL GetDoBeepNotify() { return _doBeepNotify; }
+	static void SetDoBeepOnCandi(BOOL doBeepOnCandi) { _doBeepOnCandi = doBeepOnCandi; }
+	static BOOL GetDoBeepOnCandi() { return _doBeepOnCandi; }
 	static void SetMakePhrase(BOOL makePhrase) { _makePhrase = makePhrase;}
 	static BOOL GetMakePhrase() {return _makePhrase;}
 	static void SetShowNotifyDesktop(BOOL showNotifyDesktop) { _showNotifyDesktop = showNotifyDesktop;}
@@ -132,6 +134,7 @@ private:
 	static BOOL _clearOnBeep;
 	static BOOL _doBeep;
 	static BOOL _doBeepNotify;
+	static BOOL _doBeepOnCandi;
 	static BOOL _appPermissionSet;
 	static BOOL _reloadReverseConversion;
 	static BOOL _activatedKeyboardMode;
