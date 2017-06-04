@@ -361,7 +361,7 @@ HRESULT CDIME::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pCont
 	}
 	else if (Global::imeMode == IME_MODE_DAYI && CConfig::GetDoBeepOnCandi())
 	{
-		DoBeep(BEEP_WARNING);
+		DoBeep(BEEP_ON_CANDI);
 	}
     return hr;
 }

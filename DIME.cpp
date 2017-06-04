@@ -1020,7 +1020,7 @@ void CDIME::_LoadConfig(BOOL isForce, IME_MODE imeMode)
 
 void CDIME::DoBeep(BEEP_TYPE type)
 {
-	if (CConfig::GetDoBeep())
+	if (CConfig::GetDoBeep() || type == BEEP_ON_CANDI)
 		MessageBeep(MB_OK);
 	if (CConfig::GetDoBeepNotify() && type == BEEP_COMPOSITION_ERROR)
 	{
