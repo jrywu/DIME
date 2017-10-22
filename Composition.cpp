@@ -304,7 +304,7 @@ HRESULT CDIME::_SetInputString(TfEditCookie ec, _In_ ITfContext *pContext, _Out_
 		goto exit;
 	}
 
-	if (!_SetCompositionDisplayAttributes(ec, pContext, _gaDisplayAttributeConverted))
+	if (!_SetCompositionDisplayAttributes(ec, pContext, _gaDisplayAttributeInput))
 	{
 		debugPrint(L"CDIME::_SetInputString() _SetCompositionDisplayAttributes() failed");
 		hr = E_FAIL;
