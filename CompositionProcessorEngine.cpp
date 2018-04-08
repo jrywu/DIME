@@ -1504,7 +1504,6 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 	debugPrint(L"CCompositionProcessorEngine::SetupDictionaryFile() \n");
 	BOOL bRet = FALSE;
 
-
 	WCHAR pwszProgramFiles[MAX_PATH];
 	WCHAR pwszAppData[MAX_PATH];
 
@@ -1521,6 +1520,8 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 	WCHAR *pwszTTSFileName = new (std::nothrow) WCHAR[MAX_PATH];
 	WCHAR *pwszCINFileName = new (std::nothrow) WCHAR[MAX_PATH];
 	WCHAR *pwszCINFileNameProgramFiles = new (std::nothrow) WCHAR[MAX_PATH];
+
+	struct _stat programFilesTimeStamp = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, appDataTimeStamp = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
 	if (!pwszTTSFileName)  goto ErrorExit;
 	if (!pwszCINFileName)  goto ErrorExit;
@@ -1556,16 +1557,23 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 	}
 	else if (imeMode == IME_MODE_ARRAY) //array.cin in personal romaing profile
 	{
-		BOOL cinFound = FALSE;
+		BOOL cinFound = FALSE, wstatFailed = TRUE, updated = TRUE;
+		
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Array.cin");
 		StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array.cin");
-		if (PathFileExists(pwszCINFileNameProgramFiles) && !PathFileExists(pwszCINFileName))
-			CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, TRUE);
+		
+		if (PathFileExists(pwszCINFileNameProgramFiles) ) 
+			_wstat(pwszCINFileNameProgramFiles, &programFilesTimeStamp);
+		if (PathFileExists(pwszCINFileName))
+			wstatFailed = _wstat(pwszCINFileName, &appDataTimeStamp) == -1;
+		updated = programFilesTimeStamp.st_mtime != appDataTimeStamp.st_mtime;
+		if(!PathFileExists(pwszCINFileName) || (!wstatFailed && updated) )
+			CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, FALSE);
 
 		if (!PathFileExists(pwszCINFileName)) //failed back to try preload Dayi.cin in program files.
 		{
 			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array.cin");
-			if (PathFileExists(pwszCINFileName)) // failed to find Array.in in program files either
+			if (PathFileExists(pwszCINFileName)) // failed to find Array.cin in program files either
 			{
 				cinFound = TRUE;
 			}
@@ -1584,11 +1592,17 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 	}
 	else if (imeMode == IME_MODE_PHONETIC) //phone.cin in personal romaing profile
 	{
-		BOOL cinFound = FALSE;
+		BOOL cinFound = FALSE, wstatFailed = TRUE, updated = TRUE;
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Phone.cin");
 		StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Phone.cin");
-		if (PathFileExists(pwszCINFileNameProgramFiles) && !PathFileExists(pwszCINFileName))
-			CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, TRUE);
+		
+		if (PathFileExists(pwszCINFileNameProgramFiles))
+			_wstat(pwszCINFileNameProgramFiles, &programFilesTimeStamp);
+		if (PathFileExists(pwszCINFileName))
+			wstatFailed = _wstat(pwszCINFileName, &appDataTimeStamp) == -1;
+		updated = programFilesTimeStamp.st_mtime > appDataTimeStamp.st_mtime;
+		if (!PathFileExists(pwszCINFileName) || (!wstatFailed && updated))
+			CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, FALSE);
 
 		if (!PathFileExists(pwszCINFileName)) //failed back to pre-install Phone.cin in program files.
 		{
@@ -1748,10 +1762,17 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 	if (imeMode == IME_MODE_ARRAY) //array-special.cin and array-shortcode.cin in personal romaing profile
 	{
 		//Ext-B
+		BOOL wstatFailed = TRUE, updated = TRUE;
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Array-Ext-B.cin");
 		StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-Ext-B.cin");
-		if (PathFileExists(pwszCINFileNameProgramFiles) && !PathFileExists(pwszCINFileName))
-			CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, TRUE);
+
+		if (PathFileExists(pwszCINFileNameProgramFiles))
+			_wstat(pwszCINFileNameProgramFiles, &programFilesTimeStamp);
+		if (PathFileExists(pwszCINFileName))
+			wstatFailed = _wstat(pwszCINFileName, &appDataTimeStamp) == -1;
+		updated = programFilesTimeStamp.st_mtime > appDataTimeStamp.st_mtime;
+		if (!PathFileExists(pwszCINFileName) || (!wstatFailed && updated))
+			CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, FALSE);
 
 		if (!PathFileExists(pwszCINFileName)) //failed back to preload array-special.cin in program files.
 			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-Ext-B.cin");
@@ -1786,8 +1807,15 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 		//Ext-CD
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Array-Ext-CD.cin");
 		StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-Ext-CD.cin");
-		if (PathFileExists(pwszCINFileNameProgramFiles) && !PathFileExists(pwszCINFileName))
-			CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, TRUE);
+
+		wstatFailed = TRUE; updated = TRUE;
+		if (PathFileExists(pwszCINFileNameProgramFiles))
+			_wstat(pwszCINFileNameProgramFiles, &programFilesTimeStamp);
+		if (PathFileExists(pwszCINFileName))
+			wstatFailed = _wstat(pwszCINFileName, &appDataTimeStamp) == -1;
+		updated = programFilesTimeStamp.st_mtime > appDataTimeStamp.st_mtime;
+		if (!PathFileExists(pwszCINFileName) || (!wstatFailed && updated))
+			CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, FALSE);
 
 		if (!PathFileExists(pwszCINFileName)) //failed back to preload array-special.cin in program files.
 			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-Ext-CD.cin");
@@ -1819,14 +1847,22 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 				_pArrayExtCDTableDictionaryEngine->ParseConfig(imeMode); // parse config to reload dictionary
 			}
 		}
-		//Ext-E
-		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Array-Ext-E.cin");
-		StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-Ext-E.cin");
-		if (PathFileExists(pwszCINFileNameProgramFiles) && !PathFileExists(pwszCINFileName))
-			CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, TRUE);
+		
+		//Ext-EF
+		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Array-Ext-EF.cin");
+		StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-Ext-EF.cin");
+		
+		wstatFailed = TRUE; updated = TRUE;
+		if (PathFileExists(pwszCINFileNameProgramFiles))
+			_wstat(pwszCINFileNameProgramFiles, &programFilesTimeStamp);
+		if (PathFileExists(pwszCINFileName))
+			wstatFailed = _wstat(pwszCINFileName, &appDataTimeStamp) == -1;
+		updated = programFilesTimeStamp.st_mtime > appDataTimeStamp.st_mtime;
+		if (!PathFileExists(pwszCINFileName) || (!wstatFailed && updated))
+			CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, FALSE);
 
 		if (!PathFileExists(pwszCINFileName)) //failed back to preload array-special.cin in program files.
-			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-Ext-E.cin");
+			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-Ext-EF.cin");
 		else if (_pArrayExtEDictionaryFile && _pTextService &&
 			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pArrayExtEDictionaryFile->GetFileName(), -1) != CSTR_EQUAL)
 		{ // cin filename is different. force reload the cin file
@@ -1857,8 +1893,15 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 		//Special
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Array-special.cin");
 		StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-special.cin");
-		if (PathFileExists(pwszCINFileNameProgramFiles) && !PathFileExists(pwszCINFileName))
-			CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, TRUE);
+
+		wstatFailed = TRUE; updated = TRUE;
+		if (PathFileExists(pwszCINFileNameProgramFiles))
+			_wstat(pwszCINFileNameProgramFiles, &programFilesTimeStamp);
+		if (PathFileExists(pwszCINFileName))
+			wstatFailed = _wstat(pwszCINFileName, &appDataTimeStamp) == -1;
+		updated = programFilesTimeStamp.st_mtime > appDataTimeStamp.st_mtime;
+		if (!PathFileExists(pwszCINFileName) || (!wstatFailed && updated))
+			CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, FALSE);
 
 		if (!PathFileExists(pwszCINFileName)) //failed back to preload array-special.cin in program files.
 			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-special.cin");
@@ -1894,8 +1937,15 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 		//Short-code
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Array-shortcode.cin");
 		StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-shortcode.cin");
-		if (PathFileExists(pwszCINFileNameProgramFiles) && !PathFileExists(pwszCINFileName))
-			CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, TRUE);
+
+		wstatFailed = TRUE; updated = TRUE;
+		if (PathFileExists(pwszCINFileNameProgramFiles))
+			_wstat(pwszCINFileNameProgramFiles, &programFilesTimeStamp);
+		if (PathFileExists(pwszCINFileName))
+			wstatFailed = _wstat(pwszCINFileName, &appDataTimeStamp) == -1;
+		updated = programFilesTimeStamp.st_mtime > appDataTimeStamp.st_mtime;
+		if (!PathFileExists(pwszCINFileName) || (!wstatFailed && updated))
+			CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, FALSE);
 
 		if (!PathFileExists(pwszCINFileName)) //failed back to preload array-shortcode.cin in program files.
 			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-shortcode.cin");
