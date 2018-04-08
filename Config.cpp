@@ -234,7 +234,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"Unicode Extension-A");
 			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"Unicode Extension-AB");
 			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"Unicode Extension-ABCD");
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"Unicode Extension-ABCDE");
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"Unicode Extension-ABCDEF");
 			SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_arrayUnicodeScope, 0);
 
 		}
@@ -649,7 +649,7 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 			goto LoadFile;
 		case IDC_BUTTON_LOAD_ARRAY_EXT_E:
 			openFileType = LOAD_CIN_TABLE;
-			StringCchCopy(targetName, MAX_PATH, L"\\DIME\\Array-Ext-E.cin");
+			StringCchCopy(targetName, MAX_PATH, L"\\DIME\\Array-Ext-EF.cin");
 			goto LoadFile;
 		case IDC_BUTTON_EXPORT_CUSTOM:
 			openFileType = EXPORT_CUSTOM_TABLE;
