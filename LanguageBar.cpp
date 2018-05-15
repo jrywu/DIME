@@ -1010,7 +1010,7 @@ void CDIME::PrivateCompartmentsUpdated(_In_ ITfThreadMgr *pThreadMgr)
 
 void CDIME::KeyboardOpenCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr, _In_ REFGUID guidCompartment)
 {
-	debugPrint(L"CDIME::KeyboardOpenCompartmentUpdated()\n");
+	debugPrint(L"CDIME::KeyboardOpenCompartmentUpdated()");
     if (_pCompartmentConversion == nullptr)
     {
         return;
@@ -1033,6 +1033,7 @@ void CDIME::KeyboardOpenCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr, _In_ R
 		CCompartment CompartmentKeyboardOpen(pThreadMgr, _tfClientId, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
 		if (SUCCEEDED(CompartmentKeyboardOpen._GetCompartmentBOOL(isOpen)))
 		{
+			debugPrint(L"CDIME::KeyboardOpenCompartmentUpdated() GUID_COMPARTMENT_KEYBOARD_OPENCLOSE, keyboard isOpen = %d", isOpen);
 			if (isOpen && !(conversionMode & TF_CONVERSIONMODE_NATIVE))
 			{
 				conversionMode |= TF_CONVERSIONMODE_NATIVE;
@@ -1053,6 +1054,7 @@ void CDIME::KeyboardOpenCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr, _In_ R
 	isOpen = FALSE;
 	if (IsEqualGUID(guidCompartment, Global::DIMEGuidCompartmentIMEMode) && SUCCEEDED(CompartmentIMEMode._GetCompartmentBOOL(isOpen)))
 	{
+		debugPrint(L"CDIME::_KeyboardOpenCompartmentUpdated() DIMEGuidCompartmentIMEMode, keyboard isOpen = %d", isOpen);
 		if (isOpen && !(conversionMode & TF_CONVERSIONMODE_NATIVE))
 		{
 			conversionMode |= TF_CONVERSIONMODE_NATIVE;

@@ -9,6 +9,7 @@
 #include "Globals.h"
 #include "BaseWindow.h"
 #include "NotifyWindow.h"
+#define NO_ANIMATION
 #define NO_WINDOW_SHADOW
 #define ANIMATION_STEP_TIME 15
 #define ANIMATION_TIMER_ID 39773
@@ -96,16 +97,19 @@ BOOL CNotifyWindow::_CreateMainWindow(_In_opt_ HWND parentWndHandle)
     _SetUIWnd(this);
 
 	if (!CBaseWindow::_Create(Global::AtomNotifyWindow,
-		WS_EX_TOPMOST | WS_EX_LAYERED |
+		WS_EX_TOPMOST | 
+#ifndef NO_ANIMATION
+		WS_EX_LAYERED |
+#endif
 		WS_EX_TOOLWINDOW,
         WS_BORDER | WS_POPUP,
         NULL, 0, 0, parentWndHandle))
     {
         return FALSE;
     }
-	
+#ifndef NO_ANIMATION	
 	SetLayeredWindowAttributes(_GetWnd(), 0,  (255 * 5) / 100, LWA_ALPHA);
-
+#endif
     return TRUE;
 }
 
@@ -120,7 +124,7 @@ BOOL CNotifyWindow::_CreateBackGroundShadowWindow()
     if (!_pShadowWnd->_Create(Global::AtomNotifyShadowWindow,
         WS_EX_TOPMOST | 
 		WS_EX_TOOLWINDOW | WS_EX_LAYERED,
-        WS_DISABLED | WS_POPUP, this))
+		WS_BORDER | WS_POPUP, this))
     {
         _DeleteShadowWnd();
         return FALSE;
@@ -152,16 +156,19 @@ void CNotifyWindow::_Move(int x, int y)
 	_x = x;
 	_y = y;
     CBaseWindow::_Move(_x, _y);
+#ifndef NO_ANIMATION	
 	SetLayeredWindowAttributes(_GetWnd(), 0,  255 * (5 / 100), LWA_ALPHA); // 5% transparent faded out to 95 %
 	_animationStage = 10;	
 	_EndTimer(ANIMATION_TIMER_ID);
 	_StartTimer(ANIMATION_STEP_TIME, ANIMATION_TIMER_ID);
+#endif
 }
 void CNotifyWindow::_OnTimerID(UINT_PTR timerID)
 {   //animate the window faded out with layered tranparency
 	debugPrint(L"CNotifyWindow::_OnTimer(): timerID = %d,  _animationStage = %d", timerID, _animationStage);
 	switch (timerID)
 	{
+#ifndef NO_ANIMATION
 	case ANIMATION_TIMER_ID:
 		if(_animationStage)
 		{
@@ -179,6 +186,7 @@ void CNotifyWindow::_OnTimerID(UINT_PTR timerID)
 			SetLayeredWindowAttributes(_GetWnd(), 0,  (255 * 95) / 100, LWA_ALPHA); 
 		}
 		break;
+#endif
 	case DELAY_SHOW_TIMER_ID:
  		_EndTimer(DELAY_SHOW_TIMER_ID);
 		_pfnCallback(_pObj, SHOW_NOTIFY, _timeToHide , _notifyType);

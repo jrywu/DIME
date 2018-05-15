@@ -4,7 +4,7 @@
 //
 //
 //#define DEBUG_PRINT
-
+//#define VERBOSE
 #include "Private.h"
 #include "Globals.h"
 #include "DIME.h"
@@ -87,7 +87,7 @@ STDAPI CDIME::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_opt_ ITfDocument
 
 	if(pDocMgrFocus)
 	{
-#ifdef DEBUG_PRINT //probing the TSF supprting status.
+#if defined(DEBUG_PRINT) && defined(VERBOSE) //probing the TSF supprting status.
 		ITfContext* pContext = nullptr;
 		bool isTransitory = false;
 		bool isMultiRegion = false;

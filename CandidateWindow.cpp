@@ -10,6 +10,7 @@
 #include "BaseWindow.h"
 #include "CandidateWindow.h"
 
+
 #define NO_WINDOW_SHADOW
 #define ANIMATION_STEP_TIME 8
 #define ANIMATION_TIMER_ID 39773
@@ -122,8 +123,7 @@ BOOL CCandidateWindow::_CreateMainWindow(_In_opt_ HWND parentWndHandle)
     {
         return FALSE;
     }
-	
-	SetLayeredWindowAttributes(_GetWnd(), 0,  (255 * 5) / 100, LWA_ALPHA);
+	SetLayeredWindowAttributes(_GetWnd(), 0, (255 * 5) / 100, LWA_ALPHA);  // animation started from 5% alpha
 
     return TRUE;
 }
@@ -224,7 +224,9 @@ void CCandidateWindow::_Move(int x, int y)
 	_animationStage = 10;	
 	_EndTimer(ANIMATION_TIMER_ID);
 	_StartTimer(ANIMATION_STEP_TIME, ANIMATION_TIMER_ID);
+
 }
+
 void CCandidateWindow::_OnTimerID(UINT_PTR timerID)
 {   //animate the window faded out with layered tranparency
 	debugPrint(L"CCandidateWindow::_OnTimer(): timerID = %d,  _animationStage = %d", timerID, _animationStage);
@@ -249,6 +251,7 @@ void CCandidateWindow::_OnTimerID(UINT_PTR timerID)
 		break;
 	}
 }
+
 //+---------------------------------------------------------------------------
 //
 // _Show

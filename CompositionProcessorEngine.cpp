@@ -1995,7 +1995,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 		{
 			_pCustomTableDictionaryFile[imeMode] = new (std::nothrow) CFile();
 			if (_pCustomTableDictionaryFile[imeMode] && _pTextService &&
-				_pCustomTableDictionaryFile[imeMode]->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
+				_pCustomTableDictionaryFile[imeMode]->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ | FILE_SHARE_WRITE))
 			{
 				if (_pCustomTableDictionaryEngine[imeMode])
 					delete _pCustomTableDictionaryEngine[imeMode];

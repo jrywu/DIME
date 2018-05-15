@@ -953,7 +953,7 @@ VOID CConfig::LoadConfig(IME_MODE imeMode)
 			{
 				CFile *iniDictionaryFile;
 				iniDictionaryFile = new (std::nothrow) CFile();
-				if (iniDictionaryFile && (iniDictionaryFile)->CreateFile(pwszINIFileName, GENERIC_READ, OPEN_EXISTING, 0))
+				if (iniDictionaryFile && (iniDictionaryFile)->CreateFile(pwszINIFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ | FILE_SHARE_WRITE))
 				{
 					CTableDictionaryEngine * iniTableDictionaryEngine;
 					iniTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(MAKELCID(1028, SORT_DEFAULT), iniDictionaryFile, INI_DICTIONARY);//CHT:1028
@@ -1125,7 +1125,7 @@ BOOL CConfig::importCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToLoad)
 		HANDLE hCustomTable = NULL;
 		DWORD dwDataLen = 0;
 		LPCWSTR customText = nullptr;
-		if ((hCustomTable = CreateFile(pathToLoad, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL)) == INVALID_HANDLE_VALUE)
+		if ((hCustomTable = CreateFile(pathToLoad, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL)) == INVALID_HANDLE_VALUE)
 		{	// Error
 			success = FALSE;
 			goto Cleanup;
@@ -1239,7 +1239,7 @@ BOOL CConfig::exportCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToWrite)
 	GetDlgItemText(hDlg, IDC_EDIT_CUSTOM_TABLE, buf, len + 1);
 
 	// Create a file to save custom table
-	if ((hCustomTableFile = CreateFile(pathToWrite, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) == INVALID_HANDLE_VALUE)
+	if ((hCustomTableFile = CreateFile(pathToWrite, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) == INVALID_HANDLE_VALUE)
 	{	// Error
 		success = FALSE;
 		goto Cleanup;
