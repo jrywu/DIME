@@ -366,10 +366,12 @@ BOOL UpdateModifiers(WPARAM wParam, LPARAM lParam)
             if (lParam & 0x01000000)
             {
                 ModifiersValue |= (TF_MOD_RCONTROL | TF_MOD_CONTROL);
+				ModifiersValue &= TF_MOD_LCONTROL;
             }
             else
             {
                 ModifiersValue |= (TF_MOD_LCONTROL | TF_MOD_CONTROL);
+				ModifiersValue &= TF_MOD_RCONTROL;
             }
 
             // is previous key state up?
@@ -398,10 +400,12 @@ BOOL UpdateModifiers(WPARAM wParam, LPARAM lParam)
             if (((lParam >> 16) & 0x00ff) == 0x36)
             {
                 ModifiersValue |= (TF_MOD_RSHIFT | TF_MOD_SHIFT);
+				ModifiersValue &= ~TF_MOD_LSHIFT;
             }
             else
             {
                 ModifiersValue |= (TF_MOD_LSHIFT | TF_MOD_SHIFT);
+				ModifiersValue &= ~TF_MOD_RSHIFT;
             }
 
             // is previous key state up?

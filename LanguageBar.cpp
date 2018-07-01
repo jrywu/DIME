@@ -104,7 +104,7 @@ void CDIME::SetupLanguageBar(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientI
 	if (pThreadMgr == nullptr) return;
 
 	DWORD dwEnable = 1;
-	//win8 only to show IME
+	//to show IME, win8 only. 
 	if (Global::isWindows8){
 		CreateLanguageBarButton(dwEnable, GUID_LBI_INPUTMODE, Global::LangbarImeModeDescription, Global::ImeModeDescription, Global::ImeModeOnIcoIndex, Global::ImeModeOffIcoIndex, &_pLanguageBar_IMEModeW8, isSecureMode);
 		InitLanguageBar(_pLanguageBar_IMEModeW8, pThreadMgr, tfClientId, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);

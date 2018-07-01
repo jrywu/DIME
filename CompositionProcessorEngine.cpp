@@ -1404,7 +1404,13 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL *pIsE
 	debugPrint(L"CCompositionProcessorEngine::OnPreservedKey() \n");
 	if (IsEqualGUID(rguid, _PreservedKey_IMEMode.Guid))
 	{
-		if (!CheckShiftKeyOnly(&_PreservedKey_IMEMode.TSFPreservedKeyTable))
+		IME_SHIFT_MODE imeShiftMode = CConfig::GetIMEShiftMode();
+	
+		if ( imeShiftMode == IME_NO_SHIFT ||
+			 !CheckShiftKeyOnly(&_PreservedKey_IMEMode.TSFPreservedKeyTable) ||
+			 (imeShiftMode == IME_RIGHT_SHIFT_ONLY && (Global::ModifiersValue & (TF_MOD_LSHIFT))) || 
+			 (imeShiftMode == IME_LEFT_SHIFT_ONLY && (Global::ModifiersValue & (TF_MOD_RSHIFT)))
+		   )
 		{
 			*pIsEaten = FALSE;
 			return;
@@ -1432,7 +1438,8 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL *pIsE
 	}
 	else if (IsEqualGUID(rguid, _PreservedKey_DoubleSingleByte.Guid))
 	{
-		if (CConfig::GetDoubleSingleByteMode() != DOUBLE_SINGLE_BYTE_SHIFT_SPACE || !CheckShiftKeyOnly(&_PreservedKey_DoubleSingleByte.TSFPreservedKeyTable))
+		if (CConfig::GetDoubleSingleByteMode() != DOUBLE_SINGLE_BYTE_SHIFT_SPACE )
+			//|| !CheckShiftKeyOnly(&_PreservedKey_DoubleSingleByte.TSFPreservedKeyTable))
 		{
 			*pIsEaten = FALSE;
 			return;

@@ -36,6 +36,8 @@ public:
 	static UINT GetFontWeight() {return _fontWeight;}
 	static BOOL GetFontItalic() {return _fontItalic;}
 	static void SetFontItalic(BOOL fontItalic) {_fontItalic = fontItalic;}
+	static void SetIMEShiftMode(IME_SHIFT_MODE imeShiftMode) { _imeShiftMode = imeShiftMode ; }
+	static IME_SHIFT_MODE GetIMEShiftMode() { return _imeShiftMode; }
 	static void SetDoubleSingleByteMode(DOUBLE_SINGLE_BYTE_MODE doubleSingleMode) { _doubleSingleByteMode = doubleSingleMode; }
 	static DOUBLE_SINGLE_BYTE_MODE GetDoubleSingleByteMode() { return _doubleSingleByteMode; }
 	static void SetMaxCodes(UINT maxCodes) { _maxCodes = maxCodes;}
@@ -163,6 +165,8 @@ private:
 	static BOOL _dayiArticleMode;  // Article mode: input full-shaped symbols with address keys
 
 	static PHONETIC_KEYBOARD_LAYOUT _phoneticKeyboardLayout;
+
+	static IME_SHIFT_MODE _imeShiftMode;
 
 	static DOUBLE_SINGLE_BYTE_MODE _doubleSingleByteMode;
 

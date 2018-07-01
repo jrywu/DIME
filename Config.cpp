@@ -42,6 +42,7 @@ BOOL CConfig::_customTableChanged = FALSE;
 UINT CConfig::_dpiY = 0;
 
 PHONETIC_KEYBOARD_LAYOUT CConfig::_phoneticKeyboardLayout = PHONETIC_STANDARD_KEYBOARD_LAYOUT;
+IME_SHIFT_MODE CConfig::_imeShiftMode = IME_BOTH_SHIFT;
 DOUBLE_SINGLE_BYTE_MODE CConfig::_doubleSingleByteMode = DOUBLE_SINGLE_BYTE_ALWAYS_SINGLE;
 
 CDIMEArray <LanguageProfileInfo>* CConfig::_reverseConvervsionInfoList = new (std::nothrow) CDIMEArray <LanguageProfileInfo>;
@@ -187,13 +188,18 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		CheckDlgButton(hDlg, IDC_CHECKBOX_SPACEASPAGEDOWN, (_spaceAsPageDown) ? BST_CHECKED : BST_UNCHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_ARROWKEYSWPAGES, (_arrowKeySWPages) ? BST_CHECKED : BST_UNCHECKED);
 		
+		hwnd = GetDlgItem(hDlg, IDC_COMBO_IME_SHIFT_MODE);
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"¥ª¥kSHIFTÁä");
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"¥kSHIFTÁä");
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"¥ªSHIFTÁä");
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"µL(¶ÈCtrl-SpaceÁä)");
+		SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_imeShiftMode, 0);
 
 		hwnd = GetDlgItem(hDlg, IDC_COMBO_DOUBLE_SINGLE_BYTE);
 		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"¥H Shift-Space ¼öÁä¤Á´«");
 		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"¥b«¬");
 		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"¥þ«¬");
 		SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_doubleSingleByteMode, 0);
-
 
 		if (_imeMode == IME_MODE_ARRAY || _imeMode == IME_MODE_PHONETIC)
 		{
@@ -316,6 +322,19 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			switch (HIWORD(wParam))
 			{
 			case EN_CHANGE:
+				PropSheet_Changed(GetParent(hDlg), hDlg);
+				ret = TRUE;
+				break;
+			default:
+				break;
+			}
+			break;
+
+
+		case IDC_COMBO_IME_SHIFT_MODE:
+			switch (HIWORD(wParam))
+			{
+			case CBN_SELCHANGE:
 				PropSheet_Changed(GetParent(hDlg), hDlg);
 				ret = TRUE;
 				break;
@@ -489,11 +508,13 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			_numberColor = colors[4].color;
 			_selectedBGColor = colors[5].color;
 
+			hwnd = GetDlgItem(hDlg, IDC_COMBO_IME_SHIFT_MODE);
+			_imeShiftMode = (IME_SHIFT_MODE)SendMessage(hwnd, CB_GETCURSEL, 0, 0);
+			debugPrint(L"selected IME shift hotkey mode is %d", _imeShiftMode);
+
 			hwnd = GetDlgItem(hDlg, IDC_COMBO_DOUBLE_SINGLE_BYTE);
 			_doubleSingleByteMode = (DOUBLE_SINGLE_BYTE_MODE)SendMessage(hwnd, CB_GETCURSEL, 0, 0);
 			debugPrint(L"selected double single byte mode is %d", _doubleSingleByteMode);
-
-
 
 			hwnd = GetDlgItem(hDlg, IDC_COMBO_REVERSE_CONVERSION);
 			sel = (UINT)SendMessage(hwnd, CB_GETCURSEL, 0, 0);
@@ -846,6 +867,7 @@ VOID CConfig::WriteConfig()
 		fwprintf_s(fp, L"ActivatedKeyboardMode = %d\n", _activatedKeyboardMode ? 1 : 0);
 		fwprintf_s(fp, L"MakePhrase = %d\n", _makePhrase ? 1 : 0);
 		fwprintf_s(fp, L"MaxCodes = %d\n", _maxCodes);
+		fwprintf_s(fp, L"IMEShiftMode  = %d\n", _imeShiftMode);
 		fwprintf_s(fp, L"DoubleSingleByteMode = %d\n", _doubleSingleByteMode);
 		fwprintf_s(fp, L"ShowNotifyDesktop = %d\n", _showNotifyDesktop ? 1 : 0);
 		fwprintf_s(fp, L"DoHanConvert = %d\n", _doHanConvert ? 1 : 0);
