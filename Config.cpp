@@ -3,6 +3,7 @@
 #include <Shlobj.h>
 #include <Shlwapi.h>
 #include <MLang.h>
+#include <shellscalingapi.h>
 #include "Globals.h"
 #include "resource.h"
 #include "DIME.h"
@@ -37,6 +38,9 @@ BOOL CConfig::_doHanConvert = FALSE;
 BOOL CConfig::_showNotifyDesktop = TRUE;
 BOOL CConfig::_dayiArticleMode = FALSE;  // Article mode: input full-shaped symbols with address keys
 BOOL CConfig::_customTableChanged = FALSE;
+
+UINT CConfig::_dpiY = 0;
+
 PHONETIC_KEYBOARD_LAYOUT CConfig::_phoneticKeyboardLayout = PHONETIC_STANDARD_KEYBOARD_LAYOUT;
 DOUBLE_SINGLE_BYTE_MODE CConfig::_doubleSingleByteMode = DOUBLE_SINGLE_BYTE_ALWAYS_SINGLE;
 
@@ -1052,31 +1056,62 @@ ErrorExit:
 	if (pSD != NULL)
 		LocalFree(pSD);
 	delete[]pwszINIFileName;
-
 }
 
-void CConfig::SetDefaultTextFont()
+void CConfig::SetDefaultTextFont(HWND hWnd)
 {
-	//if(_pCompositionProcessorEngine == nullptr) return;
-	// Candidate Text Font
-	if (Global::defaultlFontHandle != nullptr)
+	debugPrint(L"CConfig::SetDefaultTextFont()");
+	UINT dpiY = 0;
+	if (hWnd && Global::isWindows8)
 	{
+		HINSTANCE hShcore = NULL;
+		hShcore = LoadLibrary(L"Shcore.dll");
+		typedef HRESULT(__stdcall * _T_GetDpiForMonitor)(HMONITOR hmonitor, MONITOR_DPI_TYPE dpiType, UINT *dpiX, UINT *dpiY);
+		_T_GetDpiForMonitor _GetDpiForMonitor = NULL;
+		_GetDpiForMonitor = reinterpret_cast<_T_GetDpiForMonitor>(GetProcAddress(hShcore, "GetDpiForMonitor"));
+		if (_GetDpiForMonitor == nullptr) {
+			debugPrint(L"Failed to cast function GetDpiForMonitor in Shcore.dll");
+		}
+		else
+		{
+			HMONITOR monitor = MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST);
+			UINT dpiX;
+			_GetDpiForMonitor(monitor, MDT_EFFECTIVE_DPI, &dpiX, &dpiY);
+		}
+		if (hShcore != NULL) FreeLibrary(hShcore);
+	
+	}
+	
+
+	if (Global::defaultlFontHandle != nullptr && (hWnd == nullptr || (hWnd && Global::isWindows8 && _dpiY != dpiY) ))
+	{
+		debugPrint(L"CConfig::SetDefaultTextFont() delete old font");
 		DeleteObject((HGDIOBJ)Global::defaultlFontHandle);
 		Global::defaultlFontHandle = nullptr;
+		if (dpiY > 0) _dpiY = dpiY;
 	}
 	if (Global::defaultlFontHandle == nullptr)
 	{
-		Global::defaultlFontHandle = CreateFont(-MulDiv(_fontSize, GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72),
-			0, 0, 0, _fontWeight, _fontItalic, 0, 0, DEFAULT_CHARSET, 0, 0, 0, 0, _pFontFaceName);
+		HDC hDC = GetDC(nullptr);
+		int logPixelY = GetDeviceCaps(hDC, LOGPIXELSY);
+		if (Global::isWindows8 && _dpiY > 0)
+			logPixelY = _dpiY;
+		int logFontSize = -MulDiv(_fontSize, logPixelY, 72);
+		debugPrint(L"CConfig::SetDefaultTextFont() create new font. Logical y pixels = %d, font size =%d,  log font size = %d, _dpiY = %d",
+			logPixelY, _fontSize, logFontSize, _dpiY);
+
+		Global::defaultlFontHandle = CreateFont(logFontSize, 0, 0, 0, _fontWeight, _fontItalic, 0, 0, DEFAULT_CHARSET, 0, 0, 0, 0, _pFontFaceName);
 		if (!Global::defaultlFontHandle)
 		{
 			LOGFONT lf = { 0 };
 			SystemParametersInfo(SPI_GETICONTITLELOGFONT, sizeof(LOGFONT), &lf, 0);
 			// Fall back to the default GUI font on failure.
-			Global::defaultlFontHandle = CreateFont(-MulDiv(_fontSize, GetDeviceCaps(GetDC(NULL), LOGPIXELSY), 72), 
+			Global::defaultlFontHandle = CreateFont(-MulDiv(_fontSize, GetDeviceCaps(hDC, LOGPIXELSY), 72), 
 				0, 0, 0, FW_MEDIUM, 0, 0, 0, DEFAULT_CHARSET, 0, 0, 0, 0, lf.lfFaceName);
 		}
+		ReleaseDC(nullptr, hDC);
 	}
+
 }
 
 

@@ -595,7 +595,7 @@ void CUIPresenter::_SetCandidateText(_In_ CDIMEArray<CCandidateListItem> *pCandi
 	Show(_isShowMode);
     if (_isShowMode && _pCandidateWnd)
     {
-        _pCandidateWnd->_InvalidateRect();
+		_pCandidateWnd->_InvalidateRect();
     }
     else
     {
@@ -880,7 +880,9 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall)
 		GetCaretPos(&caretPt);
 		ClientToScreen(parentWndHandle, &caretPt);
 		debugPrint(L"current caret position from GetCaretPos, x = %d, y = %d", caretPt.x, caretPt.y);
-		
+		// Recreate font for fitting current monitor resulution and font size
+		if (Global::isWindows8) CConfig::SetDefaultTextFont(parentWndHandle);
+
 	}
 	if (_pCandidateWnd && lpRect)
 	{
@@ -915,7 +917,8 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall)
 	}
 	if (_pNotifyWnd && lpRect)
 	{
-
+		// Recreate font for fitting current monitor resulution and font size
+		//if (Global::isWindows8) CConfig::SetDefaultTextFont(_pNotifyWnd->_GetWnd());
 		if (lpRect->bottom - lpRect->top > 1 || lpRect->right - lpRect->left > 1)   // confirm the extent rect is valid.
 		{
 

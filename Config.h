@@ -117,7 +117,7 @@ public:
 	static VOID WriteConfig();
 	static VOID LoadConfig(IME_MODE imeMode);
 	
-	static void SetDefaultTextFont();
+	static void SetDefaultTextFont(HWND hWnd = nullptr);
 
 	//configuration propertysheet dialog
 	static INT_PTR CALLBACK CommonPropertyPageWndProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
@@ -178,6 +178,8 @@ private:
 	static void clearReverseConvervsionInfoList();
 
 	static ColorInfo colors[6];
+
+	static UINT _dpiY;
 
 	static BOOL importCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToLoad);
 	static BOOL exportCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToWrite);
