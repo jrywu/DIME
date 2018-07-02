@@ -40,6 +40,7 @@ BOOL CConfig::_dayiArticleMode = FALSE;  // Article mode: input full-shaped symb
 BOOL CConfig::_customTableChanged = FALSE;
 
 UINT CConfig::_dpiY = 0;
+_T_GetDpiForMonitor CConfig::_GetDpiForMonitor = nullptr;
 
 PHONETIC_KEYBOARD_LAYOUT CConfig::_phoneticKeyboardLayout = PHONETIC_STANDARD_KEYBOARD_LAYOUT;
 IME_SHIFT_MODE CConfig::_imeShiftMode = IME_BOTH_SHIFT;
@@ -79,7 +80,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 	size_t i;
 	WCHAR num[16] = { 0 };
 	WCHAR fontname[LF_FACESIZE] = { 0 };
-	int fontpoint = 12, fontweight = FW_NORMAL, x, y;
+	int fontpoint = 12, fontweight = FW_NORMAL, x, y, logPixelY, LogFontSize;
 	BOOL fontitalic = FALSE;
 	CHOOSEFONT cf;
 	LOGFONT lf;
@@ -130,7 +131,17 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 
 		SetDlgItemText(hDlg, IDC_EDIT_FONTNAME, fontname);
 		hdc = GetDC(hDlg);
-		hFont = CreateFont(-MulDiv(10, GetDeviceCaps(hdc, LOGPIXELSY), 72), 0, 0, 0,
+		logPixelY = GetDeviceCaps(hdc, LOGPIXELSY);
+		if (_GetDpiForMonitor)
+		{
+			HMONITOR monitor = MonitorFromWindow(hDlg, MONITOR_DEFAULTTONEAREST);
+			UINT dpiX, dpiY;
+	 		_GetDpiForMonitor(monitor, MDT_EFFECTIVE_DPI, &dpiX, &dpiY);
+			if(dpiY > 0) logPixelY = dpiY;
+		}
+		LogFontSize = -MulDiv(10, logPixelY, 72);
+
+		hFont = CreateFont(LogFontSize, 0, 0, 0,
 			fontweight, fontitalic, FALSE, FALSE, DEFAULT_CHARSET,
 			OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH, fontname);
 		SendMessage(GetDlgItem(hDlg, IDC_EDIT_FONTNAME), WM_SETFONT, (WPARAM)hFont, 0);
@@ -1084,43 +1095,31 @@ void CConfig::SetDefaultTextFont(HWND hWnd)
 {
 	debugPrint(L"CConfig::SetDefaultTextFont()");
 	UINT dpiY = 0;
-	if (hWnd && Global::isWindows8)
+	if (hWnd && _GetDpiForMonitor)
 	{
-		HINSTANCE hShcore = NULL;
-		hShcore = LoadLibrary(L"Shcore.dll");
-		typedef HRESULT(__stdcall * _T_GetDpiForMonitor)(HMONITOR hmonitor, MONITOR_DPI_TYPE dpiType, UINT *dpiX, UINT *dpiY);
-		_T_GetDpiForMonitor _GetDpiForMonitor = NULL;
-		_GetDpiForMonitor = reinterpret_cast<_T_GetDpiForMonitor>(GetProcAddress(hShcore, "GetDpiForMonitor"));
-		if (_GetDpiForMonitor == nullptr) {
-			debugPrint(L"Failed to cast function GetDpiForMonitor in Shcore.dll");
-		}
-		else
-		{
-			HMONITOR monitor = MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST);
-			UINT dpiX;
-			_GetDpiForMonitor(monitor, MDT_EFFECTIVE_DPI, &dpiX, &dpiY);
-		}
-		if (hShcore != NULL) FreeLibrary(hShcore);
-	
+		HMONITOR monitor = MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST);
+		UINT dpiX;
+		_GetDpiForMonitor(monitor, MDT_EFFECTIVE_DPI, &dpiX, &dpiY);
 	}
-	
 
-	if (Global::defaultlFontHandle != nullptr && (hWnd == nullptr || (hWnd && Global::isWindows8 && _dpiY != dpiY) ))
+	if (Global::defaultlFontHandle != nullptr && (hWnd == nullptr || ( Global::isWindows8 && _dpiY != dpiY) ))
 	{
 		debugPrint(L"CConfig::SetDefaultTextFont() delete old font");
 		DeleteObject((HGDIOBJ)Global::defaultlFontHandle);
 		Global::defaultlFontHandle = nullptr;
-		if (dpiY > 0) _dpiY = dpiY;
 	}
 	if (Global::defaultlFontHandle == nullptr)
 	{
 		HDC hDC = GetDC(nullptr);
 		int logPixelY = GetDeviceCaps(hDC, LOGPIXELSY);
-		if (Global::isWindows8 && _dpiY > 0)
-			logPixelY = _dpiY;
+		if (Global::isWindows8 && dpiY > 0)
+		{
+			logPixelY = dpiY;
+			_dpiY = dpiY;
+		}
 		int logFontSize = -MulDiv(_fontSize, logPixelY, 72);
 		debugPrint(L"CConfig::SetDefaultTextFont() create new font. Logical y pixels = %d, font size =%d,  log font size = %d, _dpiY = %d",
-			logPixelY, _fontSize, logFontSize, _dpiY);
+			logPixelY, _fontSize, logFontSize, dpiY);
 
 		Global::defaultlFontHandle = CreateFont(logFontSize, 0, 0, 0, _fontWeight, _fontItalic, 0, 0, DEFAULT_CHARSET, 0, 0, 0, 0, _pFontFaceName);
 		if (!Global::defaultlFontHandle)
@@ -1131,7 +1130,7 @@ void CConfig::SetDefaultTextFont(HWND hWnd)
 			Global::defaultlFontHandle = CreateFont(-MulDiv(_fontSize, GetDeviceCaps(hDC, LOGPIXELSY), 72), 
 				0, 0, 0, FW_MEDIUM, 0, 0, 0, DEFAULT_CHARSET, 0, 0, 0, 0, lf.lfFaceName);
 		}
-		ReleaseDC(nullptr, hDC);
+		if(hDC) ReleaseDC(nullptr, hDC);
 	}
 
 }

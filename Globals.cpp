@@ -19,6 +19,9 @@ HINSTANCE dllInstanceHandle;
 LONG dllRefCount = -1;
 
 BOOL isWindows8 = FALSE;
+_T_GetDpiForMonitor _GetDpiForMonitor = nullptr;
+HINSTANCE hShcore = NULL;
+
 
 IME_MODE imeMode = IME_MODE_NONE;
 

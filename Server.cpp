@@ -52,7 +52,7 @@ void DllRelease(void)
         {
             FreeGlobalObjects();
         }
-        assert(Global::dllRefCount == -1);
+        assert(refCount == -1); 
 
         LeaveCriticalSection(&Global::CS);
     }

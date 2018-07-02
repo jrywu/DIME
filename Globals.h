@@ -108,6 +108,9 @@ extern HINSTANCE dllInstanceHandle;
 extern IME_MODE imeMode;
 
 extern BOOL isWindows8; //OS Version
+extern HINSTANCE hShcore;
+
+
 extern BOOL hasPhraseSection; // the dictionary file has TTS [Phrase] section
 extern BOOL hasCINPhraseSection; // the dictionary file has CIN %phrasedef section
 

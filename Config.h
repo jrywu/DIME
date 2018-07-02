@@ -126,6 +126,10 @@ public:
 	static INT_PTR CALLBACK DictionaryPropertyPageWndProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 	friend void DrawColor(HWND hwnd, HDC hdc, COLORREF col);
 
+	//shcore.dll GetDpiForMonitor pointer;
+	static void SetGetDpiForMonitor(_T_GetDpiForMonitor getDpiForMonitor) {	_GetDpiForMonitor = getDpiForMonitor; }
+	
+
 private:
 	//user setting variables
 	static BOOL _loadTableMode;
@@ -184,7 +188,8 @@ private:
 	static ColorInfo colors[6];
 
 	static UINT _dpiY;
-
+	static _T_GetDpiForMonitor _GetDpiForMonitor;
+	
 	static BOOL importCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToLoad);
 	static BOOL exportCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToWrite);
 	static BOOL parseCINFile(_In_ LPCWSTR pathToLoad, _In_ LPCWSTR pathToWrite, _In_ BOOL customTableMode = FALSE);

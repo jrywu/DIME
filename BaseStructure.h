@@ -10,6 +10,7 @@
 #include <vector>
 #include <map>
 #include <iostream>
+#include <shellscalingapi.h>
 #include "stdafx.h"
 #include "assert.h"
 
@@ -21,6 +22,8 @@ using std::map;
 
 typedef  map <WCHAR, PWCH> _T_RadicalMap;
 typedef  map <WCHAR, DWORD_PTR> _T_RadicalIndexMap;
+typedef  HRESULT(__stdcall * _T_GetDpiForMonitor)(HMONITOR hmonitor, MONITOR_DPI_TYPE dpiType, UINT *dpiX, UINT *dpiY);
+
 
 //---------------------------------------------------------------------
 // defined keyword
