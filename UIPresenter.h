@@ -91,6 +91,7 @@ public:
 
     BOOL _MoveCandidateSelection(_In_ int offSet);
 	BOOL _SetCandidateSelection(_In_ int selectedIndex, _In_opt_ BOOL isNotify = TRUE);
+	INT	 _GetCandidateSelection();
     BOOL _MoveCandidatePage(_In_ int offSet);
 
     void _MoveUIWindowsToTextExt();

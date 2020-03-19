@@ -299,7 +299,11 @@ STDAPI CUIPresenter::GetSelection(UINT *pSelectedCandidateIndex)
 {
     if (_pCandidateWnd)
     {
-        *pSelectedCandidateIndex = _pCandidateWnd->_GetSelection();
+		INT selection = _pCandidateWnd->_GetSelection();
+		if(selection >= 0 )
+			*pSelectedCandidateIndex = selection;
+		else 
+			*pSelectedCandidateIndex = 0;
     }
     else
     {
@@ -765,7 +769,7 @@ BOOL CUIPresenter::_MoveCandidateSelection(_In_ int offSet)
 
 //+---------------------------------------------------------------------------
 //
-// _SetSelection
+// _SetCandidateSelection
 //
 //----------------------------------------------------------------------------
 
@@ -788,6 +792,18 @@ BOOL CUIPresenter::_SetCandidateSelection(_In_ int selectedIndex, _In_opt_ BOOL 
         }
     }
     return ret;
+}
+//+---------------------------------------------------------------------------
+//
+// _GetCandidateSelection
+//
+//----------------------------------------------------------------------------
+INT CUIPresenter::_GetCandidateSelection()
+{	
+	if (_pCandidateWnd)
+		return _pCandidateWnd->_GetSelection();
+	else
+		return -1;
 }
 
 //+---------------------------------------------------------------------------

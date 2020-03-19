@@ -2330,12 +2330,15 @@ void CCompositionProcessorEngine::SetInitialCandidateListRange(IME_MODE imeMode)
 //     [in/out] pwch       - char code
 //     [in] fComposing     - Specified composing.
 //     [in] fCandidateMode - Specified candidate mode.
+//	   [in] hasCandidateWithWildcard - Specified if candi with wildcard
+//     [in] candiCount     - The number of candiddates in candi window
+//     [in] candiSelection - The current selected index in candi window
 //     [out] pKeyState     - Returns function regarding virtual key.
 // returns
 //     If engine need this virtual key code, returns true. Otherwise returns false.
 //----------------------------------------------------------------------------
 
-BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCHAR *pwch, BOOL fComposing, CANDIDATE_MODE candidateMode, BOOL hasCandidateWithWildcard, UINT candiCount, _Inout_opt_ _KEYSTROKE_STATE *pKeyState)
+BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCHAR *pwch, BOOL fComposing, CANDIDATE_MODE candidateMode, BOOL hasCandidateWithWildcard, UINT candiCount, INT candiSelection, _Inout_opt_ _KEYSTROKE_STATE *pKeyState)
 {
 	if (pKeyState)
 	{
@@ -2521,7 +2524,22 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 			}
 			return FALSE;
 			*/
-		case VK_RETURN: if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_CONVERT; } return TRUE;
+		case VK_RETURN: if (pKeyState) 
+		{ 
+			if (candidateMode == CANDIDATE_PHRASE && candiSelection == -1)
+			{
+				pKeyState->Category = CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION;
+				pKeyState->Function = FUNCTION_CANCEL;
+				return FALSE;
+			}
+			else
+			{
+				pKeyState->Category = CATEGORY_CANDIDATE;
+				pKeyState->Function = FUNCTION_CONVERT;
+				return TRUE;
+			}
+		}
+			
 		case VK_SPACE:  if (pKeyState)
 		{
 

@@ -158,17 +158,22 @@ BOOL CDIME::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pCod
 	//
 	// check if the normal composition  need the key
 	//
-    if (isOpen && pCompositionProcessorEngine)
-    {
-        //
-        // The candidate or phrase list handles the keys through ITfKeyEventSink.
-        //
-        // eat only keys that CKeyHandlerEditSession can handles.
-        //
-		UINT candiCount=0;
-		if (_pUIPresenter) _pUIPresenter->GetCount(&candiCount);
+	if (isOpen && pCompositionProcessorEngine)
+	{
+		//
+		// The candidate or phrase list handles the keys through ITfKeyEventSink.
+		//
+		// eat only keys that CKeyHandlerEditSession can handles.
+		//
+		UINT candiCount = 0;
+		INT candiSelection = -1;
+		if (_pUIPresenter)
+		{
+			_pUIPresenter->GetCount(&candiCount);
+			candiSelection = _pUIPresenter->_GetCandidateSelection();
+		}
 	
-		if (pCompositionProcessorEngine->IsVirtualKeyNeed(*pCodeOut, pwch, _IsComposing(), _candidateMode, _isCandidateWithWildcard, candiCount, pKeyState))
+		if (pCompositionProcessorEngine->IsVirtualKeyNeed(*pCodeOut, pwch, _IsComposing(), _candidateMode, _isCandidateWithWildcard, candiCount, candiSelection, pKeyState))
         {
             return TRUE;
         }
