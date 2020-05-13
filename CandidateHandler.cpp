@@ -57,13 +57,15 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 	if (!_IsComposing())
 		_StartComposition(pContext);
 
+	candidateLen = _pUIPresenter->_GetSelectedCandidateString(&pCandidateString);
+
 	if (Global::imeMode == IME_MODE_ARRAY)// check if the _strokebuffer is array special code
 	{
-		candidateLen = _pCompositionProcessorEngine->CollectWordFromArraySpeicalCode(&pCandidateString);
-		if(candidateLen) arrayUsingSPCode = TRUE;
+		
+		if(_pCompositionProcessorEngine->CollectWordFromArraySpeicalCode(&pCandidateString)) 
+			arrayUsingSPCode = TRUE;
 	}
-	candidateLen = 0;
-	candidateLen = _pUIPresenter->_GetSelectedCandidateString(&pCandidateString);
+	
 	if (candidateLen == 0)
     {
 		if(_candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION || _candidateMode == CANDIDATE_PHRASE)
@@ -161,7 +163,8 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 		_HandleComplete(ec,pContext);
 	}
 	//-----------------do accociated phrase (make phrase)--------------------------------------------------------------------------------
-	if (CConfig::GetMakePhrase())
+	// Issue #27.  Turn off associated phrase to avoid cursor gone in command shell.
+	if (CConfig::GetMakePhrase() && !isCMDShell())
 	{
 		_pCompositionProcessorEngine->GetCandidateStringInConverted(lastChar, &candidatePhraseList);
 

@@ -901,8 +901,8 @@ DWORD_PTR CCompositionProcessorEngine::CollectWordFromArraySpeicalCode(_Inout_op
 	{
 		return 0;
 	}
-	if(ppwchSpecialCodeResultString)
-		*ppwchSpecialCodeResultString = nullptr;
+	//if(ppwchSpecialCodeResultString)
+	//	*ppwchSpecialCodeResultString = nullptr;
 
 	if (Global::imeMode != IME_MODE_ARRAY || _keystrokeBuffer.GetLength() != 2) return 0;
 
@@ -918,9 +918,11 @@ DWORD_PTR CCompositionProcessorEngine::CollectWordFromArraySpeicalCode(_Inout_op
 		_pArraySpecialCodeTableDictionaryEngine->CollectWord(&_keystrokeBuffer, &candidateList);
 	}
 
-	if (candidateList.Count() == 1 && ppwchSpecialCodeResultString)
+	//issue #18 check if the special code corresponding to the same coverted text
+	if (candidateList.Count() == 1 && ppwchSpecialCodeResultString && 
+		   CompareString(_pTextService->GetLocale(), NULL, *ppwchSpecialCodeResultString, 1, candidateList.GetAt(0)->_ItemString.Get(), 1 ) == CSTR_EQUAL)
 	{
-		*ppwchSpecialCodeResultString = candidateList.GetAt(0)->_ItemString.Get();
+		//*ppwchSpecialCodeResultString = candidateList.GetAt(0)->_ItemString.Get();
 		return  candidateList.GetAt(0)->_ItemString.GetLength();
 	}
 	else
