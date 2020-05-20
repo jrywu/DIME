@@ -56,7 +56,7 @@ public:
     void _AddString(_Inout_ CCandidateListItem *pCandidateItem, _In_ BOOL isAddFindKeyCode);
     void _ClearList();
     UINT _GetCount() { return _candidateList.Count(); }
-    UINT _GetSelection()  { return _currentSelection;}
+    INT _GetSelection()  { return _currentSelection;}
     void _SetScrollInfo(_In_ int nMax, _In_ int nPage);
 
     DWORD _GetCandidateString(_In_ int iIndex, _Inout_opt_ const WCHAR **ppwchCandidateString);
