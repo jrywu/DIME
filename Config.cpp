@@ -255,7 +255,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"Unicode Extension-A");
 			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"Unicode Extension-AB");
 			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"Unicode Extension-ABCD");
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"Unicode Extension-ABCDEF");
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"Unicode Extension-ABCDEFG");
 			SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_arrayUnicodeScope, 0);
 
 		}
