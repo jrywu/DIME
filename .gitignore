@@ -219,3 +219,5 @@ pip-log.txt
 DIME.VC.db
 *.opendb
 *.db
+*.db-shm
+*.db-wal
