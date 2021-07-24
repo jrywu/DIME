@@ -57,7 +57,7 @@ BrandingText " "
 
 Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
 RequestExecutionLevel admin
-OutFile "DIME-x86arm64.exe"
+OutFile "DIME-x86armUniversal.exe"
 InstallDir "$PROGRAMFILES64\DIME"
 ShowInstDetails show
 ShowUnInstDetails show
