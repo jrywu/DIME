@@ -95,12 +95,13 @@ HRESULT CKeyStateCategory::KeyStateHandler(KEYSTROKE_FUNCTION function, KeyHandl
 
     case FUNCTION_CONVERT:
         return HandleKeyConvert(dto);
-
     case FUNCTION_CONVERT_WILDCARD:
         return HandleKeyConvertWildCard(dto);
 
     case FUNCTION_CONVERT_ARRAY_PHRASE:
         return HandleKeyConvertArrayPhrase(dto);
+    case FUNCTION_CONVERT_ARRAY_PHRASE_WILDCARD:
+        return HandleKeyConvertArrayPhraseWildCard(dto);
 
     case FUNCTION_CANCEL:
         return HandleKeyCancel(dto);
@@ -188,6 +189,13 @@ HRESULT CKeyStateCategory::HandleKeyConvertWildCard(KeyHandlerEditSessionDTO dto
 
 // HandleKeyConvertArrayPhrase
 HRESULT CKeyStateCategory::HandleKeyConvertArrayPhrase(KeyHandlerEditSessionDTO dto)
+{
+    dto;
+    return E_NOTIMPL;
+}
+
+// HandleKeyConvertArrayPhraseWildCard
+HRESULT CKeyStateCategory::HandleKeyConvertArrayPhraseWildCard(KeyHandlerEditSessionDTO dto)
 {
     dto;
     return E_NOTIMPL;
@@ -297,6 +305,12 @@ HRESULT CKeyStateComposing::HandleKeyConvertArrayPhrase(KeyHandlerEditSessionDTO
 {
     if (_pTextService == nullptr) return E_FAIL;
     return _pTextService->_HandleCompositionConvert(dto.ec, dto.pContext, FALSE, TRUE);
+}
+
+HRESULT CKeyStateComposing::HandleKeyConvertArrayPhraseWildCard(KeyHandlerEditSessionDTO dto)
+{
+    if (_pTextService == nullptr) return E_FAIL;
+    return _pTextService->_HandleCompositionConvert(dto.ec, dto.pContext, TRUE, TRUE);
 }
 
 

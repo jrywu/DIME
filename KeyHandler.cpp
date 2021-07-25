@@ -313,6 +313,7 @@ HRESULT CDIME::_HandleCompositionFinalize(TfEditCookie ec, _In_ ITfContext *pCon
 
 HRESULT CDIME::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pContext, BOOL isWildcardSearch, BOOL isArrayPhraseEnding)
 {
+    debugPrint(L"CDIME::_HandleCompositionConvert() isWildcardSearch = %d, isArrayPhraseEnding =%d. ", isWildcardSearch, isArrayPhraseEnding);
     HRESULT hr = S_OK;
 
     CDIMEArray<CCandidateListItem> candidateList;
@@ -322,7 +323,7 @@ HRESULT CDIME::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pCont
     //
     CCompositionProcessorEngine* pCompositionProcessorEngine = nullptr;
     pCompositionProcessorEngine = _pCompositionProcessorEngine;
-    pCompositionProcessorEngine->GetCandidateList(&candidateList, FALSE, isWildcardSearch);
+    pCompositionProcessorEngine->GetCandidateList(&candidateList, FALSE, isWildcardSearch, isArrayPhraseEnding);
 
     // If there is no candlidate listing the current reading string, we don't do anything. Just wait for
     // next char to be ready for the conversion with it.

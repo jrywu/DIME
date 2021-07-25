@@ -3,7 +3,6 @@ git rev-list HEAD --count > commitcount.txt
 FOR /f "tokens=1" %%a in ('findstr /R "^[0-9][0-9]*" commitcount.txt') do set _CommitCount=%%a
 del commitcount.txt
 set BUILD_YEAR_1=%DATE:~2,2%
-#set /a BUILD_YEAR_1-=5
 rem set /a _CommitCount+=1
 set _BuildDate1=%BUILD_YEAR_1%%DATE:~5,2%%DATE:~8,2%
 set _BuildVersion=1.1.%_CommitCount%.%_BuildDate1%

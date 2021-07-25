@@ -82,6 +82,9 @@ protected:
     // HandleKeyConvertArrayPhrase
     virtual HRESULT HandleKeyConvertArrayPhrase(KeyHandlerEditSessionDTO dto);
 
+    // HandleKeyConvertArrayPhrase
+    virtual HRESULT HandleKeyConvertArrayPhraseWildCard(KeyHandlerEditSessionDTO dto);
+
     // HandleKeyCancel
     virtual HRESULT HandleKeyCancel(KeyHandlerEditSessionDTO dto);
 
@@ -132,11 +135,14 @@ protected:
     // HandleCompositionConvert
     HRESULT HandleKeyConvert(KeyHandlerEditSessionDTO dto);
 
+    // HandleKeyCompositionConvertWildCard
+    HRESULT HandleKeyConvertWildCard(KeyHandlerEditSessionDTO dto);
+    
     // HandleCompositionConvertArrayPhrase
     HRESULT HandleKeyConvertArrayPhrase(KeyHandlerEditSessionDTO dto);
 
-    // HandleKeyCompositionConvertWildCard
-    HRESULT HandleKeyConvertWildCard(KeyHandlerEditSessionDTO dto);
+    // HandleCompositionConvertArrayPhrase
+    HRESULT HandleKeyConvertArrayPhraseWildCard(KeyHandlerEditSessionDTO dto);
 
     // HandleCancel
     HRESULT HandleKeyCancel(KeyHandlerEditSessionDTO dto);

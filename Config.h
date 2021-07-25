@@ -93,6 +93,9 @@ public:
 	static BOOL GetArrayNotifySP() {return _arrayNotifySP;}
 	static void SetArrayForceSP(BOOL arrayForceSP) { _arrayForceSP = arrayForceSP;}
 	static BOOL GetArrayForceSP() {return _arrayForceSP;}
+	//array customPhrase
+	static BOOL GetArraySingleQuoteCustomPhrase() { return _arraySingleQuoteCustomPhrase; }
+	static void SetArraySingleQuoteCustomPhrase(BOOL singleQuoteQueryCustomPhrase) { _arraySingleQuoteCustomPhrase = singleQuoteQueryCustomPhrase; }
 
 	//dayi address/article mode
 	static void setDayiArticleMode(BOOL dayiArticleMode) { _dayiArticleMode = dayiArticleMode; }
@@ -175,6 +178,8 @@ private:
 	static DOUBLE_SINGLE_BYTE_MODE _doubleSingleByteMode;
 
 	static BOOL _customTableChanged;
+	
+	static BOOL _arraySingleQuoteCustomPhrase;
 
 	static struct _stat _initTimeStamp;
 
