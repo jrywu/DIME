@@ -99,6 +99,9 @@ HRESULT CKeyStateCategory::KeyStateHandler(KEYSTROKE_FUNCTION function, KeyHandl
     case FUNCTION_CONVERT_WILDCARD:
         return HandleKeyConvertWildCard(dto);
 
+    case FUNCTION_CONVERT_ARRAY_PHRASE:
+        return HandleKeyConvertArrayPhrase(dto);
+
     case FUNCTION_CANCEL:
         return HandleKeyCancel(dto);
 
@@ -180,6 +183,13 @@ HRESULT CKeyStateCategory::HandleKeyConvert(KeyHandlerEditSessionDTO dto)
 HRESULT CKeyStateCategory::HandleKeyConvertWildCard(KeyHandlerEditSessionDTO dto)
 {
 	dto;
+    return E_NOTIMPL;
+}
+
+// HandleKeyConvertArrayPhrase
+HRESULT CKeyStateCategory::HandleKeyConvertArrayPhrase(KeyHandlerEditSessionDTO dto)
+{
+    dto;
     return E_NOTIMPL;
 }
 
@@ -274,14 +284,21 @@ HRESULT CKeyStateComposing::HandleKeyFinalizeCandidatelist(KeyHandlerEditSession
 HRESULT CKeyStateComposing::HandleKeyConvert(KeyHandlerEditSessionDTO dto)
 {
 	if(_pTextService == nullptr) return E_FAIL;
-    return _pTextService->_HandleCompositionConvert(dto.ec, dto.pContext, FALSE);
+    return _pTextService->_HandleCompositionConvert(dto.ec, dto.pContext, FALSE, FALSE);
 }
 
 HRESULT CKeyStateComposing::HandleKeyConvertWildCard(KeyHandlerEditSessionDTO dto)
 {
 	if(_pTextService == nullptr) return E_FAIL;
-    return _pTextService->_HandleCompositionConvert(dto.ec, dto.pContext, TRUE);
+    return _pTextService->_HandleCompositionConvert(dto.ec, dto.pContext, TRUE, FALSE);
 }
+
+HRESULT CKeyStateComposing::HandleKeyConvertArrayPhrase(KeyHandlerEditSessionDTO dto)
+{
+    if (_pTextService == nullptr) return E_FAIL;
+    return _pTextService->_HandleCompositionConvert(dto.ec, dto.pContext, FALSE, TRUE);
+}
+
 
 HRESULT CKeyStateComposing::HandleKeyCancel(KeyHandlerEditSessionDTO dto)
 {

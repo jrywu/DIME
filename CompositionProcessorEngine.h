@@ -34,7 +34,7 @@ public:
     WCHAR GetVirtualKey(DWORD_PTR dwIndex);
 
 	void GetReadingString(_Inout_ CStringRange *pReadingString, _Inout_opt_ BOOL *pIsWildcardIncluded, _In_opt_ CStringRange *pKeyCode = nullptr);
-    void GetCandidateList(_Inout_ CDIMEArray<CCandidateListItem> *pCandidateList, BOOL isIncrementalWordSearch, BOOL isWildcardSearch);
+    void GetCandidateList(_Inout_ CDIMEArray<CCandidateListItem> *pCandidateList, BOOL isIncrementalWordSearch, BOOL isWildcardSearch, BOOL isArrayPhraseEnding = FALSE);
     void GetCandidateStringInConverted(CStringRange &searchString, _In_ CDIMEArray<CCandidateListItem> *pCandidateList);
 
 	//reverse converion
@@ -149,6 +149,7 @@ private:
 	CTableDictionaryEngine* _pCustomTableDictionaryEngine[IM_SLOTS];
 	CTableDictionaryEngine* _pPhraseTableDictionaryEngine;
 	CTableDictionaryEngine* _pArrayShortCodeTableDictionaryEngine;
+	CTableDictionaryEngine* _pArrayPhraseTableDictionaryEngine;
 	CTableDictionaryEngine* _pArrayExtBTableDictionaryEngine;
 	CTableDictionaryEngine* _pArrayExtCDTableDictionaryEngine;
 	CTableDictionaryEngine* _pArrayExtETableDictionaryEngine;
@@ -160,6 +161,7 @@ private:
 	CFile* _pCustomTableDictionaryFile[IM_SLOTS];
 	CFile* _pPhraseDictionaryFile;
 	CFile* _pArrayShortCodeDictionaryFile;
+	CFile* _pArrayPhraseDictionaryFile;
 	CFile* _pArrayExtBDictionaryFile;
 	CFile* _pArrayExtCDDictionaryFile;
 	CFile* _pArrayExtEDictionaryFile;

@@ -3,7 +3,7 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-//#define DEBUG_PRINT
+#define DEBUG_PRINT
 #include <Shlobj.h>
 #include <Shlwapi.h>
 #include "Private.h"
@@ -65,6 +65,9 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CDIME *pTextServic
 
 	_pArrayExtETableDictionaryEngine = nullptr;
 	_pArrayExtEDictionaryFile = nullptr;
+
+	_pArrayPhraseTableDictionaryEngine = nullptr;
+	_pArrayPhraseDictionaryFile = nullptr;
 
 	//Phrase
 	_pPhraseTableDictionaryEngine = nullptr;
@@ -436,7 +439,7 @@ void CCompositionProcessorEngine::GetReadingString(_Inout_ CStringRange *pReadin
 //
 //----------------------------------------------------------------------------
 
-void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidateListItem> *pCandidateList, BOOL isIncrementalWordSearch, BOOL isWildcardSearch)
+void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidateListItem> *pCandidateList, BOOL isIncrementalWordSearch, BOOL isWildcardSearch, BOOL isArrayPhraseEnding)
 {
 	debugPrint(L"CCompositionProcessorEngine::GetCandidateList() ");
 	if (!IsDictionaryAvailable(Global::imeMode) || pCandidateList == nullptr)
@@ -503,6 +506,10 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 		{
 			_pArrayShortCodeTableDictionaryEngine->CollectWord(&_keystrokeBuffer, pCandidateList);
 		}
+	}
+	else if (isIncrementalWordSearch && isArrayPhraseEnding && _pArrayPhraseDictionaryFile) //array phrase
+	{
+		_pArrayShortCodeTableDictionaryEngine->CollectWord(&_keystrokeBuffer, pCandidateList);
 	}
 	else if (isIncrementalWordSearch && Global::imeMode != IME_MODE_ARRAY)
 	{
@@ -1575,11 +1582,11 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			_wstat(pwszCINFileNameProgramFiles, &programFilesTimeStamp);
 		if (PathFileExists(pwszCINFileName))
 			wstatFailed = _wstat(pwszCINFileName, &appDataTimeStamp) == -1;
-		updated = programFilesTimeStamp.st_mtime != appDataTimeStamp.st_mtime;
+		updated = difftime( programFilesTimeStamp.st_mtime, appDataTimeStamp.st_mtime) > 0 ;
 		if(!PathFileExists(pwszCINFileName) || (!wstatFailed && updated) )
 			CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, FALSE);
 
-		if (!PathFileExists(pwszCINFileName)) //failed back to try preload Dayi.cin in program files.
+		if (!PathFileExists(pwszCINFileName)) //failed back to try preload array.cin in program files.
 		{
 			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array.cin");
 			if (PathFileExists(pwszCINFileName)) // failed to find Array.cin in program files either
@@ -1609,7 +1616,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			_wstat(pwszCINFileNameProgramFiles, &programFilesTimeStamp);
 		if (PathFileExists(pwszCINFileName))
 			wstatFailed = _wstat(pwszCINFileName, &appDataTimeStamp) == -1;
-		updated = programFilesTimeStamp.st_mtime > appDataTimeStamp.st_mtime;
+		updated = difftime(programFilesTimeStamp.st_mtime, appDataTimeStamp.st_mtime) > 0;
 		if (!PathFileExists(pwszCINFileName) || (!wstatFailed && updated))
 			CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, FALSE);
 
@@ -1779,7 +1786,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			_wstat(pwszCINFileNameProgramFiles, &programFilesTimeStamp);
 		if (PathFileExists(pwszCINFileName))
 			wstatFailed = _wstat(pwszCINFileName, &appDataTimeStamp) == -1;
-		updated = programFilesTimeStamp.st_mtime > appDataTimeStamp.st_mtime;
+		updated = difftime(programFilesTimeStamp.st_mtime, appDataTimeStamp.st_mtime) > 0;
 		if (!PathFileExists(pwszCINFileName) || (!wstatFailed && updated))
 			CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, FALSE);
 
@@ -1822,7 +1829,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			_wstat(pwszCINFileNameProgramFiles, &programFilesTimeStamp);
 		if (PathFileExists(pwszCINFileName))
 			wstatFailed = _wstat(pwszCINFileName, &appDataTimeStamp) == -1;
-		updated = programFilesTimeStamp.st_mtime > appDataTimeStamp.st_mtime;
+		updated = difftime(programFilesTimeStamp.st_mtime, appDataTimeStamp.st_mtime) > 0;
 		if (!PathFileExists(pwszCINFileName) || (!wstatFailed && updated))
 			CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, FALSE);
 
@@ -1866,7 +1873,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			_wstat(pwszCINFileNameProgramFiles, &programFilesTimeStamp);
 		if (PathFileExists(pwszCINFileName))
 			wstatFailed = _wstat(pwszCINFileName, &appDataTimeStamp) == -1;
-		updated = programFilesTimeStamp.st_mtime > appDataTimeStamp.st_mtime;
+		updated = difftime( programFilesTimeStamp.st_mtime, appDataTimeStamp.st_mtime) > 0 ;
 		if (!PathFileExists(pwszCINFileName) || (!wstatFailed && updated))
 			CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, FALSE);
 
@@ -1908,7 +1915,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			_wstat(pwszCINFileNameProgramFiles, &programFilesTimeStamp);
 		if (PathFileExists(pwszCINFileName))
 			wstatFailed = _wstat(pwszCINFileName, &appDataTimeStamp) == -1;
-		updated = programFilesTimeStamp.st_mtime > appDataTimeStamp.st_mtime;
+		updated = difftime(programFilesTimeStamp.st_mtime, appDataTimeStamp.st_mtime) > 0;
 		if (!PathFileExists(pwszCINFileName) || (!wstatFailed && updated))
 			CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, FALSE);
 
@@ -1952,7 +1959,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			_wstat(pwszCINFileNameProgramFiles, &programFilesTimeStamp);
 		if (PathFileExists(pwszCINFileName))
 			wstatFailed = _wstat(pwszCINFileName, &appDataTimeStamp) == -1;
-		updated = programFilesTimeStamp.st_mtime > appDataTimeStamp.st_mtime;
+		updated = difftime(programFilesTimeStamp.st_mtime, appDataTimeStamp.st_mtime) > 0;
 		if (!PathFileExists(pwszCINFileName) || (!wstatFailed && updated))
 			CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, FALSE);
 
@@ -1985,8 +1992,43 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 				_pArrayShortCodeTableDictionaryEngine->ParseConfig(imeMode); // parse config to reload dictionary
 			}
 		}
+		//Array-phrase
+		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Array-Phrase.cin");
+		StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-Phrase.cin");
 
+		wstatFailed = TRUE; updated = TRUE;
+		if (PathFileExists(pwszCINFileNameProgramFiles))
+			_wstat(pwszCINFileNameProgramFiles, &programFilesTimeStamp);
+		if (PathFileExists(pwszCINFileName))
+			wstatFailed = _wstat(pwszCINFileName, &appDataTimeStamp) == -1;
+		updated = difftime(programFilesTimeStamp.st_mtime, appDataTimeStamp.st_mtime) > 0;
+		if (!PathFileExists(pwszCINFileName) || (!wstatFailed && updated))
+			CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, FALSE);
 
+		if (!PathFileExists(pwszCINFileName)) //failed back to preload array-phrase.cin in program files.
+			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-Phrase.cin");
+		
+		if (PathFileExists(pwszCINFileName))
+		{
+			if (_pArrayPhraseDictionaryFile == nullptr)
+			{
+				_pArrayPhraseDictionaryFile = new (std::nothrow) CFile();
+				if (_pArrayPhraseDictionaryFile && _pTextService &&
+					_pArrayPhraseDictionaryFile->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
+				{
+					if (_pArrayPhraseTableDictionaryEngine)
+						delete _pArrayPhraseTableDictionaryEngine;
+					_pArrayPhraseTableDictionaryEngine =
+						new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pArrayPhraseDictionaryFile, CIN_DICTIONARY); //cin files use tab as delimiter
+					if (_pArrayPhraseTableDictionaryEngine)
+						_pArrayPhraseTableDictionaryEngine->ParseConfig(imeMode);// to release the file handle
+				}
+			}
+			else if (_pArrayPhraseTableDictionaryEngine && _pArrayPhraseDictionaryFile->IsFileUpdated())
+			{
+				_pArrayPhraseTableDictionaryEngine->ParseConfig(imeMode); // parse config to reload dictionary
+			}
+		}
 	}
 
 	// now load Dayi custom table
@@ -2415,11 +2457,20 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 	// CANDIDATE_INCREMENTAL should process Keystroke.Candidate virtual keys.
 	else if (candidateMode == CANDIDATE_INCREMENTAL)
 	{
-		if (Global::imeMode == IME_MODE_ARRAY && pKeyState && (uCode == VK_SPACE))
+		if (Global::imeMode == IME_MODE_ARRAY && pKeyState )
 		{
-			pKeyState->Category = CATEGORY_COMPOSING;
-			pKeyState->Function = FUNCTION_CONVERT;
-			return TRUE;
+			if (uCode == VK_SPACE)
+			{
+				pKeyState->Category = CATEGORY_COMPOSING;
+				pKeyState->Function = FUNCTION_CONVERT;
+				return TRUE;
+			}
+			else if (uCode == VK_OEM_7)
+			{
+				pKeyState->Category = CATEGORY_COMPOSING;
+				pKeyState->Function = FUNCTION_CONVERT_ARRAY_PHRASE;
+				return TRUE;
+			}
 		}
 		BOOL isRetCode = TRUE;
 		if (IsVirtualKeyKeystrokeCandidate(uCode, pKeyState, candidateMode, &isRetCode, &_KeystrokeCandidate))
@@ -2468,20 +2519,6 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 			{
 			case VK_LEFT:   if (pKeyState) { pKeyState->Category = CATEGORY_COMPOSING; pKeyState->Function = FUNCTION_MOVE_LEFT; } return TRUE;
 			case VK_RIGHT:  if (pKeyState) { pKeyState->Category = CATEGORY_COMPOSING; pKeyState->Function = FUNCTION_MOVE_RIGHT; } return TRUE;
-				// VK_LEFT, VK_RIGHT - set *pIsEaten = FALSE for application could move caret left or right.
-				// and for CUAS, invoke _HandleCompositionCancel() edit session due to ignore CUAS default key handler for send out terminate composition
-				/*
-			case VK_LEFT:
-			case VK_RIGHT:
-			{
-			if (pKeyState)
-			{
-			pKeyState->Category = CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION;
-			pKeyState->Function = FUNCTION_CANCEL;
-			}
-			}
-			return FALSE;*/
-
 			case VK_RETURN: if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_CONVERT; } return TRUE;
 			case VK_ESCAPE: if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_CANCEL; } return TRUE;
 
@@ -2497,6 +2534,11 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 			case VK_END:    if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_MOVE_PAGE_BOTTOM; } return TRUE;
 
 			case VK_SPACE:  if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_CONVERT; } return TRUE;
+			case VK_OEM_7:  if (pKeyState && Global::imeMode == IME_MODE_ARRAY)
+			{
+				pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_CONVERT_ARRAY_PHRASE;
+			} return TRUE;
+
 			}
 		}
 	}
@@ -2513,19 +2555,6 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 		case VK_END:    if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_MOVE_PAGE_BOTTOM; } return TRUE;
 		case VK_LEFT:   if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_MOVE_LEFT; } return TRUE;
 		case VK_RIGHT:  if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_MOVE_RIGHT; } return TRUE;
-			/*
-			case VK_LEFT:
-			case VK_RIGHT:
-
-			{
-			if (pKeyState)
-			{
-			pKeyState->Category = CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION;
-			pKeyState->Function = FUNCTION_CANCEL;
-			}
-			}
-			return FALSE;
-			*/
 		case VK_RETURN: if (pKeyState) 
 		{ 
 			if (candidateMode == CANDIDATE_PHRASE && candiSelection == -1)
@@ -2799,49 +2828,13 @@ void CCompositionProcessorEngine::UpdateDictionaryFile()
 	SetupDictionaryFile(_imeMode);
 	if (pCurrentDictioanryFile != _pTableDictionaryFile[Global::imeMode])
 	{ // the table is updated.
-		
+
 		debugPrint(L"CCompositionProcessorEngine::UpdateDictionaryFile() the table is loaded from TTS previously and now new cin is loaded");
 		SetupKeystroke(Global::imeMode);
 		SetupConfiguration(Global::imeMode);
 	}
-	/*
-	if (_pTableDictionaryFile[Global::imeMode] && _pTableDictionaryEngine[Global::imeMode] &&
-		_pTableDictionaryEngine[Global::imeMode]->GetDictionaryType() == CIN_DICTIONARY &&
-		_pTableDictionaryFile[Global::imeMode]->IsFileUpdated())
-	{
-		debugPrint(L"CCompositionProcessorEngine::UpdateDictionaryFile() the table is loaded from .cin and the cin was updated.");
-
-		// the table is loaded from .cin and the cin was updated.
-		_pTableDictionaryEngine[Global::imeMode]->ParseConfig(Global::imeMode);
-		SetupKeystroke(Global::imeMode);
-		SetupConfiguration(Global::imeMode);
-
-	}*/
-}
-/*
-void CCompositionProcessorEngine::sortListItemByFindWordFreq(_Inout_ CDIMEArray<CCandidateListItem> *pCandidateList)
-{
-if (pCandidateList == nullptr || pCandidateList->Count() == 0) return;
-
-UINT count = pCandidateList->Count();
-for (UINT i = 0; i < count; i++)
-{
-CCandidateListItem *pLI = nullptr;
-pLI = pCandidateList->Append();
-if (pLI)
-{
-pLI->_ItemString = pCandidateList->GetAt(i)->_ItemString;
-pLI->_FindKeyCode = pCandidateList->GetAt(i)->_FindKeyCode;
-pLI->_WordFrequency = GetTCFreq(&pCandidateList->GetAt(i)->_ItemString);
-}
-}
-for (UINT i = 0; i < count; i++) pCandidateList->RemoveAt(0);
-if (_pTableDictionaryEngine[Global::imeMode])
-_pTableDictionaryEngine[Global::imeMode]->SortListItemByWordFrequency(pCandidateList);
 
 }
-*/
-
 UINT CCompositionProcessorEngine::addPhoneticKey(WCHAR* pwch)
 {
 	WCHAR c = towupper(*pwch);

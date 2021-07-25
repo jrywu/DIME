@@ -79,6 +79,9 @@ protected:
     // HandleKeyConvertWild
     virtual HRESULT HandleKeyConvertWildCard(KeyHandlerEditSessionDTO dto);
 
+    // HandleKeyConvertArrayPhrase
+    virtual HRESULT HandleKeyConvertArrayPhrase(KeyHandlerEditSessionDTO dto);
+
     // HandleKeyCancel
     virtual HRESULT HandleKeyCancel(KeyHandlerEditSessionDTO dto);
 
@@ -128,6 +131,9 @@ protected:
 
     // HandleCompositionConvert
     HRESULT HandleKeyConvert(KeyHandlerEditSessionDTO dto);
+
+    // HandleCompositionConvertArrayPhrase
+    HRESULT HandleKeyConvertArrayPhrase(KeyHandlerEditSessionDTO dto);
 
     // HandleKeyCompositionConvertWildCard
     HRESULT HandleKeyConvertWildCard(KeyHandlerEditSessionDTO dto);

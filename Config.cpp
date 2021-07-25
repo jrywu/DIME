@@ -644,6 +644,7 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 			ShowWindow(GetDlgItem(hDlg, IDC_BUTTON_LOAD_ARRAY_EXT_B), SW_HIDE);
 			ShowWindow(GetDlgItem(hDlg, IDC_BUTTON_LOAD_ARRAY_EXT_CD), SW_HIDE);
 			ShowWindow(GetDlgItem(hDlg, IDC_BUTTON_LOAD_ARRAY_EXT_E), SW_HIDE);
+			ShowWindow(GetDlgItem(hDlg, IDC_BUTTON_LOAD_ARRAY_PHRASE), SW_HIDE);
 		}
 
 		ret = TRUE;
@@ -686,6 +687,10 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 		case IDC_BUTTON_LOAD_ARRAY_EXT_E:
 			openFileType = LOAD_CIN_TABLE;
 			StringCchCopy(targetName, MAX_PATH, L"\\DIME\\Array-Ext-EF.cin");
+			goto LoadFile;
+		case IDC_BUTTON_LOAD_ARRAY_PHRASE:
+			openFileType = LOAD_CIN_TABLE;
+			StringCchCopy(targetName, MAX_PATH, L"\\DIME\\Array-Phrase.cin");
 			goto LoadFile;
 		case IDC_BUTTON_EXPORT_CUSTOM:
 			openFileType = EXPORT_CUSTOM_TABLE;

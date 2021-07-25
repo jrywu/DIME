@@ -79,6 +79,7 @@
 #define IDC_STATIC_DOUBLE_SINGLE_BYTE			1155
 #define IDC_STATIC_IME_SHIFT_MODE				1156
 #define IDC_CHECKBOX_DOBEEP_CANDI				1157
+#define IDC_BUTTON_LOAD_ARRAY_PHRASE			1158
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
