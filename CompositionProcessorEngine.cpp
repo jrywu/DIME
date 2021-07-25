@@ -2421,7 +2421,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 			return TRUE;
 		}
 		else if (_hasWildcardIncludedInKeystrokeBuffer && uCode != VK_SHIFT && uCode != VK_BACK &&
-			(uCode == VK_SPACE || uCode == VK_RETURN || (candidateMode == CANDIDATE_INCREMENTAL && Global::imeMode != IME_MODE_ARRAY)))
+			(uCode == VK_SPACE || uCode == VK_RETURN  || candidateMode == CANDIDATE_INCREMENTAL ) && Global::imeMode != IME_MODE_ARRAY)
 		{
 			if (pKeyState) { pKeyState->Category = CATEGORY_COMPOSING; pKeyState->Function = FUNCTION_CONVERT_WILDCARD; } return TRUE;
 		}
@@ -2471,8 +2471,19 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 			
 			if (uCode == VK_SPACE)
 			{
-				pKeyState->Category = CATEGORY_COMPOSING;
-				pKeyState->Function = FUNCTION_CONVERT;
+				if (_hasWildcardIncludedInKeystrokeBuffer)
+				{
+					pKeyState->Category = CATEGORY_CANDIDATE;
+					if (CConfig::GetSpaceAsPageDown())
+						pKeyState->Function = FUNCTION_MOVE_PAGE_DOWN;
+					else
+						pKeyState->Function = FUNCTION_CONVERT;
+				}
+				else
+				{
+					pKeyState->Category = CATEGORY_COMPOSING;
+					pKeyState->Function = FUNCTION_CONVERT;
+				}
 				return TRUE;
 			}
 			else if (uCode == VK_OEM_7) //Array phrase ending 
