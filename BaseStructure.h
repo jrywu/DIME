@@ -14,8 +14,6 @@
 #include "stdafx.h"
 #include "assert.h"
 
-
-
 using std::cout;
 using std::endl;
 using std::map;
@@ -285,24 +283,43 @@ private:
     CDIMEInnerArray _innerVect;
 };
 
+
+struct _KEYSTROKE
+{
+    UINT Index;
+    WCHAR Printable;
+    UINT VirtualKey;
+    UINT Modifiers;
+    KEYSTROKE_FUNCTION Function;
+
+    _KEYSTROKE()
+    {
+        Index = 0;
+        Printable = '\0';
+        VirtualKey = 0;
+        Modifiers = 0;
+        Function = FUNCTION_NONE;
+    }
+};
+
 class CCandidateRange
 {
 public:
     CCandidateRange(void);
     ~CCandidateRange(void);
 
-    BOOL IsRange(UINT vKey, WCHAR wch, CANDIDATE_MODE candidateMode);
-    int GetIndex(UINT vKey, WCHAR wch, CANDIDATE_MODE candidateMode);
+    BOOL IsRange(UINT vKey, WCHAR Printable, UINT Modifiers, CANDIDATE_MODE candidateMode);
+    int GetIndex(UINT vKey, WCHAR Printable, CANDIDATE_MODE candidateMode);
 
     inline int Count() const 
     { 
         return _CandidateListIndexRange.Count(); 
     }
-    inline DWORD *GetAt(int index) 
+    inline _KEYSTROKE *GetAt(int index)
     { 
         return _CandidateListIndexRange.GetAt(index); 
     }
-    inline DWORD *Append() 
+    inline _KEYSTROKE *Append()
     { 
         return _CandidateListIndexRange.Append(); 
     }
@@ -312,7 +329,7 @@ public:
 		return nullptr;
     }
 private:
-    CDIMEArray<DWORD> _CandidateListIndexRange;
+    CDIMEArray<_KEYSTROKE> _CandidateListIndexRange;
 };
 
 class CStringRange

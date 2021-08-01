@@ -3,7 +3,7 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-//#define DEBUG_PRINT
+#define DEBUG_PRINT
 #include <Shlobj.h>
 #include <Shlwapi.h>
 #include "Private.h"
@@ -1085,6 +1085,7 @@ void CCompositionProcessorEngine::SetupKeystroke(IME_MODE imeMode)
 		pKS = _KeystrokeComposition.Append();
 		pKS->Function = FUNCTION_NONE;
 		pKS->Modifiers = 0;
+		pKS->Index = i;
 		pKS->Printable = 0;
 		pKS->VirtualKey = 0;
 	}
@@ -2319,52 +2320,92 @@ CCompositionProcessorEngine::XPreservedKey::~XPreservedKey()
 
 
 
-void CCompositionProcessorEngine::SetInitialCandidateListRange(IME_MODE imeMode)
+void CCompositionProcessorEngine::SetupCandidateListRange(IME_MODE imeMode)
 {
-	debugPrint(L"CCompositionProcessorEngine::SetInitialCandidateListRange()");
-	
-	WCHAR pwch[MAX_CAND_SELKEY];
-	//StringCchCopyN(pwch, MAX_CAND_SELKEY, 
-	//	_pTableDictionaryEngine[imeMode]->GetSelkey()->Get(), _pTableDictionaryEngine[imeMode]->GetSelkey()->GetLength());
-	if (_pTableDictionaryEngine[imeMode]->GetSelkey())
-		debugPrint(L"%selkey = %d", _pTableDictionaryEngine[imeMode]->GetSelkey()->GetLength());
-	else
-		debugPrint(L"null selkey pointer");
+	debugPrint(L"CCompositionProcessorEngine::SetupCandidateListRange() selkey = \"%s\".",
+			_pTableDictionaryEngine[imeMode]->GetSelkey());
 	
 	_candidateListIndexRange.Clear();
 	_phraseCandidateListIndexRange.Clear();
 	DWORD pageSize = (imeMode == IME_MODE_PHONETIC) ? 9 : 10;
+
+	PWCH pSelkey = _pTableDictionaryEngine[imeMode]->GetSelkey();
+	WCHAR localSelKey[MAX_CAND_SELKEY];
+	WCHAR phraseSelKey[MAX_CAND_SELKEY];
+
+	if (wcslen(pSelkey) == 0 )
+	{
+		//defaultSelKey = new (std::nothrow) WCHAR[MAX_CAND_SELKEY];
+		//assert(defaultSelKey);
+		StringCchCopy(localSelKey, MAX_CAND_SELKEY, (imeMode == IME_MODE_DAYI)?L"'[]\\-\"{}|_":L"1234567890");
+		pSelkey = localSelKey;
+	}
+	else
+	{
+		pageSize = (DWORD)wcslen(pSelkey);
+		//if (imeMode == IME_MODE_DAYI) pageSize++; // space send first candidate
+	}
 	for (DWORD i = 0; i < pageSize; i++)
 	{
-		DWORD* pNewIndexRange = nullptr;
-		DWORD* pNewPhraseIndexRange = nullptr;
+		_KEYSTROKE* pNewIndexRange = nullptr;
+		_KEYSTROKE* pNewPhraseIndexRange = nullptr;
 
 		pNewIndexRange = _candidateListIndexRange.Append();
 		pNewPhraseIndexRange = _phraseCandidateListIndexRange.Append();
 		if (pNewIndexRange != nullptr)
 		{
-			if (imeMode == IME_MODE_DAYI)	*pNewIndexRange = i;
-			else
+			if (imeMode == IME_MODE_DAYI)
 			{
-				if (i != 9)
+				if (i == 0)
 				{
-					*pNewIndexRange = i + 1;
+					pNewIndexRange->Printable = ' ';
+					pNewIndexRange->VirtualKey = VK_SPACE;
 				}
 				else
 				{
-					*pNewIndexRange = 0;
+					pNewIndexRange->Printable = pSelkey[i - 1];
+					UINT vKey, modifier;
+					GetVKeyFromPrintable(pSelkey[i - 1], &vKey, &modifier);
+					pNewIndexRange->VirtualKey = vKey;
+					pNewIndexRange->Modifiers = modifier;
+				}
+				pNewIndexRange->Index = i;
+			}
+			else
+			{
+				pNewIndexRange->Printable = pSelkey[i];
+				UINT vKey, modifier;
+				GetVKeyFromPrintable(pSelkey[i], &vKey, &modifier);
+				pNewIndexRange->VirtualKey = vKey;
+				pNewIndexRange->Modifiers = modifier;
+				if (i != 9)
+				{
+					pNewIndexRange->Index = i + 1;					
+				}
+				else
+				{
+					pNewIndexRange->Index = 0;
 				}
 			}
 		}
 		if (pNewPhraseIndexRange != nullptr)
 		{
+			StringCchCopy(phraseSelKey, MAX_CAND_SELKEY, L"!@#$%^&*()");
+			pNewPhraseIndexRange->Printable = phraseSelKey[i];
+			UINT vKey, modifier;
+			GetVKeyFromPrintable(phraseSelKey[i], &vKey, &modifier);
+			pNewPhraseIndexRange->VirtualKey = vKey;
+			pNewPhraseIndexRange->Modifiers = modifier;
 			if (i != 9)
 			{
-				*pNewPhraseIndexRange = i + 1;
+				pNewPhraseIndexRange->Index = i + 1;
+				pNewPhraseIndexRange->Modifiers = TF_MOD_SHIFT;
 			}
 			else
 			{
-				*pNewPhraseIndexRange = 0;
+				pNewPhraseIndexRange->Index = 0;
+				pNewPhraseIndexRange->Modifiers = TF_MOD_SHIFT;
+
 			}
 
 		}
@@ -2398,7 +2439,7 @@ void CCompositionProcessorEngine::SetInitialCandidateListRange(IME_MODE imeMode)
 
 BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCHAR *pwch, BOOL fComposing, CANDIDATE_MODE candidateMode, BOOL hasCandidateWithWildcard, UINT candiCount, INT candiSelection, _Inout_opt_ _KEYSTROKE_STATE *pKeyState)
 {
-	debugPrint(L"CCompositionProcessorEngine::IsVirtualKeyNeed() uCode = %d, fComposing = %d, candidateMode = %d, hasCandidateWithWildcard = %d, candiCount = %d", uCode, fComposing, candidateMode, hasCandidateWithWildcard, candiCount);
+	//debugPrint(L"CCompositionProcessorEngine::IsVirtualKeyNeed() uCode = %d, fComposing = %d, candidateMode = %d, hasCandidateWithWildcard = %d, candiCount = %d", uCode, fComposing, candidateMode, hasCandidateWithWildcard, candiCount);
 	if (pKeyState)
 	{
 		pKeyState->Category = CATEGORY_NONE;
@@ -2814,7 +2855,7 @@ BOOL CCompositionProcessorEngine::IsKeystrokeRange(UINT uCode, PWCH pwch, _Inout
 	pKeyState->Category = CATEGORY_NONE;
 	pKeyState->Function = FUNCTION_NONE;
 
-	if (_pActiveCandidateListIndexRange->IsRange(uCode, *pwch, candidateMode))
+	if (_pActiveCandidateListIndexRange->IsRange(uCode, *pwch, Global::ModifiersValue, candidateMode))
 	{
 		if (candidateMode == CANDIDATE_PHRASE)
 		{
@@ -2870,7 +2911,7 @@ void CCompositionProcessorEngine::UpdateDictionaryFile()
 		debugPrint(L"CCompositionProcessorEngine::UpdateDictionaryFile() the table is loaded from TTS previously and now new cin is loaded");
 		SetupKeystroke(Global::imeMode);
 		SetupConfiguration(Global::imeMode);
-		SetInitialCandidateListRange(Global::imeMode);
+		SetupCandidateListRange(Global::imeMode);
 
 	}
 

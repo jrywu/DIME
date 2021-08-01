@@ -20,9 +20,6 @@ CTableDictionaryEngine::CTableDictionaryEngine(LCID locale, _In_ CFile *pDiction
 
 	_pRadicalMap = new _T_RadicalMap();
 
-	_pSelkey = nullptr;
-	_pEndkey = nullptr;
-
 	// initialize _pRadicalIndexMap if the dictionary is in cin format
 	_pRadicalIndexMap = (dictionaryType == CIN_DICTIONARY) ? new _T_RadicalIndexMap() : nullptr;
 

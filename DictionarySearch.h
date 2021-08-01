@@ -34,7 +34,7 @@ public:
     BOOL FindConvertedStringForWildcard(CDictionaryResult **ppdret);
 	BOOL ParseConfig(IME_MODE imeMode, 
         _Inout_opt_ _T_RadicalMap* pRadicalMap = nullptr, _Inout_opt_ _T_RadicalIndexMap* pRadicalIndexMap = nullptr,
-        _Inout_opt_ CStringRange* pSelkey = nullptr, _Inout_opt_ CStringRange* pEndkey = nullptr);
+        _Inout_opt_ PWCH pSelkey = nullptr, _Inout_opt_ PWCH pEndkey = nullptr);
 	VOID SetSearchSection(SEARCH_SECTION searchSection) { _searchSection = searchSection; }
 
     CStringRange* _pSearchKeyCode;
@@ -48,7 +48,7 @@ private:
 	SEARCH_SECTION _searchSection;
 	BOOL FindWorker(BOOL isTextSearch, _Out_opt_ CDictionaryResult **ppdret, _In_ BOOL isWildcardSearch, _In_ BOOL parseConfig = FALSE
 		, _Inout_opt_ _T_RadicalMap* pRadicalMap = nullptr, _Inout_opt_ _T_RadicalIndexMap* pRadicalIndexMap = nullptr
-        , _Inout_opt_ CStringRange* pSelkey = nullptr, _Inout_opt_ CStringRange* pEndkey = nullptr);
+        , _Inout_opt_ PWCH pSelkey = nullptr, _Inout_opt_ PWCH pEndkey = nullptr);
 
     DWORD_PTR GetBufferInWCharLength()
     {

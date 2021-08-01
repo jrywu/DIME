@@ -951,7 +951,7 @@ BOOL CDIME::SetupLanguageProfile(LANGID langid, REFGUID guidLanguageProfile, _In
 			_pCompositionProcessorEngine->SetupDictionaryFile(imeMode);
 			_pCompositionProcessorEngine->SetupKeystroke(imeMode);
 			_pCompositionProcessorEngine->SetupConfiguration(imeMode);
-            _pCompositionProcessorEngine->SetInitialCandidateListRange(imeMode);
+            _pCompositionProcessorEngine->SetupCandidateListRange(imeMode);
 
 		}
 	}

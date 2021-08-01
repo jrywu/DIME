@@ -3,7 +3,7 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-#define DEBUG_PRINT
+//#define DEBUG_PRINT
 
 #include "Private.h"
 #include "DictionarySearch.h"
@@ -83,7 +83,7 @@ BOOL CDictionarySearch::FindConvertedStringForWildcard(CDictionaryResult **ppdre
 
 BOOL CDictionarySearch::ParseConfig(IME_MODE imeMode, 
 	_Inout_opt_ _T_RadicalMap* pRadicalMap, _Inout_opt_ _T_RadicalIndexMap* pRadicalIndexMap,
-	_Inout_opt_ CStringRange* pSelkey, _Inout_opt_ CStringRange* pEndkey)
+	_Inout_opt_ PWCH pSelkey, _Inout_opt_ PWCH pEndkey)
 {
 	debugPrint(L"CDictionarySearch::ParseConfig() imeMode = %d", imeMode);
 	_imeMode = imeMode;
@@ -99,7 +99,7 @@ BOOL CDictionarySearch::ParseConfig(IME_MODE imeMode,
 
 BOOL CDictionarySearch::FindWorker(BOOL isTextSearch, _Out_opt_ CDictionaryResult **ppdret, _In_ BOOL isWildcardSearch, _In_ BOOL parseConfig,
 	_Inout_opt_ _T_RadicalMap* pRadicalMap, _Inout_opt_ _T_RadicalIndexMap* pRadicalIndexMap,
-	_Inout_opt_ CStringRange* pSelkey, _Inout_opt_ CStringRange* pEndkey)
+	_Inout_opt_ PWCH pSelkey, _Inout_opt_ PWCH pEndkey)
 {
 	
 	BOOL fileReloaded;
@@ -497,17 +497,19 @@ ReadValue:
 						_searchMode = SEARCH_NONE;
 				}
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"%selkey", 7)) == CSTR_EQUAL)
-				{
-					pSelkey = valueStrings.GetAt(0);
-					WCHAR pwch[16];
-					StringCchCopyN(pwch, 16, valueStrings.GetAt(0)->Get(), 16);
-					debugPrint(L"%selkey  = %s, len = %d", pwch, (UINT) keyword.GetLength());
-
+				{				
+					size_t selkeylen= valueStrings.GetAt(0)->GetLength();
+					assert(selkeylen <= MAX_CAND_SELKEY);
+					StringCchCopyN(pSelkey, MAX_CAND_SELKEY, valueStrings.GetAt(0)->Get(), selkeylen);
+					debugPrint(L"selkey  = %s, len = %d", pSelkey, selkeylen);
 
 				}
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"%endkey", 7)) == CSTR_EQUAL)
 				{
-					pEndkey = valueStrings.GetAt(0);
+					size_t endkeylen = valueStrings.GetAt(0)->GetLength();
+					assert(endkeylen <= MAX_CAND_SELKEY);
+					StringCchCopyN(pEndkey, MAX_CAND_SELKEY, valueStrings.GetAt(0)->Get(), endkeylen);
+					debugPrint(L"endkey  = %s, len = %d", pEndkey, endkeylen);
 				}
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"%sorted", 7)) == CSTR_EQUAL)
 				{

@@ -8,6 +8,7 @@
 #pragma once
 
 #include "File.h"
+#include "Define.h"
 #include "BaseStructure.h"
 
 class CDIME;
@@ -38,8 +39,8 @@ public:
 	_T_RadicalMap* GetRadicalMap() { return _pRadicalMap;};
 	DICTIONARY_TYPE GetDictionaryType() { return _dictionaryType;};
 
-	CStringRange* GetSelkey() { return _pSelkey; };
-	CStringRange* GetEndkey() { return _pEndkey; };
+	PWCH GetSelkey() { return _pSelkey; };
+	PWCH GetEndkey() { return _pEndkey; };
 
 private:
 	CFile* _pDictionaryFile;
@@ -54,8 +55,8 @@ private:
 	_T_RadicalMap* _pRadicalMap;
 	_T_RadicalIndexMap* _pRadicalIndexMap;
 
-	CStringRange* _pSelkey;
-	CStringRange* _pEndkey;
+	WCHAR _pSelkey[MAX_CAND_SELKEY]=L"";
+	WCHAR _pEndkey[MAX_CAND_SELKEY]=L"";
 
 	VOID MergeSortByFindKeyCode(_Inout_ CDIMEArray<CCandidateListItem> *pItemList, int leftRange, int rightRange);
 	VOID MergeSortByWordFrequency(_Inout_ CDIMEArray<CCandidateListItem> *pItemList, int leftRange, int rightRange);

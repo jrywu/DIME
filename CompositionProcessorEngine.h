@@ -82,29 +82,14 @@ public:
     inline UINT GetCandidateWindowWidth() { return _candidateWndWidth; }
 
 
-	
-	struct _KEYSTROKE
-    {
-		WCHAR Printable;
-        UINT VirtualKey;
-        UINT Modifiers;
-        KEYSTROKE_FUNCTION Function;
 
-        _KEYSTROKE()
-        {
-			Printable = '\0';
-            VirtualKey = 0;
-            Modifiers = 0;
-            Function = FUNCTION_NONE;
-        }
-    };
 	_KEYSTROKE _keystrokeTable[MAX_RADICAL];
     
     void SetupPreserved(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId);
 	void SetupConfiguration(IME_MODE imeMode);
 	void SetupKeystroke(IME_MODE imeMode);
 	BOOL SetupDictionaryFile(IME_MODE imeMode);
-	void SetInitialCandidateListRange(IME_MODE imeMode);
+	void SetupCandidateListRange(IME_MODE imeMode);
 
 	void ReleaseDictionaryFiles();
 	BOOL SetupHanCovertTable();
