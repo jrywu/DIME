@@ -3,7 +3,7 @@
 // Derived from Microsoft Sample IME by Jeremy '13,7,17
 //
 //
-//#define DEBUG_PRINT
+#define DEBUG_PRINT
 
 #include "Private.h"
 #include "DictionarySearch.h"
@@ -81,12 +81,14 @@ BOOL CDictionarySearch::FindConvertedStringForWildcard(CDictionaryResult **ppdre
 	return FindWorker(TRUE, ppdret, TRUE); // Wildcard
 }
 
-BOOL CDictionarySearch::ParseConfig(IME_MODE imeMode, _Inout_opt_ _T_RadicalMap* pRadicalMap, _Inout_opt_ _T_RadicalIndexMap* pRadicalIndexMap)
+BOOL CDictionarySearch::ParseConfig(IME_MODE imeMode, 
+	_Inout_opt_ _T_RadicalMap* pRadicalMap, _Inout_opt_ _T_RadicalIndexMap* pRadicalIndexMap,
+	_Inout_opt_ CStringRange* pSelkey, _Inout_opt_ CStringRange* pEndkey)
 {
 	debugPrint(L"CDictionarySearch::ParseConfig() imeMode = %d", imeMode);
 	_imeMode = imeMode;
 
-	return FindWorker(FALSE, NULL, FALSE, TRUE, pRadicalMap, pRadicalIndexMap); // parseConfig=TRUE;
+	return FindWorker(FALSE, NULL, FALSE, TRUE, pRadicalMap, pRadicalIndexMap, pSelkey, pEndkey); // parseConfig=TRUE;
 }
 
 //+---------------------------------------------------------------------------
@@ -96,7 +98,8 @@ BOOL CDictionarySearch::ParseConfig(IME_MODE imeMode, _Inout_opt_ _T_RadicalMap*
 //----------------------------------------------------------------------------
 
 BOOL CDictionarySearch::FindWorker(BOOL isTextSearch, _Out_opt_ CDictionaryResult **ppdret, _In_ BOOL isWildcardSearch, _In_ BOOL parseConfig,
-	_Inout_opt_ _T_RadicalMap* pRadicalMap, _Inout_opt_ _T_RadicalIndexMap* pRadicalIndexMap)
+	_Inout_opt_ _T_RadicalMap* pRadicalMap, _Inout_opt_ _T_RadicalIndexMap* pRadicalIndexMap,
+	_Inout_opt_ CStringRange* pSelkey, _Inout_opt_ CStringRange* pEndkey)
 {
 	
 	BOOL fileReloaded;
@@ -223,17 +226,7 @@ TryAgain:
 			}
 			else if (controlKeyType == CIN_CONTROLKEY)
 			{
-				if (parseConfig && CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%autoCompose*", 13), &keyword))
-				{
-					_searchMode = SEARCH_CONTROLKEY;
-					goto ReadValue;
-				}
-				else if (parseConfig && CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%autoCompose*", 13), &keyword))
-				{
-					_searchMode = SEARCH_CONTROLKEY;
-					goto ReadValue;
-				}
-				else if (CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%chardef?begin", 14), &keyword))
+				if (CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%chardef?begin", 14), &keyword))
 				{
 					if (!parseConfig)
 					{
@@ -269,25 +262,20 @@ TryAgain:
 					_searchMode = SEARCH_NONE;
 				}
 				else if (parseConfig &&
-					(CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"%keyname", 8)) == CSTR_EQUAL ||
-					CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%keyname*", 9), &keyword)))
+					(
+					CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%autoCompose*", 13), &keyword) ||
+					CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%keyname*", 9), &keyword) ||
+					CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%chardef*", 9), &keyword) ||
+					CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%selkey*", 8), &keyword) ||
+					CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%endkey*", 8), &keyword) ||
+					CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%sorted*", 8), &keyword)) 
+					)
 				{
 					_searchMode = SEARCH_CONTROLKEY;
 					goto ReadValue;
 				}
-				else if ((CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"%chardef", 8)) == CSTR_EQUAL ||
-					CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%chardef*", 9), &keyword)))
-				{
-					_searchMode = SEARCH_CONTROLKEY;
-					goto ReadValue;
-				}
-				else if (parseConfig &&
-					(CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"%sorted", 7)) == CSTR_EQUAL ||
-					CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%sorted*", 8), &keyword)))
-				{
-					_searchMode = SEARCH_CONTROLKEY;
-					goto ReadValue;
-				}
+
+	
 
 				controlKeyType = NOT_CONTROLKEY;
 				goto FindNextLine;
@@ -510,9 +498,16 @@ ReadValue:
 				}
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"%selkey", 7)) == CSTR_EQUAL)
 				{
+					pSelkey = valueStrings.GetAt(0);
+					WCHAR pwch[16];
+					StringCchCopyN(pwch, 16, valueStrings.GetAt(0)->Get(), 16);
+					debugPrint(L"%selkey  = %s, len = %d", pwch, (UINT) keyword.GetLength());
+
+
 				}
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"%endkey", 7)) == CSTR_EQUAL)
 				{
+					pEndkey = valueStrings.GetAt(0);
 				}
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"%sorted", 7)) == CSTR_EQUAL)
 				{

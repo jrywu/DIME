@@ -37,6 +37,10 @@ public:
 
 	_T_RadicalMap* GetRadicalMap() { return _pRadicalMap;};
 	DICTIONARY_TYPE GetDictionaryType() { return _dictionaryType;};
+
+	CStringRange* GetSelkey() { return _pSelkey; };
+	CStringRange* GetEndkey() { return _pEndkey; };
+
 private:
 	CFile* _pDictionaryFile;
     LCID _locale;
@@ -49,6 +53,9 @@ private:
 
 	_T_RadicalMap* _pRadicalMap;
 	_T_RadicalIndexMap* _pRadicalIndexMap;
+
+	CStringRange* _pSelkey;
+	CStringRange* _pEndkey;
 
 	VOID MergeSortByFindKeyCode(_Inout_ CDIMEArray<CCandidateListItem> *pItemList, int leftRange, int rightRange);
 	VOID MergeSortByWordFrequency(_Inout_ CDIMEArray<CCandidateListItem> *pItemList, int leftRange, int rightRange);

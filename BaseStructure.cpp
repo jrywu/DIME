@@ -241,7 +241,7 @@ CCandidateRange::~CCandidateRange(void)
 }
 
 
-BOOL CCandidateRange::IsRange(UINT vKey, CANDIDATE_MODE candidateMode)
+BOOL CCandidateRange::IsRange(UINT vKey, WCHAR wch, CANDIDATE_MODE candidateMode)
 {
 	if(candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION || candidateMode == CANDIDATE_PHRASE || Global::imeMode != IME_MODE_DAYI)
 	{
@@ -318,7 +318,7 @@ BOOL CCandidateRange::IsRange(UINT vKey, CANDIDATE_MODE candidateMode)
     return FALSE;
 }
 
-int CCandidateRange::GetIndex(UINT vKey, CANDIDATE_MODE candidateMode)
+int CCandidateRange::GetIndex(UINT vKey, WCHAR wch, CANDIDATE_MODE candidateMode)
 {
 	if(candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION || candidateMode == CANDIDATE_PHRASE || Global::imeMode != IME_MODE_DAYI)
 	{

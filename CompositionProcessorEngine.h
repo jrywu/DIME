@@ -104,6 +104,8 @@ public:
 	void SetupConfiguration(IME_MODE imeMode);
 	void SetupKeystroke(IME_MODE imeMode);
 	BOOL SetupDictionaryFile(IME_MODE imeMode);
+	void SetInitialCandidateListRange(IME_MODE imeMode);
+
 	void ReleaseDictionaryFiles();
 	BOOL SetupHanCovertTable();
 	BOOL SetupTCFreqTable();
@@ -124,12 +126,10 @@ public:
 private:
 
     BOOL IsVirtualKeyKeystrokeComposition(UINT uCode, PWCH pwch, _Inout_opt_ _KEYSTROKE_STATE *pKeyState, KEYSTROKE_FUNCTION function);
-    BOOL IsVirtualKeyKeystrokeCandidate(UINT uCode, _In_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode, _Out_ BOOL *pfRetCode, _In_ CDIMEArray<_KEYSTROKE> *pKeystrokeMetric);
-    BOOL IsKeystrokeRange(UINT uCode, _Inout_opt_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode);
+    //BOOL IsVirtualKeyKeystrokeCandidate(UINT uCode, _In_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode, _Out_ BOOL *pfRetCode, _In_ CDIMEArray<_KEYSTROKE> *pKeystrokeMetric);
+    BOOL IsKeystrokeRange(UINT uCode, PWCH pwch, _Inout_opt_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode);
 
-	void SetInitialCandidateListRange(IME_MODE imeMode);
-
-
+	
     class XPreservedKey;
     void SetPreservedKey(const CLSID clsid, TF_PRESERVEDKEY & tfPreservedKey, _In_z_ LPCWSTR pwszDescription, _Out_ XPreservedKey *pXPreservedKey);
     BOOL InitPreservedKey(_In_ XPreservedKey *pXPreservedKey, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId);
@@ -178,10 +178,11 @@ private:
     TfClientId  _tfClientId;
 
     CDIMEArray<_KEYSTROKE> _KeystrokeComposition;
+	/*
     CDIMEArray<_KEYSTROKE> _KeystrokeCandidate;
     CDIMEArray<_KEYSTROKE> _KeystrokeCandidateWildcard;
     CDIMEArray<_KEYSTROKE> _KeystrokeCandidateSymbol;
-
+	*/
 
     // Preserved key data
     class XPreservedKey
@@ -208,6 +209,7 @@ private:
     BOOL _isDisableWildcardAtFirst;
     BOOL _isKeystrokeSort;
 	BOOL _isWildCardWordFreqSort;
+
 	CCandidateRange* _pActiveCandidateListIndexRange;
 	CCandidateRange _candidateListIndexRange;
 	CCandidateRange _phraseCandidateListIndexRange;

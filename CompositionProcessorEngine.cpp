@@ -1509,8 +1509,7 @@ void CCompositionProcessorEngine::SetupConfiguration(IME_MODE imeMode)
 		CConfig::SetSpaceAsPageDown(TRUE);
 	}
 
-	SetInitialCandidateListRange(imeMode);
-
+	
 
 	return;
 }
@@ -2323,7 +2322,15 @@ CCompositionProcessorEngine::XPreservedKey::~XPreservedKey()
 void CCompositionProcessorEngine::SetInitialCandidateListRange(IME_MODE imeMode)
 {
 	debugPrint(L"CCompositionProcessorEngine::SetInitialCandidateListRange()");
-
+	
+	WCHAR pwch[MAX_CAND_SELKEY];
+	//StringCchCopyN(pwch, MAX_CAND_SELKEY, 
+	//	_pTableDictionaryEngine[imeMode]->GetSelkey()->Get(), _pTableDictionaryEngine[imeMode]->GetSelkey()->GetLength());
+	if (_pTableDictionaryEngine[imeMode]->GetSelkey())
+		debugPrint(L"%selkey = %d", _pTableDictionaryEngine[imeMode]->GetSelkey()->GetLength());
+	else
+		debugPrint(L"null selkey pointer");
+	
 	_candidateListIndexRange.Clear();
 	_phraseCandidateListIndexRange.Clear();
 	DWORD pageSize = (imeMode == IME_MODE_PHONETIC) ? 9 : 10;
@@ -2428,7 +2435,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 	}
 
 	if (candidateMode == CANDIDATE_ORIGINAL || candidateMode == CANDIDATE_PHRASE || candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)
-	{
+	{/*
 		BOOL isRetCode = TRUE;
 		if (IsVirtualKeyKeystrokeCandidate(uCode, pKeyState, candidateMode, &isRetCode, &_KeystrokeCandidate))
 		{
@@ -2441,10 +2448,10 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 			{
 				return isRetCode;
 			}
-		}
+		}*/
 
 		// Candidate list could not handle key. We can try to restart the composition.
-		if (IsKeystrokeRange(uCode, pKeyState, candidateMode))
+		if (IsKeystrokeRange(uCode, pwch, pKeyState, candidateMode))
 		{
 			return TRUE;
 		}
@@ -2496,11 +2503,12 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 				return TRUE;
 			}
 		}
+		/*
 		BOOL isRetCode = TRUE;
 		if (IsVirtualKeyKeystrokeCandidate(uCode, pKeyState, candidateMode, &isRetCode, &_KeystrokeCandidate))
 		{
 			return isRetCode;
-		}
+		}*/
 	}
 
 	if (!fComposing && candidateMode != CANDIDATE_ORIGINAL && candidateMode != CANDIDATE_PHRASE && candidateMode != CANDIDATE_WITH_NEXT_COMPOSITION)
@@ -2670,7 +2678,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 			}
 		}
 	}
-	if (IsKeystrokeRange(uCode, pKeyState, candidateMode))
+	if (IsKeystrokeRange(uCode, pwch, pKeyState, candidateMode))
 	{
 		return TRUE;
 	}
@@ -2756,7 +2764,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeComposition(UINT uCode, P
 // CCompositionProcessorEngine::IsVirtualKeyKeystrokeCandidate
 //
 //----------------------------------------------------------------------------
-
+/*
 BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeCandidate(UINT uCode, _In_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode, _Out_ BOOL *pfRetCode, _In_ CDIMEArray<_KEYSTROKE> *pKeystrokeMetric)
 {
 	candidateMode;
@@ -2789,14 +2797,14 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeCandidate(UINT uCode, _In
 
 	return FALSE;
 }
-
+*/
 //+---------------------------------------------------------------------------
 //
 // CCompositionProcessorEngine::IsKeyKeystrokeRange
 //
 //----------------------------------------------------------------------------
 
-BOOL CCompositionProcessorEngine::IsKeystrokeRange(UINT uCode, _Inout_opt_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode)
+BOOL CCompositionProcessorEngine::IsKeystrokeRange(UINT uCode, PWCH pwch, _Inout_opt_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode)
 {
 	if (pKeyState == nullptr)
 	{
@@ -2806,7 +2814,7 @@ BOOL CCompositionProcessorEngine::IsKeystrokeRange(UINT uCode, _Inout_opt_ _KEYS
 	pKeyState->Category = CATEGORY_NONE;
 	pKeyState->Function = FUNCTION_NONE;
 
-	if (_pActiveCandidateListIndexRange->IsRange(uCode, candidateMode))
+	if (_pActiveCandidateListIndexRange->IsRange(uCode, *pwch, candidateMode))
 	{
 		if (candidateMode == CANDIDATE_PHRASE)
 		{
@@ -2862,6 +2870,8 @@ void CCompositionProcessorEngine::UpdateDictionaryFile()
 		debugPrint(L"CCompositionProcessorEngine::UpdateDictionaryFile() the table is loaded from TTS previously and now new cin is loaded");
 		SetupKeystroke(Global::imeMode);
 		SetupConfiguration(Global::imeMode);
+		SetInitialCandidateListRange(Global::imeMode);
+
 	}
 
 }

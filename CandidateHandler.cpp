@@ -230,11 +230,11 @@ HRESULT CDIME::_HandleCandidateArrowKey(TfEditCookie ec, _In_ ITfContext *pConte
 //
 //----------------------------------------------------------------------------
 
-HRESULT CDIME::_HandleCandidateSelectByNumber(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode)
+HRESULT CDIME::_HandleCandidateSelectByNumber(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode,_In_ WCHAR wch)
 {
 	debugPrint(L"CDIME::_HandleCandidateSelectByNumber() \n");
 
-	int iSelectAsNumber = _pCompositionProcessorEngine->GetCandidateListIndexRange()->GetIndex(uCode, _candidateMode);
+	int iSelectAsNumber = _pCompositionProcessorEngine->GetCandidateListIndexRange()->GetIndex(uCode, wch, _candidateMode);
 	debugPrint(L"CDIME::_HandleCandidateSelectByNumber() iSelectAsNumber = %d", iSelectAsNumber);
 
 	if (iSelectAsNumber == -1)
@@ -307,9 +307,9 @@ HRESULT CDIME::_HandlePhraseArrowKey(TfEditCookie ec, _In_ ITfContext *pContext,
 //
 //----------------------------------------------------------------------------
 
-HRESULT CDIME::_HandlePhraseSelectByNumber(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode)
+HRESULT CDIME::_HandlePhraseSelectByNumber(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode, _In_ WCHAR wch)
 {
-	int iSelectAsNumber = _pCompositionProcessorEngine->GetCandidateListIndexRange()->GetIndex(uCode, _candidateMode);
+	int iSelectAsNumber = _pCompositionProcessorEngine->GetCandidateListIndexRange()->GetIndex(uCode, wch, _candidateMode);
     if (iSelectAsNumber == -1)
     {
         return S_FALSE;

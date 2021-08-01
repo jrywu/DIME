@@ -392,7 +392,7 @@ HRESULT CKeyStateCandidate::HandleKeyArrow(KeyHandlerEditSessionDTO dto)
 HRESULT CKeyStateCandidate::HandleKeySelectByNumber(KeyHandlerEditSessionDTO dto)
 {
 	if(_pTextService == nullptr) return E_FAIL;
-    return _pTextService->_HandleCandidateSelectByNumber(dto.ec, dto.pContext, dto.code);
+    return _pTextService->_HandleCandidateSelectByNumber(dto.ec, dto.pContext, dto.code, dto.wch);
 }
 
 /*
@@ -428,5 +428,5 @@ HRESULT CKeyStatePhrase::HandleKeyArrow(KeyHandlerEditSessionDTO dto)
 HRESULT CKeyStatePhrase::HandleKeySelectByNumber(KeyHandlerEditSessionDTO dto)
 {
 	if(_pTextService == nullptr) return E_FAIL;
-    return _pTextService->_HandlePhraseSelectByNumber(dto.ec, dto.pContext, dto.code);
+    return _pTextService->_HandlePhraseSelectByNumber(dto.ec, dto.pContext, dto.code, dto.wch);
 }
