@@ -80,7 +80,7 @@ public:
     inline CCandidateRange *GetCandidateListIndexRange() { return _pActiveCandidateListIndexRange; }
     inline UINT GetCandidateListPhraseModifier() { return _candidateListPhraseModifier; }
     inline UINT GetCandidateWindowWidth() { return _candidateWndWidth; }
-
+	inline UINT GetCandidatePageSize() { return _candidatePageSize; }
 
 
 	_KEYSTROKE _keystrokeTable[MAX_RADICAL];
@@ -163,11 +163,6 @@ private:
     TfClientId  _tfClientId;
 
     CDIMEArray<_KEYSTROKE> _KeystrokeComposition;
-	/*
-    CDIMEArray<_KEYSTROKE> _KeystrokeCandidate;
-    CDIMEArray<_KEYSTROKE> _KeystrokeCandidateWildcard;
-    CDIMEArray<_KEYSTROKE> _KeystrokeCandidateSymbol;
-	*/
 
     // Preserved key data
     class XPreservedKey
@@ -200,6 +195,7 @@ private:
 	CCandidateRange _phraseCandidateListIndexRange;
     UINT _candidateListPhraseModifier;
     UINT _candidateWndWidth; 
+	UINT _candidatePageSize;
 
     static const int OUT_OF_FILE_INDEX = -1;
 	

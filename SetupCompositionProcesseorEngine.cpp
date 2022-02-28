@@ -1410,7 +1410,6 @@ void CCompositionProcessorEngine::SetupCandidateListRange(IME_MODE imeMode)
 
 	_candidateListIndexRange.Clear();
 	_phraseCandidateListIndexRange.Clear();
-	DWORD pageSize = (imeMode == IME_MODE_PHONETIC) ? 9 : 10;
 
 	PWCH pSelkey = nullptr;
 	if (_pTableDictionaryEngine[imeMode])
@@ -1420,13 +1419,14 @@ void CCompositionProcessorEngine::SetupCandidateListRange(IME_MODE imeMode)
 
 	if (pSelkey == nullptr || wcslen(pSelkey) == 0)
 	{
-		StringCchCopy(localSelKey, MAX_CAND_SELKEY, (imeMode == IME_MODE_DAYI) ? L"'[]\\-\"{}|_" : L"1234567890");
+		StringCchCopy(localSelKey, MAX_CAND_SELKEY, (imeMode == IME_MODE_DAYI) ? L"'[]\\-\"{}|" : L"1234567890");
 		pSelkey = localSelKey;
+		_candidatePageSize = (imeMode == IME_MODE_PHONETIC) ? 9 : 10;
 	}
 	else
-		pageSize = (DWORD)wcslen(pSelkey);
+		_candidatePageSize = (UINT)wcslen(pSelkey);
 
-	for (DWORD i = 0; i < pageSize; i++)
+	for (DWORD i = 0; i < _candidatePageSize; i++)
 	{
 		_KEYSTROKE* pNewIndexRange = nullptr;
 		_KEYSTROKE* pNewPhraseIndexRange = nullptr;

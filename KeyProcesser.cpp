@@ -298,7 +298,6 @@ BOOL CCompositionProcessorEngine::IsSymbolChar(WCHAR wch)
 BOOL CCompositionProcessorEngine::IsDayiAddressChar(WCHAR wch)
 {
 	if (Global::imeMode != IME_MODE_DAYI)
-		//|| (_pTableDictionaryEngine[IME_MODE_DAYI] && _pTableDictionaryEngine[IME_MODE_DAYI]->GetDictionaryType() != TTS_DICTIONARY)) 
 		return FALSE;
 
 	for (int i = 0; i < ARRAYSIZE(Global::dayiAddressCharTable); i++)
@@ -459,8 +458,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 				{ 
 					if (candidateMode != CANDIDATE_NONE)
 					{
-						if (CConfig::GetSpaceAsPageDown()
-							&& (candiCount > UINT((Global::imeMode == IME_MODE_PHONETIC) ? 9 : 10)))
+						if (CConfig::GetSpaceAsPageDown() && (candiCount > _candidatePageSize))
 						{
 							pKeyState->Category = CATEGORY_CANDIDATE;
 							pKeyState->Function = FUNCTION_MOVE_PAGE_DOWN;
@@ -505,7 +503,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 						if (_hasWildcardIncludedInKeystrokeBuffer)
 						{
 							pKeyState->Category = CATEGORY_CANDIDATE;
-							if (CConfig::GetSpaceAsPageDown())
+							if (CConfig::GetSpaceAsPageDown() && (candiCount > _candidatePageSize))
 								pKeyState->Function = FUNCTION_MOVE_PAGE_DOWN;
 							else
 								pKeyState->Function = FUNCTION_CONVERT;
@@ -524,7 +522,8 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 					}
 				}
 				return TRUE;
-				case VK_OEM_7: if (pKeyState && Global::imeMode == IME_MODE_ARRAY)//Array phrase ending
+				case VK_OEM_7: if (pKeyState 
+					&& Global::imeMode == IME_MODE_ARRAY && CConfig::GetArrayScope() != ARRAY40_BIG5)//Array phrase ending
 				{
 					pKeyState->Category = CATEGORY_COMPOSING;
 					if (_hasWildcardIncludedInKeystrokeBuffer)
@@ -574,7 +573,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 						pKeyState->Function = FUNCTION_FINALIZE_CANDIDATELIST;
 					}
 					else if (candidateMode != CANDIDATE_PHRASE
-						&& CConfig::GetSpaceAsPageDown() && (candiCount > UINT((Global::imeMode == IME_MODE_PHONETIC) ? 9 : 10)))
+						&& CConfig::GetSpaceAsPageDown() && (candiCount > _candidatePageSize))
 					{
  						pKeyState->Category = CATEGORY_CANDIDATE;
 						pKeyState->Function = FUNCTION_MOVE_PAGE_DOWN;

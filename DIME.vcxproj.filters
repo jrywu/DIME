@@ -355,7 +355,7 @@
     <ClCompile Include="SetupCompositionProcesseorEngine.cpp">
       <Filter>Source Files\TextService\IMInterface\CompositionProcesserEngine</Filter>
     </ClCompile>
-    <ClCompile Include="IsKeyNeeded.cpp">
+    <ClCompile Include="KeyProcesser.cpp">
       <Filter>Source Files\TextService\IMInterface\CompositionProcesserEngine</Filter>
     </ClCompile>
   </ItemGroup>

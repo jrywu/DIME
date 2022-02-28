@@ -91,6 +91,9 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CDIME *pTextServic
 
 	_candidateListPhraseModifier = 0;
 
+	_candidatePageSize = 0;
+
+
 
 
 }

@@ -95,7 +95,7 @@
     <ClCompile Include="Composition.cpp" />
     <ClCompile Include="CompositionProcessorEngine.cpp" />
     <ClCompile Include="EnumTfCandidates.cpp" />
-    <ClCompile Include="IsKeyNeeded.cpp" />
+    <ClCompile Include="KeyProcesser.cpp" />
     <ClCompile Include="KeyStateCategory.cpp" />
     <ClCompile Include="NotifyWindow.cpp" />
     <ClCompile Include="BaseStructure.cpp" />
