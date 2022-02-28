@@ -268,7 +268,6 @@ BOOL CCompositionProcessorEngine::IsSymbolChar(WCHAR wch)
 	if ((_keystrokeBuffer.GetLength() == 1) &&
 		(*_keystrokeBuffer.Get() == L'=') &&
 		Global::imeMode == IME_MODE_DAYI && _pTableDictionaryEngine[IME_MODE_DAYI])
-		//&&_pTableDictionaryEngine[IME_MODE_DAYI]->GetDictionaryType() == TTS_DICTIONARY)
 	{
 		for (UINT i = 0; i < wcslen(Global::DayiSymbolCharTable); i++)
 		{
@@ -373,6 +372,22 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 		pKeyState->Function = FUNCTION_NONE;
 	}
 	
+	// Symbol mode start with L'=' for dayi or L'w' for array
+	if (pKeyState && IsSymbolChar(*pwch))
+	{
+		pKeyState->Category = CATEGORY_COMPOSING;
+		pKeyState->Function = FUNCTION_INPUT;
+		return TRUE;
+	}
+	// Address characters direct input mode  "'[]-\"
+	if (pKeyState && IsDayiAddressChar(*pwch) && candidateMode != CANDIDATE_ORIGINAL)
+	{
+		pKeyState->Category = CATEGORY_COMPOSING;
+		pKeyState->Function = FUNCTION_ADDRESS_DIRECT_INPUT;
+		return TRUE;
+	}
+
+
 	if (candidateMode == CANDIDATE_ORIGINAL || candidateMode == CANDIDATE_PHRASE || candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)
 	{
 		fComposing = FALSE;

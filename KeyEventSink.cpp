@@ -125,36 +125,6 @@ BOOL CDIME::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pCod
     CCompositionProcessorEngine *pCompositionProcessorEngine;
     pCompositionProcessorEngine = _pCompositionProcessorEngine;
 
-
-	
-	//
-    // Symbol mode start with L'=' for dayi or L'w' for array
-    //
-	if (isOpen && pCompositionProcessorEngine && pCompositionProcessorEngine->IsSymbolChar(wch))
-	{
-		if (pKeyState)
-		{
-			pKeyState->Category = CATEGORY_COMPOSING;
-			pKeyState->Function = FUNCTION_INPUT;
-		}
-			return TRUE;
-	}
-
-	//
-    // Address characters direct input mode  '[]-\
-    //
-	if (isOpen && (_candidateMode == CANDIDATE_NONE || _candidateMode == CANDIDATE_PHRASE)
-		&& codeIn!= VK_SUBTRACT
-		&& pCompositionProcessorEngine && pCompositionProcessorEngine->IsDayiAddressChar(wch))
-	{
-		if (pKeyState)
-		{
-			pKeyState->Category = CATEGORY_COMPOSING;
-			pKeyState->Function = FUNCTION_ADDRESS_DIRECT_INPUT;
-		}
-			return TRUE;
-	}
-
 	//
 	// check if the normal composition  need the key
 	//
