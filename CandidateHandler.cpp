@@ -59,7 +59,8 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 
 	candidateLen = _pUIPresenter->_GetSelectedCandidateString(&pCandidateString);
 
-	if (Global::imeMode == IME_MODE_ARRAY)// check if the _strokebuffer is array special code
+	if (Global::imeMode == IME_MODE_ARRAY && CConfig::GetArrayScope() != ARRAY40_BIG5)
+		// check if the _strokebuffer is array special code
 	{
 		
 		if(_pCompositionProcessorEngine->CollectWordFromArraySpeicalCode(&pCandidateString)) 
@@ -134,7 +135,8 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 	}
 	//-----------------do  array spcial code notify. We should not show notify in UI-less mode, thus cancel forceSP mode in UILess Mode---
 	BOOL ArraySPFound = FALSE;            
-	if(Global::imeMode == IME_MODE_ARRAY && !_IsUILessMode()  && !arrayUsingSPCode && (CConfig::GetArrayForceSP() || CConfig::GetArrayNotifySP()))
+	if(Global::imeMode == IME_MODE_ARRAY && CConfig::GetArrayScope() != ARRAY40_BIG5 &&
+		!_IsUILessMode()  && !arrayUsingSPCode && (CConfig::GetArrayForceSP() || CConfig::GetArrayNotifySP()))
 	{
 		CStringRange specialCode;
 		CStringRange notifyText;

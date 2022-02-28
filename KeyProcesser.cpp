@@ -245,16 +245,27 @@ UINT CCompositionProcessorEngine::removeLastPhoneticSymbol()
 //----------------------------------------------------------------------------
 BOOL CCompositionProcessorEngine::IsSymbol()
 {
-	if (_keystrokeBuffer.Get() == nullptr) return FALSE;
-	if (Global::imeMode == IME_MODE_DAYI)
-		return (_keystrokeBuffer.GetLength() < 3 && *_keystrokeBuffer.Get() == L'=');
-
-	else if (Global::imeMode == IME_MODE_ARRAY)
-		return (_keystrokeBuffer.GetLength() == 2 && towupper(*_keystrokeBuffer.Get()) == L'W'
-			&& *(_keystrokeBuffer.Get() + 1) <= L'9' && *(_keystrokeBuffer.Get() + 1) >= L'0');
-
-	else
+	if (_keystrokeBuffer.Get() == nullptr) 
 		return FALSE;
+	
+	WCHAR c = *_keystrokeBuffer.Get();
+	UINT len = (UINT) _keystrokeBuffer.GetLength();
+
+	if (Global::imeMode == IME_MODE_DAYI && (len < 3 && c == L'='))
+		return TRUE;
+	
+	if (Global::imeMode == IME_MODE_ARRAY && len==2)
+	{
+		WCHAR c2 = *(_keystrokeBuffer.Get() + 1);
+		if (CConfig::GetArrayScope() != ARRAY40_BIG5 && towupper(c) == L'W' && c2 <= L'9' && c2 >= L'0')
+			return TRUE;
+		if (CConfig::GetArrayScope() == ARRAY40_BIG5
+			&& (towupper(c) == L'H' || c == L'8') && (c2 == L'\'' || c2 == L'[' || c2 == L']' || c2 == L'-' || c2 == L'='))
+			return TRUE;
+
+	}
+	
+	return FALSE;
 }
 
 //+---------------------------------------------------------------------------
@@ -264,7 +275,9 @@ BOOL CCompositionProcessorEngine::IsSymbol()
 //----------------------------------------------------------------------------
 BOOL CCompositionProcessorEngine::IsSymbolChar(WCHAR wch)
 {
-	if (_keystrokeBuffer.Get() == nullptr) return FALSE;
+	if (_keystrokeBuffer.Get() == nullptr) 
+		return FALSE;
+	
 	if ((_keystrokeBuffer.GetLength() == 1) &&
 		(*_keystrokeBuffer.Get() == L'=') &&
 		Global::imeMode == IME_MODE_DAYI && _pTableDictionaryEngine[IME_MODE_DAYI])
@@ -272,18 +285,20 @@ BOOL CCompositionProcessorEngine::IsSymbolChar(WCHAR wch)
 		for (UINT i = 0; i < wcslen(Global::DayiSymbolCharTable); i++)
 		{
 			if (Global::DayiSymbolCharTable[i] == wch)
-			{
 				return TRUE;
-			}
 		}
 
 	}
-	if ((_keystrokeBuffer.GetLength() == 1) && (towupper(*_keystrokeBuffer.Get()) == L'W') && Global::imeMode == IME_MODE_ARRAY)
+	if ((_keystrokeBuffer.GetLength() == 1) && Global::imeMode == IME_MODE_ARRAY)
 	{
-		if (wch >= L'0' && wch <= L'9')
-		{
+		WCHAR c = *_keystrokeBuffer.Get();
+		if( CConfig::GetArrayScope() != ARRAY40_BIG5 && (towupper(c)== L'W') &&
+			(wch >= L'0' && wch <= L'9') )
 			return TRUE;
-		}
+		if (CConfig::GetArrayScope() == ARRAY40_BIG5
+			&& (towupper(c) == L'H' || c == L'8') &&
+			(wch == L'\'' || wch == L'[' || wch == L']' || wch == L'-' || wch == L'=') )
+			return TRUE;
 
 	}
 	return FALSE;
@@ -318,7 +333,9 @@ BOOL CCompositionProcessorEngine::IsDayiAddressChar(WCHAR wch)
 //----------------------------------------------------------------------------
 BOOL CCompositionProcessorEngine::IsArrayShortCode()
 {
-	if (Global::imeMode == IME_MODE_ARRAY && _keystrokeBuffer.GetLength() < 3) return TRUE;
+	if (Global::imeMode == IME_MODE_ARRAY && CConfig::GetArrayScope()!=ARRAY40_BIG5 &&
+		_keystrokeBuffer.GetLength() < 3) 
+		return TRUE;
 	else
 		return FALSE;
 }

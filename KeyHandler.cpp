@@ -186,7 +186,8 @@ HRESULT CDIME::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *p
     // Get candidate string from composition processor engine
     //
 	BOOL symbolMode = pCompositionProcessorEngine->IsSymbol();
-	BOOL autoComposeMode = CConfig::GetAutoCompose();
+	BOOL autoComposeMode = CConfig::GetAutoCompose() || 
+        (Global::imeMode == IME_MODE_ARRAY && CConfig::GetArrayScope() != ARRAY40_BIG5);
 	if (autoComposeMode  // auto composing mode: show candidates while composition updated imeediately.
 		|| (Global::imeMode == IME_MODE_PHONETIC && _pCompositionProcessorEngine->isPhoneticComposingKey())
 		|| symbolMode) // fetch candidate in symobl mode with composition started with '='(DAYI) or 'W' (Array)
