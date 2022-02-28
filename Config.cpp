@@ -16,7 +16,7 @@
 //static configuration settings initilization
 IME_MODE CConfig::_imeMode = IME_MODE_NONE;
 BOOL CConfig::_loadTableMode = FALSE;
-CHARSET_SCOPE CConfig::_arrayUnicodeScope = CHARSET_UNICODE_EXT_A;
+ARRAY_SCOPE CConfig::_arrayScope = ARRAY30_UNICODE_EXT_A;
 BOOL CConfig::_clearOnBeep = TRUE;
 BOOL CConfig::_doBeep = TRUE;
 BOOL CConfig::_doBeepNotify = TRUE;
@@ -230,6 +230,8 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 				ShowWindow(GetDlgItem(hDlg, IDC_EDIT_MAXWIDTH), SW_HIDE);
 				ShowWindow(GetDlgItem(hDlg, IDC_STATIC_EDIT_MAXWIDTH), SW_HIDE);
 				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_AUTOCOMPOSE), SW_HIDE);
+				if (_arrayScope == ARRAY40_BIG5)
+					ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_SINGLEQUOTE_CUSTOM_PHRASE), SW_HIDE);
 			}
 		}
 
@@ -246,20 +248,21 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		}
 		if (_imeMode != IME_MODE_ARRAY)
 		{
-			ShowWindow(GetDlgItem(hDlg, IDC_STATIC_ARRAY_UNICODE_SCOPE), SW_HIDE);
-			ShowWindow(GetDlgItem(hDlg, IDC_COMBO_ARRAY_UNICODE_SCOPE), SW_HIDE);
+			ShowWindow(GetDlgItem(hDlg, IDC_STATIC_ARRAY_SCOPE), SW_HIDE);
+			ShowWindow(GetDlgItem(hDlg, IDC_COMBO_ARRAY_SCOPE), SW_HIDE);
 			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_FORCESP), SW_HIDE);
 			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_NOTIFYSP), SW_HIDE);
 			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_SINGLEQUOTE_CUSTOM_PHRASE), SW_HIDE);
 		}
 		else
-		{ // set Array unicode scope combobox
-			hwnd = GetDlgItem(hDlg, IDC_COMBO_ARRAY_UNICODE_SCOPE);
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"Unicode Extension-A");
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"Unicode Extension-AB");
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"Unicode Extension-ABCD");
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"Unicode Extension-ABCDEFG");
-			SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_arrayUnicodeScope, 0);
+		{ // set Array scope combobox
+			hwnd = GetDlgItem(hDlg, IDC_COMBO_ARRAY_SCOPE);
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-A");
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-AB");
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-A~D");
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-A~G");
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列40 Big5");
+			SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_arrayScope, 0);
 
 		}
 		ret = TRUE;
@@ -382,7 +385,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			}
 			break;
 
-		case IDC_COMBO_ARRAY_UNICODE_SCOPE:
+		case IDC_COMBO_ARRAY_SCOPE:
 			switch (HIWORD(wParam))
 			{
 			case CBN_SELCHANGE:
@@ -553,10 +556,12 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 
 			if (_imeMode == IME_MODE_ARRAY)
 			{
-				hwnd = GetDlgItem(hDlg, IDC_COMBO_ARRAY_UNICODE_SCOPE);
-				_arrayUnicodeScope = (CHARSET_SCOPE)SendMessage(hwnd, CB_GETCURSEL, 0, 0);
+				hwnd = GetDlgItem(hDlg, IDC_COMBO_ARRAY_SCOPE);
+				_arrayScope = (ARRAY_SCOPE)SendMessage(hwnd, CB_GETCURSEL, 0, 0);
+				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_SINGLEQUOTE_CUSTOM_PHRASE),
+					(_arrayScope == ARRAY40_BIG5)?SW_HIDE:SW_SHOW);
 				
-				debugPrint(L"selected arrray unicode scope item is %d", _arrayUnicodeScope);
+				debugPrint(L"selected arrray scope item is %d", _arrayScope);
 			}
 
 			if (_imeMode == IME_MODE_PHONETIC)
@@ -649,8 +654,9 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 			ShowWindow(GetDlgItem(hDlg, IDC_BUTTON_LOAD_ARRAY_SP), SW_HIDE);
 			ShowWindow(GetDlgItem(hDlg, IDC_BUTTON_LOAD_ARRAY_EXT_B), SW_HIDE);
 			ShowWindow(GetDlgItem(hDlg, IDC_BUTTON_LOAD_ARRAY_EXT_CD), SW_HIDE);
-			ShowWindow(GetDlgItem(hDlg, IDC_BUTTON_LOAD_ARRAY_EXT_E), SW_HIDE);
+			ShowWindow(GetDlgItem(hDlg, IDC_BUTTON_LOAD_ARRAY_EXT_EFG), SW_HIDE);
 			ShowWindow(GetDlgItem(hDlg, IDC_BUTTON_LOAD_ARRAY_PHRASE), SW_HIDE);
+			ShowWindow(GetDlgItem(hDlg, IDC_BUTTON_LOAD_ARRAY40), SW_HIDE);
 		}
 
 		ret = TRUE;
@@ -690,9 +696,13 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 			openFileType = LOAD_CIN_TABLE;
 			StringCchCopy(targetName, MAX_PATH, L"\\DIME\\Array-Ext-CD.cin");
 			goto LoadFile;
-		case IDC_BUTTON_LOAD_ARRAY_EXT_E:
+		case IDC_BUTTON_LOAD_ARRAY_EXT_EFG:
 			openFileType = LOAD_CIN_TABLE;
 			StringCchCopy(targetName, MAX_PATH, L"\\DIME\\Array-Ext-EF.cin");
+			goto LoadFile;
+		case IDC_BUTTON_LOAD_ARRAY40:
+			openFileType = LOAD_CIN_TABLE;
+			StringCchCopy(targetName, MAX_PATH, L"\\DIME\\Array40.cin");
 			goto LoadFile;
 		case IDC_BUTTON_LOAD_ARRAY_PHRASE:
 			openFileType = LOAD_CIN_TABLE;
@@ -927,7 +937,7 @@ VOID CConfig::WriteConfig()
 
 		if (_imeMode == IME_MODE_ARRAY)
 		{
-			fwprintf_s(fp, L"ArrayUnicodeScope = %d\n", _arrayUnicodeScope);
+			fwprintf_s(fp, L"ArrayScope = %d\n", _arrayScope);
 			fwprintf_s(fp, L"ArrayForceSP = %d\n", _arrayForceSP ? 1 : 0);
 			fwprintf_s(fp, L"ArrayNotifySP = %d\n", _arrayNotifySP ? 1 : 0);
 			fwprintf_s(fp, L"ArraySingleQuoteCustomPhrase = %d\n", _arraySingleQuoteCustomPhrase ? 1 : 0);

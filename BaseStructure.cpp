@@ -243,18 +243,17 @@ CCandidateRange::~CCandidateRange(void)
 
 BOOL CCandidateRange::IsRange(UINT vKey, WCHAR Printable, UINT Modifiers, CANDIDATE_MODE candidateMode)
 {
-	for (UINT i = 0; i < _CandidateListIndexRange.Count(); i++)
-		if (Printable == _CandidateListIndexRange.GetAt(i)->Printable) return TRUE;
-	return FALSE;
-	/*
-	if(candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION || candidateMode == CANDIDATE_PHRASE || Global::imeMode != IME_MODE_DAYI)
+	debugPrint(L"CCandidateRange::IsRange(): vKey = %d, Modifiers = %d, candiMode = %d. ", vKey, Modifiers, candidateMode);
+	if (candidateMode != CANDIDATE_NONE)
 	{
 		for (UINT i = 0; i < _CandidateListIndexRange.Count(); i++)
 		{
-			DWORD value = vKey - L'0';
-			if (value == _CandidateListIndexRange.GetAt(i)->Index)
+			if (Printable == _CandidateListIndexRange.GetAt(i)->Printable)
 			{
-				return TRUE;
+                if (i == 0 && vKey == VK_SPACE && CConfig::GetSpaceAsPageDown())
+                    return FALSE;
+                else
+				    return TRUE;
 			}
 			else if ((VK_NUMPAD0 <= vKey) && (vKey <= VK_NUMPAD9))
 			{
@@ -264,140 +263,33 @@ BOOL CCandidateRange::IsRange(UINT vKey, WCHAR Printable, UINT Modifiers, CANDID
 				}
 			}
 		}
-		
-	}else { //DAYI select key.
-		//#define VK_OEM_7          0xDE  //  ''"' for US
-		//#define VK_OEM_4          0xDB  //  '[{' for US
-		//#define VK_OEM_6          0xDD  //  ']}' for US
-		//#define VK_OEM_MINUS      0xBD   // '-' any country
-		//#define VK_OEM_5          0xDC  //  '\|' for US
-
-		for (UINT i = 0; i < _CandidateListIndexRange.Count(); i++)
-		{
-			
-			switch (vKey)
-			{
-			case VK_OEM_7:
-				if ((Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT)) == 0)
-				{
-					if (1 == _CandidateListIndexRange.GetAt(i)->Index) return TRUE;
-				}
-				else
-				{
-					if (6 == _CandidateListIndexRange.GetAt(i)->Index) return TRUE;
-				};
-
-			case VK_OEM_4:
-				if ((Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT)) == 0)
-				{
-					if (2 == _CandidateListIndexRange.GetAt(i)->Index) return TRUE;
-				}
-				else
-				{
-					if (7 == _CandidateListIndexRange.GetAt(i)->Index) return TRUE;
-				};
-			case VK_OEM_6:
-				if ((Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT)) == 0)
-				{
-					if (3 == _CandidateListIndexRange.GetAt(i)->Index) return TRUE;
-				}
-				else
-				{
-					if (8 == _CandidateListIndexRange.GetAt(i)->Index) return TRUE;
-				};
-			case VK_OEM_MINUS:
-				if ((Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT)) == 0)
-				{
-					if (4 == _CandidateListIndexRange.GetAt(i)->Index) return TRUE;
-				}
-				else
-				{
-					if (9 == _CandidateListIndexRange.GetAt(i)->Index) return TRUE;
-				};
-			case VK_OEM_5:		if (((Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT)) == 0) &&
-									(5 == _CandidateListIndexRange.GetAt(i)->Index)) { return TRUE; };
-			}
-		}
 	}
+	return FALSE;
 
-    return FALSE;*/
 }
 
 int CCandidateRange::GetIndex(UINT vKey, WCHAR Printable, CANDIDATE_MODE candidateMode)
 {
-	for (UINT i = 0; i < _CandidateListIndexRange.Count(); i++)
-		if (Printable == _CandidateListIndexRange.GetAt(i)->Printable) return i;
-	return -1;
-	/*
-	if(candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION || candidateMode == CANDIDATE_PHRASE || Global::imeMode != IME_MODE_DAYI)
+	debugPrint(L"CCandidateRange::GetIndex(): vKey = %d, candidateMode = %d ", vKey, candidateMode);
+	if(candidateMode != CANDIDATE_NONE)
 	{
-		DWORD value = vKey - L'0';
-
 		for (UINT i = 0; i < _CandidateListIndexRange.Count(); i++)
 		{
-			if (value == _CandidateListIndexRange.GetAt(i)->Index)
+			if (Printable == _CandidateListIndexRange.GetAt(i)->Printable)
 			{
 				return i;
 			}
 			else if ((VK_NUMPAD0 <= vKey) && (vKey <= VK_NUMPAD9))
 			{
-				if ((vKey-VK_NUMPAD0) == _CandidateListIndexRange.GetAt(i)->Index)
+				if ((vKey - VK_NUMPAD0) == _CandidateListIndexRange.GetAt(i)->Index)
 				{
 					return i;
 				}
 			}
 		}
-
-	}else{
-		for (UINT i = 0; i < _CandidateListIndexRange.Count(); i++)
-		{
-			switch (vKey)
-			{    // 0 selected with space key
-			case VK_OEM_7:		
-				if ((Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT)) == 0)
-				{
-					if (1 == _CandidateListIndexRange.GetAt(i)->Index) return i;
-				}
-				else
-				{
-					if (6 == _CandidateListIndexRange.GetAt(i)->Index) return i;
-				};
-					
-			case VK_OEM_4:		
-				if ((Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT)) == 0)
-				{
-					if (2 == _CandidateListIndexRange.GetAt(i)->Index) return i;
-				}
-				else
-				{
-					if (7 == _CandidateListIndexRange.GetAt(i)->Index) return i;
-				};
-			case VK_OEM_6:
-				if ((Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT)) == 0)
-				{
-					if (3 == _CandidateListIndexRange.GetAt(i)->Index) return i;
-				}
-				else
-				{
-					if (8 == _CandidateListIndexRange.GetAt(i)->Index) return i;
-				};
-			case VK_OEM_MINUS:
-				if ((Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT)) == 0)
-				{
-					if (4 == _CandidateListIndexRange.GetAt(i)->Index) return i;
-				}
-				else
-				{
-					if (9 == _CandidateListIndexRange.GetAt(i)->Index) return i;
-				};
-			case VK_OEM_5:		if (((Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT)) == 0) &&
-											(5 == _CandidateListIndexRange.GetAt(i)->Index)) { return i;};
-			}
-			
-		}
-
 	}
-    return -1;*/
+	return -1;
+
 }
 
 

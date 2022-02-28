@@ -221,3 +221,5 @@ DIME.VC.db
 *.db
 *.db-shm
 *.db-wal
+*.vsidx
+*.lock

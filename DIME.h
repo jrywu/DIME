@@ -141,7 +141,7 @@ public:
     HRESULT _HandleCandidateFinalize(TfEditCookie ec, _In_ ITfContext *pContext);
     HRESULT _HandleCandidateConvert(TfEditCookie ec, _In_ ITfContext *pContext);
     HRESULT _HandleCandidateArrowKey(TfEditCookie ec, _In_ ITfContext *pContext, _In_ KEYSTROKE_FUNCTION keyFunction);
-    HRESULT _HandleCandidateSelectByNumber(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode, WCHAR wch);
+    HRESULT _HandleCandidateSelectByNumber(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode, _In_ WCHAR wch);
 
     // key event handlers for phrase object.
     HRESULT _HandlePhraseFinalize(TfEditCookie ec, _In_ ITfContext *pContext);

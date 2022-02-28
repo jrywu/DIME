@@ -396,7 +396,9 @@ ReadValue:
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"PhoneticKeyboardLayout", 22)) == CSTR_EQUAL)
 					CConfig::setPhoneticKeyboardLayout((PHONETIC_KEYBOARD_LAYOUT) _wtoi(valueStrings.GetAt(0)->Get() ) );
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ArrayUnicodeScope", 17)) == CSTR_EQUAL)
-					CConfig::SetArrayUnicodeScope((CHARSET_SCOPE)_wtoi(valueStrings.GetAt(0)->Get()));
+					CConfig::SetArrayScope((ARRAY_SCOPE)_wtoi(valueStrings.GetAt(0)->Get()));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ArrayScope", 10)) == CSTR_EQUAL)
+					CConfig::SetArrayScope((ARRAY_SCOPE)_wtoi(valueStrings.GetAt(0)->Get()));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ReloadReverseConversion", 23)) == CSTR_EQUAL)
 					CConfig::SetReloadReverseConversion((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ReverseConversionCLSID", 22)) == CSTR_EQUAL)
