@@ -44,7 +44,6 @@
   <ItemGroup>
     <ClInclude Include="BaseWindow.h" />
     <ClInclude Include="ButtonWindow.h" />
-    <ClInclude Include="CandidateListUIPresenter.h" />
     <ClInclude Include="CandidateWindow.h" />
     <ClInclude Include="Compartment.h" />
     <ClInclude Include="CompositionProcessorEngine.h" />
@@ -81,7 +80,6 @@
     <ClInclude Include="TfTextLayoutSink.h" />
     <ClInclude Include="TipCandidateList.h" />
     <ClInclude Include="TipCandidateString.h" />
-    <ClInclude Include="DIMEStructureArray.h" />
     <ClInclude Include="UIPresenter.h" />
   </ItemGroup>
   <ItemGroup>
