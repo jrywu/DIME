@@ -214,33 +214,6 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"全型");
 		SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_doubleSingleByteMode, 0);
 
-		if (_imeMode == IME_MODE_ARRAY || _imeMode == IME_MODE_PHONETIC)
-		{
-			if (_imeMode == IME_MODE_PHONETIC)
-			{
-				ShowWindow(GetDlgItem(hDlg, IDC_EDIT_MAXWIDTH), SW_HIDE);
-				ShowWindow(GetDlgItem(hDlg, IDC_STATIC_EDIT_MAXWIDTH), SW_HIDE);
-				hwnd = GetDlgItem(hDlg, IDC_COMBO_PHONETIC_KEYBOARD);
-				SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"標準鍵盤");
-				SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"倚天鍵盤");
-				SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_phoneticKeyboardLayout, 0);
-			}
-			if (_imeMode == IME_MODE_ARRAY)
-			{
-				ShowWindow(GetDlgItem(hDlg, IDC_EDIT_MAXWIDTH), SW_HIDE);
-				ShowWindow(GetDlgItem(hDlg, IDC_STATIC_EDIT_MAXWIDTH), SW_HIDE);
-				if (_arrayScope == ARRAY40_BIG5)
-				{
-					ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_SINGLEQUOTE_CUSTOM_PHRASE), SW_HIDE);
-					ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_FORCESP), SW_HIDE);
-					ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_NOTIFYSP), SW_HIDE);
-				}
-				else
-					ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_AUTOCOMPOSE), SW_HIDE);
-
-			}
-		}
-
 		if (_imeMode != IME_MODE_PHONETIC)
 		{
 			ShowWindow(GetDlgItem(hDlg, IDC_STATIC_PHONETIC_KEYBOARD), SW_HIDE);
@@ -269,6 +242,29 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-A~G");
 			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列40 Big5");
 			SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_arrayScope, 0);
+
+		}
+		if (_imeMode == IME_MODE_PHONETIC)
+		{
+			ShowWindow(GetDlgItem(hDlg, IDC_EDIT_MAXWIDTH), SW_HIDE);
+			ShowWindow(GetDlgItem(hDlg, IDC_STATIC_EDIT_MAXWIDTH), SW_HIDE);
+			hwnd = GetDlgItem(hDlg, IDC_COMBO_PHONETIC_KEYBOARD);
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"標準鍵盤");
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"倚天鍵盤");
+			SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_phoneticKeyboardLayout, 0);
+		}
+		if (_imeMode == IME_MODE_ARRAY)
+		{
+			ShowWindow(GetDlgItem(hDlg, IDC_EDIT_MAXWIDTH), SW_HIDE);
+			ShowWindow(GetDlgItem(hDlg, IDC_STATIC_EDIT_MAXWIDTH), SW_HIDE);
+			if (_arrayScope == ARRAY40_BIG5)
+			{
+				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_SINGLEQUOTE_CUSTOM_PHRASE), SW_HIDE);
+				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_FORCESP), SW_HIDE);
+				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_NOTIFYSP), SW_HIDE);
+			}
+			else
+				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_AUTOCOMPOSE), SW_HIDE);
 
 		}
 		ret = TRUE;
