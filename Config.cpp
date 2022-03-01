@@ -59,6 +59,7 @@ BOOL CConfig::_arrayForceSP = FALSE;
 BOOL CConfig::_arrayNotifySP = TRUE;
 BOOL CConfig::_arrowKeySWPages = TRUE;
 BOOL CConfig::_spaceAsPageDown = FALSE;
+BOOL CConfig::_spaceAsFirstCandSelkey = FALSE;
 UINT CConfig::_fontSize = 12;
 UINT CConfig::_fontWeight = FW_NORMAL;
 BOOL CConfig::_fontItalic = FALSE;
@@ -231,6 +232,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			CheckDlgButton(hDlg, IDC_RADIO_OUTPUT_CHT, BST_CHECKED);
 		}
 		CheckDlgButton(hDlg, IDC_CHECKBOX_SPACEASPAGEDOWN, (_spaceAsPageDown) ? BST_CHECKED : BST_UNCHECKED);
+		CheckDlgButton(hDlg, IDC_CHECKBOX_SPACEASFIRSTCANDSELKEY, (_spaceAsFirstCandSelkey) ? BST_CHECKED : BST_UNCHECKED);
 		CheckDlgButton(hDlg, IDC_CHECKBOX_ARROWKEYSWPAGES, (_arrowKeySWPages) ? BST_CHECKED : BST_UNCHECKED);
 		
 		hwnd = GetDlgItem(hDlg, IDC_COMBO_IME_SHIFT_MODE);
@@ -246,12 +248,15 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"¥þ«¬");
 		SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_doubleSingleByteMode, 0);
 
+		if (_imeMode != IME_MODE_GENERIC)
+		{
+			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_SPACEASFIRSTCANDSELKEY), SW_HIDE);
+		}
 		if (_imeMode != IME_MODE_PHONETIC)
 		{
 			ShowWindow(GetDlgItem(hDlg, IDC_STATIC_PHONETIC_KEYBOARD), SW_HIDE);
 			ShowWindow(GetDlgItem(hDlg, IDC_COMBO_PHONETIC_KEYBOARD), SW_HIDE);
 		}
-		
 		if (_imeMode != IME_MODE_DAYI)
 		{
 			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_DOBEEP_CANDI), SW_HIDE);
@@ -457,6 +462,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		case IDC_CHECKBOX_PHRASE:
 		case IDC_CHECKBOX_ARROWKEYSWPAGES:
 		case IDC_CHECKBOX_SPACEASPAGEDOWN:
+		case IDC_CHECKBOX_SPACEASFIRSTCANDSELKEY:
 		case IDC_CHECKBOX_SHOWNOTIFY:
 			PropSheet_Changed(GetParent(hDlg), hDlg);
 			ret = TRUE;
@@ -533,6 +539,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			_doHanConvert = IsDlgButtonChecked(hDlg, IDC_RADIO_OUTPUT_CHS) == BST_CHECKED;
 			_showNotifyDesktop = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_SHOWNOTIFY) == BST_CHECKED;
 			_spaceAsPageDown = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_SPACEASPAGEDOWN) == BST_CHECKED;
+			_spaceAsFirstCandSelkey = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_SPACEASFIRSTCANDSELKEY) == BST_CHECKED;
 			_arrowKeySWPages = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_ARROWKEYSWPAGES) == BST_CHECKED;
 			_arrayForceSP = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_ARRAY_FORCESP) == BST_CHECKED;
 			_arrayNotifySP = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_ARRAY_NOTIFYSP) == BST_CHECKED;
@@ -931,6 +938,7 @@ VOID CConfig::WriteConfig()
 		fwprintf_s(fp, L"[Config]\n");
 		fwprintf_s(fp, L"AutoCompose = %d\n", _autoCompose ? 1 : 0);
 		fwprintf_s(fp, L"SpaceAsPageDown = %d\n", _spaceAsPageDown ? 1 : 0);
+		fwprintf_s(fp, L"SpaceAsFirstCandSelkey = %d\n", _spaceAsFirstCandSelkey ? 1 : 0);
 		fwprintf_s(fp, L"ArrowKeySWPages = %d\n", _arrowKeySWPages ? 1 : 0);
 		fwprintf_s(fp, L"ClearOnBeep = %d\n", _clearOnBeep ? 1 : 0);
 		fwprintf_s(fp, L"DoBeep = %d\n", _doBeep ? 1 : 0);
@@ -1118,6 +1126,7 @@ VOID CConfig::LoadConfig(IME_MODE imeMode)
 				_autoCompose = TRUE;
 				_maxCodes = 5;
 				_spaceAsPageDown = 0;
+				_spaceAsFirstCandSelkey = 0;
 		
 			}
 			else if(imeMode == IME_MODE_PHONETIC)
@@ -1125,6 +1134,14 @@ VOID CConfig::LoadConfig(IME_MODE imeMode)
 				_autoCompose = FALSE;
 				_maxCodes = 4;
 				_spaceAsPageDown = 1;
+				_spaceAsFirstCandSelkey = 0;
+			}
+			else if (imeMode == IME_MODE_DAYI)
+			{
+				_autoCompose = FALSE;
+				_maxCodes = 4;
+				_spaceAsPageDown = 1;
+				_spaceAsFirstCandSelkey = 1;
 			}
 			else
 			{

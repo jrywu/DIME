@@ -51,6 +51,7 @@ void CCompositionProcessorEngine::UpdateDictionaryFile()
 		debugPrint(L"CCompositionProcessorEngine::UpdateDictionaryFile() the table is loaded from TTS previously and now new cin is loaded");
 		SetupKeystroke(Global::imeMode);
 		SetupConfiguration(Global::imeMode);
+		CConfig::LoadConfig(Global::imeMode);
 		SetupCandidateListRange(Global::imeMode);
 
 	}
@@ -594,16 +595,17 @@ void CCompositionProcessorEngine::SetupConfiguration(IME_MODE imeMode)
 
 	if (imeMode == IME_MODE_DAYI)
 	{
+		CConfig::SetSpaceAsFirstCaniSelkey(TRUE);
 		CConfig::SetAutoCompose(FALSE);
 	}
 	else if (imeMode == IME_MODE_ARRAY)
 	{
-		CConfig::SetSpaceAsPageDown(TRUE);
+		CConfig::SetSpaceAsFirstCaniSelkey(FALSE);
 		CConfig::SetAutoCompose(TRUE);
 	}
 	else if (imeMode == IME_MODE_PHONETIC)
 	{
-		CConfig::SetSpaceAsPageDown(TRUE);
+		CConfig::SetSpaceAsFirstCaniSelkey(FALSE);
 	}
 
 
@@ -785,6 +787,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			// Reload Keystroke and CandiateListRage when table is updated
 			SetupKeystroke(Global::imeMode);
 			SetupConfiguration(Global::imeMode);
+			CConfig::LoadConfig(Global::imeMode);
 			SetupCandidateListRange(Global::imeMode);
 		}
 
@@ -1451,8 +1454,14 @@ void CCompositionProcessorEngine::SetupCandidateListRange(IME_MODE imeMode)
 		_candidatePageSize = (imeMode == IME_MODE_PHONETIC) ? 9 : 10;
 	}
 	else
+	{
 		_candidatePageSize = (UINT)wcslen(pSelkey);
+		if (CConfig::GetSpaceAsFirstCaniSelkey())
+			if (_candidatePageSize > 9) _candidatePageSize = 9;
+		else if (_candidatePageSize > 10) _candidatePageSize = 10;
 
+
+	}
 	for (DWORD i = 0; i < _candidatePageSize; i++)
 	{
 		_KEYSTROKE* pNewIndexRange = nullptr;
@@ -1462,7 +1471,7 @@ void CCompositionProcessorEngine::SetupCandidateListRange(IME_MODE imeMode)
 		pNewPhraseIndexRange = _phraseCandidateListIndexRange.Append();
 		if (pNewIndexRange != nullptr)
 		{
-			if (imeMode == IME_MODE_DAYI)
+			if (CConfig::GetSpaceAsFirstCaniSelkey())//meMode == IME_MODE_DAYI)
 			{
 				if (i == 0)
 				{
@@ -1486,7 +1495,7 @@ void CCompositionProcessorEngine::SetupCandidateListRange(IME_MODE imeMode)
 				GetVKeyFromPrintable(pSelkey[i], &vKey, &modifier);
 				pNewIndexRange->VirtualKey = vKey;
 				pNewIndexRange->Modifiers = modifier;
-				if (i != 9)
+				if (i < 10)
 				{
 					pNewIndexRange->Index = i + 1;
 				}
@@ -1504,7 +1513,7 @@ void CCompositionProcessorEngine::SetupCandidateListRange(IME_MODE imeMode)
 			GetVKeyFromPrintable(phraseSelKey[i], &vKey, &modifier);
 			pNewPhraseIndexRange->VirtualKey = vKey;
 			pNewPhraseIndexRange->Modifiers = modifier;
-			if (i != 9)
+			if (i < 10)
 			{
 				pNewPhraseIndexRange->Index = i + 1;
 				pNewPhraseIndexRange->Modifiers = TF_MOD_SHIFT;

@@ -111,6 +111,9 @@ public:
 
 	static void SetSpaceAsPageDown(BOOL spaceAsPageDown) { _spaceAsPageDown = spaceAsPageDown;}
 	static BOOL GetSpaceAsPageDown() {return _spaceAsPageDown;}
+	static void SetSpaceAsFirstCaniSelkey(BOOL spaceAsFirstCaniSelkey) { _spaceAsFirstCandSelkey = spaceAsFirstCaniSelkey; }
+	static BOOL GetSpaceAsFirstCaniSelkey() { return _spaceAsFirstCandSelkey; }
+
 	static void SetArrowKeySWPages(BOOL arrowKeySWPages) { _arrowKeySWPages = arrowKeySWPages;}
 	static BOOL GetArrowKeySWPages() {return _arrowKeySWPages;}
 	static void SetActivatedKeyboardMode(BOOL activatedKeyboardMode) { _activatedKeyboardMode = activatedKeyboardMode;}
@@ -194,6 +197,7 @@ private:
 	static COLORREF _selectedBGColor;
 
 	static BOOL _spaceAsPageDown;
+	static BOOL _spaceAsFirstCandSelkey;
 	static BOOL _arrowKeySWPages;
 
 	static BOOL _arrayNotifySP;

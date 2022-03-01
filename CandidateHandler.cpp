@@ -46,6 +46,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 HRESULT CDIME::_HandleCandidateFinalize(TfEditCookie ec, _In_ ITfContext *pContext)
 {
+	debugPrint(L"CDIME::_HandleCandidateFinalize()");
 	return _HandleCandidateWorker(ec, pContext);
 }
 
@@ -57,6 +58,7 @@ HRESULT CDIME::_HandleCandidateFinalize(TfEditCookie ec, _In_ ITfContext *pConte
 
 HRESULT CDIME::_HandleCandidateConvert(TfEditCookie ec, _In_ ITfContext *pContext)
 {
+	debugPrint(L"CDIME::_HandleCandidateFinalize()");
     return _HandleCandidateWorker(ec, pContext);
 	
 }
@@ -70,7 +72,7 @@ HRESULT CDIME::_HandleCandidateConvert(TfEditCookie ec, _In_ ITfContext *pContex
 HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext)
 {
 
-	debugPrint(L"CDIME::_HandleCandidateWorker() \n");
+	debugPrint(L"CDIME::_HandleCandidateWorker()");
     HRESULT hr = S_OK;
 	CStringRange commitString, convertedString;
 	CDIMEArray<CCandidateListItem> candidatePhraseList;	
@@ -101,7 +103,8 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 	
 	if (candidateLen == 0)
     {
-		if(_candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION || _candidateMode == CANDIDATE_PHRASE)
+		//if(_candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION || _candidateMode == CANDIDATE_PHRASE)
+		if(_candidateMode == CANDIDATE_PHRASE)
 		{
 			_HandleCancel(ec, pContext);
 			goto Exit;
@@ -250,6 +253,7 @@ Exit:
 
 HRESULT CDIME::_HandleCandidateArrowKey(TfEditCookie ec, _In_ ITfContext *pContext, _In_ KEYSTROKE_FUNCTION keyFunction)
 {
+	debugPrint(L"CDIME::_HandleCandidateArrowKey()");
     ec;
     pContext;
 
@@ -295,6 +299,7 @@ HRESULT CDIME::_HandleCandidateSelectByNumber(TfEditCookie ec, _In_ ITfContext *
 
 HRESULT CDIME::_HandlePhraseFinalize(TfEditCookie ec, _In_ ITfContext *pContext)
 {
+	debugPrint(L"CDIME::_HandlePhraseFinalize() ");
     HRESULT hr = S_OK;
 
     DWORD phraseLen = 0;
@@ -327,6 +332,7 @@ HRESULT CDIME::_HandlePhraseFinalize(TfEditCookie ec, _In_ ITfContext *pContext)
 
 HRESULT CDIME::_HandlePhraseArrowKey(TfEditCookie ec, _In_ ITfContext *pContext, _In_ KEYSTROKE_FUNCTION keyFunction)
 {
+	debugPrint(L"CDIME::_HandlePhraseArrowKey() ");
     ec;
     pContext;
 
@@ -343,6 +349,7 @@ HRESULT CDIME::_HandlePhraseArrowKey(TfEditCookie ec, _In_ ITfContext *pContext,
 
 HRESULT CDIME::_HandlePhraseSelectByNumber(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode, _In_ WCHAR wch)
 {
+	debugPrint(L"CDIME::_HandlePhraseSelectByNumber() ");
 	int iSelectAsNumber = _pCompositionProcessorEngine->GetCandidateListIndexRange()->GetIndex(uCode, wch, _candidateMode);
     if (iSelectAsNumber == -1)
     {

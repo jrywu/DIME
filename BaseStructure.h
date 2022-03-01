@@ -157,7 +157,7 @@ enum CANDIDATE_MODE
     CANDIDATE_ORIGINAL,
     CANDIDATE_PHRASE,
     CANDIDATE_INCREMENTAL,
-    CANDIDATE_WITH_NEXT_COMPOSITION
+    //CANDIDATE_WITH_NEXT_COMPOSITION
 };
 
 //---------------------------------------------------------------------

@@ -47,6 +47,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 BOOL CCompositionProcessorEngine::AddVirtualKey(WCHAR wch)
 {
+	debugPrint(L"CCompositionProcessorEngine::AddVirtualKey()");
 	if (!wch)
 	{
 		return FALSE;
@@ -120,6 +121,7 @@ BOOL CCompositionProcessorEngine::AddVirtualKey(WCHAR wch)
 
 void CCompositionProcessorEngine::RemoveVirtualKey(DWORD_PTR dwIndex)
 {
+	debugPrint(L"CCompositionProcessorEngine::RemoveVirtualKey()");
 	DWORD_PTR srgKeystrokeBufLen = _keystrokeBuffer.GetLength();
 
 	if (dwIndex + 1 < srgKeystrokeBufLen)
@@ -154,6 +156,7 @@ void CCompositionProcessorEngine::RemoveVirtualKey(DWORD_PTR dwIndex)
 
 void CCompositionProcessorEngine::PurgeVirtualKey()
 {
+	debugPrint(L"CCompositionProcessorEngine::PurgeVirtualKey()");
 	if (_keystrokeBuffer.Get())
 	{
 		delete[] _keystrokeBuffer.Get();
@@ -166,6 +169,7 @@ void CCompositionProcessorEngine::PurgeVirtualKey()
 
 WCHAR CCompositionProcessorEngine::GetVirtualKey(DWORD_PTR dwIndex)
 {
+	debugPrint(L"CCompositionProcessorEngine::GetVirtualKey()");
 	if (dwIndex < _keystrokeBuffer.GetLength())
 	{
 		return *(_keystrokeBuffer.Get() + dwIndex);
@@ -175,6 +179,7 @@ WCHAR CCompositionProcessorEngine::GetVirtualKey(DWORD_PTR dwIndex)
 
 BOOL CCompositionProcessorEngine::isPhoneticComposingKey()
 {
+	debugPrint(L"CCompositionProcessorEngine::isPhoneticComposingKey()");
 	if (_keystrokeBuffer.Get() == nullptr || Global::imeMode != IME_MODE_PHONETIC)
 		return FALSE;
 	UINT len = (UINT)_keystrokeBuffer.GetLength();
@@ -191,6 +196,7 @@ BOOL CCompositionProcessorEngine::isPhoneticComposingKey()
 
 UINT CCompositionProcessorEngine::addPhoneticKey(WCHAR* pwch)
 {
+	debugPrint(L"CCompositionProcessorEngine::addPhoneticKey()");
 	WCHAR c = towupper(*pwch);
 	if (c < 32 || c > MAX_RADICAL + 32) return phoneticSyllable;
 
@@ -240,6 +246,7 @@ UINT CCompositionProcessorEngine::addPhoneticKey(WCHAR* pwch)
 }
 WCHAR CCompositionProcessorEngine::VPSymbolToStandardLayoutChar(UINT syllable)
 {
+	debugPrint(L"CCompositionProcessorEngine::VPSymbolToStandardLayoutChar()");
 	if (syllable == vpAnyConsonant || syllable == vpAnyMiddleVowel || syllable == vpAnyVowel || syllable == vpAnyTone)
 		return '?';
 	UINT oridinal = 0, ss;
@@ -257,6 +264,8 @@ WCHAR CCompositionProcessorEngine::VPSymbolToStandardLayoutChar(UINT syllable)
 }
 UINT CCompositionProcessorEngine::removeLastPhoneticSymbol()
 {
+	debugPrint(L"CCompositionProcessorEngine::removeLastPhoneticSymbol()");
+
 	if (phoneticSyllable & vpToneMask)
 		return (phoneticSyllable & ~vpToneMask);
 	else if (phoneticSyllable & vpVowelMask)
@@ -273,6 +282,8 @@ UINT CCompositionProcessorEngine::removeLastPhoneticSymbol()
 //----------------------------------------------------------------------------
 BOOL CCompositionProcessorEngine::IsSymbol()
 {
+	debugPrint(L"CCompositionProcessorEngine::IsSymbol()");
+
 	if (_keystrokeBuffer.Get() == nullptr) 
 		return FALSE;
 	
@@ -303,6 +314,7 @@ BOOL CCompositionProcessorEngine::IsSymbol()
 //----------------------------------------------------------------------------
 BOOL CCompositionProcessorEngine::IsSymbolChar(WCHAR wch)
 {
+	debugPrint(L"CCompositionProcessorEngine::IsSymbolChar()");
 	if (_keystrokeBuffer.Get() == nullptr) 
 		return FALSE;
 	
@@ -339,6 +351,7 @@ BOOL CCompositionProcessorEngine::IsSymbolChar(WCHAR wch)
 //----------------------------------------------------------------------------
 BOOL CCompositionProcessorEngine::IsDayiAddressChar(WCHAR wch)
 {
+	debugPrint(L"CCompositionProcessorEngine::IsDayiAddressChar()");
 	if (Global::imeMode != IME_MODE_DAYI)
 		return FALSE;
 
@@ -361,6 +374,7 @@ BOOL CCompositionProcessorEngine::IsDayiAddressChar(WCHAR wch)
 //----------------------------------------------------------------------------
 BOOL CCompositionProcessorEngine::IsArrayShortCode()
 {
+	debugPrint(L"CCompositionProcessorEngine::IsArrayShortCode()");
 	if (Global::imeMode == IME_MODE_ARRAY && CConfig::GetArrayScope()!=ARRAY40_BIG5 &&
 		_keystrokeBuffer.GetLength() < 3) 
 		return TRUE;
@@ -377,6 +391,7 @@ BOOL CCompositionProcessorEngine::IsArrayShortCode()
 
 BOOL CCompositionProcessorEngine::IsDoubleSingleByte(WCHAR wch)
 {
+	debugPrint(L"CCompositionProcessorEngine::IsDoubleSingleByte()");
 	if (L' ' <= wch && wch <= L'~')
 	{
 		return TRUE;
@@ -411,6 +426,12 @@ BOOL CCompositionProcessorEngine::IsDoubleSingleByte(WCHAR wch)
 BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCHAR* pwch, BOOL fComposing, CANDIDATE_MODE candidateMode, BOOL hasCandidateWithWildcard, UINT candiCount, INT candiSelection, _Inout_opt_ _KEYSTROKE_STATE* pKeyState)
 {
 	debugPrint(L"CCompositionProcessorEngine::IsVirtualKeyNeed() uCode = %d, pKeyState = %d, fComposing = %d, candidateMode = %d, hasCandidateWithWildcard = %d, candiCount = %d", uCode, pKeyState, fComposing, candidateMode, hasCandidateWithWildcard, candiCount);
+	if (candidateMode == CANDIDATE_ORIGINAL || candidateMode == CANDIDATE_PHRASE)//|| candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)
+	{
+		fComposing = FALSE;
+	}
+	
+	//Processing end keys, array/dayi symbol mode, and dayi address input ---------------------------------------------------------
 	if (pKeyState)
 	{
 		pKeyState->Category = CATEGORY_NONE;
@@ -432,67 +453,111 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 		return TRUE;
 	}
 
-
-	if (candidateMode == CANDIDATE_ORIGINAL || candidateMode == CANDIDATE_PHRASE || candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)
+	//Processing cand keys ------------------------------------------------------------------------------
+	
+	if (candidateMode == CANDIDATE_ORIGINAL || candidateMode == CANDIDATE_PHRASE)// || candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)
 	{
-		fComposing = FALSE;
-	}
-
-	if (fComposing || candidateMode == CANDIDATE_INCREMENTAL || candidateMode == CANDIDATE_NONE)
-	{
-
-		if ((IsWildcard() && IsWildcardChar(*pwch) && !IsDisableWildcardAtFirst()) ||
-			(IsWildcard() && IsWildcardChar(*pwch) && !(IsDisableWildcardAtFirst() && _keystrokeBuffer.GetLength() == 0 && IsWildcardAllChar(*pwch))))
+		switch (uCode)
 		{
-			if (pKeyState)
+			case VK_UP:     if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_MOVE_UP; } return TRUE;
+			case VK_DOWN:   if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_MOVE_DOWN; } return TRUE;
+			case VK_PRIOR:  if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_MOVE_PAGE_UP; } return TRUE;
+			case VK_NEXT:   if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_MOVE_PAGE_DOWN; } return TRUE;
+			case VK_HOME:   if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_MOVE_PAGE_TOP; } return TRUE;
+			case VK_END:    if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_MOVE_PAGE_BOTTOM; } return TRUE;
+			case VK_LEFT:   if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_MOVE_LEFT; } return TRUE;
+			case VK_RIGHT:  if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_MOVE_RIGHT; } return TRUE;
+			case VK_RETURN: if (pKeyState)
 			{
-				pKeyState->Category = CATEGORY_COMPOSING;
-				pKeyState->Function = FUNCTION_INPUT;
+				if (candidateMode == CANDIDATE_PHRASE && candiSelection == -1)
+				{
+					pKeyState->Category = CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION;
+					pKeyState->Function = FUNCTION_CANCEL;
+					return FALSE;
+				}
+				else
+				{
+					pKeyState->Category = CATEGORY_CANDIDATE;
+					pKeyState->Function = FUNCTION_CONVERT;
+					return TRUE;
+				}
 			}
-			return TRUE;
+
+			case VK_SPACE:  if (pKeyState)
+			{
+				/*if (candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION) // space finalized the associate here instead of choose the first one (selected index = -1 for phrase candidates).
+				{
+					pKeyState->Category = CATEGORY_CANDIDATE;
+					pKeyState->Function = FUNCTION_FINALIZE_CANDIDATELIST;
+				}
+				else  */
+				if (candidateMode != CANDIDATE_PHRASE
+					&& CConfig::GetSpaceAsPageDown() && (candiCount > _candidatePageSize))
+				{
+					pKeyState->Category = CATEGORY_CANDIDATE;
+					pKeyState->Function = FUNCTION_MOVE_PAGE_DOWN;
+				}
+				else if (candidateMode == CANDIDATE_PHRASE && candiSelection == -1)
+				{
+					pKeyState->Category = CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION;
+					pKeyState->Function = FUNCTION_CANCEL;
+					return FALSE;
+				}
+				else
+				{
+					pKeyState->Category = CATEGORY_CANDIDATE;
+					pKeyState->Function = FUNCTION_CONVERT;
+				}
+				return TRUE;
+			}
+			case VK_BACK:   if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_CANCEL; } return TRUE;
+			case VK_INSERT:
+			case VK_DELETE:
+			case VK_ESCAPE: if (pKeyState)
+			{
+				/*if (candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)
+				{
+					pKeyState->Category = CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION;
+					pKeyState->Function = FUNCTION_FINALIZE_TEXTSTORE;
+					return TRUE;
+				}
+				else
+				{*/
+				pKeyState->Category = CATEGORY_CANDIDATE;
+				pKeyState->Function = FUNCTION_CANCEL;
+				return TRUE;
+				// }
+			}
+
+
 		}
-		if (!(IsWildcard() && IsWildcardChar(*pwch)) && IsVirtualKeyKeystrokeComposition(uCode, pwch, pKeyState, FUNCTION_NONE))
-		{
-			return TRUE;
-		}
-		else if (_hasWildcardIncludedInKeystrokeBuffer && uCode != VK_SHIFT && uCode != VK_BACK &&
-			(uCode == VK_SPACE || uCode == VK_RETURN || candidateMode == CANDIDATE_INCREMENTAL) && Global::imeMode != IME_MODE_ARRAY)
-		{
-			if (pKeyState) { pKeyState->Category = CATEGORY_COMPOSING; pKeyState->Function = FUNCTION_CONVERT_WILDCARD; } return TRUE;
-		}
-	}
-	if (candidateMode == CANDIDATE_ORIGINAL || candidateMode == CANDIDATE_PHRASE || candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)
-	{
-		// Candidate list could not handle key. We can try to restart the composition.
+		
 		if (IsKeystrokeRange(uCode, pwch, pKeyState, candidateMode))
 		{
 			return TRUE;
 		}
 		if (IsVirtualKeyKeystrokeComposition(uCode, pwch, pKeyState, FUNCTION_INPUT))
 		{
-			if (candidateMode != CANDIDATE_ORIGINAL)
-			{
-				return TRUE;
+			if (pKeyState && candidateMode == CANDIDATE_ORIGINAL)
+			{ 
+				pKeyState->Category = CATEGORY_CANDIDATE; 
+				pKeyState->Function = FUNCTION_FINALIZE_CANDIDATELIST_AND_INPUT;
 			}
-			else
-			{
-				if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_FINALIZE_CANDIDATELIST_AND_INPUT; }
-				return TRUE;
-			}
-		}
-	}
-	
-	
-
-	if (!fComposing && candidateMode != CANDIDATE_ORIGINAL && candidateMode != CANDIDATE_PHRASE && candidateMode != CANDIDATE_WITH_NEXT_COMPOSITION)
-	{
-
-		if (!(IsWildcard() && IsWildcardChar(*pwch)) && IsVirtualKeyKeystrokeComposition(uCode, pwch, pKeyState, FUNCTION_INPUT))
-		{
 			return TRUE;
 		}
 	}
-	// System pre-defined keystroke
+	
+	// cancel assciated phrase with anykey except shift
+	if (pKeyState && candidateMode == CANDIDATE_PHRASE && !(GetCandidateListPhraseModifier() == 0 && uCode == VK_SHIFT))  
+	{
+		pKeyState->Category = CATEGORY_CANDIDATE;
+		pKeyState->Function = FUNCTION_CANCEL;
+	}
+
+
+	//Processing Composing keys -------------------------------------------------------------------------------------------
+	
+	
 	if (fComposing)
 	{
 		if ((candidateMode != CANDIDATE_INCREMENTAL))
@@ -529,7 +594,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 						pKeyState->Category = CATEGORY_COMPOSING;
 						pKeyState->Function = FUNCTION_CONVERT;
 					}
-					//pKeyState->Category = CATEGORY_COMPOSING; pKeyState->Function = FUNCTION_CONVERT;
+					
 				}
 				return TRUE;
 
@@ -538,6 +603,10 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 		}
 		else if (candidateMode == CANDIDATE_INCREMENTAL)
 		{
+			if (IsKeystrokeRange(uCode, pwch, pKeyState, candidateMode))
+			{
+				return TRUE;
+			}
 			switch (uCode)
 			{
 				case VK_LEFT:   if (pKeyState) { pKeyState->Category = CATEGORY_COMPOSING; pKeyState->Function = FUNCTION_MOVE_LEFT; } return TRUE;
@@ -581,8 +650,8 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 						pKeyState->Function = FUNCTION_CONVERT;
 					}
 				}
-				return TRUE;
-				case VK_OEM_7: if (pKeyState 
+							 return TRUE;
+				case VK_OEM_7: if (pKeyState
 					&& Global::imeMode == IME_MODE_ARRAY && CConfig::GetArrayScope() != ARRAY40_BIG5)//Array phrase ending
 				{
 					pKeyState->Category = CATEGORY_COMPOSING;
@@ -594,102 +663,58 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 				}
 
 			}
+			
+			/*
+			else if (pKeyState && pKeyState->Category != CATEGORY_NONE)
+			{
+				return FALSE;
+			}*/
+			
 		}
 	}
 	
-	if (candidateMode == CANDIDATE_ORIGINAL || candidateMode == CANDIDATE_PHRASE || candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)
-	{
-		switch (uCode)
-		{
-			case VK_UP:     if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_MOVE_UP; } return TRUE;
-			case VK_DOWN:   if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_MOVE_DOWN; } return TRUE;
-			case VK_PRIOR:  if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_MOVE_PAGE_UP; } return TRUE;
-			case VK_NEXT:   if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_MOVE_PAGE_DOWN; } return TRUE;
-			case VK_HOME:   if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_MOVE_PAGE_TOP; } return TRUE;
-			case VK_END:    if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_MOVE_PAGE_BOTTOM; } return TRUE;
-			case VK_LEFT:   if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_MOVE_LEFT; } return TRUE;
-			case VK_RIGHT:  if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_MOVE_RIGHT; } return TRUE;
-			case VK_RETURN: if (pKeyState)
-			{
-				if (candidateMode == CANDIDATE_PHRASE && candiSelection == -1)
-				{
-					pKeyState->Category = CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION;
-					pKeyState->Function = FUNCTION_CANCEL;
-					return FALSE;
-				}
-				else
-				{
-					pKeyState->Category = CATEGORY_CANDIDATE;
-					pKeyState->Function = FUNCTION_CONVERT;
-					return TRUE;
-				}
-			}
-
-			case VK_SPACE:  if (pKeyState)
-				{
-					if (candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION) // space finalized the associate here instead of choose the first one (selected index = -1 for phrase candidates).
-					{
-						pKeyState->Category = CATEGORY_CANDIDATE;
-						pKeyState->Function = FUNCTION_FINALIZE_CANDIDATELIST;
-					}
-					else if (candidateMode != CANDIDATE_PHRASE
-						&& CConfig::GetSpaceAsPageDown() && (candiCount > _candidatePageSize))
-					{
- 						pKeyState->Category = CATEGORY_CANDIDATE;
-						pKeyState->Function = FUNCTION_MOVE_PAGE_DOWN;
-					}
-					else if (candidateMode == CANDIDATE_PHRASE && candiSelection == -1)
-					{
-						pKeyState->Category = CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION;
-						pKeyState->Function = FUNCTION_CANCEL;
-						return FALSE;
-					}
-					else 
-					{
-						pKeyState->Category = CATEGORY_CANDIDATE;
-						pKeyState->Function = FUNCTION_CONVERT;
-					}
-					return TRUE;
-				}	
-			case VK_BACK:   if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_CANCEL; } return TRUE;
-			case VK_INSERT:
-			case VK_DELETE:
-			case VK_ESCAPE: if (pKeyState)
-				{
-					if (candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)
-					{
-						pKeyState->Category = CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION;
-						pKeyState->Function = FUNCTION_FINALIZE_TEXTSTORE;
-						return TRUE;
-					}
-					else
-					{
-						pKeyState->Category = CATEGORY_CANDIDATE;
-						pKeyState->Function = FUNCTION_CANCEL;
-						return TRUE;
-					}
-				}
-				
-
-		}
-		
-		
-		if (candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)
-		{
-			if (IsVirtualKeyKeystrokeComposition(uCode, pwch, NULL, FUNCTION_NONE))
-			{
-				if (pKeyState) { pKeyState->Category = CATEGORY_COMPOSING; pKeyState->Function = FUNCTION_FINALIZE_TEXTSTORE_AND_INPUT; } return TRUE;
-			}
-		}
-	}
 	
-	if (IsKeystrokeRange(uCode, pwch, pKeyState, candidateMode))
+	if (fComposing || candidateMode == CANDIDATE_INCREMENTAL || candidateMode == CANDIDATE_NONE)
 	{
-		return TRUE;
+
+		if ((IsWildcard() && IsWildcardChar(*pwch) && !IsDisableWildcardAtFirst()) ||
+			(IsWildcard() && IsWildcardChar(*pwch) &&
+				!(IsDisableWildcardAtFirst() && _keystrokeBuffer.GetLength() == 0 && IsWildcardAllChar(*pwch))))
+		{
+			if (pKeyState)
+			{
+				pKeyState->Category = CATEGORY_COMPOSING;
+				pKeyState->Function = FUNCTION_INPUT;
+			}
+			return TRUE;
+		}
+		if (!(IsWildcard() && IsWildcardChar(*pwch))
+			&& IsVirtualKeyKeystrokeComposition(uCode, pwch, pKeyState, FUNCTION_NONE))
+		{
+			return TRUE;
+		}
+		else if (_hasWildcardIncludedInKeystrokeBuffer && uCode != VK_SHIFT && uCode != VK_BACK &&
+			(uCode == VK_SPACE || uCode == VK_RETURN || candidateMode == CANDIDATE_INCREMENTAL)
+			&& Global::imeMode != IME_MODE_ARRAY)
+		{
+			if (pKeyState)
+			{
+				pKeyState->Category = CATEGORY_COMPOSING;
+				pKeyState->Function = FUNCTION_CONVERT_WILDCARD;
+			}
+			return TRUE;
+		}
 	}
-	else if (pKeyState && pKeyState->Category != CATEGORY_NONE)
+
+
+	if (!fComposing && candidateMode != CANDIDATE_ORIGINAL && candidateMode != CANDIDATE_PHRASE)// && candidateMode != CANDIDATE_WITH_NEXT_COMPOSITION)
 	{
-		return FALSE;
+
+		if (!(IsWildcard() && IsWildcardChar(*pwch))
+			&& IsVirtualKeyKeystrokeComposition(uCode, pwch, pKeyState, FUNCTION_INPUT))
+		{
+			return TRUE;
+		}
 	}
 
 	if (*pwch && !IsVirtualKeyKeystrokeComposition(uCode, pwch, pKeyState, FUNCTION_NONE))
@@ -702,11 +727,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 		return FALSE;
 	}
 
-	if (candidateMode == CANDIDATE_PHRASE && !(GetCandidateListPhraseModifier() == 0 && uCode == VK_SHIFT) && pKeyState)  // cancel assciated phrase with anykey except shift
-	{
-		pKeyState->Category = CATEGORY_CANDIDATE;
-		pKeyState->Function = FUNCTION_CANCEL;
-	}
+	
 	
 	return FALSE;
 }
@@ -799,7 +820,7 @@ BOOL CCompositionProcessorEngine::IsKeystrokeRange(UINT uCode, PWCH pwch, _Inout
 				return FALSE;
 			}
 		}
-		else if (candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)
+		/*else if (candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION)
 		{
 			// Candidate phrase could specify *modifier
 			if ((GetCandidateListPhraseModifier() == 0 && (Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT)) != 0) || //shift + 123...
@@ -810,7 +831,7 @@ BOOL CCompositionProcessorEngine::IsKeystrokeRange(UINT uCode, PWCH pwch, _Inout
 				return TRUE;
 			}
 			// else next composition
-		}
+		}*/
 		else if (candidateMode != CANDIDATE_NONE)
 		{
 			pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_SELECT_BY_NUMBER;
