@@ -106,8 +106,6 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CDIME *pTextServic
 
 	_hasWildcardIncludedInKeystrokeBuffer = FALSE;
 
-	_isWildcard = TRUE;
-	_isDisableWildcardAtFirst = FALSE;
 	_isKeystrokeSort = FALSE;
 
 	_isWildCardWordFreqSort = TRUE;
@@ -199,11 +197,9 @@ void CCompositionProcessorEngine::GetReadingString(_Inout_ CStringRange *pReadin
 				}
 
 				oneKeystroke.Set(pKeyStrokeBuffer->Get() + index, 1);
-
-				if (IsWildcard() && IsWildcardChar(*oneKeystroke.Get()))
-				{
-					_hasWildcardIncludedInKeystrokeBuffer = TRUE;
-				}
+				//if (IsWildcard() && IsWildcardChar(*oneKeystroke.Get()))
+				_hasWildcardIncludedInKeystrokeBuffer = TRUE;
+				
 			}
 			pReadingString->Set(pwchRadical, wcslen(pwchRadical));
 		}
@@ -269,17 +265,15 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 	DWORD wildcardIndex = 0;
 	BOOL isFindWildcard = FALSE;
 
-	if (IsWildcard())
+	for (wildcardIndex = 0; wildcardIndex < _keystrokeBuffer.GetLength(); wildcardIndex++)
 	{
-		for (wildcardIndex = 0; wildcardIndex < _keystrokeBuffer.GetLength(); wildcardIndex++)
+		if (IsWildcardChar(*(_keystrokeBuffer.Get() + wildcardIndex)))
 		{
-			if (IsWildcardChar(*(_keystrokeBuffer.Get() + wildcardIndex)))
-			{
-				isFindWildcard = TRUE;
-				break;
-			}
+			isFindWildcard = TRUE;
+			break;
 		}
 	}
+	
 
 	if (isIncrementalWordSearch && IsArrayShortCode() && !isFindWildcard) //array short code mode
 	{
@@ -293,7 +287,8 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 			_pArrayShortCodeTableDictionaryEngine->CollectWord(&_keystrokeBuffer, pCandidateList);
 		}
 	}
-	else if (isIncrementalWordSearch && Global::imeMode != IME_MODE_ARRAY)
+	else if (isIncrementalWordSearch && 
+		!(Global::imeMode == IME_MODE_ARRAY && CConfig::GetArrayScope()!= ARRAY40_BIG5))
 	{
 		CStringRange wildcardSearch;
 		DWORD_PTR keystrokeBufLen = _keystrokeBuffer.GetLength() + 3;
@@ -345,14 +340,11 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 			CCandidateListItem *pLI = pCandidateList->GetAt(index);
 			DWORD_PTR keystrokeBufferLen = 0;
 
-			if (IsWildcard())
-			{
+			/*if (IsWildcard())
 				keystrokeBufferLen = wildcardIndex;
-			}
-			else
-			{
+			else*/
 				keystrokeBufferLen = _keystrokeBuffer.GetLength();
-			}
+			
 
 			if (pLI)
 			{

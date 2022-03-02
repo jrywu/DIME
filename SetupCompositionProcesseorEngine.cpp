@@ -171,8 +171,11 @@ void CCompositionProcessorEngine::SetupKeystroke(IME_MODE imeMode)
 	{
 		return;
 	}
-	if (_pTableDictionaryEngine[imeMode] == nullptr || _pTableDictionaryEngine[imeMode]->GetRadicalMap() == nullptr ||
-		_pTableDictionaryEngine[imeMode]->GetRadicalMap()->size() == 0 || _pTableDictionaryEngine[imeMode]->GetRadicalMap()->size() > MAX_RADICAL) return;
+	if (_pTableDictionaryEngine[imeMode] == nullptr || 
+		_pTableDictionaryEngine[imeMode]->GetRadicalMap() == nullptr ||
+		_pTableDictionaryEngine[imeMode]->GetRadicalMap()->size() == 0 ||
+		_pTableDictionaryEngine[imeMode]->GetRadicalMap()->size() > MAX_RADICAL) 
+		return;
 
 	_KeystrokeComposition.Clear();
 
@@ -588,8 +591,8 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL* pIsE
 void CCompositionProcessorEngine::SetupConfiguration(IME_MODE imeMode)
 {
 	debugPrint(L"CCompositionProcessorEngine::SetupConfiguration() \n");
-	_isWildcard = TRUE;
-	_isDisableWildcardAtFirst = FALSE;
+	//_isWildcard = TRUE;
+	//_isDisableWildcardAtFirst = FALSE;
 	_isKeystrokeSort = FALSE;
 	_isWildCardWordFreqSort = TRUE;
 
@@ -1432,8 +1435,6 @@ CCompositionProcessorEngine::XPreservedKey::~XPreservedKey()
 	}
 }
 
-
-
 void CCompositionProcessorEngine::SetupCandidateListRange(IME_MODE imeMode)
 {
 	debugPrint(L"CCompositionProcessorEngine::SetupCandidateListRange() ");
@@ -1459,8 +1460,6 @@ void CCompositionProcessorEngine::SetupCandidateListRange(IME_MODE imeMode)
 		if (CConfig::GetSpaceAsFirstCaniSelkey())
 			if (_candidatePageSize > 9) _candidatePageSize = 9;
 		else if (_candidatePageSize > 10) _candidatePageSize = 10;
-
-
 	}
 	for (DWORD i = 0; i < _candidatePageSize; i++)
 	{

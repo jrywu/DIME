@@ -92,8 +92,8 @@ public:
 	BOOL GetArraySpeicalCodeFromConvertedText(_In_ CStringRange *inword, _Inout_opt_ CStringRange *csrResult);
 	
     BOOL IsDoubleSingleByte(WCHAR wch);
-    BOOL IsWildcard() { return _isWildcard; }
-    BOOL IsDisableWildcardAtFirst() { return _isDisableWildcardAtFirst; }
+    //BOOL IsWildcard() { return _isWildcard; }
+    //BOOL IsDisableWildcardAtFirst() { return _isDisableWildcardAtFirst; }
     BOOL IsWildcardChar(WCHAR wch) { return ((IsWildcardOneChar(wch) || IsWildcardAllChar(wch)) ? TRUE : FALSE); }
     BOOL IsWildcardOneChar(WCHAR wch) { return (wch==L'?' ? TRUE : FALSE); }
     BOOL IsWildcardAllChar(WCHAR wch) { return (wch==L'*' ? TRUE : FALSE); }
@@ -212,8 +212,8 @@ private:
 	
 
     // Configuration data
-    BOOL _isWildcard;
-    BOOL _isDisableWildcardAtFirst;
+    //BOOL _isWildcard;
+    //BOOL _isDisableWildcardAtFirst;
     BOOL _isKeystrokeSort;
 	BOOL _isWildCardWordFreqSort;
 
