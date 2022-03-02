@@ -1000,9 +1000,19 @@ BOOL CDIME::_IsUILessMode()
 
 void CDIME::_LoadConfig(BOOL isForce, IME_MODE imeMode)
 {
-	CConfig::LoadConfig(imeMode);
-	if (!isForce)
-		if(_pCompositionProcessorEngine) _pCompositionProcessorEngine->UpdateDictionaryFile();
+    if (!isForce)
+    {
+        if (_pCompositionProcessorEngine) _pCompositionProcessorEngine->UpdateDictionaryFile();
+        _pCompositionProcessorEngine->SetupKeystroke(Global::imeMode);
+        CConfig::LoadConfig(Global::imeMode);
+        _pCompositionProcessorEngine->SetupConfiguration(Global::imeMode);
+        _pCompositionProcessorEngine->SetupCandidateListRange(Global::imeMode);
+    }
+    else  if (CConfig::LoadConfig(imeMode))
+    {
+        _pCompositionProcessorEngine->SetupConfiguration(Global::imeMode);
+        _pCompositionProcessorEngine->SetupCandidateListRange(Global::imeMode);
+    }
 
 	if(CConfig::GetReloadReverseConversion() || isForce)
 	{

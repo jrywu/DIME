@@ -1013,7 +1013,7 @@ ErrorExit:
 //
 //----------------------------------------------------------------------------
 
-VOID CConfig::LoadConfig(IME_MODE imeMode)
+BOOL CConfig::LoadConfig(IME_MODE imeMode)
 {
 	debugPrint(L"CDIME::loadConfig() \n");
 	WCHAR wszAppData[MAX_PATH] = { '\0' };
@@ -1021,6 +1021,7 @@ VOID CConfig::LoadConfig(IME_MODE imeMode)
 	WCHAR wzsDIMEProfile[MAX_PATH] = { '\0' };
 	PACL pOldDACL = NULL, pNewDACL = NULL;
 	PSECURITY_DESCRIPTOR pSD = NULL;
+	BOOL bRET = FALSE; 
 
 	WCHAR *pwszINIFileName = new (std::nothrow) WCHAR[MAX_PATH];
 
@@ -1058,6 +1059,7 @@ VOID CConfig::LoadConfig(IME_MODE imeMode)
 			debugPrint(L"CDIME::loadConfig() wstat failed = %d, config file updated = %d\n", failed, updated);
 			if (failed || updated)
 			{
+				bRET = TRUE;
 				CFile *iniDictionaryFile;
 				iniDictionaryFile = new (std::nothrow) CFile();
 				if (iniDictionaryFile && (iniDictionaryFile)->CreateFile(pwszINIFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ | FILE_SHARE_WRITE))
@@ -1108,13 +1110,7 @@ VOID CConfig::LoadConfig(IME_MODE imeMode)
 					_appPermissionSet = TRUE;
 					WriteConfig();
 				}
-
-
-
 			}
-
-
-
 		}
 		else
 		{
@@ -1168,6 +1164,7 @@ ErrorExit:
 	if (pSD != NULL)
 		LocalFree(pSD);
 	delete[]pwszINIFileName;
+	return bRET;  // return TRUE if the config file updated
 }
 
 void CConfig::SetDefaultTextFont(HWND hWnd)

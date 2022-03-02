@@ -155,7 +155,7 @@ public:
 	static PHONETIC_KEYBOARD_LAYOUT getPhoneticKeyboardLayout() { return _phoneticKeyboardLayout; }
 
 	static VOID WriteConfig();
-	static VOID LoadConfig(IME_MODE imeMode);
+	static BOOL LoadConfig(IME_MODE imeMode);
 	
 	static void SetDefaultTextFont(HWND hWnd = nullptr);
 

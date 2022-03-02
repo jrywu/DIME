@@ -639,9 +639,9 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 		}
 	}
 	if (fComposing || candidateMode == CANDIDATE_INCREMENTAL || candidateMode == CANDIDATE_NONE)
-	{	
+	{
 		// Bypassing wildcard keys 
-		if(IsWildcardChar(*pwch))
+		if (IsWildcardChar(*pwch))
 		{
 			if (pKeyState)
 			{
@@ -655,22 +655,17 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 		{
 			return TRUE;
 		}
-	}
-
-	//End composition if the key is not a valid keystroke
-	if (*pwch && !IsVirtualKeyKeystrokeComposition(uCode, pwch, pKeyState, FUNCTION_NONE))
-	{
-		if (pKeyState)
+		//End composition if the key is not a valid keystroke
+		if (*pwch && !IsVirtualKeyKeystrokeComposition(uCode, pwch, pKeyState, FUNCTION_NONE))
 		{
-			pKeyState->Category = CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION;
-			pKeyState->Function = FUNCTION_FINALIZE_TEXTSTORE;
+			if (pKeyState)
+			{
+				pKeyState->Category = CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION;
+				pKeyState->Function = FUNCTION_FINALIZE_TEXTSTORE;
+			}
+			return FALSE;
 		}
-		return FALSE;
 	}
-
-
-	
-	
 	return FALSE;
 }
 //+---------------------------------------------------------------------------
@@ -722,8 +717,6 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeComposition(UINT uCode, P
 			return TRUE;
 		}
 	}
-
-
 	return FALSE;
 }
 

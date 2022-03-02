@@ -591,8 +591,6 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL* pIsE
 void CCompositionProcessorEngine::SetupConfiguration(IME_MODE imeMode)
 {
 	debugPrint(L"CCompositionProcessorEngine::SetupConfiguration() \n");
-	//_isWildcard = TRUE;
-	//_isDisableWildcardAtFirst = FALSE;
 	_isKeystrokeSort = FALSE;
 	_isWildCardWordFreqSort = TRUE;
 
@@ -789,8 +787,8 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			_pTableDictionaryEngine[imeMode]->ParseConfig(imeMode); //parse config to reload updated dictionary
 			// Reload Keystroke and CandiateListRage when table is updated
 			SetupKeystroke(Global::imeMode);
-			SetupConfiguration(Global::imeMode);
 			CConfig::LoadConfig(Global::imeMode);
+			SetupConfiguration(Global::imeMode);
 			SetupCandidateListRange(Global::imeMode);
 		}
 
