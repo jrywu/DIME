@@ -212,16 +212,15 @@ HRESULT CDIME::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *p
     //
     // Get candidate string from composition processor engine
     //
-	BOOL symbolMode = pCompositionProcessorEngine->IsSymbol();
+	//BOOL symbolMode = pCompositionProcessorEngine->IsSymbol();
 	BOOL autoComposeMode = CConfig::GetAutoCompose() || 
         (Global::imeMode == IME_MODE_ARRAY && CConfig::GetArrayScope() != ARRAY40_BIG5);
-	if (autoComposeMode  // auto composing mode: show candidates while composition updated imeediately.
-		|| (Global::imeMode == IME_MODE_PHONETIC && _pCompositionProcessorEngine->isPhoneticComposingKey())
-		|| symbolMode) // fetch candidate in symobl mode with composition started with '='(DAYI) or 'W' (Array)
+
+	if (autoComposeMode)  // auto composing mode: show candidates while composition updated imeediately.
 	{
 		CDIMEArray<CCandidateListItem> candidateList;
 	
-		pCompositionProcessorEngine->GetCandidateList(&candidateList, !symbolMode, isWildcardIncluded);
+	  pCompositionProcessorEngine->GetCandidateList(&candidateList, TRUE, isWildcardIncluded);
 		
 		UINT nCount = candidateList.Count();
 
@@ -237,31 +236,17 @@ HRESULT CDIME::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *p
 				_pUIPresenter->_SetCandidateFillColor(CConfig::GetItemBGColor());
 				_pUIPresenter->_SetCandidateText(&candidateList, _pCompositionProcessorEngine->GetCandidateListIndexRange(),
 							TRUE, pCompositionProcessorEngine->GetCandidateWindowWidth());
-				if (symbolMode || Global::imeMode == IME_MODE_PHONETIC)
-				{
-					_candidateMode = CANDIDATE_ORIGINAL;
-				}
-				else
-				{
-					_candidateMode = CANDIDATE_INCREMENTAL;
-				}
-
+				
+                
+				_candidateMode = CANDIDATE_INCREMENTAL;
+			
 				_isCandidateWithWildcard = FALSE;
 			}
-			if(nCount==1 && symbolMode )  //finalized with the only candidate without showing cand.
-			{
-				_HandleCandidateFinalize(ec, pContext);
-				return hr;
-			}
-			
-
-
+			    
 		}
 		else
 		{
-			if (Global::imeMode == IME_MODE_PHONETIC)
-				DoBeep(BEEP_COMPOSITION_ERROR);
-
+			
 			if (_pUIPresenter)
 			{
 

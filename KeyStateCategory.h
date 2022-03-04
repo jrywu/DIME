@@ -88,6 +88,12 @@ protected:
     // HandleKeyInput
     virtual HRESULT HandleKeyInput(KeyHandlerEditSessionDTO dto);
 
+    // HandleKeyInputAndConvert
+    virtual HRESULT HandleKeyInputAndConvert(KeyHandlerEditSessionDTO dto);
+
+    // HandleKeyInputAndConvertWildCard
+    virtual HRESULT HandleKeyInputAndConvertWildCard(KeyHandlerEditSessionDTO dto);
+
     // HandleKeyFinalizeTextStoreAndInput
     virtual HRESULT HandleKeyFinalizeTextStoreAndInput(KeyHandlerEditSessionDTO dto);
 
@@ -146,6 +152,12 @@ public:
 protected:
     // _HandleCompositionInput
     HRESULT HandleKeyInput(KeyHandlerEditSessionDTO dto);
+
+    // _HandleCompositionInputAndConvert
+    HRESULT HandleKeyInputAndConvert(KeyHandlerEditSessionDTO dto);
+
+    // _HandleCompositionInputAndConvertWildCard
+    HRESULT HandleKeyInputAndConvertWildCard(KeyHandlerEditSessionDTO dto);
 
     // HandleKeyCompositionFinalizeTextStoreAndInput
     HRESULT HandleKeyFinalizeTextStoreAndInput(KeyHandlerEditSessionDTO dto);

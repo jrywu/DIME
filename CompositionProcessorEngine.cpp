@@ -100,6 +100,8 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CDIME *pTextServic
 	_pTCFreqTableDictionaryEngine = nullptr;
 	_pTCFreqTableDictionaryFile = nullptr;
 
+	_pEndkey = nullptr;
+
 	_tfClientId = TF_CLIENTID_NULL;
 
 	_pActiveCandidateListIndexRange = &_candidateListIndexRange;

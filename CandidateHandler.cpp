@@ -72,7 +72,7 @@ HRESULT CDIME::_HandleCandidateConvert(TfEditCookie ec, _In_ ITfContext *pContex
 HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext)
 {
 
-	debugPrint(L"CDIME::_HandleCandidateWorker()");
+	debugPrint(L"CDIME::_HandleCandidateWorker() _IsComposing()= %d", _IsComposing());
     HRESULT hr = S_OK;
 	CStringRange commitString, convertedString;
 	CDIMEArray<CCandidateListItem> candidatePhraseList;	
@@ -416,7 +416,7 @@ VOID CDIME::_DeleteCandidateList(BOOL isForce, _In_opt_ ITfContext *pContext)
 	    _pCompositionProcessorEngine->PurgeVirtualKey();
 	}
 
-    if (_pUIPresenter && isForce)
+     if (_pUIPresenter && isForce)
     {
 		_pUIPresenter->_EndCandidateList();
     }

@@ -107,16 +107,18 @@ HRESULT CKeyStateCategory::KeyStateHandler(KEYSTROKE_FUNCTION function, KeyHandl
     {
     case FUNCTION_INPUT:
         return HandleKeyInput(dto);
+    case FUNCTION_INPUT_AND_CONVERT:
+        return HandleKeyInputAndConvert(dto);
+    case FUNCTION_INPUT_AND_CONVERT_WILDCARD:
+        return HandleKeyInputAndConvertWildCard(dto);
 
     case FUNCTION_FINALIZE_TEXTSTORE_AND_INPUT:
         return HandleKeyFinalizeTextStoreAndInput(dto);
-
     case FUNCTION_FINALIZE_TEXTSTORE:
         return HandleKeyFinalizeTextStore(dto);
 
     case FUNCTION_FINALIZE_CANDIDATELIST_AND_INPUT:
         return HandleKeyFinalizeCandidatelistAndInput(dto);
-
     case FUNCTION_FINALIZE_CANDIDATELIST:
         return HandleKeyFinalizeCandidatelist(dto);
 
@@ -172,6 +174,21 @@ HRESULT CKeyStateCategory::HandleKeyInput(KeyHandlerEditSessionDTO dto)
 	dto;
     return E_NOTIMPL;
 }
+
+// _HandleCompositionInputAndConvert
+HRESULT CKeyStateCategory::HandleKeyInputAndConvert(KeyHandlerEditSessionDTO dto)
+{
+    dto;
+    return E_NOTIMPL;
+}
+
+// _HandleCompositionInputAndConvertWildCard
+HRESULT CKeyStateCategory::HandleKeyInputAndConvertWildCard(KeyHandlerEditSessionDTO dto)
+{
+    dto;
+    return E_NOTIMPL;
+}
+
 
 // HandleKeyFinalizeTextStore
 HRESULT CKeyStateCategory::HandleKeyFinalizeTextStore(KeyHandlerEditSessionDTO dto)
@@ -288,6 +305,20 @@ HRESULT CKeyStateComposing::HandleKeyInput(KeyHandlerEditSessionDTO dto)
 {
 	if(_pTextService == nullptr) return E_FAIL;
     return _pTextService->_HandleCompositionInput(dto.ec, dto.pContext, dto.wch);
+}
+
+HRESULT CKeyStateComposing::HandleKeyInputAndConvert(KeyHandlerEditSessionDTO dto)
+{
+    if (_pTextService == nullptr) return E_FAIL;
+    _pTextService->_HandleCompositionInput(dto.ec, dto.pContext, dto.wch);
+    return _pTextService->_HandleCompositionConvert(dto.ec, dto.pContext, FALSE, FALSE);
+}
+
+HRESULT CKeyStateComposing::HandleKeyInputAndConvertWildCard(KeyHandlerEditSessionDTO dto)
+{
+    if (_pTextService == nullptr) return E_FAIL;
+    _pTextService->_HandleCompositionInput(dto.ec, dto.pContext, dto.wch);
+    return _pTextService->_HandleCompositionConvert(dto.ec, dto.pContext, TRUE, FALSE);
 }
 
 HRESULT CKeyStateComposing::HandleKeyFinalizeTextStoreAndInput(KeyHandlerEditSessionDTO dto)

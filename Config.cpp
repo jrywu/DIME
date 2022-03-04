@@ -1052,7 +1052,7 @@ BOOL CConfig::LoadConfig(IME_MODE imeMode)
 
 		if (PathFileExists(pwszINIFileName))
 		{
-			debugPrint(L"CDIME::loadConfig() confi file = %s exists\n", pwszINIFileName);
+			debugPrint(L"CDIME::loadConfig() config file = %s exists\n", pwszINIFileName);
 			struct _stat initTimeStamp;
 			BOOL failed = _wstat(pwszINIFileName, &initTimeStamp) == -1;  //error for retrieving timestamp
 			BOOL updated = initTimeStamp.st_mtime != _initTimeStamp.st_mtime;
@@ -1287,7 +1287,6 @@ BOOL CConfig::importCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToLoad)
 		if (!IsTextUnicode(customText, dwDataLen, NULL))
 		{
 			WCHAR* outWStr = nullptr;
-			//mlangToUnicode((CHAR*)customText, &dwDataLen, WText);
 			UINT codepage = 0;
 
 			//IMultiLanguage intilization

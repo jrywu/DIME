@@ -222,6 +222,23 @@ void CCompositionProcessorEngine::SetupKeystroke(IME_MODE imeMode)
 		pKS->Modifiers = modifier;
 	}
 
+	// End composing key
+	if (_pEndkey)
+	{
+		for (UINT i = 0; i < wcslen(_pEndkey); i++)
+		{
+			_KEYSTROKE* pKS = nullptr;
+			WCHAR c = *(_pEndkey + i);
+			if (c < 32 || c > MAX_RADICAL + 32) continue;
+			pKS = _KeystrokeComposition.GetAt(c - 32);
+			if (pKS == nullptr) break;
+			if(pKS->Function == FUNCTION_INPUT)
+				pKS->Function = FUNCTION_INPUT_AND_CONVERT;
+			else
+				pKS->Function = FUNCTION_CONVERT;
+
+		}
+	}
 	return;
 }
 
@@ -608,6 +625,9 @@ void CCompositionProcessorEngine::SetupConfiguration(IME_MODE imeMode)
 	{
 		CConfig::SetSpaceAsFirstCaniSelkey(FALSE);
 	}
+	if (_pTableDictionaryEngine[imeMode])
+		_pEndkey = _pTableDictionaryEngine[imeMode]->GetEndkey();
+
 
 
 
@@ -1456,7 +1476,7 @@ void CCompositionProcessorEngine::SetupCandidateListRange(IME_MODE imeMode)
 	{
 		_candidatePageSize = (UINT)wcslen(pSelkey);
 		if (CConfig::GetSpaceAsFirstCaniSelkey())
-			if (_candidatePageSize > 9) _candidatePageSize = 9;
+			if (_candidatePageSize + 1 > 10) _candidatePageSize = 10;
 		else if (_candidatePageSize > 10) _candidatePageSize = 10;
 	}
 	for (DWORD i = 0; i < _candidatePageSize; i++)
@@ -1510,7 +1530,7 @@ void CCompositionProcessorEngine::SetupCandidateListRange(IME_MODE imeMode)
 			GetVKeyFromPrintable(phraseSelKey[i], &vKey, &modifier);
 			pNewPhraseIndexRange->VirtualKey = vKey;
 			pNewPhraseIndexRange->Modifiers = modifier;
-			if (i < 10)
+			if (i != 9)
 			{
 				pNewPhraseIndexRange->Index = i + 1;
 				pNewPhraseIndexRange->Modifiers = TF_MOD_SHIFT;
@@ -1524,5 +1544,5 @@ void CCompositionProcessorEngine::SetupCandidateListRange(IME_MODE imeMode)
 
 		}
 	}
-	_pActiveCandidateListIndexRange = &_candidateListIndexRange;  // Preset the active cand list range
+	
 }

@@ -78,9 +78,11 @@ public:
     // Symbol mode
     BOOL IsSymbolChar(WCHAR wch);
 	BOOL IsSymbol();
+	BOOL IsSymbolLeading();
 
-	
-	
+	//Phonetic composingkey
+	BOOL isEndComposingKey(WCHAR wch);
+
 
 	//Dayi Address characters direct input
 	BOOL IsDayiAddressChar(WCHAR wch);
@@ -151,8 +153,6 @@ private:
 
     CFile* GetDictionaryFile();
 
-private:
-
 	CDIME* _pTextService;
     
 	IME_MODE _imeMode;
@@ -184,6 +184,8 @@ private:
 	//void sortListItemByFindWordFreq(_Inout_ CDIMEArray<CCandidateListItem> *pCandidateList);
 
     CStringRange _keystrokeBuffer;
+
+	WCHAR* _pEndkey;
 
     BOOL _hasWildcardIncludedInKeystrokeBuffer;
 
@@ -235,9 +237,7 @@ private:
 	CStringRange buildKeyStrokesFromPhoneticSyllable(UINT syllable);
 	WCHAR VPSymbolToStandardLayoutChar(UINT syllable);
 
-	public:
-		//Phonetic composingkey
-	BOOL isPhoneticComposingKey();
+	
 };
 #endif
 

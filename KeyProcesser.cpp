@@ -47,7 +47,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 BOOL CCompositionProcessorEngine::AddVirtualKey(WCHAR wch)
 {
-	debugPrint(L"CCompositionProcessorEngine::AddVirtualKey()");
+	//debugPrint(L"CCompositionProcessorEngine::AddVirtualKey()");
 	if (!wch)
 	{
 		return FALSE;
@@ -121,7 +121,7 @@ BOOL CCompositionProcessorEngine::AddVirtualKey(WCHAR wch)
 
 void CCompositionProcessorEngine::RemoveVirtualKey(DWORD_PTR dwIndex)
 {
-	debugPrint(L"CCompositionProcessorEngine::RemoveVirtualKey()");
+	//debugPrint(L"CCompositionProcessorEngine::RemoveVirtualKey()");
 	DWORD_PTR srgKeystrokeBufLen = _keystrokeBuffer.GetLength();
 
 	if (dwIndex + 1 < srgKeystrokeBufLen)
@@ -156,7 +156,7 @@ void CCompositionProcessorEngine::RemoveVirtualKey(DWORD_PTR dwIndex)
 
 void CCompositionProcessorEngine::PurgeVirtualKey()
 {
-	debugPrint(L"CCompositionProcessorEngine::PurgeVirtualKey()");
+	//debugPrint(L"CCompositionProcessorEngine::PurgeVirtualKey()");
 	if (_keystrokeBuffer.Get())
 	{
 		delete[] _keystrokeBuffer.Get();
@@ -169,7 +169,7 @@ void CCompositionProcessorEngine::PurgeVirtualKey()
 
 WCHAR CCompositionProcessorEngine::GetVirtualKey(DWORD_PTR dwIndex)
 {
-	debugPrint(L"CCompositionProcessorEngine::GetVirtualKey()");
+	//debugPrint(L"CCompositionProcessorEngine::GetVirtualKey()");
 	if (dwIndex < _keystrokeBuffer.GetLength())
 	{
 		return *(_keystrokeBuffer.Get() + dwIndex);
@@ -177,26 +177,31 @@ WCHAR CCompositionProcessorEngine::GetVirtualKey(DWORD_PTR dwIndex)
 	return 0;
 }
 
-BOOL CCompositionProcessorEngine::isPhoneticComposingKey()
+BOOL CCompositionProcessorEngine::isEndComposingKey(WCHAR wch)
 {
-	debugPrint(L"CCompositionProcessorEngine::isPhoneticComposingKey()");
-	if (_keystrokeBuffer.Get() == nullptr || Global::imeMode != IME_MODE_PHONETIC)
-		return FALSE;
+	//debugPrint(L"CCompositionProcessorEngine::isEndComposingKey()");
+	if (_keystrokeBuffer.Get() == nullptr || _pEndkey == nullptr)// || Global::imeMode != IME_MODE_PHONETIC)
+		goto exit;
 	UINT len = (UINT)_keystrokeBuffer.GetLength();
 	if (len == 0)
-		return FALSE;
-	WCHAR wch = *(_keystrokeBuffer.Get() + len - 1);
-
-	if (wch == '3' || wch == '4' || wch == '6' || wch == '7')
-		return TRUE;
-
+		goto exit;
+	
+	for (UINT i = 0; i < wcslen(_pEndkey); i++)
+	{
+		if (*(_pEndkey+i) == wch)
+			return TRUE;
+	}
+	//if (wch == '3' || wch == '4' || wch == '6' || wch == '7')
+	//	return TRUE;
+exit:
+	//debugPrint(L"CCompositionProcessorEngine::isEndComposingKey() reutrn FALSE");
 	return FALSE;
 
 }
 
 UINT CCompositionProcessorEngine::addPhoneticKey(WCHAR* pwch)
 {
-	debugPrint(L"CCompositionProcessorEngine::addPhoneticKey()");
+	//debugPrint(L"CCompositionProcessorEngine::addPhoneticKey()");
 	WCHAR c = towupper(*pwch);
 	if (c < 32 || c > MAX_RADICAL + 32) return phoneticSyllable;
 
@@ -246,7 +251,7 @@ UINT CCompositionProcessorEngine::addPhoneticKey(WCHAR* pwch)
 }
 WCHAR CCompositionProcessorEngine::VPSymbolToStandardLayoutChar(UINT syllable)
 {
-	debugPrint(L"CCompositionProcessorEngine::VPSymbolToStandardLayoutChar()");
+	//debugPrint(L"CCompositionProcessorEngine::VPSymbolToStandardLayoutChar()");
 	if (syllable == vpAnyConsonant || syllable == vpAnyMiddleVowel || syllable == vpAnyVowel || syllable == vpAnyTone)
 		return '?';
 	UINT oridinal = 0, ss;
@@ -264,7 +269,7 @@ WCHAR CCompositionProcessorEngine::VPSymbolToStandardLayoutChar(UINT syllable)
 }
 UINT CCompositionProcessorEngine::removeLastPhoneticSymbol()
 {
-	debugPrint(L"CCompositionProcessorEngine::removeLastPhoneticSymbol()");
+	//debugPrint(L"CCompositionProcessorEngine::removeLastPhoneticSymbol()");
 
 	if (phoneticSyllable & vpToneMask)
 		return (phoneticSyllable & ~vpToneMask);
@@ -277,12 +282,31 @@ UINT CCompositionProcessorEngine::removeLastPhoneticSymbol()
 }
 //+---------------------------------------------------------------------------
 //
+// IsSymbolLeading()
+//
+//----------------------------------------------------------------------------
+BOOL CCompositionProcessorEngine::IsSymbolLeading()
+{
+	//debugPrint(L"CCompositionProcessorEngine::IsSymbolLeading()");
+	if (_keystrokeBuffer.Get() == nullptr || _keystrokeBuffer.GetLength() ==0)
+		return FALSE;
+	WCHAR c = *_keystrokeBuffer.Get();
+	if ((Global::imeMode == IME_MODE_DAYI && c == L'=') ||
+		(Global::imeMode == IME_MODE_ARRAY && (
+			(CConfig::GetArrayScope() != ARRAY40_BIG5 && towupper(c) == L'W') ||
+			CConfig::GetArrayScope() == ARRAY40_BIG5 && (towupper(c) == L'H' || c == L'8'))))
+		return TRUE;
+	else
+		return FALSE;
+}
+//+---------------------------------------------------------------------------
+//
 // IsSymbol
 //
 //----------------------------------------------------------------------------
 BOOL CCompositionProcessorEngine::IsSymbol()
 {
-	debugPrint(L"CCompositionProcessorEngine::IsSymbol()");
+	//debugPrint(L"CCompositionProcessorEngine::IsSymbol()");
 
 	if (_keystrokeBuffer.Get() == nullptr) 
 		return FALSE;
@@ -303,7 +327,7 @@ BOOL CCompositionProcessorEngine::IsSymbol()
 			return TRUE;
 
 	}
-	
+	//debugPrint(L"CCompositionProcessorEngine::IsSymbol() return FALSE");
 	return FALSE;
 }
 
@@ -314,10 +338,10 @@ BOOL CCompositionProcessorEngine::IsSymbol()
 //----------------------------------------------------------------------------
 BOOL CCompositionProcessorEngine::IsSymbolChar(WCHAR wch)
 {
-	debugPrint(L"CCompositionProcessorEngine::IsSymbolChar()");
-	if (_keystrokeBuffer.Get() == nullptr) 
-		return FALSE;
-	
+	//debugPrint(L"CCompositionProcessorEngine::IsSymbolChar()");
+	if (_keystrokeBuffer.Get() == nullptr)
+		goto exit;
+	debugPrint(L"CCompositionProcessorEngine::IsSymbolChar(), len = %d, c = %d", _keystrokeBuffer.GetLength(), *_keystrokeBuffer.Get());
 	if ((_keystrokeBuffer.GetLength() == 1) &&
 		(*_keystrokeBuffer.Get() == L'=') &&
 		Global::imeMode == IME_MODE_DAYI && _pTableDictionaryEngine[IME_MODE_DAYI])
@@ -341,6 +365,8 @@ BOOL CCompositionProcessorEngine::IsSymbolChar(WCHAR wch)
 			return TRUE;
 
 	}
+exit:
+	debugPrint(L"CCompositionProcessorEngine::IsSymbolChar() return FALSE");
 	return FALSE;
 }
 
@@ -351,7 +377,7 @@ BOOL CCompositionProcessorEngine::IsSymbolChar(WCHAR wch)
 //----------------------------------------------------------------------------
 BOOL CCompositionProcessorEngine::IsDayiAddressChar(WCHAR wch)
 {
-	debugPrint(L"CCompositionProcessorEngine::IsDayiAddressChar()");
+	//debugPrint(L"CCompositionProcessorEngine::IsDayiAddressChar()");
 	if (Global::imeMode != IME_MODE_DAYI)
 		return FALSE;
 
@@ -362,7 +388,7 @@ BOOL CCompositionProcessorEngine::IsDayiAddressChar(WCHAR wch)
 			return TRUE;
 		}
 	}
-
+	//debugPrint(L"CCompositionProcessorEngine::IsDayiAddressChar() return FALSE");
 	return FALSE;
 }
 
@@ -374,7 +400,7 @@ BOOL CCompositionProcessorEngine::IsDayiAddressChar(WCHAR wch)
 //----------------------------------------------------------------------------
 BOOL CCompositionProcessorEngine::IsArrayShortCode()
 {
-	debugPrint(L"CCompositionProcessorEngine::IsArrayShortCode()");
+	//debugPrint(L"CCompositionProcessorEngine::IsArrayShortCode()");
 	if (Global::imeMode == IME_MODE_ARRAY && CConfig::GetArrayScope()!=ARRAY40_BIG5 &&
 		_keystrokeBuffer.GetLength() < 3) 
 		return TRUE;
@@ -391,7 +417,7 @@ BOOL CCompositionProcessorEngine::IsArrayShortCode()
 
 BOOL CCompositionProcessorEngine::IsDoubleSingleByte(WCHAR wch)
 {
-	debugPrint(L"CCompositionProcessorEngine::IsDoubleSingleByte()");
+	//debugPrint(L"CCompositionProcessorEngine::IsDoubleSingleByte()");
 	if (L' ' <= wch && wch <= L'~')
 	{
 		return TRUE;
@@ -425,7 +451,8 @@ BOOL CCompositionProcessorEngine::IsDoubleSingleByte(WCHAR wch)
 
 BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCHAR* pwch, BOOL fComposing, CANDIDATE_MODE candidateMode, BOOL hasCandidateWithWildcard, UINT candiCount, INT candiSelection, _Inout_opt_ _KEYSTROKE_STATE* pKeyState)
 {
-	debugPrint(L"CCompositionProcessorEngine::IsVirtualKeyNeed() uCode = %d, pKeyState = %d, fComposing = %d, candidateMode = %d, hasCandidateWithWildcard = %d, candiCount = %d", uCode, pKeyState, fComposing, candidateMode, hasCandidateWithWildcard, candiCount);
+	hasCandidateWithWildcard;
+	//debugPrint(L"CCompositionProcessorEngine::IsVirtualKeyNeed() uCode = %d, pwch = %c, pKeyState = %d, fComposing = %d, candidateMode = %d, hasCandidateWithWildcard = %d, candiCount = %d", uCode, *pwch, pKeyState, fComposing, candidateMode, hasCandidateWithWildcard, candiCount);
 	if (pKeyState)
 	{
 		pKeyState->Category = CATEGORY_NONE;
@@ -436,17 +463,18 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 	{
 		fComposing = FALSE;
 	}
-	//Processing array/dayi symbol mode, and dayi address input ---------------------------------------------------------
-	// Symbol mode start with L'=' for dayi or L'w' for array
-	if (IsSymbolChar(*pwch))
+	// Processing dayi address input ---------------------------------------------------------
+	// // Symbol mode start with L'=' for dayi, L'w' for array30; L'H' and L'8' for array40
+	if (IsSymbolLeading() && candidateMode != CANDIDATE_ORIGINAL)
 	{
 		if (pKeyState)
 		{
 			pKeyState->Category = CATEGORY_COMPOSING;
-			pKeyState->Function = FUNCTION_INPUT;
+			pKeyState->Function = FUNCTION_INPUT_AND_CONVERT;
 		}
 		return TRUE;
 	}
+
 	// Address characters direct input mode  "'[]-\"
 	if (IsDayiAddressChar(*pwch) && candidateMode != CANDIDATE_ORIGINAL)
 	{
@@ -457,6 +485,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 		}
 		return TRUE;
 	}
+	
 	//Processing cand keys ------------------------------------------------------------------------------
 	if (candidateMode == CANDIDATE_ORIGINAL || candidateMode == CANDIDATE_PHRASE)
 	{
@@ -509,15 +538,15 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 			case VK_BACK:   if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_CANCEL; } return TRUE;
 			case VK_INSERT:
 			case VK_DELETE:
-			case VK_ESCAPE: if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_CANCEL; }
+			case VK_ESCAPE: if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_CANCEL; } return TRUE;
 		}
 		// Check if the key is valid cand selkeys and set corersponding pKeystate category&function.
 		if (IsKeystrokeRange(uCode, pwch, pKeyState, candidateMode))
 		{
 			return TRUE;
 		}
-		// User send next valid keystroke.  Select the first item and start new composition
-		if (IsVirtualKeyKeystrokeComposition(uCode, pwch, pKeyState, FUNCTION_INPUT))
+		// User send next valid keystroke without select cand.  Select the first item and start new composition
+		if (IsVirtualKeyKeystrokeComposition(uCode, pwch, pKeyState, FUNCTION_NONE))
 		{
 			if (pKeyState && candidateMode == CANDIDATE_ORIGINAL)
 			{ 
@@ -526,19 +555,19 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 			}
 			return TRUE;
 		}
-		// cancel associated phrase with anykey except shift
-		if (candidateMode == CANDIDATE_PHRASE
-			&& !(GetCandidateListPhraseModifier() == 0 && uCode == VK_SHIFT))
-		{
-			if (pKeyState)
-			{
-				pKeyState->Category = CATEGORY_CANDIDATE;
-				pKeyState->Function = FUNCTION_CANCEL;
-			}
-			return FALSE;
-		}
+		
 	}
-
+	// cancel associated phrase with anykey except shift
+	if (candidateMode == CANDIDATE_PHRASE
+		&& !(GetCandidateListPhraseModifier() == 0 && uCode == VK_SHIFT))
+	{
+		if (pKeyState)
+		{
+			pKeyState->Category = CATEGORY_CANDIDATE;
+			pKeyState->Function = FUNCTION_CANCEL;
+		}
+		return FALSE;
+	}
 	//Processing Composing keys -------------------------------------------------------------------------------------------
 	if (fComposing)
 	{
@@ -593,7 +622,8 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 					}
 				}
 					return TRUE;
-				case VK_ESCAPE: if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_CANCEL; } return TRUE;
+				case VK_ESCAPE: if (pKeyState) {
+					pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_CANCEL; } return TRUE;
 				case VK_BACK:   if (pKeyState) { pKeyState->Category = CATEGORY_COMPOSING; pKeyState->Function = FUNCTION_BACKSPACE; } return TRUE;
 				case VK_UP:     if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_MOVE_UP; } return TRUE;
 				case VK_DOWN:   if (pKeyState) { pKeyState->Category = CATEGORY_CANDIDATE; pKeyState->Function = FUNCTION_MOVE_DOWN; } return TRUE;
@@ -620,16 +650,18 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 
 				}
 					return TRUE;							
-				case VK_OEM_7: if (pKeyState
-					&& Global::imeMode == IME_MODE_ARRAY && CConfig::GetArrayScope() != ARRAY40_BIG5)//Array phrase ending
+				case VK_OEM_7:	if (pKeyState) //Array phrase ending key '
 				{
-					pKeyState->Category = CATEGORY_COMPOSING;
-					if (_hasWildcardIncludedInKeystrokeBuffer)
-						pKeyState->Function = FUNCTION_CONVERT_ARRAY_PHRASE_WILDCARD;
-					else
-						pKeyState->Function = FUNCTION_CONVERT_ARRAY_PHRASE;
-					return TRUE;
+					if (Global::imeMode == IME_MODE_ARRAY && CConfig::GetArrayScope() != ARRAY40_BIG5)
+					{
+						pKeyState->Category = CATEGORY_COMPOSING;
+						if (_hasWildcardIncludedInKeystrokeBuffer)
+							pKeyState->Function = FUNCTION_CONVERT_ARRAY_PHRASE_WILDCARD;
+						else
+							pKeyState->Function = FUNCTION_CONVERT_ARRAY_PHRASE;
+					}
 				}
+					return TRUE;
 			}
 			// Check if the key is valid cand selkeys and set corersponding pKeystate category&function.
 			if (IsKeystrokeRange(uCode, pwch, pKeyState, candidateMode))
@@ -650,21 +682,40 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 			}
 			return TRUE;
 		}
+		
 		// Check if valid composition
-		if (IsVirtualKeyKeystrokeComposition(uCode, pwch, pKeyState, FUNCTION_INPUT))
+		if (IsVirtualKeyKeystrokeComposition(uCode, pwch, pKeyState, FUNCTION_NONE))
 		{
+			if (_hasWildcardIncludedInKeystrokeBuffer && pKeyState->Function == FUNCTION_INPUT_AND_CONVERT) 
+				pKeyState->Function = FUNCTION_INPUT_AND_CONVERT_WILDCARD;
+			return TRUE;
+		}
+
+		// Endkey end composition 
+		if (isEndComposingKey(*pwch))
+		{
+			if (pKeyState)
+			{
+				pKeyState->Category = CATEGORY_COMPOSING;
+				if (_hasWildcardIncludedInKeystrokeBuffer)
+					pKeyState->Function = FUNCTION_CONVERT_WILDCARD;
+				else
+					pKeyState->Function = FUNCTION_CONVERT;
+			}
 			return TRUE;
 		}
 		//End composition if the key is not a valid keystroke
 		if (*pwch && !IsVirtualKeyKeystrokeComposition(uCode, pwch, pKeyState, FUNCTION_NONE))
 		{
 			if (pKeyState)
-			{
+			{				
 				pKeyState->Category = CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION;
 				pKeyState->Function = FUNCTION_FINALIZE_TEXTSTORE;
 			}
 			return FALSE;
 		}
+		
+		
 	}
 	return FALSE;
 }
@@ -729,6 +780,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeComposition(UINT uCode, P
 
 BOOL CCompositionProcessorEngine::IsKeystrokeRange(UINT uCode, PWCH pwch, _Inout_opt_ _KEYSTROKE_STATE* pKeyState, CANDIDATE_MODE candidateMode)
 {
+	//debugPrint(L"IsKeystrokeRange() ucode=%d, pwch=%c, candidateMode=%d", uCode, *pwch, candidateMode);
 	if (pKeyState == nullptr)
 	{
 		return FALSE;
@@ -739,6 +791,7 @@ BOOL CCompositionProcessorEngine::IsKeystrokeRange(UINT uCode, PWCH pwch, _Inout
 
 	if (_pActiveCandidateListIndexRange->IsRange(uCode, *pwch, Global::ModifiersValue, candidateMode))
 	{
+
 		if (candidateMode == CANDIDATE_PHRASE)
 		{
 			pKeyState->Category = CATEGORY_CANDIDATE;

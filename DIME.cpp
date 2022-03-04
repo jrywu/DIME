@@ -976,9 +976,10 @@ BOOL CDIME::SetupLanguageProfile(LANGID langid, REFGUID guidLanguageProfile, _In
 
 			_pCompositionProcessorEngine->SetupPreserved(pThreadMgr, tfClientId);
 			_pCompositionProcessorEngine->SetupDictionaryFile(imeMode);
-			_pCompositionProcessorEngine->SetupKeystroke(imeMode);
+			
             CConfig::LoadConfig(Global::imeMode);
 			_pCompositionProcessorEngine->SetupConfiguration(imeMode);
+            _pCompositionProcessorEngine->SetupKeystroke(imeMode);
             _pCompositionProcessorEngine->SetupCandidateListRange(imeMode);
 
 		}
@@ -1003,14 +1004,11 @@ void CDIME::_LoadConfig(BOOL isForce, IME_MODE imeMode)
     if (!isForce)
     {
         if (_pCompositionProcessorEngine) _pCompositionProcessorEngine->UpdateDictionaryFile();
-        _pCompositionProcessorEngine->SetupKeystroke(Global::imeMode);
-        CConfig::LoadConfig(Global::imeMode);
-        _pCompositionProcessorEngine->SetupConfiguration(Global::imeMode);
-        _pCompositionProcessorEngine->SetupCandidateListRange(Global::imeMode);
     }
-    else  if (CConfig::LoadConfig(imeMode))
+    if (CConfig::LoadConfig(imeMode))
     {
         _pCompositionProcessorEngine->SetupConfiguration(Global::imeMode);
+        _pCompositionProcessorEngine->SetupKeystroke(Global::imeMode);
         _pCompositionProcessorEngine->SetupCandidateListRange(Global::imeMode);
     }
 
@@ -1046,7 +1044,6 @@ void CDIME::_LoadConfig(BOOL isForce, IME_MODE imeMode)
 			}
 		}
 		CConfig::SetReloadReverseConversion(FALSE);
-		//CConfig::WriteConfig();
 	}
 
 
