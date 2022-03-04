@@ -199,8 +199,9 @@ void CCompositionProcessorEngine::GetReadingString(_Inout_ CStringRange *pReadin
 				}
 
 				oneKeystroke.Set(pKeyStrokeBuffer->Get() + index, 1);
-				//if (IsWildcard() && IsWildcardChar(*oneKeystroke.Get()))
-				_hasWildcardIncludedInKeystrokeBuffer = TRUE;
+				
+				if (IsWildcardChar(*oneKeystroke.Get()))
+					_hasWildcardIncludedInKeystrokeBuffer = TRUE;
 				
 			}
 			pReadingString->Set(pwchRadical, wcslen(pwchRadical));
@@ -237,10 +238,13 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 	{
 		if (virtualKeyLen == 1 && IsWildcardChar(*_keystrokeBuffer.Get()))
 		{
-			CCandidateListItem *pLI = nullptr;
+			CCandidateListItem* pLI = nullptr;
+			CStringRange readingString;
+			GetReadingString(&readingString, FALSE);
+
 			pLI = pCandidateList->Append();
 			pLI->_FindKeyCode = _keystrokeBuffer;
-			pLI->_ItemString = _keystrokeBuffer;
+			pLI->_ItemString = readingString;
 			_hasWildcardIncludedInKeystrokeBuffer = FALSE;
 			return;
 		}
@@ -342,10 +346,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 			CCandidateListItem *pLI = pCandidateList->GetAt(index);
 			DWORD_PTR keystrokeBufferLen = 0;
 
-			/*if (IsWildcard())
-				keystrokeBufferLen = wildcardIndex;
-			else*/
-				keystrokeBufferLen = _keystrokeBuffer.GetLength();
+			keystrokeBufferLen = _keystrokeBuffer.GetLength();
 			
 
 			if (pLI)

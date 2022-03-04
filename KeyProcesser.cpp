@@ -132,7 +132,9 @@ void CCompositionProcessorEngine::RemoveVirtualKey(DWORD_PTR dwIndex)
 			(srgKeystrokeBufLen - dwIndex - 1) * sizeof(WCHAR));
 	}
 
-	_keystrokeBuffer.Set(_keystrokeBuffer.Get(), srgKeystrokeBufLen - 1);	if (srgKeystrokeBufLen == 1) // no more virtual keys in buffer after backspace
+	_keystrokeBuffer.Set(_keystrokeBuffer.Get(), srgKeystrokeBufLen - 1);	
+	
+	if (srgKeystrokeBufLen == 1) // no more virtual keys in buffer after backspace
 	{
 		_hasWildcardIncludedInKeystrokeBuffer = FALSE;
 	}
@@ -331,7 +333,7 @@ BOOL CCompositionProcessorEngine::IsSymbol()
 	return FALSE;
 }
 
-/*/+---------------------------------------------------------------------------
+//+---------------------------------------------------------------------------
 //
 // IsSymbolChar
 //
@@ -369,7 +371,7 @@ exit:
 	debugPrint(L"CCompositionProcessorEngine::IsSymbolChar() return FALSE");
 	return FALSE;
 }
-*/
+
 //+---------------------------------------------------------------------------
 //
 // IsDayiAddressChar
@@ -465,12 +467,13 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 	}
 	// Processing dayi address input ---------------------------------------------------------
 	// // Symbol mode start with L'=' for dayi, L'w' for array30; L'H' and L'8' for array40
-	if (IsSymbolLeading() && candidateMode != CANDIDATE_ORIGINAL)
+	if (IsSymbolChar(*pwch) && candidateMode != CANDIDATE_ORIGINAL)
 	{
 		if (pKeyState)
 		{
 			pKeyState->Category = CATEGORY_COMPOSING;
 			pKeyState->Function = FUNCTION_INPUT_AND_CONVERT;
+			
 		}
 		return TRUE;
 	}
@@ -678,7 +681,9 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 			if (pKeyState)
 			{
 				pKeyState->Category = CATEGORY_COMPOSING;
-				pKeyState->Function = FUNCTION_INPUT;
+				// Send wildcard char directly if it's the first key in composition
+				pKeyState->Function = (_keystrokeBuffer.GetLength() == 0)? FUNCTION_INPUT_AND_CONVERT:FUNCTION_INPUT;
+
 			}
 			return TRUE;
 		}

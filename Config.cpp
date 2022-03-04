@@ -300,8 +300,8 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_FORCESP), SW_HIDE);
 				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_NOTIFYSP), SW_HIDE);
 			}
-			else
-				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_AUTOCOMPOSE), SW_HIDE);
+			
+			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_AUTOCOMPOSE), SW_HIDE);
 
 		}
 		ret = TRUE;
@@ -605,8 +605,6 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 					(_arrayScope == ARRAY40_BIG5) ? SW_HIDE : SW_SHOW);
 				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_NOTIFYSP), 
 					(_arrayScope == ARRAY40_BIG5) ? SW_HIDE : SW_SHOW);
-				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_AUTOCOMPOSE),
-					(_arrayScope == ARRAY40_BIG5) ? SW_SHOW : SW_HIDE);
 				
 				debugPrint(L"selected arrray scope item is %d", _arrayScope);
 			}

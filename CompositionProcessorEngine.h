@@ -76,7 +76,7 @@ public:
     void OnPreservedKey(REFGUID rguid, _Out_ BOOL *pIsEaten, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId);
 
     // Symbol mode
-    //BOOL IsSymbolChar(WCHAR wch);
+    BOOL IsSymbolChar(WCHAR wch);
 	BOOL IsSymbol();
 	BOOL IsSymbolLeading();
 

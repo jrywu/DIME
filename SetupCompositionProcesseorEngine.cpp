@@ -619,7 +619,7 @@ void CCompositionProcessorEngine::SetupConfiguration(IME_MODE imeMode)
 	else if (imeMode == IME_MODE_ARRAY)
 	{
 		CConfig::SetSpaceAsFirstCaniSelkey(FALSE);
-		CConfig::SetAutoCompose(TRUE);
+		CConfig::SetAutoCompose((CConfig::GetArrayScope() != ARRAY40_BIG5));
 	}
 	else if (imeMode == IME_MODE_PHONETIC)
 	{
@@ -1512,7 +1512,7 @@ void CCompositionProcessorEngine::SetupCandidateListRange(IME_MODE imeMode)
 				GetVKeyFromPrintable(pSelkey[i], &vKey, &modifier);
 				pNewIndexRange->VirtualKey = vKey;
 				pNewIndexRange->Modifiers = modifier;
-				if (i < 10)
+				if (i != 9)
 				{
 					pNewIndexRange->Index = i + 1;
 				}
