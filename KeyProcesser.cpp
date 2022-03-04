@@ -331,7 +331,7 @@ BOOL CCompositionProcessorEngine::IsSymbol()
 	return FALSE;
 }
 
-//+---------------------------------------------------------------------------
+/*/+---------------------------------------------------------------------------
 //
 // IsSymbolChar
 //
@@ -369,7 +369,7 @@ exit:
 	debugPrint(L"CCompositionProcessorEngine::IsSymbolChar() return FALSE");
 	return FALSE;
 }
-
+*/
 //+---------------------------------------------------------------------------
 //
 // IsDayiAddressChar
