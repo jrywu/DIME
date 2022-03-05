@@ -959,6 +959,7 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall)
 
 			if (_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())
 			{
+				/*
 				debugPrint(L"notify width = %d, candwidth = %d", _pNotifyWnd->_GetWidth(), _pCandidateWnd->_GetWidth());
 				if (candPt.x < (int)_pNotifyWnd->_GetWidth())
 				{
@@ -972,6 +973,22 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall)
 				}
 				_notifyLocation.x = candPt.x;
 				_notifyLocation.y = candPt.y;
+				*/
+				debugPrint(L"notify width = %d, candwidth = %d", _pNotifyWnd->_GetWidth(), _pCandidateWnd->_GetWidth());
+				// cand window is on the top of caret
+				if (candPt.y < lpRect->top) 
+					_notifyLocation.y = candPt.y + (candRect.bottom - candRect.top) - _pNotifyWnd->_GetHeight();
+				else 
+					_notifyLocation.y = candPt.y;
+
+				if (candPt.x < (int)_pNotifyWnd->_GetWidth())
+					_notifyLocation.x = candPt.x + _pCandidateWnd->_GetWidth();
+				else
+					_notifyLocation.x = candPt.x - _pNotifyWnd->_GetWidth();
+					
+				_pNotifyWnd->_Move(_notifyLocation.x, _notifyLocation.y);
+				debugPrint(L"move notify to x = %d, y = %d", _notifyLocation.x, _notifyLocation.y);
+				_notifyLocation.x = candPt.x;
 			}
 			else
 			{

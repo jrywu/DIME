@@ -430,6 +430,18 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			case CBN_SELCHANGE:
 				PropSheet_Changed(GetParent(hDlg), hDlg);
 				ret = TRUE;
+				hwnd = GetDlgItem(hDlg, IDC_COMBO_ARRAY_SCOPE);
+				_arrayScope = (ARRAY_SCOPE)SendMessage(hwnd, CB_GETCURSEL, 0, 0);
+				_autoCompose = _arrayScope != ARRAY40_BIG5;
+
+				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_SINGLEQUOTE_CUSTOM_PHRASE),
+					(_arrayScope == ARRAY40_BIG5) ? SW_HIDE : SW_SHOW);
+				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_FORCESP),
+					(_arrayScope == ARRAY40_BIG5) ? SW_HIDE : SW_SHOW);
+				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_NOTIFYSP),
+					(_arrayScope == ARRAY40_BIG5) ? SW_HIDE : SW_SHOW);
+
+				debugPrint(L"selected arrray scope item is %d", _arrayScope);
 				break;
 			default:
 				break;
@@ -599,6 +611,8 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			{
 				hwnd = GetDlgItem(hDlg, IDC_COMBO_ARRAY_SCOPE);
 				_arrayScope = (ARRAY_SCOPE)SendMessage(hwnd, CB_GETCURSEL, 0, 0);
+				_autoCompose = _arrayScope != ARRAY40_BIG5;
+				
 				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_SINGLEQUOTE_CUSTOM_PHRASE),
 					(_arrayScope == ARRAY40_BIG5)?SW_HIDE:SW_SHOW);
 				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_FORCESP), 

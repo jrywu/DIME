@@ -1537,7 +1537,7 @@ void CCompositionProcessorEngine::SetupCandidateListRange(IME_MODE imeMode)
 			if (i != 9)
 			{
 				pNewPhraseIndexRange->Index = i + 1;
-				pNewPhraseIndexRange->CandIndex = i + 1 +0x30;  //ASCII 0x3x = x 
+				pNewPhraseIndexRange->CandIndex = WCHAR(i + 1 +0x30);  //ASCII 0x3x = x 
 				pNewPhraseIndexRange->Modifiers = TF_MOD_SHIFT;
 			}
 			else

@@ -341,31 +341,41 @@ BOOL CCompositionProcessorEngine::IsSymbol()
 BOOL CCompositionProcessorEngine::IsSymbolChar(WCHAR wch)
 {
 	//debugPrint(L"CCompositionProcessorEngine::IsSymbolChar()");
-	if (_keystrokeBuffer.Get() == nullptr)
+	if (_keystrokeBuffer.Get() == nullptr || _keystrokeBuffer.GetLength() > 1)
 		goto exit;
 	debugPrint(L"CCompositionProcessorEngine::IsSymbolChar(), len = %d, c = %d", _keystrokeBuffer.GetLength(), *_keystrokeBuffer.Get());
-	if ((_keystrokeBuffer.GetLength() == 1) &&
-		(*_keystrokeBuffer.Get() == L'=') &&
-		Global::imeMode == IME_MODE_DAYI && _pTableDictionaryEngine[IME_MODE_DAYI])
+	
+	if (_keystrokeBuffer.GetLength() == 0)
 	{
-		for (UINT i = 0; i < wcslen(Global::DayiSymbolCharTable); i++)
-		{
-			if (Global::DayiSymbolCharTable[i] == wch)
-				return TRUE;
-		}
-
+		if((Global::imeMode == IME_MODE_DAYI && wch == L'=') ||
+		   (Global::imeMode == IME_MODE_ARRAY &&
+				((CConfig::GetArrayScope() != ARRAY40_BIG5 && (towupper(wch) == L'W')) ||
+				 (CConfig::GetArrayScope() == ARRAY40_BIG5 && (towupper(wch) == L'H' || wch == L'8')))))
+					return TRUE;
 	}
-	if ((_keystrokeBuffer.GetLength() == 1) && Global::imeMode == IME_MODE_ARRAY)
+	else if (_keystrokeBuffer.GetLength() == 1)
 	{
-		WCHAR c = *_keystrokeBuffer.Get();
-		if( CConfig::GetArrayScope() != ARRAY40_BIG5 && (towupper(c)== L'W') &&
-			(wch >= L'0' && wch <= L'9') )
-			return TRUE;
-		if (CConfig::GetArrayScope() == ARRAY40_BIG5
-			&& (towupper(c) == L'H' || c == L'8') &&
-			(wch == L'\'' || wch == L'[' || wch == L']' || wch == L'-' || wch == L'=') )
-			return TRUE;
+		if (Global::imeMode == IME_MODE_DAYI)
+		{
+			for (UINT i = 0; i < wcslen(Global::DayiSymbolCharTable); i++)
+			{
+				if (Global::DayiSymbolCharTable[i] == wch)
+					return TRUE;
+			}
 
+		}
+		else if ( Global::imeMode == IME_MODE_ARRAY)
+		{
+			WCHAR c = *_keystrokeBuffer.Get();
+			if (CConfig::GetArrayScope() != ARRAY40_BIG5 && (towupper(c) == L'W') &&
+				(wch >= L'0' && wch <= L'9'))
+				return TRUE;
+			else if (CConfig::GetArrayScope() == ARRAY40_BIG5
+				&& (towupper(c) == L'H' || c == L'8') &&
+				(wch == L'\'' || wch == L'[' || wch == L']' || wch == L'-' || wch == L'='))
+				return TRUE;
+
+		}
 	}
 exit:
 	debugPrint(L"CCompositionProcessorEngine::IsSymbolChar() return FALSE");
