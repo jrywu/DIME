@@ -1005,7 +1005,7 @@ void CDIME::_LoadConfig(BOOL isForce, IME_MODE imeMode)
     {
         if (_pCompositionProcessorEngine) _pCompositionProcessorEngine->UpdateDictionaryFile();
     }
-    if (CConfig::LoadConfig(imeMode))
+    if (CConfig::LoadConfig(imeMode)) // config file udpated
     {
         _pCompositionProcessorEngine->SetupConfiguration(Global::imeMode);
         _pCompositionProcessorEngine->SetupKeystroke(Global::imeMode);

@@ -1510,7 +1510,10 @@ void CCompositionProcessorEngine::SetupCandidateListRange(IME_MODE imeMode)
 			else
 			{
 				pNewIndexRange->Printable = pSelkey[i];
-				pNewIndexRange->CandIndex = pSelkey[i];
+				if(Global::imeMode == IME_MODE_ARRAY && CConfig::GetArrayScope()== ARRAY40_BIG5)
+					pNewIndexRange->CandIndex = WCHAR(i + 1 + 0x30);  //ASCII 0x3x = x 
+				else
+					pNewIndexRange->CandIndex = pSelkey[i];
 				UINT vKey, modifier;
 				GetVKeyFromPrintable(pSelkey[i], &vKey, &modifier);
 				pNewIndexRange->VirtualKey = vKey;

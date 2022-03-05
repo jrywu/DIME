@@ -1131,6 +1131,7 @@ BOOL CConfig::LoadConfig(IME_MODE imeMode)
 			//should do IM specific default here.
 			if (imeMode == IME_MODE_ARRAY)
 			{
+				_arrayScope = ARRAY30_UNICODE_EXT_A;
 				_autoCompose = TRUE;
 				_maxCodes = 5;
 				_spaceAsPageDown = 0;
@@ -1156,6 +1157,7 @@ BOOL CConfig::LoadConfig(IME_MODE imeMode)
 				_autoCompose = FALSE;
 				_maxCodes = 4;
 				_spaceAsPageDown = 0;
+				_spaceAsFirstCandSelkey = 0;
 			}
 
 			if (imeMode != IME_MODE_NONE)
