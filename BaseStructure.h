@@ -317,6 +317,7 @@ struct _KEYSTROKE
 {
     UINT Index;
     WCHAR Printable;
+    WCHAR CandIndex;
     UINT VirtualKey;
     UINT Modifiers;
     KEYSTROKE_FUNCTION Function;

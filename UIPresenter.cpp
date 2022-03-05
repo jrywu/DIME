@@ -646,14 +646,6 @@ void CUIPresenter::AddCandidateToUI(_In_ CDIMEArray<CCandidateListItem> *pCandid
 	if(pCandidateList == nullptr || _pCandidateWnd == nullptr) return;
     for (UINT index = 0; index < pCandidateList->Count(); index++)
     {
-		/*
-		CCandidateListItem *pCandidateItem;
-		pCandidateItem = pCandidateList->GetAt(index);
-		WCHAR key[255], value[255];
-		StringCchCopyNW(key, 255, pCandidateItem->_ItemString.Get(), pCandidateItem->_ItemString.GetLength());
-		StringCchCopyNW(value, 255, pCandidateItem->_FindKeyCode.Get(), pCandidateItem->_FindKeyCode.GetLength());
-		debugPrint(L"Cand item:%s:%s", key, value);
-		*/
 		_pCandidateWnd->_AddString(pCandidateList->GetAt(index), isAddFindKeyCode);
     }
 

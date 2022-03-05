@@ -824,7 +824,8 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
         SetTextColor(dcHandle, _crNumberColor);
         SetBkColor(dcHandle, _crNumberBkColor);
 
-		StringCchPrintf(wszNumString, ARRAYSIZE(wszNumString), L"%d", (LONG)_pIndexRange->GetAt(indexInPage)->Index);
+        // Print cand list index 
+		StringCchPrintf(wszNumString, ARRAYSIZE(wszNumString), L"%c", _pIndexRange->GetAt(indexInPage)->CandIndex);
 		ExtTextOut(dcHandle, PageCountPosition * cxLine, indexInPage * cyLine + cyOffset, ETO_OPAQUE, &rc, wszNumString, numStringLen, NULL);
 
         rc.left = prc->left + StringPosition * cxLine;

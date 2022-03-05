@@ -1488,16 +1488,18 @@ void CCompositionProcessorEngine::SetupCandidateListRange(IME_MODE imeMode)
 		pNewPhraseIndexRange = _phraseCandidateListIndexRange.Append();
 		if (pNewIndexRange != nullptr)
 		{
-			if (CConfig::GetSpaceAsFirstCaniSelkey())//meMode == IME_MODE_DAYI)
+			if (CConfig::GetSpaceAsFirstCaniSelkey())
 			{
 				if (i == 0)
 				{
 					pNewIndexRange->Printable = ' ';
+					pNewIndexRange->CandIndex = ' ';
 					pNewIndexRange->VirtualKey = VK_SPACE;
 				}
 				else
 				{
 					pNewIndexRange->Printable = pSelkey[i - 1];
+					pNewIndexRange->CandIndex = pSelkey[i - 1];
 					UINT vKey, modifier;
 					GetVKeyFromPrintable(pSelkey[i - 1], &vKey, &modifier);
 					pNewIndexRange->VirtualKey = vKey;
@@ -1508,6 +1510,7 @@ void CCompositionProcessorEngine::SetupCandidateListRange(IME_MODE imeMode)
 			else
 			{
 				pNewIndexRange->Printable = pSelkey[i];
+				pNewIndexRange->CandIndex = pSelkey[i];
 				UINT vKey, modifier;
 				GetVKeyFromPrintable(pSelkey[i], &vKey, &modifier);
 				pNewIndexRange->VirtualKey = vKey;
@@ -1526,6 +1529,7 @@ void CCompositionProcessorEngine::SetupCandidateListRange(IME_MODE imeMode)
 		{
 			StringCchCopy(phraseSelKey, MAX_CAND_SELKEY, L"!@#$%^&*()");
 			pNewPhraseIndexRange->Printable = phraseSelKey[i];
+			
 			UINT vKey, modifier;
 			GetVKeyFromPrintable(phraseSelKey[i], &vKey, &modifier);
 			pNewPhraseIndexRange->VirtualKey = vKey;
@@ -1533,10 +1537,12 @@ void CCompositionProcessorEngine::SetupCandidateListRange(IME_MODE imeMode)
 			if (i != 9)
 			{
 				pNewPhraseIndexRange->Index = i + 1;
+				pNewPhraseIndexRange->CandIndex = i + 1 +0x30;  //ASCII 0x3x = x 
 				pNewPhraseIndexRange->Modifiers = TF_MOD_SHIFT;
 			}
 			else
 			{
+				pNewPhraseIndexRange->CandIndex = L'0';
 				pNewPhraseIndexRange->Index = 0;
 				pNewPhraseIndexRange->Modifiers = TF_MOD_SHIFT;
 
