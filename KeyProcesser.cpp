@@ -489,7 +489,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 	}
 
 	// Address characters direct input mode  "'[]-\"
-	if (IsDayiAddressChar(*pwch) && candidateMode == CANDIDATE_NONE)
+	if (IsDayiAddressChar(*pwch) && (candidateMode == CANDIDATE_NONE || candidateMode == CANDIDATE_PHRASE))
 	{
 		if (pKeyState)
 		{
