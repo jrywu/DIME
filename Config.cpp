@@ -84,6 +84,8 @@ CDIMEArray <LanguageProfileInfo>* CConfig::_reverseConvervsionInfoList = new (st
 CLSID CConfig::_reverseConverstionCLSID = CLSID_NULL;
 GUID CConfig::_reverseConversionGUIDProfile = CLSID_NULL;
 WCHAR* CConfig::_reverseConversionDescription = nullptr;
+WCHAR CConfig::_pwzsDIMEProfile[] = L"\0";
+WCHAR CConfig::_pwszINIFileName[] = L"\0";
 BOOL CConfig::_reloadReverseConversion = FALSE;
 
 WCHAR CConfig::_pFontFaceName[] = { L"微軟正黑體" };
@@ -480,7 +482,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			ret = TRUE;
 			break;
 		case IDOK:
-			CConfig::WriteConfig();
+			WriteConfig(TRUE);
 			ret = TRUE;
 			break;
 		default:
@@ -631,7 +633,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			}
 
 
-			CConfig::WriteConfig();
+			WriteConfig(TRUE);
 			ret = TRUE;
 			break;
 
@@ -914,109 +916,131 @@ void DrawColor(HWND hwnd, HDC hdc, COLORREF col)
 //
 //----------------------------------------------------------------------------
 
-VOID CConfig::WriteConfig()
+VOID CConfig::WriteConfig(BOOL confirmUpdated)
 {
-	debugPrint(L"CDIME::updateConfig() \n");
-	WCHAR wszAppData[MAX_PATH] = { '\0' };
-	SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);
-	WCHAR wzsDIMEProfile[MAX_PATH] = { '\0' };
-	WCHAR *pwszINIFileName = new (std::nothrow) WCHAR[MAX_PATH];
+	debugPrint(L"CDIME::WriteConfig() \n");
 
-	if (!pwszINIFileName)  goto ErrorExit;
+	struct _stat initTimeStamp;
+	BOOL failed = _wstat(_pwszINIFileName, &initTimeStamp) != -1;
+	BOOL updated = FALSE;
+		if(!failed) 
+			updated = difftime(initTimeStamp.st_mtime, _initTimeStamp.st_mtime) > 0;
 
-	*pwszINIFileName = L'\0';
-
-	StringCchPrintf(wzsDIMEProfile, MAX_PATH, L"%s\\DIME", wszAppData);
-	if (!PathFileExists(wzsDIMEProfile))
+	if(confirmUpdated && !failed && updated)
 	{
-		if (CreateDirectory(wzsDIMEProfile, NULL) == 0) goto ErrorExit;
+		//The config file is udpated
+		MessageBox(GetFocus(), L"新設定未生效!\n設定檔已被其他程式更新，請避免在兩個程式同時開啟設定頁面。",
+			L"設定錯誤", MB_ICONERROR);
+		LoadConfig(_imeMode);
 	}
-
-	if (_imeMode == IME_MODE_DAYI)
-		StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\DayiConfig.ini", wzsDIMEProfile);
-	else if (_imeMode == IME_MODE_ARRAY)
-		StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\ArrayConfig.ini", wzsDIMEProfile);
-	else if (_imeMode == IME_MODE_PHONETIC)
-		StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\PhoneConfig.ini", wzsDIMEProfile);
-	else if (_imeMode == IME_MODE_GENERIC)
-		StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\GenericConfig.ini", wzsDIMEProfile);
-	else
-		StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\config.ini", wzsDIMEProfile);
-
-	FILE *fp;
-	_wfopen_s(&fp, pwszINIFileName, L"w, ccs=UTF-16LE"); // overwrite the file
-	if (fp)
+	if(!confirmUpdated || failed || !updated)
 	{
-		fwprintf_s(fp, L"[Config]\n");
-		fwprintf_s(fp, L"AutoCompose = %d\n", _autoCompose ? 1 : 0);
-		fwprintf_s(fp, L"SpaceAsPageDown = %d\n", _spaceAsPageDown ? 1 : 0);
-		fwprintf_s(fp, L"SpaceAsFirstCandSelkey = %d\n", _spaceAsFirstCandSelkey ? 1 : 0);
-		fwprintf_s(fp, L"ArrowKeySWPages = %d\n", _arrowKeySWPages ? 1 : 0);
-		fwprintf_s(fp, L"ClearOnBeep = %d\n", _clearOnBeep ? 1 : 0);
-		fwprintf_s(fp, L"DoBeep = %d\n", _doBeep ? 1 : 0);
-		fwprintf_s(fp, L"DoBeepNotify = %d\n", _doBeepNotify ? 1 : 0);
-		fwprintf_s(fp, L"DoBeepOnCandi = %d\n", _doBeepOnCandi ? 1 : 0);
-		fwprintf_s(fp, L"ActivatedKeyboardMode = %d\n", _activatedKeyboardMode ? 1 : 0);
-		fwprintf_s(fp, L"MakePhrase = %d\n", _makePhrase ? 1 : 0);
-		fwprintf_s(fp, L"MaxCodes = %d\n", _maxCodes);
-		fwprintf_s(fp, L"IMEShiftMode  = %d\n", _imeShiftMode);
-		fwprintf_s(fp, L"DoubleSingleByteMode = %d\n", _doubleSingleByteMode);
-		fwprintf_s(fp, L"ShowNotifyDesktop = %d\n", _showNotifyDesktop ? 1 : 0);
-		fwprintf_s(fp, L"DoHanConvert = %d\n", _doHanConvert ? 1 : 0);
-		fwprintf_s(fp, L"FontSize = %d\n", _fontSize);
-		fwprintf_s(fp, L"FontItalic = %d\n", _fontItalic ? 1 : 0);
-		fwprintf_s(fp, L"FontWeight = %d\n", _fontWeight);
-		fwprintf_s(fp, L"FontFaceName = %s\n", _pFontFaceName);
-		fwprintf_s(fp, L"ItemColor = 0x%06X\n", _itemColor);
-		fwprintf_s(fp, L"PhraseColor = 0x%06X\n", _phraseColor);
-		fwprintf_s(fp, L"NumberColor = 0x%06X\n", _numberColor);
-		fwprintf_s(fp, L"ItemBGColor = 0x%06X\n", _itemBGColor);
-		fwprintf_s(fp, L"SelectedItemColor = 0x%06X\n", _selectedColor);
-		fwprintf_s(fp, L"SelectedBGItemColor = 0x%06X\n", _selectedBGColor);
-		fwprintf_s(fp, L"CustomTablePriority = %d\n", _customTablePriority ? 1 : 0);
-		//reversion conversion
-		fwprintf_s(fp, L"ReloadReverseConversion = %d\n", _reloadReverseConversion);
-		BSTR pbstr;
-		if (SUCCEEDED(StringFromCLSID(_reverseConverstionCLSID, &pbstr)))
+		FILE* fp;
+		_wfopen_s(&fp, _pwszINIFileName, L"w, ccs=UTF-16LE"); // overwrite the file
+		if (fp)
 		{
-			fwprintf_s(fp, L"ReverseConversionCLSID = %s\n", pbstr);
+			fwprintf_s(fp, L"[Config]\n");
+			fwprintf_s(fp, L"AutoCompose = %d\n", _autoCompose ? 1 : 0);
+			fwprintf_s(fp, L"SpaceAsPageDown = %d\n", _spaceAsPageDown ? 1 : 0);
+			fwprintf_s(fp, L"SpaceAsFirstCandSelkey = %d\n", _spaceAsFirstCandSelkey ? 1 : 0);
+			fwprintf_s(fp, L"ArrowKeySWPages = %d\n", _arrowKeySWPages ? 1 : 0);
+			fwprintf_s(fp, L"ClearOnBeep = %d\n", _clearOnBeep ? 1 : 0);
+			fwprintf_s(fp, L"DoBeep = %d\n", _doBeep ? 1 : 0);
+			fwprintf_s(fp, L"DoBeepNotify = %d\n", _doBeepNotify ? 1 : 0);
+			fwprintf_s(fp, L"DoBeepOnCandi = %d\n", _doBeepOnCandi ? 1 : 0);
+			fwprintf_s(fp, L"ActivatedKeyboardMode = %d\n", _activatedKeyboardMode ? 1 : 0);
+			fwprintf_s(fp, L"MakePhrase = %d\n", _makePhrase ? 1 : 0);
+			fwprintf_s(fp, L"MaxCodes = %d\n", _maxCodes);
+			fwprintf_s(fp, L"IMEShiftMode  = %d\n", _imeShiftMode);
+			fwprintf_s(fp, L"DoubleSingleByteMode = %d\n", _doubleSingleByteMode);
+			fwprintf_s(fp, L"ShowNotifyDesktop = %d\n", _showNotifyDesktop ? 1 : 0);
+			fwprintf_s(fp, L"DoHanConvert = %d\n", _doHanConvert ? 1 : 0);
+			fwprintf_s(fp, L"FontSize = %d\n", _fontSize);
+			fwprintf_s(fp, L"FontItalic = %d\n", _fontItalic ? 1 : 0);
+			fwprintf_s(fp, L"FontWeight = %d\n", _fontWeight);
+			fwprintf_s(fp, L"FontFaceName = %s\n", _pFontFaceName);
+			fwprintf_s(fp, L"ItemColor = 0x%06X\n", _itemColor);
+			fwprintf_s(fp, L"PhraseColor = 0x%06X\n", _phraseColor);
+			fwprintf_s(fp, L"NumberColor = 0x%06X\n", _numberColor);
+			fwprintf_s(fp, L"ItemBGColor = 0x%06X\n", _itemBGColor);
+			fwprintf_s(fp, L"SelectedItemColor = 0x%06X\n", _selectedColor);
+			fwprintf_s(fp, L"SelectedBGItemColor = 0x%06X\n", _selectedBGColor);
+			fwprintf_s(fp, L"CustomTablePriority = %d\n", _customTablePriority ? 1 : 0);
+			//reversion conversion
+			fwprintf_s(fp, L"ReloadReverseConversion = %d\n", _reloadReverseConversion);
+			BSTR pbstr;
+			if (SUCCEEDED(StringFromCLSID(_reverseConverstionCLSID, &pbstr)))
+			{
+				fwprintf_s(fp, L"ReverseConversionCLSID = %s\n", pbstr);
+			}
+			if (SUCCEEDED(StringFromCLSID(_reverseConversionGUIDProfile, &pbstr)))
+			{
+				fwprintf_s(fp, L"ReverseConversionGUIDProfile = %s\n", pbstr);
+			}
+
+			fwprintf_s(fp, L"ReverseConversionDescription = %s\n", _reverseConversionDescription);
+			fwprintf_s(fp, L"AppPermissionSet = %d\n", _appPermissionSet ? 1 : 0);
+
+
+			if (_imeMode == IME_MODE_DAYI)
+			{
+				fwprintf_s(fp, L"DayiArticleMode = %d\n", _dayiArticleMode ? 1 : 0);
+			}
+
+			if (_imeMode == IME_MODE_ARRAY)
+			{
+				fwprintf_s(fp, L"ArrayScope = %d\n", _arrayScope);
+				fwprintf_s(fp, L"ArrayForceSP = %d\n", _arrayForceSP ? 1 : 0);
+				fwprintf_s(fp, L"ArrayNotifySP = %d\n", _arrayNotifySP ? 1 : 0);
+				fwprintf_s(fp, L"ArraySingleQuoteCustomPhrase = %d\n", _arraySingleQuoteCustomPhrase ? 1 : 0);
+			}
+
+			if (_imeMode == IME_MODE_PHONETIC)
+			{
+				fwprintf_s(fp, L"PhoneticKeyboardLayout = %d\n", _phoneticKeyboardLayout);
+			}
+
+			if (_loadTableMode) fwprintf_s(fp, L"LoadTableMode = 1\n");
+
+
+			fclose(fp);
 		}
-		if (SUCCEEDED(StringFromCLSID(_reverseConversionGUIDProfile, &pbstr)))
-		{
-			fwprintf_s(fp, L"ReverseConversionGUIDProfile = %s\n", pbstr);
-		}
-
-		fwprintf_s(fp, L"ReverseConversionDescription = %s\n", _reverseConversionDescription);
-		fwprintf_s(fp, L"AppPermissionSet = %d\n", _appPermissionSet ? 1 : 0);
-
-
-		if (_imeMode == IME_MODE_DAYI)
-		{
-			fwprintf_s(fp, L"DayiArticleMode = %d\n", _dayiArticleMode ? 1 : 0);
-		}
-
-		if (_imeMode == IME_MODE_ARRAY)
-		{
-			fwprintf_s(fp, L"ArrayScope = %d\n", _arrayScope);
-			fwprintf_s(fp, L"ArrayForceSP = %d\n", _arrayForceSP ? 1 : 0);
-			fwprintf_s(fp, L"ArrayNotifySP = %d\n", _arrayNotifySP ? 1 : 0);
-			fwprintf_s(fp, L"ArraySingleQuoteCustomPhrase = %d\n", _arraySingleQuoteCustomPhrase ? 1 : 0);
-		}
-
-		if (_imeMode == IME_MODE_PHONETIC)
-		{
-			fwprintf_s(fp, L"PhoneticKeyboardLayout = %d\n", _phoneticKeyboardLayout);
-		}
-
-		if (_loadTableMode) fwprintf_s(fp, L"LoadTableMode = 1\n");
-
-
-		fclose(fp);
 	}
+	
 
+}
 
-ErrorExit:
-	delete[]pwszINIFileName;
+void CConfig::SetIMEMode(IME_MODE imeMode)
+{
+	if (_imeMode != imeMode)
+	{
+		_imeMode = imeMode;
+		WCHAR wszAppData[MAX_PATH] = L"\0";
+		SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);
+
+		StringCchPrintf(_pwzsDIMEProfile, MAX_PATH, L"%s\\DIME", wszAppData);
+		if (!PathFileExists(_pwzsDIMEProfile))
+		{
+			if (CreateDirectory(_pwzsDIMEProfile, NULL) == 0) return;
+		}
+
+		if (!PathFileExists(_pwzsDIMEProfile))
+		{   //DIME roadming profile is not exist. Create one.
+			if (CreateDirectory(_pwzsDIMEProfile, NULL) == 0) return;
+		}
+		if (imeMode == IME_MODE_DAYI)
+			StringCchPrintf(_pwszINIFileName, MAX_PATH, L"%s\\DayiConfig.ini", _pwzsDIMEProfile);
+		else if (imeMode == IME_MODE_ARRAY)
+			StringCchPrintf(_pwszINIFileName, MAX_PATH, L"%s\\ArrayConfig.ini", _pwzsDIMEProfile);
+		else if (imeMode == IME_MODE_PHONETIC)
+			StringCchPrintf(_pwszINIFileName, MAX_PATH, L"%s\\PhoneConfig.ini", _pwzsDIMEProfile);
+		else if (imeMode == IME_MODE_GENERIC)
+			StringCchPrintf(_pwszINIFileName, MAX_PATH, L"%s\\GenericConfig.ini", _pwzsDIMEProfile);
+		else
+			StringCchPrintf(_pwszINIFileName, MAX_PATH, L"%s\\config.ini", _pwzsDIMEProfile);
+	}
+	return;
+
 }
 
 //+---------------------------------------------------------------------------
@@ -1028,147 +1052,115 @@ ErrorExit:
 BOOL CConfig::LoadConfig(IME_MODE imeMode)
 {
 	debugPrint(L"CDIME::loadConfig() \n");
-	WCHAR wszAppData[MAX_PATH] = { '\0' };
-	SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);
-	WCHAR wzsDIMEProfile[MAX_PATH] = { '\0' };
+	SetIMEMode (imeMode);
+	
 	PACL pOldDACL = NULL, pNewDACL = NULL;
 	PSECURITY_DESCRIPTOR pSD = NULL;
 	BOOL bRET = FALSE; 
 
-	WCHAR *pwszINIFileName = new (std::nothrow) WCHAR[MAX_PATH];
-
-	if (!pwszINIFileName)  goto ErrorExit;
-
-	*pwszINIFileName = L'\0';
-
-	StringCchPrintf(wzsDIMEProfile, MAX_PATH, L"%s\\DIME", wszAppData);
-
-	if (!PathFileExists(wzsDIMEProfile))
+	if (PathFileExists(_pwszINIFileName))
 	{
-		if (CreateDirectory(wzsDIMEProfile, NULL) == 0) goto ErrorExit;
-	}
-
-	if (PathFileExists(wzsDIMEProfile))
-	{
-
-		if (imeMode == IME_MODE_DAYI)
-			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\DayiConfig.ini", wzsDIMEProfile);
-		else if (imeMode == IME_MODE_ARRAY)
-			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\ArrayConfig.ini", wzsDIMEProfile);
-		else if (imeMode == IME_MODE_PHONETIC)
-			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\PhoneConfig.ini", wzsDIMEProfile);
-		else if (imeMode == IME_MODE_GENERIC)
-			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\GenericConfig.ini", wzsDIMEProfile);
-		else
-			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\config.ini", wzsDIMEProfile);
-
-		if (PathFileExists(pwszINIFileName))
+		debugPrint(L"CDIME::loadConfig() config file = %s exists\n", _pwszINIFileName);
+		struct _stat initTimeStamp;
+		BOOL failed = _wstat(_pwszINIFileName, &initTimeStamp) == -1;  //error for retrieving timestamp
+		BOOL updated = FALSE;
+		if (!failed)
+			updated = difftime(initTimeStamp.st_mtime, _initTimeStamp.st_mtime) > 0;
+		debugPrint(L"CDIME::loadConfig() wstat failed = %d, config file updated = %d\n", failed, updated);
+		if (failed || updated)
 		{
-			debugPrint(L"CDIME::loadConfig() config file = %s exists\n", pwszINIFileName);
-			struct _stat initTimeStamp;
-			BOOL failed = _wstat(pwszINIFileName, &initTimeStamp) == -1;  //error for retrieving timestamp
-			BOOL updated = initTimeStamp.st_mtime != _initTimeStamp.st_mtime;
-			debugPrint(L"CDIME::loadConfig() wstat failed = %d, config file updated = %d\n", failed, updated);
-			if (failed || updated)
+			bRET = TRUE;
+			CFile* iniDictionaryFile;
+			iniDictionaryFile = new (std::nothrow) CFile();
+			if (iniDictionaryFile && (iniDictionaryFile)->CreateFile(_pwszINIFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ | FILE_SHARE_WRITE))
 			{
-				bRET = TRUE;
-				CFile *iniDictionaryFile;
-				iniDictionaryFile = new (std::nothrow) CFile();
-				if (iniDictionaryFile && (iniDictionaryFile)->CreateFile(pwszINIFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ | FILE_SHARE_WRITE))
+				CTableDictionaryEngine* iniTableDictionaryEngine;
+				iniTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(MAKELCID(1028, SORT_DEFAULT), iniDictionaryFile, INI_DICTIONARY);//CHT:1028
+				if (iniTableDictionaryEngine)
 				{
-					CTableDictionaryEngine * iniTableDictionaryEngine;
-					iniTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(MAKELCID(1028, SORT_DEFAULT), iniDictionaryFile, INI_DICTIONARY);//CHT:1028
-					if (iniTableDictionaryEngine)
-					{
-						_loadTableMode = FALSE; // reset _loadTableMode first. If no _loadTableMode is exist we should not should load tables buttons
-						iniTableDictionaryEngine->ParseConfig(imeMode); //parse config first.
-						debugPrint(L"CDIME::loadConfig() parsed. _loadTableMode = %d\n", _loadTableMode);
-					}
-					delete iniTableDictionaryEngine; // delete after config.ini config are pasrsed
-					delete iniDictionaryFile;
-					SetDefaultTextFont();
-					_initTimeStamp.st_mtime = initTimeStamp.st_mtime;
+					_loadTableMode = FALSE; // reset _loadTableMode first. If no _loadTableMode is exist we should not should load tables buttons
+					iniTableDictionaryEngine->ParseConfig(imeMode); //parse config first.
+					debugPrint(L"CDIME::loadConfig() parsed. _loadTableMode = %d\n", _loadTableMode);
 				}
-				
-				// In store app mode, the dll is loaded into app container which does not even have read right for IME profile in APPDATA.
-				// Here, the read right is granted once to "ALL APPLICATION PACKAGES" when loaded in desktop mode, so as all metro apps can at least read the user settings in config.ini.				
-				if (!CDIME::_IsStoreAppMode() && !_appPermissionSet && imeMode != IME_MODE_NONE)
+				delete iniTableDictionaryEngine; // delete after config.ini config are pasrsed
+				delete iniDictionaryFile;
+				SetDefaultTextFont();
+				_initTimeStamp.st_mtime = initTimeStamp.st_mtime;
+			}
+
+			// In store app mode, the dll is loaded into app container which does not even have read right for IME profile in APPDATA.
+			// Here, the read right is granted once to "ALL APPLICATION PACKAGES" when loaded in desktop mode, so as all metro apps can at least read the user settings in config.ini.				
+			if (!CDIME::_IsStoreAppMode() && !_appPermissionSet && imeMode != IME_MODE_NONE)
+			{
+				EXPLICIT_ACCESS ea;
+				// Get a pointer to the existing DACL (Conditionaly).
+				DWORD dwRes = GetNamedSecurityInfo(_pwzsDIMEProfile, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, &pOldDACL, NULL, &pSD);
+				if (ERROR_SUCCESS != dwRes) goto ErrorExit;
+				// Initialize an EXPLICIT_ACCESS structure for the new ACE. 
+				ZeroMemory(&ea, sizeof(EXPLICIT_ACCESS));
+				ea.grfAccessPermissions = GENERIC_READ;
+				ea.grfAccessMode = GRANT_ACCESS;
+				ea.grfInheritance = SUB_CONTAINERS_AND_OBJECTS_INHERIT;
+				ea.Trustee.TrusteeForm = TRUSTEE_IS_NAME;
+				ea.Trustee.TrusteeType = TRUSTEE_IS_WELL_KNOWN_GROUP;
+				ea.Trustee.ptstrName = L"Everyone";
+				// Create a new ACL that merges the new ACE into the existing DACL.
+				dwRes = SetEntriesInAcl(1, &ea, pOldDACL, &pNewDACL);
+				if (ERROR_SUCCESS != dwRes) goto ErrorExit;
+				if (Global::isWindows8)
 				{
-					EXPLICIT_ACCESS ea;
-					// Get a pointer to the existing DACL (Conditionaly).
-					DWORD dwRes = GetNamedSecurityInfo(wzsDIMEProfile, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, &pOldDACL, NULL, &pSD);
-					if (ERROR_SUCCESS != dwRes) goto ErrorExit;
-					// Initialize an EXPLICIT_ACCESS structure for the new ACE. 
-					ZeroMemory(&ea, sizeof(EXPLICIT_ACCESS));
-					ea.grfAccessPermissions = GENERIC_READ;
-					ea.grfAccessMode = GRANT_ACCESS;
-					ea.grfInheritance = SUB_CONTAINERS_AND_OBJECTS_INHERIT;
 					ea.Trustee.TrusteeForm = TRUSTEE_IS_NAME;
-					ea.Trustee.TrusteeType = TRUSTEE_IS_WELL_KNOWN_GROUP;
-					ea.Trustee.ptstrName = L"Everyone";
-					// Create a new ACL that merges the new ACE into the existing DACL.
-					dwRes = SetEntriesInAcl(1, &ea, pOldDACL, &pNewDACL);
+					ea.Trustee.ptstrName = L"ALL APPLICATION PACKAGES";
+					dwRes = SetEntriesInAcl(1, &ea, pNewDACL, &pNewDACL);
 					if (ERROR_SUCCESS != dwRes) goto ErrorExit;
-					if (Global::isWindows8)
-					{
-						ea.Trustee.TrusteeForm = TRUSTEE_IS_NAME;
-						ea.Trustee.ptstrName = L"ALL APPLICATION PACKAGES";
-						dwRes = SetEntriesInAcl(1, &ea, pNewDACL, &pNewDACL);
-						if (ERROR_SUCCESS != dwRes) goto ErrorExit;
-					}
-					if (pNewDACL)
-						SetNamedSecurityInfo(wzsDIMEProfile, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, pNewDACL, NULL);
-
-					_appPermissionSet = TRUE;
-					WriteConfig();
 				}
-			}
-		}
-		else
-		{
+				if (pNewDACL)
+					SetNamedSecurityInfo(_pwzsDIMEProfile, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, pNewDACL, NULL);
 
-			
-			//should do IM specific default here.
-			if (imeMode == IME_MODE_ARRAY)
-			{
-				_arrayScope = ARRAY30_UNICODE_EXT_A;
-				_autoCompose = TRUE;
-				_maxCodes = 5;
-				_spaceAsPageDown = 0;
-				_spaceAsFirstCandSelkey = 0;
-		
+				_appPermissionSet = TRUE;
+				WriteConfig(FALSE);
 			}
-			else if(imeMode == IME_MODE_PHONETIC)
-			{
-				_autoCompose = FALSE;
-				_maxCodes = 4;
-				_spaceAsPageDown = 1;
-				_spaceAsFirstCandSelkey = 0;
-			}
-			else if (imeMode == IME_MODE_DAYI)
-			{
-				_autoCompose = FALSE;
-				_maxCodes = 4;
-				_spaceAsPageDown = 1;
-				_spaceAsFirstCandSelkey = 1;
-			}
-			else
-			{
-				_autoCompose = FALSE;
-				_maxCodes = 4;
-				_spaceAsPageDown = 0;
-				_spaceAsFirstCandSelkey = 0;
-			}
-
-			if (imeMode != IME_MODE_NONE)
-				WriteConfig(); // config.ini is not there. create one.
 		}
 	}
 	else
 	{
-		//DIME roadming profile is not exist. Create one.
-		if (CreateDirectory(wzsDIMEProfile, NULL) == 0) goto ErrorExit;
+		//should do IM specific default here.
+		if (imeMode == IME_MODE_ARRAY)
+		{
+			_arrayScope = ARRAY30_UNICODE_EXT_A;
+			_autoCompose = TRUE;
+			_maxCodes = 5;
+			_spaceAsPageDown = 0;
+			_spaceAsFirstCandSelkey = 0;
+
+		}
+		else if (imeMode == IME_MODE_PHONETIC)
+		{
+			_autoCompose = FALSE;
+			_maxCodes = 4;
+			_spaceAsPageDown = 1;
+			_spaceAsFirstCandSelkey = 0;
+		}
+		else if (imeMode == IME_MODE_DAYI)
+		{
+			_autoCompose = FALSE;
+			_maxCodes = 4;
+			_spaceAsPageDown = 1;
+			_spaceAsFirstCandSelkey = 1;
+		}
+		else
+		{
+			_autoCompose = FALSE;
+			_maxCodes = 4;
+			_spaceAsPageDown = 0;
+			_spaceAsFirstCandSelkey = 0;
+		}
+
+		if (imeMode != IME_MODE_NONE)
+			WriteConfig(FALSE); // config.ini is not there. create one.
 	}
+	
+	
 
 
 
@@ -1177,7 +1169,6 @@ ErrorExit:
 		LocalFree(pNewDACL);
 	if (pSD != NULL)
 		LocalFree(pSD);
-	delete[]pwszINIFileName;
 	return bRET;  // return TRUE if the config file updated
 }
 

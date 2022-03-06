@@ -56,7 +56,7 @@ public:
 	CConfig(){}
 	~CConfig(){clearReverseConvervsionInfoList();}
 	//  configuration set/get
-	static void SetIMEMode(IME_MODE imeMode) { _imeMode = imeMode; }
+	static void SetIMEMode(IME_MODE imeMode);// { _imeMode = imeMode; }
 	static IME_MODE GetIMEMode() { return _imeMode; }
 	static void SetArrayScope(ARRAY_SCOPE arrayScope) { _arrayScope = arrayScope; }
 	static ARRAY_SCOPE GetArrayScope() { return _arrayScope; }
@@ -154,7 +154,7 @@ public:
 	static void setPhoneticKeyboardLayout(PHONETIC_KEYBOARD_LAYOUT layout) { _phoneticKeyboardLayout = layout; }
 	static PHONETIC_KEYBOARD_LAYOUT getPhoneticKeyboardLayout() { return _phoneticKeyboardLayout; }
 
-	static VOID WriteConfig();
+	static VOID WriteConfig(BOOL silent = FALSE);
 	static BOOL LoadConfig(IME_MODE imeMode);
 	
 	static void SetDefaultTextFont(HWND hWnd = nullptr);
@@ -223,6 +223,9 @@ private:
 	static CLSID _reverseConverstionCLSID;
 	static GUID _reverseConversionGUIDProfile;
 	static WCHAR* _reverseConversionDescription;
+
+	static WCHAR _pwszINIFileName[MAX_PATH];
+	static WCHAR _pwzsDIMEProfile[MAX_PATH];
 
 	static void clearReverseConvervsionInfoList();
 

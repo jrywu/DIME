@@ -160,8 +160,5 @@ HRESULT CDIME::Show(_In_opt_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID
 
 	if(dllCtlHandle)
 		FreeLibrary(dllCtlHandle);
-
-
-
 	return S_OK;
 }

@@ -38,13 +38,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "BaseStructure.h"
 #include "Globals.h"
 
-void CCompositionProcessorEngine::UpdateDictionaryFile()
+/*
+BOOL CCompositionProcessorEngine::UpdateDictionaryFile()
 {
 	debugPrint(L"CCompositionProcessorEngine::UpdateDictionaryFile()");
-
 	CFile* pCurrentDictioanryFile = _pTableDictionaryFile[Global::imeMode];
 	
-	SetupDictionaryFile(_imeMode);
+	BOOL bRet = SetupDictionaryFile(_imeMode);
 	if (pCurrentDictioanryFile != _pTableDictionaryFile[Global::imeMode])
 	{ // the table is updated.
 
@@ -55,8 +55,9 @@ void CCompositionProcessorEngine::UpdateDictionaryFile()
 		SetupCandidateListRange(Global::imeMode);
 
 	}
-
+	return bRet;
 }
+*/
 void CCompositionProcessorEngine::ReleaseDictionaryFiles()
 {
 

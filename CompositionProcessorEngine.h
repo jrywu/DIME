@@ -124,7 +124,7 @@ public:
 	BOOL SetupHanCovertTable();
 	BOOL SetupTCFreqTable();
 
-	void UpdateDictionaryFile();
+	//BOOL UpdateDictionaryFile();
 
 	void GetVKeyFromPrintable(WCHAR printable, UINT* vKey, UINT* modifier);
 

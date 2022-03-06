@@ -1003,13 +1003,16 @@ void CDIME::_LoadConfig(BOOL isForce, IME_MODE imeMode)
 {
     if (!isForce)
     {
-        if (_pCompositionProcessorEngine) _pCompositionProcessorEngine->UpdateDictionaryFile();
-    }
-    if (CConfig::LoadConfig(imeMode)) // config file udpated
-    {
-        _pCompositionProcessorEngine->SetupConfiguration(Global::imeMode);
-        _pCompositionProcessorEngine->SetupKeystroke(Global::imeMode);
-        _pCompositionProcessorEngine->SetupCandidateListRange(Global::imeMode);
+        BOOL configUpdated = CConfig::LoadConfig(Global::imeMode);
+        BOOL dictionaryUpdated = FALSE;
+        if (_pCompositionProcessorEngine)
+            dictionaryUpdated = _pCompositionProcessorEngine->SetupDictionaryFile(Global::imeMode);
+        if (configUpdated || dictionaryUpdated) // config file udpated
+        {
+            _pCompositionProcessorEngine->SetupConfiguration(Global::imeMode);
+            _pCompositionProcessorEngine->SetupKeystroke(Global::imeMode);
+            _pCompositionProcessorEngine->SetupCandidateListRange(Global::imeMode);
+        }
     }
 
 	if(CConfig::GetReloadReverseConversion() || isForce)
