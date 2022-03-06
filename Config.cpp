@@ -145,7 +145,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 	{
 	case WM_INITDIALOG:
 
-		ParseConfig(hDlg);
+		ParseConfig(hDlg, TRUE);
 		ret = TRUE;
 		break;
 
@@ -274,7 +274,16 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 				ret = TRUE;
 				hwnd = GetDlgItem(hDlg, IDC_COMBO_ARRAY_SCOPE);
 				_arrayScope = (ARRAY_SCOPE)SendMessage(hwnd, CB_GETCURSEL, 0, 0);
-				_autoCompose = _arrayScope != ARRAY40_BIG5;
+				//reset autocompose mode if ARRAY40 is selected.
+				if (_arrayScope == ARRAY40_BIG5)
+				{
+					_autoCompose = FALSE;
+					_spaceAsPageDown = TRUE;
+					CheckDlgButton(hDlg, IDC_CHECKBOX_AUTOCOMPOSE, BST_UNCHECKED);
+					CheckDlgButton(hDlg, IDC_CHECKBOX_SPACEASPAGEDOWN, BST_CHECKED);
+				}
+				else // autocompse is alwyas true in ARRAY30
+					_autoCompose = TRUE;
 
 				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_SINGLEQUOTE_CUSTOM_PHRASE),
 					(_arrayScope == ARRAY40_BIG5) ? SW_HIDE : SW_SHOW);
@@ -303,6 +312,16 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			}
 			break;
 		case IDC_CHECKBOX_AUTOCOMPOSE:
+			if(IsDlgButtonChecked(hDlg, IDC_CHECKBOX_AUTOCOMPOSE) == BST_CHECKED)
+			{
+				_spaceAsPageDown = FALSE;
+				CheckDlgButton(hDlg, IDC_CHECKBOX_SPACEASPAGEDOWN, BST_UNCHECKED);
+			}
+			else
+			{
+				_spaceAsPageDown = TRUE;
+				CheckDlgButton(hDlg, IDC_CHECKBOX_SPACEASPAGEDOWN, BST_CHECKED);
+			}
 		case IDC_CHECKBOX_CLEAR_ONBEEP:
 		case IDC_CHECKBOX_DOBEEP:
 		case IDC_CHECKBOX_DOBEEPNOTIFY:
@@ -479,7 +498,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 
 
 			WriteConfig(TRUE);
-			ParseConfig(hDlg);
+			ParseConfig(hDlg, FALSE);
 			ret = TRUE;
 			break;
 
@@ -756,7 +775,7 @@ void DrawColor(HWND hwnd, HDC hdc, COLORREF col)
 	ReleaseDC(hwnd, hdc);
 }
 
-void CConfig::ParseConfig(HWND hDlg)
+void CConfig::ParseConfig(HWND hDlg, BOOL initDiag)
 {
 	HWND hwnd;
 	size_t i;
@@ -818,12 +837,16 @@ void CConfig::ParseConfig(HWND hDlg)
 
 	hwnd = GetDlgItem(hDlg, IDC_COMBO_REVERSE_CONVERSION);
 
-	SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"(無)");
+	if(initDiag)
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"(無)");
+	
 	if (IsEqualCLSID(_reverseConversionGUIDProfile, CLSID_NULL))
 		SendMessage(hwnd, CB_SETCURSEL, (WPARAM)0, 0);
 	for (i = 0; i < _reverseConvervsionInfoList->Count(); i++)
 	{
-		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)_reverseConvervsionInfoList->GetAt(i)->description);
+		if (initDiag)
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)_reverseConvervsionInfoList->GetAt(i)->description);
+		
 		if (IsEqualCLSID(_reverseConversionGUIDProfile, _reverseConvervsionInfoList->GetAt(i)->guidProfile))
 			SendMessage(hwnd, CB_SETCURSEL, (WPARAM)i + 1, 0);
 	}
@@ -858,20 +881,26 @@ void CConfig::ParseConfig(HWND hDlg)
 	CheckDlgButton(hDlg, IDC_CHECKBOX_SPACEASPAGEDOWN, (_spaceAsPageDown) ? BST_CHECKED : BST_UNCHECKED);
 	CheckDlgButton(hDlg, IDC_CHECKBOX_SPACEASFIRSTCANDSELKEY, (_spaceAsFirstCandSelkey) ? BST_CHECKED : BST_UNCHECKED);
 	CheckDlgButton(hDlg, IDC_CHECKBOX_ARROWKEYSWPAGES, (_arrowKeySWPages) ? BST_CHECKED : BST_UNCHECKED);
-
+	
 	hwnd = GetDlgItem(hDlg, IDC_COMBO_IME_SHIFT_MODE);
-	SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"左右SHIFT鍵");
-	SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"右SHIFT鍵");
-	SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"左SHIFT鍵");
-	SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"無(僅Ctrl-Space鍵)");
+	if(initDiag)
+	{	
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"左右SHIFT鍵");
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"右SHIFT鍵");
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"左SHIFT鍵");
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"無(僅Ctrl-Space鍵)");
+	}
 	SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_imeShiftMode, 0);
 
 	hwnd = GetDlgItem(hDlg, IDC_COMBO_DOUBLE_SINGLE_BYTE);
-	SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"以 Shift-Space 熱鍵切換");
-	SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"半型");
-	SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"全型");
-	SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_doubleSingleByteMode, 0);
-
+	if (initDiag)
+	{
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"以 Shift-Space 熱鍵切換");
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"半型");
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"全型");
+	}
+		SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_doubleSingleByteMode, 0);
+	
 	if (_imeMode != IME_MODE_GENERIC)
 	{
 		ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_SPACEASFIRSTCANDSELKEY), SW_HIDE);
@@ -897,11 +926,14 @@ void CConfig::ParseConfig(HWND hDlg)
 	else
 	{ // set Array scope combobox
 		hwnd = GetDlgItem(hDlg, IDC_COMBO_ARRAY_SCOPE);
-		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-A");
-		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-AB");
-		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-A~D");
-		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-A~G");
-		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列40 Big5");
+		if (initDiag)
+		{
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-A");
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-AB");
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-A~D");
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-A~G");
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列40 Big5");
+		}
 		SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_arrayScope, 0);
 
 	}
@@ -910,8 +942,11 @@ void CConfig::ParseConfig(HWND hDlg)
 		ShowWindow(GetDlgItem(hDlg, IDC_EDIT_MAXWIDTH), SW_HIDE);
 		ShowWindow(GetDlgItem(hDlg, IDC_STATIC_EDIT_MAXWIDTH), SW_HIDE);
 		hwnd = GetDlgItem(hDlg, IDC_COMBO_PHONETIC_KEYBOARD);
-		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"標準鍵盤");
-		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"倚天鍵盤");
+		if (initDiag)
+		{
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"標準鍵盤");
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"倚天鍵盤");
+		}
 		SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_phoneticKeyboardLayout, 0);
 	}
 	if (_imeMode == IME_MODE_ARRAY)

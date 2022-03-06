@@ -358,12 +358,13 @@ BOOL CCompositionProcessorEngine::IsSymbolChar(WCHAR wch)
 		WCHAR c = *_keystrokeBuffer.Get();
 		if (Global::imeMode == IME_MODE_DAYI && towupper(c) == L'=')
 		{
+			return TRUE;
+			/*
 			for (UINT i = 0; i < wcslen(Global::DayiSymbolCharTable); i++)
 			{
 				if (Global::DayiSymbolCharTable[i] == wch)
 					return TRUE;
-			}
-
+			}*/
 		}
 		else if ( Global::imeMode == IME_MODE_ARRAY)
 		{

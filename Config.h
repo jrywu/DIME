@@ -235,7 +235,7 @@ private:
 	static _T_GetDpiForMonitor _GetDpiForMonitor;
 	
 
-	static void ParseConfig(HWND hDlg);
+	static void ParseConfig(HWND hDlg, BOOL initDiag = FALSE);
 
 	static BOOL importCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToLoad);
 	static BOOL exportCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToWrite);

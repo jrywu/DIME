@@ -252,6 +252,7 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(ProjectDir)$(Configuration)\$(Platform)\</OutDir>
     <IntDir>$(Configuration)\$(Platform)\</IntDir>
+    <BuildAsX>true</BuildAsX>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -272,6 +273,7 @@
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(ProjectDir)$(Configuration)\$(Platform)\</OutDir>
     <IntDir>$(Configuration)\$(Platform)\</IntDir>
+    <BuildAsX>true</BuildAsX>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
