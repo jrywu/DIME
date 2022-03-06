@@ -612,15 +612,16 @@ void CCompositionProcessorEngine::SetupConfiguration(IME_MODE imeMode)
 	_isKeystrokeSort = FALSE;
 	_isWildCardWordFreqSort = TRUE;
 
+	//Override options for specific IME.
 	if (imeMode == IME_MODE_DAYI)
 	{
 		CConfig::SetSpaceAsFirstCaniSelkey(TRUE);
-		CConfig::SetAutoCompose(FALSE);
 	}
 	else if (imeMode == IME_MODE_ARRAY)
 	{
 		CConfig::SetSpaceAsFirstCaniSelkey(FALSE);
-		CConfig::SetAutoCompose((CConfig::GetArrayScope() != ARRAY40_BIG5));
+		if(CConfig::GetArrayScope() != ARRAY40_BIG5)
+			CConfig::SetAutoCompose(TRUE);
 	}
 	else if (imeMode == IME_MODE_PHONETIC)
 	{
@@ -628,9 +629,6 @@ void CCompositionProcessorEngine::SetupConfiguration(IME_MODE imeMode)
 	}
 	if (_pTableDictionaryEngine[imeMode])
 		_pEndkey = _pTableDictionaryEngine[imeMode]->GetEndkey();
-
-
-
 
 	return;
 }

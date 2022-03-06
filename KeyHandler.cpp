@@ -212,15 +212,10 @@ HRESULT CDIME::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *p
     //
     // Get candidate string from composition processor engine
     //
-	//BOOL symbolMode = pCompositionProcessorEngine->IsSymbol();
-	BOOL autoComposeMode = CConfig::GetAutoCompose() || 
-        (Global::imeMode == IME_MODE_ARRAY && CConfig::GetArrayScope() != ARRAY40_BIG5);
-
-	if (autoComposeMode)  // auto composing mode: show candidates while composition updated imeediately.
+	if (CConfig::GetAutoCompose())  // auto composing mode: show candidates while composition updated imeediately.
 	{
 		CDIMEArray<CCandidateListItem> candidateList;
-	
-	  pCompositionProcessorEngine->GetCandidateList(&candidateList, TRUE, isWildcardIncluded);
+	    pCompositionProcessorEngine->GetCandidateList(&candidateList, TRUE, isWildcardIncluded);
 		
 		UINT nCount = candidateList.Count();
 

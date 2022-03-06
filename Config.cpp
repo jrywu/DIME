@@ -113,20 +113,19 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 {
 	BOOL ret = FALSE;
 	HWND hwnd;
-	size_t i;
-	WCHAR num[16] = { 0 };
-	WCHAR fontname[LF_FACESIZE] = { 0 };
-	int fontpoint = 12, fontweight = FW_NORMAL, x, y, logPixelY, LogFontSize;
-	BOOL fontitalic = FALSE;
-	CHOOSEFONT cf;
-	LOGFONT lf;
 	HDC hdc;
 	HFONT hFont;
+	CHOOSEFONT cf;
+	LOGFONT lf;
+	int fontpoint = 12, fontweight = FW_NORMAL, x, y;
+	size_t i;
+	BOOL fontitalic = FALSE;
+	WCHAR fontname[LF_FACESIZE] = { 0 };
+	WCHAR* pwszFontFaceName;
+	WCHAR num[16] = { 0 };
 	RECT rect;
 	POINT pt;
 	UINT sel = 0;
-	WCHAR *pwszFontFaceName;
-
 
 	CHOOSECOLORW cc;
 	static COLORREF colCust[16];
@@ -146,166 +145,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 	{
 	case WM_INITDIALOG:
 
-		wcsncpy_s(fontname, _pFontFaceName, _TRUNCATE);
-
-		fontpoint = _fontSize;
-		fontweight = _fontWeight;
-		fontitalic = _fontItalic;
-
-		if (fontpoint < 8 || fontpoint > 72)
-		{
-			fontpoint = 12;
-		}
-		if (fontweight < 0 || fontweight > 1000)
-		{
-			fontweight = FW_NORMAL;
-		}
-		if (fontitalic != TRUE && fontitalic != FALSE)
-		{
-			fontitalic = FALSE;
-		}
-
-		SetDlgItemText(hDlg, IDC_EDIT_FONTNAME, fontname);
-		hdc = GetDC(hDlg);
-		logPixelY = GetDeviceCaps(hdc, LOGPIXELSY);
-		if (_GetDpiForMonitor)
-		{
-			HMONITOR monitor = MonitorFromWindow(hDlg, MONITOR_DEFAULTTONEAREST);
-			UINT dpiX, dpiY;
-	 		_GetDpiForMonitor(monitor, MDT_EFFECTIVE_DPI, &dpiX, &dpiY);
-			if(dpiY > 0) logPixelY = dpiY;
-		}
-		LogFontSize = -MulDiv(10, logPixelY, 72);
-
-		hFont = CreateFont(LogFontSize, 0, 0, 0,
-			fontweight, fontitalic, FALSE, FALSE, DEFAULT_CHARSET,
-			OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH, fontname);
-		SendMessage(GetDlgItem(hDlg, IDC_EDIT_FONTNAME), WM_SETFONT, (WPARAM)hFont, 0);
-		ReleaseDC(hDlg, hdc);
-
-		SetDlgItemInt(hDlg, IDC_EDIT_FONTPOINT, fontpoint, FALSE);
-
-		ZeroMemory(&colCust, sizeof(colCust));
-
-		colors[0].color = _itemColor;
-		colors[1].color = _selectedColor;
-		colors[2].color = _itemBGColor;
-		colors[3].color = _phraseColor;
-		colors[4].color = _numberColor;
-		colors[5].color = _selectedBGColor;
-
-		hwnd = GetDlgItem(hDlg, IDC_COMBO_REVERSE_CONVERSION);
-
-		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"(無)");
-		if (IsEqualCLSID(_reverseConversionGUIDProfile, CLSID_NULL))
-			SendMessage(hwnd, CB_SETCURSEL, (WPARAM)0, 0);
-		for (i = 0; i < _reverseConvervsionInfoList->Count(); i++)
-		{
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)_reverseConvervsionInfoList->GetAt(i)->description);
-			if (IsEqualCLSID(_reverseConversionGUIDProfile, _reverseConvervsionInfoList->GetAt(i)->guidProfile))
-				SendMessage(hwnd, CB_SETCURSEL, (WPARAM)i + 1, 0);
-		}
-
-
-		_snwprintf_s(num, _TRUNCATE, L"%d", _maxCodes);
-		SetDlgItemTextW(hDlg, IDC_EDIT_MAXWIDTH, num);
-		CheckDlgButton(hDlg, IDC_CHECKBOX_SHOWNOTIFY, (_showNotifyDesktop) ? BST_CHECKED : BST_UNCHECKED);
-
-		CheckDlgButton(hDlg, IDC_CHECKBOX_AUTOCOMPOSE, (_autoCompose) ? BST_CHECKED : BST_UNCHECKED);
-		CheckDlgButton(hDlg, IDC_CHECKBOX_CLEAR_ONBEEP, (_clearOnBeep) ? BST_CHECKED : BST_UNCHECKED);
-		CheckDlgButton(hDlg, IDC_CHECKBOX_DOBEEP, (_doBeep) ? BST_CHECKED : BST_UNCHECKED);
-		CheckDlgButton(hDlg, IDC_CHECKBOX_DOBEEPNOTIFY, (_doBeepNotify) ? BST_CHECKED : BST_UNCHECKED);
-		CheckDlgButton(hDlg, IDC_CHECKBOX_DOBEEP_CANDI, (_doBeepOnCandi) ? BST_CHECKED : BST_UNCHECKED);
-		CheckDlgButton(hDlg, IDC_CHECKBOX_CUSTOM_TABLE_PRIORITY, (_customTablePriority) ? BST_CHECKED : BST_UNCHECKED);
-		CheckDlgButton(hDlg, IDC_CHECKBOX_ARRAY_SINGLEQUOTE_CUSTOM_PHRASE, (_arraySingleQuoteCustomPhrase) ? BST_CHECKED : BST_UNCHECKED);
-		CheckDlgButton(hDlg, IDC_CHECKBOX_DAYIARTICLEMODE, (_dayiArticleMode) ? BST_CHECKED : BST_UNCHECKED);
-		CheckDlgButton(hDlg, IDC_CHECKBOX_ARRAY_FORCESP, (_arrayForceSP) ? BST_CHECKED : BST_UNCHECKED);
-		CheckDlgButton(hDlg, IDC_CHECKBOX_ARRAY_NOTIFYSP, (_arrayNotifySP) ? BST_CHECKED : BST_UNCHECKED);
-		CheckDlgButton(hDlg, IDC_CHECKBOX_PHRASE, (_makePhrase) ? BST_CHECKED : BST_UNCHECKED);
-
-		CheckDlgButton(hDlg, IDC_RADIO_KEYBOARD_OPEN, (_activatedKeyboardMode) ? BST_CHECKED : BST_UNCHECKED);
-		if (!IsDlgButtonChecked(hDlg, IDC_RADIO_KEYBOARD_OPEN))
-		{
-			CheckDlgButton(hDlg, IDC_RADIO_KEYBOARD_CLOSE, BST_CHECKED);
-		}
-		CheckDlgButton(hDlg, IDC_RADIO_OUTPUT_CHS, (_doHanConvert) ? BST_CHECKED : BST_UNCHECKED);
-		if (!IsDlgButtonChecked(hDlg, IDC_RADIO_OUTPUT_CHS))
-		{
-			CheckDlgButton(hDlg, IDC_RADIO_OUTPUT_CHT, BST_CHECKED);
-		}
-		CheckDlgButton(hDlg, IDC_CHECKBOX_SPACEASPAGEDOWN, (_spaceAsPageDown) ? BST_CHECKED : BST_UNCHECKED);
-		CheckDlgButton(hDlg, IDC_CHECKBOX_SPACEASFIRSTCANDSELKEY, (_spaceAsFirstCandSelkey) ? BST_CHECKED : BST_UNCHECKED);
-		CheckDlgButton(hDlg, IDC_CHECKBOX_ARROWKEYSWPAGES, (_arrowKeySWPages) ? BST_CHECKED : BST_UNCHECKED);
-		
-		hwnd = GetDlgItem(hDlg, IDC_COMBO_IME_SHIFT_MODE);
-		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"左右SHIFT鍵");
-		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"右SHIFT鍵");
-		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"左SHIFT鍵");
-		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"無(僅Ctrl-Space鍵)");
-		SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_imeShiftMode, 0);
-
-		hwnd = GetDlgItem(hDlg, IDC_COMBO_DOUBLE_SINGLE_BYTE);
-		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"以 Shift-Space 熱鍵切換");
-		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"半型");
-		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"全型");
-		SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_doubleSingleByteMode, 0);
-
-		if (_imeMode != IME_MODE_GENERIC)
-		{
-			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_SPACEASFIRSTCANDSELKEY), SW_HIDE);
-		}
-		if (_imeMode != IME_MODE_PHONETIC)
-		{
-			ShowWindow(GetDlgItem(hDlg, IDC_STATIC_PHONETIC_KEYBOARD), SW_HIDE);
-			ShowWindow(GetDlgItem(hDlg, IDC_COMBO_PHONETIC_KEYBOARD), SW_HIDE);
-		}
-		if (_imeMode != IME_MODE_DAYI)
-		{
-			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_DOBEEP_CANDI), SW_HIDE);
-			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_DAYIARTICLEMODE), SW_HIDE);
-		}
-		if (_imeMode != IME_MODE_ARRAY)
-		{
-			ShowWindow(GetDlgItem(hDlg, IDC_STATIC_ARRAY_SCOPE), SW_HIDE);
-			ShowWindow(GetDlgItem(hDlg, IDC_COMBO_ARRAY_SCOPE), SW_HIDE);
-			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_FORCESP), SW_HIDE);
-			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_NOTIFYSP), SW_HIDE);
-			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_SINGLEQUOTE_CUSTOM_PHRASE), SW_HIDE);
-		}
-		else
-		{ // set Array scope combobox
-			hwnd = GetDlgItem(hDlg, IDC_COMBO_ARRAY_SCOPE);
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-A");
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-AB");
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-A~D");
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-A~G");
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列40 Big5");
-			SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_arrayScope, 0);
-
-		}
-		if (_imeMode == IME_MODE_PHONETIC)
-		{
-			ShowWindow(GetDlgItem(hDlg, IDC_EDIT_MAXWIDTH), SW_HIDE);
-			ShowWindow(GetDlgItem(hDlg, IDC_STATIC_EDIT_MAXWIDTH), SW_HIDE);
-			hwnd = GetDlgItem(hDlg, IDC_COMBO_PHONETIC_KEYBOARD);
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"標準鍵盤");
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"倚天鍵盤");
-			SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_phoneticKeyboardLayout, 0);
-		}
-		if (_imeMode == IME_MODE_ARRAY)
-		{
-			ShowWindow(GetDlgItem(hDlg, IDC_EDIT_MAXWIDTH), SW_HIDE);
-			ShowWindow(GetDlgItem(hDlg, IDC_STATIC_EDIT_MAXWIDTH), SW_HIDE);
-			if (_arrayScope == ARRAY40_BIG5)
-			{
-				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_SINGLEQUOTE_CUSTOM_PHRASE), SW_HIDE);
-				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_FORCESP), SW_HIDE);
-				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_NOTIFYSP), SW_HIDE);
-			}
-			
-			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_AUTOCOMPOSE), SW_HIDE);
-
-		}
+		ParseConfig(hDlg);
 		ret = TRUE;
 		break;
 
@@ -442,6 +282,8 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 					(_arrayScope == ARRAY40_BIG5) ? SW_HIDE : SW_SHOW);
 				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_NOTIFYSP),
 					(_arrayScope == ARRAY40_BIG5) ? SW_HIDE : SW_SHOW);
+				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_AUTOCOMPOSE),
+					(_arrayScope != ARRAY40_BIG5) ? SW_HIDE : SW_SHOW);
 
 				debugPrint(L"selected arrray scope item is %d", _arrayScope);
 				break;
@@ -613,7 +455,8 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			{
 				hwnd = GetDlgItem(hDlg, IDC_COMBO_ARRAY_SCOPE);
 				_arrayScope = (ARRAY_SCOPE)SendMessage(hwnd, CB_GETCURSEL, 0, 0);
-				_autoCompose = _arrayScope != ARRAY40_BIG5;
+				if (_arrayScope != ARRAY40_BIG5)
+					_autoCompose = TRUE;
 				
 				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_SINGLEQUOTE_CUSTOM_PHRASE),
 					(_arrayScope == ARRAY40_BIG5)?SW_HIDE:SW_SHOW);
@@ -621,6 +464,8 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 					(_arrayScope == ARRAY40_BIG5) ? SW_HIDE : SW_SHOW);
 				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_NOTIFYSP), 
 					(_arrayScope == ARRAY40_BIG5) ? SW_HIDE : SW_SHOW);
+				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_AUTOCOMPOSE),
+					(_arrayScope != ARRAY40_BIG5) ? SW_HIDE : SW_SHOW);
 				
 				debugPrint(L"selected arrray scope item is %d", _arrayScope);
 			}
@@ -634,6 +479,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 
 
 			WriteConfig(TRUE);
+			ParseConfig(hDlg);
 			ret = TRUE;
 			break;
 
@@ -910,6 +756,181 @@ void DrawColor(HWND hwnd, HDC hdc, COLORREF col)
 	ReleaseDC(hwnd, hdc);
 }
 
+void CConfig::ParseConfig(HWND hDlg)
+{
+	HWND hwnd;
+	size_t i;
+	WCHAR num[16] = { 0 };
+	WCHAR fontname[LF_FACESIZE] = { 0 };
+	int fontpoint = 12, fontweight = FW_NORMAL, logPixelY, LogFontSize;
+	BOOL fontitalic = FALSE;
+	HDC hdc;
+	HFONT hFont;
+	static COLORREF colCust[16];
+
+	wcsncpy_s(fontname, _pFontFaceName, _TRUNCATE);
+
+	fontpoint = _fontSize;
+	fontweight = _fontWeight;
+	fontitalic = _fontItalic;
+
+	if (fontpoint < 8 || fontpoint > 72)
+	{
+		fontpoint = 12;
+	}
+	if (fontweight < 0 || fontweight > 1000)
+	{
+		fontweight = FW_NORMAL;
+	}
+	if (fontitalic != TRUE && fontitalic != FALSE)
+	{
+		fontitalic = FALSE;
+	}
+
+	SetDlgItemText(hDlg, IDC_EDIT_FONTNAME, fontname);
+	hdc = GetDC(hDlg);
+	logPixelY = GetDeviceCaps(hdc, LOGPIXELSY);
+	if (_GetDpiForMonitor)
+	{
+		HMONITOR monitor = MonitorFromWindow(hDlg, MONITOR_DEFAULTTONEAREST);
+		UINT dpiX, dpiY;
+		_GetDpiForMonitor(monitor, MDT_EFFECTIVE_DPI, &dpiX, &dpiY);
+		if (dpiY > 0) logPixelY = dpiY;
+	}
+	LogFontSize = -MulDiv(10, logPixelY, 72);
+
+	hFont = CreateFont(LogFontSize, 0, 0, 0,
+		fontweight, fontitalic, FALSE, FALSE, DEFAULT_CHARSET,
+		OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH, fontname);
+	SendMessage(GetDlgItem(hDlg, IDC_EDIT_FONTNAME), WM_SETFONT, (WPARAM)hFont, 0);
+	ReleaseDC(hDlg, hdc);
+
+	SetDlgItemInt(hDlg, IDC_EDIT_FONTPOINT, fontpoint, FALSE);
+
+	ZeroMemory(&colCust, sizeof(colCust));
+
+	colors[0].color = _itemColor;
+	colors[1].color = _selectedColor;
+	colors[2].color = _itemBGColor;
+	colors[3].color = _phraseColor;
+	colors[4].color = _numberColor;
+	colors[5].color = _selectedBGColor;
+
+	hwnd = GetDlgItem(hDlg, IDC_COMBO_REVERSE_CONVERSION);
+
+	SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"(無)");
+	if (IsEqualCLSID(_reverseConversionGUIDProfile, CLSID_NULL))
+		SendMessage(hwnd, CB_SETCURSEL, (WPARAM)0, 0);
+	for (i = 0; i < _reverseConvervsionInfoList->Count(); i++)
+	{
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)_reverseConvervsionInfoList->GetAt(i)->description);
+		if (IsEqualCLSID(_reverseConversionGUIDProfile, _reverseConvervsionInfoList->GetAt(i)->guidProfile))
+			SendMessage(hwnd, CB_SETCURSEL, (WPARAM)i + 1, 0);
+	}
+
+
+	_snwprintf_s(num, _TRUNCATE, L"%d", _maxCodes);
+	SetDlgItemTextW(hDlg, IDC_EDIT_MAXWIDTH, num);
+	CheckDlgButton(hDlg, IDC_CHECKBOX_SHOWNOTIFY, (_showNotifyDesktop) ? BST_CHECKED : BST_UNCHECKED);
+
+	CheckDlgButton(hDlg, IDC_CHECKBOX_AUTOCOMPOSE, (_autoCompose) ? BST_CHECKED : BST_UNCHECKED);
+	CheckDlgButton(hDlg, IDC_CHECKBOX_CLEAR_ONBEEP, (_clearOnBeep) ? BST_CHECKED : BST_UNCHECKED);
+	CheckDlgButton(hDlg, IDC_CHECKBOX_DOBEEP, (_doBeep) ? BST_CHECKED : BST_UNCHECKED);
+	CheckDlgButton(hDlg, IDC_CHECKBOX_DOBEEPNOTIFY, (_doBeepNotify) ? BST_CHECKED : BST_UNCHECKED);
+	CheckDlgButton(hDlg, IDC_CHECKBOX_DOBEEP_CANDI, (_doBeepOnCandi) ? BST_CHECKED : BST_UNCHECKED);
+	CheckDlgButton(hDlg, IDC_CHECKBOX_CUSTOM_TABLE_PRIORITY, (_customTablePriority) ? BST_CHECKED : BST_UNCHECKED);
+	CheckDlgButton(hDlg, IDC_CHECKBOX_ARRAY_SINGLEQUOTE_CUSTOM_PHRASE, (_arraySingleQuoteCustomPhrase) ? BST_CHECKED : BST_UNCHECKED);
+	CheckDlgButton(hDlg, IDC_CHECKBOX_DAYIARTICLEMODE, (_dayiArticleMode) ? BST_CHECKED : BST_UNCHECKED);
+	CheckDlgButton(hDlg, IDC_CHECKBOX_ARRAY_FORCESP, (_arrayForceSP) ? BST_CHECKED : BST_UNCHECKED);
+	CheckDlgButton(hDlg, IDC_CHECKBOX_ARRAY_NOTIFYSP, (_arrayNotifySP) ? BST_CHECKED : BST_UNCHECKED);
+	CheckDlgButton(hDlg, IDC_CHECKBOX_PHRASE, (_makePhrase) ? BST_CHECKED : BST_UNCHECKED);
+
+	CheckDlgButton(hDlg, IDC_RADIO_KEYBOARD_OPEN, (_activatedKeyboardMode) ? BST_CHECKED : BST_UNCHECKED);
+	if (!IsDlgButtonChecked(hDlg, IDC_RADIO_KEYBOARD_OPEN))
+	{
+		CheckDlgButton(hDlg, IDC_RADIO_KEYBOARD_CLOSE, BST_CHECKED);
+	}
+	CheckDlgButton(hDlg, IDC_RADIO_OUTPUT_CHS, (_doHanConvert) ? BST_CHECKED : BST_UNCHECKED);
+	if (!IsDlgButtonChecked(hDlg, IDC_RADIO_OUTPUT_CHS))
+	{
+		CheckDlgButton(hDlg, IDC_RADIO_OUTPUT_CHT, BST_CHECKED);
+	}
+	CheckDlgButton(hDlg, IDC_CHECKBOX_SPACEASPAGEDOWN, (_spaceAsPageDown) ? BST_CHECKED : BST_UNCHECKED);
+	CheckDlgButton(hDlg, IDC_CHECKBOX_SPACEASFIRSTCANDSELKEY, (_spaceAsFirstCandSelkey) ? BST_CHECKED : BST_UNCHECKED);
+	CheckDlgButton(hDlg, IDC_CHECKBOX_ARROWKEYSWPAGES, (_arrowKeySWPages) ? BST_CHECKED : BST_UNCHECKED);
+
+	hwnd = GetDlgItem(hDlg, IDC_COMBO_IME_SHIFT_MODE);
+	SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"左右SHIFT鍵");
+	SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"右SHIFT鍵");
+	SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"左SHIFT鍵");
+	SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"無(僅Ctrl-Space鍵)");
+	SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_imeShiftMode, 0);
+
+	hwnd = GetDlgItem(hDlg, IDC_COMBO_DOUBLE_SINGLE_BYTE);
+	SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"以 Shift-Space 熱鍵切換");
+	SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"半型");
+	SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"全型");
+	SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_doubleSingleByteMode, 0);
+
+	if (_imeMode != IME_MODE_GENERIC)
+	{
+		ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_SPACEASFIRSTCANDSELKEY), SW_HIDE);
+	}
+	if (_imeMode != IME_MODE_PHONETIC)
+	{
+		ShowWindow(GetDlgItem(hDlg, IDC_STATIC_PHONETIC_KEYBOARD), SW_HIDE);
+		ShowWindow(GetDlgItem(hDlg, IDC_COMBO_PHONETIC_KEYBOARD), SW_HIDE);
+	}
+	if (_imeMode != IME_MODE_DAYI)
+	{
+		ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_DOBEEP_CANDI), SW_HIDE);
+		ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_DAYIARTICLEMODE), SW_HIDE);
+	}
+	if (_imeMode != IME_MODE_ARRAY)
+	{
+		ShowWindow(GetDlgItem(hDlg, IDC_STATIC_ARRAY_SCOPE), SW_HIDE);
+		ShowWindow(GetDlgItem(hDlg, IDC_COMBO_ARRAY_SCOPE), SW_HIDE);
+		ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_FORCESP), SW_HIDE);
+		ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_NOTIFYSP), SW_HIDE);
+		ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_SINGLEQUOTE_CUSTOM_PHRASE), SW_HIDE);
+	}
+	else
+	{ // set Array scope combobox
+		hwnd = GetDlgItem(hDlg, IDC_COMBO_ARRAY_SCOPE);
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-A");
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-AB");
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-A~D");
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-A~G");
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列40 Big5");
+		SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_arrayScope, 0);
+
+	}
+	if (_imeMode == IME_MODE_PHONETIC)
+	{
+		ShowWindow(GetDlgItem(hDlg, IDC_EDIT_MAXWIDTH), SW_HIDE);
+		ShowWindow(GetDlgItem(hDlg, IDC_STATIC_EDIT_MAXWIDTH), SW_HIDE);
+		hwnd = GetDlgItem(hDlg, IDC_COMBO_PHONETIC_KEYBOARD);
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"標準鍵盤");
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"倚天鍵盤");
+		SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_phoneticKeyboardLayout, 0);
+	}
+	if (_imeMode == IME_MODE_ARRAY)
+	{
+		ShowWindow(GetDlgItem(hDlg, IDC_EDIT_MAXWIDTH), SW_HIDE);
+		ShowWindow(GetDlgItem(hDlg, IDC_STATIC_EDIT_MAXWIDTH), SW_HIDE);
+		if (_arrayScope == ARRAY40_BIG5)
+		{
+			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_SINGLEQUOTE_CUSTOM_PHRASE), SW_HIDE);
+			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_FORCESP), SW_HIDE);
+			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_NOTIFYSP), SW_HIDE);
+		}
+		else
+			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_AUTOCOMPOSE), SW_HIDE);
+
+	}
+}
+
+
 //+---------------------------------------------------------------------------
 //
 // writeConfig
@@ -921,7 +942,7 @@ VOID CConfig::WriteConfig(BOOL confirmUpdated)
 	debugPrint(L"CDIME::WriteConfig() \n");
 
 	struct _stat initTimeStamp;
-	BOOL failed = _wstat(_pwszINIFileName, &initTimeStamp) != -1;
+	BOOL failed = _wstat(_pwszINIFileName, &initTimeStamp) != 0;
 	BOOL updated = FALSE;
 		if(!failed) 
 			updated = difftime(initTimeStamp.st_mtime, _initTimeStamp.st_mtime) > 0;
@@ -1001,9 +1022,9 @@ VOID CConfig::WriteConfig(BOOL confirmUpdated)
 			}
 
 			if (_loadTableMode) fwprintf_s(fp, L"LoadTableMode = 1\n");
-
-
 			fclose(fp);
+			_wstat(_pwszINIFileName, &initTimeStamp);
+			_initTimeStamp.st_mtime = initTimeStamp.st_mtime;
 		}
 	}
 	
@@ -1062,7 +1083,7 @@ BOOL CConfig::LoadConfig(IME_MODE imeMode)
 	{
 		debugPrint(L"CDIME::loadConfig() config file = %s exists\n", _pwszINIFileName);
 		struct _stat initTimeStamp;
-		BOOL failed = _wstat(_pwszINIFileName, &initTimeStamp) == -1;  //error for retrieving timestamp
+		BOOL failed = _wstat(_pwszINIFileName, &initTimeStamp) != 0;  //error for retrieving timestamp
 		BOOL updated = FALSE;
 		if (!failed)
 			updated = difftime(initTimeStamp.st_mtime, _initTimeStamp.st_mtime) > 0;
@@ -1145,7 +1166,7 @@ BOOL CConfig::LoadConfig(IME_MODE imeMode)
 		{
 			_autoCompose = FALSE;
 			_maxCodes = 4;
-			_spaceAsPageDown = 1;
+			_spaceAsPageDown = 0;
 			_spaceAsFirstCandSelkey = 1;
 		}
 		else

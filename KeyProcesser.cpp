@@ -355,7 +355,8 @@ BOOL CCompositionProcessorEngine::IsSymbolChar(WCHAR wch)
 	}
 	else if (_keystrokeBuffer.GetLength() == 1)
 	{
-		if (Global::imeMode == IME_MODE_DAYI)
+		WCHAR c = *_keystrokeBuffer.Get();
+		if (Global::imeMode == IME_MODE_DAYI && towupper(c) == L'=')
 		{
 			for (UINT i = 0; i < wcslen(Global::DayiSymbolCharTable); i++)
 			{
@@ -366,7 +367,6 @@ BOOL CCompositionProcessorEngine::IsSymbolChar(WCHAR wch)
 		}
 		else if ( Global::imeMode == IME_MODE_ARRAY)
 		{
-			WCHAR c = *_keystrokeBuffer.Get();
 			if (CConfig::GetArrayScope() != ARRAY40_BIG5 && (towupper(c) == L'W') &&
 				(wch >= L'0' && wch <= L'9'))
 				return TRUE;
@@ -489,7 +489,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 	}
 
 	// Address characters direct input mode  "'[]-\"
-	if (IsDayiAddressChar(*pwch) && candidateMode != CANDIDATE_ORIGINAL)
+	if (IsDayiAddressChar(*pwch) && candidateMode == CANDIDATE_NONE)
 	{
 		if (pKeyState)
 		{
@@ -663,9 +663,9 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 
 				}
 					return TRUE;							
-				case VK_OEM_7:	if (pKeyState) //Array phrase ending key '
+				case VK_OEM_7:	if (Global::imeMode == IME_MODE_ARRAY && CConfig::GetArrayScope() != ARRAY40_BIG5) //Array phrase ending key '
 				{
-					if (Global::imeMode == IME_MODE_ARRAY && CConfig::GetArrayScope() != ARRAY40_BIG5)
+					if (pKeyState)
 					{
 						pKeyState->Category = CATEGORY_COMPOSING;
 						if (_hasWildcardIncludedInKeystrokeBuffer)
@@ -673,8 +673,9 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 						else
 							pKeyState->Function = FUNCTION_CONVERT_ARRAY_PHRASE;
 					}
-				}
 					return TRUE;
+				}
+					
 			}
 			// Check if the key is valid cand selkeys and set corersponding pKeystate category&function.
 			if (IsKeystrokeRange(uCode, pwch, pKeyState, candidateMode))
