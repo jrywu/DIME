@@ -127,6 +127,7 @@ BOOL CFile::SetupReadBuffer()
 	debugPrint(L" CFile::CreateFile()");
    
 	BOOL ret = TRUE;
+	const WCHAR* pWideBuffer = new (std::nothrow) WCHAR[_fileSize / sizeof(WCHAR) - 1];
 
 	DWORD dwNumberOfByteRead = 0;
 	if(_fileSize < sizeof(WCHAR) ) 
@@ -135,7 +136,7 @@ BOOL CFile::SetupReadBuffer()
 		goto errorExit;
 	}
 	// Read file in allocated buffer
-	const WCHAR* pWideBuffer  = new (std::nothrow) WCHAR[ _fileSize/sizeof(WCHAR) - 1 ];
+	
 	if (!pWideBuffer)
 	{
 		ret = FALSE;

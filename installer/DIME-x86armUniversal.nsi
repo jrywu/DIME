@@ -222,6 +222,7 @@ Section "MainSection" SEC01
   CreateDirectory  "$INSTDIR"
   SetOutPath "$INSTDIR"
   File "*.cin"
+  File "DIMESettings.exe"
   SetOutPath "$APPDATA\DIME\"
   CreateDirectory "$APPDATA\DIME"
   ;File "config.ini"
@@ -238,6 +239,7 @@ Section -AdditionalIcons
   SetOutPath $SMPROGRAMS\DIME
   CreateDirectory "$SMPROGRAMS\DIME"
   CreateShortCut "$SMPROGRAMS\DIME\Uninstall.lnk" "$INSTDIR\uninst.exe"
+  CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\DIME³]©w.lnk" "$INSTDIR\DIMESettings.exe"
 SectionEnd
 
 Section -Post
@@ -300,7 +302,7 @@ Section Uninstall
   Quit
   lbContinueUninstall:
 
-  Delete "$INSTDIR\uninst.exe"
+  Delete "$INSTDIR\*.exe"
   Delete "$INSTDIR\*.cin"
   RMDir /r "$INSTDIR"
   SetShellVarContext all

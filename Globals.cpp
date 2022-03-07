@@ -41,24 +41,35 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 namespace Global {
-HINSTANCE dllInstanceHandle;
 
-LONG dllRefCount = -1;
 
 BOOL isWindows8 = FALSE;
-_T_GetDpiForMonitor _GetDpiForMonitor = nullptr;
-HINSTANCE hShcore = NULL;
-
 
 IME_MODE imeMode = IME_MODE_NONE;
 
 BOOL hasPhraseSection = FALSE;
 BOOL hasCINPhraseSection = FALSE;
 
-CRITICAL_SECTION CS;
 HFONT defaultlFontHandle;				// Global font object we use everywhere
 
 
+//---------------------------------------------------------------------
+// Unicode byte order mark
+//---------------------------------------------------------------------
+extern const WCHAR UnicodeByteOrderMark = 0xFEFF;
+
+//---------------------------------------------------------------------
+// dictionary table delimiter
+//---------------------------------------------------------------------
+extern WCHAR KeywordDelimiter = L'=';
+extern const WCHAR StringDelimiter = L'\"';
+#ifndef DIMESettings
+_T_GetDpiForMonitor _GetDpiForMonitor = nullptr;
+HINSTANCE hShcore = NULL;
+HINSTANCE dllInstanceHandle;
+
+LONG dllRefCount = -1;
+CRITICAL_SECTION CS;
 //---------------------------------------------------------------------
 // DIME CLSID
 //---------------------------------------------------------------------
@@ -148,18 +159,6 @@ extern const GUID DIMEGuidDisplayAttributeConverted =
 // {87D9FBA0-C152-475B-BD82-0A18DFA616A7}
 extern const GUID DIMEGuidCandUIElement = 
 { 0x87d9fba0, 0xc152, 0x475b, { 0xbd, 0x82, 0xa, 0x18, 0xdf, 0xa6, 0x16, 0xa7 } };
-
-
-//---------------------------------------------------------------------
-// Unicode byte order mark
-//---------------------------------------------------------------------
-extern const WCHAR UnicodeByteOrderMark = 0xFEFF;
-
-//---------------------------------------------------------------------
-// dictionary table delimiter
-//---------------------------------------------------------------------
-extern WCHAR KeywordDelimiter = L'=';
-extern const WCHAR StringDelimiter  = L'\"';
 
 //---------------------------------------------------------------------
 // defined item in setting file table [PreservedKey] section
@@ -486,6 +485,6 @@ BOOL CompareElements(LCID locale, const CStringRange* pElement1, const CStringRa
 {
     return (CStringRange::Compare(locale, (CStringRange*)pElement1, (CStringRange*)pElement2) == CSTR_EQUAL) ? TRUE : FALSE;
 }
-
+#endif
 
 }

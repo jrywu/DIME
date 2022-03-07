@@ -34,6 +34,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define CCONFIG_H
 #pragma once
 
+#include <Commdlg.h>
 
 struct ColorInfo
 {

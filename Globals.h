@@ -47,10 +47,22 @@ void DllRelease();
 
 
 namespace Global {
+
+extern IME_MODE imeMode;
+extern BOOL isWindows8; //OS Version
+extern HFONT defaultlFontHandle;  // Global font object we use everywhere
+
+extern BOOL hasPhraseSection; // the dictionary file has TTS [Phrase] section
+extern BOOL hasCINPhraseSection; // the dictionary file has CIN %phrasedef section
+
+extern const WCHAR UnicodeByteOrderMark;
+extern WCHAR KeywordDelimiter;
+extern const WCHAR StringDelimiter;
+
+#ifndef DIMESettings
 //---------------------------------------------------------------------
 // inline
 //---------------------------------------------------------------------
-
 inline void SafeRelease(_In_ IUnknown *punk)
 {
     if (punk != nullptr)
@@ -132,14 +144,9 @@ inline BOOL IsTooSimilar(COLORREF cr1, COLORREF cr2)
 //---------------------------------------------------------------------
 extern HINSTANCE dllInstanceHandle;
 
-extern IME_MODE imeMode;
 
-extern BOOL isWindows8; //OS Version
 extern HINSTANCE hShcore;
 
-
-extern BOOL hasPhraseSection; // the dictionary file has TTS [Phrase] section
-extern BOOL hasCINPhraseSection; // the dictionary file has CIN %phrasedef section
 
 extern ATOM AtomCandidateWindow;
 extern ATOM AtomCandidateShadowWindow;
@@ -152,8 +159,6 @@ BOOL RegisterWindowClass();
 extern LONG dllRefCount;
 
 extern CRITICAL_SECTION CS;
-extern HFONT defaultlFontHandle;  // Global font object we use everywhere
-
 
 extern const CLSID DIMECLSID;
 
@@ -192,9 +197,7 @@ extern const GUID DIMEGuidDisplayAttributeConverted;
 
 extern const GUID DIMEGuidCandUIElement;
 
-extern const WCHAR UnicodeByteOrderMark;
-extern WCHAR KeywordDelimiter;
-extern const WCHAR StringDelimiter;
+
 
 extern WCHAR ImeModeDescription[50];
 extern const int ImeModeOnIcoIndex;
@@ -207,6 +210,7 @@ extern const int DoubleSingleByteOffIcoIndex;
 extern const WCHAR LangbarImeModeDescription[];
 extern const WCHAR LangbarDoubleSingleByteDescription[];
 extern const WCHAR LangbarPunctuationDescription[];
+#endif
 }
 
 

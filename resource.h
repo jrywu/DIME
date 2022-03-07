@@ -6,6 +6,7 @@
 
 #define SUBLANG_ENGLISH_US              0x01
 #define LANG_ENGLISH                    0x09
+#define IDI_DIMESETTINGS				10
 #define IDI_DAYI						11
 #define IDI_ARRAY						12
 #define IDI_PHONETIC					13
@@ -23,6 +24,12 @@
 #define IDI_DOUBLE_SINGLE_BYTE_ON       24
 #define IDI_DOUBLE_SINGLE_BYTE_OFF      25
 
+#define IDB_DIME_DAYI_SETTINGS			1000
+#define IDB_DIME_ARRAY_SETTINGS			1001
+#define IDB_DIME_PHONETIC_SETTINGS		1002
+#define IDB_DIME_GENERIC_SETTINGS		1003
+
+#define IDD_DIMESETTINGS				110
 
 
 #ifndef IDC_STATIC

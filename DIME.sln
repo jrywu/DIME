@@ -1,9 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.31507.150
+# Visual Studio Version 17
+VisualStudioVersion = 17.1.32210.238
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DIME", "DIME.vcxproj", "{0C8FE010-5146-44D8-AF99-82702C15FEA5}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DIMESettings", "DIMESettings\DIMESettings.vcxproj", "{9F5017ED-34B2-4B01-8D92-EF3D8BFC427A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -30,9 +32,18 @@ Global
 		{0C8FE010-5146-44D8-AF99-82702C15FEA5}.Release|ARM64EC.ActiveCfg = Release|ARM64EC
 		{0C8FE010-5146-44D8-AF99-82702C15FEA5}.Release|ARM64EC.Build.0 = Release|ARM64EC
 		{0C8FE010-5146-44D8-AF99-82702C15FEA5}.Release|Win32.ActiveCfg = Release|Win32
-		{0C8FE010-5146-44D8-AF99-82702C15FEA5}.Release|Win32.Build.0 = Release|Win32
 		{0C8FE010-5146-44D8-AF99-82702C15FEA5}.Release|x64.ActiveCfg = Release|x64
 		{0C8FE010-5146-44D8-AF99-82702C15FEA5}.Release|x64.Build.0 = Release|x64
+		{9F5017ED-34B2-4B01-8D92-EF3D8BFC427A}.Debug|ARM64.ActiveCfg = Debug|Win32
+		{9F5017ED-34B2-4B01-8D92-EF3D8BFC427A}.Debug|ARM64EC.ActiveCfg = Debug|Win32
+		{9F5017ED-34B2-4B01-8D92-EF3D8BFC427A}.Debug|Win32.ActiveCfg = Debug|Win32
+		{9F5017ED-34B2-4B01-8D92-EF3D8BFC427A}.Debug|Win32.Build.0 = Debug|Win32
+		{9F5017ED-34B2-4B01-8D92-EF3D8BFC427A}.Debug|x64.ActiveCfg = Debug|Win32
+		{9F5017ED-34B2-4B01-8D92-EF3D8BFC427A}.Release|ARM64.ActiveCfg = Release|Win32
+		{9F5017ED-34B2-4B01-8D92-EF3D8BFC427A}.Release|ARM64EC.ActiveCfg = Release|Win32
+		{9F5017ED-34B2-4B01-8D92-EF3D8BFC427A}.Release|Win32.ActiveCfg = Release|Win32
+		{9F5017ED-34B2-4B01-8D92-EF3D8BFC427A}.Release|Win32.Build.0 = Release|Win32
+		{9F5017ED-34B2-4B01-8D92-EF3D8BFC427A}.Release|x64.ActiveCfg = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

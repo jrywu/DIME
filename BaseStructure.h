@@ -394,7 +394,7 @@ struct CCandidateListItem
     CStringRange _FindKeyCode;
 	int _WordFrequency;
 
-	CCandidateListItem& CCandidateListItem::operator =( const CCandidateListItem& rhs)
+	CCandidateListItem& operator =( const CCandidateListItem& rhs)
 	{
 		_ItemString = rhs._ItemString;
 		_FindKeyCode = rhs._FindKeyCode;

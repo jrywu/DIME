@@ -45,6 +45,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Aclapi.h"
 #include "CompositionProcessorEngine.h"
 
+
+#pragma comment(lib, "Shlwapi.lib")
 //static configuration settings initilization
 IME_MODE CConfig::_imeMode = IME_MODE_NONE;
 BOOL CConfig::_loadTableMode = FALSE;
@@ -108,6 +110,18 @@ ColorInfo CConfig::colors[6] =
 struct _stat CConfig::_initTimeStamp = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }; //zero the timestamp
 
 
+void DrawColor(HWND hwnd, HDC hdc, COLORREF col)
+{
+	RECT rect;
+
+	hdc = GetDC(hwnd);
+	SelectObject(hdc, GetStockObject(BLACK_PEN));
+	SetDCBrushColor(hdc, col);
+	SelectObject(hdc, GetStockObject(DC_BRUSH));
+	GetClientRect(hwnd, &rect);
+	Rectangle(hdc, rect.left, rect.top, rect.right, rect.bottom);
+	ReleaseDC(hwnd, hdc);
+}
 
 INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -762,18 +776,6 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 
 }
 
-void DrawColor(HWND hwnd, HDC hdc, COLORREF col)
-{
-	RECT rect;
-
-	hdc = GetDC(hwnd);
-	SelectObject(hdc, GetStockObject(BLACK_PEN));
-	SetDCBrushColor(hdc, col);
-	SelectObject(hdc, GetStockObject(DC_BRUSH));
-	GetClientRect(hwnd, &rect);
-	Rectangle(hdc, rect.left, rect.top, rect.right, rect.bottom);
-	ReleaseDC(hwnd, hdc);
-}
 
 void CConfig::ParseConfig(HWND hDlg, BOOL initDiag)
 {
@@ -1146,7 +1148,11 @@ BOOL CConfig::LoadConfig(IME_MODE imeMode)
 
 			// In store app mode, the dll is loaded into app container which does not even have read right for IME profile in APPDATA.
 			// Here, the read right is granted once to "ALL APPLICATION PACKAGES" when loaded in desktop mode, so as all metro apps can at least read the user settings in config.ini.				
+#ifdef DIMESettings
+			if (!_appPermissionSet && imeMode != IME_MODE_NONE)
+#else
 			if (!CDIME::_IsStoreAppMode() && !_appPermissionSet && imeMode != IME_MODE_NONE)
+#endif
 			{
 				EXPLICIT_ACCESS ea;
 				// Get a pointer to the existing DACL (Conditionaly).
@@ -1159,14 +1165,14 @@ BOOL CConfig::LoadConfig(IME_MODE imeMode)
 				ea.grfInheritance = SUB_CONTAINERS_AND_OBJECTS_INHERIT;
 				ea.Trustee.TrusteeForm = TRUSTEE_IS_NAME;
 				ea.Trustee.TrusteeType = TRUSTEE_IS_WELL_KNOWN_GROUP;
-				ea.Trustee.ptstrName = L"Everyone";
+				ea.Trustee.ptstrName = (LPWCH) L"Everyone";
 				// Create a new ACL that merges the new ACE into the existing DACL.
 				dwRes = SetEntriesInAcl(1, &ea, pOldDACL, &pNewDACL);
 				if (ERROR_SUCCESS != dwRes) goto ErrorExit;
 				if (Global::isWindows8)
 				{
 					ea.Trustee.TrusteeForm = TRUSTEE_IS_NAME;
-					ea.Trustee.ptstrName = L"ALL APPLICATION PACKAGES";
+					ea.Trustee.ptstrName = (LPWCH) L"ALL APPLICATION PACKAGES";
 					dwRes = SetEntriesInAcl(1, &ea, pNewDACL, &pNewDACL);
 					if (ERROR_SUCCESS != dwRes) goto ErrorExit;
 				}
@@ -1318,6 +1324,7 @@ BOOL CConfig::importCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToLoad)
 		HANDLE hCustomTable = NULL;
 		DWORD dwDataLen = 0;
 		LPCWSTR customText = nullptr;
+		size_t bufsize = dwDataLen + 1;
 		if ((hCustomTable = CreateFile(pathToLoad, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL)) == INVALID_HANDLE_VALUE)
 		{	// Error
 			success = FALSE;
@@ -1330,7 +1337,7 @@ BOOL CConfig::importCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToLoad)
 			goto Cleanup;
 		}
 		// Create a buffer for the custom table text
-		size_t bufsize = dwDataLen + 1;
+		
 		customText = new (std::nothrow) WCHAR[bufsize];
 		if (customText == nullptr)
 		{// Error
@@ -1418,6 +1425,7 @@ BOOL CConfig::exportCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToWrite)
 	LPWSTR buf;
 	HANDLE hCustomTableFile = NULL;
 	DWORD lpNumberOfBytesWritten = 0;
+	WCHAR byteOrder = 0xFEFF;
 
 	len = GetWindowTextLength(GetDlgItem(hDlg, IDC_EDIT_CUSTOM_TABLE));
 	buf = new (std::nothrow) WCHAR[len + 1];
@@ -1438,7 +1446,7 @@ BOOL CConfig::exportCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToWrite)
 	}
 
 	//Write Byte order makr to the file if the first byte of buf is not BOM
-	WCHAR byteOrder = 0xFEFF;
+	
 	if (buf[0] != byteOrder && !WriteFile(hCustomTableFile, (LPCVOID)&byteOrder, (DWORD)sizeof(WCHAR), &lpNumberOfBytesWritten, NULL))
 	{	// Error
 		success = FALSE;
