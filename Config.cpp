@@ -1324,7 +1324,7 @@ BOOL CConfig::importCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToLoad)
 		HANDLE hCustomTable = NULL;
 		DWORD dwDataLen = 0;
 		LPCWSTR customText = nullptr;
-		size_t bufsize = dwDataLen + 1;
+		
 		if ((hCustomTable = CreateFile(pathToLoad, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL)) == INVALID_HANDLE_VALUE)
 		{	// Error
 			success = FALSE;
@@ -1338,7 +1338,7 @@ BOOL CConfig::importCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToLoad)
 		}
 		// Create a buffer for the custom table text
 		
-		customText = new (std::nothrow) WCHAR[bufsize];
+		customText = new (std::nothrow) WCHAR[dwDataLen + 1];
 		if (customText == nullptr)
 		{// Error
 			success = FALSE;
@@ -1421,22 +1421,22 @@ BOOL CConfig::exportCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToWrite)
 {
 	//write the edittext context into custom.txt
 	BOOL success = TRUE;
-	int len;
-	LPWSTR buf;
+	DWORD dwDataLen;
+	LPWSTR customText = nullptr;
 	HANDLE hCustomTableFile = NULL;
 	DWORD lpNumberOfBytesWritten = 0;
 	WCHAR byteOrder = 0xFEFF;
 
-	len = GetWindowTextLength(GetDlgItem(hDlg, IDC_EDIT_CUSTOM_TABLE));
-	buf = new (std::nothrow) WCHAR[len + 1];
-	if (buf == nullptr)
+	dwDataLen = GetWindowTextLength(GetDlgItem(hDlg, IDC_EDIT_CUSTOM_TABLE));
+	customText = new (std::nothrow) WCHAR[dwDataLen + 1];
+	if (customText == nullptr)
 	{
 		// Error
 		success = FALSE;
 		goto Cleanup;
 	}
-	ZeroMemory(buf, (len + 1)*sizeof(WCHAR));
-	GetDlgItemText(hDlg, IDC_EDIT_CUSTOM_TABLE, buf, len + 1);
+	ZeroMemory(customText, (dwDataLen + 1)*sizeof(WCHAR));
+	GetDlgItemText(hDlg, IDC_EDIT_CUSTOM_TABLE, customText, dwDataLen + 1);
 
 	// Create a file to save custom table
 	if ((hCustomTableFile = CreateFile(pathToWrite, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) == INVALID_HANDLE_VALUE)
@@ -1447,20 +1447,20 @@ BOOL CConfig::exportCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToWrite)
 
 	//Write Byte order makr to the file if the first byte of buf is not BOM
 	
-	if (buf[0] != byteOrder && !WriteFile(hCustomTableFile, (LPCVOID)&byteOrder, (DWORD)sizeof(WCHAR), &lpNumberOfBytesWritten, NULL))
+	if (customText[0] != byteOrder && !WriteFile(hCustomTableFile, (LPCVOID)&byteOrder, (DWORD)sizeof(WCHAR), &lpNumberOfBytesWritten, NULL))
 	{	// Error
 		success = FALSE;
 		goto Cleanup;
 	}
 	// Write the custom table text to the file
-	if (!WriteFile(hCustomTableFile, (LPCVOID)buf, (DWORD)len*sizeof(WCHAR), &lpNumberOfBytesWritten, NULL))
+	if (!WriteFile(hCustomTableFile, (LPCVOID)customText, (DWORD)dwDataLen*sizeof(WCHAR), &lpNumberOfBytesWritten, NULL))
 	{	// Error
 		success = FALSE;
 		goto Cleanup;
 	}
 Cleanup:
 	if (hCustomTableFile) CloseHandle(hCustomTableFile);
-	if (buf) delete[]buf;
+	if (customText) delete[]customText;
 
 	return success;
 }
