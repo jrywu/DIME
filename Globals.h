@@ -59,6 +59,18 @@ extern const WCHAR UnicodeByteOrderMark;
 extern WCHAR KeywordDelimiter;
 extern const WCHAR StringDelimiter;
 
+extern const CLSID DIMECLSID;
+
+
+extern const GUID DIMEDayiGuidProfile;
+extern const GUID DIMEArrayGuidProfile;
+extern const GUID DIMEPhoneticGuidProfile;
+extern const GUID DIMEGenericGuidProfile;
+
+extern const GUID DIMEGuidImeModePreserveKey;
+extern const GUID DIMEGuidDoubleSingleBytePreserveKey;
+extern const GUID DIMEGuidConfigPreserveKey;
+
 #ifndef DIMESettings
 //---------------------------------------------------------------------
 // inline

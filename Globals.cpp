@@ -63,18 +63,11 @@ extern const WCHAR UnicodeByteOrderMark = 0xFEFF;
 //---------------------------------------------------------------------
 extern WCHAR KeywordDelimiter = L'=';
 extern const WCHAR StringDelimiter = L'\"';
-#ifndef DIMESettings
-_T_GetDpiForMonitor _GetDpiForMonitor = nullptr;
-HINSTANCE hShcore = NULL;
-HINSTANCE dllInstanceHandle;
-
-LONG dllRefCount = -1;
-CRITICAL_SECTION CS;
 //---------------------------------------------------------------------
 // DIME CLSID
 //---------------------------------------------------------------------
 // {1DE68A87-FF3B-46A0-8F80-46730B2491B1}
-extern const CLSID DIMECLSID = 
+extern const CLSID DIMECLSID =
 { 0x1de68a87, 0xff3b, 0x46a0, { 0x8f, 0x80, 0x46, 0x73, 0xb, 0x24, 0x91, 0xb1 } };
 
 
@@ -83,26 +76,34 @@ extern const CLSID DIMECLSID =
 // TSFDayiProfile GUID
 //---------------------------------------------------------------------
 // {36851834-92AD-4397-9F50-800384D5C24C}
-extern const GUID DIMEDayiGuidProfile = 
+extern const GUID DIMEDayiGuidProfile =
 { 0x36851834, 0x92ad, 0x4397, { 0x9f, 0x50, 0x80, 0x3, 0x84, 0xd5, 0xc2, 0x4c } };
 //---------------------------------------------------------------------
 // TSFArrayProfile GUID
 //---------------------------------------------------------------------
 // {5DFC1743-638C-4F61-9E76-FCFA9707F450}
-extern const GUID DIMEArrayGuidProfile = 
+extern const GUID DIMEArrayGuidProfile =
 { 0x5dfc1743, 0x638c, 0x4f61, { 0x9e, 0x76, 0xfc, 0xfa, 0x97, 0x7, 0xf4, 0x50 } };
 //---------------------------------------------------------------------
 // TSFPhoneticProfile GUID
 //---------------------------------------------------------------------
 // {26892981-14E3-447B-AF2C-9067CD4A4A8A}
-extern const GUID DIMEPhoneticGuidProfile = 
+extern const GUID DIMEPhoneticGuidProfile =
 { 0x26892981, 0x14e3, 0x447b, { 0xaf, 0x2c, 0x90, 0x67, 0xcd, 0x4a, 0x4a, 0x8a } };
 //---------------------------------------------------------------------
 // TSFGenericProfile GUID
 //---------------------------------------------------------------------
 // {061BEEA7-FFF9-420C-B3F6-A9047AFD0877}
-extern const GUID DIMEGenericGuidProfile = 
+extern const GUID DIMEGenericGuidProfile =
 { 0x61beea7, 0xfff9, 0x420c, { 0xb3, 0xf6, 0xa9, 0x4, 0x7a, 0xfd, 0x8, 0x77 } };
+
+#ifndef DIMESettings
+_T_GetDpiForMonitor _GetDpiForMonitor = nullptr;
+HINSTANCE hShcore = NULL;
+HINSTANCE dllInstanceHandle;
+
+LONG dllRefCount = -1;
+CRITICAL_SECTION CS;
 
 //---------------------------------------------------------------------
 // PreserveKey GUID

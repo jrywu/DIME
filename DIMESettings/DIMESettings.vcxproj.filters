@@ -65,6 +65,9 @@
     <ClCompile Include="..\TableDictionaryEngine.cpp">
       <Filter>Source Files\DIME</Filter>
     </ClCompile>
+    <ClCompile Include="..\TfInputProcessorProfile.cpp">
+      <Filter>Source Files\DIME</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\DIME.rc">

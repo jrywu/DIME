@@ -9,6 +9,7 @@
 #include "..\Globals.h"
 #include "..\Config.h"
 #include "..\BuildInfo.h"
+#include "..\TfInputProcessorProfile.h"
 
 #pragma comment(lib, "ComCtl32.lib")
 #pragma comment(lib, "shcore.lib")
@@ -105,14 +106,44 @@ void showIMESettings(HWND hDlg, IME_MODE imeMode)
 
     WCHAR dialogCaption[MAX_PATH] = { 0 };
 
+    CTfInputProcessorProfile* profile = new CTfInputProcessorProfile();
+    LANGID langid = 0;
+    GUID guidProfile;
+
     if (imeMode == IME_MODE_DAYI)
+    {
+        guidProfile = Global::DIMEDayiGuidProfile;
         StringCchCat(dialogCaption, MAX_PATH, L"DIME 大易輸入法設定");
+    }
     else if (imeMode == IME_MODE_ARRAY)
+    {
+        guidProfile = Global::DIMEArrayGuidProfile;
         StringCchCat(dialogCaption, MAX_PATH, L"DIME 行列輸入法設定");
+    }
     else if (imeMode == IME_MODE_GENERIC)
+    {
+        guidProfile = Global::DIMEGenericGuidProfile;
         StringCchCat(dialogCaption, MAX_PATH, L"DIME 自建輸入法設定");
+    }
     else if (imeMode == IME_MODE_PHONETIC)
+    {
+        guidProfile = Global::DIMEPhoneticGuidProfile;
         StringCchCat(dialogCaption, MAX_PATH, L"DIME 傳統注音輸入法設定");
+    }
+
+    if (SUCCEEDED(profile->CreateInstance()))
+    {
+        if(langid == 0)
+            profile->GetCurrentLanguage(&langid);
+        if (guidProfile == GUID_NULL)
+        {
+            CLSID clsid;
+            profile->GetDefaultLanguageProfile(langid, GUID_TFCAT_TIP_KEYBOARD, &clsid, &guidProfile);
+        }
+        CDIMEArray <LanguageProfileInfo> langProfileInfoList;
+        profile->GetReverseConversionProviders(langid, &langProfileInfoList);
+        CConfig::SetReverseConvervsionInfoList(&langProfileInfoList);
+    }
 
     StringCchPrintf(dialogCaption, MAX_PATH, L"%s v%d.%d.%d.%d", dialogCaption,
         BUILD_VER_MAJOR, BUILD_VER_MINOR, BUILD_COMMIT_COUNT, BUILD_DATE_1);
