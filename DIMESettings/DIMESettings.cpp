@@ -107,7 +107,7 @@ void showIMESettings(HWND hDlg, IME_MODE imeMode)
     WCHAR dialogCaption[MAX_PATH] = { 0 };
 
     CTfInputProcessorProfile* profile = new CTfInputProcessorProfile();
-    LANGID langid = 0;
+    LANGID langid = 1028;  //CHT Language ID.
     GUID guidProfile;
 
     if (imeMode == IME_MODE_DAYI)
@@ -130,11 +130,12 @@ void showIMESettings(HWND hDlg, IME_MODE imeMode)
         guidProfile = Global::DIMEPhoneticGuidProfile;
         StringCchCat(dialogCaption, MAX_PATH, L"DIME 傳統注音輸入法設定");
     }
-
+    // Reload reverse conversion list from system.
     if (SUCCEEDED(profile->CreateInstance()))
     {
         if(langid == 0)
             profile->GetCurrentLanguage(&langid);
+        
         if (guidProfile == GUID_NULL)
         {
             CLSID clsid;
@@ -144,7 +145,9 @@ void showIMESettings(HWND hDlg, IME_MODE imeMode)
         profile->GetReverseConversionProviders(langid, &langProfileInfoList);
         CConfig::SetReverseConvervsionInfoList(&langProfileInfoList);
     }
-
+    // Load config file and set imeMode (will filtered out self from reverse conversion list)
+    CConfig::LoadConfig(imeMode);
+    // Show version on caption of IME settings dialog
     StringCchPrintf(dialogCaption, MAX_PATH, L"%s v%d.%d.%d.%d", dialogCaption,
         BUILD_VER_MAJOR, BUILD_VER_MINOR, BUILD_COMMIT_COUNT, BUILD_DATE_1);
     psh.pszCaption = dialogCaption;
@@ -166,23 +169,15 @@ INT_PTR CALLBACK WndProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
         switch (LOWORD(wParam))
         {
         case IDB_DIME_DAYI_SETTINGS:
-            CConfig::SetIMEMode(IME_MODE_DAYI);
-            CConfig::LoadConfig(IME_MODE_DAYI);
             showIMESettings(hDlg, IME_MODE_DAYI);
             break;
         case IDB_DIME_ARRAY_SETTINGS:
-            CConfig::SetIMEMode(IME_MODE_ARRAY);
-            CConfig::LoadConfig(IME_MODE_ARRAY);
             showIMESettings(hDlg, IME_MODE_ARRAY);
             break;
         case IDB_DIME_PHONETIC_SETTINGS:
-            CConfig::SetIMEMode(IME_MODE_PHONETIC);
-            CConfig::LoadConfig(IME_MODE_PHONETIC);
             showIMESettings(hDlg, IME_MODE_PHONETIC);
             break;
         case IDB_DIME_GENERIC_SETTINGS:
-            CConfig::SetIMEMode(IME_MODE_GENERIC);
-            CConfig::LoadConfig(IME_MODE_GENERIC);
             showIMESettings(hDlg, IME_MODE_GENERIC);
             break;
         case IDOK:

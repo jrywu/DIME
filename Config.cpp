@@ -1073,6 +1073,7 @@ void CConfig::SetIMEMode(IME_MODE imeMode)
 	if (_imeMode != imeMode)
 	{
 		_imeMode = imeMode;
+		GUID guidProfile = CLSID_NULL;
 		WCHAR wszAppData[MAX_PATH] = L"\0";
 		SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);
 
@@ -1087,15 +1088,35 @@ void CConfig::SetIMEMode(IME_MODE imeMode)
 			if (CreateDirectory(_pwzsDIMEProfile, NULL) == 0) return;
 		}
 		if (imeMode == IME_MODE_DAYI)
+		{
+			guidProfile = Global::DIMEDayiGuidProfile;
 			StringCchPrintf(_pwszINIFileName, MAX_PATH, L"%s\\DayiConfig.ini", _pwzsDIMEProfile);
+		}
 		else if (imeMode == IME_MODE_ARRAY)
+		{
+			guidProfile = Global::DIMEArrayGuidProfile;
 			StringCchPrintf(_pwszINIFileName, MAX_PATH, L"%s\\ArrayConfig.ini", _pwzsDIMEProfile);
+		}
 		else if (imeMode == IME_MODE_PHONETIC)
+		{
+			guidProfile = Global::DIMEPhoneticGuidProfile;
 			StringCchPrintf(_pwszINIFileName, MAX_PATH, L"%s\\PhoneConfig.ini", _pwzsDIMEProfile);
+		}
 		else if (imeMode == IME_MODE_GENERIC)
+		{
+			guidProfile = Global::DIMEGenericGuidProfile;
 			StringCchPrintf(_pwszINIFileName, MAX_PATH, L"%s\\GenericConfig.ini", _pwzsDIMEProfile);
+		}
 		else
 			StringCchPrintf(_pwszINIFileName, MAX_PATH, L"%s\\config.ini", _pwzsDIMEProfile);
+
+
+		// filter out self from reverse conversion list
+		for (UINT i = 0; i < _reverseConvervsionInfoList->Count(); i++)
+		{
+			if (IsEqualCLSID(_reverseConvervsionInfoList->GetAt(i)->guidProfile, guidProfile))
+				_reverseConvervsionInfoList->RemoveAt(i);
+		}
 	}
 	return;
 
