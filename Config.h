@@ -226,6 +226,7 @@ private:
 	static WCHAR* _reverseConversionDescription;
 
 	static WCHAR _pwszINIFileName[MAX_PATH];
+	static WCHAR _pwszLoadedINIFileName[MAX_PATH];
 	static WCHAR _pwzsDIMEProfile[MAX_PATH];
 
 	static void clearReverseConvervsionInfoList();
