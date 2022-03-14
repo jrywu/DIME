@@ -770,7 +770,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeComposition(UINT uCode, P
 
 	if (c >= 'A' && c <= 'Z' && (Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT)) != 0) return FALSE; //  input English with shift-a~z 
 
-	if (pKeystroke != nullptr && pKeystroke->Function != FUNCTION_NONE && uCode == pKeystroke->VirtualKey)
+	if (pKeystroke != nullptr && pKeystroke->Function != FUNCTION_NONE )// && uCode == pKeystroke->VirtualKey)
 	{
 		if (function == FUNCTION_NONE)
 		{
