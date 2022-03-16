@@ -88,7 +88,7 @@ GUID CConfig::_reverseConversionGUIDProfile = CLSID_NULL;
 WCHAR* CConfig::_reverseConversionDescription = nullptr;
 WCHAR CConfig::_pwzsDIMEProfile[] = L"\0";
 WCHAR CConfig::_pwszINIFileName[] = L"\0";
-WCHAR CConfig::_pwszLoadedINIFileName[] = L"\0";
+IME_MODE CConfig::_configIMEMode = IME_MODE_NONE;
 BOOL CConfig::_reloadReverseConversion = FALSE;
 
 WCHAR CConfig::_pFontFaceName[] = { L"·L³n¥¿¶ÂÅé" };
@@ -1146,9 +1146,9 @@ BOOL CConfig::LoadConfig(IME_MODE imeMode)
 		BOOL updated = FALSE;
 		if (!failed)
 			updated = difftime(initTimeStamp.st_mtime, _initTimeStamp.st_mtime) > 0;
-		BOOL imeChanged = CompareString(1028, NORM_IGNORECASE, _pwszLoadedINIFileName, MAX_PATH, _pwszINIFileName, MAX_PATH) != CSTR_EQUAL;
+		
 		debugPrint(L"CDIME::loadConfig() wstat failed = %d, config file updated = %d\n", failed, updated);
-		if (failed || updated || imeChanged)
+		if (failed || updated || _configIMEMode!=imeMode)
 		{
 			bRET = TRUE;
 			CFile* iniDictionaryFile;
@@ -1167,7 +1167,7 @@ BOOL CConfig::LoadConfig(IME_MODE imeMode)
 				delete iniDictionaryFile;
 				SetDefaultTextFont();
 				_initTimeStamp.st_mtime = initTimeStamp.st_mtime;
-				StringCchCopy(_pwszLoadedINIFileName, MAX_PATH, _pwszINIFileName);
+				_configIMEMode = imeMode;
 			}
 
 			// In store app mode, the dll is loaded into app container which does not even have read right for IME profile in APPDATA.
