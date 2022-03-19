@@ -57,19 +57,19 @@ CKeyStateCategory* CKeyStateCategoryFactory::MakeKeyStateCategory(KEYSTROKE_CATE
 
     switch (keyCategory)
     {
-    case CATEGORY_NONE:
+    case KEYSTROKE_CATEGORY::CATEGORY_NONE:
         pKeyState = new (std::nothrow) CKeyStateNull(pTextService);
         break;
 
-    case CATEGORY_COMPOSING:
+    case KEYSTROKE_CATEGORY::CATEGORY_COMPOSING:
         pKeyState = new (std::nothrow) CKeyStateComposing(pTextService);
         break;
 
-    case CATEGORY_CANDIDATE:
+    case KEYSTROKE_CATEGORY::CATEGORY_CANDIDATE:
         pKeyState = new (std::nothrow) CKeyStateCandidate(pTextService);
         break;
 
-    case CATEGORY_PHRASE:
+    case KEYSTROKE_CATEGORY::CATEGORY_PHRASE:
         pKeyState = new (std::nothrow) CKeyStatePhrase(pTextService);
         break;
 
@@ -105,58 +105,58 @@ HRESULT CKeyStateCategory::KeyStateHandler(KEYSTROKE_FUNCTION function, KeyHandl
 {
     switch(function)
     {
-    case FUNCTION_INPUT:
+    case KEYSTROKE_FUNCTION::FUNCTION_INPUT:
         return HandleKeyInput(dto);
-    case FUNCTION_INPUT_AND_CONVERT:
+    case KEYSTROKE_FUNCTION::FUNCTION_INPUT_AND_CONVERT:
         return HandleKeyInputAndConvert(dto);
-    case FUNCTION_INPUT_AND_CONVERT_WILDCARD:
+    case KEYSTROKE_FUNCTION::FUNCTION_INPUT_AND_CONVERT_WILDCARD:
         return HandleKeyInputAndConvertWildCard(dto);
 
-    case FUNCTION_FINALIZE_TEXTSTORE_AND_INPUT:
+    case KEYSTROKE_FUNCTION::FUNCTION_FINALIZE_TEXTSTORE_AND_INPUT:
         return HandleKeyFinalizeTextStoreAndInput(dto);
-    case FUNCTION_FINALIZE_TEXTSTORE:
+    case KEYSTROKE_FUNCTION::FUNCTION_FINALIZE_TEXTSTORE:
         return HandleKeyFinalizeTextStore(dto);
 
-    case FUNCTION_FINALIZE_CANDIDATELIST_AND_INPUT:
+    case KEYSTROKE_FUNCTION::FUNCTION_FINALIZE_CANDIDATELIST_AND_INPUT:
         return HandleKeyFinalizeCandidatelistAndInput(dto);
-    case FUNCTION_FINALIZE_CANDIDATELIST:
+    case KEYSTROKE_FUNCTION::FUNCTION_FINALIZE_CANDIDATELIST:
         return HandleKeyFinalizeCandidatelist(dto);
 
-    case FUNCTION_CONVERT:
+    case KEYSTROKE_FUNCTION::FUNCTION_CONVERT:
         return HandleKeyConvert(dto);
-    case FUNCTION_CONVERT_WILDCARD:
+    case KEYSTROKE_FUNCTION::FUNCTION_CONVERT_WILDCARD:
         return HandleKeyConvertWildCard(dto);
 
-    case FUNCTION_CONVERT_ARRAY_PHRASE:
+    case KEYSTROKE_FUNCTION::FUNCTION_CONVERT_ARRAY_PHRASE:
         return HandleKeyConvertArrayPhrase(dto);
-    case FUNCTION_CONVERT_ARRAY_PHRASE_WILDCARD:
+    case KEYSTROKE_FUNCTION::FUNCTION_CONVERT_ARRAY_PHRASE_WILDCARD:
         return HandleKeyConvertArrayPhraseWildCard(dto);
 
-    case FUNCTION_CANCEL:
+    case KEYSTROKE_FUNCTION::FUNCTION_CANCEL:
         return HandleKeyCancel(dto);
 
-    case FUNCTION_BACKSPACE:
+    case KEYSTROKE_FUNCTION::FUNCTION_BACKSPACE:
         return HandleKeyBackspace(dto);
 
-    case FUNCTION_MOVE_LEFT:
-    case FUNCTION_MOVE_RIGHT:
-	case FUNCTION_MOVE_UP:
-    case FUNCTION_MOVE_DOWN:
+    case KEYSTROKE_FUNCTION::FUNCTION_MOVE_LEFT:
+    case KEYSTROKE_FUNCTION::FUNCTION_MOVE_RIGHT:
+	case KEYSTROKE_FUNCTION::FUNCTION_MOVE_UP:
+    case KEYSTROKE_FUNCTION::FUNCTION_MOVE_DOWN:
         return HandleKeyArrow(dto);
  
-    case FUNCTION_MOVE_PAGE_UP:
-    case FUNCTION_MOVE_PAGE_DOWN:
-    case FUNCTION_MOVE_PAGE_TOP:
-    case FUNCTION_MOVE_PAGE_BOTTOM:
+    case KEYSTROKE_FUNCTION::FUNCTION_MOVE_PAGE_UP:
+    case KEYSTROKE_FUNCTION::FUNCTION_MOVE_PAGE_DOWN:
+    case KEYSTROKE_FUNCTION::FUNCTION_MOVE_PAGE_TOP:
+    case KEYSTROKE_FUNCTION::FUNCTION_MOVE_PAGE_BOTTOM:
         return HandleKeyArrow(dto);
 
-    case FUNCTION_DOUBLE_SINGLE_BYTE:
+    case KEYSTROKE_FUNCTION::FUNCTION_DOUBLE_SINGLE_BYTE:
         return HandleKeyDoubleSingleByte(dto);
 
-    case FUNCTION_ADDRESS_DIRECT_INPUT:
+    case KEYSTROKE_FUNCTION::FUNCTION_ADDRESS_DIRECT_INPUT:
         return HandleKeyAddressChar(dto);
 
-    case FUNCTION_SELECT_BY_NUMBER:
+    case KEYSTROKE_FUNCTION::FUNCTION_SELECT_BY_NUMBER:
         return HandleKeySelectByNumber(dto);
 
     }

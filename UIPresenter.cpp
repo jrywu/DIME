@@ -232,7 +232,7 @@ HRESULT CUIPresenter::ToShowUIWindows()
 	debugPrint(L"CUIPresenter::ToShowUIWindows()");
     _MoveUIWindowsToTextExt();
     if(_pCandidateWnd) _pCandidateWnd->_Show(TRUE);
-	if(_pNotifyWnd && _pNotifyWnd->GetNotifyType() == NOTIFY_OTHERS)
+	if(_pNotifyWnd && _pNotifyWnd->GetNotifyType() == NOTIFY_TYPE::NOTIFY_OTHERS)
 	{
 		_pNotifyWnd->_Show(TRUE);
 	}
@@ -444,7 +444,7 @@ STDAPI CUIPresenter::SetSelection(UINT nIndex)
 STDAPI CUIPresenter::Finalize(void)
 {
 	debugPrint(L"CUIPresenter::Finalize()");
-    _CandidateChangeNotification(CAND_ITEM_SELECT);
+    _CandidateChangeNotification(CANDWND_ACTION::CAND_ITEM_SELECT);
     return S_OK;
 }
 
@@ -1049,7 +1049,7 @@ HRESULT CUIPresenter::_NotifyChangeNotification(_In_ enum NOTIFYWND_ACTION actio
 			Global::IsShiftKeyDownOnly = FALSE;
 			break;
 		case SHOW_NOTIFY:
-			if((NOTIFY_TYPE)lParam == NOTIFY_CHN_ENG && !_pTextService->_IsComposing())
+			if((NOTIFY_TYPE)lParam == NOTIFY_TYPE::NOTIFY_CHN_ENG && !_pTextService->_IsComposing())
 			{
 				if(_pTextService && _GetContextDocument() == nullptr)  //layout is not started. we need to do probecomposition to start layout
 				{
@@ -1071,7 +1071,7 @@ HRESULT CUIPresenter::_NotifyChangeNotification(_In_ enum NOTIFYWND_ACTION actio
 					}
 				}
 			}
-			else if((NOTIFY_TYPE)lParam == NOTIFY_OTHERS || (_pCandidateWnd && !_pCandidateWnd->_IsWindowVisible()))
+			else if((NOTIFY_TYPE)lParam == NOTIFY_TYPE::NOTIFY_OTHERS || (_pCandidateWnd && !_pCandidateWnd->_IsWindowVisible()))
 				ShowNotify(TRUE, 0, (UINT) wParam);
 			break;
 	}
@@ -1095,12 +1095,12 @@ HRESULT CUIPresenter::_CandidateChangeNotification(_In_ enum CANDWND_ACTION acti
     ITfDocumentMgr* pDocumentMgr = nullptr;
 	ITfContext* pContext = _GetContextDocument();
     _KEYSTROKE_STATE KeyState;
-	KeyState.Category = CATEGORY_CANDIDATE;
+	KeyState.Category = KEYSTROKE_CATEGORY::CATEGORY_CANDIDATE;
 	// select from the UI. send FUNCTION_FINALIZE_CANDIDATELIST or FUNCTION_CANCEL to the keyhandler 
-	KeyState.Function = (CAND_CANCEL == action) ? FUNCTION_CANCEL : FUNCTION_FINALIZE_CANDIDATELIST;
+	KeyState.Function = (CANDWND_ACTION::CAND_CANCEL == action) ? KEYSTROKE_FUNCTION::FUNCTION_CANCEL : KEYSTROKE_FUNCTION::FUNCTION_FINALIZE_CANDIDATELIST;
 	
 
-	if (!(CAND_ITEM_SELECT == action || CAND_CANCEL == action))
+	if (!(CANDWND_ACTION::CAND_ITEM_SELECT == action || CANDWND_ACTION::CAND_CANCEL == action))
     {
         goto Exit;
     }
@@ -1235,7 +1235,7 @@ HRESULT CUIPresenter::OnKillThreadFocus()
 
 #ifdef CANCEL_CAND_ON_KILL_FOCUS
 	if (_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())
-		_CandidateChangeNotification(CAND_CANCEL);
+		_CandidateChangeNotification(CANDWND_ACTION::CAND_CANCEL);
 #endif
 
 	 ToHideUIWindows();
@@ -1263,46 +1263,46 @@ void CUIPresenter::AdviseUIChangedByArrowKey(_In_ KEYSTROKE_FUNCTION arrowKey)
 {
     switch (arrowKey)
     {
-    case FUNCTION_MOVE_UP:
+    case KEYSTROKE_FUNCTION::FUNCTION_MOVE_UP:
         {
             if(!isUILessMode())_MoveCandidateSelection(MOVEUP_ONE);
 			else if(CConfig::GetArrowKeySWPages())  _MoveCandidatePage(MOVEUP_ONE);
             break;
         }
-    case FUNCTION_MOVE_DOWN:
+    case KEYSTROKE_FUNCTION::FUNCTION_MOVE_DOWN:
         {
             if(!isUILessMode()) _MoveCandidateSelection(MOVEDOWN_ONE);
 			else if(CConfig::GetArrowKeySWPages())  _MoveCandidatePage(MOVEDOWN_ONE);
             break;
         }
-	case FUNCTION_MOVE_LEFT:
+	case KEYSTROKE_FUNCTION::FUNCTION_MOVE_LEFT:
         {
             if(isUILessMode()) _MoveCandidateSelection(MOVEUP_ONE);
 			else if(CConfig::GetArrowKeySWPages())  _MoveCandidatePage(MOVEUP_ONE);
             break;
         }
-    case FUNCTION_MOVE_RIGHT:
+    case KEYSTROKE_FUNCTION::FUNCTION_MOVE_RIGHT:
         {
 			if(isUILessMode()) _MoveCandidateSelection(MOVEDOWN_ONE);  //UI less mode is horizontal layout
 			else if(CConfig::GetArrowKeySWPages())  _MoveCandidatePage(MOVEDOWN_ONE);
             break;
         }
-    case FUNCTION_MOVE_PAGE_UP:
+    case KEYSTROKE_FUNCTION::FUNCTION_MOVE_PAGE_UP:
         {
             _MoveCandidatePage(MOVEUP_ONE);
             break;
         }
-    case FUNCTION_MOVE_PAGE_DOWN:
+    case KEYSTROKE_FUNCTION::FUNCTION_MOVE_PAGE_DOWN:
         {
             _MoveCandidatePage(MOVEDOWN_ONE);
             break;
         }
-    case FUNCTION_MOVE_PAGE_TOP:
+    case KEYSTROKE_FUNCTION::FUNCTION_MOVE_PAGE_TOP:
         {
             _SetCandidateSelection(MOVETO_TOP);
             break;
         }
-    case FUNCTION_MOVE_PAGE_BOTTOM:
+    case KEYSTROKE_FUNCTION::FUNCTION_MOVE_PAGE_BOTTOM:
         {
             _SetCandidateSelection(MOVETO_BOTTOM);
             break;
@@ -1453,7 +1453,7 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_opt_ UINT 
 
 	if (_pNotifyWnd) 
 	{
-		if (notifyType == NOTIFY_CHN_ENG && _pNotifyWnd->GetNotifyType() == NOTIFY_OTHERS)
+		if (notifyType == NOTIFY_TYPE::NOTIFY_CHN_ENG && _pNotifyWnd->GetNotifyType() == NOTIFY_TYPE::NOTIFY_OTHERS)
 			return;
 		else
 			ClearNotify();
@@ -1531,7 +1531,7 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_opt_ UINT 
 						_pNotifyWnd->_Move(_notifyLocation.x, _notifyLocation.y);
 				}
 				//means TextLayoutSink is not working. We need to ProbeComposition to start layout
-				if(_pTextService && delayShow == 0 && _GetContextDocument() == nullptr && notifyType == NOTIFY_CHN_ENG )
+				if(_pTextService && delayShow == 0 && _GetContextDocument() == nullptr && notifyType == NOTIFY_TYPE::NOTIFY_CHN_ENG )
 					_pTextService->_ProbeComposition(pContext);
 
 			}

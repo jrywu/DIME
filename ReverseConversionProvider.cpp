@@ -47,7 +47,7 @@ HRESULT CDIME::GetReverseConversion(_In_ LANGID langid, _In_   REFGUID guidProfi
 	if(_pCompositionProcessorEngine) return E_FAIL;
 	IME_MODE imeMode = _pCompositionProcessorEngine->GetImeModeFromGuidProfile(guidProfile);
 
-	if (imeMode == IME_MODE_NONE || imeMode == Global::imeMode) //return E_NOTIMPL if imeMode is IME_MODE_NONE or imeMode requested is current imeMode
+	if (imeMode == IME_MODE::IME_MODE_NONE || imeMode == Global::imeMode) //return E_NOTIMPL if imeMode is IME_MODE::IME_MODE_NONE or imeMode requested is current imeMode
 		return E_NOTIMPL;
 
 	if (_pCompositionProcessorEngine == nullptr)
@@ -63,15 +63,15 @@ HRESULT CDIME::GetReverseConversion(_In_ LANGID langid, _In_   REFGUID guidProfi
 	
 	_pCompositionProcessorEngine->SetupDictionaryFile(imeMode);
 
-	if(_pReverseConversion[imeMode] == nullptr)
+	if(_pReverseConversion[(UINT)imeMode] == nullptr)
 	{
-		_pReverseConversion[imeMode] =  new (std::nothrow) CReverseConversion(_pCompositionProcessorEngine, imeMode);
+		_pReverseConversion[(UINT)imeMode] =  new (std::nothrow) CReverseConversion(_pCompositionProcessorEngine, imeMode);
 	}
 	
 
-	if(_pReverseConversion[imeMode])
+	if(_pReverseConversion[(UINT)imeMode])
 	{
-		*ppReverseConversion = _pReverseConversion[imeMode];
+		*ppReverseConversion = _pReverseConversion[(UINT)imeMode];
 		debugPrint(L"CDIME(ITfReverseConversionMgr)::GetReverseConversion(); ppReverseConversion ready,  return S_OK");
 		return S_OK;
 	}

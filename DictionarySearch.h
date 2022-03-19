@@ -42,6 +42,25 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 class CDictionaryResult;
 
+enum class SEARCH_MODE
+{
+    SEARCH_NONE,
+    SEARCH_MAPPING,
+    SEARCH_TEXT,
+    SEARCH_PHRASE,
+    SEARCH_RADICAL,
+    SEARCH_CONFIG,
+    SEARCH_CONTROLKEY,
+    SEARCH_SYMBOL,
+    SEARCH_PRHASE_FROM_KEYSTROKE
+};
+enum class CONTROLKEY_TYPE
+{
+    NOT_CONTROLKEY,
+    CIN_CONTROLKEY,
+    TTS_CONTROLKEY
+};
+
 //////////////////////////////////////////////////////////////////////
 //
 // CDictionarySearch declaration.
@@ -89,7 +108,7 @@ private:
 	void initialRadialIndexMap(_Inout_ _T_RadicalIndexMap* pRadicalIndexMap);
 
     CFile* _pFile;
-	enum SEARCH_MODE _searchMode;
+	SEARCH_MODE _searchMode;
 	BOOL _sortedSearchResultFound;
 	CDIME *_pTextService;
 	IME_MODE _imeMode;
@@ -120,22 +139,5 @@ public:
     CDIMEArray<CStringRange> _FindPhraseList;
 };
 
-enum SEARCH_MODE
-{
-	SEARCH_NONE,
-	SEARCH_MAPPING,
-	SEARCH_TEXT,
-	SEARCH_PHRASE,
-	SEARCH_RADICAL,
-	SEARCH_CONFIG,
-	SEARCH_CONTROLKEY,
-	SEARCH_SYMBOL, 
-	SEARCH_PRHASE_FROM_KEYSTROKE
-};
-enum CONTROLKEY_TYPE
-{
-	NOT_CONTROLKEY,
-	CIN_CONTROLKEY,
-	TTS_CONTROLKEY
-};
+
 #endif

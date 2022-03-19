@@ -45,7 +45,7 @@ namespace Global {
 
 BOOL isWindows8 = FALSE;
 
-IME_MODE imeMode = IME_MODE_NONE;
+IME_MODE imeMode = IME_MODE::IME_MODE_NONE;
 
 BOOL hasPhraseSection = FALSE;
 BOOL hasCINPhraseSection = FALSE;

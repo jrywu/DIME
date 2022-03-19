@@ -207,8 +207,8 @@ public:
 	void DoBeep(BEEP_TYPE type);
 
 	//integrity level and process name specific functions
-	BOOL isHighIntegrityProcess(){ return (_processIntegrityLevel == PROCESS_INTEGRITY_LEVEL_HIGH || _processIntegrityLevel == PROCESS_INTEGRITY_LEVEL_SYSTEM); }
-	BOOL isLowIntegrityProcess() { return (_processIntegrityLevel == PROCESS_INTEGRITY_LEVEL_LOW || _processIntegrityLevel == PROCESS_INTEGRITY_LEVEL_UNKNOWN); }
+	BOOL isHighIntegrityProcess(){ return (_processIntegrityLevel == PROCESS_INTEGRITY_LEVEL::PROCESS_INTEGRITY_LEVEL_HIGH || _processIntegrityLevel == PROCESS_INTEGRITY_LEVEL::PROCESS_INTEGRITY_LEVEL_SYSTEM); }
+	BOOL isLowIntegrityProcess() { return (_processIntegrityLevel == PROCESS_INTEGRITY_LEVEL::PROCESS_INTEGRITY_LEVEL_LOW || _processIntegrityLevel == PROCESS_INTEGRITY_LEVEL::PROCESS_INTEGRITY_LEVEL_UNKNOWN); }
 	BOOL isWin7IEProcess() { return  !Global::isWindows8 && (CompareString(GetLocale(), NORM_IGNORECASE, _processName, -1, L"IEXPLORE.EXE", -1) == CSTR_EQUAL); }
 	BOOL isCMDShell() { return  !Global::isWindows8 && (CompareString(GetLocale(), NORM_IGNORECASE, _processName, -1, L"CMD.EXE", -1) == CSTR_EQUAL); }
 	BOOL isBlackListedProcessForProbeComposition() { return  (CompareString(GetLocale(), NORM_IGNORECASE, _processName, -1, L"firefox.exe", -1) == CSTR_EQUAL); }

@@ -59,6 +59,13 @@ CNotifyWindow::CNotifyWindow(_In_ NOTIFYWNDCALLBACK pfnCallback, _In_ void *pv, 
 
 	_notifyType = notifyType;
 
+    _animationStage = 0;
+    _crBkColor = 0;
+    _crTextColor = 0;
+    _cxTitle = 0;
+    _cyTitle = 0;
+    _TextMetric = {0,0,0,0,0, 0,0,0,0,0,  0,0,0,0,0, 0,0,0,0,0};
+
     _pShadowWnd = nullptr;
 
 	_x =0;
@@ -216,7 +223,7 @@ void CNotifyWindow::_OnTimerID(UINT_PTR timerID)
 #endif
 	case DELAY_SHOW_TIMER_ID:
  		_EndTimer(DELAY_SHOW_TIMER_ID);
-		_pfnCallback(_pObj, SHOW_NOTIFY, _timeToHide , _notifyType);
+		_pfnCallback(_pObj, SHOW_NOTIFY, _timeToHide , (LPARAM) _notifyType);
 		break;
 	case TIME_TO_HIDE_TIMER_ID:
 		_Show(FALSE, 0, 0);
@@ -268,7 +275,7 @@ void CNotifyWindow::_Show(BOOL isShowWnd, UINT delayShow, UINT timeToHide)
 	if( delayShow == 0 )
 	{
 		debugPrint(L"CNotifyWindow::_Show() showing and start capture");
-		if(isShowWnd && _notifyType == NOTIFY_CHN_ENG)
+		if(isShowWnd && _notifyType == NOTIFY_TYPE::NOTIFY_CHN_ENG)
 		{
 			debugPrint(L"CNotifyWindow::_Show() about to show and start capture");
 		}
@@ -715,7 +722,7 @@ void CNotifyWindow::_OnLButtonDown(POINT pt)
 
 	if(PtInRect(&rcWindow, pt))
 	{
-		if(_notifyType == NOTIFY_CHN_ENG)
+		if(_notifyType == NOTIFY_TYPE::NOTIFY_CHN_ENG)
 		{
 			_pfnCallback(_pObj, SWITCH_CHN_ENG, NULL, NULL);
 		}
@@ -747,7 +754,7 @@ void CNotifyWindow::_OnMouseMove(POINT pt)
 
 	if(PtInRect(&rcWindow, pt))
 	{
-		if(_notifyType == NOTIFY_CHN_ENG)
+		if(_notifyType == NOTIFY_TYPE::NOTIFY_CHN_ENG)
 			SetCursor(LoadCursor(NULL, IDC_HAND));
 		else
 			SetCursor(LoadCursor(NULL, IDC_ARROW));

@@ -271,7 +271,7 @@ CCandidateRange::~CCandidateRange(void)
 BOOL CCandidateRange::IsRange(UINT vKey, WCHAR Printable, UINT Modifiers, CANDIDATE_MODE candidateMode)
 {
 	debugPrint(L"CCandidateRange::IsRange(): vKey = %d, Modifiers = %d, candiMode = %d. ", vKey, Modifiers, candidateMode);
-	if (candidateMode != CANDIDATE_NONE)
+	if (candidateMode != CANDIDATE_MODE::CANDIDATE_NONE)
 	{
 		for (UINT i = 0; i < _CandidateListIndexRange.Count(); i++)
 		{
@@ -298,7 +298,7 @@ BOOL CCandidateRange::IsRange(UINT vKey, WCHAR Printable, UINT Modifiers, CANDID
 int CCandidateRange::GetIndex(UINT vKey, WCHAR Printable, CANDIDATE_MODE candidateMode)
 {
 	debugPrint(L"CCandidateRange::GetIndex(): vKey = %d, candidateMode = %d ", vKey, candidateMode);
-	if(candidateMode != CANDIDATE_NONE)
+	if(candidateMode != CANDIDATE_MODE::CANDIDATE_NONE)
 	{
 		for (UINT i = 0; i < _CandidateListIndexRange.Count(); i++)
 		{

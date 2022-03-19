@@ -110,22 +110,22 @@ void showIMESettings(HWND hDlg, IME_MODE imeMode)
     LANGID langid = 1028;  //CHT Language ID.
     GUID guidProfile;
 
-    if (imeMode == IME_MODE_DAYI)
+    if (imeMode == IME_MODE::IME_MODE_DAYI)
     {
         guidProfile = Global::DIMEDayiGuidProfile;
         StringCchCat(dialogCaption, MAX_PATH, L"DIME 大易輸入法設定");
     }
-    else if (imeMode == IME_MODE_ARRAY)
+    else if (imeMode == IME_MODE::IME_MODE_ARRAY)
     {
         guidProfile = Global::DIMEArrayGuidProfile;
         StringCchCat(dialogCaption, MAX_PATH, L"DIME 行列輸入法設定");
     }
-    else if (imeMode == IME_MODE_GENERIC)
+    else if (imeMode == IME_MODE::IME_MODE_GENERIC)
     {
         guidProfile = Global::DIMEGenericGuidProfile;
         StringCchCat(dialogCaption, MAX_PATH, L"DIME 自建輸入法設定");
     }
-    else if (imeMode == IME_MODE_PHONETIC)
+    else if (imeMode == IME_MODE::IME_MODE_PHONETIC)
     {
         guidProfile = Global::DIMEPhoneticGuidProfile;
         StringCchCat(dialogCaption, MAX_PATH, L"DIME 傳統注音輸入法設定");
@@ -169,16 +169,16 @@ INT_PTR CALLBACK WndProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
         switch (LOWORD(wParam))
         {
         case IDB_DIME_DAYI_SETTINGS:
-            showIMESettings(hDlg, IME_MODE_DAYI);
+            showIMESettings(hDlg, IME_MODE::IME_MODE_DAYI);
             break;
         case IDB_DIME_ARRAY_SETTINGS:
-            showIMESettings(hDlg, IME_MODE_ARRAY);
+            showIMESettings(hDlg, IME_MODE::IME_MODE_ARRAY);
             break;
         case IDB_DIME_PHONETIC_SETTINGS:
-            showIMESettings(hDlg, IME_MODE_PHONETIC);
+            showIMESettings(hDlg, IME_MODE::IME_MODE_PHONETIC);
             break;
         case IDB_DIME_GENERIC_SETTINGS:
-            showIMESettings(hDlg, IME_MODE_GENERIC);
+            showIMESettings(hDlg, IME_MODE::IME_MODE_GENERIC);
             break;
         case IDOK:
         case IDCANCEL:

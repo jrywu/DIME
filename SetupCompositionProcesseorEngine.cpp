@@ -172,10 +172,10 @@ void CCompositionProcessorEngine::SetupKeystroke(IME_MODE imeMode)
 	{
 		return;
 	}
-	if (_pTableDictionaryEngine[imeMode] == nullptr || 
-		_pTableDictionaryEngine[imeMode]->GetRadicalMap() == nullptr ||
-		_pTableDictionaryEngine[imeMode]->GetRadicalMap()->size() == 0 ||
-		_pTableDictionaryEngine[imeMode]->GetRadicalMap()->size() > MAX_RADICAL) 
+	if (_pTableDictionaryEngine[(UINT)imeMode] == nullptr || 
+		_pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap() == nullptr ||
+		_pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap()->size() == 0 ||
+		_pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap()->size() > MAX_RADICAL) 
 		return;
 
 	_KeystrokeComposition.Clear();
@@ -184,27 +184,27 @@ void CCompositionProcessorEngine::SetupKeystroke(IME_MODE imeMode)
 	{
 		_KEYSTROKE* pKS = nullptr;
 		pKS = _KeystrokeComposition.Append();
-		pKS->Function = FUNCTION_NONE;
+		pKS->Function = KEYSTROKE_FUNCTION::FUNCTION_NONE;
 		pKS->Modifiers = 0;
 		pKS->Index = i;
 		pKS->Printable = 0;
 		pKS->VirtualKey = 0;
 	}
 
-	if (imeMode == IME_MODE_DAYI && _pTableDictionaryEngine[imeMode]->GetRadicalMap() &&
-		(_pTableDictionaryEngine[imeMode]->GetRadicalMap()->find('=') == _pTableDictionaryEngine[imeMode]->GetRadicalMap()->end()))
+	if (imeMode == IME_MODE::IME_MODE_DAYI && _pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap() &&
+		(_pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap()->find('=') == _pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap()->end()))
 	{ //dayi symbol prompt
 		WCHAR* pwchEqual = new (std::nothrow) WCHAR[2];
 		if (pwchEqual)
 		{
 			pwchEqual[0] = L'=';
 			pwchEqual[1] = L'\0';
-			(*_pTableDictionaryEngine[imeMode]->GetRadicalMap())['='] = pwchEqual;
+			(*_pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap())['='] = pwchEqual;
 		}
 	}
 
-	for (_T_RadicalMap::iterator item = _pTableDictionaryEngine[imeMode]->GetRadicalMap()->begin(); item !=
-		_pTableDictionaryEngine[imeMode]->GetRadicalMap()->end(); ++item)
+	for (_T_RadicalMap::iterator item = _pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap()->begin(); item !=
+		_pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap()->end(); ++item)
 	{
 		_KEYSTROKE* pKS = nullptr;
 
@@ -214,7 +214,7 @@ void CCompositionProcessorEngine::SetupKeystroke(IME_MODE imeMode)
 		if (pKS == nullptr)
 			break;
 
-		pKS->Function = FUNCTION_INPUT;
+		pKS->Function = KEYSTROKE_FUNCTION::FUNCTION_INPUT;
 		UINT vKey, modifier;
 		WCHAR key = item->first;
 		pKS->Printable = key;
@@ -233,10 +233,10 @@ void CCompositionProcessorEngine::SetupKeystroke(IME_MODE imeMode)
 			if (c < 32 || c > MAX_RADICAL + 32) continue;
 			pKS = _KeystrokeComposition.GetAt(c - 32);
 			if (pKS == nullptr) break;
-			if(pKS->Function == FUNCTION_INPUT)
-				pKS->Function = FUNCTION_INPUT_AND_CONVERT;
+			if(pKS->Function == KEYSTROKE_FUNCTION::FUNCTION_INPUT)
+				pKS->Function = KEYSTROKE_FUNCTION::FUNCTION_INPUT_AND_CONVERT;
 			else
-				pKS->Function = FUNCTION_CONVERT;
+				pKS->Function = KEYSTROKE_FUNCTION::FUNCTION_CONVERT;
 
 		}
 	}
@@ -541,10 +541,10 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL* pIsE
 	{
 		IME_SHIFT_MODE imeShiftMode = CConfig::GetIMEShiftMode();
 
-		if (imeShiftMode == IME_NO_SHIFT ||
+		if (imeShiftMode == IME_SHIFT_MODE::IME_NO_SHIFT ||
 			!CheckShiftKeyOnly(&_PreservedKey_IMEMode.TSFPreservedKeyTable) ||
-			(imeShiftMode == IME_RIGHT_SHIFT_ONLY && (Global::ModifiersValue & (TF_MOD_LSHIFT))) ||
-			(imeShiftMode == IME_LEFT_SHIFT_ONLY && (Global::ModifiersValue & (TF_MOD_RSHIFT)))
+			(imeShiftMode == IME_SHIFT_MODE::IME_RIGHT_SHIFT_ONLY && (Global::ModifiersValue & (TF_MOD_LSHIFT))) ||
+			(imeShiftMode == IME_SHIFT_MODE::IME_LEFT_SHIFT_ONLY && (Global::ModifiersValue & (TF_MOD_RSHIFT)))
 			)
 		{
 			*pIsEaten = FALSE;
@@ -567,13 +567,13 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL* pIsE
 		}
 
 		//show notify
-		if (_pTextService) _pTextService->showChnEngNotify(!isOpen);
+		if (_pTextService) _pTextService->showChnEngNotify(~isOpen);
 
 		*pIsEaten = TRUE;
 	}
 	else if (IsEqualGUID(rguid, _PreservedKey_DoubleSingleByte.Guid))
 	{
-		if (CConfig::GetDoubleSingleByteMode() != DOUBLE_SINGLE_BYTE_SHIFT_SPACE)
+		if (CConfig::GetDoubleSingleByteMode() != DOUBLE_SINGLE_BYTE_MODE::DOUBLE_SINGLE_BYTE_SHIFT_SPACE)
 			//|| !CheckShiftKeyOnly(&_PreservedKey_DoubleSingleByte.TSFPreservedKeyTable))
 		{
 			*pIsEaten = FALSE;
@@ -584,7 +584,7 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL* pIsE
 		CompartmentDoubleSingleByte._GetCompartmentBOOL(isDouble);
 		CompartmentDoubleSingleByte._SetCompartmentBOOL(isDouble ? FALSE : TRUE);
 		//show notify
-		if (_pTextService) _pTextService->showFullHalfShapeNotify(!isDouble);
+		if (_pTextService) _pTextService->showFullHalfShapeNotify(~isDouble);
 		*pIsEaten = TRUE;
 	}
 	else if (IsEqualGUID(rguid, _PreservedKey_Config.Guid) && _pTextService)
@@ -613,22 +613,23 @@ void CCompositionProcessorEngine::SetupConfiguration(IME_MODE imeMode)
 	_isWildCardWordFreqSort = TRUE;
 
 	//Override options for specific IME.
-	if (imeMode == IME_MODE_DAYI)
+	if (imeMode == IME_MODE::IME_MODE_DAYI)
 	{
 		CConfig::SetSpaceAsFirstCaniSelkey(TRUE);
 	}
-	else if (imeMode == IME_MODE_ARRAY)
+	else if (imeMode == IME_MODE::IME_MODE_ARRAY)
 	{
+		CConfig::SetMaxCodes(5);
 		CConfig::SetSpaceAsFirstCaniSelkey(FALSE);
-		if(CConfig::GetArrayScope() != ARRAY40_BIG5)
+		if(CConfig::GetArrayScope() != ARRAY_SCOPE::ARRAY40_BIG5)
 			CConfig::SetAutoCompose(TRUE);
 	}
-	else if (imeMode == IME_MODE_PHONETIC)
+	else if (imeMode == IME_MODE::IME_MODE_PHONETIC)
 	{
 		CConfig::SetSpaceAsFirstCaniSelkey(FALSE);
 	}
-	if (_pTableDictionaryEngine[imeMode])
-		_pEndkey = _pTableDictionaryEngine[imeMode]->GetEndkey();
+	if (_pTableDictionaryEngine[(UINT)imeMode])
+		_pEndkey = _pTableDictionaryEngine[(UINT)imeMode]->GetEndkey();
 
 	return;
 }
@@ -673,7 +674,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 	*pwszCINFileNameProgramFiles = L'\0';
 
 	//tableTextService (TTS) dictionary file 
-	if (imeMode != IME_MODE_ARRAY)
+	if (imeMode != IME_MODE::IME_MODE_ARRAY)
 		StringCchPrintf(pwszTTSFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\TableTextServiceDaYi.txt");
 	else
 		StringCchPrintf(pwszTTSFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\TableTextServiceArray.txt");
@@ -686,21 +687,21 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 		CreateDirectory(pwszCINFileName, NULL);
 	}
 	// load main table file now
-	if (imeMode == IME_MODE_DAYI) //dayi.cin in personal romaing profile
+	if (imeMode == IME_MODE::IME_MODE_DAYI) //dayi.cin in personal romaing profile
 	{
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Dayi.cin");
-		if (PathFileExists(pwszCINFileName) && _pTableDictionaryFile[imeMode] && _pTextService &&
-			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pTableDictionaryFile[imeMode]->GetFileName(), -1) != CSTR_EQUAL)
+		if (PathFileExists(pwszCINFileName) && _pTableDictionaryFile[(UINT)imeMode] && _pTextService &&
+			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pTableDictionaryFile[(UINT)imeMode]->GetFileName(), -1) != CSTR_EQUAL)
 		{ // cin filename is different. force reload the cin file
-			delete _pTableDictionaryFile[imeMode];
-			_pTableDictionaryFile[imeMode] = nullptr;
+			delete _pTableDictionaryFile[(UINT)imeMode];
+			_pTableDictionaryFile[(UINT)imeMode] = nullptr;
 		}
 	}
-	else if (imeMode == IME_MODE_ARRAY) //array.cin in personal romaing profile
+	else if (imeMode == IME_MODE::IME_MODE_ARRAY) //array.cin in personal romaing profile
 	{
 		BOOL cinFound = FALSE, wstatFailed = TRUE, updated = TRUE;
 
-		if (CConfig::GetArrayScope() == ARRAY40_BIG5)
+		if (CConfig::GetArrayScope() == ARRAY_SCOPE::ARRAY40_BIG5)
 		{
 			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Array40.cin");
 			StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array40.cin");
@@ -721,7 +722,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 		if (!PathFileExists(pwszCINFileName)) //failed back to try preload array.cin in program files.
 		{
 			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, 
-				(CConfig::GetArrayScope() == ARRAY40_BIG5)?L"\\DIME\\Array40.cin":L"\\DIME\\Array.cin");
+				(CConfig::GetArrayScope() == ARRAY_SCOPE::ARRAY40_BIG5)?L"\\DIME\\Array40.cin":L"\\DIME\\Array.cin");
 			if (PathFileExists(pwszCINFileName)) // failed to find Array.cin in program files either
 			{
 				cinFound = TRUE;
@@ -732,14 +733,14 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			cinFound = TRUE;
 		}
 
-		if (PathFileExists(pwszCINFileName) && _pTableDictionaryFile[imeMode] && _pTextService &&
-			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pTableDictionaryFile[imeMode]->GetFileName(), -1) != CSTR_EQUAL)
+		if (PathFileExists(pwszCINFileName) && _pTableDictionaryFile[(UINT)imeMode] && _pTextService &&
+			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pTableDictionaryFile[(UINT)imeMode]->GetFileName(), -1) != CSTR_EQUAL)
 		{ // cin filename is different. force reload the cin file
-			delete _pTableDictionaryFile[imeMode];
-			_pTableDictionaryFile[imeMode] = nullptr;
+			delete _pTableDictionaryFile[(UINT)imeMode];
+			_pTableDictionaryFile[(UINT)imeMode] = nullptr;
 		}
 	}
-	else if (imeMode == IME_MODE_PHONETIC) //phone.cin in personal romaing profile
+	else if (imeMode == IME_MODE::IME_MODE_PHONETIC) //phone.cin in personal romaing profile
 	{
 		BOOL cinFound = FALSE, wstatFailed = TRUE, updated = TRUE;
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Phone.cin");
@@ -765,14 +766,14 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 		{
 			cinFound = TRUE;
 		}
-		if (PathFileExists(pwszCINFileName) && _pTableDictionaryFile[imeMode] && _pTextService &&
-			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pTableDictionaryFile[imeMode]->GetFileName(), -1) != CSTR_EQUAL)
+		if (PathFileExists(pwszCINFileName) && _pTableDictionaryFile[(UINT)imeMode] && _pTextService &&
+			CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pTableDictionaryFile[(UINT)imeMode]->GetFileName(), -1) != CSTR_EQUAL)
 		{ // cin filename is different. force reload the cin file
-			delete _pTableDictionaryFile[imeMode];
-			_pTableDictionaryFile[imeMode] = nullptr;
+			delete _pTableDictionaryFile[(UINT)imeMode];
+			_pTableDictionaryFile[(UINT)imeMode] = nullptr;
 		}
 	}
-	else if (imeMode == IME_MODE_GENERIC) //phone.cin in personal romaing profile
+	else if (imeMode == IME_MODE::IME_MODE_GENERIC) //phone.cin in personal romaing profile
 	{
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Generic.cin");
 		// we don't provide preload Generic.cin in program files
@@ -780,30 +781,30 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 
 	if (PathFileExists(pwszCINFileName))  //create cin CFile object
 	{
-		if (_pTableDictionaryFile[imeMode] == nullptr)
+		if (_pTableDictionaryFile[(UINT)imeMode] == nullptr)
 		{
 			//create CFile object
-			_pTableDictionaryFile[imeMode] = new (std::nothrow) CFile();
-			if ((_pTableDictionaryFile[imeMode]) && _pTextService &&
-				(_pTableDictionaryFile[imeMode])->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
+			_pTableDictionaryFile[(UINT)imeMode] = new (std::nothrow) CFile();
+			if ((_pTableDictionaryFile[(UINT)imeMode]) && _pTextService &&
+				(_pTableDictionaryFile[(UINT)imeMode])->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
 			{
-				if (_pTableDictionaryEngine[imeMode])
-					delete _pTableDictionaryEngine[imeMode];
-				_pTableDictionaryEngine[imeMode] = //cin files use tab as delimiter
-					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pTableDictionaryFile[imeMode], CIN_DICTIONARY);
-				_pTableDictionaryEngine[imeMode]->ParseConfig(imeMode); //parse config first.		
+				if (_pTableDictionaryEngine[(UINT)imeMode])
+					delete _pTableDictionaryEngine[(UINT)imeMode];
+				_pTableDictionaryEngine[(UINT)imeMode] = //cin files use tab as delimiter
+					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pTableDictionaryFile[(UINT)imeMode], DICTIONARY_TYPE::CIN_DICTIONARY);
+				_pTableDictionaryEngine[(UINT)imeMode]->ParseConfig(imeMode); //parse config first.		
 
 			}
 			else
 			{ // error on createfile. do cleanup
-				delete _pTableDictionaryFile[imeMode];
-				_pTableDictionaryFile[imeMode] = nullptr;
+				delete _pTableDictionaryFile[(UINT)imeMode];
+				_pTableDictionaryFile[(UINT)imeMode] = nullptr;
 				goto ErrorExit;
 			}
 		}
-		else if (_pTableDictionaryEngine[imeMode] && _pTableDictionaryFile[imeMode]->IsFileUpdated())
+		else if (_pTableDictionaryEngine[(UINT)imeMode] && _pTableDictionaryFile[(UINT)imeMode]->IsFileUpdated())
 		{
-			_pTableDictionaryEngine[imeMode]->ParseConfig(imeMode); //parse config to reload updated dictionary
+			_pTableDictionaryEngine[(UINT)imeMode]->ParseConfig(imeMode); //parse config to reload updated dictionary
 			// Reload Keystroke and CandiateListRage when table is updated
 			SetupKeystroke(Global::imeMode);
 			CConfig::LoadConfig(Global::imeMode);
@@ -812,16 +813,16 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 		}
 
 	}
-	if (_pTableDictionaryEngine[imeMode] == nullptr && (imeMode == IME_MODE_DAYI || imeMode == IME_MODE_ARRAY))		//failed back to load windows preload tabletextservice table.
+	if (_pTableDictionaryEngine[(UINT)imeMode] == nullptr && (imeMode == IME_MODE::IME_MODE_DAYI || imeMode == IME_MODE::IME_MODE_ARRAY))		//failed back to load windows preload tabletextservice table.
 	{
-		if (_pTableDictionaryEngine[imeMode] == nullptr)
+		if (_pTableDictionaryEngine[(UINT)imeMode] == nullptr)
 		{
-			_pTableDictionaryFile[imeMode] = new (std::nothrow) CFile();
-			if (_pTableDictionaryFile[imeMode] == nullptr)  goto ErrorExit;
+			_pTableDictionaryFile[(UINT)imeMode] = new (std::nothrow) CFile();
+			if (_pTableDictionaryFile[(UINT)imeMode] == nullptr)  goto ErrorExit;
 
 			if (!PathFileExists(pwszTTSFileName))
 			{
-				if (imeMode != IME_MODE_ARRAY)
+				if (imeMode != IME_MODE::IME_MODE_ARRAY)
 					StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Windows NT\\TableTextService\\TableTextServiceDaYi.txt");
 				else
 					StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Windows NT\\TableTextService\\TableTextServiceArray.txt");
@@ -830,17 +831,17 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			}
 
 
-			if (!(_pTableDictionaryFile[imeMode])->CreateFile(pwszTTSFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
+			if (!(_pTableDictionaryFile[(UINT)imeMode])->CreateFile(pwszTTSFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
 			{
 				goto ErrorExit;
 			}
 			else if (_pTextService)
 			{
-				_pTableDictionaryEngine[imeMode] = //TTS file use '=' as delimiter
-					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pTableDictionaryFile[imeMode], TTS_DICTIONARY);
-				if (_pTableDictionaryEngine[imeMode] == nullptr)  goto ErrorExit;
+				_pTableDictionaryEngine[(UINT)imeMode] = //TTS file use '=' as delimiter
+					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pTableDictionaryFile[(UINT)imeMode], DICTIONARY_TYPE::TTS_DICTIONARY);
+				if (_pTableDictionaryEngine[(UINT)imeMode] == nullptr)  goto ErrorExit;
 
-				_pTableDictionaryEngine[imeMode]->ParseConfig(imeMode); //parse config first.
+				_pTableDictionaryEngine[(UINT)imeMode]->ParseConfig(imeMode); //parse config first.
 
 			}
 		}
@@ -853,7 +854,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 	if (PathFileExists(pwszCINFileName))
 	{
 		if (_pPhraseDictionaryFile == nullptr ||
-			(_pPhraseTableDictionaryEngine && _pPhraseTableDictionaryEngine->GetDictionaryType() == TTS_DICTIONARY))
+			(_pPhraseTableDictionaryEngine && _pPhraseTableDictionaryEngine->GetDictionaryType() == DICTIONARY_TYPE::TTS_DICTIONARY))
 		{
 			if (_pPhraseDictionaryFile)
 				delete _pPhraseDictionaryFile;
@@ -863,7 +864,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 				if (_pPhraseTableDictionaryEngine)
 					delete _pPhraseTableDictionaryEngine;
 				_pPhraseTableDictionaryEngine =
-					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pPhraseDictionaryFile, CIN_DICTIONARY); //cin files use tab as delimiter
+					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pPhraseDictionaryFile, DICTIONARY_TYPE::CIN_DICTIONARY); //cin files use tab as delimiter
 				_pPhraseTableDictionaryEngine->ParseConfig(imeMode); //parse config first.				
 
 			}
@@ -874,10 +875,10 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 		}
 	}
 	else if (_pPhraseTableDictionaryEngine == nullptr &&
-		(imeMode == IME_MODE_DAYI || imeMode == IME_MODE_ARRAY) && _pTableDictionaryFile[imeMode] &&
-		_pTableDictionaryEngine[imeMode]->GetDictionaryType() == TTS_DICTIONARY)
+		(imeMode == IME_MODE::IME_MODE_DAYI || imeMode == IME_MODE::IME_MODE_ARRAY) && _pTableDictionaryFile[(UINT)imeMode] &&
+		_pTableDictionaryEngine[(UINT)imeMode]->GetDictionaryType() == DICTIONARY_TYPE::TTS_DICTIONARY)
 	{
-		_pPhraseTableDictionaryEngine = _pTableDictionaryEngine[imeMode];
+		_pPhraseTableDictionaryEngine = _pTableDictionaryEngine[(UINT)imeMode];
 	}
 	else if (_pPhraseTableDictionaryEngine == nullptr)
 	{
@@ -886,7 +887,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 
 		if (!PathFileExists(pwszTTSFileName))
 		{
-			if (imeMode != IME_MODE_ARRAY)
+			if (imeMode != IME_MODE::IME_MODE_ARRAY)
 				StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Windows NT\\TableTextService\\TableTextServiceDaYi.txt");
 			else
 				StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Windows NT\\TableTextService\\TableTextServiceArray.txt");
@@ -903,7 +904,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			if (_pPhraseTableDictionaryEngine)
 				delete _pPhraseTableDictionaryEngine;
 			_pPhraseTableDictionaryEngine =
-				new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pPhraseDictionaryFile, TTS_DICTIONARY); //TTS file use '=' as delimiter
+				new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pPhraseDictionaryFile, DICTIONARY_TYPE::TTS_DICTIONARY); //TTS file use '=' as delimiter
 			if (!_pPhraseTableDictionaryEngine)  goto ErrorExit;
 
 			_pPhraseTableDictionaryEngine->ParseConfig(imeMode); //parse config first.
@@ -913,10 +914,10 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 
 
 	// now load Array unicode ext-b, ext-cd, ext-e , special code and short-code table
-	if ( imeMode == IME_MODE_ARRAY) //array-special.cin and array-shortcode.cin in personal romaing profile
+	if ( imeMode == IME_MODE::IME_MODE_ARRAY) //array-special.cin and array-shortcode.cin in personal romaing profile
 	{
 		BOOL wstatFailed = TRUE, updated = TRUE;
-		if (CConfig::GetArrayScope() != ARRAY40_BIG5)
+		if (CConfig::GetArrayScope() != ARRAY_SCOPE::ARRAY40_BIG5)
 		{
 			//Ext-B
 			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Array-Ext-B.cin");
@@ -950,7 +951,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 						if (_pArrayExtBTableDictionaryEngine)
 							delete _pArrayExtBTableDictionaryEngine;
 						_pArrayExtBTableDictionaryEngine =
-							new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pArrayExtBDictionaryFile, CIN_DICTIONARY); //cin files use tab as delimiter
+							new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pArrayExtBDictionaryFile, DICTIONARY_TYPE::CIN_DICTIONARY); //cin files use tab as delimiter
 						if (_pArrayExtBTableDictionaryEngine)
 							_pArrayExtBTableDictionaryEngine->ParseConfig(imeMode); // to release the file handle
 					}
@@ -993,7 +994,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 						if (_pArrayExtCDTableDictionaryEngine)
 							delete _pArrayExtCDTableDictionaryEngine;
 						_pArrayExtCDTableDictionaryEngine =
-							new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pArrayExtCDDictionaryFile, CIN_DICTIONARY); //cin files use tab as delimiter
+							new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pArrayExtCDDictionaryFile, DICTIONARY_TYPE::CIN_DICTIONARY); //cin files use tab as delimiter
 						if (_pArrayExtCDTableDictionaryEngine)
 							_pArrayExtCDTableDictionaryEngine->ParseConfig(imeMode); // to release the file handle
 					}
@@ -1035,7 +1036,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 						_pArrayExtEDictionaryFile->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
 					{
 						_pArrayExtETableDictionaryEngine =
-							new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pArrayExtEDictionaryFile, CIN_DICTIONARY); //cin files use tab as delimiter
+							new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pArrayExtEDictionaryFile, DICTIONARY_TYPE::CIN_DICTIONARY); //cin files use tab as delimiter
 						if (_pArrayExtETableDictionaryEngine)
 							_pArrayExtETableDictionaryEngine->ParseConfig(imeMode); // to release the file handle
 					}
@@ -1072,7 +1073,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 						if (_pArrayPhraseTableDictionaryEngine)
 							delete _pArrayPhraseTableDictionaryEngine;
 						_pArrayPhraseTableDictionaryEngine =
-							new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pArrayPhraseDictionaryFile, CIN_DICTIONARY); //cin files use tab as delimiter
+							new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pArrayPhraseDictionaryFile, DICTIONARY_TYPE::CIN_DICTIONARY); //cin files use tab as delimiter
 						if (_pArrayPhraseTableDictionaryEngine)
 							_pArrayPhraseTableDictionaryEngine->ParseConfig(imeMode);// to release the file handle
 					}
@@ -1115,7 +1116,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 						if (_pArraySpecialCodeTableDictionaryEngine)
 							_pArraySpecialCodeTableDictionaryEngine;
 						_pArraySpecialCodeTableDictionaryEngine =
-							new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pArraySpecialCodeDictionaryFile, CIN_DICTIONARY); //cin files use tab as delimiter
+							new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pArraySpecialCodeDictionaryFile, DICTIONARY_TYPE::CIN_DICTIONARY); //cin files use tab as delimiter
 						if (_pArraySpecialCodeTableDictionaryEngine)
 							_pArraySpecialCodeTableDictionaryEngine->ParseConfig(imeMode); // to release the file handle
 					}
@@ -1157,7 +1158,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 						if (_pArrayShortCodeTableDictionaryEngine)
 							delete _pArrayShortCodeTableDictionaryEngine;
 						_pArrayShortCodeTableDictionaryEngine =
-							new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pArrayShortCodeDictionaryFile, CIN_DICTIONARY); //cin files use tab as delimiter
+							new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pArrayShortCodeDictionaryFile, DICTIONARY_TYPE::CIN_DICTIONARY); //cin files use tab as delimiter
 						if (_pArrayShortCodeTableDictionaryEngine)
 							_pArrayShortCodeTableDictionaryEngine->ParseConfig(imeMode);// to release the file handle
 					}
@@ -1173,33 +1174,33 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 	}
 
 	// now load Dayi custom table
-	if (imeMode == IME_MODE_DAYI)
+	if (imeMode == IME_MODE::IME_MODE_DAYI)
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\DAYI-CUSTOM.cin");
-	else if (Global::imeMode == IME_MODE_ARRAY)
+	else if (Global::imeMode == IME_MODE::IME_MODE_ARRAY)
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\ARRAY-CUSTOM.cin");
-	else if (Global::imeMode == IME_MODE_PHONETIC)
+	else if (Global::imeMode == IME_MODE::IME_MODE_PHONETIC)
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\PHONETIC-CUSTOM.cin");
 	else
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\GENERIC-CUSTOM.cin");
 	if (PathFileExists(pwszCINFileName))
 	{
-		if (_pCustomTableDictionaryEngine[imeMode] == nullptr)
+		if (_pCustomTableDictionaryEngine[(UINT)imeMode] == nullptr)
 		{
-			_pCustomTableDictionaryFile[imeMode] = new (std::nothrow) CFile();
-			if (_pCustomTableDictionaryFile[imeMode] && _pTextService &&
-				_pCustomTableDictionaryFile[imeMode]->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ | FILE_SHARE_WRITE))
+			_pCustomTableDictionaryFile[(UINT)imeMode] = new (std::nothrow) CFile();
+			if (_pCustomTableDictionaryFile[(UINT)imeMode] && _pTextService &&
+				_pCustomTableDictionaryFile[(UINT)imeMode]->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ | FILE_SHARE_WRITE))
 			{
-				if (_pCustomTableDictionaryEngine[imeMode])
-					delete _pCustomTableDictionaryEngine[imeMode];
-				_pCustomTableDictionaryEngine[imeMode] =
-					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pCustomTableDictionaryFile[imeMode], CIN_DICTIONARY); //cin files use tab as delimiter
-				if (_pCustomTableDictionaryEngine[imeMode])
-					_pCustomTableDictionaryEngine[imeMode]->ParseConfig(imeMode);// to release the file handle
+				if (_pCustomTableDictionaryEngine[(UINT)imeMode])
+					delete _pCustomTableDictionaryEngine[(UINT)imeMode];
+				_pCustomTableDictionaryEngine[(UINT)imeMode] =
+					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pCustomTableDictionaryFile[(UINT)imeMode], DICTIONARY_TYPE::CIN_DICTIONARY); //cin files use tab as delimiter
+				if (_pCustomTableDictionaryEngine[(UINT)imeMode])
+					_pCustomTableDictionaryEngine[(UINT)imeMode]->ParseConfig(imeMode);// to release the file handle
 			}
 		}
-		else if (_pCustomTableDictionaryEngine && _pCustomTableDictionaryFile[imeMode]->IsFileUpdated())
+		else if (_pCustomTableDictionaryEngine && _pCustomTableDictionaryFile[(UINT)imeMode]->IsFileUpdated())
 		{
-			_pCustomTableDictionaryEngine[imeMode]->ParseConfig(imeMode);
+			_pCustomTableDictionaryEngine[(UINT)imeMode]->ParseConfig(imeMode);
 		}
 	}
 
@@ -1255,7 +1256,7 @@ BOOL CCompositionProcessorEngine::SetupHanCovertTable()
 				(_pTCSCTableDictionaryFile)->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
 			{
 				_pTCSCTableDictionaryEngine =
-					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pTCSCTableDictionaryFile, CIN_DICTIONARY); //cin files use tab as delimiter
+					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pTCSCTableDictionaryFile, DICTIONARY_TYPE::CIN_DICTIONARY); //cin files use tab as delimiter
 			}
 		}
 		bRet = TRUE;
@@ -1307,7 +1308,7 @@ BOOL CCompositionProcessorEngine::SetupTCFreqTable()
 			(_pTCFreqTableDictionaryFile)->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
 		{
 			_pTCFreqTableDictionaryEngine =
-				new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pTCFreqTableDictionaryFile, CIN_DICTIONARY); //cin files use tab as delimiter
+				new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pTCFreqTableDictionaryFile, DICTIONARY_TYPE::CIN_DICTIONARY); //cin files use tab as delimiter
 		}
 	}
 
@@ -1381,7 +1382,7 @@ BOOL CCompositionProcessorEngine::GetSCFromTC(CStringRange* stringToConvert, CSt
 
 CFile* CCompositionProcessorEngine::GetDictionaryFile()
 {
-	return _pTableDictionaryFile[Global::imeMode];
+	return _pTableDictionaryFile[(UINT)Global::imeMode];
 }
 
 
@@ -1460,16 +1461,16 @@ void CCompositionProcessorEngine::SetupCandidateListRange(IME_MODE imeMode)
 	_phraseCandidateListIndexRange.Clear();
 
 	PWCH pSelkey = nullptr;
-	if (_pTableDictionaryEngine[imeMode])
-		pSelkey = _pTableDictionaryEngine[imeMode]->GetSelkey();
+	if (_pTableDictionaryEngine[(UINT)imeMode])
+		pSelkey = _pTableDictionaryEngine[(UINT)imeMode]->GetSelkey();
 	WCHAR localSelKey[MAX_CAND_SELKEY];
 	WCHAR phraseSelKey[MAX_CAND_SELKEY];
 
 	if (pSelkey == nullptr || wcslen(pSelkey) == 0)
 	{
-		StringCchCopy(localSelKey, MAX_CAND_SELKEY, (imeMode == IME_MODE_DAYI) ? L"'[]\\-\"{}|" : L"1234567890");
+		StringCchCopy(localSelKey, MAX_CAND_SELKEY, (imeMode == IME_MODE::IME_MODE_DAYI) ? L"'[]\\-\"{}|" : L"1234567890");
 		pSelkey = localSelKey;
-		_candidatePageSize = (imeMode == IME_MODE_PHONETIC) ? 9 : 10;
+		_candidatePageSize = (imeMode == IME_MODE::IME_MODE_PHONETIC) ? 9 : 10;
 	}
 	else
 	{
@@ -1509,7 +1510,7 @@ void CCompositionProcessorEngine::SetupCandidateListRange(IME_MODE imeMode)
 			else
 			{
 				pNewIndexRange->Printable = pSelkey[i];
-				if(Global::imeMode == IME_MODE_ARRAY && CConfig::GetArrayScope()== ARRAY40_BIG5)
+				if(Global::imeMode == IME_MODE::IME_MODE_ARRAY && CConfig::GetArrayScope()== ARRAY_SCOPE::ARRAY40_BIG5)
 					pNewIndexRange->CandIndex = WCHAR(i + 1 + 0x30);  //ASCII 0x3x = x 
 				else
 					pNewIndexRange->CandIndex = pSelkey[i];

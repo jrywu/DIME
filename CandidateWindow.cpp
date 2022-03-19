@@ -626,7 +626,7 @@ void CCandidateWindow::_OnLButtonDown(POINT pt)
         {
             SetCursor(LoadCursor(NULL, IDC_HAND));
             _currentSelection = index;
-            _pfnCallback(_pObj, CAND_ITEM_SELECT);
+            _pfnCallback(_pObj, CANDWND_ACTION::CAND_ITEM_SELECT);
             return;
         }
     }
@@ -646,7 +646,7 @@ void CCandidateWindow::_OnLButtonDown(POINT pt)
 			return;
         }
     }
-	_pfnCallback(_pObj, CAND_CANCEL);
+	_pfnCallback(_pObj, CANDWND_ACTION::CAND_CANCEL);
 }
 
 //+---------------------------------------------------------------------------

@@ -88,10 +88,10 @@ STDAPI CDIME::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_opt_ ITfDocument
 		pDocMgrFocus->GetTop(&pContext);	
 
 		//Update double single byte mode
-		if (CConfig::GetDoubleSingleByteMode() != DOUBLE_SINGLE_BYTE_SHIFT_SPACE)
+		if (CConfig::GetDoubleSingleByteMode() != DOUBLE_SINGLE_BYTE_MODE::DOUBLE_SINGLE_BYTE_SHIFT_SPACE)
 		{
 			CCompartment CompartmentDoubleSingleByte(_pThreadMgr, _tfClientId, Global::DIMEGuidCompartmentDoubleSingleByte);
-			CompartmentDoubleSingleByte._SetCompartmentBOOL(CConfig::GetDoubleSingleByteMode() == DOUBLE_SINGLE_BYTE_ALWAYS_DOUBLE);
+			CompartmentDoubleSingleByte._SetCompartmentBOOL(CConfig::GetDoubleSingleByteMode() == DOUBLE_SINGLE_BYTE_MODE::DOUBLE_SINGLE_BYTE_ALWAYS_DOUBLE);
 		}
 
 		//Update keyboard mode
