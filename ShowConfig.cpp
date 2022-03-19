@@ -55,13 +55,13 @@ HRESULT CDIME::Show(_In_opt_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID
 	if (guidProfile == GUID_NULL)
 		CConfig::SetIMEMode(Global::imeMode);
 	else if (guidProfile == Global::DIMEDayiGuidProfile)
-		CConfig::SetIMEMode(IME_MODE_DAYI);
+		CConfig::SetIMEMode(IME_MODE::IME_MODE_DAYI);
 	else if (guidProfile == Global::DIMEPhoneticGuidProfile)
-		CConfig::SetIMEMode(IME_MODE_PHONETIC);
+		CConfig::SetIMEMode(IME_MODE::IME_MODE_PHONETIC);
 	else if (guidProfile == Global::DIMEArrayGuidProfile)
-		CConfig::SetIMEMode(IME_MODE_ARRAY);
+		CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
 	else if (guidProfile == Global::DIMEGenericGuidProfile)
-		CConfig::SetIMEMode(IME_MODE_GENERIC);
+		CConfig::SetIMEMode(IME_MODE::IME_MODE_GENERIC);
 
 	if (SUCCEEDED(profile->CreateInstance()))
 	{
@@ -141,13 +141,13 @@ HRESULT CDIME::Show(_In_opt_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID
 
 	WCHAR dialogCaption[MAX_PATH] = { 0 };
 
-	if (CConfig::GetIMEMode() == IME_MODE_DAYI)
+	if (CConfig::GetIMEMode() == IME_MODE::IME_MODE_DAYI)
 		StringCchCat(dialogCaption, MAX_PATH,  L"DIME 大易輸入法設定");
-	else if (CConfig::GetIMEMode() == IME_MODE_ARRAY)
+	else if (CConfig::GetIMEMode() == IME_MODE::IME_MODE_ARRAY)
 		StringCchCat(dialogCaption, MAX_PATH, L"DIME 行列輸入法設定");
-	else if (CConfig::GetIMEMode() == IME_MODE_GENERIC)
+	else if (CConfig::GetIMEMode() == IME_MODE::IME_MODE_GENERIC)
 		StringCchCat(dialogCaption, MAX_PATH, L"DIME 自建輸入法設定");
-	else if (CConfig::GetIMEMode() == IME_MODE_PHONETIC)
+	else if (CConfig::GetIMEMode() == IME_MODE::IME_MODE_PHONETIC)
 		StringCchCat(dialogCaption, MAX_PATH, L"DIME 傳統注音輸入法設定");
 
 	StringCchPrintf(dialogCaption, MAX_PATH, L"%s v%d.%d.%d.%d", dialogCaption,

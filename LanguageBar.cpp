@@ -1137,8 +1137,8 @@ void CDIME::OnSwitchedToFullShape()
 		_EndComposition(_pContext);
 	}
 	_DeleteCandidateList(FALSE,_pContext);
-	if (CConfig::GetDoubleSingleByteMode() != DOUBLE_SINGLE_BYTE_SHIFT_SPACE)
-		CConfig::SetDoubleSingleByteMode(DOUBLE_SINGLE_BYTE_ALWAYS_DOUBLE);
+	if (CConfig::GetDoubleSingleByteMode() != DOUBLE_SINGLE_BYTE_MODE::DOUBLE_SINGLE_BYTE_SHIFT_SPACE)
+		CConfig::SetDoubleSingleByteMode(DOUBLE_SINGLE_BYTE_MODE::DOUBLE_SINGLE_BYTE_ALWAYS_DOUBLE);
 }
 
 void CDIME::OnSwitchedToHalfShape()
@@ -1150,19 +1150,19 @@ void CDIME::OnSwitchedToHalfShape()
 		_EndComposition(_pContext);
 	}
 	_DeleteCandidateList(TRUE,_pContext);
-	if (CConfig::GetDoubleSingleByteMode() != DOUBLE_SINGLE_BYTE_SHIFT_SPACE)
-		CConfig::SetDoubleSingleByteMode(DOUBLE_SINGLE_BYTE_ALWAYS_SINGLE);
+	if (CConfig::GetDoubleSingleByteMode() != DOUBLE_SINGLE_BYTE_MODE::DOUBLE_SINGLE_BYTE_SHIFT_SPACE)
+		CConfig::SetDoubleSingleByteMode(DOUBLE_SINGLE_BYTE_MODE::DOUBLE_SINGLE_BYTE_ALWAYS_SINGLE);
 }
 
 void CDIME::showChnEngNotify(BOOL isChinese, UINT delayShow)
 {
 	CStringRange notify;
 	if ((CConfig::GetShowNotifyDesktop() || _IsStoreAppMode()) && _pUIPresenter)
-		_pUIPresenter->ShowNotifyText(&notify.Set(isChinese ? L"中文" : L"英文", 2), delayShow, CHN_ENG_NOTIFY_DELAY, NOTIFY_CHN_ENG);
+		_pUIPresenter->ShowNotifyText(&notify.Set(isChinese ? L"中文" : L"英文", 2), delayShow, CHN_ENG_NOTIFY_DELAY, NOTIFY_TYPE::NOTIFY_CHN_ENG);
 }
 void CDIME::showFullHalfShapeNotify(BOOL isFullShape, UINT delayShow)
 {
 	CStringRange notify;
 	if ((CConfig::GetShowNotifyDesktop() || _IsStoreAppMode()) && _pUIPresenter)
-		_pUIPresenter->ShowNotifyText(&notify.Set(isFullShape ? L"全形" : L"半形", 2), delayShow, CHN_ENG_NOTIFY_DELAY, NOTIFY_CHN_ENG);
+		_pUIPresenter->ShowNotifyText(&notify.Set(isFullShape ? L"全形" : L"半形", 2), delayShow, CHN_ENG_NOTIFY_DELAY, NOTIFY_TYPE::NOTIFY_CHN_ENG);
 }

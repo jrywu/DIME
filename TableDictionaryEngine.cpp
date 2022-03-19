@@ -42,21 +42,21 @@ CTableDictionaryEngine::CTableDictionaryEngine(LCID locale, _In_ CFile *pDiction
 {
 	_locale = locale;
     _pDictionaryFile = pDictionaryFile;
-	_searchSection = SEARCH_SECTION_TEXT;
+	_searchSection = SEARCH_SECTION::SEARCH_SECTION_TEXT;
 	_dictionaryType = dictionaryType;
 
 	_pRadicalMap = new _T_RadicalMap();
 
 	// initialize _pRadicalIndexMap if the dictionary is in cin format
-	_pRadicalIndexMap = (dictionaryType == CIN_DICTIONARY) ? new _T_RadicalIndexMap() : nullptr;
+	_pRadicalIndexMap = (dictionaryType == DICTIONARY_TYPE::CIN_DICTIONARY) ? new _T_RadicalIndexMap() : nullptr;
 
 	_sortedCIN = FALSE;
 
-	if(dictionaryType == TTS_DICTIONARY || dictionaryType == INI_DICTIONARY)
+	if(dictionaryType == DICTIONARY_TYPE::TTS_DICTIONARY || dictionaryType == DICTIONARY_TYPE::INI_DICTIONARY)
 		_keywordDelimiter = '=';
-	else if (dictionaryType == CIN_DICTIONARY)
+	else if (dictionaryType == DICTIONARY_TYPE::CIN_DICTIONARY)
 		_keywordDelimiter = '\t';
-	else if (dictionaryType == LIME_DICTIONARY)
+	else if (dictionaryType == DICTIONARY_TYPE::LIME_DICTIONARY)
 		_keywordDelimiter = '|';
 }
 
@@ -71,7 +71,7 @@ VOID CTableDictionaryEngine::CollectWord(_In_ CStringRange *pKeyCode, _Inout_ CD
     CDictionaryResult* pdret = nullptr;
 	CDictionarySearch dshSearch(_locale, _pDictionaryFile, pKeyCode, _keywordDelimiter);
 
-	if(_dictionaryType == TTS_DICTIONARY)
+	if(_dictionaryType == DICTIONARY_TYPE::TTS_DICTIONARY)
 		dshSearch.SetSearchSection(_searchSection);
 
     while (dshSearch.FindPhrase(&pdret))
@@ -96,7 +96,7 @@ VOID CTableDictionaryEngine::CollectWord(_In_ CStringRange *pKeyCode, _Inout_ CD
     CDictionaryResult* pdret = nullptr;
     CDictionarySearch dshSearch(_locale, _pDictionaryFile, pKeyCode, _keywordDelimiter);
 
-	if(_dictionaryType == TTS_DICTIONARY)
+	if(_dictionaryType == DICTIONARY_TYPE::TTS_DICTIONARY)
 		dshSearch.SetSearchSection(_searchSection);
 
 	if (_sortedCIN)
@@ -143,7 +143,7 @@ VOID CTableDictionaryEngine::CollectWordForWildcard(_In_ CStringRange *pKeyCode,
 	BOOL dupped = FALSE;
 
 	
-	if(_dictionaryType == TTS_DICTIONARY)
+	if(_dictionaryType == DICTIONARY_TYPE::TTS_DICTIONARY)
 		dshSearch.SetSearchSection(_searchSection);
 
     while (dshSearch.FindPhraseForWildcard(&pdret))
@@ -203,7 +203,7 @@ VOID CTableDictionaryEngine::CollectWordFromConvertedStringForWildcard(_In_ CStr
     CDictionaryResult* pdret = nullptr;
 	CDictionarySearch dshSearch(_locale, _pDictionaryFile, pString, _keywordDelimiter);
 
-	if(_dictionaryType == TTS_DICTIONARY)
+	if(_dictionaryType == DICTIONARY_TYPE::TTS_DICTIONARY)
 		dshSearch.SetSearchSection(_searchSection);
 
     while (dshSearch.FindConvertedStringForWildcard(&pdret)) // TAIL ALL CHAR MATCH
@@ -235,7 +235,7 @@ VOID CTableDictionaryEngine::CollectWordFromConvertedString(_In_ CStringRange *p
     CDictionaryResult* pdret = nullptr;
     CDictionarySearch dshSearch(_locale, _pDictionaryFile, pString, _keywordDelimiter);
 	
-	if(_dictionaryType == TTS_DICTIONARY)
+	if(_dictionaryType == DICTIONARY_TYPE::TTS_DICTIONARY)
 		dshSearch.SetSearchSection(_searchSection);
 
     while (dshSearch.FindConvertedString(&pdret)) // TAIL ALL CHAR MATCH
@@ -258,7 +258,7 @@ VOID CTableDictionaryEngine::CollectWordFromConvertedString(_In_ CStringRange *p
 }
 VOID CTableDictionaryEngine::ParseConfig(IME_MODE imeMode)
 {
-	if ( _dictionaryType != INI_DICTIONARY && _pRadicalMap->size())
+	if ( _dictionaryType != DICTIONARY_TYPE::INI_DICTIONARY && _pRadicalMap->size())
 	{
 		for(_T_RadicalMap::iterator item = _pRadicalMap->begin(); item != _pRadicalMap->end(); ++item)
 		{
@@ -268,7 +268,7 @@ VOID CTableDictionaryEngine::ParseConfig(IME_MODE imeMode)
 	}
 	CDictionarySearch dshSearch(_locale, _pDictionaryFile, NULL, _keywordDelimiter);
 	if (dshSearch.ParseConfig(imeMode, _pRadicalMap, _pRadicalIndexMap, _pSelkey, _pEndkey) 
-		&& _dictionaryType == CIN_DICTIONARY && _pRadicalIndexMap && _pRadicalIndexMap->size())
+		&& _dictionaryType == DICTIONARY_TYPE::CIN_DICTIONARY && _pRadicalIndexMap && _pRadicalIndexMap->size())
 	{
 		_sortedCIN = TRUE;
 	}

@@ -71,7 +71,7 @@ struct _DAYI_ADDRESS_DIRECT_INPUT
 // enum
 //---------------------------------------------------------------------
 
-enum DICTIONARY_TYPE
+enum class DICTIONARY_TYPE
 {
 	TTS_DICTIONARY,
 	INI_DICTIONARY,
@@ -79,7 +79,7 @@ enum DICTIONARY_TYPE
 	LIME_DICTIONARY
 };
 
-enum KEYSTROKE_CATEGORY
+enum class KEYSTROKE_CATEGORY
 {
     CATEGORY_NONE = 0,
     CATEGORY_COMPOSING,
@@ -89,13 +89,13 @@ enum KEYSTROKE_CATEGORY
     CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION
 };
 
-enum PHONETIC_KEYBOARD_LAYOUT
+enum class PHONETIC_KEYBOARD_LAYOUT
 {
 	PHONETIC_STANDARD_KEYBOARD_LAYOUT = 0,
 	PHONETIC_ETEN_KEYBOARD_LAYOUT = 1
 };
 
-enum IME_SHIFT_MODE
+enum class IME_SHIFT_MODE
 {
 	IME_BOTH_SHIFT = 0,
 	IME_RIGHT_SHIFT_ONLY,
@@ -103,20 +103,20 @@ enum IME_SHIFT_MODE
 	IME_NO_SHIFT
 };
 
-enum DOUBLE_SINGLE_BYTE_MODE
+enum class DOUBLE_SINGLE_BYTE_MODE
 {
 	DOUBLE_SINGLE_BYTE_SHIFT_SPACE = 0,
 	DOUBLE_SINGLE_BYTE_ALWAYS_SINGLE,
 	DOUBLE_SINGLE_BYTE_ALWAYS_DOUBLE
 };
 
-enum BEEP_TYPE
+enum class BEEP_TYPE
 {
 	BEEP_COMPOSITION_ERROR = 0,
 	BEEP_WARNING,
 	BEEP_ON_CANDI
 };
-enum KEYSTROKE_FUNCTION
+enum class KEYSTROKE_FUNCTION
 {
     FUNCTION_NONE = 0,
     FUNCTION_INPUT,
@@ -153,7 +153,7 @@ enum KEYSTROKE_FUNCTION
 //---------------------------------------------------------------------
 // candidate list
 //---------------------------------------------------------------------
-enum CANDIDATE_MODE
+enum class CANDIDATE_MODE
 {
     CANDIDATE_NONE = 0,
     CANDIDATE_ORIGINAL,
@@ -165,7 +165,7 @@ enum CANDIDATE_MODE
 //---------------------------------------------------------------------
 // IME MODE
 //---------------------------------------------------------------------
-enum IME_MODE
+enum class IME_MODE
 {
     IME_MODE_DAYI = 0,
 	IME_MODE_ARRAY,
@@ -177,7 +177,7 @@ enum IME_MODE
 //---------------------------------------------------------------------
 // ARRAY SCOPE
 //---------------------------------------------------------------------
-enum ARRAY_SCOPE
+enum class ARRAY_SCOPE
 {
 	ARRAY30_UNICODE_EXT_A = 0,
 	ARRAY30_UNICODE_EXT_AB,
@@ -190,7 +190,7 @@ enum ARRAY_SCOPE
 //---------------------------------------------------------------------
 // SEARCH SECTION
 //---------------------------------------------------------------------
-enum SEARCH_SECTION
+enum class SEARCH_SECTION
 {
     SEARCH_SECTION_TEXT = 0,
 	SEARCH_SECTION_SYMBOL,
@@ -201,7 +201,7 @@ enum SEARCH_SECTION
 //---------------------------------------------------------------------
 // NOTIFY_TYPE
 //---------------------------------------------------------------------
-enum NOTIFY_TYPE
+enum class NOTIFY_TYPE
 {
 	NOTIFY_CHN_ENG,
 	NOTIFY_SINGLEDOUBLEBYTE,
@@ -209,7 +209,7 @@ enum NOTIFY_TYPE
 	NOTIFY_OTHERS
 };
 
-enum PROCESS_INTEGRITY_LEVEL
+enum class PROCESS_INTEGRITY_LEVEL
 {
 	PROCESS_INTEGRITY_LEVEL_HIGH,
 	PROCESS_INTEGRITY_LEVEL_LOW,
@@ -326,9 +326,10 @@ struct _KEYSTROKE
     {
         Index = 0;
         Printable = '\0';
+        CandIndex = '\0';
         VirtualKey = 0;
         Modifiers = 0;
-        Function = FUNCTION_NONE;
+        Function = KEYSTROKE_FUNCTION::FUNCTION_NONE;
     }
 };
 
@@ -392,7 +393,7 @@ struct CCandidateListItem
 {
     CStringRange _ItemString;
     CStringRange _FindKeyCode;
-	int _WordFrequency;
+	int _WordFrequency = 0;
 
 	CCandidateListItem& operator =( const CCandidateListItem& rhs)
 	{

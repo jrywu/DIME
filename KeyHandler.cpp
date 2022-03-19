@@ -128,7 +128,7 @@ HRESULT CDIME::_HandleCompositionInput(TfEditCookie ec, _In_ ITfContext *pContex
 
 
 	if (_pUIPresenter 
-		&& _candidateMode != CANDIDATE_INCREMENTAL &&_candidateMode != CANDIDATE_NONE )
+		&& _candidateMode != CANDIDATE_MODE::CANDIDATE_INCREMENTAL &&_candidateMode != CANDIDATE_MODE::CANDIDATE_NONE )
     {
         _HandleCompositionFinalize(ec, pContext, TRUE);
     }
@@ -163,13 +163,13 @@ HRESULT CDIME::_HandleCompositionInput(TfEditCookie ec, _In_ ITfContext *pContex
 		_HandleCompositionInputWorker(pCompositionProcessorEngine, ec, pContext);
 	else
 	{
-		if (Global::imeMode == IME_MODE_PHONETIC)
-			DoBeep(BEEP_WARNING);
+		if (Global::imeMode == IME_MODE::IME_MODE_PHONETIC)
+			DoBeep(BEEP_TYPE::BEEP_WARNING);
 		else
 		{
 			// Add virtual key failed. exceed max codes or something. 
 			if (CConfig::GetClearOnBeep()) _HandleCancel(ec, pContext);
-			DoBeep(BEEP_COMPOSITION_ERROR);
+			DoBeep(BEEP_TYPE::BEEP_COMPOSITION_ERROR);
 		}
 	}
 	
@@ -233,7 +233,7 @@ HRESULT CDIME::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *p
 							TRUE, pCompositionProcessorEngine->GetCandidateWindowWidth());
 				
                 
-				_candidateMode = CANDIDATE_INCREMENTAL;
+				_candidateMode = CANDIDATE_MODE::CANDIDATE_INCREMENTAL;
 			
 				_isCandidateWithWildcard = FALSE;
 			}
@@ -255,7 +255,7 @@ HRESULT CDIME::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *p
 				if (SUCCEEDED(hr))
 				{
 					_pUIPresenter->_ClearCandidateList();
-					_candidateMode = CANDIDATE_INCREMENTAL;
+					_candidateMode = CANDIDATE_MODE::CANDIDATE_INCREMENTAL;
 					_isCandidateWithWildcard = FALSE;
 				}
 			}
@@ -340,7 +340,7 @@ HRESULT CDIME::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pCont
     {
 		 if (SUCCEEDED(_CreateAndStartCandidate(pCompositionProcessorEngine, ec, pContext)))
 		 {
-			_candidateMode = CANDIDATE_ORIGINAL;
+			_candidateMode = CANDIDATE_MODE::CANDIDATE_ORIGINAL;
 			 _isCandidateWithWildcard = isWildcardSearch;
 			 _pUIPresenter->_ClearCandidateList();
 			 _pUIPresenter->_SetCandidateTextColor(CConfig::GetItemColor(), CConfig::GetItemBGColor());    
@@ -354,13 +354,13 @@ HRESULT CDIME::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pCont
     }
 	else
 	{
-		if (Global::imeMode == IME_MODE_PHONETIC)
-			DoBeep(BEEP_WARNING);
+		if (Global::imeMode == IME_MODE::IME_MODE_PHONETIC)
+			DoBeep(BEEP_TYPE::BEEP_WARNING);
 		else
 		{
 			// Add virtual key failed. exceed max codes or something. 
 			if (CConfig::GetClearOnBeep()) _HandleCancel(ec, pContext);
-			DoBeep(BEEP_COMPOSITION_ERROR);
+			DoBeep(BEEP_TYPE::BEEP_COMPOSITION_ERROR);
 		}
 		
 	}
@@ -368,9 +368,9 @@ HRESULT CDIME::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pCont
 	{
 		_HandleCandidateFinalize(ec, pContext);
 	}
-	else if (Global::imeMode == IME_MODE_DAYI && CConfig::GetDoBeepOnCandi())
+	else if (Global::imeMode == IME_MODE::IME_MODE_DAYI && CConfig::GetDoBeepOnCandi())
 	{
-		DoBeep(BEEP_ON_CANDI);
+		DoBeep(BEEP_TYPE::BEEP_ON_CANDI);
 	}
     return hr;
 }
@@ -427,7 +427,7 @@ HRESULT CDIME::_HandleCompositionBackspace(TfEditCookie ec, _In_ ITfContext *pCo
         pCompositionProcessorEngine->RemoveVirtualKey(vKeyLen - 1);
 
 		if ((pCompositionProcessorEngine->GetVirtualKeyLength() && !symbolMode) &&
-			!(Global::imeMode == IME_MODE_PHONETIC && _candidateMode != CANDIDATE_NONE))
+			!(Global::imeMode == IME_MODE::IME_MODE_PHONETIC && _candidateMode != CANDIDATE_MODE::CANDIDATE_NONE))
         {
             _HandleCompositionInputWorker(pCompositionProcessorEngine, ec, pContext);
         }

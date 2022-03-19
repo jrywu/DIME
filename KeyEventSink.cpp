@@ -105,8 +105,8 @@ BOOL CDIME::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pCod
   
     if (pKeyState)
     {
-        pKeyState->Category = CATEGORY_NONE;
-        pKeyState->Function = FUNCTION_NONE;
+        pKeyState->Category = KEYSTROKE_CATEGORY::CATEGORY_NONE;
+        pKeyState->Function = KEYSTROKE_FUNCTION::FUNCTION_NONE;
     }
     if (pwch)
     {
@@ -183,12 +183,12 @@ BOOL CDIME::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pCod
     //
     if (isDoubleSingleByte && pCompositionProcessorEngine && pCompositionProcessorEngine->IsDoubleSingleByte(wch))
     {
-        if (_candidateMode == CANDIDATE_NONE)
+        if (_candidateMode == CANDIDATE_MODE::CANDIDATE_NONE)
         {
             if (pKeyState)
             {
-                pKeyState->Category = CATEGORY_COMPOSING;
-                pKeyState->Function = FUNCTION_DOUBLE_SINGLE_BYTE;
+                pKeyState->Category = KEYSTROKE_CATEGORY::CATEGORY_COMPOSING;
+                pKeyState->Function = KEYSTROKE_FUNCTION::FUNCTION_DOUBLE_SINGLE_BYTE;
             }
             return TRUE;
         }
@@ -307,7 +307,7 @@ STDAPI CDIME::OnTestKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, 
 	debugPrint(L" CDIME::OnTestKeyDown()");
     Global::UpdateModifiers(wParam, lParam);
 
-	_KEYSTROKE_STATE KeystrokeState = { CATEGORY_NONE, FUNCTION_NONE };
+	_KEYSTROKE_STATE KeystrokeState = { KEYSTROKE_CATEGORY::CATEGORY_NONE, KEYSTROKE_FUNCTION::FUNCTION_NONE };
     WCHAR wch = '\0';
     UINT code = 0;
 
@@ -321,15 +321,16 @@ STDAPI CDIME::OnTestKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, 
 
     *pIsEaten = _IsKeyEaten(pContext, (UINT)wParam, &code, &wch, &KeystrokeState);
 
-    if (KeystrokeState.Category == CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION)
+    if (KeystrokeState.Category == KEYSTROKE_CATEGORY::CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION)
     {
         //
         // Invoke key handler edit session
         //
-        KeystrokeState.Category = CATEGORY_COMPOSING;
+        KeystrokeState.Category = KEYSTROKE_CATEGORY::CATEGORY_COMPOSING;
         _InvokeKeyHandler(pContext, code, wch, (DWORD)lParam, KeystrokeState);
     }
-	else if (KeystrokeState.Category == CATEGORY_CANDIDATE && KeystrokeState.Function == FUNCTION_CANCEL) //cancel associated phrase with anykey.
+	else if (KeystrokeState.Category == KEYSTROKE_CATEGORY::CATEGORY_CANDIDATE 
+        && KeystrokeState.Function == KEYSTROKE_FUNCTION::FUNCTION_CANCEL) //cancel associated phrase with anykey.
 	{
 		_InvokeKeyHandler(pContext, code, wch, (DWORD)lParam, KeystrokeState);
 	}
@@ -349,7 +350,7 @@ STDAPI CDIME::OnKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL
 	debugPrint(L" CDIME::OnKeyDown()");
     Global::UpdateModifiers(wParam, lParam);
    
-	_KEYSTROKE_STATE KeystrokeState = { CATEGORY_NONE, FUNCTION_NONE };
+	_KEYSTROKE_STATE KeystrokeState = { KEYSTROKE_CATEGORY::CATEGORY_NONE, KEYSTROKE_FUNCTION::FUNCTION_NONE };
     WCHAR wch = '\0';
     UINT code = 0;
 
@@ -371,13 +372,14 @@ STDAPI CDIME::OnKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL
         //
         if (code == VK_ESCAPE)
         {
-            KeystrokeState.Category = CATEGORY_COMPOSING;
+            KeystrokeState.Category = KEYSTROKE_CATEGORY::CATEGORY_COMPOSING;
         }
 
         // Always eat THIRDPARTY_NEXTPAGE and THIRDPARTY_PREVPAGE keys, but don't always process them.
         if ((wch == THIRDPARTY_NEXTPAGE) || (wch == THIRDPARTY_PREVPAGE))
         {
-            needInvokeKeyHandler = !((KeystrokeState.Category == CATEGORY_NONE) && (KeystrokeState.Function == FUNCTION_NONE));
+            needInvokeKeyHandler = !((KeystrokeState.Category == KEYSTROKE_CATEGORY::CATEGORY_NONE) 
+                && (KeystrokeState.Function == KEYSTROKE_FUNCTION::FUNCTION_NONE));
         }
 
         if (needInvokeKeyHandler)
@@ -385,10 +387,10 @@ STDAPI CDIME::OnKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL
             _InvokeKeyHandler(pContext, code, wch, (DWORD)lParam, KeystrokeState);
         }
     }
-    else if (KeystrokeState.Category == CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION)
+    else if (KeystrokeState.Category == KEYSTROKE_CATEGORY::CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION)
     {
         // Invoke key handler edit session
-        KeystrokeState.Category = CATEGORY_COMPOSING;
+        KeystrokeState.Category = KEYSTROKE_CATEGORY::CATEGORY_COMPOSING;
         _InvokeKeyHandler(pContext, code, wch, (DWORD)lParam, KeystrokeState);
     }
 

@@ -102,7 +102,8 @@ public:
     BOOL IsKeystrokeSort() { return _isKeystrokeSort; }
 
     // Dictionary engine
-	BOOL IsDictionaryAvailable(IME_MODE imeMode) { return (_pTableDictionaryEngine[imeMode] && _pTableDictionaryEngine[imeMode]->GetRadicalMap()&&!_pTableDictionaryEngine[imeMode] ->GetRadicalMap()->empty() ? TRUE : FALSE);}
+	BOOL IsDictionaryAvailable(IME_MODE imeMode) { return (_pTableDictionaryEngine[(UINT)imeMode] && 
+		_pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap()&&!_pTableDictionaryEngine[(UINT)imeMode] ->GetRadicalMap()->empty() ? TRUE : FALSE);}
 
   
 
@@ -133,8 +134,8 @@ public:
 	void SetImeMode(IME_MODE imeMode) {_imeMode = imeMode;}
 	IME_MODE GetImeMode() { return _imeMode;}
 
-	_T_RadicalMap* GetRadicalMap(IME_MODE imeMode) {if(_pTableDictionaryEngine[imeMode] ) 
-														return _pTableDictionaryEngine[imeMode]->GetRadicalMap();  
+	_T_RadicalMap* GetRadicalMap(IME_MODE imeMode) {if(_pTableDictionaryEngine[(UINT)imeMode] )
+														return _pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap();
 													else return nullptr; }
 
 private:

@@ -93,7 +93,7 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 
 	candidateLen = _pUIPresenter->_GetSelectedCandidateString(&pCandidateString);
 
-	if (Global::imeMode == IME_MODE_ARRAY && CConfig::GetArrayScope() != ARRAY40_BIG5)
+	if (Global::imeMode == IME_MODE::IME_MODE_ARRAY && CConfig::GetArrayScope() != ARRAY_SCOPE::ARRAY40_BIG5)
 		// check if the _strokebuffer is array special code
 	{
 		
@@ -104,7 +104,7 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 	if (candidateLen == 0)
     {
 		//if(_candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION || _candidateMode == CANDIDATE_PHRASE)
-		if(_candidateMode == CANDIDATE_PHRASE)
+		if(_candidateMode == CANDIDATE_MODE::CANDIDATE_PHRASE)
 		{
 			_HandleCancel(ec, pContext);
 			goto Exit;
@@ -113,19 +113,19 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 		{
 			hr = S_FALSE;
 			_HandleCancel(ec, pContext);
-			DoBeep(BEEP_COMPOSITION_ERROR); //beep for no valid mapping found
+			DoBeep(BEEP_TYPE::BEEP_COMPOSITION_ERROR); //beep for no valid mapping found
 			goto Exit;
 		}
     }
 	if (_pCompositionProcessorEngine->IsArrayShortCode() && candidateLen == 1 && *pCandidateString == 0x2394) // empty position in arry short code table.
 	{
 		hr = S_FALSE;
-		if (Global::imeMode == IME_MODE_PHONETIC)
-			DoBeep(BEEP_WARNING);
+		if (Global::imeMode == IME_MODE::IME_MODE_PHONETIC)
+			DoBeep(BEEP_TYPE::BEEP_WARNING);
 		else
 		{
 			if (CConfig::GetClearOnBeep()) _HandleCancel(ec, pContext);
-			DoBeep(BEEP_COMPOSITION_ERROR); //beep for no valid mapping found
+			DoBeep(BEEP_TYPE::BEEP_COMPOSITION_ERROR); //beep for no valid mapping found
 		}
 		goto Exit;
 	}
@@ -150,7 +150,7 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 	//-----------------do reverse conversion notify. We should not show notify in UI-less mode, thus cancel reverse conversion notify in UILess Mode
 	if (!_IsUILessMode())
 	{
-		if (_pITfReverseConversion[Global::imeMode])
+		if (_pITfReverseConversion[(UINT)Global::imeMode])
 		{
 			_AsyncReverseConversion(pContext); //asynchronized the reverse conversion with editsession for better perfomance
 		}
@@ -170,7 +170,7 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 	}
 	//-----------------do  array spcial code notify. We should not show notify in UI-less mode, thus cancel forceSP mode in UILess Mode---
 	BOOL ArraySPFound = FALSE;            
-	if(Global::imeMode == IME_MODE_ARRAY && CConfig::GetArrayScope() != ARRAY40_BIG5 &&
+	if(Global::imeMode == IME_MODE::IME_MODE_ARRAY && CConfig::GetArrayScope() != ARRAY_SCOPE::ARRAY40_BIG5 &&
 		!_IsUILessMode()  && !arrayUsingSPCode && (CConfig::GetArrayForceSP() || CConfig::GetArrayNotifySP()))
 	{
 		CStringRange specialCode;
@@ -186,10 +186,10 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 		_pCompositionProcessorEngine->GetSCFromTC(&commitString, &convertedString);
 	}
 	//----------------- commit the selected string  ------------------------------------------------------------------------------------ 
-	if(Global::imeMode == IME_MODE_ARRAY && !_IsUILessMode()  && !arrayUsingSPCode && CConfig::GetArrayForceSP() &&  ArraySPFound )
+	if(Global::imeMode == IME_MODE::IME_MODE_ARRAY && !_IsUILessMode()  && !arrayUsingSPCode && CConfig::GetArrayForceSP() &&  ArraySPFound )
 	{
 		_HandleCancel(ec, pContext);
-		DoBeep(BEEP_WARNING);
+		DoBeep(BEEP_TYPE::BEEP_WARNING);
 		return hr;
 	}
 	else
@@ -220,7 +220,7 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 			_pUIPresenter->_SetCandidateText(&candidatePhraseList, _pCompositionProcessorEngine->GetCandidateListIndexRange(),
 				FALSE, _pCompositionProcessorEngine->GetCandidateWindowWidth());
 			_pUIPresenter->_SetCandidateSelection(-1, FALSE); // set selected index to -1 if showing phrase candidates
-			_candidateMode = CANDIDATE_PHRASE;
+			_candidateMode = CANDIDATE_MODE::CANDIDATE_PHRASE;
 			_isCandidateWithWildcard = FALSE;	
 			
 			//StartCandidateList require a valid selection from a valid pComposition to determine the location to show the candidate window
@@ -379,7 +379,7 @@ HRESULT CDIME::_CreateAndStartCandidate(_In_ CCompositionProcessorEngine *pCompo
     HRESULT hr = S_OK;
 
 	
-	if ((_candidateMode == CANDIDATE_NONE) && (_pUIPresenter))
+	if ((_candidateMode == CANDIDATE_MODE::CANDIDATE_NONE) && (_pUIPresenter))
     {
  
 		// we don't cache the document manager object. So get it from pContext.
@@ -420,6 +420,6 @@ VOID CDIME::_DeleteCandidateList(BOOL isForce, _In_opt_ ITfContext *pContext)
     {
 		_pUIPresenter->_EndCandidateList();
     }
-	_candidateMode = CANDIDATE_NONE;
+	_candidateMode = CANDIDATE_MODE::CANDIDATE_NONE;
     _isCandidateWithWildcard = FALSE;
 }
