@@ -932,20 +932,7 @@ void CConfig::ParseConfig(HWND hDlg, BOOL initDiag)
 		ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_NOTIFYSP), SW_HIDE);
 		ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_SINGLEQUOTE_CUSTOM_PHRASE), SW_HIDE);
 	}
-	else
-	{ // set Array scope combobox
-		hwnd = GetDlgItem(hDlg, IDC_COMBO_ARRAY_SCOPE);
-		if (initDiag)
-		{
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-A");
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-AB");
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-A~D");
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-A~G");
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列40 Big5");
-		}
-		SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_arrayScope, 0);
-
-	}
+	
 	if (_imeMode == IME_MODE::IME_MODE_PHONETIC)
 	{
 		ShowWindow(GetDlgItem(hDlg, IDC_EDIT_MAXWIDTH), SW_HIDE);
@@ -958,6 +945,7 @@ void CConfig::ParseConfig(HWND hDlg, BOOL initDiag)
 		}
 		SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_phoneticKeyboardLayout, 0);
 	}
+
 	if (_imeMode == IME_MODE::IME_MODE_ARRAY)
 	{
 		ShowWindow(GetDlgItem(hDlg, IDC_EDIT_MAXWIDTH), SW_HIDE);
@@ -970,6 +958,17 @@ void CConfig::ParseConfig(HWND hDlg, BOOL initDiag)
 		}
 		else
 			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_AUTOCOMPOSE), SW_HIDE);
+		// set Array scope combobox
+		hwnd = GetDlgItem(hDlg, IDC_COMBO_ARRAY_SCOPE);
+		if (initDiag)
+		{
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-A");
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-AB");
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-A~D");
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-A~G");
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列40 Big5");
+		}
+		SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_arrayScope, 0);
 
 	}
 }

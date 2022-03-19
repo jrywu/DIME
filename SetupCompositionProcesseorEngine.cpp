@@ -619,6 +619,7 @@ void CCompositionProcessorEngine::SetupConfiguration(IME_MODE imeMode)
 	}
 	else if (imeMode == IME_MODE::IME_MODE_ARRAY)
 	{
+		CConfig::SetMaxCodes(5);
 		CConfig::SetSpaceAsFirstCaniSelkey(FALSE);
 		if(CConfig::GetArrayScope() != ARRAY_SCOPE::ARRAY40_BIG5)
 			CConfig::SetAutoCompose(TRUE);
