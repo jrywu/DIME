@@ -227,7 +227,7 @@ void CCompositionProcessorEngine::GetReadingString(_Inout_ CStringRange *pReadin
 void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidateListItem> *pCandidateList, BOOL isIncrementalWordSearch, BOOL isWildcardSearch, BOOL isArrayPhraseEnding)
 {
 	debugPrint(L"CCompositionProcessorEngine::GetCandidateList(), isIncrementalWordSearch = %d, isWildcardSearch = %d, isArrayPhraseEnding =%d ", isIncrementalWordSearch, isWildcardSearch, isArrayPhraseEnding);
-	if (!IsDictionaryAvailable(Global::imeMode) || pCandidateList == nullptr)
+	if (!IsDictionaryAvailable(Global::imeMode) || pCandidateList == nullptr || _keystrokeBuffer.Get() == nullptr)
 	{
 		return;
 	}

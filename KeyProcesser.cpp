@@ -359,12 +359,6 @@ BOOL CCompositionProcessorEngine::IsSymbolChar(WCHAR wch)
 		if (Global::imeMode == IME_MODE::IME_MODE_DAYI && towupper(c) == L'=')
 		{
 			return TRUE;
-			/*
-			for (UINT i = 0; i < wcslen(Global::DayiSymbolCharTable); i++)
-			{
-				if (Global::DayiSymbolCharTable[i] == wch)
-					return TRUE;
-			}*/
 		}
 		else if ( Global::imeMode == IME_MODE::IME_MODE_ARRAY)
 		{
@@ -478,7 +472,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 	}
 	// Processing dayi address input ---------------------------------------------------------
 	// // Symbol mode start with L'=' for dayi, L'w' for array30; L'H' and L'8' for array40
-	if (IsSymbolChar(*pwch) && candidateMode != CANDIDATE_MODE::CANDIDATE_ORIGINAL)
+	if (IsSymbolChar(*pwch) && uCode != VK_SHIFT && candidateMode != CANDIDATE_MODE::CANDIDATE_ORIGINAL)
 	{
 		if (pKeyState)
 		{
