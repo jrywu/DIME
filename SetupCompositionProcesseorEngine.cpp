@@ -38,26 +38,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "BaseStructure.h"
 #include "Globals.h"
 
-/*
-BOOL CCompositionProcessorEngine::UpdateDictionaryFile()
-{
-	debugPrint(L"CCompositionProcessorEngine::UpdateDictionaryFile()");
-	CFile* pCurrentDictioanryFile = _pTableDictionaryFile[Global::imeMode];
-	
-	BOOL bRet = SetupDictionaryFile(_imeMode);
-	if (pCurrentDictioanryFile != _pTableDictionaryFile[Global::imeMode])
-	{ // the table is updated.
-
-		debugPrint(L"CCompositionProcessorEngine::UpdateDictionaryFile() the table is loaded from TTS previously and now new cin is loaded");
-		SetupKeystroke(Global::imeMode);
-		SetupConfiguration(Global::imeMode);
-		CConfig::LoadConfig(Global::imeMode);
-		SetupCandidateListRange(Global::imeMode);
-
-	}
-	return bRet;
-}
-*/
 void CCompositionProcessorEngine::ReleaseDictionaryFiles()
 {
 
@@ -566,8 +546,9 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL* pIsE
 			CompartmentIMEMode._SetCompartmentBOOL(isOpen ? FALSE : TRUE);
 		}
 
+		debugPrint(L"CCompositionProcessorEngine::OnPreservedKey() isOpen=%d", isOpen);
 		//show notify
-		if (_pTextService) _pTextService->showChnEngNotify(~isOpen);
+		if (_pTextService) _pTextService->showChnEngNotify(isOpen ? FALSE : TRUE);
 
 		*pIsEaten = TRUE;
 	}
