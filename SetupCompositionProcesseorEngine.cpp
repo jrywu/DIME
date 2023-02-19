@@ -565,7 +565,7 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL* pIsE
 		CompartmentDoubleSingleByte._GetCompartmentBOOL(isDouble);
 		CompartmentDoubleSingleByte._SetCompartmentBOOL(isDouble ? FALSE : TRUE);
 		//show notify
-		if (_pTextService) _pTextService->showFullHalfShapeNotify(~isDouble);
+		if (_pTextService) _pTextService->showFullHalfShapeNotify(isDouble ? FALSE : TRUE);
 		*pIsEaten = TRUE;
 	}
 	else if (IsEqualGUID(rguid, _PreservedKey_Config.Guid) && _pTextService)
