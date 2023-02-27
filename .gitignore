@@ -223,3 +223,5 @@ DIME.VC.db
 *.db-wal
 *.vsidx
 *.lock
+*.bin
+*.zip

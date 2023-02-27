@@ -223,7 +223,7 @@ void CNotifyWindow::_OnTimerID(UINT_PTR timerID)
 #endif
 	case DELAY_SHOW_TIMER_ID:
  		_EndTimer(DELAY_SHOW_TIMER_ID);
-		_pfnCallback(_pObj, SHOW_NOTIFY, _timeToHide , (LPARAM) _notifyType);
+		_pfnCallback(_pObj, NOTIFY_WND::SHOW_NOTIFY, _timeToHide , (LPARAM) _notifyType);
 		break;
 	case TIME_TO_HIDE_TIMER_ID:
 		_Show(FALSE, 0, 0);
@@ -724,7 +724,7 @@ void CNotifyWindow::_OnLButtonDown(POINT pt)
 	{
 		if(_notifyType == NOTIFY_TYPE::NOTIFY_CHN_ENG)
 		{
-			_pfnCallback(_pObj, SWITCH_CHN_ENG, NULL, NULL);
+			_pfnCallback(_pObj, NOTIFY_WND::SWITCH_CHN_ENG, NULL, NULL);
 		}
 	}
 	else

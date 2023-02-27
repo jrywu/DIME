@@ -37,7 +37,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "BaseWindow.h"
 #include "CandidateWindow.h"
 
-
+#define NO_ANIMATION
 #define NO_WINDOW_SHADOW
 #define ANIMATION_STEP_TIME 8
 #define ANIMATION_TIMER_ID 39773
@@ -246,12 +246,14 @@ void CCandidateWindow::_Move(int x, int y)
 	_x = x;
 	_y = y;
 	CBaseWindow::_Move(x, y);
-
-	SetLayeredWindowAttributes(_GetWnd(), 0,  255 * (5 / 100), LWA_ALPHA); // 30% transparent when drawing
+#ifdef NO_ANIMATION
+    SetLayeredWindowAttributes(_GetWnd(), 0, (255 * 95) / 100, LWA_ALPHA);
+#else
+    SetLayeredWindowAttributes(_GetWnd(), 0, 255 * (5 / 100), LWA_ALPHA); // staring from 30% transparent 
 	_animationStage = 10;	
 	_EndTimer(ANIMATION_TIMER_ID);
 	_StartTimer(ANIMATION_STEP_TIME, ANIMATION_TIMER_ID);
-
+#endif
 }
 
 void CCandidateWindow::_OnTimerID(UINT_PTR timerID)

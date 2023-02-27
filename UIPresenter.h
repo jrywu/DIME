@@ -148,10 +148,10 @@ public:
 private:
 	VOID _LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall);
     virtual HRESULT CALLBACK _CandidateChangeNotification(_In_ enum CANDWND_ACTION action);
-	virtual HRESULT CALLBACK _NotifyChangeNotification(_In_ enum NOTIFYWND_ACTION action, _In_ WPARAM wParam, _In_ LPARAM lParam);
+	virtual HRESULT CALLBACK _NotifyChangeNotification(_In_ enum NOTIFY_WND action, _In_ WPARAM wParam, _In_ LPARAM lParam);
 
     static HRESULT _CandWndCallback(_In_ void *pv, _In_ enum CANDWND_ACTION action);
-	static HRESULT _NotifyWndCallback(_In_ void *pv, _In_ enum NOTIFYWND_ACTION action, _In_ WPARAM wParam, _In_ LPARAM lParam);
+	static HRESULT _NotifyWndCallback(_In_ void *pv, _In_ enum NOTIFY_WND action, _In_ WPARAM wParam, _In_ LPARAM lParam);
 
     friend COLORREF _AdjustTextColor(_In_ COLORREF crColor, _In_ COLORREF crBkColor);
 

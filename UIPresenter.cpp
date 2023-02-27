@@ -922,7 +922,7 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall)
 	if (_pCandidateWnd && lpRect)
 	{
 
-		if (lpRect->bottom - lpRect->top > 1 || lpRect->right - lpRect->left > 1 ) // confirm the extent rect is valid.
+		if (lpRect->bottom - lpRect->top >=0  || lpRect->right - lpRect->left >=0 ) // confirm the extent rect is valid.
 		{
 			_pCandidateWnd->_GetClientRect(&candRect);
 			if (((compRect.right - compRect.left) > (candRect.right - candRect.left)) && caretPt.x < compRect.right && caretPt.x >= compRect.left)
@@ -1035,20 +1035,20 @@ VOID CUIPresenter::_LayoutDestroyNotification()
 //
 //----------------------------------------------------------------------------
 
-HRESULT CUIPresenter::_NotifyChangeNotification(_In_ enum NOTIFYWND_ACTION action, _In_ WPARAM wParam, _In_ LPARAM lParam)
+HRESULT CUIPresenter::_NotifyChangeNotification(_In_ enum NOTIFY_WND action, _In_ WPARAM wParam, _In_ LPARAM lParam)
 {
 
 	debugPrint(L"CUIPresenter::_NotifyChangeNotification() action = %d, _inFocus =%d", action, _inFocus);
 	switch(action)
 	{
-		case SWITCH_CHN_ENG:
+		case NOTIFY_WND::SWITCH_CHN_ENG:
 			BOOL isEaten;
 			Global::IsShiftKeyDownOnly = TRUE;
 			if(_pTextService)
 				_pTextService->OnPreservedKey(NULL, Global::DIMEGuidImeModePreserveKey, &isEaten);
 			Global::IsShiftKeyDownOnly = FALSE;
 			break;
-		case SHOW_NOTIFY:
+		case NOTIFY_WND::SHOW_NOTIFY:
 			if((NOTIFY_TYPE)lParam == NOTIFY_TYPE::NOTIFY_CHN_ENG && !_pTextService->_IsComposing())
 			{
 				if(_pTextService && _GetContextDocument() == nullptr)  //layout is not started. we need to do probecomposition to start layout
@@ -1169,7 +1169,7 @@ HRESULT CUIPresenter::_CandWndCallback(_In_ void *pv, _In_ enum CANDWND_ACTION a
 //----------------------------------------------------------------------------
 
 // static
-HRESULT CUIPresenter::_NotifyWndCallback(_In_ void *pv,_In_ enum NOTIFYWND_ACTION action, _In_ WPARAM wParam, _In_ LPARAM lParam)
+HRESULT CUIPresenter::_NotifyWndCallback(_In_ void *pv,_In_ enum NOTIFY_WND action, _In_ WPARAM wParam, _In_ LPARAM lParam)
 {
 	
     CUIPresenter* fakeThis = (CUIPresenter*)pv;

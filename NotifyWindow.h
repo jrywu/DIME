@@ -37,7 +37,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ShadowWindow.h"
 #include "BaseStructure.h"
 
-enum NOTIFYWND_ACTION
+enum class NOTIFY_WND
 {
     SWITCH_CHN_ENG,
 	SHOW_NOTIFY
@@ -45,7 +45,7 @@ enum NOTIFYWND_ACTION
 
 
 
-typedef HRESULT (*NOTIFYWNDCALLBACK)(void *pv, enum NOTIFYWND_ACTION action, _In_ WPARAM wParam, _In_ LPARAM lParam);
+typedef HRESULT (*NOTIFYWNDCALLBACK)(void *pv, enum NOTIFY_WND action, _In_ WPARAM wParam, _In_ LPARAM lParam);
 
 class CNotifyWindow : public CBaseWindow
 {
