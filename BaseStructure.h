@@ -203,10 +203,18 @@ enum class SEARCH_SECTION
 //---------------------------------------------------------------------
 enum class NOTIFY_TYPE
 {
-	NOTIFY_CHN_ENG,
+	NOTIFY_CHN_ENG = 0,
 	NOTIFY_SINGLEDOUBLEBYTE,
 	NOTIFY_BEEP,
 	NOTIFY_OTHERS
+};
+
+enum class NUMERIC_PAD
+{
+    NUMERIC_PAD_MUMERIC = 0,
+    NUMERIC_PAD_MUMERIC_COMPOSITION,
+    NUMERIC_PAD_MUMERIC_COMPOSITION_ONLY,
+
 };
 
 enum class PROCESS_INTEGRITY_LEVEL

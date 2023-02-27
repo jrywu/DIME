@@ -738,7 +738,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 
 BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeComposition(UINT uCode, PWCH pwch, _Inout_opt_ _KEYSTROKE_STATE* pKeyState, KEYSTROKE_FUNCTION function)
 {
-	uCode;
+	
 	if (!IsDictionaryAvailable(_imeMode) || pKeyState == nullptr || _KeystrokeComposition.Count() == 0)
 	{
 		return FALSE;
@@ -754,6 +754,10 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeComposition(UINT uCode, P
 	WCHAR c = towupper(*pwch);
 	if (c < 32 || c > 32 + MAX_RADICAL) return FALSE;
 
+	if (CConfig::GetNumericPad() == NUMERIC_PAD::NUMERIC_PAD_MUMERIC_COMPOSITION_ONLY &&
+		!(uCode >= VK_NUMPAD0 && uCode <= VK_DIVIDE))
+		return FALSE;
+
 	//Convert ETEN keyboard to standard keyboard first if keyboard layout is ETEN
 	if (Global::imeMode == IME_MODE::IME_MODE_PHONETIC && CConfig::getPhoneticKeyboardLayout() == PHONETIC_KEYBOARD_LAYOUT::PHONETIC_ETEN_KEYBOARD_LAYOUT)
 	{
@@ -765,7 +769,8 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeComposition(UINT uCode, P
 
 	if (c >= 'A' && c <= 'Z' && (Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT)) != 0) return FALSE; //  input English with shift-a~z 
 
-	if (pKeystroke != nullptr && pKeystroke->Function != KEYSTROKE_FUNCTION::FUNCTION_NONE )// && uCode == pKeystroke->VirtualKey)
+	if (pKeystroke != nullptr && pKeystroke->Function != KEYSTROKE_FUNCTION::FUNCTION_NONE &&
+		!(CConfig::GetNumericPad() == NUMERIC_PAD::NUMERIC_PAD_MUMERIC && uCode >= VK_NUMPAD0 && uCode <= VK_DIVIDE))
 	{
 		if (function == KEYSTROKE_FUNCTION::FUNCTION_NONE)
 		{

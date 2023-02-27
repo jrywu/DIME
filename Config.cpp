@@ -51,6 +51,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 IME_MODE CConfig::_imeMode = IME_MODE::IME_MODE_NONE;
 BOOL CConfig::_loadTableMode = FALSE;
 ARRAY_SCOPE CConfig::_arrayScope = ARRAY_SCOPE::ARRAY30_UNICODE_EXT_A;
+NUMERIC_PAD CConfig::_numericPad = NUMERIC_PAD::NUMERIC_PAD_MUMERIC;
 BOOL CConfig::_clearOnBeep = TRUE;
 BOOL CConfig::_doBeep = TRUE;
 BOOL CConfig::_doBeepNotify = TRUE;
@@ -182,7 +183,6 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			cf.lpLogFont = &lf;
 			cf.Flags = CF_INITTOLOGFONTSTRUCT | CF_NOVERTFONTS;// should not include CF_SELECTSCRIPT so as user can change the characterset
 
-			//if(ChooseFont(&cf) == TRUE)
 			if (_ChooseFont && ((*_ChooseFont)(&cf) == TRUE))
 			{
 				PropSheet_Changed(GetParent(hDlg), hDlg);
@@ -310,6 +310,17 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 					(_arrayScope != ARRAY_SCOPE::ARRAY40_BIG5) ? SW_HIDE : SW_SHOW);
 
 				debugPrint(L"selected arrray scope item is %d", _arrayScope);
+				break;
+			default:
+				break;
+			}
+			break;
+		case IDC_COMBO_NUMERIC_PAD:
+			switch (HIWORD(wParam))
+			{
+			case CBN_SELCHANGE:
+				PropSheet_Changed(GetParent(hDlg), hDlg);
+				ret = TRUE;
 				break;
 			default:
 				break;
@@ -469,6 +480,10 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			hwnd = GetDlgItem(hDlg, IDC_COMBO_DOUBLE_SINGLE_BYTE);
 			_doubleSingleByteMode = (DOUBLE_SINGLE_BYTE_MODE)SendMessage(hwnd, CB_GETCURSEL, 0, 0);
 			debugPrint(L"selected double single byte mode is %d", _doubleSingleByteMode);
+
+			hwnd = GetDlgItem(hDlg, IDC_COMBO_NUMERIC_PAD);
+			_numericPad = (NUMERIC_PAD)SendMessage(hwnd, CB_GETCURSEL, 0, 0);
+			debugPrint(L"selected Numeric pad mode is %d", _numericPad);
 
 			hwnd = GetDlgItem(hDlg, IDC_COMBO_REVERSE_CONVERSION);
 			sel = (UINT)SendMessage(hwnd, CB_GETCURSEL, 0, 0);
@@ -890,7 +905,7 @@ void CConfig::ParseConfig(HWND hDlg, BOOL initDiag)
 	CheckDlgButton(hDlg, IDC_CHECKBOX_SPACEASPAGEDOWN, (_spaceAsPageDown) ? BST_CHECKED : BST_UNCHECKED);
 	CheckDlgButton(hDlg, IDC_CHECKBOX_SPACEASFIRSTCANDSELKEY, (_spaceAsFirstCandSelkey) ? BST_CHECKED : BST_UNCHECKED);
 	CheckDlgButton(hDlg, IDC_CHECKBOX_ARROWKEYSWPAGES, (_arrowKeySWPages) ? BST_CHECKED : BST_UNCHECKED);
-	
+
 	hwnd = GetDlgItem(hDlg, IDC_COMBO_IME_SHIFT_MODE);
 	if(initDiag)
 	{	
@@ -908,8 +923,18 @@ void CConfig::ParseConfig(HWND hDlg, BOOL initDiag)
 		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"");
 		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"");
 	}
-		SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_doubleSingleByteMode, 0);
-	
+	SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_doubleSingleByteMode, 0);
+
+	// initial Numeric pad combobox
+	hwnd = GetDlgItem(hDlg, IDC_COMBO_NUMERIC_PAD);
+	if (initDiag)
+	{
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"计龄絃块计才腹");
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"计龄絃块");
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"度ノ计龄絃块");
+	}
+	SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_numericPad, 0);
+
 	if (_imeMode != IME_MODE::IME_MODE_GENERIC)
 	{
 		ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_SPACEASFIRSTCANDSELKEY), SW_HIDE);
@@ -958,7 +983,7 @@ void CConfig::ParseConfig(HWND hDlg, BOOL initDiag)
 		}
 		else
 			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_AUTOCOMPOSE), SW_HIDE);
-		// set Array scope combobox
+		// initial Array scope combobox
 		hwnd = GetDlgItem(hDlg, IDC_COMBO_ARRAY_SCOPE);
 		if (initDiag)
 		{
@@ -1063,7 +1088,7 @@ VOID CConfig::WriteConfig(BOOL confirmUpdated)
 			{
 				fwprintf_s(fp, L"PhoneticKeyboardLayout = %d\n", _phoneticKeyboardLayout);
 			}
-
+			fwprintf_s(fp, L"NumericPad = %d\n", _numericPad);
 			if (_loadTableMode) fwprintf_s(fp, L"LoadTableMode = 1\n");
 			fclose(fp);
 			_wstat(_pwszINIFileName, &initTimeStamp);

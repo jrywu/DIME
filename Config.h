@@ -133,6 +133,10 @@ public:
 	static BOOL GetArraySingleQuoteCustomPhrase() { return _arraySingleQuoteCustomPhrase; }
 	static void SetArraySingleQuoteCustomPhrase(BOOL singleQuoteQueryCustomPhrase) { _arraySingleQuoteCustomPhrase = singleQuoteQueryCustomPhrase; }
 
+	//numeric pad 
+	static NUMERIC_PAD GetNumericPad() { return _numericPad; }
+	static void SetNumericPad(NUMERIC_PAD numericPad) { _numericPad = numericPad; }
+
 	//dayi address/article mode
 	static void setDayiArticleMode(BOOL dayiArticleMode) { _dayiArticleMode = dayiArticleMode; }
 	static BOOL getDayiArticleMode() { return _dayiArticleMode; }
@@ -174,6 +178,7 @@ private:
 	static BOOL _loadTableMode;
 	static IME_MODE _imeMode;
 	static ARRAY_SCOPE _arrayScope;
+	static NUMERIC_PAD _numericPad;
 	static BOOL _autoCompose;
 	static BOOL _customTablePriority;
 	static BOOL _clearOnBeep;
