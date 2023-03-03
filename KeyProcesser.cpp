@@ -472,7 +472,8 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 	}
 	// Processing dayi address input ---------------------------------------------------------
 	// // Symbol mode start with L'=' for dayi, L'w' for array30; L'H' and L'8' for array40
-	if (IsSymbolChar(*pwch) && uCode != VK_SHIFT && candidateMode != CANDIDATE_MODE::CANDIDATE_ORIGINAL)
+	if (IsSymbolChar(*pwch) && uCode != VK_SHIFT && candidateMode != CANDIDATE_MODE::CANDIDATE_ORIGINAL &&
+		!(CConfig::GetNumericPad() == NUMERIC_PAD::NUMERIC_PAD_MUMERIC && uCode >= VK_NUMPAD0 && uCode <= VK_DIVIDE))
 	{
 		if (pKeyState)
 		{
@@ -484,7 +485,9 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 	}
 
 	// Address characters direct input mode  "'[]-\"
-	if (IsDayiAddressChar(*pwch) && (candidateMode == CANDIDATE_MODE::CANDIDATE_NONE || candidateMode == CANDIDATE_MODE::CANDIDATE_PHRASE))
+	if (IsDayiAddressChar(*pwch) && 
+		(candidateMode == CANDIDATE_MODE::CANDIDATE_NONE || candidateMode == CANDIDATE_MODE::CANDIDATE_PHRASE) &&
+		!(CConfig::GetNumericPad() == NUMERIC_PAD::NUMERIC_PAD_MUMERIC && uCode >= VK_NUMPAD0 && uCode <= VK_DIVIDE))
 	{
 		if (pKeyState)
 		{
