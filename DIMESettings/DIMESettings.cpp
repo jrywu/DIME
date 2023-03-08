@@ -3,6 +3,7 @@
 
 #include "framework.h"
 #include <CommCtrl.h>
+#include <ntddkbd.h>
 #include "DIMESettings.h"
 #include "..\Globals.h"
 #include "..\Config.h"
@@ -58,29 +59,36 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     pk_OsVer.dwOSVersionInfoSize = sizeof(RTL_OSVERSIONINFOEXW);
     HMODULE hNtDll = NULL;
     hNtDll = GetModuleHandleW(L"ntdll.dll");
-    _T_RtlGetVersion _RtlGetVersion = (_T_RtlGetVersion)GetProcAddress(hNtDll, "RtlGetVersion");
-    if (hNtDll == NULL || _RtlGetVersion == nullptr)
-        debugPrint(L"Failed to cast function RtlGetVersion in ntdll.dll"); // This will never happen (all processes load ntdll.dll)
-    if (_RtlGetVersion(&pk_OsVer) == 0 &&
-        ((pk_OsVer.dwMajorVersion == 6 && pk_OsVer.dwMinorVersion >= 2) || pk_OsVer.dwMajorVersion > 6)) isAfterWindows8 = TRUE;
-    if (hNtDll != NULL) FreeLibrary(hNtDll);
-
-    if (isAfterWindows8)
+    if (hNtDll != NULL)
     {
-        // tell system we are dpi aware
-        HINSTANCE hShcore = NULL;
-        hShcore = LoadLibrary(L"Shcore.dll");
-        typedef HRESULT(__stdcall* _T_SetProcessDpiAwareness)(_Inout_  _PROCESS_DPI_AWARENESS awareness);
-        _T_SetProcessDpiAwareness _SetProcessDpiAwareness = NULL;
-        _SetProcessDpiAwareness = reinterpret_cast<_T_SetProcessDpiAwareness>(GetProcAddress(hShcore, "SetProcessDpiAwareness"));
-        if (_SetProcessDpiAwareness == nullptr) {
-            debugPrint(L"Failed to cast function SetProcessDpiAwareness in Shcore.dll");
-        }
-        else
-            _SetProcessDpiAwareness(Process_System_DPI_Aware);
-        if (hShcore != NULL) FreeLibrary(hShcore);
+        _T_RtlGetVersion _RtlGetVersion = (_T_RtlGetVersion)GetProcAddress(hNtDll, "RtlGetVersion");
+        if (hNtDll == NULL || _RtlGetVersion == nullptr)
+            debugPrint(L"Failed to cast function RtlGetVersion in ntdll.dll"); // This will never happen (all processes load ntdll.dll)
+        if (_RtlGetVersion(&pk_OsVer) == 0 &&
+            ((pk_OsVer.dwMajorVersion == 6 && pk_OsVer.dwMinorVersion >= 2) || pk_OsVer.dwMajorVersion > 6)) isAfterWindows8 = TRUE;
+        if (hNtDll != NULL) FreeLibrary(hNtDll);
+        if (isAfterWindows8)
+        {
+            // tell system we are dpi aware
+            HINSTANCE hShcore = NULL;
+            hShcore = LoadLibrary(L"Shcore.dll");
+            if (hShcore != NULL)
+            {
+                typedef HRESULT(__stdcall* _T_SetProcessDpiAwareness)(_Inout_  _PROCESS_DPI_AWARENESS awareness);
+                _T_SetProcessDpiAwareness _SetProcessDpiAwareness = NULL;
+                _SetProcessDpiAwareness = reinterpret_cast<_T_SetProcessDpiAwareness>(GetProcAddress(hShcore, "SetProcessDpiAwareness"));
+                if (_SetProcessDpiAwareness == nullptr) {
+                    debugPrint(L"Failed to cast function SetProcessDpiAwareness in Shcore.dll");
+                }
+                else
+                    _SetProcessDpiAwareness(Process_System_DPI_Aware);
+                if (hShcore != NULL) FreeLibrary(hShcore);
+            }
 
+        }
     }
+
+    
 
 
     HWND hDlg;
