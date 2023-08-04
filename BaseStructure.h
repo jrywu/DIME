@@ -1,8 +1,35 @@
-//
-//
-// Derived from Microsoft Sample IME by Jeremy '13,7,17
-//
-//
+/* DIME IME for Windows 7/8/10/11
+
+BSD 3-Clause License
+
+Copyright (c) 2022, Jeremy Wu
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
 #ifndef DIMEBASESTRUCTURE_H
 #define DIMEBASESTRUCTURE_H
 
@@ -13,8 +40,6 @@
 #include <shellscalingapi.h>
 #include "stdafx.h"
 #include "assert.h"
-
-
 
 using std::cout;
 using std::endl;
@@ -46,7 +71,7 @@ struct _DAYI_ADDRESS_DIRECT_INPUT
 // enum
 //---------------------------------------------------------------------
 
-enum DICTIONARY_TYPE
+enum class DICTIONARY_TYPE
 {
 	TTS_DICTIONARY,
 	INI_DICTIONARY,
@@ -54,7 +79,7 @@ enum DICTIONARY_TYPE
 	LIME_DICTIONARY
 };
 
-enum KEYSTROKE_CATEGORY
+enum class KEYSTROKE_CATEGORY
 {
     CATEGORY_NONE = 0,
     CATEGORY_COMPOSING,
@@ -64,13 +89,13 @@ enum KEYSTROKE_CATEGORY
     CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION
 };
 
-enum PHONETIC_KEYBOARD_LAYOUT
+enum class PHONETIC_KEYBOARD_LAYOUT
 {
 	PHONETIC_STANDARD_KEYBOARD_LAYOUT = 0,
 	PHONETIC_ETEN_KEYBOARD_LAYOUT = 1
 };
 
-enum IME_SHIFT_MODE
+enum class IME_SHIFT_MODE
 {
 	IME_BOTH_SHIFT = 0,
 	IME_RIGHT_SHIFT_ONLY,
@@ -78,23 +103,25 @@ enum IME_SHIFT_MODE
 	IME_NO_SHIFT
 };
 
-enum DOUBLE_SINGLE_BYTE_MODE
+enum class DOUBLE_SINGLE_BYTE_MODE
 {
 	DOUBLE_SINGLE_BYTE_SHIFT_SPACE = 0,
 	DOUBLE_SINGLE_BYTE_ALWAYS_SINGLE,
 	DOUBLE_SINGLE_BYTE_ALWAYS_DOUBLE
 };
 
-enum BEEP_TYPE
+enum class BEEP_TYPE
 {
 	BEEP_COMPOSITION_ERROR = 0,
 	BEEP_WARNING,
 	BEEP_ON_CANDI
 };
-enum KEYSTROKE_FUNCTION
+enum class KEYSTROKE_FUNCTION
 {
     FUNCTION_NONE = 0,
     FUNCTION_INPUT,
+    FUNCTION_INPUT_AND_CONVERT,
+    FUNCTION_INPUT_AND_CONVERT_WILDCARD,
 
     FUNCTION_CANCEL,
     FUNCTION_FINALIZE_TEXTSTORE,
@@ -103,6 +130,8 @@ enum KEYSTROKE_FUNCTION
     FUNCTION_FINALIZE_CANDIDATELIST_AND_INPUT,
     FUNCTION_CONVERT,
     FUNCTION_CONVERT_WILDCARD,
+    FUNCTION_CONVERT_ARRAY_PHRASE,
+    FUNCTION_CONVERT_ARRAY_PHRASE_WILDCARD,
     FUNCTION_SELECT_BY_NUMBER,
     FUNCTION_BACKSPACE,
     FUNCTION_MOVE_LEFT,
@@ -124,19 +153,19 @@ enum KEYSTROKE_FUNCTION
 //---------------------------------------------------------------------
 // candidate list
 //---------------------------------------------------------------------
-enum CANDIDATE_MODE
+enum class CANDIDATE_MODE
 {
     CANDIDATE_NONE = 0,
     CANDIDATE_ORIGINAL,
     CANDIDATE_PHRASE,
     CANDIDATE_INCREMENTAL,
-    CANDIDATE_WITH_NEXT_COMPOSITION
+    //CANDIDATE_WITH_NEXT_COMPOSITION
 };
 
 //---------------------------------------------------------------------
 // IME MODE
 //---------------------------------------------------------------------
-enum IME_MODE
+enum class IME_MODE
 {
     IME_MODE_DAYI = 0,
 	IME_MODE_ARRAY,
@@ -146,22 +175,22 @@ enum IME_MODE
 };
 
 //---------------------------------------------------------------------
-// UNICODE SCOPE
+// ARRAY SCOPE
 //---------------------------------------------------------------------
-enum CHARSET_SCOPE
+enum class ARRAY_SCOPE
 {
-	CHARSET_UNICODE_EXT_A = 0,
-	CHARSET_UNICODE_EXT_AB,
-	CHARSET_UNICODE_EXT_ABCD,
-	CHARSET_UNICODE_EXT_ABCDE,
-	CHARSET_BIG5
+	ARRAY30_UNICODE_EXT_A = 0,
+	ARRAY30_UNICODE_EXT_AB,
+	ARRAY30_UNICODE_EXT_ABCD,
+	ARRAY30_UNICODE_EXT_ABCDE,
+	ARRAY40_BIG5
 };
 
 
 //---------------------------------------------------------------------
 // SEARCH SECTION
 //---------------------------------------------------------------------
-enum SEARCH_SECTION
+enum class SEARCH_SECTION
 {
     SEARCH_SECTION_TEXT = 0,
 	SEARCH_SECTION_SYMBOL,
@@ -172,15 +201,23 @@ enum SEARCH_SECTION
 //---------------------------------------------------------------------
 // NOTIFY_TYPE
 //---------------------------------------------------------------------
-enum NOTIFY_TYPE
+enum class NOTIFY_TYPE
 {
-	NOTIFY_CHN_ENG,
+	NOTIFY_CHN_ENG = 0,
 	NOTIFY_SINGLEDOUBLEBYTE,
 	NOTIFY_BEEP,
 	NOTIFY_OTHERS
 };
 
-enum PROCESS_INTEGRITY_LEVEL
+enum class NUMERIC_PAD
+{
+    NUMERIC_PAD_MUMERIC = 0,
+    NUMERIC_PAD_MUMERIC_COMPOSITION,
+    NUMERIC_PAD_MUMERIC_COMPOSITION_ONLY,
+
+};
+
+enum class PROCESS_INTEGRITY_LEVEL
 {
 	PROCESS_INTEGRITY_LEVEL_HIGH,
 	PROCESS_INTEGRITY_LEVEL_LOW,
@@ -283,24 +320,45 @@ private:
     CDIMEInnerArray _innerVect;
 };
 
+
+struct _KEYSTROKE
+{
+    UINT Index;
+    WCHAR Printable;
+    WCHAR CandIndex;
+    UINT VirtualKey;
+    UINT Modifiers;
+    KEYSTROKE_FUNCTION Function;
+
+    _KEYSTROKE()
+    {
+        Index = 0;
+        Printable = '\0';
+        CandIndex = '\0';
+        VirtualKey = 0;
+        Modifiers = 0;
+        Function = KEYSTROKE_FUNCTION::FUNCTION_NONE;
+    }
+};
+
 class CCandidateRange
 {
 public:
     CCandidateRange(void);
     ~CCandidateRange(void);
 
-    BOOL IsRange(UINT vKey, CANDIDATE_MODE candidateMode);
-    int GetIndex(UINT vKey, CANDIDATE_MODE candidateMode);
+    BOOL IsRange(UINT vKey, WCHAR Printable, UINT Modifiers, CANDIDATE_MODE candidateMode);
+    int GetIndex(UINT vKey, WCHAR Printable, CANDIDATE_MODE candidateMode);
 
     inline int Count() const 
     { 
         return _CandidateListIndexRange.Count(); 
     }
-    inline DWORD *GetAt(int index) 
+    inline _KEYSTROKE *GetAt(int index)
     { 
         return _CandidateListIndexRange.GetAt(index); 
     }
-    inline DWORD *Append() 
+    inline _KEYSTROKE *Append()
     { 
         return _CandidateListIndexRange.Append(); 
     }
@@ -310,7 +368,7 @@ public:
 		return nullptr;
     }
 private:
-    CDIMEArray<DWORD> _CandidateListIndexRange;
+    CDIMEArray<_KEYSTROKE> _CandidateListIndexRange;
 };
 
 class CStringRange
@@ -343,9 +401,9 @@ struct CCandidateListItem
 {
     CStringRange _ItemString;
     CStringRange _FindKeyCode;
-	int _WordFrequency;
+	int _WordFrequency = 0;
 
-	CCandidateListItem& CCandidateListItem::operator =( const CCandidateListItem& rhs)
+	CCandidateListItem& operator =( const CCandidateListItem& rhs)
 	{
 		_ItemString = rhs._ItemString;
 		_FindKeyCode = rhs._FindKeyCode;

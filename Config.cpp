@@ -1,3 +1,35 @@
+/* DIME IME for Windows 7/8/10/11
+
+BSD 3-Clause License
+
+Copyright (c) 2022, Jeremy Wu
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
 //#define DEBUG_PRINT
 #include <windowsx.h>
 #include <Shlobj.h>
@@ -13,10 +45,13 @@
 #include "Aclapi.h"
 #include "CompositionProcessorEngine.h"
 
+
+#pragma comment(lib, "Shlwapi.lib")
 //static configuration settings initilization
-IME_MODE CConfig::_imeMode = IME_MODE_NONE;
+IME_MODE CConfig::_imeMode = IME_MODE::IME_MODE_NONE;
 BOOL CConfig::_loadTableMode = FALSE;
-CHARSET_SCOPE CConfig::_arrayUnicodeScope = CHARSET_UNICODE_EXT_A;
+ARRAY_SCOPE CConfig::_arrayScope = ARRAY_SCOPE::ARRAY30_UNICODE_EXT_A;
+NUMERIC_PAD CConfig::_numericPad = NUMERIC_PAD::NUMERIC_PAD_MUMERIC;
 BOOL CConfig::_clearOnBeep = TRUE;
 BOOL CConfig::_doBeep = TRUE;
 BOOL CConfig::_doBeepNotify = TRUE;
@@ -27,6 +62,7 @@ BOOL CConfig::_arrayForceSP = FALSE;
 BOOL CConfig::_arrayNotifySP = TRUE;
 BOOL CConfig::_arrowKeySWPages = TRUE;
 BOOL CConfig::_spaceAsPageDown = FALSE;
+BOOL CConfig::_spaceAsFirstCandSelkey = FALSE;
 UINT CConfig::_fontSize = 12;
 UINT CConfig::_fontWeight = FW_NORMAL;
 BOOL CConfig::_fontItalic = FALSE;
@@ -38,18 +74,22 @@ BOOL CConfig::_doHanConvert = FALSE;
 BOOL CConfig::_showNotifyDesktop = TRUE;
 BOOL CConfig::_dayiArticleMode = FALSE;  // Article mode: input full-shaped symbols with address keys
 BOOL CConfig::_customTableChanged = FALSE;
+BOOL CConfig::_arraySingleQuoteCustomPhrase = FALSE;
 
 UINT CConfig::_dpiY = 0;
 _T_GetDpiForMonitor CConfig::_GetDpiForMonitor = nullptr;
 
-PHONETIC_KEYBOARD_LAYOUT CConfig::_phoneticKeyboardLayout = PHONETIC_STANDARD_KEYBOARD_LAYOUT;
-IME_SHIFT_MODE CConfig::_imeShiftMode = IME_BOTH_SHIFT;
-DOUBLE_SINGLE_BYTE_MODE CConfig::_doubleSingleByteMode = DOUBLE_SINGLE_BYTE_ALWAYS_SINGLE;
+PHONETIC_KEYBOARD_LAYOUT CConfig::_phoneticKeyboardLayout = PHONETIC_KEYBOARD_LAYOUT::PHONETIC_STANDARD_KEYBOARD_LAYOUT;
+IME_SHIFT_MODE CConfig::_imeShiftMode = IME_SHIFT_MODE::IME_BOTH_SHIFT;
+DOUBLE_SINGLE_BYTE_MODE CConfig::_doubleSingleByteMode = DOUBLE_SINGLE_BYTE_MODE::DOUBLE_SINGLE_BYTE_ALWAYS_SINGLE;
 
 CDIMEArray <LanguageProfileInfo>* CConfig::_reverseConvervsionInfoList = new (std::nothrow) CDIMEArray <LanguageProfileInfo>;
 CLSID CConfig::_reverseConverstionCLSID = CLSID_NULL;
 GUID CConfig::_reverseConversionGUIDProfile = CLSID_NULL;
 WCHAR* CConfig::_reverseConversionDescription = nullptr;
+WCHAR CConfig::_pwzsDIMEProfile[] = L"\0";
+WCHAR CConfig::_pwszINIFileName[] = L"\0";
+IME_MODE CConfig::_configIMEMode = IME_MODE::IME_MODE_NONE;
 BOOL CConfig::_reloadReverseConversion = FALSE;
 
 WCHAR CConfig::_pFontFaceName[] = { L"微軟正黑體" };
@@ -72,25 +112,36 @@ ColorInfo CConfig::colors[6] =
 struct _stat CConfig::_initTimeStamp = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }; //zero the timestamp
 
 
+void DrawColor(HWND hwnd, HDC hdc, COLORREF col)
+{
+	RECT rect;
+
+	hdc = GetDC(hwnd);
+	SelectObject(hdc, GetStockObject(BLACK_PEN));
+	SetDCBrushColor(hdc, col);
+	SelectObject(hdc, GetStockObject(DC_BRUSH));
+	GetClientRect(hwnd, &rect);
+	Rectangle(hdc, rect.left, rect.top, rect.right, rect.bottom);
+	ReleaseDC(hwnd, hdc);
+}
 
 INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	BOOL ret = FALSE;
 	HWND hwnd;
-	size_t i;
-	WCHAR num[16] = { 0 };
-	WCHAR fontname[LF_FACESIZE] = { 0 };
-	int fontpoint = 12, fontweight = FW_NORMAL, x, y, logPixelY, LogFontSize;
-	BOOL fontitalic = FALSE;
-	CHOOSEFONT cf;
-	LOGFONT lf;
 	HDC hdc;
 	HFONT hFont;
+	CHOOSEFONT cf;
+	LOGFONT lf;
+	int fontpoint = 12, fontweight = FW_NORMAL, x, y;
+	size_t i;
+	BOOL fontitalic = FALSE;
+	WCHAR fontname[LF_FACESIZE] = { 0 };
+	WCHAR* pwszFontFaceName;
+	WCHAR num[16] = { 0 };
 	RECT rect;
 	POINT pt;
 	UINT sel = 0;
-	WCHAR *pwszFontFaceName;
-
 
 	CHOOSECOLORW cc;
 	static COLORREF colCust[16];
@@ -110,155 +161,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 	{
 	case WM_INITDIALOG:
 
-		wcsncpy_s(fontname, _pFontFaceName, _TRUNCATE);
-
-		fontpoint = _fontSize;
-		fontweight = _fontWeight;
-		fontitalic = _fontItalic;
-
-		if (fontpoint < 8 || fontpoint > 72)
-		{
-			fontpoint = 12;
-		}
-		if (fontweight < 0 || fontweight > 1000)
-		{
-			fontweight = FW_NORMAL;
-		}
-		if (fontitalic != TRUE && fontitalic != FALSE)
-		{
-			fontitalic = FALSE;
-		}
-
-		SetDlgItemText(hDlg, IDC_EDIT_FONTNAME, fontname);
-		hdc = GetDC(hDlg);
-		logPixelY = GetDeviceCaps(hdc, LOGPIXELSY);
-		if (_GetDpiForMonitor)
-		{
-			HMONITOR monitor = MonitorFromWindow(hDlg, MONITOR_DEFAULTTONEAREST);
-			UINT dpiX, dpiY;
-	 		_GetDpiForMonitor(monitor, MDT_EFFECTIVE_DPI, &dpiX, &dpiY);
-			if(dpiY > 0) logPixelY = dpiY;
-		}
-		LogFontSize = -MulDiv(10, logPixelY, 72);
-
-		hFont = CreateFont(LogFontSize, 0, 0, 0,
-			fontweight, fontitalic, FALSE, FALSE, DEFAULT_CHARSET,
-			OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH, fontname);
-		SendMessage(GetDlgItem(hDlg, IDC_EDIT_FONTNAME), WM_SETFONT, (WPARAM)hFont, 0);
-		ReleaseDC(hDlg, hdc);
-
-		SetDlgItemInt(hDlg, IDC_EDIT_FONTPOINT, fontpoint, FALSE);
-
-		ZeroMemory(&colCust, sizeof(colCust));
-
-		colors[0].color = _itemColor;
-		colors[1].color = _selectedColor;
-		colors[2].color = _itemBGColor;
-		colors[3].color = _phraseColor;
-		colors[4].color = _numberColor;
-		colors[5].color = _selectedBGColor;
-
-		hwnd = GetDlgItem(hDlg, IDC_COMBO_REVERSE_CONVERSION);
-
-		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"(無)");
-		if (IsEqualCLSID(_reverseConversionGUIDProfile, CLSID_NULL))
-			SendMessage(hwnd, CB_SETCURSEL, (WPARAM)0, 0);
-		for (i = 0; i < _reverseConvervsionInfoList->Count(); i++)
-		{
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)_reverseConvervsionInfoList->GetAt(i)->description);
-			if (IsEqualCLSID(_reverseConversionGUIDProfile, _reverseConvervsionInfoList->GetAt(i)->guidProfile))
-				SendMessage(hwnd, CB_SETCURSEL, (WPARAM)i + 1, 0);
-		}
-
-
-		_snwprintf_s(num, _TRUNCATE, L"%d", _maxCodes);
-		SetDlgItemTextW(hDlg, IDC_EDIT_MAXWIDTH, num);
-		CheckDlgButton(hDlg, IDC_CHECKBOX_SHOWNOTIFY, (_showNotifyDesktop) ? BST_CHECKED : BST_UNCHECKED);
-
-		CheckDlgButton(hDlg, IDC_CHECKBOX_AUTOCOMPOSE, (_autoCompose) ? BST_CHECKED : BST_UNCHECKED);
-		CheckDlgButton(hDlg, IDC_CHECKBOX_CLEAR_ONBEEP, (_clearOnBeep) ? BST_CHECKED : BST_UNCHECKED);
-		CheckDlgButton(hDlg, IDC_CHECKBOX_DOBEEP, (_doBeep) ? BST_CHECKED : BST_UNCHECKED);
-		CheckDlgButton(hDlg, IDC_CHECKBOX_DOBEEPNOTIFY, (_doBeepNotify) ? BST_CHECKED : BST_UNCHECKED);
-		CheckDlgButton(hDlg, IDC_CHECKBOX_DOBEEP_CANDI, (_doBeepOnCandi) ? BST_CHECKED : BST_UNCHECKED);
-		CheckDlgButton(hDlg, IDC_CHECKBOX_CUSTOM_TABLE_PRIORITY, (_customTablePriority) ? BST_CHECKED : BST_UNCHECKED);
-		CheckDlgButton(hDlg, IDC_CHECKBOX_DAYIARTICLEMODE, (_dayiArticleMode) ? BST_CHECKED : BST_UNCHECKED);
-		CheckDlgButton(hDlg, IDC_CHECKBOX_ARRAY_FORCESP, (_arrayForceSP) ? BST_CHECKED : BST_UNCHECKED);
-		CheckDlgButton(hDlg, IDC_CHECKBOX_ARRAY_NOTIFYSP, (_arrayNotifySP) ? BST_CHECKED : BST_UNCHECKED);
-		CheckDlgButton(hDlg, IDC_CHECKBOX_PHRASE, (_makePhrase) ? BST_CHECKED : BST_UNCHECKED);
-
-		CheckDlgButton(hDlg, IDC_RADIO_KEYBOARD_OPEN, (_activatedKeyboardMode) ? BST_CHECKED : BST_UNCHECKED);
-		if (!IsDlgButtonChecked(hDlg, IDC_RADIO_KEYBOARD_OPEN))
-		{
-			CheckDlgButton(hDlg, IDC_RADIO_KEYBOARD_CLOSE, BST_CHECKED);
-		}
-		CheckDlgButton(hDlg, IDC_RADIO_OUTPUT_CHS, (_doHanConvert) ? BST_CHECKED : BST_UNCHECKED);
-		if (!IsDlgButtonChecked(hDlg, IDC_RADIO_OUTPUT_CHS))
-		{
-			CheckDlgButton(hDlg, IDC_RADIO_OUTPUT_CHT, BST_CHECKED);
-		}
-		CheckDlgButton(hDlg, IDC_CHECKBOX_SPACEASPAGEDOWN, (_spaceAsPageDown) ? BST_CHECKED : BST_UNCHECKED);
-		CheckDlgButton(hDlg, IDC_CHECKBOX_ARROWKEYSWPAGES, (_arrowKeySWPages) ? BST_CHECKED : BST_UNCHECKED);
-		
-		hwnd = GetDlgItem(hDlg, IDC_COMBO_IME_SHIFT_MODE);
-		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"左右SHIFT鍵");
-		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"右SHIFT鍵");
-		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"左SHIFT鍵");
-		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"無(僅Ctrl-Space鍵)");
-		SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_imeShiftMode, 0);
-
-		hwnd = GetDlgItem(hDlg, IDC_COMBO_DOUBLE_SINGLE_BYTE);
-		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"以 Shift-Space 熱鍵切換");
-		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"半型");
-		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"全型");
-		SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_doubleSingleByteMode, 0);
-
-		if (_imeMode == IME_MODE_ARRAY || _imeMode == IME_MODE_PHONETIC)
-		{
-			if (_imeMode == IME_MODE_PHONETIC)
-			{
-				ShowWindow(GetDlgItem(hDlg, IDC_EDIT_MAXWIDTH), SW_HIDE);
-				ShowWindow(GetDlgItem(hDlg, IDC_STATIC_EDIT_MAXWIDTH), SW_HIDE);
-				hwnd = GetDlgItem(hDlg, IDC_COMBO_PHONETIC_KEYBOARD);
-				SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"標準鍵盤");
-				SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"倚天鍵盤");
-				SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_phoneticKeyboardLayout, 0);
-			}
-			if (_imeMode == IME_MODE_ARRAY)
-			{
-				ShowWindow(GetDlgItem(hDlg, IDC_EDIT_MAXWIDTH), SW_HIDE);
-				ShowWindow(GetDlgItem(hDlg, IDC_STATIC_EDIT_MAXWIDTH), SW_HIDE);
-				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_AUTOCOMPOSE), SW_HIDE);
-			}
-		}
-
-		if (_imeMode != IME_MODE_PHONETIC)
-		{
-			ShowWindow(GetDlgItem(hDlg, IDC_STATIC_PHONETIC_KEYBOARD), SW_HIDE);
-			ShowWindow(GetDlgItem(hDlg, IDC_COMBO_PHONETIC_KEYBOARD), SW_HIDE);
-		}
-		
-		if (_imeMode != IME_MODE_DAYI)
-		{
-			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_DOBEEP_CANDI), SW_HIDE);
-			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_DAYIARTICLEMODE), SW_HIDE);
-		}
-		if (_imeMode != IME_MODE_ARRAY)
-		{
-			ShowWindow(GetDlgItem(hDlg, IDC_STATIC_ARRAY_UNICODE_SCOPE), SW_HIDE);
-			ShowWindow(GetDlgItem(hDlg, IDC_COMBO_ARRAY_UNICODE_SCOPE), SW_HIDE);
-			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_FORCESP), SW_HIDE);
-			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_NOTIFYSP), SW_HIDE);
-		}
-		else
-		{ // set Array unicode scope combobox
-			hwnd = GetDlgItem(hDlg, IDC_COMBO_ARRAY_UNICODE_SCOPE);
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"Unicode Extension-A");
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"Unicode Extension-AB");
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"Unicode Extension-ABCD");
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"Unicode Extension-ABCDEF");
-			SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_arrayUnicodeScope, 0);
-
-		}
+		ParseConfig(hDlg, TRUE);
 		ret = TRUE;
 		break;
 
@@ -280,7 +183,6 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			cf.lpLogFont = &lf;
 			cf.Flags = CF_INITTOLOGFONTSTRUCT | CF_NOVERTFONTS;// should not include CF_SELECTSCRIPT so as user can change the characterset
 
-			//if(ChooseFont(&cf) == TRUE)
 			if (_ChooseFont && ((*_ChooseFont)(&cf) == TRUE))
 			{
 				PropSheet_Changed(GetParent(hDlg), hDlg);
@@ -379,7 +281,41 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			}
 			break;
 
-		case IDC_COMBO_ARRAY_UNICODE_SCOPE:
+		case IDC_COMBO_ARRAY_SCOPE:
+			switch (HIWORD(wParam))
+			{
+			case CBN_SELCHANGE:
+				PropSheet_Changed(GetParent(hDlg), hDlg);
+				ret = TRUE;
+				hwnd = GetDlgItem(hDlg, IDC_COMBO_ARRAY_SCOPE);
+				_arrayScope = (ARRAY_SCOPE)SendMessage(hwnd, CB_GETCURSEL, 0, 0);
+				//reset autocompose mode if ARRAY_SCOPE::ARRAY40 is selected.
+				if (_arrayScope == ARRAY_SCOPE::ARRAY40_BIG5)
+				{
+					_autoCompose = FALSE;
+					_spaceAsPageDown = TRUE;
+					CheckDlgButton(hDlg, IDC_CHECKBOX_AUTOCOMPOSE, BST_UNCHECKED);
+					CheckDlgButton(hDlg, IDC_CHECKBOX_SPACEASPAGEDOWN, BST_CHECKED);
+				}
+				else // autocompse is alwyas true in ARRAY30
+					_autoCompose = TRUE;
+
+				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_SINGLEQUOTE_CUSTOM_PHRASE),
+					(_arrayScope == ARRAY_SCOPE::ARRAY40_BIG5) ? SW_HIDE : SW_SHOW);
+				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_FORCESP),
+					(_arrayScope == ARRAY_SCOPE::ARRAY40_BIG5) ? SW_HIDE : SW_SHOW);
+				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_NOTIFYSP),
+					(_arrayScope == ARRAY_SCOPE::ARRAY40_BIG5) ? SW_HIDE : SW_SHOW);
+				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_AUTOCOMPOSE),
+					(_arrayScope != ARRAY_SCOPE::ARRAY40_BIG5) ? SW_HIDE : SW_SHOW);
+
+				debugPrint(L"selected arrray scope item is %d", _arrayScope);
+				break;
+			default:
+				break;
+			}
+			break;
+		case IDC_COMBO_NUMERIC_PAD:
 			switch (HIWORD(wParam))
 			{
 			case CBN_SELCHANGE:
@@ -402,6 +338,16 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			}
 			break;
 		case IDC_CHECKBOX_AUTOCOMPOSE:
+			if(IsDlgButtonChecked(hDlg, IDC_CHECKBOX_AUTOCOMPOSE) == BST_CHECKED)
+			{
+				_spaceAsPageDown = FALSE;
+				CheckDlgButton(hDlg, IDC_CHECKBOX_SPACEASPAGEDOWN, BST_UNCHECKED);
+			}
+			else
+			{
+				_spaceAsPageDown = TRUE;
+				CheckDlgButton(hDlg, IDC_CHECKBOX_SPACEASPAGEDOWN, BST_CHECKED);
+			}
 		case IDC_CHECKBOX_CLEAR_ONBEEP:
 		case IDC_CHECKBOX_DOBEEP:
 		case IDC_CHECKBOX_DOBEEPNOTIFY:
@@ -413,15 +359,17 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		case IDC_CHECKBOX_DAYIARTICLEMODE:
 		case IDC_CHECKBOX_ARRAY_FORCESP:
 		case IDC_CHECKBOX_ARRAY_NOTIFYSP:
+		case IDC_CHECKBOX_ARRAY_SINGLEQUOTE_CUSTOM_PHRASE:
 		case IDC_CHECKBOX_PHRASE:
 		case IDC_CHECKBOX_ARROWKEYSWPAGES:
 		case IDC_CHECKBOX_SPACEASPAGEDOWN:
+		case IDC_CHECKBOX_SPACEASFIRSTCANDSELKEY:
 		case IDC_CHECKBOX_SHOWNOTIFY:
 			PropSheet_Changed(GetParent(hDlg), hDlg);
 			ret = TRUE;
 			break;
 		case IDOK:
-			CConfig::WriteConfig();
+			WriteConfig(TRUE);
 			ret = TRUE;
 			break;
 		default:
@@ -492,9 +440,11 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			_doHanConvert = IsDlgButtonChecked(hDlg, IDC_RADIO_OUTPUT_CHS) == BST_CHECKED;
 			_showNotifyDesktop = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_SHOWNOTIFY) == BST_CHECKED;
 			_spaceAsPageDown = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_SPACEASPAGEDOWN) == BST_CHECKED;
+			_spaceAsFirstCandSelkey = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_SPACEASFIRSTCANDSELKEY) == BST_CHECKED;
 			_arrowKeySWPages = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_ARROWKEYSWPAGES) == BST_CHECKED;
 			_arrayForceSP = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_ARRAY_FORCESP) == BST_CHECKED;
 			_arrayNotifySP = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_ARRAY_NOTIFYSP) == BST_CHECKED;
+			_arraySingleQuoteCustomPhrase = IsDlgButtonChecked(hDlg, IDC_CHECKBOX_ARRAY_SINGLEQUOTE_CUSTOM_PHRASE) == BST_CHECKED;
 
 
 			GetDlgItemText(hDlg, IDC_EDIT_MAXWIDTH, num, _countof(num));
@@ -509,8 +459,12 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			_fontItalic = lf.lfItalic;
 
 			pwszFontFaceName = new (std::nothrow) WCHAR[LF_FACESIZE];
-			GetDlgItemText(hDlg, IDC_EDIT_FONTNAME, pwszFontFaceName, LF_FACESIZE);
-			StringCchCopy(_pFontFaceName, LF_FACESIZE, pwszFontFaceName);
+			if (pwszFontFaceName)
+			{
+				GetDlgItemText(hDlg, IDC_EDIT_FONTNAME, pwszFontFaceName, LF_FACESIZE);
+				if (_pFontFaceName)
+					StringCchCopy(_pFontFaceName, LF_FACESIZE, pwszFontFaceName);
+			}
 
 			_itemColor = colors[0].color;
 			_selectedColor = colors[1].color;
@@ -527,6 +481,10 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			_doubleSingleByteMode = (DOUBLE_SINGLE_BYTE_MODE)SendMessage(hwnd, CB_GETCURSEL, 0, 0);
 			debugPrint(L"selected double single byte mode is %d", _doubleSingleByteMode);
 
+			hwnd = GetDlgItem(hDlg, IDC_COMBO_NUMERIC_PAD);
+			_numericPad = (NUMERIC_PAD)SendMessage(hwnd, CB_GETCURSEL, 0, 0);
+			debugPrint(L"selected Numeric pad mode is %d", _numericPad);
+
 			hwnd = GetDlgItem(hDlg, IDC_COMBO_REVERSE_CONVERSION);
 			sel = (UINT)SendMessage(hwnd, CB_GETCURSEL, 0, 0);
 			debugPrint(L"selected reverse convertion item is %d", sel);
@@ -535,7 +493,8 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 				_reverseConverstionCLSID = CLSID_NULL;
 				_reverseConversionGUIDProfile = CLSID_NULL;
 				_reverseConversionDescription = new (std::nothrow) WCHAR[4];
-				StringCchCopy(_reverseConversionDescription, 4, L"(無)");
+				if(_reverseConversionDescription)
+					StringCchCopy(_reverseConversionDescription, 4, L"(無)");
 			}
 			else
 			{
@@ -543,17 +502,30 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 				_reverseConverstionCLSID = _reverseConvervsionInfoList->GetAt(sel)->clsid;
 				_reverseConversionGUIDProfile = _reverseConvervsionInfoList->GetAt(sel)->guidProfile;
 				_reverseConversionDescription = new (std::nothrow) WCHAR[wcslen(_reverseConvervsionInfoList->GetAt(sel)->description) + 1];
-				StringCchCopy(_reverseConversionDescription, wcslen(_reverseConvervsionInfoList->GetAt(sel)->description) + 1, _reverseConvervsionInfoList->GetAt(sel)->description);
+				if(_reverseConversionDescription)
+					StringCchCopy(_reverseConversionDescription, wcslen(_reverseConvervsionInfoList->GetAt(sel)->description) + 1, _reverseConvervsionInfoList->GetAt(sel)->description);
 			}
 
-			if (_imeMode == IME_MODE_ARRAY)
+			if (_imeMode == IME_MODE::IME_MODE_ARRAY)
 			{
-				hwnd = GetDlgItem(hDlg, IDC_COMBO_ARRAY_UNICODE_SCOPE);
-				_arrayUnicodeScope = (CHARSET_SCOPE)SendMessage(hwnd, CB_GETCURSEL, 0, 0);
-				debugPrint(L"selected arrray unicode scope item is %d", _arrayUnicodeScope);
+				hwnd = GetDlgItem(hDlg, IDC_COMBO_ARRAY_SCOPE);
+				_arrayScope = (ARRAY_SCOPE)SendMessage(hwnd, CB_GETCURSEL, 0, 0);
+				if (_arrayScope != ARRAY_SCOPE::ARRAY40_BIG5)
+					_autoCompose = TRUE;
+				
+				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_SINGLEQUOTE_CUSTOM_PHRASE),
+					(_arrayScope == ARRAY_SCOPE::ARRAY40_BIG5)?SW_HIDE:SW_SHOW);
+				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_FORCESP), 
+					(_arrayScope == ARRAY_SCOPE::ARRAY40_BIG5) ? SW_HIDE : SW_SHOW);
+				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_NOTIFYSP), 
+					(_arrayScope == ARRAY_SCOPE::ARRAY40_BIG5) ? SW_HIDE : SW_SHOW);
+				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_AUTOCOMPOSE),
+					(_arrayScope != ARRAY_SCOPE::ARRAY40_BIG5) ? SW_HIDE : SW_SHOW);
+				
+				debugPrint(L"selected arrray scope item is %d", _arrayScope);
 			}
 
-			if (_imeMode == IME_MODE_PHONETIC)
+			if (_imeMode == IME_MODE::IME_MODE_PHONETIC)
 			{
 				hwnd = GetDlgItem(hDlg, IDC_COMBO_PHONETIC_KEYBOARD);
 				_phoneticKeyboardLayout = (PHONETIC_KEYBOARD_LAYOUT)SendMessage(hwnd, CB_GETCURSEL, 0, 0);
@@ -561,7 +533,8 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			}
 
 
-			CConfig::WriteConfig();
+			WriteConfig(TRUE);
+			ParseConfig(hDlg, FALSE);
 			ret = TRUE;
 			break;
 
@@ -621,29 +594,31 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 	switch (message)
 	{
 	case WM_INITDIALOG:
-		if (_imeMode == IME_MODE_DAYI)
+		if (_imeMode == IME_MODE::IME_MODE_DAYI)
 			StringCchPrintf(custromTableName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\DAYI-Custom.txt");
-		else if (_imeMode == IME_MODE_ARRAY)
+		else if (_imeMode == IME_MODE::IME_MODE_ARRAY)
 			StringCchPrintf(custromTableName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\ARRAY-Custom.txt");
-		else if (_imeMode == IME_MODE_PHONETIC)
+		else if (_imeMode == IME_MODE::IME_MODE_PHONETIC)
 			StringCchPrintf(custromTableName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\PHONETIC-Custom.txt");
-		else if (_imeMode == IME_MODE_GENERIC)
+		else if (_imeMode == IME_MODE::IME_MODE_GENERIC)
 			StringCchPrintf(custromTableName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\GENERIC-Custom.txt");
 		importCustomTableFile(hDlg, custromTableName);
 		_customTableChanged = FALSE;
 
-		if (!(_loadTableMode || _imeMode == IME_MODE_GENERIC))
+		if (!(_loadTableMode || _imeMode == IME_MODE::IME_MODE_GENERIC))
 		{
 			ShowWindow(GetDlgItem(hDlg, IDC_BUTTON_LOAD_MAIN), SW_HIDE);
 			ShowWindow(GetDlgItem(hDlg, IDC_BUTTON_LOAD_PHRASE), SW_HIDE);
 		}
-		if (!(_loadTableMode && _imeMode == IME_MODE_ARRAY))
+		if (!(_loadTableMode && _imeMode == IME_MODE::IME_MODE_ARRAY))
 		{
 			ShowWindow(GetDlgItem(hDlg, IDC_BUTTON_LOAD_ARRAY_SC), SW_HIDE);
 			ShowWindow(GetDlgItem(hDlg, IDC_BUTTON_LOAD_ARRAY_SP), SW_HIDE);
 			ShowWindow(GetDlgItem(hDlg, IDC_BUTTON_LOAD_ARRAY_EXT_B), SW_HIDE);
 			ShowWindow(GetDlgItem(hDlg, IDC_BUTTON_LOAD_ARRAY_EXT_CD), SW_HIDE);
-			ShowWindow(GetDlgItem(hDlg, IDC_BUTTON_LOAD_ARRAY_EXT_E), SW_HIDE);
+			ShowWindow(GetDlgItem(hDlg, IDC_BUTTON_LOAD_ARRAY_EXT_EFG), SW_HIDE);
+			ShowWindow(GetDlgItem(hDlg, IDC_BUTTON_LOAD_ARRAY_PHRASE), SW_HIDE);
+			ShowWindow(GetDlgItem(hDlg, IDC_BUTTON_LOAD_ARRAY40), SW_HIDE);
 		}
 
 		ret = TRUE;
@@ -654,13 +629,13 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 		{
 		case IDC_BUTTON_LOAD_MAIN:
 			openFileType = LOAD_CIN_TABLE;
-			if (_imeMode == IME_MODE_DAYI)
+			if (_imeMode == IME_MODE::IME_MODE_DAYI)
 				StringCchCopy(targetName, MAX_PATH, L"\\DIME\\Dayi.cin");
-			else if (_imeMode == IME_MODE_ARRAY)
+			else if (_imeMode == IME_MODE::IME_MODE_ARRAY)
 				StringCchCopy(targetName, MAX_PATH, L"\\DIME\\Array.cin");
-			else if (_imeMode == IME_MODE_PHONETIC)
+			else if (_imeMode == IME_MODE::IME_MODE_PHONETIC)
 				StringCchCopy(targetName, MAX_PATH, L"\\DIME\\Phone.cin");
-			else if (_imeMode == IME_MODE_GENERIC)
+			else if (_imeMode == IME_MODE::IME_MODE_GENERIC)
 				StringCchCopy(targetName, MAX_PATH, L"\\DIME\\Generic.cin");
 			goto LoadFile;
 		case IDC_BUTTON_LOAD_PHRASE:
@@ -683,9 +658,17 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 			openFileType = LOAD_CIN_TABLE;
 			StringCchCopy(targetName, MAX_PATH, L"\\DIME\\Array-Ext-CD.cin");
 			goto LoadFile;
-		case IDC_BUTTON_LOAD_ARRAY_EXT_E:
+		case IDC_BUTTON_LOAD_ARRAY_EXT_EFG:
 			openFileType = LOAD_CIN_TABLE;
 			StringCchCopy(targetName, MAX_PATH, L"\\DIME\\Array-Ext-EF.cin");
+			goto LoadFile;
+		case IDC_BUTTON_LOAD_ARRAY40:
+			openFileType = LOAD_CIN_TABLE;
+			StringCchCopy(targetName, MAX_PATH, L"\\DIME\\Array40.cin");
+			goto LoadFile;
+		case IDC_BUTTON_LOAD_ARRAY_PHRASE:
+			openFileType = LOAD_CIN_TABLE;
+			StringCchCopy(targetName, MAX_PATH, L"\\DIME\\Array-Phrase.cin");
 			goto LoadFile;
 		case IDC_BUTTON_EXPORT_CUSTOM:
 			openFileType = EXPORT_CUSTOM_TABLE;
@@ -694,11 +677,11 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 		case IDC_BUTTON_IMPORT_CUSTOM:
 			openFileType = IMPORT_CUSTOM_TABLE;
 			_customTableChanged = TRUE;
-			if (_imeMode == IME_MODE_DAYI)
+			if (_imeMode == IME_MODE::IME_MODE_DAYI)
 				StringCchCopy(targetName, MAX_PATH, L"\\DIME\\DAYI-CUSTOM.txt");
-			else if (_imeMode == IME_MODE_ARRAY)
+			else if (_imeMode == IME_MODE::IME_MODE_ARRAY)
 				StringCchCopy(targetName, MAX_PATH, L"\\DIME\\ARRAY-CUSTOM.txt");
-			else if (_imeMode == IME_MODE_PHONETIC)
+			else if (_imeMode == IME_MODE::IME_MODE_PHONETIC)
 				StringCchCopy(targetName, MAX_PATH, L"\\DIME\\PHONETIC-CUSTOM.txt");
 			else
 				StringCchCopy(targetName, MAX_PATH, L"\\DIME\\GENERIC-CUSTOM.txt");
@@ -769,18 +752,18 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 		case PSN_APPLY:
 			if (_customTableChanged)
 			{
-				if (_imeMode == IME_MODE_DAYI)
+				if (_imeMode == IME_MODE::IME_MODE_DAYI)
 				{
 					StringCchPrintf(pathToLoad, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\DAYI-CUSTOM.txt");
 					StringCchPrintf(pathToWrite, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\DAYI-CUSTOM.cin");
 				}
-				else if (_imeMode == IME_MODE_ARRAY)
+				else if (_imeMode == IME_MODE::IME_MODE_ARRAY)
 				{
 					StringCchPrintf(pathToLoad, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\ARRAY-CUSTOM.txt");
 					StringCchPrintf(pathToWrite, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\ARRAY-CUSTOM.cin");
 
 				}
-				else if (_imeMode == IME_MODE_PHONETIC)
+				else if (_imeMode == IME_MODE::IME_MODE_PHONETIC)
 				{
 					StringCchPrintf(pathToLoad, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\PHONETIC-CUSTOM.txt");
 					StringCchPrintf(pathToWrite, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\PHONETIC-CUSTOM.cin");
@@ -815,18 +798,206 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 
 }
 
-void DrawColor(HWND hwnd, HDC hdc, COLORREF col)
-{
-	RECT rect;
 
-	hdc = GetDC(hwnd);
-	SelectObject(hdc, GetStockObject(BLACK_PEN));
-	SetDCBrushColor(hdc, col);
-	SelectObject(hdc, GetStockObject(DC_BRUSH));
-	GetClientRect(hwnd, &rect);
-	Rectangle(hdc, rect.left, rect.top, rect.right, rect.bottom);
-	ReleaseDC(hwnd, hdc);
+void CConfig::ParseConfig(HWND hDlg, BOOL initDiag)
+{
+	HWND hwnd;
+	size_t i;
+	WCHAR num[16] = { 0 };
+	WCHAR fontname[LF_FACESIZE] = { 0 };
+	int fontpoint = 12, fontweight = FW_NORMAL, logPixelY, LogFontSize;
+	BOOL fontitalic = FALSE;
+	HDC hdc;
+	HFONT hFont;
+	static COLORREF colCust[16];
+
+	wcsncpy_s(fontname, _pFontFaceName, _TRUNCATE);
+
+	fontpoint = _fontSize;
+	fontweight = _fontWeight;
+	fontitalic = _fontItalic;
+
+	if (fontpoint < 8 || fontpoint > 72)
+	{
+		fontpoint = 12;
+	}
+	if (fontweight < 0 || fontweight > 1000)
+	{
+		fontweight = FW_NORMAL;
+	}
+	if (fontitalic != TRUE && fontitalic != FALSE)
+	{
+		fontitalic = FALSE;
+	}
+
+	SetDlgItemText(hDlg, IDC_EDIT_FONTNAME, fontname);
+	hdc = GetDC(hDlg);
+	logPixelY = GetDeviceCaps(hdc, LOGPIXELSY);
+	if (_GetDpiForMonitor)
+	{
+		HMONITOR monitor = MonitorFromWindow(hDlg, MONITOR_DEFAULTTONEAREST);
+		UINT dpiX, dpiY;
+		_GetDpiForMonitor(monitor, MDT_EFFECTIVE_DPI, &dpiX, &dpiY);
+		if (dpiY > 0) logPixelY = dpiY;
+	}
+	LogFontSize = -MulDiv(10, logPixelY, 72);
+
+	hFont = CreateFont(LogFontSize, 0, 0, 0,
+		fontweight, fontitalic, FALSE, FALSE, DEFAULT_CHARSET,
+		OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH, fontname);
+	SendMessage(GetDlgItem(hDlg, IDC_EDIT_FONTNAME), WM_SETFONT, (WPARAM)hFont, 0);
+	ReleaseDC(hDlg, hdc);
+
+	SetDlgItemInt(hDlg, IDC_EDIT_FONTPOINT, fontpoint, FALSE);
+
+	ZeroMemory(&colCust, sizeof(colCust));
+
+	colors[0].color = _itemColor;
+	colors[1].color = _selectedColor;
+	colors[2].color = _itemBGColor;
+	colors[3].color = _phraseColor;
+	colors[4].color = _numberColor;
+	colors[5].color = _selectedBGColor;
+
+	hwnd = GetDlgItem(hDlg, IDC_COMBO_REVERSE_CONVERSION);
+
+	if(initDiag)
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"(無)");
+	
+	if (IsEqualCLSID(_reverseConversionGUIDProfile, CLSID_NULL))
+		SendMessage(hwnd, CB_SETCURSEL, (WPARAM)0, 0);
+	for (i = 0; i < _reverseConvervsionInfoList->Count(); i++)
+	{
+		if (initDiag)
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)_reverseConvervsionInfoList->GetAt(i)->description);
+		
+		if (IsEqualCLSID(_reverseConversionGUIDProfile, _reverseConvervsionInfoList->GetAt(i)->guidProfile))
+			SendMessage(hwnd, CB_SETCURSEL, (WPARAM)i + 1, 0);
+	}
+
+
+	_snwprintf_s(num, _TRUNCATE, L"%d", _maxCodes);
+	SetDlgItemTextW(hDlg, IDC_EDIT_MAXWIDTH, num);
+	CheckDlgButton(hDlg, IDC_CHECKBOX_SHOWNOTIFY, (_showNotifyDesktop) ? BST_CHECKED : BST_UNCHECKED);
+
+	CheckDlgButton(hDlg, IDC_CHECKBOX_AUTOCOMPOSE, (_autoCompose) ? BST_CHECKED : BST_UNCHECKED);
+	CheckDlgButton(hDlg, IDC_CHECKBOX_CLEAR_ONBEEP, (_clearOnBeep) ? BST_CHECKED : BST_UNCHECKED);
+	CheckDlgButton(hDlg, IDC_CHECKBOX_DOBEEP, (_doBeep) ? BST_CHECKED : BST_UNCHECKED);
+	CheckDlgButton(hDlg, IDC_CHECKBOX_DOBEEPNOTIFY, (_doBeepNotify) ? BST_CHECKED : BST_UNCHECKED);
+	CheckDlgButton(hDlg, IDC_CHECKBOX_DOBEEP_CANDI, (_doBeepOnCandi) ? BST_CHECKED : BST_UNCHECKED);
+	CheckDlgButton(hDlg, IDC_CHECKBOX_CUSTOM_TABLE_PRIORITY, (_customTablePriority) ? BST_CHECKED : BST_UNCHECKED);
+	CheckDlgButton(hDlg, IDC_CHECKBOX_ARRAY_SINGLEQUOTE_CUSTOM_PHRASE, (_arraySingleQuoteCustomPhrase) ? BST_CHECKED : BST_UNCHECKED);
+	CheckDlgButton(hDlg, IDC_CHECKBOX_DAYIARTICLEMODE, (_dayiArticleMode) ? BST_CHECKED : BST_UNCHECKED);
+	CheckDlgButton(hDlg, IDC_CHECKBOX_ARRAY_FORCESP, (_arrayForceSP) ? BST_CHECKED : BST_UNCHECKED);
+	CheckDlgButton(hDlg, IDC_CHECKBOX_ARRAY_NOTIFYSP, (_arrayNotifySP) ? BST_CHECKED : BST_UNCHECKED);
+	CheckDlgButton(hDlg, IDC_CHECKBOX_PHRASE, (_makePhrase) ? BST_CHECKED : BST_UNCHECKED);
+
+	CheckDlgButton(hDlg, IDC_RADIO_KEYBOARD_OPEN, (_activatedKeyboardMode) ? BST_CHECKED : BST_UNCHECKED);
+	if (!IsDlgButtonChecked(hDlg, IDC_RADIO_KEYBOARD_OPEN))
+	{
+		CheckDlgButton(hDlg, IDC_RADIO_KEYBOARD_CLOSE, BST_CHECKED);
+	}
+	CheckDlgButton(hDlg, IDC_RADIO_OUTPUT_CHS, (_doHanConvert) ? BST_CHECKED : BST_UNCHECKED);
+	if (!IsDlgButtonChecked(hDlg, IDC_RADIO_OUTPUT_CHS))
+	{
+		CheckDlgButton(hDlg, IDC_RADIO_OUTPUT_CHT, BST_CHECKED);
+	}
+	CheckDlgButton(hDlg, IDC_CHECKBOX_SPACEASPAGEDOWN, (_spaceAsPageDown) ? BST_CHECKED : BST_UNCHECKED);
+	CheckDlgButton(hDlg, IDC_CHECKBOX_SPACEASFIRSTCANDSELKEY, (_spaceAsFirstCandSelkey) ? BST_CHECKED : BST_UNCHECKED);
+	CheckDlgButton(hDlg, IDC_CHECKBOX_ARROWKEYSWPAGES, (_arrowKeySWPages) ? BST_CHECKED : BST_UNCHECKED);
+
+	hwnd = GetDlgItem(hDlg, IDC_COMBO_IME_SHIFT_MODE);
+	if(initDiag)
+	{	
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"左右SHIFT鍵");
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"右SHIFT鍵");
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"左SHIFT鍵");
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"無(僅Ctrl-Space鍵)");
+	}
+	SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_imeShiftMode, 0);
+
+	hwnd = GetDlgItem(hDlg, IDC_COMBO_DOUBLE_SINGLE_BYTE);
+	if (initDiag)
+	{
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"以 Shift-Space 熱鍵切換");
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"半型");
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"全型");
+	}
+	SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_doubleSingleByteMode, 0);
+
+	// initial Numeric pad combobox
+	hwnd = GetDlgItem(hDlg, IDC_COMBO_NUMERIC_PAD);
+	if (initDiag)
+	{
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"數字鍵盤輸入數字符號");
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"數字鍵盤輸入字根");
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"僅用數字鍵盤輸入字根");
+	}
+	SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_numericPad, 0);
+
+	if (_imeMode != IME_MODE::IME_MODE_GENERIC)
+	{
+		ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_SPACEASFIRSTCANDSELKEY), SW_HIDE);
+	}
+	if (_imeMode != IME_MODE::IME_MODE_PHONETIC)
+	{
+		ShowWindow(GetDlgItem(hDlg, IDC_STATIC_PHONETIC_KEYBOARD), SW_HIDE);
+		ShowWindow(GetDlgItem(hDlg, IDC_COMBO_PHONETIC_KEYBOARD), SW_HIDE);
+	}
+	if (_imeMode != IME_MODE::IME_MODE_DAYI)
+	{
+		ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_DOBEEP_CANDI), SW_HIDE);
+		ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_DAYIARTICLEMODE), SW_HIDE);
+	}
+	if (_imeMode != IME_MODE::IME_MODE_ARRAY)
+	{
+		ShowWindow(GetDlgItem(hDlg, IDC_STATIC_ARRAY_SCOPE), SW_HIDE);
+		ShowWindow(GetDlgItem(hDlg, IDC_COMBO_ARRAY_SCOPE), SW_HIDE);
+		ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_FORCESP), SW_HIDE);
+		ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_NOTIFYSP), SW_HIDE);
+		ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_SINGLEQUOTE_CUSTOM_PHRASE), SW_HIDE);
+	}
+	
+	if (_imeMode == IME_MODE::IME_MODE_PHONETIC)
+	{
+		ShowWindow(GetDlgItem(hDlg, IDC_EDIT_MAXWIDTH), SW_HIDE);
+		ShowWindow(GetDlgItem(hDlg, IDC_STATIC_EDIT_MAXWIDTH), SW_HIDE);
+		hwnd = GetDlgItem(hDlg, IDC_COMBO_PHONETIC_KEYBOARD);
+		if (initDiag)
+		{
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"標準鍵盤");
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"倚天鍵盤");
+		}
+		SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_phoneticKeyboardLayout, 0);
+	}
+
+	if (_imeMode == IME_MODE::IME_MODE_ARRAY)
+	{
+		ShowWindow(GetDlgItem(hDlg, IDC_EDIT_MAXWIDTH), SW_HIDE);
+		ShowWindow(GetDlgItem(hDlg, IDC_STATIC_EDIT_MAXWIDTH), SW_HIDE);
+		if (_arrayScope == ARRAY_SCOPE::ARRAY40_BIG5)
+		{
+			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_SINGLEQUOTE_CUSTOM_PHRASE), SW_HIDE);
+			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_FORCESP), SW_HIDE);
+			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_NOTIFYSP), SW_HIDE);
+		}
+		else
+			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_AUTOCOMPOSE), SW_HIDE);
+		// initial Array scope combobox
+		hwnd = GetDlgItem(hDlg, IDC_COMBO_ARRAY_SCOPE);
+		if (initDiag)
+		{
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-A");
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-AB");
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-A~D");
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-A~G");
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列40 Big5");
+		}
+		SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_arrayScope, 0);
+
+	}
 }
+
 
 //+---------------------------------------------------------------------------
 //
@@ -834,107 +1005,152 @@ void DrawColor(HWND hwnd, HDC hdc, COLORREF col)
 //
 //----------------------------------------------------------------------------
 
-VOID CConfig::WriteConfig()
+VOID CConfig::WriteConfig(BOOL confirmUpdated)
 {
-	debugPrint(L"CDIME::updateConfig() \n");
-	WCHAR wszAppData[MAX_PATH] = { '\0' };
-	SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);
-	WCHAR wzsDIMEProfile[MAX_PATH] = { '\0' };
-	WCHAR *pwszINIFileName = new (std::nothrow) WCHAR[MAX_PATH];
+	debugPrint(L"CDIME::WriteConfig() \n");
 
-	if (!pwszINIFileName)  goto ErrorExit;
+	struct _stat initTimeStamp;
+	BOOL failed = _wstat(_pwszINIFileName, &initTimeStamp) != 0;
+	BOOL updated = FALSE;
+		if(!failed) 
+			updated = difftime(initTimeStamp.st_mtime, _initTimeStamp.st_mtime) > 0;
 
-	*pwszINIFileName = L'\0';
-
-	StringCchPrintf(wzsDIMEProfile, MAX_PATH, L"%s\\DIME", wszAppData);
-	if (!PathFileExists(wzsDIMEProfile))
+	if(confirmUpdated && !failed && updated)
 	{
-		if (CreateDirectory(wzsDIMEProfile, NULL) == 0) goto ErrorExit;
+		//The config file is udpated
+		MessageBox(GetFocus(), L"新設定未生效!\n設定檔已被其他程式更新，請避免在兩個程式同時開啟設定頁面。",
+			L"設定錯誤", MB_ICONERROR);
+		LoadConfig(_imeMode);
 	}
-
-	if (_imeMode == IME_MODE_DAYI)
-		StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\DayiConfig.ini", wzsDIMEProfile);
-	else if (_imeMode == IME_MODE_ARRAY)
-		StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\ArrayConfig.ini", wzsDIMEProfile);
-	else if (_imeMode == IME_MODE_PHONETIC)
-		StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\PhoneConfig.ini", wzsDIMEProfile);
-	else if (_imeMode == IME_MODE_GENERIC)
-		StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\GenericConfig.ini", wzsDIMEProfile);
-	else
-		StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\config.ini", wzsDIMEProfile);
-
-	FILE *fp;
-	_wfopen_s(&fp, pwszINIFileName, L"w, ccs=UTF-16LE"); // overwrite the file
-	if (fp)
+	if(!confirmUpdated || failed || !updated)
 	{
-		fwprintf_s(fp, L"[Config]\n");
-		fwprintf_s(fp, L"AutoCompose = %d\n", _autoCompose ? 1 : 0);
-		fwprintf_s(fp, L"SpaceAsPageDown = %d\n", _spaceAsPageDown ? 1 : 0);
-		fwprintf_s(fp, L"ArrowKeySWPages = %d\n", _arrowKeySWPages ? 1 : 0);
-		fwprintf_s(fp, L"ClearOnBeep = %d\n", _clearOnBeep ? 1 : 0);
-		fwprintf_s(fp, L"DoBeep = %d\n", _doBeep ? 1 : 0);
-		fwprintf_s(fp, L"DoBeepNotify = %d\n", _doBeepNotify ? 1 : 0);
-		fwprintf_s(fp, L"DoBeepOnCandi = %d\n", _doBeepOnCandi ? 1 : 0);
-		fwprintf_s(fp, L"ActivatedKeyboardMode = %d\n", _activatedKeyboardMode ? 1 : 0);
-		fwprintf_s(fp, L"MakePhrase = %d\n", _makePhrase ? 1 : 0);
-		fwprintf_s(fp, L"MaxCodes = %d\n", _maxCodes);
-		fwprintf_s(fp, L"IMEShiftMode  = %d\n", _imeShiftMode);
-		fwprintf_s(fp, L"DoubleSingleByteMode = %d\n", _doubleSingleByteMode);
-		fwprintf_s(fp, L"ShowNotifyDesktop = %d\n", _showNotifyDesktop ? 1 : 0);
-		fwprintf_s(fp, L"DoHanConvert = %d\n", _doHanConvert ? 1 : 0);
-		fwprintf_s(fp, L"FontSize = %d\n", _fontSize);
-		fwprintf_s(fp, L"FontItalic = %d\n", _fontItalic ? 1 : 0);
-		fwprintf_s(fp, L"FontWeight = %d\n", _fontWeight);
-		fwprintf_s(fp, L"FontFaceName = %s\n", _pFontFaceName);
-		fwprintf_s(fp, L"ItemColor = 0x%06X\n", _itemColor);
-		fwprintf_s(fp, L"PhraseColor = 0x%06X\n", _phraseColor);
-		fwprintf_s(fp, L"NumberColor = 0x%06X\n", _numberColor);
-		fwprintf_s(fp, L"ItemBGColor = 0x%06X\n", _itemBGColor);
-		fwprintf_s(fp, L"SelectedItemColor = 0x%06X\n", _selectedColor);
-		fwprintf_s(fp, L"SelectedBGItemColor = 0x%06X\n", _selectedBGColor);
-		fwprintf_s(fp, L"CustomTablePriority = %d\n", _customTablePriority ? 1 : 0);
-		//reversion conversion
-		fwprintf_s(fp, L"ReloadReverseConversion = %d\n", _reloadReverseConversion);
-		BSTR pbstr;
-		if (SUCCEEDED(StringFromCLSID(_reverseConverstionCLSID, &pbstr)))
+		FILE* fp;
+		_wfopen_s(&fp, _pwszINIFileName, L"w, ccs=UTF-16LE"); // overwrite the file
+		if (fp)
 		{
-			fwprintf_s(fp, L"ReverseConversionCLSID = %s\n", pbstr);
+			fwprintf_s(fp, L"[Config]\n");
+			fwprintf_s(fp, L"AutoCompose = %d\n", _autoCompose ? 1 : 0);
+			fwprintf_s(fp, L"SpaceAsPageDown = %d\n", _spaceAsPageDown ? 1 : 0);
+			fwprintf_s(fp, L"SpaceAsFirstCandSelkey = %d\n", _spaceAsFirstCandSelkey ? 1 : 0);
+			fwprintf_s(fp, L"ArrowKeySWPages = %d\n", _arrowKeySWPages ? 1 : 0);
+			fwprintf_s(fp, L"ClearOnBeep = %d\n", _clearOnBeep ? 1 : 0);
+			fwprintf_s(fp, L"DoBeep = %d\n", _doBeep ? 1 : 0);
+			fwprintf_s(fp, L"DoBeepNotify = %d\n", _doBeepNotify ? 1 : 0);
+			fwprintf_s(fp, L"DoBeepOnCandi = %d\n", _doBeepOnCandi ? 1 : 0);
+			fwprintf_s(fp, L"ActivatedKeyboardMode = %d\n", _activatedKeyboardMode ? 1 : 0);
+			fwprintf_s(fp, L"MakePhrase = %d\n", _makePhrase ? 1 : 0);
+			fwprintf_s(fp, L"MaxCodes = %d\n", _maxCodes);
+			fwprintf_s(fp, L"IMEShiftMode  = %d\n", _imeShiftMode);
+			fwprintf_s(fp, L"DoubleSingleByteMode = %d\n", _doubleSingleByteMode);
+			fwprintf_s(fp, L"ShowNotifyDesktop = %d\n", _showNotifyDesktop ? 1 : 0);
+			fwprintf_s(fp, L"DoHanConvert = %d\n", _doHanConvert ? 1 : 0);
+			fwprintf_s(fp, L"FontSize = %d\n", _fontSize);
+			fwprintf_s(fp, L"FontItalic = %d\n", _fontItalic ? 1 : 0);
+			fwprintf_s(fp, L"FontWeight = %d\n", _fontWeight);
+			fwprintf_s(fp, L"FontFaceName = %s\n", _pFontFaceName);
+			fwprintf_s(fp, L"ItemColor = 0x%06X\n", _itemColor);
+			fwprintf_s(fp, L"PhraseColor = 0x%06X\n", _phraseColor);
+			fwprintf_s(fp, L"NumberColor = 0x%06X\n", _numberColor);
+			fwprintf_s(fp, L"ItemBGColor = 0x%06X\n", _itemBGColor);
+			fwprintf_s(fp, L"SelectedItemColor = 0x%06X\n", _selectedColor);
+			fwprintf_s(fp, L"SelectedBGItemColor = 0x%06X\n", _selectedBGColor);
+			fwprintf_s(fp, L"CustomTablePriority = %d\n", _customTablePriority ? 1 : 0);
+			//reversion conversion
+			fwprintf_s(fp, L"ReloadReverseConversion = %d\n", _reloadReverseConversion);
+			BSTR pbstr;
+			if (SUCCEEDED(StringFromCLSID(_reverseConverstionCLSID, &pbstr)))
+			{
+				fwprintf_s(fp, L"ReverseConversionCLSID = %s\n", pbstr);
+			}
+			if (SUCCEEDED(StringFromCLSID(_reverseConversionGUIDProfile, &pbstr)))
+			{
+				fwprintf_s(fp, L"ReverseConversionGUIDProfile = %s\n", pbstr);
+			}
+
+			fwprintf_s(fp, L"ReverseConversionDescription = %s\n", _reverseConversionDescription);
+			fwprintf_s(fp, L"AppPermissionSet = %d\n", _appPermissionSet ? 1 : 0);
+
+
+			if (_imeMode == IME_MODE::IME_MODE_DAYI)
+			{
+				fwprintf_s(fp, L"DayiArticleMode = %d\n", _dayiArticleMode ? 1 : 0);
+			}
+
+			if (_imeMode == IME_MODE::IME_MODE_ARRAY)
+			{
+				fwprintf_s(fp, L"ArrayScope = %d\n", _arrayScope);
+				fwprintf_s(fp, L"ArrayForceSP = %d\n", _arrayForceSP ? 1 : 0);
+				fwprintf_s(fp, L"ArrayNotifySP = %d\n", _arrayNotifySP ? 1 : 0);
+				fwprintf_s(fp, L"ArraySingleQuoteCustomPhrase = %d\n", _arraySingleQuoteCustomPhrase ? 1 : 0);
+			}
+
+			if (_imeMode == IME_MODE::IME_MODE_PHONETIC)
+			{
+				fwprintf_s(fp, L"PhoneticKeyboardLayout = %d\n", _phoneticKeyboardLayout);
+			}
+			fwprintf_s(fp, L"NumericPad = %d\n", _numericPad);
+			if (_loadTableMode) fwprintf_s(fp, L"LoadTableMode = 1\n");
+			fclose(fp);
+			_wstat(_pwszINIFileName, &initTimeStamp);
+			_initTimeStamp.st_mtime = initTimeStamp.st_mtime;
 		}
-		if (SUCCEEDED(StringFromCLSID(_reverseConversionGUIDProfile, &pbstr)))
-		{
-			fwprintf_s(fp, L"ReverseConversionGUIDProfile = %s\n", pbstr);
-		}
-
-		fwprintf_s(fp, L"ReverseConversionDescription = %s\n", _reverseConversionDescription);
-		fwprintf_s(fp, L"AppPermissionSet = %d\n", _appPermissionSet ? 1 : 0);
-
-
-		if (_imeMode == IME_MODE_DAYI)
-		{
-			fwprintf_s(fp, L"DayiArticleMode = %d\n", _dayiArticleMode ? 1 : 0);
-		}
-
-		if (_imeMode == IME_MODE_ARRAY)
-		{
-			fwprintf_s(fp, L"ArrayUnicodeScope = %d\n", _arrayUnicodeScope);
-			fwprintf_s(fp, L"ArrayForceSP = %d\n", _arrayForceSP ? 1 : 0);
-			fwprintf_s(fp, L"ArrayNotifySP = %d\n", _arrayNotifySP ? 1 : 0);
-		}
-
-		if (_imeMode == IME_MODE_PHONETIC)
-		{
-			fwprintf_s(fp, L"PhoneticKeyboardLayout = %d\n", _phoneticKeyboardLayout);
-		}
-
-		if (_loadTableMode) fwprintf_s(fp, L"LoadTableMode = 1\n");
-
-
-		fclose(fp);
 	}
+	
+
+}
+
+void CConfig::SetIMEMode(IME_MODE imeMode)
+{
+	if (_imeMode != imeMode)
+	{
+		_imeMode = imeMode;
+		GUID guidProfile = CLSID_NULL;
+		WCHAR wszAppData[MAX_PATH] = L"\0";
+		SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);
+
+		StringCchPrintf(_pwzsDIMEProfile, MAX_PATH, L"%s\\DIME", wszAppData);
+		if (!PathFileExists(_pwzsDIMEProfile))
+		{
+			if (CreateDirectory(_pwzsDIMEProfile, NULL) == 0) return;
+		}
+
+		if (!PathFileExists(_pwzsDIMEProfile))
+		{   //DIME roadming profile is not exist. Create one.
+			if (CreateDirectory(_pwzsDIMEProfile, NULL) == 0) return;
+		}
+		if (imeMode == IME_MODE::IME_MODE_DAYI)
+		{
+			guidProfile = Global::DIMEDayiGuidProfile;
+			StringCchPrintf(_pwszINIFileName, MAX_PATH, L"%s\\DayiConfig.ini", _pwzsDIMEProfile);
+		}
+		else if (imeMode == IME_MODE::IME_MODE_ARRAY)
+		{
+			guidProfile = Global::DIMEArrayGuidProfile;
+			StringCchPrintf(_pwszINIFileName, MAX_PATH, L"%s\\ArrayConfig.ini", _pwzsDIMEProfile);
+		}
+		else if (imeMode == IME_MODE::IME_MODE_PHONETIC)
+		{
+			guidProfile = Global::DIMEPhoneticGuidProfile;
+			StringCchPrintf(_pwszINIFileName, MAX_PATH, L"%s\\PhoneConfig.ini", _pwzsDIMEProfile);
+		}
+		else if (imeMode == IME_MODE::IME_MODE_GENERIC)
+		{
+			guidProfile = Global::DIMEGenericGuidProfile;
+			StringCchPrintf(_pwszINIFileName, MAX_PATH, L"%s\\GenericConfig.ini", _pwzsDIMEProfile);
+		}
+		else
+			StringCchPrintf(_pwszINIFileName, MAX_PATH, L"%s\\config.ini", _pwzsDIMEProfile);
 
 
-ErrorExit:
-	delete[]pwszINIFileName;
+		// filter out self from reverse conversion list
+		for (UINT i = 0; i < _reverseConvervsionInfoList->Count(); i++)
+		{
+			if (IsEqualCLSID(_reverseConvervsionInfoList->GetAt(i)->guidProfile, guidProfile))
+				_reverseConvervsionInfoList->RemoveAt(i);
+		}
+	}
+	return;
+
 }
 
 //+---------------------------------------------------------------------------
@@ -943,143 +1159,124 @@ ErrorExit:
 //
 //----------------------------------------------------------------------------
 
-VOID CConfig::LoadConfig(IME_MODE imeMode)
+BOOL CConfig::LoadConfig(IME_MODE imeMode)
 {
 	debugPrint(L"CDIME::loadConfig() \n");
-	WCHAR wszAppData[MAX_PATH] = { '\0' };
-	SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);
-	WCHAR wzsDIMEProfile[MAX_PATH] = { '\0' };
+	SetIMEMode (imeMode);
+	
 	PACL pOldDACL = NULL, pNewDACL = NULL;
 	PSECURITY_DESCRIPTOR pSD = NULL;
+	BOOL bRET = FALSE; 
 
-	WCHAR *pwszINIFileName = new (std::nothrow) WCHAR[MAX_PATH];
-
-	if (!pwszINIFileName)  goto ErrorExit;
-
-	*pwszINIFileName = L'\0';
-
-	StringCchPrintf(wzsDIMEProfile, MAX_PATH, L"%s\\DIME", wszAppData);
-
-	if (!PathFileExists(wzsDIMEProfile))
+	if (PathFileExists(_pwszINIFileName))
 	{
-		if (CreateDirectory(wzsDIMEProfile, NULL) == 0) goto ErrorExit;
-	}
-
-	if (PathFileExists(wzsDIMEProfile))
-	{
-
-		if (imeMode == IME_MODE_DAYI)
-			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\DayiConfig.ini", wzsDIMEProfile);
-		else if (imeMode == IME_MODE_ARRAY)
-			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\ArrayConfig.ini", wzsDIMEProfile);
-		else if (imeMode == IME_MODE_PHONETIC)
-			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\PhoneConfig.ini", wzsDIMEProfile);
-		else if (imeMode == IME_MODE_GENERIC)
-			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\GenericConfig.ini", wzsDIMEProfile);
-		else
-			StringCchPrintf(pwszINIFileName, MAX_PATH, L"%s\\config.ini", wzsDIMEProfile);
-
-		if (PathFileExists(pwszINIFileName))
-		{
-			debugPrint(L"CDIME::loadConfig() confi file = %s exists\n", pwszINIFileName);
-			struct _stat initTimeStamp;
-			BOOL failed = _wstat(pwszINIFileName, &initTimeStamp) == -1;  //error for retrieving timestamp
-			BOOL updated = initTimeStamp.st_mtime != _initTimeStamp.st_mtime;
-			debugPrint(L"CDIME::loadConfig() wstat failed = %d, config file updated = %d\n", failed, updated);
-			if (failed || updated)
-			{
-				CFile *iniDictionaryFile;
-				iniDictionaryFile = new (std::nothrow) CFile();
-				if (iniDictionaryFile && (iniDictionaryFile)->CreateFile(pwszINIFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ | FILE_SHARE_WRITE))
-				{
-					CTableDictionaryEngine * iniTableDictionaryEngine;
-					iniTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(MAKELCID(1028, SORT_DEFAULT), iniDictionaryFile, INI_DICTIONARY);//CHT:1028
-					if (iniTableDictionaryEngine)
-					{
-						_loadTableMode = FALSE; // reset _loadTableMode first. If no _loadTableMode is exist we should not should load tables buttons
-						iniTableDictionaryEngine->ParseConfig(imeMode); //parse config first.
-						debugPrint(L"CDIME::loadConfig() parsed. _loadTableMode = %d\n", _loadTableMode);
-					}
-					delete iniTableDictionaryEngine; // delete after config.ini config are pasrsed
-					delete iniDictionaryFile;
-					SetDefaultTextFont();
-					_initTimeStamp.st_mtime = initTimeStamp.st_mtime;
-				}
-				
-				// In store app mode, the dll is loaded into app container which does not even have read right for IME profile in APPDATA.
-				// Here, the read right is granted once to "ALL APPLICATION PACKAGES" when loaded in desktop mode, so as all metro apps can at least read the user settings in config.ini.				
-				if (!CDIME::_IsStoreAppMode() && !_appPermissionSet && imeMode != IME_MODE_NONE)
-				{
-					EXPLICIT_ACCESS ea;
-					// Get a pointer to the existing DACL (Conditionaly).
-					DWORD dwRes = GetNamedSecurityInfo(wzsDIMEProfile, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, &pOldDACL, NULL, &pSD);
-					if (ERROR_SUCCESS != dwRes) goto ErrorExit;
-					// Initialize an EXPLICIT_ACCESS structure for the new ACE. 
-					ZeroMemory(&ea, sizeof(EXPLICIT_ACCESS));
-					ea.grfAccessPermissions = GENERIC_READ;
-					ea.grfAccessMode = GRANT_ACCESS;
-					ea.grfInheritance = SUB_CONTAINERS_AND_OBJECTS_INHERIT;
-					ea.Trustee.TrusteeForm = TRUSTEE_IS_NAME;
-					ea.Trustee.TrusteeType = TRUSTEE_IS_WELL_KNOWN_GROUP;
-					ea.Trustee.ptstrName = L"Everyone";
-					// Create a new ACL that merges the new ACE into the existing DACL.
-					dwRes = SetEntriesInAcl(1, &ea, pOldDACL, &pNewDACL);
-					if (ERROR_SUCCESS != dwRes) goto ErrorExit;
-					if (Global::isWindows8)
-					{
-						ea.Trustee.TrusteeForm = TRUSTEE_IS_NAME;
-						ea.Trustee.ptstrName = L"ALL APPLICATION PACKAGES";
-						dwRes = SetEntriesInAcl(1, &ea, pNewDACL, &pNewDACL);
-						if (ERROR_SUCCESS != dwRes) goto ErrorExit;
-					}
-					if (pNewDACL)
-						SetNamedSecurityInfo(wzsDIMEProfile, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, pNewDACL, NULL);
-
-					_appPermissionSet = TRUE;
-					WriteConfig();
-				}
-
-
-
-			}
-
-
-
-		}
-		else
-		{
-
-			
-			//should do IM specific default here.
-			if (imeMode == IME_MODE_ARRAY)
-			{
-				_autoCompose = TRUE;
-				_maxCodes = 5;
-				_spaceAsPageDown = 0;
+		debugPrint(L"CDIME::loadConfig() config file = %s exists\n", _pwszINIFileName);
+		struct _stat initTimeStamp;
+		BOOL failed = _wstat(_pwszINIFileName, &initTimeStamp) != 0;  //error for retrieving timestamp
+		BOOL updated = FALSE;
+		if (!failed)
+			updated = difftime(initTimeStamp.st_mtime, _initTimeStamp.st_mtime) > 0;
 		
-			}
-			else if(imeMode == IME_MODE_PHONETIC)
+		debugPrint(L"CDIME::loadConfig() wstat failed = %d, config file updated = %d\n", failed, updated);
+		if (failed || updated || _configIMEMode!=imeMode)
+		{
+			bRET = TRUE;
+			CFile* iniDictionaryFile;
+			iniDictionaryFile = new (std::nothrow) CFile();
+			if (iniDictionaryFile && (iniDictionaryFile)->CreateFile(_pwszINIFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ | FILE_SHARE_WRITE))
 			{
-				_autoCompose = FALSE;
-				_maxCodes = 4;
-				_spaceAsPageDown = 1;
-			}
-			else
-			{
-				_autoCompose = FALSE;
-				_maxCodes = 4;
-				_spaceAsPageDown = 0;
+				CTableDictionaryEngine* iniTableDictionaryEngine;
+				iniTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(MAKELCID(1028, SORT_DEFAULT), iniDictionaryFile, DICTIONARY_TYPE::INI_DICTIONARY);//CHT:1028
+				if (iniTableDictionaryEngine)
+				{
+					_loadTableMode = FALSE; // reset _loadTableMode first. If no _loadTableMode is exist we should not should load tables buttons
+					iniTableDictionaryEngine->ParseConfig(imeMode); //parse config first.
+					debugPrint(L"CDIME::loadConfig() parsed. _loadTableMode = %d\n", _loadTableMode);
+				}
+				delete iniTableDictionaryEngine; // delete after config.ini config are pasrsed
+				delete iniDictionaryFile;
+				SetDefaultTextFont();
+				_initTimeStamp.st_mtime = initTimeStamp.st_mtime;
+				_configIMEMode = imeMode;
 			}
 
-			if (imeMode != IME_MODE_NONE)
-				WriteConfig(); // config.ini is not there. create one.
+			// In store app mode, the dll is loaded into app container which does not even have read right for IME profile in APPDATA.
+			// Here, the read right is granted once to "ALL APPLICATION PACKAGES" when loaded in desktop mode, so as all metro apps can at least read the user settings in config.ini.				
+#ifdef DIMESettings
+			if (!_appPermissionSet && imeMode != IME_MODE::IME_MODE_NONE)
+#else
+			if (!CDIME::_IsStoreAppMode() && !_appPermissionSet && imeMode != IME_MODE::IME_MODE_NONE)
+#endif
+			{
+				EXPLICIT_ACCESS ea;
+				// Get a pointer to the existing DACL (Conditionaly).
+				DWORD dwRes = GetNamedSecurityInfo(_pwzsDIMEProfile, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, &pOldDACL, NULL, &pSD);
+				if (ERROR_SUCCESS != dwRes) goto ErrorExit;
+				// Initialize an EXPLICIT_ACCESS structure for the new ACE. 
+				ZeroMemory(&ea, sizeof(EXPLICIT_ACCESS));
+				ea.grfAccessPermissions = GENERIC_READ;
+				ea.grfAccessMode = GRANT_ACCESS;
+				ea.grfInheritance = SUB_CONTAINERS_AND_OBJECTS_INHERIT;
+				ea.Trustee.TrusteeForm = TRUSTEE_IS_NAME;
+				ea.Trustee.TrusteeType = TRUSTEE_IS_WELL_KNOWN_GROUP;
+				ea.Trustee.ptstrName = (LPWCH) L"Everyone";
+				// Create a new ACL that merges the new ACE into the existing DACL.
+				dwRes = SetEntriesInAcl(1, &ea, pOldDACL, &pNewDACL);
+				if (ERROR_SUCCESS != dwRes) goto ErrorExit;
+				if (Global::isWindows8)
+				{
+					ea.Trustee.TrusteeForm = TRUSTEE_IS_NAME;
+					ea.Trustee.ptstrName = (LPWCH) L"ALL APPLICATION PACKAGES";
+					dwRes = SetEntriesInAcl(1, &ea, pNewDACL, &pNewDACL);
+					if (ERROR_SUCCESS != dwRes) goto ErrorExit;
+				}
+				if (pNewDACL)
+					SetNamedSecurityInfo(_pwzsDIMEProfile, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, pNewDACL, NULL);
+
+				_appPermissionSet = TRUE;
+				WriteConfig(FALSE);
+			}
 		}
 	}
 	else
 	{
-		//DIME roadming profile is not exist. Create one.
-		if (CreateDirectory(wzsDIMEProfile, NULL) == 0) goto ErrorExit;
+		//should do IM specific default here.
+		if (imeMode == IME_MODE::IME_MODE_ARRAY)
+		{
+			_arrayScope = ARRAY_SCOPE::ARRAY30_UNICODE_EXT_A;
+			_autoCompose = TRUE;
+			_maxCodes = 5;
+			_spaceAsPageDown = 0;
+			_spaceAsFirstCandSelkey = 0;
+
+		}
+		else if (imeMode == IME_MODE::IME_MODE_PHONETIC)
+		{
+			_autoCompose = FALSE;
+			_maxCodes = 4;
+			_spaceAsPageDown = 1;
+			_spaceAsFirstCandSelkey = 0;
+		}
+		else if (imeMode == IME_MODE::IME_MODE_DAYI)
+		{
+			_autoCompose = FALSE;
+			_maxCodes = 4;
+			_spaceAsPageDown = 0;
+			_spaceAsFirstCandSelkey = 1;
+		}
+		else
+		{
+			_autoCompose = FALSE;
+			_maxCodes = 4;
+			_spaceAsPageDown = 0;
+			_spaceAsFirstCandSelkey = 0;
+		}
+
+		if (imeMode != IME_MODE::IME_MODE_NONE)
+			WriteConfig(FALSE); // config.ini is not there. create one.
 	}
+	
+	
 
 
 
@@ -1088,7 +1285,7 @@ ErrorExit:
 		LocalFree(pNewDACL);
 	if (pSD != NULL)
 		LocalFree(pSD);
-	delete[]pwszINIFileName;
+	return bRET;  // return TRUE if the config file updated
 }
 
 void CConfig::SetDefaultTextFont(HWND hWnd)
@@ -1181,6 +1378,7 @@ BOOL CConfig::importCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToLoad)
 		HANDLE hCustomTable = NULL;
 		DWORD dwDataLen = 0;
 		LPCWSTR customText = nullptr;
+		
 		if ((hCustomTable = CreateFile(pathToLoad, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, NULL)) == INVALID_HANDLE_VALUE)
 		{	// Error
 			success = FALSE;
@@ -1193,8 +1391,8 @@ BOOL CConfig::importCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToLoad)
 			goto Cleanup;
 		}
 		// Create a buffer for the custom table text
-		size_t bufsize = dwDataLen + 1;
-		customText = new (std::nothrow) WCHAR[bufsize];
+		
+		customText = new (std::nothrow) WCHAR[dwDataLen + 1];
 		if (customText == nullptr)
 		{// Error
 			success = FALSE;
@@ -1211,7 +1409,6 @@ BOOL CConfig::importCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToLoad)
 		if (!IsTextUnicode(customText, dwDataLen, NULL))
 		{
 			WCHAR* outWStr = nullptr;
-			//mlangToUnicode((CHAR*)customText, &dwDataLen, WText);
 			UINT codepage = 0;
 
 			//IMultiLanguage intilization
@@ -1278,21 +1475,22 @@ BOOL CConfig::exportCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToWrite)
 {
 	//write the edittext context into custom.txt
 	BOOL success = TRUE;
-	int len;
-	LPWSTR buf;
+	DWORD dwDataLen;
+	LPWSTR customText = nullptr;
 	HANDLE hCustomTableFile = NULL;
 	DWORD lpNumberOfBytesWritten = 0;
+	WCHAR byteOrder = 0xFEFF;
 
-	len = GetWindowTextLength(GetDlgItem(hDlg, IDC_EDIT_CUSTOM_TABLE));
-	buf = new (std::nothrow) WCHAR[len + 1];
-	if (buf == nullptr)
+	dwDataLen = GetWindowTextLength(GetDlgItem(hDlg, IDC_EDIT_CUSTOM_TABLE));
+	customText = new (std::nothrow) WCHAR[dwDataLen + 1];
+	if (customText == nullptr)
 	{
 		// Error
 		success = FALSE;
 		goto Cleanup;
 	}
-	ZeroMemory(buf, (len + 1)*sizeof(WCHAR));
-	GetDlgItemText(hDlg, IDC_EDIT_CUSTOM_TABLE, buf, len + 1);
+	ZeroMemory(customText, (dwDataLen + 1)*sizeof(WCHAR));
+	GetDlgItemText(hDlg, IDC_EDIT_CUSTOM_TABLE, customText, dwDataLen + 1);
 
 	// Create a file to save custom table
 	if ((hCustomTableFile = CreateFile(pathToWrite, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL)) == INVALID_HANDLE_VALUE)
@@ -1302,21 +1500,21 @@ BOOL CConfig::exportCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToWrite)
 	}
 
 	//Write Byte order makr to the file if the first byte of buf is not BOM
-	WCHAR byteOrder = 0xFEFF;
-	if (buf[0] != byteOrder && !WriteFile(hCustomTableFile, (LPCVOID)&byteOrder, (DWORD)sizeof(WCHAR), &lpNumberOfBytesWritten, NULL))
+	
+	if (customText[0] != byteOrder && !WriteFile(hCustomTableFile, (LPCVOID)&byteOrder, (DWORD)sizeof(WCHAR), &lpNumberOfBytesWritten, NULL))
 	{	// Error
 		success = FALSE;
 		goto Cleanup;
 	}
 	// Write the custom table text to the file
-	if (!WriteFile(hCustomTableFile, (LPCVOID)buf, (DWORD)len*sizeof(WCHAR), &lpNumberOfBytesWritten, NULL))
+	if (!WriteFile(hCustomTableFile, (LPCVOID)customText, (DWORD)dwDataLen*sizeof(WCHAR), &lpNumberOfBytesWritten, NULL))
 	{	// Error
 		success = FALSE;
 		goto Cleanup;
 	}
 Cleanup:
 	if (hCustomTableFile) CloseHandle(hCustomTableFile);
-	if (buf) delete[]buf;
+	if (customText) delete[]customText;
 
 	return success;
 }

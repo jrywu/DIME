@@ -1,3 +1,35 @@
+/* DIME IME for Windows 7/8/10/11
+
+BSD 3-Clause License
+
+Copyright (c) 2022, Jeremy Wu
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
 //#define DEBUG_PRINT
 
 #include "Private.h"
@@ -15,7 +47,7 @@ HRESULT CDIME::GetReverseConversion(_In_ LANGID langid, _In_   REFGUID guidProfi
 	if(_pCompositionProcessorEngine) return E_FAIL;
 	IME_MODE imeMode = _pCompositionProcessorEngine->GetImeModeFromGuidProfile(guidProfile);
 
-	if (imeMode == IME_MODE_NONE || imeMode == Global::imeMode) //return E_NOTIMPL if imeMode is IME_MODE_NONE or imeMode requested is current imeMode
+	if (imeMode == IME_MODE::IME_MODE_NONE || imeMode == Global::imeMode) //return E_NOTIMPL if imeMode is IME_MODE::IME_MODE_NONE or imeMode requested is current imeMode
 		return E_NOTIMPL;
 
 	if (_pCompositionProcessorEngine == nullptr)
@@ -31,15 +63,15 @@ HRESULT CDIME::GetReverseConversion(_In_ LANGID langid, _In_   REFGUID guidProfi
 	
 	_pCompositionProcessorEngine->SetupDictionaryFile(imeMode);
 
-	if(_pReverseConversion[imeMode] == nullptr)
+	if(_pReverseConversion[(UINT)imeMode] == nullptr)
 	{
-		_pReverseConversion[imeMode] =  new (std::nothrow) CReverseConversion(_pCompositionProcessorEngine, imeMode);
+		_pReverseConversion[(UINT)imeMode] =  new (std::nothrow) CReverseConversion(_pCompositionProcessorEngine, imeMode);
 	}
 	
 
-	if(_pReverseConversion[imeMode])
+	if(_pReverseConversion[(UINT)imeMode])
 	{
-		*ppReverseConversion = _pReverseConversion[imeMode];
+		*ppReverseConversion = _pReverseConversion[(UINT)imeMode];
 		debugPrint(L"CDIME(ITfReverseConversionMgr)::GetReverseConversion(); ppReverseConversion ready,  return S_OK");
 		return S_OK;
 	}

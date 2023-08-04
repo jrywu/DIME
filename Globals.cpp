@@ -1,8 +1,35 @@
-﻿//
-//
-// Derived from Microsoft Sample IME by Jeremy '13,7,17
-//
-//
+/* DIME IME for Windows 7/8/10/11
+
+BSD 3-Clause License
+
+Copyright (c) 2022, Jeremy Wu
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
 
 #include <map>
 #include "Globals.h"
@@ -14,29 +41,33 @@
 
 
 namespace Global {
-HINSTANCE dllInstanceHandle;
 
-LONG dllRefCount = -1;
 
 BOOL isWindows8 = FALSE;
-_T_GetDpiForMonitor _GetDpiForMonitor = nullptr;
-HINSTANCE hShcore = NULL;
 
-
-IME_MODE imeMode = IME_MODE_NONE;
+IME_MODE imeMode = IME_MODE::IME_MODE_NONE;
 
 BOOL hasPhraseSection = FALSE;
 BOOL hasCINPhraseSection = FALSE;
 
-CRITICAL_SECTION CS;
 HFONT defaultlFontHandle;				// Global font object we use everywhere
 
 
 //---------------------------------------------------------------------
+// Unicode byte order mark
+//---------------------------------------------------------------------
+extern const WCHAR UnicodeByteOrderMark = 0xFEFF;
+
+//---------------------------------------------------------------------
+// dictionary table delimiter
+//---------------------------------------------------------------------
+extern WCHAR KeywordDelimiter = L'=';
+extern const WCHAR StringDelimiter = L'\"';
+//---------------------------------------------------------------------
 // DIME CLSID
 //---------------------------------------------------------------------
 // {1DE68A87-FF3B-46A0-8F80-46730B2491B1}
-extern const CLSID DIMECLSID = 
+extern const CLSID DIMECLSID =
 { 0x1de68a87, 0xff3b, 0x46a0, { 0x8f, 0x80, 0x46, 0x73, 0xb, 0x24, 0x91, 0xb1 } };
 
 
@@ -45,26 +76,34 @@ extern const CLSID DIMECLSID =
 // TSFDayiProfile GUID
 //---------------------------------------------------------------------
 // {36851834-92AD-4397-9F50-800384D5C24C}
-extern const GUID DIMEDayiGuidProfile = 
+extern const GUID DIMEDayiGuidProfile =
 { 0x36851834, 0x92ad, 0x4397, { 0x9f, 0x50, 0x80, 0x3, 0x84, 0xd5, 0xc2, 0x4c } };
 //---------------------------------------------------------------------
 // TSFArrayProfile GUID
 //---------------------------------------------------------------------
 // {5DFC1743-638C-4F61-9E76-FCFA9707F450}
-extern const GUID DIMEArrayGuidProfile = 
+extern const GUID DIMEArrayGuidProfile =
 { 0x5dfc1743, 0x638c, 0x4f61, { 0x9e, 0x76, 0xfc, 0xfa, 0x97, 0x7, 0xf4, 0x50 } };
 //---------------------------------------------------------------------
 // TSFPhoneticProfile GUID
 //---------------------------------------------------------------------
 // {26892981-14E3-447B-AF2C-9067CD4A4A8A}
-extern const GUID DIMEPhoneticGuidProfile = 
+extern const GUID DIMEPhoneticGuidProfile =
 { 0x26892981, 0x14e3, 0x447b, { 0xaf, 0x2c, 0x90, 0x67, 0xcd, 0x4a, 0x4a, 0x8a } };
 //---------------------------------------------------------------------
 // TSFGenericProfile GUID
 //---------------------------------------------------------------------
 // {061BEEA7-FFF9-420C-B3F6-A9047AFD0877}
-extern const GUID DIMEGenericGuidProfile = 
+extern const GUID DIMEGenericGuidProfile =
 { 0x61beea7, 0xfff9, 0x420c, { 0xb3, 0xf6, 0xa9, 0x4, 0x7a, 0xfd, 0x8, 0x77 } };
+
+#ifndef DIMESettings
+_T_GetDpiForMonitor _GetDpiForMonitor = nullptr;
+HINSTANCE hShcore = NULL;
+HINSTANCE dllInstanceHandle;
+
+LONG dllRefCount = -1;
+CRITICAL_SECTION CS;
 
 //---------------------------------------------------------------------
 // PreserveKey GUID
@@ -121,18 +160,6 @@ extern const GUID DIMEGuidDisplayAttributeConverted =
 // {87D9FBA0-C152-475B-BD82-0A18DFA616A7}
 extern const GUID DIMEGuidCandUIElement = 
 { 0x87d9fba0, 0xc152, 0x475b, { 0xbd, 0x82, 0xa, 0x18, 0xdf, 0xa6, 0x16, 0xa7 } };
-
-
-//---------------------------------------------------------------------
-// Unicode byte order mark
-//---------------------------------------------------------------------
-extern const WCHAR UnicodeByteOrderMark = 0xFEFF;
-
-//---------------------------------------------------------------------
-// dictionary table delimiter
-//---------------------------------------------------------------------
-extern WCHAR KeywordDelimiter = L'=';
-extern const WCHAR StringDelimiter  = L'\"';
 
 //---------------------------------------------------------------------
 // defined item in setting file table [PreservedKey] section
@@ -218,7 +245,7 @@ extern const WCHAR FullWidthCharTable[] = {
 //---------------------------------------------------------------------
 // defined symbol characters
 //---------------------------------------------------------------------
-extern const WCHAR DayiSymbolCharTable[] = L" !@\\\"#$%&L\'()+:<>[]^-_`{}|~?";
+extern const WCHAR DayiSymbolCharTable[] = L" !\\\"#$%&\'()*+,-./0123456789:;<>?@[]^_`{}|~";
 //---------------------------------------------------------------------
 // defined directly input address characters
 //---------------------------------------------------------------------
@@ -459,6 +486,6 @@ BOOL CompareElements(LCID locale, const CStringRange* pElement1, const CStringRa
 {
     return (CStringRange::Compare(locale, (CStringRange*)pElement1, (CStringRange*)pElement2) == CSTR_EQUAL) ? TRUE : FALSE;
 }
-
+#endif
 
 }

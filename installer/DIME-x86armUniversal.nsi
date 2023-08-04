@@ -1,10 +1,11 @@
+Unicode True
 !include MUI2.nsh
 !include "Registry.nsh"
 !include x64.nsh
 
 
 !define PRODUCT_NAME "DIME"
-!define PRODUCT_VERSION "1.1"
+!define PRODUCT_VERSION "1.2"
 !define PRODUCT_PUBLISHER "Jeremy Wu"
 !define PRODUCT_WEB_SITE "http://github.com/jrywu/DIME"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
@@ -41,6 +42,7 @@ BrandingText " "
 ; Instfiles page
 !insertmacro MUI_PAGE_INSTFILES
 ; Finish page
+!define MUI_FINISHPAGE_TITLE "安裝完成"
 !insertmacro MUI_PAGE_FINISH
 
 ; Uninstaller pages
@@ -55,72 +57,39 @@ BrandingText " "
 
 Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
 RequestExecutionLevel admin
-OutFile "DIME-x8664.exe"
+OutFile "DIME-x86armUniversal.exe"
 InstallDir "$PROGRAMFILES64\DIME"
 ShowInstDetails show
 ShowUnInstDetails show
 
 ; Language Strings
-LangString DESC_REMAINING ${LANG_TradChinese} " ( 剩餘 %d %s%s )"
-LangString DESC_PROGRESS ${LANG_TradChinese} "%d.%01dkB" ;"%dkB (%d%%) of %dkB @ %d.%01dkB/s"
-LangString DESC_PLURAL ${LANG_TradChinese} " "
-LangString DESC_HOUR ${LANG_TradChinese} "小時"
-LangString DESC_MINUTE ${LANG_TradChinese} "分鐘"
-LangString DESC_SECOND ${LANG_TradChinese} "秒"
-LangString DESC_CONNECTING ${LANG_TradChinese} "連接中..."
-LangString DESC_DOWNLOADING ${LANG_TradChinese} "下載 %s"
 LangString DESC_INSTALLING ${LANG_TradChinese} "安裝中"
 LangString DESC_DOWNLOADING1 ${LANG_TradChinese} "下載中"
 LangString DESC_DOWNLOADFAILED ${LANG_TradChinese} "下載失敗:"
-LangString DESC_VCX86 ${LANG_TradChinese} "Visual C++ 2015 Redistritable x86"
-LangString DESC_VCX64 ${LANG_TradChinese} "Visual C++ 2015 Redistritable x64"
+LangString DESC_VCX86 ${LANG_TradChinese} "Visual Studio Redistritable x86"
+LangString DESC_VCX64 ${LANG_TradChinese} "Visual Studio Redistritable x64"
+LangString DESC_VCARM64 ${LANG_TradChinese} "Visual Studio Redistritable ARM64"
 LangString DESC_VCX86_DECISION ${LANG_TradChinese} "安裝此輸入法之前，必須先安裝 $(DESC_VCX86)，若你想繼續安裝 \
   ，您的電腦必須連接網路。$\n您要繼續這項安裝嗎？"
 LangString DESC_VCX64_DECISION ${LANG_TradChinese} "安裝此輸入法之前，必須先安裝 $(DESC_VCX64)，若你想繼續安裝 \
   ，您的電腦必須連接網路。$\n您要繼續這項安裝嗎？"
-!define BASE_URL http://download.microsoft.com/download
-;!define URL_VC_REDISTX64_2012U3  "${BASE_URL}/1/6/B/16B06F60-3B20-4FF2-B699-5E9B7962F9AE/VSU3/vcredist_x64.exe"
-;!define URL_VC_REDISTX86_2012U3  "${BASE_URL}/1/6/B/16B06F60-3B20-4FF2-B699-5E9B7962F9AE/VSU3/vcredist_x86.exe";
-;!define URL_VC_REDISTX64_2013  ${BASE_URL}/2/E/6/2E61CFA4-993B-4DD4-91DA-3737CD5CD6E3/vcredist_x64.exe
-;!define URL_VC_REDISTX86_2013  ${BASE_URL}/2/E/6/2E61CFA4-993B-4DD4-91DA-3737CD5CD6E3/vcredist_x86.exe
-;!define URL_VC_REDISTX64_2015  ${BASE_URL}/9/3/F/93FCF1E7-E6A4-478B-96E7-D4B285925B00/vc_redist.x64.exe
-;!define URL_VC_REDISTX86_2015  ${BASE_URL}/9/3/F/93FCF1E7-E6A4-478B-96E7-D4B285925B00/vc_redist.x86.exe
-;U2
-;!define URL_VC_REDISTX86_2015 ${BASE_URL}/2/5/e/25e2436f-46a4-4854-b3ac-cfcb69cde2da/vc_redist.x86.exe
-;!define URL_VC_REDISTX64_2015 ${BASE_URL}/a/3/6/a365bea0-3cc9-4f50-912a-3efaf5e96316/vc_redist.x64.exe
-;U3.14.0.23026
-;!define URL_VC_REDISTX64_2015 ${BASE_URL}/0/6/4/064F84EA-D1DB-4EAA-9A5C-CC2F0FF6A638/vc_redist.x64.exe
-;!define URL_VC_REDISTX86_2015 ${BASE_URL}/0/6/4/064F84EA-D1DB-4EAA-9A5C-CC2F0FF6A638/vc_redist.x86.exe
-;U3.14.0.24123
-;!define URL_VC_REDISTX64_2015 ${BASE_URL}/6/D/F/6DF3FF94-F7F9-4F0B-838C-A328D1A7D0EE/vc_redist.x64.exe
-;!define URL_VC_REDISTX86_2015 ${BASE_URL}/6/D/F/6DF3FF94-F7F9-4F0B-838C-A328D1A7D0EE/vc_redist.x86.exe
-;U3.14.0.24215
-!define URL_VC_REDISTX64_2015 ${BASE_URL}/6/A/A/6AA4EDFF-645B-48C5-81CC-ED5963AEAD48/vc_redist.x64.exe
-!define URL_VC_REDISTX86_2015 ${BASE_URL}/6/A/A/6AA4EDFF-645B-48C5-81CC-ED5963AEAD48/vc_redist.x86.exe
-
-; VC2013 12.0.21005
-;!define VCX64_key "{A749D8E6-B613-3BE3-8F5F-045C84EBA29B}"
-;!define VCX86_key "{13A4EE12-23EA-3371-91EE-EFB36DDFFF3E}"
-; VC2015 14.0.23026
-;!define VCX64_key {0D3E9E15-DE7A-300B-96F1-B4AF12B96488}
-;!define VCX86_key  {A2563E55-3BEC-3828-8D67-E5E8B9E8B675}
-; VC2015 14.0.24123
-;!define VCX64_key {FDBE9DB4-7A91-3A28-B27E-705EF7CFAE57}
-;!define VCX86_key {06AE3BCC-7612-39D3-9F3B-B6601D877D02}
-; VC2015 14.0.24215
-!define VCX64_key {50A2BC33-C9CD-3BF1-A8FF-53C10A0B183C}
-!define VCX86_key {BBF2AC74-720C-3CB3-8291-5E34039232FA}
-
+LangString DESC_VCARM64_DECISION ${LANG_TradChinese} "安裝此輸入法之前，必須先安裝 $(DESC_VCARM64)，若你想繼續安裝 \
+  ，您的電腦必須連接網路。$\n您要繼續這項安裝嗎？"
+!define URL_VC_REDISTX64 https://aka.ms/vs/17/release/vc_redist.x64.exe
+!define URL_VC_REDISTX86 https://aka.ms/vs/17/release/vc_redist.x86.exe
+!define URL_VC_REDISTARM64 https://aka.ms/vs/17/release/VC_redist.arm64.exe
 
 
 Var "URL_VCX86"
 Var "URL_VCX64"
+Var "URL_VCARM64"
 
 Function .onInit
   InitPluginsDir
-  StrCpy $URL_VCX86 "${URL_VC_REDISTX86_2015}"
-  StrCpy $URL_VCX64 "${URL_VC_REDISTX64_2015}"
-    ${If} ${RunningX64}
+  StrCpy $URL_VCX86 "${URL_VC_REDISTX86}"
+  StrCpy $URL_VCX64 "${URL_VC_REDISTX64}"
+  StrCpy $URL_VCARM64 "${URL_VC_REDISTARM64}"
+  ${If} ${RunningX64}
   	SetRegView 64
   ${EndIf}
   ReadRegStr $0 ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayVersion"
@@ -129,7 +98,7 @@ Function .onInit
   MessageBox MB_OKCANCEL|MB_ICONQUESTION "偵測到舊版 $0，必須先移除才能安裝新版。是否要現在進行？" IDOK +2
   	Abort
   ExecWait '"$INSTDIR\uninst.exe" /S _?=$INSTDIR'
-   ${If} ${RunningX64}
+  ${If} ${RunningX64}
   	${DisableX64FSRedirection}
   	IfFileExists "$SYSDIR\DIME.dll"  0 CheckX64     ;代表反安裝失敗
   		Abort
@@ -147,36 +116,77 @@ FunctionEnd
 Section "CheckVCRedist" VCR
   Push $R0
   ${If} ${RunningX64}
-  	SetRegView 64
-  	ClearErrors
-  	ReadRegDword $R0 HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\${VCX64_key}" "Version"
-  	IfErrors 0 VCx64RedistInstalled
-  	MessageBox MB_ICONEXCLAMATION|MB_YESNO|MB_DEFBUTTON2 "$(DESC_VCX64_DECISION)" /SD IDNO IDYES +1 IDNO VCRedistInstalledAbort
-  	AddSize 7000
-  	nsisdl::download /TRANSLATE "$(DESC_DOWNLOADING)" "$(DESC_CONNECTING)" \
-       "$(DESC_SECOND)" "$(DESC_MINUTE)" "$(DESC_HOUR)" "$(DESC_PLURAL)" \
-       "$(DESC_PROGRESS)" "$(DESC_REMAINING)" \
-       /TIMEOUT=30000 "$URL_VCX64" "$PLUGINSDIR\vcredist_x64.exe"
-    	Pop $0
-    	StrCmp "$0" "success" lbl_continue64
-    	DetailPrint "$(DESC_DOWNLOADFAILED) $0"
-    	Abort
-     lbl_continue64:
-      DetailPrint "$(DESC_INSTALLING) $(DESC_VCX64)..."
-      nsExec::ExecToStack "$PLUGINSDIR\vcredist_x64.exe /quiet"
-      ;pop $DOTNET_RETURN_CODE
-VCx64RedistInstalled:
- SetRegView 32
-${EndIf}
- ClearErrors
-  ReadRegDword $R0 HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\${VCX86_key}" "Version"
-  IfErrors 0 VCRedistInstalled
+    SetRegView 64
+	ClearErrors	
+	${If} ${IsNativeAMD64}
+		ReadRegDword $R0 HKLM "SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\X64" "Minor"
+		IfErrors InstallVCx64Redist 0
+		${If} $R0 > 31
+			Goto VCx64RedistInstalled
+		${EndIf}
+		ClearErrors
+		ReadRegDword $R0 HKLM "SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\X64" "Bld"
+		IfErrors InstallVCx64Redist 0
+		${If} $R0 >= 31103
+			Goto VCx64RedistInstalled
+		${EndIf}
+	InstallVCx64Redist:
+		MessageBox MB_ICONEXCLAMATION|MB_YESNO|MB_DEFBUTTON2 "$(DESC_VCX64_DECISION)" /SD IDNO IDYES +1 IDNO VCRedistInstalledAbort
+		AddSize 7000
+		nsisdl::download /TIMEOUT=30000 "$URL_VCX64" "$PLUGINSDIR\vcredist_x64.exe"
+			Pop $0
+			StrCmp "$0" "success" lbl_continue64
+			DetailPrint "$(DESC_DOWNLOADFAILED) $0"
+			Abort
+		 lbl_continue64:
+		  DetailPrint "$(DESC_INSTALLING) $(DESC_VCX64)..."
+		  nsExec::ExecToStack "$PLUGINSDIR\vcredist_x64.exe /q"
+		  ;pop $DOTNET_RETURN_CODE
+	VCx64RedistInstalled:
+	${ElseIf} ${IsNativeARM64}
+		ReadRegDword $R0 HKLM "SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\arm64" "Minor"
+		IfErrors InstallVCarm64Redist 0
+		${If} $R0 > 31
+			Goto VCarm64RedistInstalled
+		${EndIf}
+		ClearErrors
+		ReadRegDword $R0 HKLM "SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\arm64" "Bld"
+		IfErrors InstallVCx64Redist 0
+		${If} $R0 >= 31103
+			Goto VCarm64RedistInstalled
+		${EndIf}
+	InstallVCarm64Redist:
+		MessageBox MB_ICONEXCLAMATION|MB_YESNO|MB_DEFBUTTON2 "$(DESC_VCARM64_DECISION)" /SD IDNO IDYES +1 IDNO VCRedistInstalledAbort
+		AddSize 7000
+		nsisdl::download /TIMEOUT=30000 "$URL_VCARM64" "$PLUGINSDIR\vcredist_arm64.exe"
+			Pop $0
+			StrCmp "$0" "success" lbl_continueARM64
+			DetailPrint "$(DESC_DOWNLOADFAILED) $0"
+			Abort
+		 lbl_continueARM64:
+		  DetailPrint "$(DESC_INSTALLING) $(DESC_VCARM64)..."
+		  nsExec::ExecToStack "$PLUGINSDIR\vcredist_arm64.exe /q"
+		  ;pop $DOTNET_RETURN_CODE
+	VCarm64RedistInstalled:
+	${Endif}
+    SetRegView 32
+  ${EndIf}
+  ClearErrors
+  ReadRegDword $R0 HKLM "SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\X86" "Minor"
+  IfErrors InstallVCx86Redist 0
+  ${If} $R0 > 31
+  	Goto VCRedistInstalled
+  ${EndIf}
+  ClearErrors
+  ReadRegDword $R0 HKLM "SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\X86" "Bld"
+  IfErrors InstallVCx86Redist 0
+  ${If} $R0 >= 31103
+	Goto VCRedistInstalled
+  ${EndIf}
+InstallVCx86Redist:
   MessageBox MB_ICONEXCLAMATION|MB_YESNO|MB_DEFBUTTON2 "$(DESC_VCX86_DECISION)" /SD IDNO IDYES +1 IDNO VCRedistInstalledAbort
   AddSize 7000
-  nsisdl::download /TRANSLATE "$(DESC_DOWNLOADING)" "$(DESC_CONNECTING)" \
-       "$(DESC_SECOND)" "$(DESC_MINUTE)" "$(DESC_HOUR)" "$(DESC_PLURAL)" \
-       "$(DESC_PROGRESS)" "$(DESC_REMAINING)" \
-       /TIMEOUT=30000 "$URL_VCX86" "$PLUGINSDIR\vcredist_x86.exe"
+  nsisdl::download /TIMEOUT=30000 "$URL_VCX86" "$PLUGINSDIR\vcredist_x86.exe"
     Pop $0
     StrCmp "$0" "success" lbl_continue
     DetailPrint "$(DESC_DOWNLOADFAILED) $0"
@@ -184,7 +194,7 @@ ${EndIf}
 
     lbl_continue:
       DetailPrint "$(DESC_INSTALLING) $(DESC_VCX86)..."
-      nsExec::ExecToStack "$PLUGINSDIR\vcredist_x86.exe /quiet"
+      nsExec::ExecToStack "$PLUGINSDIR\vcredist_x86.exe /q"
       ;pop $DOTNET_RETURN_CODE
   Goto VCRedistInstalled
 VCRedistInstalledAbort:
@@ -199,17 +209,20 @@ Section "MainSection" SEC01
   SetOverwrite ifnewer
   ${If} ${RunningX64}
   	${DisableX64FSRedirection}
-  	File "system32.x64\DIME.dll"
+	${If} ${IsNativeAMD64}
+    	File "system32.x64\DIME.dll"
+	${ElseIf} ${IsNativeARM64}
+		File "system32.arm64\DIME.dll"
+	${EndIf}
   	ExecWait '"$SYSDIR\regsvr32.exe" /s $SYSDIR\DIME.dll'
-  	File "system32.x64\*.dll"
   	${EnableX64FSRedirection}
   ${EndIf}
   File "system32.x86\DIME.dll"
   ExecWait '"$SYSDIR\regsvr32.exe" /s $SYSDIR\DIME.dll'
-  File "system32.x86\*.dll"
   CreateDirectory  "$INSTDIR"
   SetOutPath "$INSTDIR"
   File "*.cin"
+  File "DIMESettings.exe"
   SetOutPath "$APPDATA\DIME\"
   CreateDirectory "$APPDATA\DIME"
   ;File "config.ini"
@@ -226,6 +239,7 @@ Section -AdditionalIcons
   SetOutPath $SMPROGRAMS\DIME
   CreateDirectory "$SMPROGRAMS\DIME"
   CreateShortCut "$SMPROGRAMS\DIME\Uninstall.lnk" "$INSTDIR\uninst.exe"
+  CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\DIME設定.lnk" "$INSTDIR\DIMESettings.exe"
 SectionEnd
 
 Section -Post
@@ -260,9 +274,11 @@ FunctionEnd
 Section Uninstall
  ${If} ${RunningX64}
   ${DisableX64FSRedirection}
+  IfFileExists "$SYSDIR\DIME.dll"  0 +2
   ExecWait '"$SYSDIR\regsvr32.exe" /u /s $SYSDIR\DIME.dll'
   ${EnableX64FSRedirection}
  ${EndIf}
+  IfFileExists "$SYSDIR\DIME.dll"  0 +2
   ExecWait '"$SYSDIR\regsvr32.exe" /u /s $SYSDIR\DIME.dll'
 
   ClearErrors
@@ -286,7 +302,7 @@ Section Uninstall
   Quit
   lbContinueUninstall:
 
-  Delete "$INSTDIR\uninst.exe"
+  Delete "$INSTDIR\*.exe"
   Delete "$INSTDIR\*.cin"
   RMDir /r "$INSTDIR"
   SetShellVarContext all

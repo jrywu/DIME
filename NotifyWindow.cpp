@@ -1,8 +1,35 @@
-//
-//
-//  Jeremy '13,7,17
-//
-//
+/* DIME IME for Windows 7/8/10/11
+
+BSD 3-Clause License
+
+Copyright (c) 2022, Jeremy Wu
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
 //#define DEBUG_PRINT
 
 #include "Private.h"
@@ -31,6 +58,13 @@ CNotifyWindow::CNotifyWindow(_In_ NOTIFYWNDCALLBACK pfnCallback, _In_ void *pv, 
     _pObj = pv;
 
 	_notifyType = notifyType;
+
+    _animationStage = 0;
+    _crBkColor = 0;
+    _crTextColor = 0;
+    _cxTitle = 0;
+    _cyTitle = 0;
+    _TextMetric = {0,0,0,0,0, 0,0,0,0,0,  0,0,0,0,0, 0,0,0,0,0};
 
     _pShadowWnd = nullptr;
 
@@ -189,7 +223,7 @@ void CNotifyWindow::_OnTimerID(UINT_PTR timerID)
 #endif
 	case DELAY_SHOW_TIMER_ID:
  		_EndTimer(DELAY_SHOW_TIMER_ID);
-		_pfnCallback(_pObj, SHOW_NOTIFY, _timeToHide , _notifyType);
+		_pfnCallback(_pObj, NOTIFY_WND::SHOW_NOTIFY, _timeToHide , (LPARAM) _notifyType);
 		break;
 	case TIME_TO_HIDE_TIMER_ID:
 		_Show(FALSE, 0, 0);
@@ -241,7 +275,7 @@ void CNotifyWindow::_Show(BOOL isShowWnd, UINT delayShow, UINT timeToHide)
 	if( delayShow == 0 )
 	{
 		debugPrint(L"CNotifyWindow::_Show() showing and start capture");
-		if(isShowWnd && _notifyType == NOTIFY_CHN_ENG)
+		if(isShowWnd && _notifyType == NOTIFY_TYPE::NOTIFY_CHN_ENG)
 		{
 			debugPrint(L"CNotifyWindow::_Show() about to show and start capture");
 		}
@@ -688,9 +722,9 @@ void CNotifyWindow::_OnLButtonDown(POINT pt)
 
 	if(PtInRect(&rcWindow, pt))
 	{
-		if(_notifyType == NOTIFY_CHN_ENG)
+		if(_notifyType == NOTIFY_TYPE::NOTIFY_CHN_ENG)
 		{
-			_pfnCallback(_pObj, SWITCH_CHN_ENG, NULL, NULL);
+			_pfnCallback(_pObj, NOTIFY_WND::SWITCH_CHN_ENG, NULL, NULL);
 		}
 	}
 	else
@@ -720,7 +754,7 @@ void CNotifyWindow::_OnMouseMove(POINT pt)
 
 	if(PtInRect(&rcWindow, pt))
 	{
-		if(_notifyType == NOTIFY_CHN_ENG)
+		if(_notifyType == NOTIFY_TYPE::NOTIFY_CHN_ENG)
 			SetCursor(LoadCursor(NULL, IDC_HAND));
 		else
 			SetCursor(LoadCursor(NULL, IDC_ARROW));

@@ -55,6 +55,9 @@
     <Filter Include="Source Files\TextService\IMInterface\Dictionary">
       <UniqueIdentifier>{1f776a05-57d4-4932-bfd7-bdbd516c8cc6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\TextService\IMInterface\CompositionProcesserEngine">
+      <UniqueIdentifier>{b09c5d2a-0ab3-4bc9-904e-6515fd1d9336}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="image\ImeModeOn.ico">
@@ -161,9 +164,6 @@
     <ClInclude Include="stdafx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="CandidateListUIPresenter.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="define.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -182,9 +182,6 @@
     <ClInclude Include="DIME.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="DIMEStructureArray.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="ReverseConversionProvider.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -192,6 +189,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Config.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PhoneticSymbols.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -328,9 +328,6 @@
     <ClCompile Include="CandidateHandler.cpp">
       <Filter>Source Files\TextService\IMInterface\Handler</Filter>
     </ClCompile>
-    <ClCompile Include="CompositionProcessorEngine.cpp">
-      <Filter>Source Files\TextService\IMInterface\Handler</Filter>
-    </ClCompile>
     <ClCompile Include="ActiveLanguageProfileNotifySink.cpp">
       <Filter>Source Files\TextService\IMInterface\Initialization</Filter>
     </ClCompile>
@@ -345,6 +342,15 @@
     </ClCompile>
     <ClCompile Include="ScrollBarWindow.cpp">
       <Filter>Source Files\UI\Candidate</Filter>
+    </ClCompile>
+    <ClCompile Include="CompositionProcessorEngine.cpp">
+      <Filter>Source Files\TextService\IMInterface\CompositionProcesserEngine</Filter>
+    </ClCompile>
+    <ClCompile Include="SetupCompositionProcesseorEngine.cpp">
+      <Filter>Source Files\TextService\IMInterface\CompositionProcesserEngine</Filter>
+    </ClCompile>
+    <ClCompile Include="KeyProcesser.cpp">
+      <Filter>Source Files\TextService\IMInterface\CompositionProcesserEngine</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

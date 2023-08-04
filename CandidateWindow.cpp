@@ -1,8 +1,35 @@
-//
-//
-// Derived from Microsoft Sample IME by Jeremy '13,7,17
-//
-//
+/* DIME IME for Windows 7/8/10/11
+
+BSD 3-Clause License
+
+Copyright (c) 2022, Jeremy Wu
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
 
 //#define DEBUG_PRINT
 //#define ALWAYS_SHOW_SCROLL
@@ -10,7 +37,7 @@
 #include "BaseWindow.h"
 #include "CandidateWindow.h"
 
-
+#define NO_ANIMATION
 #define NO_WINDOW_SHADOW
 #define ANIMATION_STEP_TIME 8
 #define ANIMATION_TIMER_ID 39773
@@ -219,12 +246,14 @@ void CCandidateWindow::_Move(int x, int y)
 	_x = x;
 	_y = y;
 	CBaseWindow::_Move(x, y);
-
-	SetLayeredWindowAttributes(_GetWnd(), 0,  255 * (5 / 100), LWA_ALPHA); // 30% transparent when drawing
+#ifdef NO_ANIMATION
+    SetLayeredWindowAttributes(_GetWnd(), 0, (255 * 95) / 100, LWA_ALPHA);
+#else
+    SetLayeredWindowAttributes(_GetWnd(), 0, 255 * (5 / 100), LWA_ALPHA); // staring from 30% transparent 
 	_animationStage = 10;	
 	_EndTimer(ANIMATION_TIMER_ID);
 	_StartTimer(ANIMATION_STEP_TIME, ANIMATION_TIMER_ID);
-
+#endif
 }
 
 void CCandidateWindow::_OnTimerID(UINT_PTR timerID)
@@ -599,7 +628,7 @@ void CCandidateWindow::_OnLButtonDown(POINT pt)
         {
             SetCursor(LoadCursor(NULL, IDC_HAND));
             _currentSelection = index;
-            _pfnCallback(_pObj, CAND_ITEM_SELECT);
+            _pfnCallback(_pObj, CANDWND_ACTION::CAND_ITEM_SELECT);
             return;
         }
     }
@@ -619,7 +648,7 @@ void CCandidateWindow::_OnLButtonDown(POINT pt)
 			return;
         }
     }
-	_pfnCallback(_pObj, CAND_CANCEL);
+	_pfnCallback(_pObj, CANDWND_ACTION::CAND_CANCEL);
 }
 
 //+---------------------------------------------------------------------------
@@ -797,7 +826,8 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
         SetTextColor(dcHandle, _crNumberColor);
         SetBkColor(dcHandle, _crNumberBkColor);
 
-		StringCchPrintf(wszNumString, ARRAYSIZE(wszNumString), L"%d", (LONG)*_pIndexRange->GetAt(indexInPage));
+        // Print cand list index 
+		StringCchPrintf(wszNumString, ARRAYSIZE(wszNumString), L"%c", _pIndexRange->GetAt(indexInPage)->CandIndex);
 		ExtTextOut(dcHandle, PageCountPosition * cxLine, indexInPage * cyLine + cyOffset, ETO_OPAQUE, &rc, wszNumString, numStringLen, NULL);
 
         rc.left = prc->left + StringPosition * cxLine;

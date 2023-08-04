@@ -1,8 +1,35 @@
-//
-//
-// Derived from Microsoft Sample IME by Jeremy '13,7,17
-//
-//
+/* DIME IME for Windows 7/8/10/11
+
+BSD 3-Clause License
+
+Copyright (c) 2022, Jeremy Wu
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
 //#define DEBUG_PRINT
 
 #include "Private.h"
@@ -101,7 +128,7 @@ HRESULT CDIME::_HandleCompositionInput(TfEditCookie ec, _In_ ITfContext *pContex
 
 
 	if (_pUIPresenter 
-		&& _candidateMode != CANDIDATE_INCREMENTAL &&_candidateMode != CANDIDATE_NONE )
+		&& _candidateMode != CANDIDATE_MODE::CANDIDATE_INCREMENTAL &&_candidateMode != CANDIDATE_MODE::CANDIDATE_NONE )
     {
         _HandleCompositionFinalize(ec, pContext, TRUE);
     }
@@ -136,13 +163,13 @@ HRESULT CDIME::_HandleCompositionInput(TfEditCookie ec, _In_ ITfContext *pContex
 		_HandleCompositionInputWorker(pCompositionProcessorEngine, ec, pContext);
 	else
 	{
-		if (Global::imeMode == IME_MODE_PHONETIC)
-			DoBeep(BEEP_WARNING);
+		if (Global::imeMode == IME_MODE::IME_MODE_PHONETIC)
+			DoBeep(BEEP_TYPE::BEEP_WARNING);
 		else
 		{
 			// Add virtual key failed. exceed max codes or something. 
 			if (CConfig::GetClearOnBeep()) _HandleCancel(ec, pContext);
-			DoBeep(BEEP_COMPOSITION_ERROR);
+			DoBeep(BEEP_TYPE::BEEP_COMPOSITION_ERROR);
 		}
 	}
 	
@@ -185,15 +212,10 @@ HRESULT CDIME::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *p
     //
     // Get candidate string from composition processor engine
     //
-	BOOL symbolMode = pCompositionProcessorEngine->IsSymbol();
-	BOOL autoComposeMode = CConfig::GetAutoCompose();
-	if (autoComposeMode  // auto composing mode: show candidates while composition updated imeediately.
-		|| (Global::imeMode == IME_MODE_PHONETIC && _pCompositionProcessorEngine->isPhoneticComposingKey())
-		|| symbolMode) // fetch candidate in symobl mode with composition started with '='(DAYI) or 'W' (Array)
+	if (CConfig::GetAutoCompose())  // auto composing mode: show candidates while composition updated imeediately.
 	{
 		CDIMEArray<CCandidateListItem> candidateList;
-	
-		pCompositionProcessorEngine->GetCandidateList(&candidateList, !symbolMode, isWildcardIncluded);
+	    pCompositionProcessorEngine->GetCandidateList(&candidateList, TRUE, isWildcardIncluded);
 		
 		UINT nCount = candidateList.Count();
 
@@ -209,31 +231,17 @@ HRESULT CDIME::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *p
 				_pUIPresenter->_SetCandidateFillColor(CConfig::GetItemBGColor());
 				_pUIPresenter->_SetCandidateText(&candidateList, _pCompositionProcessorEngine->GetCandidateListIndexRange(),
 							TRUE, pCompositionProcessorEngine->GetCandidateWindowWidth());
-				if (symbolMode || Global::imeMode == IME_MODE_PHONETIC)
-				{
-					_candidateMode = CANDIDATE_ORIGINAL;
-				}
-				else
-				{
-					_candidateMode = CANDIDATE_INCREMENTAL;
-				}
-
+				
+                
+				_candidateMode = CANDIDATE_MODE::CANDIDATE_INCREMENTAL;
+			
 				_isCandidateWithWildcard = FALSE;
 			}
-			if(nCount==1 && symbolMode )  //finalized with the only candidate without showing cand.
-			{
-				_HandleCandidateFinalize(ec, pContext);
-				return hr;
-			}
-			
-
-
+			    
 		}
 		else
 		{
-			if (Global::imeMode == IME_MODE_PHONETIC)
-				DoBeep(BEEP_COMPOSITION_ERROR);
-
+			
 			if (_pUIPresenter)
 			{
 
@@ -247,7 +255,7 @@ HRESULT CDIME::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *p
 				if (SUCCEEDED(hr))
 				{
 					_pUIPresenter->_ClearCandidateList();
-					_candidateMode = CANDIDATE_INCREMENTAL;
+					_candidateMode = CANDIDATE_MODE::CANDIDATE_INCREMENTAL;
 					_isCandidateWithWildcard = FALSE;
 				}
 			}
@@ -311,8 +319,9 @@ HRESULT CDIME::_HandleCompositionFinalize(TfEditCookie ec, _In_ ITfContext *pCon
 //
 //----------------------------------------------------------------------------
 
-HRESULT CDIME::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pContext, BOOL isWildcardSearch)
+HRESULT CDIME::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pContext, BOOL isWildcardSearch, BOOL isArrayPhraseEnding)
 {
+    debugPrint(L"CDIME::_HandleCompositionConvert() isWildcardSearch = %d, isArrayPhraseEnding =%d. ", isWildcardSearch, isArrayPhraseEnding);
     HRESULT hr = S_OK;
 
     CDIMEArray<CCandidateListItem> candidateList;
@@ -322,7 +331,7 @@ HRESULT CDIME::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pCont
     //
     CCompositionProcessorEngine* pCompositionProcessorEngine = nullptr;
     pCompositionProcessorEngine = _pCompositionProcessorEngine;
-    pCompositionProcessorEngine->GetCandidateList(&candidateList, FALSE, isWildcardSearch);
+    pCompositionProcessorEngine->GetCandidateList(&candidateList, FALSE, isWildcardSearch, isArrayPhraseEnding);
 
     // If there is no candlidate listing the current reading string, we don't do anything. Just wait for
     // next char to be ready for the conversion with it.
@@ -331,7 +340,7 @@ HRESULT CDIME::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pCont
     {
 		 if (SUCCEEDED(_CreateAndStartCandidate(pCompositionProcessorEngine, ec, pContext)))
 		 {
-			_candidateMode = CANDIDATE_ORIGINAL;
+			_candidateMode = CANDIDATE_MODE::CANDIDATE_ORIGINAL;
 			 _isCandidateWithWildcard = isWildcardSearch;
 			 _pUIPresenter->_ClearCandidateList();
 			 _pUIPresenter->_SetCandidateTextColor(CConfig::GetItemColor(), CConfig::GetItemBGColor());    
@@ -345,13 +354,13 @@ HRESULT CDIME::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pCont
     }
 	else
 	{
-		if (Global::imeMode == IME_MODE_PHONETIC)
-			DoBeep(BEEP_WARNING);
+		if (Global::imeMode == IME_MODE::IME_MODE_PHONETIC)
+			DoBeep(BEEP_TYPE::BEEP_WARNING);
 		else
 		{
 			// Add virtual key failed. exceed max codes or something. 
 			if (CConfig::GetClearOnBeep()) _HandleCancel(ec, pContext);
-			DoBeep(BEEP_COMPOSITION_ERROR);
+			DoBeep(BEEP_TYPE::BEEP_COMPOSITION_ERROR);
 		}
 		
 	}
@@ -359,9 +368,9 @@ HRESULT CDIME::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pCont
 	{
 		_HandleCandidateFinalize(ec, pContext);
 	}
-	else if (Global::imeMode == IME_MODE_DAYI && CConfig::GetDoBeepOnCandi())
+	else if (Global::imeMode == IME_MODE::IME_MODE_DAYI && CConfig::GetDoBeepOnCandi())
 	{
-		DoBeep(BEEP_ON_CANDI);
+		DoBeep(BEEP_TYPE::BEEP_ON_CANDI);
 	}
     return hr;
 }
@@ -418,7 +427,7 @@ HRESULT CDIME::_HandleCompositionBackspace(TfEditCookie ec, _In_ ITfContext *pCo
         pCompositionProcessorEngine->RemoveVirtualKey(vKeyLen - 1);
 
 		if ((pCompositionProcessorEngine->GetVirtualKeyLength() && !symbolMode) &&
-			!(Global::imeMode == IME_MODE_PHONETIC && _candidateMode != CANDIDATE_NONE))
+			!(Global::imeMode == IME_MODE::IME_MODE_PHONETIC && _candidateMode != CANDIDATE_MODE::CANDIDATE_NONE))
         {
             _HandleCompositionInputWorker(pCompositionProcessorEngine, ec, pContext);
         }

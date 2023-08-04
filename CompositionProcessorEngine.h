@@ -1,8 +1,35 @@
-//
-//
-// Derived from Microsoft Sample IME by Jeremy '13,7,17
-//
-//
+/* DIME IME for Windows 7/8/10/11
+
+BSD 3-Clause License
+
+Copyright (c) 2022, Jeremy Wu
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
 
 #ifndef COMPOSITINPROCESSORENGINE_H
 #define COMPOSITINPROCESSORENGINE_H
@@ -24,7 +51,7 @@ public:
 	
 	
 
-	BOOL IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCHAR *pwch, BOOL fComposing, CANDIDATE_MODE candidateMode, BOOL hasCandidateWithWildcard, UINT candiCount, _Inout_opt_ _KEYSTROKE_STATE *pKeyState);
+	BOOL IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCHAR *pwch, BOOL fComposing, CANDIDATE_MODE candidateMode, BOOL hasCandidateWithWildcard, UINT candiCount, INT candiSelection, _Inout_opt_ _KEYSTROKE_STATE *pKeyState);
 
     BOOL AddVirtualKey(WCHAR wch);
     void RemoveVirtualKey(DWORD_PTR dwIndex);
@@ -34,7 +61,7 @@ public:
     WCHAR GetVirtualKey(DWORD_PTR dwIndex);
 
 	void GetReadingString(_Inout_ CStringRange *pReadingString, _Inout_opt_ BOOL *pIsWildcardIncluded, _In_opt_ CStringRange *pKeyCode = nullptr);
-    void GetCandidateList(_Inout_ CDIMEArray<CCandidateListItem> *pCandidateList, BOOL isIncrementalWordSearch, BOOL isWildcardSearch);
+    void GetCandidateList(_Inout_ CDIMEArray<CCandidateListItem> *pCandidateList, BOOL isIncrementalWordSearch, BOOL isWildcardSearch, BOOL isArrayPhraseEnding = FALSE);
     void GetCandidateStringInConverted(CStringRange &searchString, _In_ CDIMEArray<CCandidateListItem> *pCandidateList);
 
 	//reverse converion
@@ -51,9 +78,11 @@ public:
     // Symbol mode
     BOOL IsSymbolChar(WCHAR wch);
 	BOOL IsSymbol();
+	BOOL IsSymbolLeading();
 
-	
-	
+	//Phonetic composingkey
+	BOOL isEndComposingKey(WCHAR wch);
+
 
 	//Dayi Address characters direct input
 	BOOL IsDayiAddressChar(WCHAR wch);
@@ -65,50 +94,38 @@ public:
 	BOOL GetArraySpeicalCodeFromConvertedText(_In_ CStringRange *inword, _Inout_opt_ CStringRange *csrResult);
 	
     BOOL IsDoubleSingleByte(WCHAR wch);
-    BOOL IsWildcard() { return _isWildcard; }
-    BOOL IsDisableWildcardAtFirst() { return _isDisableWildcardAtFirst; }
+    //BOOL IsWildcard() { return _isWildcard; }
+    //BOOL IsDisableWildcardAtFirst() { return _isDisableWildcardAtFirst; }
     BOOL IsWildcardChar(WCHAR wch) { return ((IsWildcardOneChar(wch) || IsWildcardAllChar(wch)) ? TRUE : FALSE); }
     BOOL IsWildcardOneChar(WCHAR wch) { return (wch==L'?' ? TRUE : FALSE); }
     BOOL IsWildcardAllChar(WCHAR wch) { return (wch==L'*' ? TRUE : FALSE); }
     BOOL IsKeystrokeSort() { return _isKeystrokeSort; }
 
     // Dictionary engine
-	BOOL IsDictionaryAvailable(IME_MODE imeMode) { return (_pTableDictionaryEngine[imeMode] && _pTableDictionaryEngine[imeMode]->GetRadicalMap()&&!_pTableDictionaryEngine[imeMode] ->GetRadicalMap()->empty() ? TRUE : FALSE);}
+	BOOL IsDictionaryAvailable(IME_MODE imeMode) { return (_pTableDictionaryEngine[(UINT)imeMode] && 
+		_pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap()&&!_pTableDictionaryEngine[(UINT)imeMode] ->GetRadicalMap()->empty() ? TRUE : FALSE);}
 
   
 
     inline CCandidateRange *GetCandidateListIndexRange() { return _pActiveCandidateListIndexRange; }
     inline UINT GetCandidateListPhraseModifier() { return _candidateListPhraseModifier; }
     inline UINT GetCandidateWindowWidth() { return _candidateWndWidth; }
+	inline UINT GetCandidatePageSize() { return _candidatePageSize; }
 
 
-	
-	struct _KEYSTROKE
-    {
-		WCHAR Printable;
-        UINT VirtualKey;
-        UINT Modifiers;
-        KEYSTROKE_FUNCTION Function;
-
-        _KEYSTROKE()
-        {
-			Printable = '\0';
-            VirtualKey = 0;
-            Modifiers = 0;
-            Function = FUNCTION_NONE;
-        }
-    };
 	_KEYSTROKE _keystrokeTable[MAX_RADICAL];
     
     void SetupPreserved(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId);
 	void SetupConfiguration(IME_MODE imeMode);
 	void SetupKeystroke(IME_MODE imeMode);
 	BOOL SetupDictionaryFile(IME_MODE imeMode);
+	void SetupCandidateListRange(IME_MODE imeMode);
+
 	void ReleaseDictionaryFiles();
 	BOOL SetupHanCovertTable();
 	BOOL SetupTCFreqTable();
 
-	void UpdateDictionaryFile();
+	//BOOL UpdateDictionaryFile();
 
 	void GetVKeyFromPrintable(WCHAR printable, UINT* vKey, UINT* modifier);
 
@@ -117,19 +134,17 @@ public:
 	void SetImeMode(IME_MODE imeMode) {_imeMode = imeMode;}
 	IME_MODE GetImeMode() { return _imeMode;}
 
-	_T_RadicalMap* GetRadicalMap(IME_MODE imeMode) {if(_pTableDictionaryEngine[imeMode] ) 
-														return _pTableDictionaryEngine[imeMode]->GetRadicalMap();  
+	_T_RadicalMap* GetRadicalMap(IME_MODE imeMode) {if(_pTableDictionaryEngine[(UINT)imeMode] )
+														return _pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap();
 													else return nullptr; }
 
 private:
 
     BOOL IsVirtualKeyKeystrokeComposition(UINT uCode, PWCH pwch, _Inout_opt_ _KEYSTROKE_STATE *pKeyState, KEYSTROKE_FUNCTION function);
-    BOOL IsVirtualKeyKeystrokeCandidate(UINT uCode, _In_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode, _Out_ BOOL *pfRetCode, _In_ CDIMEArray<_KEYSTROKE> *pKeystrokeMetric);
-    BOOL IsKeystrokeRange(UINT uCode, _Inout_opt_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode);
+    //BOOL IsVirtualKeyKeystrokeCandidate(UINT uCode, _In_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode, _Out_ BOOL *pfRetCode, _In_ CDIMEArray<_KEYSTROKE> *pKeystrokeMetric);
+    BOOL IsKeystrokeRange(UINT uCode, PWCH pwch, _Inout_opt_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode);
 
-	void SetInitialCandidateListRange(IME_MODE imeMode);
-
-
+	
     class XPreservedKey;
     void SetPreservedKey(const CLSID clsid, TF_PRESERVEDKEY & tfPreservedKey, _In_z_ LPCWSTR pwszDescription, _Out_ XPreservedKey *pXPreservedKey);
     BOOL InitPreservedKey(_In_ XPreservedKey *pXPreservedKey, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId);
@@ -139,8 +154,6 @@ private:
 
     CFile* GetDictionaryFile();
 
-private:
-
 	CDIME* _pTextService;
     
 	IME_MODE _imeMode;
@@ -149,6 +162,7 @@ private:
 	CTableDictionaryEngine* _pCustomTableDictionaryEngine[IM_SLOTS];
 	CTableDictionaryEngine* _pPhraseTableDictionaryEngine;
 	CTableDictionaryEngine* _pArrayShortCodeTableDictionaryEngine;
+	CTableDictionaryEngine* _pArrayPhraseTableDictionaryEngine;
 	CTableDictionaryEngine* _pArrayExtBTableDictionaryEngine;
 	CTableDictionaryEngine* _pArrayExtCDTableDictionaryEngine;
 	CTableDictionaryEngine* _pArrayExtETableDictionaryEngine;
@@ -160,6 +174,7 @@ private:
 	CFile* _pCustomTableDictionaryFile[IM_SLOTS];
 	CFile* _pPhraseDictionaryFile;
 	CFile* _pArrayShortCodeDictionaryFile;
+	CFile* _pArrayPhraseDictionaryFile;
 	CFile* _pArrayExtBDictionaryFile;
 	CFile* _pArrayExtCDDictionaryFile;
 	CFile* _pArrayExtEDictionaryFile;
@@ -171,15 +186,13 @@ private:
 
     CStringRange _keystrokeBuffer;
 
+	WCHAR* _pEndkey;
+
     BOOL _hasWildcardIncludedInKeystrokeBuffer;
 
     TfClientId  _tfClientId;
 
     CDIMEArray<_KEYSTROKE> _KeystrokeComposition;
-    CDIMEArray<_KEYSTROKE> _KeystrokeCandidate;
-    CDIMEArray<_KEYSTROKE> _KeystrokeCandidateWildcard;
-    CDIMEArray<_KEYSTROKE> _KeystrokeCandidateSymbol;
-
 
     // Preserved key data
     class XPreservedKey
@@ -202,15 +215,17 @@ private:
 	
 
     // Configuration data
-    BOOL _isWildcard;
-    BOOL _isDisableWildcardAtFirst;
+    //BOOL _isWildcard;
+    //BOOL _isDisableWildcardAtFirst;
     BOOL _isKeystrokeSort;
 	BOOL _isWildCardWordFreqSort;
+
 	CCandidateRange* _pActiveCandidateListIndexRange;
 	CCandidateRange _candidateListIndexRange;
 	CCandidateRange _phraseCandidateListIndexRange;
     UINT _candidateListPhraseModifier;
     UINT _candidateWndWidth; 
+	UINT _candidatePageSize;
 
     static const int OUT_OF_FILE_INDEX = -1;
 	
@@ -223,9 +238,7 @@ private:
 	CStringRange buildKeyStrokesFromPhoneticSyllable(UINT syllable);
 	WCHAR VPSymbolToStandardLayoutChar(UINT syllable);
 
-	public:
-		//Phonetic composingkey
-	BOOL isPhoneticComposingKey();
+	
 };
 #endif
 

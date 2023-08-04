@@ -1,8 +1,35 @@
-//
-//
-// Derived from Microsoft Sample IME by Jeremy '13,7,17
-//
-//
+/* DIME IME for Windows 7/8/10/11
+
+BSD 3-Clause License
+
+Copyright (c) 2022, Jeremy Wu
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
 #ifndef DIME_H
 #define DIME_H
 
@@ -131,7 +158,7 @@ public:
     // key event handlers for composition object.
     HRESULT _HandleCompositionInput(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch);
     HRESULT _HandleCompositionFinalize(TfEditCookie ec, _In_ ITfContext *pContext, BOOL fCandidateList);
-    HRESULT _HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pContext, BOOL isWildcardSearch);
+    HRESULT _HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pContext, BOOL isWildcardSearch, BOOL isArrayPhraseEnding = FALSE);
     HRESULT _HandleCompositionBackspace(TfEditCookie ec, _In_ ITfContext *pContext);
     HRESULT _HandleCompositionArrowKey(TfEditCookie ec, _In_ ITfContext *pContext, KEYSTROKE_FUNCTION keyFunction);
     HRESULT _HandleCompositionDoubleSingleByte(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch);
@@ -141,12 +168,12 @@ public:
     HRESULT _HandleCandidateFinalize(TfEditCookie ec, _In_ ITfContext *pContext);
     HRESULT _HandleCandidateConvert(TfEditCookie ec, _In_ ITfContext *pContext);
     HRESULT _HandleCandidateArrowKey(TfEditCookie ec, _In_ ITfContext *pContext, _In_ KEYSTROKE_FUNCTION keyFunction);
-    HRESULT _HandleCandidateSelectByNumber(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode);
+    HRESULT _HandleCandidateSelectByNumber(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode, _In_ WCHAR wch);
 
     // key event handlers for phrase object.
     HRESULT _HandlePhraseFinalize(TfEditCookie ec, _In_ ITfContext *pContext);
     HRESULT _HandlePhraseArrowKey(TfEditCookie ec, _In_ ITfContext *pContext, _In_ KEYSTROKE_FUNCTION keyFunction);
-    HRESULT _HandlePhraseSelectByNumber(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode);
+    HRESULT _HandlePhraseSelectByNumber(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode, _In_ WCHAR wch);
 
     static BOOL _IsSecureMode(void) { return (_dwActivateFlags & TF_TMAE_SECUREMODE) ? TRUE : FALSE; }
     static BOOL _IsComLess(void) { return (_dwActivateFlags & TF_TMAE_COMLESS) ? TRUE : FALSE; }
@@ -180,9 +207,10 @@ public:
 	void DoBeep(BEEP_TYPE type);
 
 	//integrity level and process name specific functions
-	BOOL isHighIntegrityProcess(){ return (_processIntegrityLevel == PROCESS_INTEGRITY_LEVEL_HIGH || _processIntegrityLevel == PROCESS_INTEGRITY_LEVEL_SYSTEM); }
-	BOOL isLowIntegrityProcess() { return (_processIntegrityLevel == PROCESS_INTEGRITY_LEVEL_LOW || _processIntegrityLevel == PROCESS_INTEGRITY_LEVEL_UNKNOWN); }
+	BOOL isHighIntegrityProcess(){ return (_processIntegrityLevel == PROCESS_INTEGRITY_LEVEL::PROCESS_INTEGRITY_LEVEL_HIGH || _processIntegrityLevel == PROCESS_INTEGRITY_LEVEL::PROCESS_INTEGRITY_LEVEL_SYSTEM); }
+	BOOL isLowIntegrityProcess() { return (_processIntegrityLevel == PROCESS_INTEGRITY_LEVEL::PROCESS_INTEGRITY_LEVEL_LOW || _processIntegrityLevel == PROCESS_INTEGRITY_LEVEL::PROCESS_INTEGRITY_LEVEL_UNKNOWN); }
 	BOOL isWin7IEProcess() { return  !Global::isWindows8 && (CompareString(GetLocale(), NORM_IGNORECASE, _processName, -1, L"IEXPLORE.EXE", -1) == CSTR_EQUAL); }
+	BOOL isCMDShell() { return  !Global::isWindows8 && (CompareString(GetLocale(), NORM_IGNORECASE, _processName, -1, L"CMD.EXE", -1) == CSTR_EQUAL); }
 	BOOL isBlackListedProcessForProbeComposition() { return  (CompareString(GetLocale(), NORM_IGNORECASE, _processName, -1, L"firefox.exe", -1) == CSTR_EQUAL); }
 	PROCESS_INTEGRITY_LEVEL GetProcessIntegrityLevel() { return _processIntegrityLevel; }
 

@@ -1,8 +1,35 @@
-//
-//
-// Derived from Microsoft Sample IME by Jeremy '13,7,17
-//
-//
+/* DIME IME for Windows 7/8/10/11
+
+BSD 3-Clause License
+
+Copyright (c) 2022, Jeremy Wu
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
 
 
 #include "KeyStateCategory.h"
@@ -30,19 +57,19 @@ CKeyStateCategory* CKeyStateCategoryFactory::MakeKeyStateCategory(KEYSTROKE_CATE
 
     switch (keyCategory)
     {
-    case CATEGORY_NONE:
+    case KEYSTROKE_CATEGORY::CATEGORY_NONE:
         pKeyState = new (std::nothrow) CKeyStateNull(pTextService);
         break;
 
-    case CATEGORY_COMPOSING:
+    case KEYSTROKE_CATEGORY::CATEGORY_COMPOSING:
         pKeyState = new (std::nothrow) CKeyStateComposing(pTextService);
         break;
 
-    case CATEGORY_CANDIDATE:
+    case KEYSTROKE_CATEGORY::CATEGORY_CANDIDATE:
         pKeyState = new (std::nothrow) CKeyStateCandidate(pTextService);
         break;
 
-    case CATEGORY_PHRASE:
+    case KEYSTROKE_CATEGORY::CATEGORY_PHRASE:
         pKeyState = new (std::nothrow) CKeyStatePhrase(pTextService);
         break;
 
@@ -78,52 +105,58 @@ HRESULT CKeyStateCategory::KeyStateHandler(KEYSTROKE_FUNCTION function, KeyHandl
 {
     switch(function)
     {
-    case FUNCTION_INPUT:
+    case KEYSTROKE_FUNCTION::FUNCTION_INPUT:
         return HandleKeyInput(dto);
+    case KEYSTROKE_FUNCTION::FUNCTION_INPUT_AND_CONVERT:
+        return HandleKeyInputAndConvert(dto);
+    case KEYSTROKE_FUNCTION::FUNCTION_INPUT_AND_CONVERT_WILDCARD:
+        return HandleKeyInputAndConvertWildCard(dto);
 
-    case FUNCTION_FINALIZE_TEXTSTORE_AND_INPUT:
+    case KEYSTROKE_FUNCTION::FUNCTION_FINALIZE_TEXTSTORE_AND_INPUT:
         return HandleKeyFinalizeTextStoreAndInput(dto);
-
-    case FUNCTION_FINALIZE_TEXTSTORE:
+    case KEYSTROKE_FUNCTION::FUNCTION_FINALIZE_TEXTSTORE:
         return HandleKeyFinalizeTextStore(dto);
 
-    case FUNCTION_FINALIZE_CANDIDATELIST_AND_INPUT:
+    case KEYSTROKE_FUNCTION::FUNCTION_FINALIZE_CANDIDATELIST_AND_INPUT:
         return HandleKeyFinalizeCandidatelistAndInput(dto);
-
-    case FUNCTION_FINALIZE_CANDIDATELIST:
+    case KEYSTROKE_FUNCTION::FUNCTION_FINALIZE_CANDIDATELIST:
         return HandleKeyFinalizeCandidatelist(dto);
 
-    case FUNCTION_CONVERT:
+    case KEYSTROKE_FUNCTION::FUNCTION_CONVERT:
         return HandleKeyConvert(dto);
-
-    case FUNCTION_CONVERT_WILDCARD:
+    case KEYSTROKE_FUNCTION::FUNCTION_CONVERT_WILDCARD:
         return HandleKeyConvertWildCard(dto);
 
-    case FUNCTION_CANCEL:
+    case KEYSTROKE_FUNCTION::FUNCTION_CONVERT_ARRAY_PHRASE:
+        return HandleKeyConvertArrayPhrase(dto);
+    case KEYSTROKE_FUNCTION::FUNCTION_CONVERT_ARRAY_PHRASE_WILDCARD:
+        return HandleKeyConvertArrayPhraseWildCard(dto);
+
+    case KEYSTROKE_FUNCTION::FUNCTION_CANCEL:
         return HandleKeyCancel(dto);
 
-    case FUNCTION_BACKSPACE:
+    case KEYSTROKE_FUNCTION::FUNCTION_BACKSPACE:
         return HandleKeyBackspace(dto);
 
-    case FUNCTION_MOVE_LEFT:
-    case FUNCTION_MOVE_RIGHT:
-	case FUNCTION_MOVE_UP:
-    case FUNCTION_MOVE_DOWN:
+    case KEYSTROKE_FUNCTION::FUNCTION_MOVE_LEFT:
+    case KEYSTROKE_FUNCTION::FUNCTION_MOVE_RIGHT:
+	case KEYSTROKE_FUNCTION::FUNCTION_MOVE_UP:
+    case KEYSTROKE_FUNCTION::FUNCTION_MOVE_DOWN:
         return HandleKeyArrow(dto);
  
-    case FUNCTION_MOVE_PAGE_UP:
-    case FUNCTION_MOVE_PAGE_DOWN:
-    case FUNCTION_MOVE_PAGE_TOP:
-    case FUNCTION_MOVE_PAGE_BOTTOM:
+    case KEYSTROKE_FUNCTION::FUNCTION_MOVE_PAGE_UP:
+    case KEYSTROKE_FUNCTION::FUNCTION_MOVE_PAGE_DOWN:
+    case KEYSTROKE_FUNCTION::FUNCTION_MOVE_PAGE_TOP:
+    case KEYSTROKE_FUNCTION::FUNCTION_MOVE_PAGE_BOTTOM:
         return HandleKeyArrow(dto);
 
-    case FUNCTION_DOUBLE_SINGLE_BYTE:
+    case KEYSTROKE_FUNCTION::FUNCTION_DOUBLE_SINGLE_BYTE:
         return HandleKeyDoubleSingleByte(dto);
 
-    case FUNCTION_ADDRESS_DIRECT_INPUT:
+    case KEYSTROKE_FUNCTION::FUNCTION_ADDRESS_DIRECT_INPUT:
         return HandleKeyAddressChar(dto);
 
-    case FUNCTION_SELECT_BY_NUMBER:
+    case KEYSTROKE_FUNCTION::FUNCTION_SELECT_BY_NUMBER:
         return HandleKeySelectByNumber(dto);
 
     }
@@ -141,6 +174,21 @@ HRESULT CKeyStateCategory::HandleKeyInput(KeyHandlerEditSessionDTO dto)
 	dto;
     return E_NOTIMPL;
 }
+
+// _HandleCompositionInputAndConvert
+HRESULT CKeyStateCategory::HandleKeyInputAndConvert(KeyHandlerEditSessionDTO dto)
+{
+    dto;
+    return E_NOTIMPL;
+}
+
+// _HandleCompositionInputAndConvertWildCard
+HRESULT CKeyStateCategory::HandleKeyInputAndConvertWildCard(KeyHandlerEditSessionDTO dto)
+{
+    dto;
+    return E_NOTIMPL;
+}
+
 
 // HandleKeyFinalizeTextStore
 HRESULT CKeyStateCategory::HandleKeyFinalizeTextStore(KeyHandlerEditSessionDTO dto)
@@ -180,6 +228,20 @@ HRESULT CKeyStateCategory::HandleKeyConvert(KeyHandlerEditSessionDTO dto)
 HRESULT CKeyStateCategory::HandleKeyConvertWildCard(KeyHandlerEditSessionDTO dto)
 {
 	dto;
+    return E_NOTIMPL;
+}
+
+// HandleKeyConvertArrayPhrase
+HRESULT CKeyStateCategory::HandleKeyConvertArrayPhrase(KeyHandlerEditSessionDTO dto)
+{
+    dto;
+    return E_NOTIMPL;
+}
+
+// HandleKeyConvertArrayPhraseWildCard
+HRESULT CKeyStateCategory::HandleKeyConvertArrayPhraseWildCard(KeyHandlerEditSessionDTO dto)
+{
+    dto;
     return E_NOTIMPL;
 }
 
@@ -245,6 +307,20 @@ HRESULT CKeyStateComposing::HandleKeyInput(KeyHandlerEditSessionDTO dto)
     return _pTextService->_HandleCompositionInput(dto.ec, dto.pContext, dto.wch);
 }
 
+HRESULT CKeyStateComposing::HandleKeyInputAndConvert(KeyHandlerEditSessionDTO dto)
+{
+    if (_pTextService == nullptr) return E_FAIL;
+    _pTextService->_HandleCompositionInput(dto.ec, dto.pContext, dto.wch);
+    return _pTextService->_HandleCompositionConvert(dto.ec, dto.pContext, FALSE, FALSE);
+}
+
+HRESULT CKeyStateComposing::HandleKeyInputAndConvertWildCard(KeyHandlerEditSessionDTO dto)
+{
+    if (_pTextService == nullptr) return E_FAIL;
+    _pTextService->_HandleCompositionInput(dto.ec, dto.pContext, dto.wch);
+    return _pTextService->_HandleCompositionConvert(dto.ec, dto.pContext, TRUE, FALSE);
+}
+
 HRESULT CKeyStateComposing::HandleKeyFinalizeTextStoreAndInput(KeyHandlerEditSessionDTO dto)
 {
     if(_pTextService == nullptr) return E_FAIL;
@@ -274,14 +350,27 @@ HRESULT CKeyStateComposing::HandleKeyFinalizeCandidatelist(KeyHandlerEditSession
 HRESULT CKeyStateComposing::HandleKeyConvert(KeyHandlerEditSessionDTO dto)
 {
 	if(_pTextService == nullptr) return E_FAIL;
-    return _pTextService->_HandleCompositionConvert(dto.ec, dto.pContext, FALSE);
+    return _pTextService->_HandleCompositionConvert(dto.ec, dto.pContext, FALSE, FALSE);
 }
 
 HRESULT CKeyStateComposing::HandleKeyConvertWildCard(KeyHandlerEditSessionDTO dto)
 {
 	if(_pTextService == nullptr) return E_FAIL;
-    return _pTextService->_HandleCompositionConvert(dto.ec, dto.pContext, TRUE);
+    return _pTextService->_HandleCompositionConvert(dto.ec, dto.pContext, TRUE, FALSE);
 }
+
+HRESULT CKeyStateComposing::HandleKeyConvertArrayPhrase(KeyHandlerEditSessionDTO dto)
+{
+    if (_pTextService == nullptr) return E_FAIL;
+    return _pTextService->_HandleCompositionConvert(dto.ec, dto.pContext, FALSE, TRUE);
+}
+
+HRESULT CKeyStateComposing::HandleKeyConvertArrayPhraseWildCard(KeyHandlerEditSessionDTO dto)
+{
+    if (_pTextService == nullptr) return E_FAIL;
+    return _pTextService->_HandleCompositionConvert(dto.ec, dto.pContext, TRUE, TRUE);
+}
+
 
 HRESULT CKeyStateComposing::HandleKeyCancel(KeyHandlerEditSessionDTO dto)
 {
@@ -361,7 +450,7 @@ HRESULT CKeyStateCandidate::HandleKeyArrow(KeyHandlerEditSessionDTO dto)
 HRESULT CKeyStateCandidate::HandleKeySelectByNumber(KeyHandlerEditSessionDTO dto)
 {
 	if(_pTextService == nullptr) return E_FAIL;
-    return _pTextService->_HandleCandidateSelectByNumber(dto.ec, dto.pContext, dto.code);
+    return _pTextService->_HandleCandidateSelectByNumber(dto.ec, dto.pContext, dto.code, dto.wch);
 }
 
 /*
@@ -397,5 +486,5 @@ HRESULT CKeyStatePhrase::HandleKeyArrow(KeyHandlerEditSessionDTO dto)
 HRESULT CKeyStatePhrase::HandleKeySelectByNumber(KeyHandlerEditSessionDTO dto)
 {
 	if(_pTextService == nullptr) return E_FAIL;
-    return _pTextService->_HandlePhraseSelectByNumber(dto.ec, dto.pContext, dto.code);
+    return _pTextService->_HandlePhraseSelectByNumber(dto.ec, dto.pContext, dto.code, dto.wch);
 }

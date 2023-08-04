@@ -1,8 +1,35 @@
-//
-//
-// Derived from Microsoft Sample IME by Jeremy '13,7,17
-//
-//
+/* DIME IME for Windows 7/8/10/11
+
+BSD 3-Clause License
+
+Copyright (c) 2022, Jeremy Wu
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
 #ifndef GLOBAL_H
 #define GLOBAL_H
 
@@ -20,10 +47,34 @@ void DllRelease();
 
 
 namespace Global {
+
+extern IME_MODE imeMode;
+extern BOOL isWindows8; //OS Version
+extern HFONT defaultlFontHandle;  // Global font object we use everywhere
+
+extern BOOL hasPhraseSection; // the dictionary file has TTS [Phrase] section
+extern BOOL hasCINPhraseSection; // the dictionary file has CIN %phrasedef section
+
+extern const WCHAR UnicodeByteOrderMark;
+extern WCHAR KeywordDelimiter;
+extern const WCHAR StringDelimiter;
+
+extern const CLSID DIMECLSID;
+
+
+extern const GUID DIMEDayiGuidProfile;
+extern const GUID DIMEArrayGuidProfile;
+extern const GUID DIMEPhoneticGuidProfile;
+extern const GUID DIMEGenericGuidProfile;
+
+extern const GUID DIMEGuidImeModePreserveKey;
+extern const GUID DIMEGuidDoubleSingleBytePreserveKey;
+extern const GUID DIMEGuidConfigPreserveKey;
+
+#ifndef DIMESettings
 //---------------------------------------------------------------------
 // inline
 //---------------------------------------------------------------------
-
 inline void SafeRelease(_In_ IUnknown *punk)
 {
     if (punk != nullptr)
@@ -105,14 +156,9 @@ inline BOOL IsTooSimilar(COLORREF cr1, COLORREF cr2)
 //---------------------------------------------------------------------
 extern HINSTANCE dllInstanceHandle;
 
-extern IME_MODE imeMode;
 
-extern BOOL isWindows8; //OS Version
 extern HINSTANCE hShcore;
 
-
-extern BOOL hasPhraseSection; // the dictionary file has TTS [Phrase] section
-extern BOOL hasCINPhraseSection; // the dictionary file has CIN %phrasedef section
 
 extern ATOM AtomCandidateWindow;
 extern ATOM AtomCandidateShadowWindow;
@@ -125,8 +171,6 @@ BOOL RegisterWindowClass();
 extern LONG dllRefCount;
 
 extern CRITICAL_SECTION CS;
-extern HFONT defaultlFontHandle;  // Global font object we use everywhere
-
 
 extern const CLSID DIMECLSID;
 
@@ -165,9 +209,7 @@ extern const GUID DIMEGuidDisplayAttributeConverted;
 
 extern const GUID DIMEGuidCandUIElement;
 
-extern const WCHAR UnicodeByteOrderMark;
-extern WCHAR KeywordDelimiter;
-extern const WCHAR StringDelimiter;
+
 
 extern WCHAR ImeModeDescription[50];
 extern const int ImeModeOnIcoIndex;
@@ -180,6 +222,7 @@ extern const int DoubleSingleByteOffIcoIndex;
 extern const WCHAR LangbarImeModeDescription[];
 extern const WCHAR LangbarDoubleSingleByteDescription[];
 extern const WCHAR LangbarPunctuationDescription[];
+#endif
 }
 
 

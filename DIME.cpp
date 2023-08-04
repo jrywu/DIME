@@ -1,8 +1,35 @@
-//
-//
-// Derived from Microsoft Sample IME by Jeremy '13,7,17
-//
-//
+/* DIME IME for Windows 7/8/10/11
+
+BSD 3-Clause License
+
+Copyright (c) 2022, Jeremy Wu
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
 //#define DEBUG_PRINT
 
 #include "Private.h"
@@ -167,6 +194,8 @@ CDIME::CDIME()
 
     _pThreadMgr = nullptr;
 
+    _commitKeyCode[0] = L'\0';
+
     _threadMgrEventSinkCookie = TF_INVALID_COOKIE;
 
     _pTextEditSinkContext = nullptr;
@@ -180,7 +209,7 @@ CDIME::CDIME()
 
     _pCompositionProcessorEngine = nullptr;
 
-    _candidateMode = CANDIDATE_NONE;
+    _candidateMode = CANDIDATE_MODE::CANDIDATE_NONE;
     _pUIPresenter = nullptr;
     _isCandidateWithWildcard = FALSE;
 
@@ -194,7 +223,18 @@ CDIME::CDIME()
 
     _refCount = 1;
 	
+    _commitKeyCode[0] = L'\0';
+    _commitString[0] = L'\0';
 
+    _gaDisplayAttributeConverted = 0;
+    _gaDisplayAttributeInput = 0;
+    _guidProfile = GUID_NULL;
+
+    _tfClientId = 0;
+
+    _pITfFnSearchCandidateProvider = nullptr;
+
+    _pLangBarItem = nullptr;
 	_pLanguageBar_IMEModeW8 = nullptr;
     _pLanguageBar_IMEMode = nullptr;
     _pLanguageBar_DoubleSingleByte = nullptr;
@@ -219,7 +259,7 @@ CDIME::CDIME()
 
 	// Get Process Integrity level
 	DWORD err = 0;
-	_processIntegrityLevel = PROCESS_INTEGRITY_LEVEL_UNKNOWN;
+	_processIntegrityLevel = PROCESS_INTEGRITY_LEVEL::PROCESS_INTEGRITY_LEVEL_UNKNOWN;
 	try {
 		HANDLE hToken = NULL;
 		if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken))
@@ -241,23 +281,23 @@ CDIME::CDIME()
 			hToken = NULL;
 			DWORD ridIl = *GetSidSubAuthority(pTml->Label.Sid, 0);
 			if (ridIl < SECURITY_MANDATORY_LOW_RID)
-				_processIntegrityLevel = PROCESS_INTEGRITY_LEVEL_UNKNOWN;
+				_processIntegrityLevel = PROCESS_INTEGRITY_LEVEL::PROCESS_INTEGRITY_LEVEL_UNKNOWN;
 			else if (ridIl >= SECURITY_MANDATORY_LOW_RID &&
 				ridIl < SECURITY_MANDATORY_MEDIUM_RID)
-				_processIntegrityLevel = PROCESS_INTEGRITY_LEVEL_LOW;
+				_processIntegrityLevel = PROCESS_INTEGRITY_LEVEL::PROCESS_INTEGRITY_LEVEL_LOW;
 			else if (ridIl >= SECURITY_MANDATORY_MEDIUM_RID &&
 				ridIl < SECURITY_MANDATORY_HIGH_RID)
-				_processIntegrityLevel = PROCESS_INTEGRITY_LEVEL_MEDIUM;
+				_processIntegrityLevel = PROCESS_INTEGRITY_LEVEL::PROCESS_INTEGRITY_LEVEL_MEDIUM;
 			else if (ridIl >= SECURITY_MANDATORY_HIGH_RID &&
 				ridIl < SECURITY_MANDATORY_SYSTEM_RID)
-				_processIntegrityLevel = PROCESS_INTEGRITY_LEVEL_HIGH;
+				_processIntegrityLevel = PROCESS_INTEGRITY_LEVEL::PROCESS_INTEGRITY_LEVEL_HIGH;
 			else if (ridIl >= SECURITY_MANDATORY_SYSTEM_RID)
-				_processIntegrityLevel = PROCESS_INTEGRITY_LEVEL_SYSTEM;
+				_processIntegrityLevel = PROCESS_INTEGRITY_LEVEL::PROCESS_INTEGRITY_LEVEL_SYSTEM;
 			if (ridIl > SECURITY_MANDATORY_LOW_RID &&
 				ridIl != SECURITY_MANDATORY_MEDIUM_RID &&
 				ridIl != SECURITY_MANDATORY_HIGH_RID &&
 				ridIl != SECURITY_MANDATORY_SYSTEM_RID)
-				_processIntegrityLevel = PROCESS_INTEGRITY_LEVEL_LOW;
+				_processIntegrityLevel = PROCESS_INTEGRITY_LEVEL::PROCESS_INTEGRITY_LEVEL_LOW;
 			delete[] reinterpret_cast<char*>(pTml);
 			pTml = NULL;
 		}
@@ -580,10 +620,10 @@ STDAPI CDIME::Deactivate()
 
 	}
 
-	if(_pITfReverseConversion[Global::imeMode])
+	if(_pITfReverseConversion[(UINT)Global::imeMode])
 		{
-			_pITfReverseConversion[Global::imeMode]->Release();
-			_pITfReverseConversion[Global::imeMode] = nullptr;
+			_pITfReverseConversion[(UINT)Global::imeMode]->Release();
+			_pITfReverseConversion[(UINT)Global::imeMode] = nullptr;
 		}
 
     ITfContext* pContext = _pContext;
@@ -603,7 +643,7 @@ STDAPI CDIME::Deactivate()
             pContext->Release();
         }
 
-        _candidateMode = CANDIDATE_NONE;
+        _candidateMode = CANDIDATE_MODE::CANDIDATE_NONE;
         _isCandidateWithWildcard = FALSE;
     }
 
@@ -718,13 +758,13 @@ HRESULT CDIME::GetDisplayName(_Out_ BSTR *pbstrDisplayName)
 	if (bstrName == NULL)	return E_OUTOFMEMORY;
 
 	*bstrName = { 0 };
-	if(Global::imeMode == IME_MODE_DAYI)
+	if(Global::imeMode == IME_MODE::IME_MODE_DAYI)
 		LoadString(Global::dllInstanceHandle, IDS_DAYI_DESCRIPTION, bstrName, 64);
-	if(Global::imeMode == IME_MODE_ARRAY)
+	if(Global::imeMode == IME_MODE::IME_MODE_ARRAY)
 		LoadString(Global::dllInstanceHandle, IDS_ARRAY_DESCRIPTION, bstrName, 64);
-	if(Global::imeMode == IME_MODE_PHONETIC)
+	if(Global::imeMode == IME_MODE::IME_MODE_PHONETIC)
 		LoadString(Global::dllInstanceHandle, IDS_PHONETIC_DESCRIPTION, bstrName, 64);
-	if(Global::imeMode == IME_MODE_GENERIC)
+	if(Global::imeMode == IME_MODE::IME_MODE_GENERIC)
 		LoadString(Global::dllInstanceHandle, IDS_GENERIC_DESCRIPTION, bstrName, 64);
 	
 	*pbstrDisplayName = SysAllocString(bstrName);
@@ -744,12 +784,12 @@ HRESULT CDIME::GetLayout(_Out_ TKBLayoutType *ptkblayoutType, _Out_ WORD *pwPref
     HRESULT hr = E_INVALIDARG;
     if ((ptkblayoutType != nullptr) && (pwPreferredLayoutId != nullptr))
     {
-		if(Global::imeMode==IME_MODE_DAYI)
+		if(Global::imeMode==IME_MODE::IME_MODE_DAYI)
 		{
 			*ptkblayoutType = TKBLT_CLASSIC;
 			*pwPreferredLayoutId = TKBL_CLASSIC_TRADITIONAL_CHINESE_DAYI;
 		}
-		else if(Global::imeMode==IME_MODE_PHONETIC)
+		else if(Global::imeMode==IME_MODE::IME_MODE_PHONETIC)
 		{
 			*ptkblayoutType = TKBLT_OPTIMIZED;
 			*pwPreferredLayoutId = TKBL_OPT_TRADITIONAL_CHINESE_PHONETIC;
@@ -949,8 +989,12 @@ BOOL CDIME::SetupLanguageProfile(LANGID langid, REFGUID guidLanguageProfile, _In
 
 			_pCompositionProcessorEngine->SetupPreserved(pThreadMgr, tfClientId);
 			_pCompositionProcessorEngine->SetupDictionaryFile(imeMode);
-			_pCompositionProcessorEngine->SetupKeystroke(imeMode);
+			
+            CConfig::LoadConfig(Global::imeMode);
 			_pCompositionProcessorEngine->SetupConfiguration(imeMode);
+            _pCompositionProcessorEngine->SetupKeystroke(imeMode);
+            _pCompositionProcessorEngine->SetupCandidateListRange(imeMode);
+
 		}
 	}
 
@@ -970,16 +1014,26 @@ BOOL CDIME::_IsUILessMode()
 
 void CDIME::_LoadConfig(BOOL isForce, IME_MODE imeMode)
 {
-	CConfig::LoadConfig(imeMode);
-	if (!isForce)
-		if(_pCompositionProcessorEngine) _pCompositionProcessorEngine->UpdateDictionaryFile();
+    if (!isForce)
+    {
+        BOOL configUpdated = CConfig::LoadConfig(Global::imeMode);
+        BOOL dictionaryUpdated = FALSE;
+        if (_pCompositionProcessorEngine)
+            dictionaryUpdated = _pCompositionProcessorEngine->SetupDictionaryFile(Global::imeMode);
+        if (configUpdated || dictionaryUpdated) // config file udpated
+        {
+            _pCompositionProcessorEngine->SetupConfiguration(Global::imeMode);
+            _pCompositionProcessorEngine->SetupKeystroke(Global::imeMode);
+            _pCompositionProcessorEngine->SetupCandidateListRange(Global::imeMode);
+        }
+    }
 
 	if(CConfig::GetReloadReverseConversion() || isForce)
 	{
-		if(_pITfReverseConversion[imeMode])
+		if(_pITfReverseConversion[(UINT)imeMode])
 		{
-			_pITfReverseConversion[imeMode]->Release();
-			_pITfReverseConversion[imeMode] = nullptr;
+			_pITfReverseConversion[(UINT)imeMode]->Release();
+			_pITfReverseConversion[(UINT)imeMode] = nullptr;
 		}
 		if(!IsEqualCLSID(CConfig::GetReverseConverstionCLSID(), CLSID_NULL) && !IsEqualCLSID(CConfig::GetReverseConversionGUIDProfile(), CLSID_NULL))
 		{
@@ -988,14 +1042,14 @@ void CDIME::_LoadConfig(BOOL isForce, IME_MODE imeMode)
 				IID_ITfReverseConversionMgr, (void**)&pITfReverseConversionMgr)) && pITfReverseConversionMgr)
 			{
 				if(SUCCEEDED( pITfReverseConversionMgr->GetReverseConversion(_langid, 
-					CConfig::GetReverseConversionGUIDProfile(), NULL, &_pITfReverseConversion[imeMode])) && _pITfReverseConversion[imeMode])
+					CConfig::GetReverseConversionGUIDProfile(), NULL, &_pITfReverseConversion[(UINT)imeMode])) && _pITfReverseConversion[(UINT)imeMode])
 				{   //test if the interface can really do reverse conversion
 					BSTR bstr;
 					bstr = SysAllocStringLen(L"¤@" , (UINT) 1);
 					ITfReverseConversionList* reverseConversionList = nullptr;
-					if(bstr && FAILED(_pITfReverseConversion[imeMode]->DoReverseConversion(bstr, &reverseConversionList)) || reverseConversionList == nullptr)
+					if(bstr && FAILED(_pITfReverseConversion[(UINT)imeMode]->DoReverseConversion(bstr, &reverseConversionList)) || reverseConversionList == nullptr)
 					{
-						_pITfReverseConversion[imeMode] = nullptr;
+						_pITfReverseConversion[(UINT)imeMode] = nullptr;
 					}
 					else
 					{
@@ -1006,7 +1060,6 @@ void CDIME::_LoadConfig(BOOL isForce, IME_MODE imeMode)
 			}
 		}
 		CConfig::SetReloadReverseConversion(FALSE);
-		//CConfig::WriteConfig();
 	}
 
 
@@ -1020,13 +1073,13 @@ void CDIME::_LoadConfig(BOOL isForce, IME_MODE imeMode)
 
 void CDIME::DoBeep(BEEP_TYPE type)
 {
-	if (CConfig::GetDoBeep() || type == BEEP_ON_CANDI)
+	if (CConfig::GetDoBeep() || type == BEEP_TYPE::BEEP_ON_CANDI)
 		MessageBeep(MB_OK);
-	if (CConfig::GetDoBeepNotify() && type == BEEP_COMPOSITION_ERROR)
+	if (CConfig::GetDoBeepNotify() && type == BEEP_TYPE::BEEP_COMPOSITION_ERROR)
 	{
 		CStringRange notify;
 		if (_pUIPresenter)
-			_pUIPresenter->ShowNotifyText( &notify.Set(L"¿ù»~²Õ¦r",4) , 0, 1000, NOTIFY_BEEP);
+			_pUIPresenter->ShowNotifyText( &notify.Set(L"¿ù»~²Õ¦r",4) , 0, 1000, NOTIFY_TYPE::NOTIFY_BEEP);
 	}
 		
 }

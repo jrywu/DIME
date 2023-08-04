@@ -1,3 +1,35 @@
+/* DIME IME for Windows 7/8/10/11
+
+BSD 3-Clause License
+
+Copyright (c) 2022, Jeremy Wu
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
 //#define DEBUG_PRINT
 
 #include "DIME.h"
@@ -14,6 +46,7 @@
 
 HRESULT CDIME::_HandleCandidateFinalize(TfEditCookie ec, _In_ ITfContext *pContext)
 {
+	debugPrint(L"CDIME::_HandleCandidateFinalize()");
 	return _HandleCandidateWorker(ec, pContext);
 }
 
@@ -25,6 +58,7 @@ HRESULT CDIME::_HandleCandidateFinalize(TfEditCookie ec, _In_ ITfContext *pConte
 
 HRESULT CDIME::_HandleCandidateConvert(TfEditCookie ec, _In_ ITfContext *pContext)
 {
+	debugPrint(L"CDIME::_HandleCandidateFinalize()");
     return _HandleCandidateWorker(ec, pContext);
 	
 }
@@ -38,7 +72,7 @@ HRESULT CDIME::_HandleCandidateConvert(TfEditCookie ec, _In_ ITfContext *pContex
 HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext)
 {
 
-	debugPrint(L"CDIME::_HandleCandidateWorker() \n");
+	debugPrint(L"CDIME::_HandleCandidateWorker() _IsComposing()= %d", _IsComposing());
     HRESULT hr = S_OK;
 	CStringRange commitString, convertedString;
 	CDIMEArray<CCandidateListItem> candidatePhraseList;	
@@ -57,16 +91,20 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 	if (!_IsComposing())
 		_StartComposition(pContext);
 
-	if (Global::imeMode == IME_MODE_ARRAY)// check if the _strokebuffer is array special code
-	{
-		candidateLen = _pCompositionProcessorEngine->CollectWordFromArraySpeicalCode(&pCandidateString);
-		if(candidateLen) arrayUsingSPCode = TRUE;
-	}
-	candidateLen = 0;
 	candidateLen = _pUIPresenter->_GetSelectedCandidateString(&pCandidateString);
+
+	if (Global::imeMode == IME_MODE::IME_MODE_ARRAY && CConfig::GetArrayScope() != ARRAY_SCOPE::ARRAY40_BIG5)
+		// check if the _strokebuffer is array special code
+	{
+		
+		if(_pCompositionProcessorEngine->CollectWordFromArraySpeicalCode(&pCandidateString)) 
+			arrayUsingSPCode = TRUE;
+	}
+	
 	if (candidateLen == 0)
     {
-		if(_candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION || _candidateMode == CANDIDATE_PHRASE)
+		//if(_candidateMode == CANDIDATE_WITH_NEXT_COMPOSITION || _candidateMode == CANDIDATE_PHRASE)
+		if(_candidateMode == CANDIDATE_MODE::CANDIDATE_PHRASE)
 		{
 			_HandleCancel(ec, pContext);
 			goto Exit;
@@ -75,19 +113,19 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 		{
 			hr = S_FALSE;
 			_HandleCancel(ec, pContext);
-			DoBeep(BEEP_COMPOSITION_ERROR); //beep for no valid mapping found
+			DoBeep(BEEP_TYPE::BEEP_COMPOSITION_ERROR); //beep for no valid mapping found
 			goto Exit;
 		}
     }
 	if (_pCompositionProcessorEngine->IsArrayShortCode() && candidateLen == 1 && *pCandidateString == 0x2394) // empty position in arry short code table.
 	{
 		hr = S_FALSE;
-		if (Global::imeMode == IME_MODE_PHONETIC)
-			DoBeep(BEEP_WARNING);
+		if (Global::imeMode == IME_MODE::IME_MODE_PHONETIC)
+			DoBeep(BEEP_TYPE::BEEP_WARNING);
 		else
 		{
 			if (CConfig::GetClearOnBeep()) _HandleCancel(ec, pContext);
-			DoBeep(BEEP_COMPOSITION_ERROR); //beep for no valid mapping found
+			DoBeep(BEEP_TYPE::BEEP_COMPOSITION_ERROR); //beep for no valid mapping found
 		}
 		goto Exit;
 	}
@@ -112,7 +150,7 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 	//-----------------do reverse conversion notify. We should not show notify in UI-less mode, thus cancel reverse conversion notify in UILess Mode
 	if (!_IsUILessMode())
 	{
-		if (_pITfReverseConversion[Global::imeMode])
+		if (_pITfReverseConversion[(UINT)Global::imeMode])
 		{
 			_AsyncReverseConversion(pContext); //asynchronized the reverse conversion with editsession for better perfomance
 		}
@@ -132,7 +170,8 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 	}
 	//-----------------do  array spcial code notify. We should not show notify in UI-less mode, thus cancel forceSP mode in UILess Mode---
 	BOOL ArraySPFound = FALSE;            
-	if(Global::imeMode == IME_MODE_ARRAY && !_IsUILessMode()  && !arrayUsingSPCode && (CConfig::GetArrayForceSP() || CConfig::GetArrayNotifySP()))
+	if(Global::imeMode == IME_MODE::IME_MODE_ARRAY && CConfig::GetArrayScope() != ARRAY_SCOPE::ARRAY40_BIG5 &&
+		!_IsUILessMode()  && !arrayUsingSPCode && (CConfig::GetArrayForceSP() || CConfig::GetArrayNotifySP()))
 	{
 		CStringRange specialCode;
 		CStringRange notifyText;
@@ -147,10 +186,10 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 		_pCompositionProcessorEngine->GetSCFromTC(&commitString, &convertedString);
 	}
 	//----------------- commit the selected string  ------------------------------------------------------------------------------------ 
-	if(Global::imeMode == IME_MODE_ARRAY && !_IsUILessMode()  && !arrayUsingSPCode && CConfig::GetArrayForceSP() &&  ArraySPFound )
+	if(Global::imeMode == IME_MODE::IME_MODE_ARRAY && !_IsUILessMode()  && !arrayUsingSPCode && CConfig::GetArrayForceSP() &&  ArraySPFound )
 	{
 		_HandleCancel(ec, pContext);
-		DoBeep(BEEP_WARNING);
+		DoBeep(BEEP_TYPE::BEEP_WARNING);
 		return hr;
 	}
 	else
@@ -161,7 +200,8 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 		_HandleComplete(ec,pContext);
 	}
 	//-----------------do accociated phrase (make phrase)--------------------------------------------------------------------------------
-	if (CConfig::GetMakePhrase())
+	// Issue #27.  Turn off associated phrase to avoid cursor gone in command shell.
+	if (CConfig::GetMakePhrase() && !isCMDShell())
 	{
 		_pCompositionProcessorEngine->GetCandidateStringInConverted(lastChar, &candidatePhraseList);
 
@@ -180,7 +220,7 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 			_pUIPresenter->_SetCandidateText(&candidatePhraseList, _pCompositionProcessorEngine->GetCandidateListIndexRange(),
 				FALSE, _pCompositionProcessorEngine->GetCandidateWindowWidth());
 			_pUIPresenter->_SetCandidateSelection(-1, FALSE); // set selected index to -1 if showing phrase candidates
-			_candidateMode = CANDIDATE_PHRASE;
+			_candidateMode = CANDIDATE_MODE::CANDIDATE_PHRASE;
 			_isCandidateWithWildcard = FALSE;	
 			
 			//StartCandidateList require a valid selection from a valid pComposition to determine the location to show the candidate window
@@ -213,6 +253,7 @@ Exit:
 
 HRESULT CDIME::_HandleCandidateArrowKey(TfEditCookie ec, _In_ ITfContext *pContext, _In_ KEYSTROKE_FUNCTION keyFunction)
 {
+	debugPrint(L"CDIME::_HandleCandidateArrowKey()");
     ec;
     pContext;
 
@@ -227,11 +268,11 @@ HRESULT CDIME::_HandleCandidateArrowKey(TfEditCookie ec, _In_ ITfContext *pConte
 //
 //----------------------------------------------------------------------------
 
-HRESULT CDIME::_HandleCandidateSelectByNumber(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode)
+HRESULT CDIME::_HandleCandidateSelectByNumber(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode,_In_ WCHAR wch)
 {
 	debugPrint(L"CDIME::_HandleCandidateSelectByNumber() \n");
 
-	int iSelectAsNumber = _pCompositionProcessorEngine->GetCandidateListIndexRange()->GetIndex(uCode, _candidateMode);
+	int iSelectAsNumber = _pCompositionProcessorEngine->GetCandidateListIndexRange()->GetIndex(uCode, wch, _candidateMode);
 	debugPrint(L"CDIME::_HandleCandidateSelectByNumber() iSelectAsNumber = %d", iSelectAsNumber);
 
 	if (iSelectAsNumber == -1)
@@ -258,6 +299,7 @@ HRESULT CDIME::_HandleCandidateSelectByNumber(TfEditCookie ec, _In_ ITfContext *
 
 HRESULT CDIME::_HandlePhraseFinalize(TfEditCookie ec, _In_ ITfContext *pContext)
 {
+	debugPrint(L"CDIME::_HandlePhraseFinalize() ");
     HRESULT hr = S_OK;
 
     DWORD phraseLen = 0;
@@ -290,6 +332,7 @@ HRESULT CDIME::_HandlePhraseFinalize(TfEditCookie ec, _In_ ITfContext *pContext)
 
 HRESULT CDIME::_HandlePhraseArrowKey(TfEditCookie ec, _In_ ITfContext *pContext, _In_ KEYSTROKE_FUNCTION keyFunction)
 {
+	debugPrint(L"CDIME::_HandlePhraseArrowKey() ");
     ec;
     pContext;
 
@@ -304,9 +347,10 @@ HRESULT CDIME::_HandlePhraseArrowKey(TfEditCookie ec, _In_ ITfContext *pContext,
 //
 //----------------------------------------------------------------------------
 
-HRESULT CDIME::_HandlePhraseSelectByNumber(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode)
+HRESULT CDIME::_HandlePhraseSelectByNumber(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode, _In_ WCHAR wch)
 {
-	int iSelectAsNumber = _pCompositionProcessorEngine->GetCandidateListIndexRange()->GetIndex(uCode, _candidateMode);
+	debugPrint(L"CDIME::_HandlePhraseSelectByNumber() ");
+	int iSelectAsNumber = _pCompositionProcessorEngine->GetCandidateListIndexRange()->GetIndex(uCode, wch, _candidateMode);
     if (iSelectAsNumber == -1)
     {
         return S_FALSE;
@@ -335,7 +379,7 @@ HRESULT CDIME::_CreateAndStartCandidate(_In_ CCompositionProcessorEngine *pCompo
     HRESULT hr = S_OK;
 
 	
-	if ((_candidateMode == CANDIDATE_NONE) && (_pUIPresenter))
+	if ((_candidateMode == CANDIDATE_MODE::CANDIDATE_NONE) && (_pUIPresenter))
     {
  
 		// we don't cache the document manager object. So get it from pContext.
@@ -372,10 +416,10 @@ VOID CDIME::_DeleteCandidateList(BOOL isForce, _In_opt_ ITfContext *pContext)
 	    _pCompositionProcessorEngine->PurgeVirtualKey();
 	}
 
-    if (_pUIPresenter && isForce)
+     if (_pUIPresenter && isForce)
     {
 		_pUIPresenter->_EndCandidateList();
     }
-	_candidateMode = CANDIDATE_NONE;
+	_candidateMode = CANDIDATE_MODE::CANDIDATE_NONE;
     _isCandidateWithWildcard = FALSE;
 }

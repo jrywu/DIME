@@ -1,8 +1,35 @@
-//
-//
-// Derived from Microsoft Sample IME by Jeremy '13,7,17
-//
-//
+/* DIME IME for Windows 7/8/10/11
+
+BSD 3-Clause License
+
+Copyright (c) 2022, Jeremy Wu
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
 //#define DEBUG_PRINT
 
 #include "Private.h"
@@ -78,8 +105,8 @@ BOOL CDIME::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pCod
   
     if (pKeyState)
     {
-        pKeyState->Category = CATEGORY_NONE;
-        pKeyState->Function = FUNCTION_NONE;
+        pKeyState->Category = KEYSTROKE_CATEGORY::CATEGORY_NONE;
+        pKeyState->Function = KEYSTROKE_FUNCTION::FUNCTION_NONE;
     }
     if (pwch)
     {
@@ -125,50 +152,25 @@ BOOL CDIME::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pCod
     CCompositionProcessorEngine *pCompositionProcessorEngine;
     pCompositionProcessorEngine = _pCompositionProcessorEngine;
 
-
-	
-	//
-    // Symbol mode start with L'=' for dayi or L'w' for array
-    //
-	if (isOpen && pCompositionProcessorEngine && pCompositionProcessorEngine->IsSymbolChar(wch))
-	{
-		if (pKeyState)
-		{
-			pKeyState->Category = CATEGORY_COMPOSING;
-			pKeyState->Function = FUNCTION_INPUT;
-		}
-			return TRUE;
-	}
-
-	//
-    // Address characters direct input mode  '[]-\
-    //
-	if (isOpen && (_candidateMode == CANDIDATE_NONE || _candidateMode == CANDIDATE_PHRASE)
-		&& codeIn!= VK_SUBTRACT
-		&& pCompositionProcessorEngine && pCompositionProcessorEngine->IsDayiAddressChar(wch))
-	{
-		if (pKeyState)
-		{
-			pKeyState->Category = CATEGORY_COMPOSING;
-			pKeyState->Function = FUNCTION_ADDRESS_DIRECT_INPUT;
-		}
-			return TRUE;
-	}
-
 	//
 	// check if the normal composition  need the key
 	//
-    if (isOpen && pCompositionProcessorEngine)
-    {
-        //
-        // The candidate or phrase list handles the keys through ITfKeyEventSink.
-        //
-        // eat only keys that CKeyHandlerEditSession can handles.
-        //
-		UINT candiCount=0;
-		if (_pUIPresenter) _pUIPresenter->GetCount(&candiCount);
+	if (isOpen && pCompositionProcessorEngine)
+	{
+		//
+		// The candidate or phrase list handles the keys through ITfKeyEventSink.
+		//
+		// eat only keys that CKeyHandlerEditSession can handles.
+		//
+		UINT candiCount = 0;
+		INT candiSelection = -1;
+		if (_pUIPresenter)
+		{
+			_pUIPresenter->GetCount(&candiCount);
+			candiSelection = _pUIPresenter->_GetCandidateSelection();
+		}
 	
-		if (pCompositionProcessorEngine->IsVirtualKeyNeed(*pCodeOut, pwch, _IsComposing(), _candidateMode, _isCandidateWithWildcard, candiCount, pKeyState))
+		if (pCompositionProcessorEngine->IsVirtualKeyNeed(*pCodeOut, pwch, _IsComposing(), _candidateMode, _isCandidateWithWildcard, candiCount, candiSelection, pKeyState))
         {
             return TRUE;
         }
@@ -181,12 +183,12 @@ BOOL CDIME::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pCod
     //
     if (isDoubleSingleByte && pCompositionProcessorEngine && pCompositionProcessorEngine->IsDoubleSingleByte(wch))
     {
-        if (_candidateMode == CANDIDATE_NONE)
+        if (_candidateMode == CANDIDATE_MODE::CANDIDATE_NONE)
         {
             if (pKeyState)
             {
-                pKeyState->Category = CATEGORY_COMPOSING;
-                pKeyState->Function = FUNCTION_DOUBLE_SINGLE_BYTE;
+                pKeyState->Category = KEYSTROKE_CATEGORY::CATEGORY_COMPOSING;
+                pKeyState->Function = KEYSTROKE_FUNCTION::FUNCTION_DOUBLE_SINGLE_BYTE;
             }
             return TRUE;
         }
@@ -305,7 +307,7 @@ STDAPI CDIME::OnTestKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, 
 	debugPrint(L" CDIME::OnTestKeyDown()");
     Global::UpdateModifiers(wParam, lParam);
 
-	_KEYSTROKE_STATE KeystrokeState = { CATEGORY_NONE, FUNCTION_NONE };
+	_KEYSTROKE_STATE KeystrokeState = { KEYSTROKE_CATEGORY::CATEGORY_NONE, KEYSTROKE_FUNCTION::FUNCTION_NONE };
     WCHAR wch = '\0';
     UINT code = 0;
 
@@ -319,15 +321,16 @@ STDAPI CDIME::OnTestKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, 
 
     *pIsEaten = _IsKeyEaten(pContext, (UINT)wParam, &code, &wch, &KeystrokeState);
 
-    if (KeystrokeState.Category == CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION)
+    if (KeystrokeState.Category == KEYSTROKE_CATEGORY::CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION)
     {
         //
         // Invoke key handler edit session
         //
-        KeystrokeState.Category = CATEGORY_COMPOSING;
+        KeystrokeState.Category = KEYSTROKE_CATEGORY::CATEGORY_COMPOSING;
         _InvokeKeyHandler(pContext, code, wch, (DWORD)lParam, KeystrokeState);
     }
-	else if (KeystrokeState.Category == CATEGORY_CANDIDATE && KeystrokeState.Function == FUNCTION_CANCEL) //cancel associated phrase with anykey.
+	else if (KeystrokeState.Category == KEYSTROKE_CATEGORY::CATEGORY_CANDIDATE 
+        && KeystrokeState.Function == KEYSTROKE_FUNCTION::FUNCTION_CANCEL) //cancel associated phrase with anykey.
 	{
 		_InvokeKeyHandler(pContext, code, wch, (DWORD)lParam, KeystrokeState);
 	}
@@ -347,7 +350,7 @@ STDAPI CDIME::OnKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL
 	debugPrint(L" CDIME::OnKeyDown()");
     Global::UpdateModifiers(wParam, lParam);
    
-	_KEYSTROKE_STATE KeystrokeState = { CATEGORY_NONE, FUNCTION_NONE };
+	_KEYSTROKE_STATE KeystrokeState = { KEYSTROKE_CATEGORY::CATEGORY_NONE, KEYSTROKE_FUNCTION::FUNCTION_NONE };
     WCHAR wch = '\0';
     UINT code = 0;
 
@@ -369,13 +372,14 @@ STDAPI CDIME::OnKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL
         //
         if (code == VK_ESCAPE)
         {
-            KeystrokeState.Category = CATEGORY_COMPOSING;
+            KeystrokeState.Category = KEYSTROKE_CATEGORY::CATEGORY_COMPOSING;
         }
 
         // Always eat THIRDPARTY_NEXTPAGE and THIRDPARTY_PREVPAGE keys, but don't always process them.
         if ((wch == THIRDPARTY_NEXTPAGE) || (wch == THIRDPARTY_PREVPAGE))
         {
-            needInvokeKeyHandler = !((KeystrokeState.Category == CATEGORY_NONE) && (KeystrokeState.Function == FUNCTION_NONE));
+            needInvokeKeyHandler = !((KeystrokeState.Category == KEYSTROKE_CATEGORY::CATEGORY_NONE) 
+                && (KeystrokeState.Function == KEYSTROKE_FUNCTION::FUNCTION_NONE));
         }
 
         if (needInvokeKeyHandler)
@@ -383,10 +387,10 @@ STDAPI CDIME::OnKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL
             _InvokeKeyHandler(pContext, code, wch, (DWORD)lParam, KeystrokeState);
         }
     }
-    else if (KeystrokeState.Category == CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION)
+    else if (KeystrokeState.Category == KEYSTROKE_CATEGORY::CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION)
     {
         // Invoke key handler edit session
-        KeystrokeState.Category = CATEGORY_COMPOSING;
+        KeystrokeState.Category = KEYSTROKE_CATEGORY::CATEGORY_COMPOSING;
         _InvokeKeyHandler(pContext, code, wch, (DWORD)lParam, KeystrokeState);
     }
 

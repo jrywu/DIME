@@ -1,0 +1,109 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Source Files\DIME">
+      <UniqueIdentifier>{9c50b8bf-497f-46cd-836b-56aab871b5b5}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="framework.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="targetver.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DIMESettingsResource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DIMESettings.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Globals.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Config.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="DIMESettings.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\BaseStructure.cpp">
+      <Filter>Source Files\DIME</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Config.cpp">
+      <Filter>Source Files\DIME</Filter>
+    </ClCompile>
+    <ClCompile Include="..\DictionaryParser.cpp">
+      <Filter>Source Files\DIME</Filter>
+    </ClCompile>
+    <ClCompile Include="..\DictionarySearch.cpp">
+      <Filter>Source Files\DIME</Filter>
+    </ClCompile>
+    <ClCompile Include="..\File.cpp">
+      <Filter>Source Files\DIME</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Globals.cpp">
+      <Filter>Source Files\DIME</Filter>
+    </ClCompile>
+    <ClCompile Include="..\TableDictionaryEngine.cpp">
+      <Filter>Source Files\DIME</Filter>
+    </ClCompile>
+    <ClCompile Include="..\TfInputProcessorProfile.cpp">
+      <Filter>Source Files\DIME</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="..\DIME.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="DIMESettings.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="..\image\TSFDayi.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="..\image\DIMESettings.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="..\image\TSFArray.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="..\image\TSFPhonetic.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="..\image\TSFGeneric.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="..\image\ImeModeOn.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="..\image\ImeModeOff.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="..\image\DoubleSingleByteOn.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="..\image\DoubleSingleByteOff.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+  </ItemGroup>
+</Project>

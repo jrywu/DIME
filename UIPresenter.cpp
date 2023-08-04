@@ -1,8 +1,35 @@
-//
-//
-// Derived from Microsoft Sample IME by Jeremy '13,7,17
-//
-//
+/* DIME IME for Windows 7/8/10/11
+
+BSD 3-Clause License
+
+Copyright (c) 2022, Jeremy Wu
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
 //#define DEBUG_PRINT
 //May need to disable when debugging
 #define CANCEL_CAND_ON_KILL_FOCUS
@@ -205,7 +232,7 @@ HRESULT CUIPresenter::ToShowUIWindows()
 	debugPrint(L"CUIPresenter::ToShowUIWindows()");
     _MoveUIWindowsToTextExt();
     if(_pCandidateWnd) _pCandidateWnd->_Show(TRUE);
-	if(_pNotifyWnd && _pNotifyWnd->GetNotifyType() == NOTIFY_OTHERS)
+	if(_pNotifyWnd && _pNotifyWnd->GetNotifyType() == NOTIFY_TYPE::NOTIFY_OTHERS)
 	{
 		_pNotifyWnd->_Show(TRUE);
 	}
@@ -299,7 +326,11 @@ STDAPI CUIPresenter::GetSelection(UINT *pSelectedCandidateIndex)
 {
     if (_pCandidateWnd)
     {
-        *pSelectedCandidateIndex = _pCandidateWnd->_GetSelection();
+		INT selection = _pCandidateWnd->_GetSelection();
+		if(selection >= 0 )
+			*pSelectedCandidateIndex = selection;
+		else 
+			*pSelectedCandidateIndex = 0;
     }
     else
     {
@@ -413,7 +444,7 @@ STDAPI CUIPresenter::SetSelection(UINT nIndex)
 STDAPI CUIPresenter::Finalize(void)
 {
 	debugPrint(L"CUIPresenter::Finalize()");
-    _CandidateChangeNotification(CAND_ITEM_SELECT);
+    _CandidateChangeNotification(CANDWND_ACTION::CAND_ITEM_SELECT);
     return S_OK;
 }
 
@@ -615,14 +646,6 @@ void CUIPresenter::AddCandidateToUI(_In_ CDIMEArray<CCandidateListItem> *pCandid
 	if(pCandidateList == nullptr || _pCandidateWnd == nullptr) return;
     for (UINT index = 0; index < pCandidateList->Count(); index++)
     {
-		/*
-		CCandidateListItem *pCandidateItem;
-		pCandidateItem = pCandidateList->GetAt(index);
-		WCHAR key[255], value[255];
-		StringCchCopyNW(key, 255, pCandidateItem->_ItemString.Get(), pCandidateItem->_ItemString.GetLength());
-		StringCchCopyNW(value, 255, pCandidateItem->_FindKeyCode.Get(), pCandidateItem->_FindKeyCode.GetLength());
-		debugPrint(L"Cand item:%s:%s", key, value);
-		*/
 		_pCandidateWnd->_AddString(pCandidateList->GetAt(index), isAddFindKeyCode);
     }
 
@@ -765,7 +788,7 @@ BOOL CUIPresenter::_MoveCandidateSelection(_In_ int offSet)
 
 //+---------------------------------------------------------------------------
 //
-// _SetSelection
+// _SetCandidateSelection
 //
 //----------------------------------------------------------------------------
 
@@ -788,6 +811,18 @@ BOOL CUIPresenter::_SetCandidateSelection(_In_ int selectedIndex, _In_opt_ BOOL 
         }
     }
     return ret;
+}
+//+---------------------------------------------------------------------------
+//
+// _GetCandidateSelection
+//
+//----------------------------------------------------------------------------
+INT CUIPresenter::_GetCandidateSelection()
+{	
+	if (_pCandidateWnd)
+		return _pCandidateWnd->_GetSelection();
+	else
+		return -1;
 }
 
 //+---------------------------------------------------------------------------
@@ -887,7 +922,7 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall)
 	if (_pCandidateWnd && lpRect)
 	{
 
-		if (lpRect->bottom - lpRect->top > 1 || lpRect->right - lpRect->left > 1 ) // confirm the extent rect is valid.
+		if (lpRect->bottom - lpRect->top >=0  || lpRect->right - lpRect->left >=0 ) // confirm the extent rect is valid.
 		{
 			_pCandidateWnd->_GetClientRect(&candRect);
 			if (((compRect.right - compRect.left) > (candRect.right - candRect.left)) && caretPt.x < compRect.right && caretPt.x >= compRect.left)
@@ -924,6 +959,7 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall)
 
 			if (_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())
 			{
+				/*
 				debugPrint(L"notify width = %d, candwidth = %d", _pNotifyWnd->_GetWidth(), _pCandidateWnd->_GetWidth());
 				if (candPt.x < (int)_pNotifyWnd->_GetWidth())
 				{
@@ -937,6 +973,22 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall)
 				}
 				_notifyLocation.x = candPt.x;
 				_notifyLocation.y = candPt.y;
+				*/
+				debugPrint(L"notify width = %d, candwidth = %d", _pNotifyWnd->_GetWidth(), _pCandidateWnd->_GetWidth());
+				// cand window is on the top of caret
+				if (candPt.y < lpRect->top) 
+					_notifyLocation.y = candPt.y + (candRect.bottom - candRect.top) - _pNotifyWnd->_GetHeight();
+				else 
+					_notifyLocation.y = candPt.y;
+
+				if (candPt.x < (int)_pNotifyWnd->_GetWidth())
+					_notifyLocation.x = candPt.x + _pCandidateWnd->_GetWidth();
+				else
+					_notifyLocation.x = candPt.x - _pNotifyWnd->_GetWidth();
+					
+				_pNotifyWnd->_Move(_notifyLocation.x, _notifyLocation.y);
+				debugPrint(L"move notify to x = %d, y = %d", _notifyLocation.x, _notifyLocation.y);
+				_notifyLocation.x = candPt.x;
 			}
 			else
 			{
@@ -983,21 +1035,21 @@ VOID CUIPresenter::_LayoutDestroyNotification()
 //
 //----------------------------------------------------------------------------
 
-HRESULT CUIPresenter::_NotifyChangeNotification(_In_ enum NOTIFYWND_ACTION action, _In_ WPARAM wParam, _In_ LPARAM lParam)
+HRESULT CUIPresenter::_NotifyChangeNotification(_In_ enum NOTIFY_WND action, _In_ WPARAM wParam, _In_ LPARAM lParam)
 {
 
 	debugPrint(L"CUIPresenter::_NotifyChangeNotification() action = %d, _inFocus =%d", action, _inFocus);
 	switch(action)
 	{
-		case SWITCH_CHN_ENG:
+		case NOTIFY_WND::SWITCH_CHN_ENG:
 			BOOL isEaten;
 			Global::IsShiftKeyDownOnly = TRUE;
 			if(_pTextService)
 				_pTextService->OnPreservedKey(NULL, Global::DIMEGuidImeModePreserveKey, &isEaten);
 			Global::IsShiftKeyDownOnly = FALSE;
 			break;
-		case SHOW_NOTIFY:
-			if((NOTIFY_TYPE)lParam == NOTIFY_CHN_ENG && !_pTextService->_IsComposing())
+		case NOTIFY_WND::SHOW_NOTIFY:
+			if((NOTIFY_TYPE)lParam == NOTIFY_TYPE::NOTIFY_CHN_ENG && !_pTextService->_IsComposing())
 			{
 				if(_pTextService && _GetContextDocument() == nullptr)  //layout is not started. we need to do probecomposition to start layout
 				{
@@ -1019,7 +1071,7 @@ HRESULT CUIPresenter::_NotifyChangeNotification(_In_ enum NOTIFYWND_ACTION actio
 					}
 				}
 			}
-			else if((NOTIFY_TYPE)lParam == NOTIFY_OTHERS || (_pCandidateWnd && !_pCandidateWnd->_IsWindowVisible()))
+			else if((NOTIFY_TYPE)lParam == NOTIFY_TYPE::NOTIFY_OTHERS || (_pCandidateWnd && !_pCandidateWnd->_IsWindowVisible()))
 				ShowNotify(TRUE, 0, (UINT) wParam);
 			break;
 	}
@@ -1043,12 +1095,12 @@ HRESULT CUIPresenter::_CandidateChangeNotification(_In_ enum CANDWND_ACTION acti
     ITfDocumentMgr* pDocumentMgr = nullptr;
 	ITfContext* pContext = _GetContextDocument();
     _KEYSTROKE_STATE KeyState;
-	KeyState.Category = CATEGORY_CANDIDATE;
+	KeyState.Category = KEYSTROKE_CATEGORY::CATEGORY_CANDIDATE;
 	// select from the UI. send FUNCTION_FINALIZE_CANDIDATELIST or FUNCTION_CANCEL to the keyhandler 
-	KeyState.Function = (CAND_CANCEL == action) ? FUNCTION_CANCEL : FUNCTION_FINALIZE_CANDIDATELIST;
+	KeyState.Function = (CANDWND_ACTION::CAND_CANCEL == action) ? KEYSTROKE_FUNCTION::FUNCTION_CANCEL : KEYSTROKE_FUNCTION::FUNCTION_FINALIZE_CANDIDATELIST;
 	
 
-	if (!(CAND_ITEM_SELECT == action || CAND_CANCEL == action))
+	if (!(CANDWND_ACTION::CAND_ITEM_SELECT == action || CANDWND_ACTION::CAND_CANCEL == action))
     {
         goto Exit;
     }
@@ -1117,7 +1169,7 @@ HRESULT CUIPresenter::_CandWndCallback(_In_ void *pv, _In_ enum CANDWND_ACTION a
 //----------------------------------------------------------------------------
 
 // static
-HRESULT CUIPresenter::_NotifyWndCallback(_In_ void *pv,_In_ enum NOTIFYWND_ACTION action, _In_ WPARAM wParam, _In_ LPARAM lParam)
+HRESULT CUIPresenter::_NotifyWndCallback(_In_ void *pv,_In_ enum NOTIFY_WND action, _In_ WPARAM wParam, _In_ LPARAM lParam)
 {
 	
     CUIPresenter* fakeThis = (CUIPresenter*)pv;
@@ -1183,7 +1235,7 @@ HRESULT CUIPresenter::OnKillThreadFocus()
 
 #ifdef CANCEL_CAND_ON_KILL_FOCUS
 	if (_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())
-		_CandidateChangeNotification(CAND_CANCEL);
+		_CandidateChangeNotification(CANDWND_ACTION::CAND_CANCEL);
 #endif
 
 	 ToHideUIWindows();
@@ -1211,46 +1263,46 @@ void CUIPresenter::AdviseUIChangedByArrowKey(_In_ KEYSTROKE_FUNCTION arrowKey)
 {
     switch (arrowKey)
     {
-    case FUNCTION_MOVE_UP:
+    case KEYSTROKE_FUNCTION::FUNCTION_MOVE_UP:
         {
             if(!isUILessMode())_MoveCandidateSelection(MOVEUP_ONE);
 			else if(CConfig::GetArrowKeySWPages())  _MoveCandidatePage(MOVEUP_ONE);
             break;
         }
-    case FUNCTION_MOVE_DOWN:
+    case KEYSTROKE_FUNCTION::FUNCTION_MOVE_DOWN:
         {
             if(!isUILessMode()) _MoveCandidateSelection(MOVEDOWN_ONE);
 			else if(CConfig::GetArrowKeySWPages())  _MoveCandidatePage(MOVEDOWN_ONE);
             break;
         }
-	case FUNCTION_MOVE_LEFT:
+	case KEYSTROKE_FUNCTION::FUNCTION_MOVE_LEFT:
         {
             if(isUILessMode()) _MoveCandidateSelection(MOVEUP_ONE);
 			else if(CConfig::GetArrowKeySWPages())  _MoveCandidatePage(MOVEUP_ONE);
             break;
         }
-    case FUNCTION_MOVE_RIGHT:
+    case KEYSTROKE_FUNCTION::FUNCTION_MOVE_RIGHT:
         {
 			if(isUILessMode()) _MoveCandidateSelection(MOVEDOWN_ONE);  //UI less mode is horizontal layout
 			else if(CConfig::GetArrowKeySWPages())  _MoveCandidatePage(MOVEDOWN_ONE);
             break;
         }
-    case FUNCTION_MOVE_PAGE_UP:
+    case KEYSTROKE_FUNCTION::FUNCTION_MOVE_PAGE_UP:
         {
             _MoveCandidatePage(MOVEUP_ONE);
             break;
         }
-    case FUNCTION_MOVE_PAGE_DOWN:
+    case KEYSTROKE_FUNCTION::FUNCTION_MOVE_PAGE_DOWN:
         {
             _MoveCandidatePage(MOVEDOWN_ONE);
             break;
         }
-    case FUNCTION_MOVE_PAGE_TOP:
+    case KEYSTROKE_FUNCTION::FUNCTION_MOVE_PAGE_TOP:
         {
             _SetCandidateSelection(MOVETO_TOP);
             break;
         }
-    case FUNCTION_MOVE_PAGE_BOTTOM:
+    case KEYSTROKE_FUNCTION::FUNCTION_MOVE_PAGE_BOTTOM:
         {
             _SetCandidateSelection(MOVETO_BOTTOM);
             break;
@@ -1401,7 +1453,7 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_opt_ UINT 
 
 	if (_pNotifyWnd) 
 	{
-		if (notifyType == NOTIFY_CHN_ENG && _pNotifyWnd->GetNotifyType() == NOTIFY_OTHERS)
+		if (notifyType == NOTIFY_TYPE::NOTIFY_CHN_ENG && _pNotifyWnd->GetNotifyType() == NOTIFY_TYPE::NOTIFY_OTHERS)
 			return;
 		else
 			ClearNotify();
@@ -1479,7 +1531,7 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_opt_ UINT 
 						_pNotifyWnd->_Move(_notifyLocation.x, _notifyLocation.y);
 				}
 				//means TextLayoutSink is not working. We need to ProbeComposition to start layout
-				if(_pTextService && delayShow == 0 && _GetContextDocument() == nullptr && notifyType == NOTIFY_CHN_ENG )
+				if(_pTextService && delayShow == 0 && _GetContextDocument() == nullptr && notifyType == NOTIFY_TYPE::NOTIFY_CHN_ENG )
 					_pTextService->_ProbeComposition(pContext);
 
 			}

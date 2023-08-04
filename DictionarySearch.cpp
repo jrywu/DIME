@@ -1,8 +1,35 @@
-//
-//
-// Derived from Microsoft Sample IME by Jeremy '13,7,17
-//
-//
+/* DIME IME for Windows 7/8/10/11
+
+BSD 3-Clause License
+
+Copyright (c) 2022, Jeremy Wu
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
 //#define DEBUG_PRINT
 
 #include "Private.h"
@@ -18,11 +45,13 @@
 
 CDictionarySearch::CDictionarySearch(LCID locale, _In_ CFile *pFile, _In_opt_ CStringRange *pSearchKeyCode, _In_ WCHAR keywordDelimiter) : CDictionaryParser(locale, keywordDelimiter)
 {
+	_pTextService = nullptr;
+	_imeMode = IME_MODE::IME_MODE_NONE;
 	_pFile = pFile;
 	_pSearchKeyCode = pSearchKeyCode;
 	_charIndex = 0;
-	_searchSection = SEARCH_SECTION_TEXT;
-	_searchMode = SEARCH_NONE;
+	_searchSection = SEARCH_SECTION::SEARCH_SECTION_TEXT;
+	_searchMode = SEARCH_MODE::SEARCH_NONE;
 	_sortedSearchResultFound = FALSE;
 }
 
@@ -81,12 +110,14 @@ BOOL CDictionarySearch::FindConvertedStringForWildcard(CDictionaryResult **ppdre
 	return FindWorker(TRUE, ppdret, TRUE); // Wildcard
 }
 
-BOOL CDictionarySearch::ParseConfig(IME_MODE imeMode, _Inout_opt_ _T_RadicalMap* pRadicalMap, _Inout_opt_ _T_RadicalIndexMap* pRadicalIndexMap)
+BOOL CDictionarySearch::ParseConfig(IME_MODE imeMode, 
+	_Inout_opt_ _T_RadicalMap* pRadicalMap, _Inout_opt_ _T_RadicalIndexMap* pRadicalIndexMap,
+	_Inout_opt_ PWCH pSelkey, _Inout_opt_ PWCH pEndkey)
 {
 	debugPrint(L"CDictionarySearch::ParseConfig() imeMode = %d", imeMode);
 	_imeMode = imeMode;
 
-	return FindWorker(FALSE, NULL, FALSE, TRUE, pRadicalMap, pRadicalIndexMap); // parseConfig=TRUE;
+	return FindWorker(FALSE, NULL, FALSE, TRUE, pRadicalMap, pRadicalIndexMap, pSelkey, pEndkey); // parseConfig=TRUE;
 }
 
 //+---------------------------------------------------------------------------
@@ -96,7 +127,8 @@ BOOL CDictionarySearch::ParseConfig(IME_MODE imeMode, _Inout_opt_ _T_RadicalMap*
 //----------------------------------------------------------------------------
 
 BOOL CDictionarySearch::FindWorker(BOOL isTextSearch, _Out_opt_ CDictionaryResult **ppdret, _In_ BOOL isWildcardSearch, _In_ BOOL parseConfig,
-	_Inout_opt_ _T_RadicalMap* pRadicalMap, _Inout_opt_ _T_RadicalIndexMap* pRadicalIndexMap)
+	_Inout_opt_ _T_RadicalMap* pRadicalMap, _Inout_opt_ _T_RadicalIndexMap* pRadicalIndexMap,
+	_Inout_opt_ PWCH pSelkey, _Inout_opt_ PWCH pEndkey)
 {
 	
 	BOOL fileReloaded;
@@ -115,7 +147,7 @@ BOOL CDictionarySearch::FindWorker(BOOL isTextSearch, _Out_opt_ CDictionaryResul
 	DWORD_PTR indexTrace = 0;     // in char
 	if(!parseConfig) *ppdret = nullptr;
 	
-	enum CONTROLKEY_TYPE controlKeyType = NOT_CONTROLKEY;
+	CONTROLKEY_TYPE controlKeyType = CONTROLKEY_TYPE::NOT_CONTROLKEY;
 
 	BOOL isFound = FALSE;
 	DWORD_PTR bufLenOneLine = 0;
@@ -145,19 +177,19 @@ TryAgain:
 		case (L'#'): // comment lines begins with #
 			goto FindNextLine;
 		case (L'%'): // .cin control key begins with %
-			controlKeyType = CIN_CONTROLKEY;
+			controlKeyType = CONTROLKEY_TYPE::CIN_CONTROLKEY;
 			break;
 		case (L'['):
-			controlKeyType = TTS_CONTROLKEY;
+			controlKeyType = CONTROLKEY_TYPE::TTS_CONTROLKEY;
 			break;
 		default:
-			controlKeyType = NOT_CONTROLKEY;
+			controlKeyType = CONTROLKEY_TYPE::NOT_CONTROLKEY;
 		}
 		if (!ParseLine(&pwch[indexTrace], bufLenOneLine, &keyword))
 		{
-			if (controlKeyType == NOT_CONTROLKEY) //Control key may have key without value.
+			if (controlKeyType == CONTROLKEY_TYPE::NOT_CONTROLKEY) //Control key may have key without value.
 			{
-				if (controlKeyType == NOT_CONTROLKEY) //Control key may have key without value.
+				if (controlKeyType == CONTROLKEY_TYPE::NOT_CONTROLKEY) //Control key may have key without value.
 				{
 					if (parseConfig)
 						return cinSorted;
@@ -171,16 +203,16 @@ TryAgain:
 			return FALSE;
 		}
 
-		if (controlKeyType != NOT_CONTROLKEY)
+		if (controlKeyType != CONTROLKEY_TYPE::NOT_CONTROLKEY)
 		{	
 			CParserStringRange controlKey;
-			if(controlKeyType == CIN_CONTROLKEY)
+			if(controlKeyType == CONTROLKEY_TYPE::CIN_CONTROLKEY)
 				controlKey.Set(L"%*", 2);	
-			else if(controlKeyType == TTS_CONTROLKEY)
+			else if(controlKeyType == CONTROLKEY_TYPE::TTS_CONTROLKEY)
 				controlKey.Set(L"[*", 2);
 			CStringRange::WildcardCompare(_locale, &controlKey, &keyword); // read the .cin or tts control key
 			// read cin control key here.
-			if(controlKeyType == TTS_CONTROLKEY)
+			if(controlKeyType == CONTROLKEY_TYPE::TTS_CONTROLKEY)
 			{	
 				if ( CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"[Text]", 6)) == CSTR_EQUAL)
 				{ // in Text block
@@ -188,118 +220,103 @@ TryAgain:
 					{
 						if(isTextSearch)
 						{
-							if(_searchSection == SEARCH_SECTION_PHRASE) _searchMode = SEARCH_NONE;  // use TTS phrase section in text search, thus set SERACH_NONE here.
-							else _searchMode = SEARCH_TEXT;
+							if(_searchSection == SEARCH_SECTION::SEARCH_SECTION_PHRASE) _searchMode = SEARCH_MODE::SEARCH_NONE;  // use TTS phrase section in text search, thus set SERACH_NONE here.
+							else _searchMode = SEARCH_MODE::SEARCH_TEXT;
 						}
-						else if(_searchSection == SEARCH_SECTION_TEXT) _searchMode = SEARCH_MAPPING;
-						else _searchMode = SEARCH_NONE;
+						else if(_searchSection == SEARCH_SECTION::SEARCH_SECTION_TEXT) _searchMode = SEARCH_MODE::SEARCH_MAPPING;
+						else _searchMode = SEARCH_MODE::SEARCH_NONE;
 					}
-					else _searchMode = SEARCH_NONE;
+					else _searchMode = SEARCH_MODE::SEARCH_NONE;
 				}
 				else if (CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"[Phrase]", 8)) == CSTR_EQUAL)
 				{ // in Phrase block
 					if(parseConfig) Global::hasPhraseSection = TRUE;
-					_searchMode = (!parseConfig  && _searchSection == SEARCH_SECTION_PHRASE)?SEARCH_PHRASE:SEARCH_NONE;
+					_searchMode = (!parseConfig  && _searchSection == SEARCH_SECTION::SEARCH_SECTION_PHRASE)? SEARCH_MODE::SEARCH_PHRASE: SEARCH_MODE::SEARCH_NONE;
 				}
 				else if (parseConfig && CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"[Radical]", 9)) == CSTR_EQUAL)
 				{
-					_searchMode = (parseConfig)?SEARCH_RADICAL:SEARCH_NONE;
+					_searchMode = (parseConfig)? SEARCH_MODE::SEARCH_RADICAL: SEARCH_MODE::SEARCH_NONE;
 				}
 				else if (CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"[Symbol]", 8)) == CSTR_EQUAL)
 				{
-					_searchMode = (!parseConfig && !isTextSearch && _searchSection == SEARCH_SECTION_SYMBOL)?SEARCH_SYMBOL:SEARCH_NONE;
+					_searchMode = (!parseConfig && !isTextSearch && _searchSection == SEARCH_SECTION::SEARCH_SECTION_SYMBOL)? SEARCH_MODE::SEARCH_SYMBOL: SEARCH_MODE::SEARCH_NONE;
 				}
 				else if (CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"[PhraseFromKeystroke]", 21)) == CSTR_EQUAL)
 				{
-					_searchMode = (!parseConfig && !isTextSearch && _searchSection == SEARCH_SECTION_PRHASE_FROM_KEYSTROKE)?SEARCH_PRHASE_FROM_KEYSTROKE:SEARCH_NONE;
+					_searchMode = (!parseConfig && !isTextSearch && _searchSection == SEARCH_SECTION::SEARCH_SECTION_PRHASE_FROM_KEYSTROKE)? SEARCH_MODE::SEARCH_PRHASE_FROM_KEYSTROKE: SEARCH_MODE::SEARCH_NONE;
 				}
 				else if (parseConfig && CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"[Config]", 8)) == CSTR_EQUAL)
 				{
-					_searchMode =  SEARCH_CONFIG;
+					_searchMode = SEARCH_MODE::SEARCH_CONFIG;
 				}
 	
-				controlKeyType = NOT_CONTROLKEY;
+				controlKeyType = CONTROLKEY_TYPE::NOT_CONTROLKEY;
 				goto FindNextLine;
 			}
-			else if (controlKeyType == CIN_CONTROLKEY)
+			else if (controlKeyType == CONTROLKEY_TYPE::CIN_CONTROLKEY)
 			{
-				if (parseConfig && CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%autoCompose*", 13), &keyword))
-				{
-					_searchMode = SEARCH_CONTROLKEY;
-					goto ReadValue;
-				}
-				else if (parseConfig && CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%autoCompose*", 13), &keyword))
-				{
-					_searchMode = SEARCH_CONTROLKEY;
-					goto ReadValue;
-				}
-				else if (CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%chardef?begin", 14), &keyword))
+				if (CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%chardef?begin", 14), &keyword))
 				{
 					if (!parseConfig)
 					{
 						if (isTextSearch)
 						{
-							if (Global::hasCINPhraseSection) _searchMode = SEARCH_NONE;
-							else _searchMode = SEARCH_TEXT;
+							if (Global::hasCINPhraseSection) _searchMode = SEARCH_MODE::SEARCH_NONE;
+							else _searchMode = SEARCH_MODE::SEARCH_TEXT;
 						}
 						else
 						{
-							_searchMode = SEARCH_MAPPING;
+							_searchMode = SEARCH_MODE::SEARCH_MAPPING;
 							lastInitial = '\00';
 						}
 					}
 					else
 					{
-						_searchMode = cinSorted ? SEARCH_MAPPING : SEARCH_NONE;
+						_searchMode = cinSorted ? SEARCH_MODE::SEARCH_MAPPING : SEARCH_MODE::SEARCH_NONE;
 						lastInitial = '\00';
 					}
 
 				}
 				else if (CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%chardef?end", 12), &keyword))
 				{
-					_searchMode = SEARCH_NONE;
+					_searchMode = SEARCH_MODE::SEARCH_NONE;
 				}
 				else if (parseConfig && CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%keyname?begin", 14), &keyword))
 				{
-					_searchMode = SEARCH_RADICAL;
+					_searchMode = SEARCH_MODE::SEARCH_RADICAL;
 					initialRadialIndexMap(pRadicalIndexMap);
 				}
 				else if (parseConfig && CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%keyname?end", 12), &keyword))
 				{
-					_searchMode = SEARCH_NONE;
+					_searchMode = SEARCH_MODE::SEARCH_NONE;
 				}
 				else if (parseConfig &&
-					(CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"%keyname", 8)) == CSTR_EQUAL ||
-					CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%keyname*", 9), &keyword)))
+					(
+					CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%autoCompose*", 13), &keyword) ||
+					CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%keyname*", 9), &keyword) ||
+					CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%chardef*", 9), &keyword) ||
+					CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%selkey*", 8), &keyword) ||
+					CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%endkey*", 8), &keyword) ||
+					CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%sorted*", 8), &keyword)) 
+					)
 				{
-					_searchMode = SEARCH_CONTROLKEY;
-					goto ReadValue;
-				}
-				else if ((CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"%chardef", 8)) == CSTR_EQUAL ||
-					CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%chardef*", 9), &keyword)))
-				{
-					_searchMode = SEARCH_CONTROLKEY;
-					goto ReadValue;
-				}
-				else if (parseConfig &&
-					(CStringRange::Compare(_locale, &keyword, &controlKey.Set(L"%sorted", 7)) == CSTR_EQUAL ||
-					CStringRange::WildcardCompare(_locale, &controlKey.Set(L"%sorted*", 8), &keyword)))
-				{
-					_searchMode = SEARCH_CONTROLKEY;
+					_searchMode = SEARCH_MODE::SEARCH_CONTROLKEY;
 					goto ReadValue;
 				}
 
-				controlKeyType = NOT_CONTROLKEY;
+	
+
+				controlKeyType = CONTROLKEY_TYPE::NOT_CONTROLKEY;
 				goto FindNextLine;
 			}
 			goto FindNextLine;
 		}
 		//start searching keys
-		if(_searchMode == SEARCH_RADICAL || _searchMode == SEARCH_CONFIG)
+		if(_searchMode == SEARCH_MODE::SEARCH_RADICAL || _searchMode == SEARCH_MODE::SEARCH_CONFIG)
 		{
 			goto ReadValue;
 		}
-		else if(_searchMode == SEARCH_MAPPING || _searchMode == SEARCH_SYMBOL || _searchMode == SEARCH_PHRASE || _searchMode == SEARCH_PRHASE_FROM_KEYSTROKE) //compare key with searchcode
+		else if(_searchMode == SEARCH_MODE::SEARCH_MAPPING || _searchMode == SEARCH_MODE::SEARCH_SYMBOL || _searchMode == SEARCH_MODE::SEARCH_PHRASE || _searchMode == SEARCH_MODE::SEARCH_PRHASE_FROM_KEYSTROKE) //compare key with searchcode
 		{
 			// Compare Dictionary key code and input key code
 			if (_pSearchKeyCode && (!isWildcardSearch) &&
@@ -309,7 +326,7 @@ TryAgain:
 			goto ReadValue;
 			
 		}
-		else if(_searchMode == SEARCH_TEXT)  //compare value with searchcode
+		else if(_searchMode == SEARCH_MODE::SEARCH_TEXT)  //compare value with searchcode
 		{
 			// Compare Dictionary converted string and input string
 			CDIMEArray<CParserStringRange> convertedStrings;
@@ -329,7 +346,7 @@ TryAgain:
 		else	goto FindNextLine;  //bypassing all lines else
 		
 ReadValue:
-		if(_searchMode != SEARCH_NONE)
+		if(_searchMode != SEARCH_MODE::SEARCH_NONE)
 		{
 			// Prepare return's CDictionaryResult
 			if(!parseConfig) // when parseConfig TRUE, no results will be return and **ppdret is NULL
@@ -339,7 +356,7 @@ ReadValue:
 			}
 			
 			CDIMEArray<CParserStringRange> valueStrings;
-			BOOL isPhraseEntry = (_searchMode == SEARCH_PHRASE) || (_searchMode == SEARCH_SYMBOL) || (_searchMode == SEARCH_PRHASE_FROM_KEYSTROKE);
+			BOOL isPhraseEntry = (_searchMode == SEARCH_MODE::SEARCH_PHRASE) || (_searchMode == SEARCH_MODE::SEARCH_SYMBOL) || (_searchMode == SEARCH_MODE::SEARCH_PRHASE_FROM_KEYSTROKE);
 			if (!ParseLine(&pwch[indexTrace], bufLenOneLine, &keyword, &valueStrings, isPhraseEntry,
 				(isPhraseEntry)?_pSearchKeyCode:NULL))
 			{
@@ -348,10 +365,10 @@ ReadValue:
 					delete *ppdret;
 					*ppdret = nullptr;
 				}
-				if(controlKeyType == NOT_CONTROLKEY)
+				if(controlKeyType == CONTROLKEY_TYPE::NOT_CONTROLKEY)
 					return FALSE;
 			}
-			if(_searchMode == SEARCH_RADICAL && pRadicalMap)
+			if(_searchMode == SEARCH_MODE::SEARCH_RADICAL && pRadicalMap)
 			{
 				WCHAR radicalChar = *keyword.Get();
 				PWCHAR radical = new (std::nothrow) WCHAR[16];
@@ -362,7 +379,7 @@ ReadValue:
 				(*pRadicalMap)[towupper(radicalChar)] = radical;
 				goto FindNextLine;
 			}
-			if(_searchMode == SEARCH_CONFIG)
+			if(_searchMode == SEARCH_MODE::SEARCH_CONFIG)
 			{
 				CParserStringRange testKey, value;				
 				if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"AutoCompose", 11)) == CSTR_EQUAL)
@@ -371,10 +388,14 @@ ReadValue:
 					CConfig::SetArrayForceSP((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ArrayNotifySP", 13)) == CSTR_EQUAL)
 					CConfig::SetArrayNotifySP((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ArraySingleQuoteCustomPhrase", 28)) == CSTR_EQUAL)
+					CConfig::SetArraySingleQuoteCustomPhrase((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"DayiArticleMode", 15)) == CSTR_EQUAL)
 					CConfig::setDayiArticleMode((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"SpaceAsPageDown", 15)) == CSTR_EQUAL)
 					CConfig::SetSpaceAsPageDown((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"SpaceAsFirstCandSelkey", 22)) == CSTR_EQUAL)
+					CConfig::SetSpaceAsFirstCaniSelkey((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ArrowKeySWPages", 15)) == CSTR_EQUAL)
 					CConfig::SetArrowKeySWPages((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ClearOnBeep", 11)) == CSTR_EQUAL)
@@ -406,7 +427,11 @@ ReadValue:
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"PhoneticKeyboardLayout", 22)) == CSTR_EQUAL)
 					CConfig::setPhoneticKeyboardLayout((PHONETIC_KEYBOARD_LAYOUT) _wtoi(valueStrings.GetAt(0)->Get() ) );
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ArrayUnicodeScope", 17)) == CSTR_EQUAL)
-					CConfig::SetArrayUnicodeScope((CHARSET_SCOPE)_wtoi(valueStrings.GetAt(0)->Get()));
+					CConfig::SetArrayScope((ARRAY_SCOPE)_wtoi(valueStrings.GetAt(0)->Get()));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ArrayScope", 10)) == CSTR_EQUAL)
+					CConfig::SetArrayScope((ARRAY_SCOPE)_wtoi(valueStrings.GetAt(0)->Get()));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"NumericPad", 10)) == CSTR_EQUAL)
+					CConfig::SetNumericPad((NUMERIC_PAD)_wtoi(valueStrings.GetAt(0)->Get()));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ReloadReverseConversion", 23)) == CSTR_EQUAL)
 					CConfig::SetReloadReverseConversion((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ReverseConversionCLSID", 22)) == CSTR_EQUAL)
@@ -462,7 +487,7 @@ ReadValue:
 					CConfig::SetLoadTableMode((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
 				goto FindNextLine;
 			}
-			else if (_searchMode == SEARCH_CONTROLKEY && controlKeyType == CIN_CONTROLKEY)  // get value of cin control keys
+			else if (_searchMode == SEARCH_MODE::SEARCH_CONTROLKEY && controlKeyType == CONTROLKEY_TYPE::CIN_CONTROLKEY)  // get value of cin control keys
 			{
 				CParserStringRange testKey, value;
 				if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"%autoCompose", 12)) == CSTR_EQUAL)
@@ -473,11 +498,11 @@ ReadValue:
 				{
 					if (CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"begin", 5)) == CSTR_EQUAL)
 					{
-						_searchMode = SEARCH_RADICAL;
+						_searchMode = SEARCH_MODE::SEARCH_RADICAL;
 						initialRadialIndexMap(pRadicalIndexMap);
 					}
 					else if (CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"end", 3)) == CSTR_EQUAL)
-						_searchMode = SEARCH_NONE;
+						_searchMode = SEARCH_MODE::SEARCH_NONE;
 				}
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"%chardef", 8)) == CSTR_EQUAL)
 				{
@@ -487,30 +512,39 @@ ReadValue:
 						{
 							if (isTextSearch)
 							{
-								if (Global::hasCINPhraseSection) _searchMode = SEARCH_NONE;
-								else _searchMode = SEARCH_TEXT;
+								if (Global::hasCINPhraseSection) _searchMode = SEARCH_MODE::SEARCH_NONE;
+								else _searchMode = SEARCH_MODE::SEARCH_TEXT;
 							}
 							else
 							{
-								_searchMode = SEARCH_MAPPING;
+								_searchMode = SEARCH_MODE::SEARCH_MAPPING;
 								lastInitial = '\00';
 							}
 						}
 						else
 						{
-							_searchMode = cinSorted ? SEARCH_MAPPING : SEARCH_NONE;
+							_searchMode = cinSorted ? SEARCH_MODE::SEARCH_MAPPING : SEARCH_MODE::SEARCH_NONE;
 							lastInitial = '\00';
 
 						}
 					}
 					else if (CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"end", 3)) == CSTR_EQUAL)
-						_searchMode = SEARCH_NONE;
+						_searchMode = SEARCH_MODE::SEARCH_NONE;
 				}
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"%selkey", 7)) == CSTR_EQUAL)
-				{
+				{				
+					size_t selkeylen= valueStrings.GetAt(0)->GetLength();
+					assert(selkeylen <= MAX_CAND_SELKEY);
+					StringCchCopyN(pSelkey, MAX_CAND_SELKEY, valueStrings.GetAt(0)->Get(), selkeylen);
+					debugPrint(L"selkey  = %s, len = %d", pSelkey, selkeylen);
+
 				}
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"%endkey", 7)) == CSTR_EQUAL)
 				{
+					size_t endkeylen = valueStrings.GetAt(0)->GetLength();
+					assert(endkeylen <= MAX_CAND_SELKEY);
+					StringCchCopyN(pEndkey, MAX_CAND_SELKEY, valueStrings.GetAt(0)->Get(), endkeylen);
+					debugPrint(L"endkey  = %s, len = %d", pEndkey, endkeylen);
 				}
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"%sorted", 7)) == CSTR_EQUAL)
 				{
@@ -519,10 +553,10 @@ ReadValue:
 					}
 				}
 
-				controlKeyType = NOT_CONTROLKEY;
+				controlKeyType = CONTROLKEY_TYPE::NOT_CONTROLKEY;
 				goto FindNextLine;
 			}
-			else if (parseConfig && cinSorted && pRadicalIndexMap != nullptr && _searchMode == SEARCH_MAPPING)
+			else if (parseConfig && cinSorted && pRadicalIndexMap != nullptr && _searchMode == SEARCH_MODE::SEARCH_MAPPING)
 			{  // build radial index map here.
 				WCHAR currentInitial = *keyword.Get();
 				if (currentInitial != lastInitial)
@@ -607,5 +641,5 @@ void CDictionarySearch::initialRadialIndexMap(_Inout_ _T_RadicalIndexMap* pRadic
 void CDictionarySearch::setSearchOffset(DWORD_PTR offset)
 {
 	_charIndex = offset;
-	_searchMode = SEARCH_MAPPING;
+	_searchMode = SEARCH_MODE::SEARCH_MAPPING;
 }

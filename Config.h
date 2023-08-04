@@ -1,7 +1,40 @@
+/* DIME IME for Windows 7/8/10/11
+
+BSD 3-Clause License
+
+Copyright (c) 2022, Jeremy Wu
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
 #ifndef CCONFIG_H
 #define CCONFIG_H
 #pragma once
 
+#include <Commdlg.h>
 
 struct ColorInfo
 {
@@ -24,10 +57,10 @@ public:
 	CConfig(){}
 	~CConfig(){clearReverseConvervsionInfoList();}
 	//  configuration set/get
-	static void SetIMEMode(IME_MODE imeMode) { _imeMode = imeMode; }
+	static void SetIMEMode(IME_MODE imeMode);// { _imeMode = imeMode; }
 	static IME_MODE GetIMEMode() { return _imeMode; }
-	static void SetArrayUnicodeScope(CHARSET_SCOPE arrayUnicodeScope) { _arrayUnicodeScope = arrayUnicodeScope; }
-	static CHARSET_SCOPE GetArrayUnicodeScope() { return _arrayUnicodeScope; }
+	static void SetArrayScope(ARRAY_SCOPE arrayScope) { _arrayScope = arrayScope; }
+	static ARRAY_SCOPE GetArrayScope() { return _arrayScope; }
 	static void SetAutoCompose(BOOL autoCompose) {_autoCompose = autoCompose;}
 	static BOOL GetAutoCompose() {return _autoCompose;}
 	static void SetFontSize(UINT fontSize) {_fontSize = fontSize;}
@@ -79,6 +112,9 @@ public:
 
 	static void SetSpaceAsPageDown(BOOL spaceAsPageDown) { _spaceAsPageDown = spaceAsPageDown;}
 	static BOOL GetSpaceAsPageDown() {return _spaceAsPageDown;}
+	static void SetSpaceAsFirstCaniSelkey(BOOL spaceAsFirstCaniSelkey) { _spaceAsFirstCandSelkey = spaceAsFirstCaniSelkey; }
+	static BOOL GetSpaceAsFirstCaniSelkey() { return _spaceAsFirstCandSelkey; }
+
 	static void SetArrowKeySWPages(BOOL arrowKeySWPages) { _arrowKeySWPages = arrowKeySWPages;}
 	static BOOL GetArrowKeySWPages() {return _arrowKeySWPages;}
 	static void SetActivatedKeyboardMode(BOOL activatedKeyboardMode) { _activatedKeyboardMode = activatedKeyboardMode;}
@@ -93,6 +129,13 @@ public:
 	static BOOL GetArrayNotifySP() {return _arrayNotifySP;}
 	static void SetArrayForceSP(BOOL arrayForceSP) { _arrayForceSP = arrayForceSP;}
 	static BOOL GetArrayForceSP() {return _arrayForceSP;}
+	//array customPhrase
+	static BOOL GetArraySingleQuoteCustomPhrase() { return _arraySingleQuoteCustomPhrase; }
+	static void SetArraySingleQuoteCustomPhrase(BOOL singleQuoteQueryCustomPhrase) { _arraySingleQuoteCustomPhrase = singleQuoteQueryCustomPhrase; }
+
+	//numeric pad 
+	static NUMERIC_PAD GetNumericPad() { return _numericPad; }
+	static void SetNumericPad(NUMERIC_PAD numericPad) { _numericPad = numericPad; }
 
 	//dayi address/article mode
 	static void setDayiArticleMode(BOOL dayiArticleMode) { _dayiArticleMode = dayiArticleMode; }
@@ -116,8 +159,8 @@ public:
 	static void setPhoneticKeyboardLayout(PHONETIC_KEYBOARD_LAYOUT layout) { _phoneticKeyboardLayout = layout; }
 	static PHONETIC_KEYBOARD_LAYOUT getPhoneticKeyboardLayout() { return _phoneticKeyboardLayout; }
 
-	static VOID WriteConfig();
-	static VOID LoadConfig(IME_MODE imeMode);
+	static VOID WriteConfig(BOOL silent = FALSE);
+	static BOOL LoadConfig(IME_MODE imeMode);
 	
 	static void SetDefaultTextFont(HWND hWnd = nullptr);
 
@@ -125,7 +168,7 @@ public:
 	static INT_PTR CALLBACK CommonPropertyPageWndProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 	static INT_PTR CALLBACK DictionaryPropertyPageWndProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 	friend void DrawColor(HWND hwnd, HDC hdc, COLORREF col);
-
+	
 	//shcore.dll GetDpiForMonitor pointer;
 	static void SetGetDpiForMonitor(_T_GetDpiForMonitor getDpiForMonitor) {	_GetDpiForMonitor = getDpiForMonitor; }
 	
@@ -134,7 +177,8 @@ private:
 	//user setting variables
 	static BOOL _loadTableMode;
 	static IME_MODE _imeMode;
-	static CHARSET_SCOPE _arrayUnicodeScope;
+	static ARRAY_SCOPE _arrayScope;
+	static NUMERIC_PAD _numericPad;
 	static BOOL _autoCompose;
 	static BOOL _customTablePriority;
 	static BOOL _clearOnBeep;
@@ -159,6 +203,7 @@ private:
 	static COLORREF _selectedBGColor;
 
 	static BOOL _spaceAsPageDown;
+	static BOOL _spaceAsFirstCandSelkey;
 	static BOOL _arrowKeySWPages;
 
 	static BOOL _arrayNotifySP;
@@ -175,6 +220,8 @@ private:
 	static DOUBLE_SINGLE_BYTE_MODE _doubleSingleByteMode;
 
 	static BOOL _customTableChanged;
+	
+	static BOOL _arraySingleQuoteCustomPhrase;
 
 	static struct _stat _initTimeStamp;
 
@@ -183,6 +230,10 @@ private:
 	static GUID _reverseConversionGUIDProfile;
 	static WCHAR* _reverseConversionDescription;
 
+	static WCHAR _pwszINIFileName[MAX_PATH];
+	static IME_MODE _configIMEMode;
+	static WCHAR _pwzsDIMEProfile[MAX_PATH];
+
 	static void clearReverseConvervsionInfoList();
 
 	static ColorInfo colors[6];
@@ -190,6 +241,9 @@ private:
 	static UINT _dpiY;
 	static _T_GetDpiForMonitor _GetDpiForMonitor;
 	
+
+	static void ParseConfig(HWND hDlg, BOOL initDiag = FALSE);
+
 	static BOOL importCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToLoad);
 	static BOOL exportCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToWrite);
 	static BOOL parseCINFile(_In_ LPCWSTR pathToLoad, _In_ LPCWSTR pathToWrite, _In_ BOOL customTableMode = FALSE);
