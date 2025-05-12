@@ -11,8 +11,8 @@ modification, are permitted provided that the following conditions are met:
 1. Redistributions of source code must retain the above copyright notice, this
    list of conditions and the following disclaimer.
 
-2. Redistributions in binary form must reproduce the above copyright notice,
-   this list of conditions and the following disclaimer in the documentation
+2. Redistributions in binary form must reproduce the above copyright notice, this
+   list of conditions and the following disclaimer in the documentation
    and/or other materials provided with the distribution.
 
 3. Neither the name of the copyright holder nor the names of its
@@ -83,6 +83,15 @@ CTipCandidateList::CTipCandidateList(size_t candStrReserveSize)
 
 CTipCandidateList::~CTipCandidateList()
 {
+    for (UINT i = 0; i < _tfCandStrList.Count(); i++)
+    {
+        ITfCandidateString** ppCandStr = _tfCandStrList.GetAt(i);
+        if (ppCandStr && *ppCandStr)
+        {
+            (*ppCandStr)->Release();
+        }
+    }
+    _tfCandStrList.Clear();
 }
 
 STDMETHODIMP CTipCandidateList::QueryInterface(REFIID riid, _Outptr_ void **ppvObj)
@@ -166,12 +175,13 @@ STDMETHODIMP CTipCandidateList::GetCandidate(ULONG nIndex, _Outptr_result_mayben
                 if (nullptr != (*ppCandStr))
                 {
                     CTipCandidateString* pTipCandidateStr = (CTipCandidateString*)(*ppCandStr);
-                    if(pTipCandidateStr)
-						pTipCandidateStr->SetString((LPCWSTR)bstr, SysStringLen(bstr));
+                    if (pTipCandidateStr)
+                    {
+                        pTipCandidateStr->SetString((LPCWSTR)bstr, SysStringLen(bstr));
+                    }
                 }
 
-                SysFreeString(bstr);
-
+                SysFreeString(bstr); // Free BSTR after use
                 break;
             }
         }
@@ -204,10 +214,21 @@ STDMETHODIMP CTipCandidateList::SetCandidate(_In_ ITfCandidateString **ppCandStr
         return E_POINTER;
     }
 
+    // Use smart pointer to manage the candidate string
+    std::unique_ptr<ITfCandidateString*> candidate(new (std::nothrow) ITfCandidateString*(*ppCandStr));
+    if (!candidate)
+    {
+        return E_OUTOFMEMORY;
+    }
+
     ITfCandidateString** ppCandLast = _tfCandStrList.Append();
     if (ppCandLast)
     {
-        *ppCandLast = *ppCandStr;
+        *ppCandLast = *candidate.release(); // Transfer ownership
+    }
+    else
+    {
+        return E_OUTOFMEMORY;
     }
 
     return S_OK;

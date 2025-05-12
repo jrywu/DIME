@@ -785,7 +785,7 @@ BOOL CLangBarItemButton::_RegisterCompartment(_In_ ITfThreadMgr *pThreadMgr, TfC
 
 BOOL CLangBarItemButton::_UnregisterCompartment(_In_ ITfThreadMgr *pThreadMgr)
 {
-	debugPrint(L"CLangBarItemButton::_UnregisterCompartmen()");
+	debugPrint(L"CLangBarItemButton::_UnregisterCompartment()");
 	pThreadMgr;
     if (_pCompartment)
     {
@@ -1112,7 +1112,7 @@ void CDIME::KeyboardOpenCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr, _In_ R
 void CDIME::OnKeyboardClosed()
 {
 	debugPrint(L"CDIME::OnKeyboardClosed()\n");
-	// switching to English (native) mode delete the phrase candidate window before exting.
+	// switching to English (native) mode delete the phrase candidate window before exiting.
 	_isChinese = FALSE;
 	if(_IsComposing()) 
 	{

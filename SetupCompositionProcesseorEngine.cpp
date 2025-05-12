@@ -126,79 +126,99 @@ void CCompositionProcessorEngine::ReleaseDictionaryFiles()
 
 void CCompositionProcessorEngine::SetupKeystroke(IME_MODE imeMode)
 {
-	if (!IsDictionaryAvailable(imeMode))
-	{
-		return;
-	}
-	if (_pTableDictionaryEngine[(UINT)imeMode] == nullptr || 
-		_pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap() == nullptr ||
-		_pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap()->size() == 0 ||
-		_pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap()->size() > MAX_RADICAL) 
-		return;
+    if (!IsDictionaryAvailable(imeMode))
+    {
+        return;
+    }
+    if (_pTableDictionaryEngine[(UINT)imeMode] == nullptr || 
+        _pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap() == nullptr ||
+        _pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap()->size() == 0 ||
+        _pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap()->size() > MAX_RADICAL) 
+    {
+        return;
+    }
 
-	_KeystrokeComposition.Clear();
+    _KeystrokeComposition.Clear();
 
-	for (int i = 0; i < MAX_RADICAL + 1; i++)
-	{
-		_KEYSTROKE* pKS = nullptr;
-		pKS = _KeystrokeComposition.Append();
-		pKS->Function = KEYSTROKE_FUNCTION::FUNCTION_NONE;
-		pKS->Modifiers = 0;
-		pKS->Index = i;
-		pKS->Printable = 0;
-		pKS->VirtualKey = 0;
-	}
+    for (int i = 0; i < MAX_RADICAL + 1; i++)
+    {
+        _KEYSTROKE* pKS = nullptr;
+        pKS = _KeystrokeComposition.Append();
+        if (pKS) // Ensure pKS is not null before accessing it
+        {
+            pKS->Function = KEYSTROKE_FUNCTION::FUNCTION_NONE;
+            pKS->Modifiers = 0;
+            pKS->Index = i;
+            pKS->Printable = 0;
+            pKS->VirtualKey = 0;
+        }
+    }
 
-	if (imeMode == IME_MODE::IME_MODE_DAYI && _pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap() &&
-		(_pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap()->find('=') == _pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap()->end()))
-	{ //dayi symbol prompt
-		WCHAR* pwchEqual = new (std::nothrow) WCHAR[2];
-		if (pwchEqual)
-		{
-			pwchEqual[0] = L'=';
-			pwchEqual[1] = L'\0';
-			(*_pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap())['='] = pwchEqual;
-		}
-	}
+    if (imeMode == IME_MODE::IME_MODE_DAYI && _pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap() &&
+        (_pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap()->find('=') == _pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap()->end()))
+    { 
+        // Dayi symbol prompt
+        WCHAR* pwchEqual = new (std::nothrow) WCHAR[2];
+        if (pwchEqual)
+        {
+            pwchEqual[0] = L'=';
+            pwchEqual[1] = L'\0';
+            (*_pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap())['='] = pwchEqual;
+        }
+    }
 
-	for (_T_RadicalMap::iterator item = _pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap()->begin(); item !=
-		_pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap()->end(); ++item)
-	{
-		_KEYSTROKE* pKS = nullptr;
+    for (_T_RadicalMap::iterator item = _pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap()->begin(); 
+         item != _pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap()->end(); ++item)
+    {
+        _KEYSTROKE* pKS = nullptr;
 
-		WCHAR c = towupper(item->first);
-		if (c < 32 || c > MAX_RADICAL + 32) continue;
-		pKS = _KeystrokeComposition.GetAt(c - 32);
-		if (pKS == nullptr)
-			break;
+        WCHAR c = towupper(item->first);
+        if (c < 32 || c > MAX_RADICAL + 32) 
+        {
+            continue;
+        }
+        pKS = _KeystrokeComposition.GetAt(static_cast<size_t>(c) - 32);
+        if (pKS == nullptr)
+        {
+            break;
+        }
 
-		pKS->Function = KEYSTROKE_FUNCTION::FUNCTION_INPUT;
-		UINT vKey, modifier;
-		WCHAR key = item->first;
-		pKS->Printable = key;
-		GetVKeyFromPrintable(key, &vKey, &modifier);
-		pKS->VirtualKey = vKey;
-		pKS->Modifiers = modifier;
-	}
+        pKS->Function = KEYSTROKE_FUNCTION::FUNCTION_INPUT;
+        UINT vKey = 0, modifier = 0;
+        WCHAR key = item->first;
+        pKS->Printable = key;
+        GetVKeyFromPrintable(key, &vKey, &modifier);
+        pKS->VirtualKey = vKey;
+        pKS->Modifiers = modifier;
+    }
 
-	// End composing key
-	if (_pEndkey)
-	{
-		for (UINT i = 0; i < wcslen(_pEndkey); i++)
-		{
-			_KEYSTROKE* pKS = nullptr;
-			WCHAR c = *(_pEndkey + i);
-			if (c < 32 || c > MAX_RADICAL + 32) continue;
-			pKS = _KeystrokeComposition.GetAt(c - 32);
-			if (pKS == nullptr) break;
-			if(pKS->Function == KEYSTROKE_FUNCTION::FUNCTION_INPUT)
-				pKS->Function = KEYSTROKE_FUNCTION::FUNCTION_INPUT_AND_CONVERT;
-			else
-				pKS->Function = KEYSTROKE_FUNCTION::FUNCTION_CONVERT;
-
-		}
-	}
-	return;
+    // End composing key
+    if (_pEndkey)
+    {
+        for (UINT i = 0; i < wcslen(_pEndkey); i++)
+        {
+            _KEYSTROKE* pKS = nullptr;
+            WCHAR c = *(_pEndkey + i);
+            if (c < 32 || c > MAX_RADICAL + 32) 
+            {
+                continue;
+            }
+            pKS = _KeystrokeComposition.GetAt(static_cast<size_t>(c) - 32);
+            if (pKS == nullptr) 
+            {
+                break;
+            }
+            if (pKS->Function == KEYSTROKE_FUNCTION::FUNCTION_INPUT)
+            {
+                pKS->Function = KEYSTROKE_FUNCTION::FUNCTION_INPUT_AND_CONVERT;
+            }
+            else
+            {
+                pKS->Function = KEYSTROKE_FUNCTION::FUNCTION_CONVERT;
+            }
+        }
+    }
+    return;
 }
 
 void CCompositionProcessorEngine::GetVKeyFromPrintable(WCHAR printable, UINT* vKey, UINT* modifier)
@@ -365,17 +385,17 @@ void CCompositionProcessorEngine::GetVKeyFromPrintable(WCHAR printable, UINT* vK
 
 void CCompositionProcessorEngine::SetupPreserved(_In_ ITfThreadMgr* pThreadMgr, TfClientId tfClientId)
 {
-	TF_PRESERVEDKEY preservedKeyImeMode;
-	preservedKeyImeMode.uVKey = VK_SHIFT;
-	preservedKeyImeMode.uModifiers = _TF_MOD_ON_KEYUP_SHIFT_ONLY;
-	SetPreservedKey(Global::DIMEGuidImeModePreserveKey, preservedKeyImeMode, Global::ImeModeDescription, &_PreservedKey_IMEMode);
+    TF_PRESERVEDKEY preservedKeyImeMode = { 0 }; // Initialize the structure to zero
+    preservedKeyImeMode.uVKey = VK_SHIFT;
+    preservedKeyImeMode.uModifiers = _TF_MOD_ON_KEYUP_SHIFT_ONLY;
+    SetPreservedKey(Global::DIMEGuidImeModePreserveKey, preservedKeyImeMode, Global::ImeModeDescription, &_PreservedKey_IMEMode);
 
-	TF_PRESERVEDKEY preservedKeyDoubleSingleByte;
+	TF_PRESERVEDKEY preservedKeyDoubleSingleByte = { 0 }; // Initialize the structure to zero
 	preservedKeyDoubleSingleByte.uVKey = VK_SPACE;
 	preservedKeyDoubleSingleByte.uModifiers = TF_MOD_SHIFT;
 	SetPreservedKey(Global::DIMEGuidDoubleSingleBytePreserveKey, preservedKeyDoubleSingleByte, Global::DoubleSingleByteDescription, &_PreservedKey_DoubleSingleByte);
 
-	TF_PRESERVEDKEY preservedKeyConfig;
+	TF_PRESERVEDKEY preservedKeyConfig = { 0 }; // Initialize the structure to zero
 	preservedKeyConfig.uVKey = VK_OEM_5; // '\\'
 	preservedKeyConfig.uModifiers = TF_MOD_CONTROL;
 	SetPreservedKey(Global::DIMEGuidConfigPreserveKey, preservedKeyConfig, L"Show Config Pages", &_PreservedKey_Config);
@@ -605,16 +625,16 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 	debugPrint(L"CCompositionProcessorEngine::SetupDictionaryFile() \n");
 	BOOL bRet = FALSE;
 
-	WCHAR pwszProgramFiles[MAX_PATH];
-	WCHAR pwszAppData[MAX_PATH];
+	WCHAR pwszProgramFiles[MAX_PATH] = { 0 }; // Initialize the array to zero.;
+	WCHAR pwszAppData[MAX_PATH] = { 0 }; // Initialize the array to zero.;
 
 	if (GetEnvironmentVariable(L"ProgramW6432", pwszProgramFiles, MAX_PATH) == 0)
-	{//on 64-bit vista only 32bit app has this enviroment variable.  Which means the call failed when the apps running in 64-bit.
-		//on 32-bit windows, this will definitely failed.  Get ProgramFiles enviroment variable now will retrive the correct program files path.
+	{//on 64-bit vista only 32bit app has this environment variable.  Which means the call failed when the apps running in 64-bit.
+		//on 32-bit windows, this will definitely failed.  Get ProgramFiles environment variable now will retrieve the correct program files path.
 		GetEnvironmentVariable(L"ProgramFiles", pwszProgramFiles, MAX_PATH);
 	}
 
-	//CSIDL_APPDATA  personal roadming application data.
+	//CSIDL_APPDATA  personal roaming application data.
 	if (pwszAppData)
 		SHGetSpecialFolderPath(NULL, pwszAppData, CSIDL_APPDATA, TRUE);
 
@@ -642,11 +662,11 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 
 	if (!PathFileExists(pwszCINFileName))
 	{
-		//DIME roadming profile is not exist. Create one.
+		//DIME roaming profile is not exist. Create one.
 		CreateDirectory(pwszCINFileName, NULL);
 	}
 	// load main table file now
-	if (imeMode == IME_MODE::IME_MODE_DAYI) //dayi.cin in personal romaing profile
+	if (imeMode == IME_MODE::IME_MODE_DAYI) //dayi.cin in personal roaming profile
 	{
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Dayi.cin");
 		if (PathFileExists(pwszCINFileName) && _pTableDictionaryFile[(UINT)imeMode] && _pTextService &&
@@ -656,7 +676,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			_pTableDictionaryFile[(UINT)imeMode] = nullptr;
 		}
 	}
-	else if (imeMode == IME_MODE::IME_MODE_ARRAY) //array.cin in personal romaing profile
+	else if (imeMode == IME_MODE::IME_MODE_ARRAY) //array.cin in personal roaming profile
 	{
 		BOOL cinFound = FALSE, wstatFailed = TRUE, updated = TRUE;
 
@@ -699,7 +719,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			_pTableDictionaryFile[(UINT)imeMode] = nullptr;
 		}
 	}
-	else if (imeMode == IME_MODE::IME_MODE_PHONETIC) //phone.cin in personal romaing profile
+	else if (imeMode == IME_MODE::IME_MODE_PHONETIC) //phone.cin in personal roaming profile
 	{
 		BOOL cinFound = FALSE, wstatFailed = TRUE, updated = TRUE;
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Phone.cin");
@@ -732,7 +752,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			_pTableDictionaryFile[(UINT)imeMode] = nullptr;
 		}
 	}
-	else if (imeMode == IME_MODE::IME_MODE_GENERIC) //phone.cin in personal romaing profile
+	else if (imeMode == IME_MODE::IME_MODE_GENERIC) //phone.cin in personal roaming profile
 	{
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Generic.cin");
 		// we don't provide preload Generic.cin in program files
@@ -755,7 +775,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 
 			}
 			else
-			{ // error on createfile. do cleanup
+			{ // error on create file. do cleanup
 				delete _pTableDictionaryFile[(UINT)imeMode];
 				_pTableDictionaryFile[(UINT)imeMode] = nullptr;
 				goto ErrorExit;
@@ -764,7 +784,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 		else if (_pTableDictionaryEngine[(UINT)imeMode] && _pTableDictionaryFile[(UINT)imeMode]->IsFileUpdated())
 		{
 			_pTableDictionaryEngine[(UINT)imeMode]->ParseConfig(imeMode); //parse config to reload updated dictionary
-			// Reload Keystroke and CandiateListRage when table is updated
+			// Reload Keystroke and CandidateListRage when table is updated
 			SetupKeystroke(Global::imeMode);
 			CConfig::LoadConfig(Global::imeMode);
 			SetupConfiguration(Global::imeMode);
@@ -873,7 +893,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 
 
 	// now load Array unicode ext-b, ext-cd, ext-e , special code and short-code table
-	if ( imeMode == IME_MODE::IME_MODE_ARRAY) //array-special.cin and array-shortcode.cin in personal romaing profile
+	if ( imeMode == IME_MODE::IME_MODE_ARRAY) //array-special.cin and array-shortcode.cin in personal roaming profile
 	{
 		BOOL wstatFailed = TRUE, updated = TRUE;
 		if (CConfig::GetArrayScope() != ARRAY_SCOPE::ARRAY40_BIG5)
@@ -1059,7 +1079,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 				StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-special.cin");
 			else if (_pArraySpecialCodeDictionaryFile && _pTextService &&
 				CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pArraySpecialCodeDictionaryFile->GetFileName(), -1) != CSTR_EQUAL)
-			{ //indicate the prevoius table is built with system preload file in program files, and now user provides their own.
+			{ //indicate the previous table is built with system preload file in program files, and now user provides their own.
 				delete _pArraySpecialCodeDictionaryFile;
 				_pArraySpecialCodeDictionaryFile = nullptr;
 			}
@@ -1102,7 +1122,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 				StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-shortcode.cin");
 			else if (_pArrayShortCodeDictionaryFile && _pTextService &&
 				CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pArrayShortCodeDictionaryFile->GetFileName(), -1) != CSTR_EQUAL)
-			{ //indicate the prevoius table is built with system preload file in program files, and now user provides their own.
+			{ //indicate the previous table is built with system preload file in program files, and now user provides their own.
 				delete _pArrayShortCodeDictionaryFile;
 				_pArrayShortCodeDictionaryFile = nullptr;
 			}
@@ -1184,12 +1204,12 @@ BOOL CCompositionProcessorEngine::SetupHanCovertTable()
 		WCHAR wszAppData[MAX_PATH];
 
 		if (GetEnvironmentVariable(L"ProgramW6432", wszProgramFiles, MAX_PATH) == 0)
-		{//on 64-bit vista only 32bit app has this enviroment variable.  Which means the call failed when the apps running is 64-bit.
-			//on 32-bit windows, this will definitely failed.  Get ProgramFiles enviroment variable now will retrive the correct program files path.
+		{//on 64-bit vista only 32bit app has this environment variable.  Which means the call failed when the apps running is 64-bit.
+			//on 32-bit windows, this will definitely failed.  Get ProgramFiles environment variable now will retrieve the correct program files path.
 			GetEnvironmentVariable(L"ProgramFiles", wszProgramFiles, MAX_PATH);
 		}
 
-		//CSIDL_APPDATA  personal roadming application data.
+		//CSIDL_APPDATA  personal roaming application data.
 		SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);
 
 		debugPrint(L"CCompositionProcessorEngine::SetupDictionaryFile() :wszProgramFiles = %s", wszProgramFiles);
@@ -1237,12 +1257,12 @@ BOOL CCompositionProcessorEngine::SetupTCFreqTable()
 	WCHAR wszAppData[MAX_PATH];
 
 	if (GetEnvironmentVariable(L"ProgramW6432", wszProgramFiles, MAX_PATH) == 0)
-	{//on 64-bit vista only 32bit app has this enviroment variable.  Which means the call failed when the apps running is 64-bit.
-		//on 32-bit windows, this will definitely failed.  Get ProgramFiles enviroment variable now will retrive the correct program files path.
+	{//on 64-bit vista only 32bit app has this environment variable.  Which means the call failed when the apps running is 64-bit.
+		//on 32-bit windows, this will definitely failed.  Get ProgramFiles environment variable now will retrieve the correct program files path.
 		GetEnvironmentVariable(L"ProgramFiles", wszProgramFiles, MAX_PATH);
 	}
 
-	//CSIDL_APPDATA  personal roadming application data.
+	//CSIDL_APPDATA  personal roaming application data.
 	SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);
 
 	debugPrint(L"CCompositionProcessorEngine::SetupTCFreqTable() :wszProgramFiles = %s", wszProgramFiles);
@@ -1339,7 +1359,7 @@ BOOL CCompositionProcessorEngine::GetSCFromTC(CStringRange* stringToConvert, CSt
 //
 //----------------------------------------------------------------------------
 
-CFile* CCompositionProcessorEngine::GetDictionaryFile()
+CFile* CCompositionProcessorEngine::GetDictionaryFile() const
 {
 	return _pTableDictionaryFile[(UINT)Global::imeMode];
 }

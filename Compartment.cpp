@@ -99,6 +99,7 @@ HRESULT CCompartment::_GetCompartmentBOOL(_Out_ BOOL &flag)
     if ((hr = _GetCompartment(&pCompartment)) == S_OK && pCompartment)
     {
         VARIANT var;
+        VariantInit(&var); // Initialize the VARIANT structure
         if ((hr = pCompartment->GetValue(&var)) == S_OK)
         {
             if (var.vt == VT_I4) // Even VT_EMPTY, GetValue() can succeed
@@ -129,6 +130,7 @@ HRESULT CCompartment::_SetCompartmentBOOL(_In_ BOOL flag)
     if (SUCCEEDED(hr) && pCompartment)
     {
         VARIANT var;
+        VariantInit(&var); // Initialize the VARIANT structure
         var.vt = VT_I4;
         var.lVal = flag;
         hr = pCompartment->SetValue(_tfClientId, &var);
@@ -152,6 +154,7 @@ HRESULT CCompartment::_GetCompartmentDWORD(_Out_ DWORD &dw)
     if (SUCCEEDED(hr) && pCompartment)
     {
         VARIANT var;
+        VariantInit(&var); // Initialize the VARIANT structure
         if ((hr = pCompartment->GetValue(&var)) == S_OK)
         {
             if (var.vt == VT_I4) // Even VT_EMPTY, GetValue() can succeed
@@ -182,6 +185,7 @@ HRESULT CCompartment::_SetCompartmentDWORD(_In_ DWORD dw)
     if (SUCCEEDED(hr) && pCompartment)
     {
         VARIANT var;
+        VariantInit(&var); // Initialize the VARIANT structure
         var.vt = VT_I4;
         var.lVal = dw;
         hr = pCompartment->SetValue(_tfClientId, &var);

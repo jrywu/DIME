@@ -585,7 +585,7 @@ STDAPI CDIME::Deactivate()
         delete _pCompositionProcessorEngine;
 		_pCompositionProcessorEngine = nullptr;
 
-		//originall do this in deconstructor of compositionprocessorengine
+		//original do this in deconstructor of compositionprocessorengine
 		if (_pLanguageBar_IMEModeW8 && Global::isWindows8)
 		{
 			_pLanguageBar_IMEModeW8->CleanUp();
@@ -869,8 +869,8 @@ HRESULT CDIME::ComLessCreateInstance(REFGUID rclsid, REFIID riid, _Outptr_result
 {
     HRESULT hr = S_OK;
     HINSTANCE DIMEDllHandle = nullptr;
-    WCHAR wchPath[MAX_PATH] = {'\0'};
-    WCHAR szExpandedPath[MAX_PATH] = {'\0'};
+    WCHAR wchPath[MAX_PATH] = {'\0'}; // Initialize with null characters
+    WCHAR szExpandedPath[MAX_PATH] = {'\0'}; // Initialize with null characters
     DWORD dwCnt = 0;
     *ppv = nullptr;
 
@@ -1040,7 +1040,7 @@ void CDIME::_LoadConfig(BOOL isForce, IME_MODE imeMode)
         BOOL dictionaryUpdated = FALSE;
         if (_pCompositionProcessorEngine)
             dictionaryUpdated = _pCompositionProcessorEngine->SetupDictionaryFile(Global::imeMode);
-        if (configUpdated || dictionaryUpdated) // config file udpated
+        if (configUpdated || dictionaryUpdated) // config file updated
         {
             _pCompositionProcessorEngine->SetupConfiguration(Global::imeMode);
             _pCompositionProcessorEngine->SetupKeystroke(Global::imeMode);
@@ -1057,7 +1057,7 @@ void CDIME::_LoadConfig(BOOL isForce, IME_MODE imeMode)
 		}
 		if(!IsEqualCLSID(CConfig::GetReverseConverstionCLSID(), CLSID_NULL) && !IsEqualCLSID(CConfig::GetReverseConversionGUIDProfile(), CLSID_NULL))
 		{
-			ITfReverseConversionMgr * pITfReverseConversionMgr;
+			ITfReverseConversionMgr * pITfReverseConversionMgr = nullptr;
 			if(SUCCEEDED(CoCreateInstance(CConfig::GetReverseConverstionCLSID(), nullptr, CLSCTX_INPROC_SERVER, 
 				IID_ITfReverseConversionMgr, (void**)&pITfReverseConversionMgr)) && pITfReverseConversionMgr)
 			{

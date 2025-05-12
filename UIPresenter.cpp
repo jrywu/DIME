@@ -783,7 +783,7 @@ BOOL CUIPresenter::_MoveCandidateSelection(_In_ int offSet)
 
 BOOL CUIPresenter::_SetCandidateSelection(_In_ int selectedIndex, _In_opt_ BOOL isNotify)
 {
-	debugPrint(L"CUIPresenter::_SetCandidateSelection(), selectedIndex = %d, iSnotify = %d", selectedIndex, isNotify);
+	debugPrint(L"CUIPresenter::_SetCandidateSelection(), selectedIndex = %d, isNotify = %d", selectedIndex, isNotify);
 	if(_pCandidateWnd == nullptr) return FALSE;
     BOOL ret = _pCandidateWnd->_SetSelection(selectedIndex, isNotify);
     if (ret)
@@ -904,7 +904,7 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall)
 		GetCaretPos(&caretPt);
 		ClientToScreen(parentWndHandle, &caretPt);
 		debugPrint(L"current caret position from GetCaretPos, x = %d, y = %d", caretPt.x, caretPt.y);
-		// Recreate font for fitting current monitor resulution and font size
+		// Recreate font for fitting current monitor resolution and font size
 		if (Global::isWindows8) CConfig::SetDefaultTextFont(parentWndHandle);
 
 	}
@@ -941,7 +941,7 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall)
 	}
 	if (_pNotifyWnd && lpRect)
 	{
-		// Recreate font for fitting current monitor resulution and font size
+		// Recreate font for fitting current monitor resolution and font size
 		//if (Global::isWindows8) CConfig::SetDefaultTextFont(_pNotifyWnd->_GetWnd());
 		if (lpRect->bottom - lpRect->top > 1 || lpRect->right - lpRect->left > 1)   // confirm the extent rect is valid.
 		{
@@ -997,7 +997,7 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall)
 	_rectCompRange = compRect;
 }
 
-void CUIPresenter::GetCandLocation(_Out_ POINT *lpPoint)
+void CUIPresenter::GetCandLocation(_Out_ POINT *lpPoint) const
 {
 	if(lpPoint)
 	{
@@ -1020,7 +1020,7 @@ VOID CUIPresenter::_LayoutDestroyNotification()
 
 //+---------------------------------------------------------------------------
 //
-// _NotifyChangeNotifiction
+// _NotifyChangeNotification
 //
 //----------------------------------------------------------------------------
 
@@ -1070,53 +1070,55 @@ HRESULT CUIPresenter::_NotifyChangeNotification(_In_ enum NOTIFY_WND action, _In
 
 //+---------------------------------------------------------------------------
 //
-// _CandidateChangeNotifiction
+// _CandidateChangeNotification
 //
 //----------------------------------------------------------------------------
 
 HRESULT CUIPresenter::_CandidateChangeNotification(_In_ enum CANDWND_ACTION action)
 {
     HRESULT hr = E_FAIL;
-	if(_pTextService == nullptr) return hr;
+    if (_pTextService == nullptr) return hr;
 
     TfClientId tfClientId = _pTextService->_GetClientId();
     ITfThreadMgr* pThreadMgr = nullptr;
     ITfDocumentMgr* pDocumentMgr = nullptr;
-	ITfContext* pContext = _GetContextDocument();
-    _KEYSTROKE_STATE KeyState;
-	KeyState.Category = KEYSTROKE_CATEGORY::CATEGORY_CANDIDATE;
-	// select from the UI. send FUNCTION_FINALIZE_CANDIDATELIST or FUNCTION_CANCEL to the keyhandler 
-	KeyState.Function = (CANDWND_ACTION::CAND_CANCEL == action) ? KEYSTROKE_FUNCTION::FUNCTION_CANCEL : KEYSTROKE_FUNCTION::FUNCTION_FINALIZE_CANDIDATELIST;
-	
+    ITfContext* pContext = _GetContextDocument();
 
-	if (!(CANDWND_ACTION::CAND_ITEM_SELECT == action || CANDWND_ACTION::CAND_CANCEL == action))
+    // Initialize KeyState to avoid uninitialized variable usage
+    _KEYSTROKE_STATE KeyState = { KEYSTROKE_CATEGORY::CATEGORY_NONE, KEYSTROKE_FUNCTION::FUNCTION_NONE };
+
+    KeyState.Category = KEYSTROKE_CATEGORY::CATEGORY_CANDIDATE;
+    // Select from the UI. Send FUNCTION_FINALIZE_CANDIDATELIST or FUNCTION_CANCEL to the key handler
+    KeyState.Function = (CANDWND_ACTION::CAND_CANCEL == action) ? KEYSTROKE_FUNCTION::FUNCTION_CANCEL : KEYSTROKE_FUNCTION::FUNCTION_FINALIZE_CANDIDATELIST;
+
+    if (!(CANDWND_ACTION::CAND_ITEM_SELECT == action || CANDWND_ACTION::CAND_CANCEL == action))
     {
         goto Exit;
     }
 
-	if (pContext == nullptr)
-	{
-		pThreadMgr = _pTextService->_GetThreadMgr();
-		if (nullptr == pThreadMgr)
-		{
-			goto Exit;
-		}
+    if (pContext == nullptr)
+    {
+        pThreadMgr = _pTextService->_GetThreadMgr();
+        if (nullptr == pThreadMgr)
+        {
+            goto Exit;
+        }
 
-		hr = pThreadMgr->GetFocus(&pDocumentMgr);
-		if (FAILED(hr) || pDocumentMgr == nullptr)
-		{
-			goto Exit;
-		}
+        hr = pThreadMgr->GetFocus(&pDocumentMgr);
+        if (FAILED(hr) || pDocumentMgr == nullptr)
+        {
+            goto Exit;
+        }
 
-		hr = pDocumentMgr->GetTop(&pContext);
-		if (FAILED(hr) || pContext == nullptr)
-		{
-			pDocumentMgr->Release();
-			goto Exit;
-		}
-	}
+        hr = pDocumentMgr->GetTop(&pContext);
+        if (FAILED(hr) || pContext == nullptr)
+        {
+            pDocumentMgr->Release();
+            goto Exit;
+        }
+    }
 
-    CKeyHandlerEditSession *pEditSession = new (std::nothrow) CKeyHandlerEditSession(_pTextService, pContext, 0, 0, KeyState);
+    CKeyHandlerEditSession* pEditSession = new (std::nothrow) CKeyHandlerEditSession(_pTextService, pContext, 0, 0, KeyState);
     if (pEditSession && pContext)
     {
         HRESULT hrSession = S_OK;
@@ -1128,10 +1130,10 @@ HRESULT CUIPresenter::_CandidateChangeNotification(_In_ enum CANDWND_ACTION acti
         pEditSession->Release();
     }
 
-    if(pContext)
-		pContext->Release();
-    if(pDocumentMgr)
-		pDocumentMgr->Release();
+    if (pContext)
+        pContext->Release();
+    if (pDocumentMgr)
+        pDocumentMgr->Release();
 
 Exit:
     return hr;
@@ -1483,7 +1485,7 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange* pNotifyText, _In_opt_ UINT 
 				guiInfo->cbSize = sizeof(GUITHREADINFO);
 				GetGUIThreadInfo(NULL, guiInfo);
 				if(guiInfo && parentWndHandle) 
-				{   //for acient non TSF aware apps with a floating composition window.  The caret position we can get is always the caret in the flaoting comosition window.
+				{   //for ancient non TSF aware apps with a floating composition window.  The caret position we can get is always the caret in the floating composition window.
 					pt = new POINT;
 					if(pt == nullptr) return;
 					pt->x = guiInfo->rcCaret.left;

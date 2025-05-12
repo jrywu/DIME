@@ -152,7 +152,7 @@ private:
   
 
 
-    CFile* GetDictionaryFile();
+    CFile* GetDictionaryFile() const;
 
 	CDIME* _pTextService;
     

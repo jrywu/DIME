@@ -134,17 +134,17 @@ public:
     void RemoveSpecificCandidateFromList(_In_ LCID Locale, _Inout_ CDIMEArray<CCandidateListItem> &candidateList, _In_ CStringRange &srgCandidateString);
     void AdviseUIChangedByArrowKey(_In_ KEYSTROKE_FUNCTION arrowKey);
 
-	void GetCandLocation(_Out_ POINT *lpPoint);
+	void GetCandLocation(_Out_ POINT *lpPoint) const;
 
 	HRESULT MakeNotifyWindow(_In_ ITfContext *pContextDocument, _In_ CStringRange *pNotifyText =nullptr, _In_ enum NOTIFY_TYPE notifyType = NOTIFY_TYPE::NOTIFY_OTHERS);
 	void SetNotifyText(_In_ CStringRange *pNotifyText);
 	void ShowNotify(_In_ BOOL showMode, _In_opt_ UINT delayShow = 0, _In_opt_ UINT timeToHide = 0);
 	void ClearNotify();
 	void ClearAll();
-	void ShowNotifyText(CStringRange *pNotifyText, _In_opt_ UINT delayShow = 0, _In_opt_ UINT timeToHide = 0, NOTIFY_TYPE notifyType  = NOTIFY_TYPE::NOTIFY_OTHERS);
+	void ShowNotifyText(_In_ CStringRange *pNotifyText, _In_opt_ UINT delayShow = 0, _In_opt_ UINT timeToHide = 0, _In_opt_ NOTIFY_TYPE notifyType  = NOTIFY_TYPE::NOTIFY_OTHERS);
 	BOOL IsNotifyShown();
 
-	BOOL isUILessMode() {return !_isShowMode;}
+	BOOL isUILessMode() const {return !_isShowMode;}
 private:
 	VOID _LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall);
     virtual HRESULT CALLBACK _CandidateChangeNotification(_In_ enum CANDWND_ACTION action);
