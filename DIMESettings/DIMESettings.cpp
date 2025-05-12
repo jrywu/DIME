@@ -3,6 +3,7 @@
 
 #include "framework.h"
 #include <CommCtrl.h>
+#include <ntddkbd.h>
 #include "DIMESettings.h"
 #include "..\Globals.h"
 #include "..\Config.h"
@@ -45,7 +46,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             ::ReleaseMutex(hMutexOneInstance);
             ::CloseHandle(hMutexOneInstance);
         }
-        SwitchToThisWindow(FindWindowW(NULL, L"DIME³]©w"), FALSE);
+        SwitchToThisWindow(FindWindowW(NULL, L"DIMEï¿½]ï¿½w"), FALSE);
         return -1;
     }
 
@@ -73,20 +74,34 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     if (isAfterWindows8)
     {
-        // tell system we are dpi aware
-        HINSTANCE hShcore = NULL;
-        hShcore = LoadLibrary(L"Shcore.dll");
-        typedef HRESULT(__stdcall* _T_SetProcessDpiAwareness)(_Inout_  _PROCESS_DPI_AWARENESS awareness);
-        _T_SetProcessDpiAwareness _SetProcessDpiAwareness = NULL;
-        _SetProcessDpiAwareness = reinterpret_cast<_T_SetProcessDpiAwareness>(GetProcAddress(hShcore, "SetProcessDpiAwareness"));
-        if (_SetProcessDpiAwareness == nullptr) {
-            debugPrint(L"Failed to cast function SetProcessDpiAwareness in Shcore.dll");
-        }
-        else
-            _SetProcessDpiAwareness(Process_System_DPI_Aware);
-        if (hShcore != NULL) FreeLibrary(hShcore);
+        _T_RtlGetVersion _RtlGetVersion = (_T_RtlGetVersion)GetProcAddress(hNtDll, "RtlGetVersion");
+        if (hNtDll == NULL || _RtlGetVersion == nullptr)
+            debugPrint(L"Failed to cast function RtlGetVersion in ntdll.dll"); // This will never happen (all processes load ntdll.dll)
+        if (_RtlGetVersion(&pk_OsVer) == 0 &&
+            ((pk_OsVer.dwMajorVersion == 6 && pk_OsVer.dwMinorVersion >= 2) || pk_OsVer.dwMajorVersion > 6)) isAfterWindows8 = TRUE;
+        if (hNtDll != NULL) FreeLibrary(hNtDll);
+        if (isAfterWindows8)
+        {
+            // tell system we are dpi aware
+            HINSTANCE hShcore = NULL;
+            hShcore = LoadLibrary(L"Shcore.dll");
+            if (hShcore != NULL)
+            {
+                typedef HRESULT(__stdcall* _T_SetProcessDpiAwareness)(_Inout_  _PROCESS_DPI_AWARENESS awareness);
+                _T_SetProcessDpiAwareness _SetProcessDpiAwareness = NULL;
+                _SetProcessDpiAwareness = reinterpret_cast<_T_SetProcessDpiAwareness>(GetProcAddress(hShcore, "SetProcessDpiAwareness"));
+                if (_SetProcessDpiAwareness == nullptr) {
+                    debugPrint(L"Failed to cast function SetProcessDpiAwareness in Shcore.dll");
+                }
+                else
+                    _SetProcessDpiAwareness(Process_System_DPI_Aware);
+                if (hShcore != NULL) FreeLibrary(hShcore);
+            }
 
+        }
     }
+
+    
 
 
     HWND hDlg;
@@ -159,22 +174,22 @@ void showIMESettings(HWND hDlg, IME_MODE imeMode)
     if (imeMode == IME_MODE::IME_MODE_DAYI)
     {
         guidProfile = Global::DIMEDayiGuidProfile;
-        StringCchCat(dialogCaption, MAX_PATH, L"DIME ¤j©ö¿é¤Jªk³]©w");
+        StringCchCat(dialogCaption, MAX_PATH, L"DIME ï¿½jï¿½ï¿½ï¿½ï¿½Jï¿½kï¿½]ï¿½w");
     }
     else if (imeMode == IME_MODE::IME_MODE_ARRAY)
     {
         guidProfile = Global::DIMEArrayGuidProfile;
-        StringCchCat(dialogCaption, MAX_PATH, L"DIME ¦æ¦C¿é¤Jªk³]©w");
+        StringCchCat(dialogCaption, MAX_PATH, L"DIME ï¿½ï¿½Cï¿½ï¿½Jï¿½kï¿½]ï¿½w");
     }
     else if (imeMode == IME_MODE::IME_MODE_GENERIC)
     {
         guidProfile = Global::DIMEGenericGuidProfile;
-        StringCchCat(dialogCaption, MAX_PATH, L"DIME ¦Û«Ø¿é¤Jªk³]©w");
+        StringCchCat(dialogCaption, MAX_PATH, L"DIME ï¿½Û«Ø¿ï¿½Jï¿½kï¿½]ï¿½w");
     }
     else if (imeMode == IME_MODE::IME_MODE_PHONETIC)
     {
         guidProfile = Global::DIMEPhoneticGuidProfile;
-        StringCchCat(dialogCaption, MAX_PATH, L"DIME ¶Ç²Îª`­µ¿é¤Jªk³]©w");
+        StringCchCat(dialogCaption, MAX_PATH, L"DIME ï¿½Ç²Îª`ï¿½ï¿½ï¿½ï¿½Jï¿½kï¿½]ï¿½w");
     }
     // Reload reverse conversion list from system.
     if (SUCCEEDED(profile->CreateInstance()))
