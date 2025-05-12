@@ -1,4 +1,4 @@
-// DIME Settings.cpp : Defines the entry point for the application.
+﻿// DIME Settings.cpp : Defines the entry point for the application.
 //
 
 #include "framework.h"
@@ -46,7 +46,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             ::ReleaseMutex(hMutexOneInstance);
             ::CloseHandle(hMutexOneInstance);
         }
-        SwitchToThisWindow(FindWindowW(NULL, L"DIME�]�w"), FALSE);
+        SwitchToThisWindow(FindWindowW(NULL, L"DIME設定"), FALSE);
         return -1;
     }
 
@@ -174,22 +174,22 @@ void showIMESettings(HWND hDlg, IME_MODE imeMode)
     if (imeMode == IME_MODE::IME_MODE_DAYI)
     {
         guidProfile = Global::DIMEDayiGuidProfile;
-        StringCchCat(dialogCaption, MAX_PATH, L"DIME �j����J�k�]�w");
+        StringCchCat(dialogCaption, MAX_PATH, L"DIME 大易輸入法設定");
     }
     else if (imeMode == IME_MODE::IME_MODE_ARRAY)
     {
         guidProfile = Global::DIMEArrayGuidProfile;
-        StringCchCat(dialogCaption, MAX_PATH, L"DIME ��C��J�k�]�w");
+        StringCchCat(dialogCaption, MAX_PATH, L"DIME 行列輸入法設定");
     }
     else if (imeMode == IME_MODE::IME_MODE_GENERIC)
     {
         guidProfile = Global::DIMEGenericGuidProfile;
-        StringCchCat(dialogCaption, MAX_PATH, L"DIME �۫ؿ�J�k�]�w");
+        StringCchCat(dialogCaption, MAX_PATH, L"DIME 自建輸入法設定");
     }
     else if (imeMode == IME_MODE::IME_MODE_PHONETIC)
     {
         guidProfile = Global::DIMEPhoneticGuidProfile;
-        StringCchCat(dialogCaption, MAX_PATH, L"DIME �ǲΪ`����J�k�]�w");
+        StringCchCat(dialogCaption, MAX_PATH, L"DIME 傳統注音輸入法設定");
     }
     // Reload reverse conversion list from system.
     if (SUCCEEDED(profile->CreateInstance()))
