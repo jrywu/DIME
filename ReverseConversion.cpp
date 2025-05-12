@@ -106,7 +106,7 @@ HRESULT CDIME::_AsyncReverseConversionNotification(_In_ TfEditCookie ec,_In_ ITf
 				CStringRange reverseConvNotify;
 				WCHAR* pwch = new (std::nothrow) WCHAR[SysStringLen(bstrResult)+1];
 				StringCchCopy(pwch, SysStringLen(bstrResult)+1, (WCHAR*) bstrResult);
-				_pUIPresenter->ShowNotifyText(&reverseConvNotify.Set(pwch, wcslen(pwch)));
+				_pUIPresenter->ShowNotifyText(&reverseConvNotify.Set(pwch, wcslen(pwch)), 0, 0, NOTIFY_TYPE::NOTIFY_OTHERS);
 			}
 		}
 		reverseConversionList->Release();

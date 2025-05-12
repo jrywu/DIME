@@ -38,107 +38,85 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "BaseStructure.h"
 #include "Globals.h"
 
-void CCompositionProcessorEngine::ReleaseDictionaryFiles()
-{
+void CCompositionProcessorEngine::ReleaseDictionaryFiles()  
+{  
+    for (UINT i = 0; i < IM_SLOTS; i++)  
+    {  
+        if (_pTableDictionaryFile[i])  
+        {  
+            delete _pTableDictionaryFile[i];  
+            _pTableDictionaryFile[i] = nullptr;  
+        }  
+        if (_pCustomTableDictionaryFile[i])  
+        {  
+            delete _pCustomTableDictionaryFile[i];  
+            _pCustomTableDictionaryFile[i] = nullptr;  
+        }  
+        _pTableDictionaryEngine[i] = nullptr;  
+        _pCustomTableDictionaryEngine[i] = nullptr;  
+    }  
 
-	for (UINT i = 0; i < IM_SLOTS; i++)
-	{
-		if (_pTableDictionaryFile[i])
-		{
-			delete _pTableDictionaryFile[i];
-			_pTableDictionaryFile[i] = nullptr;
-		}
-		if (_pCustomTableDictionaryFile[i])
-		{
-			delete _pCustomTableDictionaryFile[i];
-			_pCustomTableDictionaryFile[i] = nullptr;
-		}
-		if (_pTableDictionaryEngine[i])
-		{   // _pTableDictionaryEngine[i] is only a pointer to either _pTTSDictionaryFile[i] or _pCINTableDictionaryEngine. no need to delete it.
-			_pTableDictionaryEngine[i] = nullptr;
-		}
-		if (_pCustomTableDictionaryEngine[i])
-		{
-			_pCustomTableDictionaryEngine[i] = nullptr;
-		}
-
-	}
-	// Array short-code
-	if (_pArrayShortCodeDictionaryFile)
-	{
-		delete _pArrayShortCodeDictionaryFile;
-		_pArrayShortCodeDictionaryFile = nullptr;
-	}
-	if (_pArrayShortCodeTableDictionaryEngine)
-	{
-		delete _pArrayShortCodeTableDictionaryEngine;
-		_pArrayShortCodeTableDictionaryEngine = nullptr;
-	}
-
-	// Array special-code
-	if (_pArraySpecialCodeDictionaryFile)
-	{
-		delete _pArraySpecialCodeDictionaryFile;
-		_pArraySpecialCodeDictionaryFile = nullptr;
-	}
-	if (_pArraySpecialCodeTableDictionaryEngine)
-	{
-		delete _pArraySpecialCodeTableDictionaryEngine;
-		_pArraySpecialCodeTableDictionaryEngine = nullptr;
-	}
-	// Array ext-B
-	if (_pArrayExtBDictionaryFile)
-	{
-		delete _pArrayExtBDictionaryFile;
-		_pArrayExtBDictionaryFile = nullptr;
-	}
-	if (_pArrayExtBTableDictionaryEngine)
-	{
-		delete _pArrayExtBTableDictionaryEngine;
-		_pArrayExtBTableDictionaryEngine = nullptr;
-	}
-	// Array ext-CD
-	if (_pArrayExtCDDictionaryFile)
-	{
-		delete _pArrayExtCDDictionaryFile;
-		_pArrayExtCDDictionaryFile = nullptr;
-	}
-	if (_pArrayExtETableDictionaryEngine)
-	{
-		delete _pArrayExtETableDictionaryEngine;
-		_pArrayExtETableDictionaryEngine = nullptr;
-	}
-
-
-
-	// TC-SC dictinary
-	if (_pTCSCTableDictionaryEngine)
-	{
-		delete _pTCSCTableDictionaryEngine;
-		_pTCSCTableDictionaryEngine = nullptr;
-	}
-	if (_pTCSCTableDictionaryFile)
-	{
-		delete _pTCSCTableDictionaryFile;
-		_pTCSCTableDictionaryFile = nullptr;
-	}
-	if (_pTCFreqTableDictionaryEngine)
-	{
-		delete _pTCFreqTableDictionaryEngine;
-		_pTCFreqTableDictionaryEngine = nullptr;
-	}
-	if (_pTCFreqTableDictionaryFile)
-	{
-		delete _pTCFreqTableDictionaryFile;
-		_pTCFreqTableDictionaryFile = nullptr;
-	}
-
-
-
-
+    if (_pArrayShortCodeDictionaryFile)  
+    {  
+        delete _pArrayShortCodeDictionaryFile;  
+        _pArrayShortCodeDictionaryFile = nullptr;  
+    }  
+    if (_pArrayShortCodeTableDictionaryEngine)  
+    {  
+        delete _pArrayShortCodeTableDictionaryEngine;  
+        _pArrayShortCodeTableDictionaryEngine = nullptr;  
+    }  
+    if (_pArraySpecialCodeDictionaryFile)  
+    {  
+        delete _pArraySpecialCodeDictionaryFile;  
+        _pArraySpecialCodeDictionaryFile = nullptr;  
+    }  
+    if (_pArraySpecialCodeTableDictionaryEngine)  
+    {  
+        delete _pArraySpecialCodeTableDictionaryEngine;  
+        _pArraySpecialCodeTableDictionaryEngine = nullptr;  
+    }  
+    if (_pArrayExtBDictionaryFile)  
+    {  
+        delete _pArrayExtBDictionaryFile;  
+        _pArrayExtBDictionaryFile = nullptr;  
+    }  
+    if (_pArrayExtBTableDictionaryEngine)  
+    {  
+        delete _pArrayExtBTableDictionaryEngine;  
+        _pArrayExtBTableDictionaryEngine = nullptr;  
+    }  
+    if (_pArrayExtCDDictionaryFile)  
+    {  
+        delete _pArrayExtCDDictionaryFile;  
+        _pArrayExtCDDictionaryFile = nullptr;  
+    }  
+    if (_pArrayExtETableDictionaryEngine)  
+    {  
+        delete _pArrayExtETableDictionaryEngine;  
+        _pArrayExtETableDictionaryEngine = nullptr;  
+    }  
+    if (_pTCSCTableDictionaryEngine)  
+    {  
+        delete _pTCSCTableDictionaryEngine;  
+        _pTCSCTableDictionaryEngine = nullptr;  
+    }  
+    if (_pTCSCTableDictionaryFile)  
+    {  
+        delete _pTCSCTableDictionaryFile;  
+        _pTCSCTableDictionaryFile = nullptr;  
+    }  
+    if (_pTCFreqTableDictionaryEngine)  
+    {  
+        delete _pTCFreqTableDictionaryEngine;  
+        _pTCFreqTableDictionaryEngine = nullptr;  
+    }  
+    if (_pTCFreqTableDictionaryFile)  
+    {  
+        delete _pTCFreqTableDictionaryFile;  
+        _pTCFreqTableDictionaryFile = nullptr;  
+    }  
 }
-
-
 
 //+---------------------------------------------------------------------------
 //

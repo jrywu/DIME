@@ -60,6 +60,7 @@ CTableDictionaryEngine::CTableDictionaryEngine(LCID locale, _In_ CFile *pDiction
 		_keywordDelimiter = '|';
 }
 
+
 //+---------------------------------------------------------------------------
 //
 // CollectWord
@@ -454,3 +455,4 @@ VOID CTableDictionaryEngine::MergeSortByWordFrequency(_Inout_ CDIMEArray<CCandid
 		}
 	}
 }
+

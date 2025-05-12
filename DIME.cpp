@@ -337,6 +337,26 @@ CDIME::~CDIME()
 
 	ReleaseReverseConversion();
 
+    // Release all compartment event sinks
+    if (_pCompartmentKeyboardOpenEventSink) {
+        _pCompartmentKeyboardOpenEventSink->_Unadvise();
+    }
+    if (_pCompartmentIMEModeEventSink) {
+        _pCompartmentIMEModeEventSink->_Unadvise();
+    }
+    if (_pCompartmentConversionEventSink) {
+        _pCompartmentConversionEventSink->_Unadvise();
+    }
+    if (_pCompartmentDoubleSingleByteEventSink) {
+        _pCompartmentDoubleSingleByteEventSink->_Unadvise();
+    }
+
+    // Clean up other resources
+    if (_pCompartmentConversion) {
+        delete _pCompartmentConversion;
+        _pCompartmentConversion = nullptr;
+    }
+
     DllRelease();
 }
 
@@ -1079,7 +1099,7 @@ void CDIME::DoBeep(BEEP_TYPE type)
 	{
 		CStringRange notify;
 		if (_pUIPresenter)
-			_pUIPresenter->ShowNotifyText( &notify.Set(L"¿ù»~²Õ¦r",4) , 0, 1000, NOTIFY_TYPE::NOTIFY_BEEP);
+            _pUIPresenter->ShowNotifyText(&notify.Set(L"¿ù»~²Õ¦r", 4), 0, 1000, NOTIFY_TYPE::NOTIFY_BEEP);
 	}
 		
 }

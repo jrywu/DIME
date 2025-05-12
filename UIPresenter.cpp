@@ -39,6 +39,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "UIPresenter.h"
 #include "CompositionProcessorEngine.h"
 #include "BaseStructure.h"
+#include <memory> // Include for smart pointers
 
 //////////////////////////////////////////////////////////////////////
 //
@@ -50,42 +51,28 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 //----------------------------------------------------------------------------
 
-CUIPresenter::CUIPresenter(_In_ CDIME *pTextService, CCompositionProcessorEngine *pCompositionProcessorEngine) 
-	: CTfTextLayoutSink(pTextService)
+CUIPresenter::CUIPresenter(_In_ CDIME *pTextService, CCompositionProcessorEngine *pCompositionProcessorEngine)
+    : CTfTextLayoutSink(pTextService), _pCandidateWnd(nullptr), _pNotifyWnd(nullptr), _Category(KEYSTROKE_CATEGORY::CATEGORY_NONE), _pIndexRange(nullptr)
 {
-	debugPrint(L"CUIPresenter::CUIPresenter() constructor");
+    debugPrint(L"CUIPresenter::CUIPresenter() constructor");
     _pTextService = pTextService;
-    if(_pTextService)
-		_pTextService->AddRef();
+    if (_pTextService)
+        _pTextService->AddRef();
 
-	if(pCompositionProcessorEngine)
-		_pIndexRange = pCompositionProcessorEngine->GetCandidateListIndexRange();
+    if (pCompositionProcessorEngine)
+        _pIndexRange = pCompositionProcessorEngine->GetCandidateListIndexRange();
 
     _parentWndHandle = nullptr;
-    _pCandidateWnd = nullptr;
-	_pNotifyWnd = nullptr;
-
     _updatedFlags = 0;
-
     _uiElementId = (DWORD)-1;
-    _isShowMode = TRUE;   // store return value from BeginUIElement
-
-
+    _isShowMode = TRUE;
     _refCount = 1;
 
-	//intialized the location out of screen to avoid showing before correct tracking position obtained.
-	_candLocation.x = -32768;
-	_candLocation.y = -32768;
-	
-	_notifyLocation.x = -32768;
-	_notifyLocation.y = -32768;
-
-	_rectCompRange.top = -32768;
-	_rectCompRange.bottom = -32768;
-	_rectCompRange.left = -32768;
-	_rectCompRange.right = -32768;
-	
-	_inFocus = FALSE;
+    // Initialize locations off-screen
+    _candLocation = { -32768, -32768 };
+    _notifyLocation = { -32768, -32768 };
+    _rectCompRange = { -32768, -32768, -32768, -32768 };
+    _inFocus = FALSE;
 }
 
 //+---------------------------------------------------------------------------
@@ -96,10 +83,14 @@ CUIPresenter::CUIPresenter(_In_ CDIME *pTextService, CCompositionProcessorEngine
 
 CUIPresenter::~CUIPresenter()
 {
-	debugPrint(L"CUIPresenter::~CUIPresenter() destructor");
+    debugPrint(L"CUIPresenter::~CUIPresenter() destructor");
     _EndCandidateList();
-	DisposeNotifyWindow();
-    _pTextService->Release();
+    DisposeNotifyWindow();
+    if (_pTextService)
+    {
+        _pTextService->Release();
+        _pTextService = nullptr;
+    }
 }
 
 //+---------------------------------------------------------------------------
@@ -653,26 +644,24 @@ void CUIPresenter::AddCandidateToUI(_In_ CDIMEArray<CCandidateListItem> *pCandid
 
 void CUIPresenter::SetPageIndexWithScrollInfo(_In_ CDIMEArray<CCandidateListItem> *pCandidateList)
 {
-	if(_pIndexRange == nullptr || pCandidateList == nullptr || _pCandidateWnd==nullptr ) return;
+    if (!_pIndexRange || !pCandidateList || !_pCandidateWnd)
+        return;
 
-	_pCandidateWnd->_SetCandIndexRange(_pIndexRange);
+    _pCandidateWnd->_SetCandIndexRange(_pIndexRange);
 
     UINT candCntInPage = _pIndexRange->Count();
     UINT bufferSize = pCandidateList->Count() / candCntInPage + 1;
-    UINT* puPageIndex = new (std::nothrow) UINT[ bufferSize ];
-    if (puPageIndex != nullptr)
+    std::vector<UINT> pageIndex(bufferSize);
+
+    for (UINT i = 0; i < bufferSize; i++)
     {
-        for (UINT i = 0; i < bufferSize; i++)
-        {
-            puPageIndex[i] = i * candCntInPage;
-        }
-
-        _pCandidateWnd->_SetPageIndex(puPageIndex, bufferSize);
-        delete [] puPageIndex;
+        pageIndex[i] = i * candCntInPage;
     }
-    _pCandidateWnd->_SetScrollInfo(pCandidateList->Count(), candCntInPage);  // nMax:range of max, nPage:number of items in page
 
+    _pCandidateWnd->_SetPageIndex(pageIndex.data(), bufferSize);
+    _pCandidateWnd->_SetScrollInfo(pCandidateList->Count(), candCntInPage);
 }
+
 //+---------------------------------------------------------------------------
 //
 // _ClearList
@@ -1381,7 +1370,7 @@ HRESULT CUIPresenter::MakeNotifyWindow(_In_ ITfContext *pContextDocument, _In_ C
 
 	if (nullptr == _pNotifyWnd)
     {
-		_pNotifyWnd = new (std::nothrow) CNotifyWindow(_NotifyWndCallback, this, notifyType);
+		_pNotifyWnd = std::make_unique<CNotifyWindow>(_NotifyWndCallback, this, notifyType);
 	}
 
     if (nullptr == _pNotifyWnd)	return S_FALSE;
@@ -1443,9 +1432,9 @@ void CUIPresenter::ClearNotify()
 	}
 	
 }
-void CUIPresenter::ShowNotifyText(_In_ CStringRange *pNotifyText, _In_opt_ UINT delayShow, _In_ UINT timeToHide,  _In_ enum NOTIFY_TYPE notifyType)
+void CUIPresenter::ShowNotifyText(_In_ CStringRange* pNotifyText, _In_opt_ UINT delayShow, _In_opt_ UINT timeToHide, _In_opt_ NOTIFY_TYPE notifyType)
 {
-	//if(pNotifyText) debugPrint(L"CUIPresenter::ShowNotifyText(): text = %s, delayShow = %d, timeTimeHide = %d, notifyType= %d, _inFoucs = %d, ", pNotifyText->Get(), delayShow, timeToHide, notifyType, _inFocus);
+	//if(pNotifyText) debugPrint(L"CUIPresenter::ShowNotifyText(): text = %s, delayShow = %d, timeTimeHide = %d, notifyType= %d, _inFocus = %d, ", pNotifyText->Get(), delayShow, timeToHide, notifyType, _inFocus);
 	ITfContext* pContext = _GetContextDocument();
 	ITfThreadMgr* pThreadMgr = nullptr;
 	ITfDocumentMgr* pDocumentMgr = nullptr;
@@ -1571,7 +1560,7 @@ HRESULT CUIPresenter::MakeCandidateWindow(_In_ ITfContext *pContextDocument, _In
 		goto Exit;
     }
 
-    _pCandidateWnd = new (std::nothrow) CCandidateWindow(_CandWndCallback, this, _pIndexRange, _pTextService->_IsStoreAppMode());
+	_pCandidateWnd = std::make_unique <CCandidateWindow>(_CandWndCallback, this, _pIndexRange, _pTextService->_IsStoreAppMode());
     if (_pCandidateWnd == nullptr)
     {
         hr = E_OUTOFMEMORY;
@@ -1600,16 +1589,15 @@ void CUIPresenter::DisposeCandidateWindow()
     if (_pCandidateWnd)
     {
         _pCandidateWnd->_Destroy();
-		 delete _pCandidateWnd;
-		 _pCandidateWnd = nullptr;
+        _pCandidateWnd.reset(); // Automatically deletes the object
     }
 }
+
 void CUIPresenter::DisposeNotifyWindow()
 {
-	if (_pNotifyWnd)
-	{
-		_pNotifyWnd->_Destroy();
-		delete _pNotifyWnd;
-		_pNotifyWnd = nullptr;
-	}
+    if (_pNotifyWnd)
+    {
+        _pNotifyWnd->_Destroy();
+        _pNotifyWnd.reset(); // Automatically deletes the object
+    }
 }

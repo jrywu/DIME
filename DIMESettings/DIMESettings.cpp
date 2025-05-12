@@ -56,11 +56,17 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     RTL_OSVERSIONINFOEXW pk_OsVer;
     memset(&pk_OsVer, 0, sizeof(RTL_OSVERSIONINFOEXW));
     pk_OsVer.dwOSVersionInfoSize = sizeof(RTL_OSVERSIONINFOEXW);
-    HMODULE hNtDll = NULL;
-    hNtDll = GetModuleHandleW(L"ntdll.dll");
+    HMODULE hNtDll = GetModuleHandleW(L"ntdll.dll");
+    if (hNtDll == NULL) {
+        debugPrint(L"Failed to get handle for ntdll.dll");
+        return -1; // Handle the error appropriately
+    }
+
     _T_RtlGetVersion _RtlGetVersion = (_T_RtlGetVersion)GetProcAddress(hNtDll, "RtlGetVersion");
-    if (hNtDll == NULL || _RtlGetVersion == nullptr)
-        debugPrint(L"Failed to cast function RtlGetVersion in ntdll.dll"); // This will never happen (all processes load ntdll.dll)
+    if (_RtlGetVersion == nullptr) {
+        debugPrint(L"Failed to cast function RtlGetVersion in ntdll.dll");
+        return -1; // Handle the error appropriately
+    }
     if (_RtlGetVersion(&pk_OsVer) == 0 &&
         ((pk_OsVer.dwMajorVersion == 6 && pk_OsVer.dwMinorVersion >= 2) || pk_OsVer.dwMajorVersion > 6)) isAfterWindows8 = TRUE;
     if (hNtDll != NULL) FreeLibrary(hNtDll);
@@ -129,8 +135,10 @@ void showIMESettings(HWND hDlg, IME_MODE imeMode)
     {
         psp.pszTemplate = MAKEINTRESOURCE(DlgPage[i].id);
         psp.pfnDlgProc = DlgPage[i].DlgProc;
-        if (CreatePropertySheetPageW)
-            hpsp[i] = (*CreatePropertySheetPageW)(&psp);
+        if (CreatePropertySheetPageW != nullptr) // Ensure the function pointer is valid
+        {
+            hpsp[i] = CreatePropertySheetPageW(&psp); // Call the function with the required argument
+        }
     }
 
     ZeroMemory(&psh, sizeof(PROPSHEETHEADER));

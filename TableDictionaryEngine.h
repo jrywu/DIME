@@ -43,7 +43,19 @@ class CTableDictionaryEngine
 {
 public:
 	CTableDictionaryEngine(LCID locale, _In_ CFile *pDictionaryFile, _In_ DICTIONARY_TYPE dictionaryType);
-	virtual ~CTableDictionaryEngine(){}
+	virtual ~CTableDictionaryEngine()
+	{
+		if (_pRadicalMap)
+		{
+			delete _pRadicalMap;
+			_pRadicalMap = nullptr;
+		}
+		if (_pRadicalIndexMap)
+		{
+			delete _pRadicalIndexMap;
+			_pRadicalIndexMap = nullptr;
+		}
+	}
     // Collect word from phrase string.
     // param
     //     [in] psrgKeyCode - Specified key code pointer

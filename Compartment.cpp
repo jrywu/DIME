@@ -225,10 +225,8 @@ HRESULT CCompartment::_ClearCompartment()
 //----------------------------------------------------------------------------
 
 CCompartmentEventSink::CCompartmentEventSink(_In_ CESCALLBACK pfnCallback, _In_ void *pv)
+    : _pCompartment(nullptr), _dwCookie(0), _pfnCallback(pfnCallback), _pv(pv), _refCount(1)
 {
-    _pfnCallback = pfnCallback;
-    _pv = pv;
-    _refCount = 1;
 }
 
 //+---------------------------------------------------------------------------

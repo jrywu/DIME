@@ -141,7 +141,7 @@ public:
 	void ShowNotify(_In_ BOOL showMode, _In_opt_ UINT delayShow = 0, _In_opt_ UINT timeToHide = 0);
 	void ClearNotify();
 	void ClearAll();
-	void ShowNotifyText(_In_ CStringRange *pNotifyText, _In_opt_ UINT delayShow = 0, _In_ UINT timeToHide = 0, _In_ enum NOTIFY_TYPE = NOTIFY_TYPE::NOTIFY_OTHERS);
+	void ShowNotifyText(CStringRange *pNotifyText, _In_opt_ UINT delayShow = 0, _In_opt_ UINT timeToHide = 0, NOTIFY_TYPE notifyType  = NOTIFY_TYPE::NOTIFY_OTHERS);
 	BOOL IsNotifyShown();
 
 	BOOL isUILessMode() {return !_isShowMode;}
@@ -174,8 +174,8 @@ private:
     void SetPageIndexWithScrollInfo(_In_ CDIMEArray<CCandidateListItem> *pCandidateList);
 
 protected:
-    CCandidateWindow *_pCandidateWnd;
-	CNotifyWindow *_pNotifyWnd;
+    std::unique_ptr<CCandidateWindow> _pCandidateWnd;
+	std::unique_ptr<CNotifyWindow> _pNotifyWnd;
     BOOL _isShowMode;
 
 
