@@ -9,9 +9,11 @@
 #include "..\Config.h"
 #include "..\BuildInfo.h"
 #include "..\TfInputProcessorProfile.h"
+#include <VersionHelpers.h> // Include VersionHelpers for IsWindows* macros
+//#include <shellscalingapi.h>
 
 #pragma comment(lib, "ComCtl32.lib")
-//#pragma comment(lib, "shcore.lib")
+//#pragma comment(lib, "shcore.lib")    
 #define DIME_SETTINGS_INSTANCE_MUTEX_NAME L"{B11F1FB2-3ECC-409E-A036-4162ADCEF1A3}"
 
 // Global Variables:
@@ -50,59 +52,19 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         return -1;
     }
 
-    // Check windows version
-    BOOL isAfterWindows8 = FALSE;
-
-    typedef LONG(WINAPI* _T_RtlGetVersion)(RTL_OSVERSIONINFOEXW*);
-    RTL_OSVERSIONINFOEXW pk_OsVer;
-    memset(&pk_OsVer, 0, sizeof(RTL_OSVERSIONINFOEXW));
-    pk_OsVer.dwOSVersionInfoSize = sizeof(RTL_OSVERSIONINFOEXW);
-    HMODULE hNtDll = GetModuleHandleW(L"ntdll.dll");
-    if (hNtDll == NULL) {
-        debugPrint(L"Failed to get handle for ntdll.dll");
-        return -1; // Handle the error appropriately
-    }
-
-    _T_RtlGetVersion _RtlGetVersion = (_T_RtlGetVersion)GetProcAddress(hNtDll, "RtlGetVersion");
-    if (_RtlGetVersion == nullptr) {
-        debugPrint(L"Failed to cast function RtlGetVersion in ntdll.dll");
-        return -1; // Handle the error appropriately
-    }
-    if (_RtlGetVersion(&pk_OsVer) == 0 &&
-        ((pk_OsVer.dwMajorVersion == 6 && pk_OsVer.dwMinorVersion >= 2) || pk_OsVer.dwMajorVersion > 6)) isAfterWindows8 = TRUE;
-    if (hNtDll != NULL) FreeLibrary(hNtDll);
-
-    if (isAfterWindows8)
-    {
-        _T_RtlGetVersion _RtlGetVersion = (_T_RtlGetVersion)GetProcAddress(hNtDll, "RtlGetVersion");
-        if (hNtDll == NULL || _RtlGetVersion == nullptr)
-            debugPrint(L"Failed to cast function RtlGetVersion in ntdll.dll"); // This will never happen (all processes load ntdll.dll)
-        if (_RtlGetVersion(&pk_OsVer) == 0 &&
-            ((pk_OsVer.dwMajorVersion == 6 && pk_OsVer.dwMinorVersion >= 2) || pk_OsVer.dwMajorVersion > 6)) isAfterWindows8 = TRUE;
-        if (hNtDll != NULL) FreeLibrary(hNtDll);
-        if (isAfterWindows8)
-        {
-            // tell system we are dpi aware
-            HINSTANCE hShcore = NULL;
-            hShcore = LoadLibrary(L"Shcore.dll");
-            if (hShcore != NULL)
-            {
-                typedef HRESULT(__stdcall* _T_SetProcessDpiAwareness)(_Inout_  _PROCESS_DPI_AWARENESS awareness);
-                _T_SetProcessDpiAwareness _SetProcessDpiAwareness = NULL;
-                _SetProcessDpiAwareness = reinterpret_cast<_T_SetProcessDpiAwareness>(GetProcAddress(hShcore, "SetProcessDpiAwareness"));
-                if (_SetProcessDpiAwareness == nullptr) {
-                    debugPrint(L"Failed to cast function SetProcessDpiAwareness in Shcore.dll");
-                }
-                else
-                    _SetProcessDpiAwareness(Process_System_DPI_Aware);
-                if (hShcore != NULL) FreeLibrary(hShcore);
+    if (IsWindows8Point1OrGreater()){
+        HMODULE hShcore = LoadLibrary(L"Shcore.dll");
+        if (hShcore != NULL) {
+            auto SetProcessDpiAwareness = reinterpret_cast<HRESULT(__stdcall*)(_PROCESS_DPI_AWARENESS)>(
+                GetProcAddress(hShcore, "SetProcessDpiAwareness"));
+            if (SetProcessDpiAwareness != nullptr) {
+                SetProcessDpiAwareness(Process_System_DPI_Aware);
+            } else {
+                debugPrint(L"Failed to cast function SetProcessDpiAwareness in Shcore.dll");
             }
-
-        }
+            FreeLibrary(hShcore);
+        }    
     }
-
-    
-
 
     HWND hDlg;
     MSG msg;
