@@ -32,12 +32,56 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <mutex>
-#include "Private.h"
+#include <sal.h> // Include SAL annotations
 #include "Globals.h"
-#include <VersionHelpers.h> // Include VersionHelpers for IsWindows* macros
+//#include <VersionHelpers.h> // Include VersionHelpers for IsWindows* macros
 #pragma warning(disable : 4996)
 
 std::mutex g_mutex;
+
+typedef _Return_type_success_(return >= 0) LONG NTSTATUS;
+#define STATUS_SUCCESS ((NTSTATUS)0x00000000)
+#define STATUS_REVISION_MISMATCH ((NTSTATUS)0xC0000059)
+typedef LONG(WINAPI* PFN_RtlVerifyVersionInfo)(OSVERSIONINFOEXW*, ULONG, ULONGLONG);
+
+static BOOL inline IsWindowsVersionOrGreater(WORD major, WORD minor)
+{
+    static PFN_RtlVerifyVersionInfo RtlVerifyVersionInfoFn = NULL;
+    if (!RtlVerifyVersionInfoFn)
+    {
+        HMODULE ntdllModule = GetModuleHandleW(L"ntdll.dll");
+        if (ntdllModule)
+        {
+            RtlVerifyVersionInfoFn = (PFN_RtlVerifyVersionInfo)GetProcAddress(ntdllModule, "RtlVerifyVersionInfo");
+        }
+    }
+
+    // Check if RtlVerifyVersionInfoFn is still NULL
+    if (!RtlVerifyVersionInfoFn)
+    {
+        debugPrint(L"RtlVerifyVersionInfo function not found.");
+        return FALSE; // Return FALSE if the function pointer is NULL
+    }
+
+    RTL_OSVERSIONINFOEXW versionInfo = { 0 };
+    NTSTATUS status;
+    ULONGLONG conditionMask = 0;
+    versionInfo.dwOSVersionInfoSize = sizeof(RTL_OSVERSIONINFOEXW);
+    versionInfo.dwMajorVersion = major;
+    versionInfo.dwMinorVersion = minor;
+
+    VER_SET_CONDITION(conditionMask, VER_MAJORVERSION, VER_GREATER_EQUAL);
+    VER_SET_CONDITION(conditionMask, VER_MINORVERSION, VER_GREATER_EQUAL);
+
+    status = RtlVerifyVersionInfoFn(&versionInfo,
+        VER_MAJORVERSION | VER_MINORVERSION,
+        conditionMask);
+
+    if (status == STATUS_SUCCESS)
+        return TRUE;
+
+    return FALSE;
+}
 
 //+---------------------------------------------------------------------------
 //
@@ -66,11 +110,11 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID pvReserved)
         }
 
         // Check Windows version using IsWindows* macros
-        if (IsWindows8OrGreater())
+        if (IsWindowsVersionOrGreater(8,0))
         { // Windows 8 or greater
             Global::isWindows8 = TRUE;
         }
-        if (IsWindows8Point1OrGreater())
+        if (IsWindowsVersionOrGreater(8,1))
         { // Windows 8.1 or greater. Load Shcore.dll for DPI-aware font size adjustment
             Global::hShcore = LoadLibrary(L"Shcore.dll");
             _T_GetDpiForMonitor getDpiForMonitor = nullptr;

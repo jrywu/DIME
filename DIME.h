@@ -46,8 +46,8 @@ class CUIPresenter;
 class CCompositionProcessorEngine;
 class CReverseConversion;
 
-const DWORD WM_CheckGlobalCompartment = WM_USER;
-LRESULT CALLBACK CDIME_WindowProc(HWND wndHandle, UINT uMsg, WPARAM wParam, LPARAM lParam);
+//const DWORD WM_CheckGlobalCompartment = WM_USER;
+//LRESULT CALLBACK CDIME_WindowProc(HWND wndHandle, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 class CDIME : 
 	public ITfTextInputProcessorEx,
@@ -262,8 +262,8 @@ private:
     BOOL _InitKeyEventSink();
     void _UninitKeyEventSink();
 
-	BOOL _InitMouseEventSink();
-    void _UninitMouseEventSink();
+    //BOOL _InitMouseEventSink();
+    //void _UninitMouseEventSink();
 
     BOOL _InitActiveLanguageProfileNotifySink();
     void _UninitActiveLanguageProfileNotifySink();
@@ -285,7 +285,7 @@ private:
 
     BOOL VerifyDIMECLSID(_In_ REFCLSID clsid);
 
-    friend LRESULT CALLBACK CDIME_WindowProc(HWND wndHandle, UINT uMsg, WPARAM wParam, LPARAM lParam);
+    //friend LRESULT CALLBACK CDIME_WindowProc(HWND wndHandle, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 	// function for process candidate
 	VOID _DeleteCandidateList(BOOL fForce, _In_opt_ ITfContext *pContext);
@@ -349,7 +349,7 @@ private:
     // the current composition object.
     ITfComposition* _pComposition;
 
-    // guidatom for the display attibute.
+    // guidatom for the display attribute.
     TfGuidAtom _gaDisplayAttributeInput;
     TfGuidAtom _gaDisplayAttributeConverted;
 

@@ -53,7 +53,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define DIME_FONT_DEFAULT L"Microsoft JhengHei"
 
 //---------------------------------------------------------------------
-// defined Candidated Window
+// defined Candidate Window
 //---------------------------------------------------------------------
 #define CANDWND_ROW_WIDTH				(30)
 #define CANDWND_BORDER_COLOR			(RGB(0x00, 0x00, 0x00))

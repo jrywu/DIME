@@ -119,7 +119,7 @@ private:
 
 	UINT _fontSize;
 
-    CShadowWindow* _pShadowWnd;
+    std::unique_ptr<CShadowWindow> _pShadowWnd;
 
 	BYTE _animationStage;
 };

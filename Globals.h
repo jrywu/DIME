@@ -184,7 +184,7 @@ extern const GUID DIMEGuidImeModePreserveKey;
 extern const GUID DIMEGuidDoubleSingleBytePreserveKey;
 extern const GUID DIMEGuidConfigPreserveKey;
 
-LRESULT CALLBACK ThreadKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam);
+//LRESULT CALLBACK ThreadKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam);
 BOOL CheckModifiers(UINT uModCurrent, UINT uMod);
 BOOL UpdateModifiers(WPARAM wParam, LPARAM lParam);
 

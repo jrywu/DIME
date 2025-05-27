@@ -9,15 +9,57 @@
 #include "..\Config.h"
 #include "..\BuildInfo.h"
 #include "..\TfInputProcessorProfile.h"
-#include <VersionHelpers.h> // Include VersionHelpers for IsWindows* macros
-//#include <shellscalingapi.h>
 
-#pragma comment(lib, "ComCtl32.lib")
-//#pragma comment(lib, "shcore.lib")    
-#define DIME_SETTINGS_INSTANCE_MUTEX_NAME L"{B11F1FB2-3ECC-409E-A036-4162ADCEF1A3}"
+#pragma comment(lib, "ComCtl32.lib")  
+constexpr wchar_t DIME_SETTINGS_INSTANCE_MUTEX_NAME[] = L"{B11F1FB2-3ECC-409E-A036-4162ADCEF1A3}";
 
 // Global Variables:
 HINSTANCE hInst;                                // current instance
+
+
+typedef _Return_type_success_(return >= 0) LONG NTSTATUS;
+#define STATUS_SUCCESS ((NTSTATUS)0x00000000)
+#define STATUS_REVISION_MISMATCH ((NTSTATUS)0xC0000059)
+typedef LONG(WINAPI* PFN_RtlVerifyVersionInfo)(OSVERSIONINFOEXW*, ULONG, ULONGLONG);
+
+static BOOL inline IsWindowsVersionOrGreater(WORD major, WORD minor)
+{
+    static PFN_RtlVerifyVersionInfo RtlVerifyVersionInfoFn = NULL;
+    if (!RtlVerifyVersionInfoFn)
+    {
+        HMODULE ntdllModule = GetModuleHandleW(L"ntdll.dll");
+        if (ntdllModule)
+        {
+            RtlVerifyVersionInfoFn = (PFN_RtlVerifyVersionInfo)GetProcAddress(ntdllModule, "RtlVerifyVersionInfo");
+        }
+    }
+
+    // Check if RtlVerifyVersionInfoFn is still NULL
+    if (!RtlVerifyVersionInfoFn)
+    {
+        debugPrint(L"RtlVerifyVersionInfo function not found.");
+        return FALSE; // Return FALSE if the function pointer is NULL
+    }
+
+    RTL_OSVERSIONINFOEXW versionInfo = { 0 };
+    NTSTATUS status;
+    ULONGLONG conditionMask = 0;
+    versionInfo.dwOSVersionInfoSize = sizeof(RTL_OSVERSIONINFOEXW);
+    versionInfo.dwMajorVersion = major;
+    versionInfo.dwMinorVersion = minor;
+
+    VER_SET_CONDITION(conditionMask, VER_MAJORVERSION, VER_GREATER_EQUAL);
+    VER_SET_CONDITION(conditionMask, VER_MINORVERSION, VER_GREATER_EQUAL);
+
+    status = RtlVerifyVersionInfoFn(&versionInfo,
+        VER_MAJORVERSION | VER_MINORVERSION,
+        conditionMask);
+
+    if (status == STATUS_SUCCESS)
+        return TRUE;
+
+    return FALSE;
+}
 
 enum _PROCESS_DPI_AWARENESS
 {
@@ -52,7 +94,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         return -1;
     }
 
-    if (IsWindows8Point1OrGreater()){
+    if (IsWindowsVersionOrGreater(8,1)){
         HMODULE hShcore = LoadLibrary(L"Shcore.dll");
         if (hShcore != NULL) {
             auto SetProcessDpiAwareness = reinterpret_cast<HRESULT(__stdcall*)(_PROCESS_DPI_AWARENESS)>(
@@ -88,7 +130,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
 }
 
-void showIMESettings(HWND hDlg, IME_MODE imeMode)
+static void showIMESettings(HWND hDlg, IME_MODE imeMode)
 {
     PROPSHEETPAGE psp;
     PROPSHEETHEADER psh;
@@ -100,7 +142,7 @@ void showIMESettings(HWND hDlg, IME_MODE imeMode)
         { IDD_DIALOG_DICTIONARY, CConfig::DictionaryPropertyPageWndProc }
 
     };
-    HPROPSHEETPAGE hpsp[_countof(DlgPage)];
+    HPROPSHEETPAGE hpsp[_countof(DlgPage)] = { nullptr }; // Initialize all elements to nullptr
     int i;
 
     ZeroMemory(&psp, sizeof(PROPSHEETPAGE));

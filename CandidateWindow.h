@@ -148,8 +148,8 @@ private:
     CANDWNDCALLBACK _pfnCallback;
     void* _pObj;
 
-    CShadowWindow* _pShadowWnd;
-    CScrollBarWindow* _pVScrollBarWnd;
+    std::unique_ptr<CShadowWindow> _pShadowWnd;
+    std::unique_ptr<CScrollBarWindow> _pVScrollBarWnd;
 
     BOOL _dontAdjustOnEmptyItemPage;
     BOOL _isStoreAppMode;

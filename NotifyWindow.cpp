@@ -36,6 +36,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Globals.h"
 #include "BaseWindow.h"
 #include "NotifyWindow.h"
+#include <memory> // Include for smart pointers
 #define NO_ANIMATION
 #define NO_WINDOW_SHADOW
 #define ANIMATION_STEP_TIME 15
@@ -97,7 +98,7 @@ CNotifyWindow::~CNotifyWindow()
 //
 // _Create
 //
-// CandidateWinow is the top window
+// CandidateWindow is the top window
 //----------------------------------------------------------------------------
 
 BOOL CNotifyWindow::_Create(_In_ UINT fontSize, _In_opt_ HWND parentWndHandle, _In_opt_ CStringRange* notifyText)
@@ -149,18 +150,13 @@ BOOL CNotifyWindow::_CreateMainWindow(_In_opt_ HWND parentWndHandle)
 
 BOOL CNotifyWindow::_CreateBackGroundShadowWindow()
 {
-    _pShadowWnd = new (std::nothrow) CShadowWindow(this);
-    if (_pShadowWnd == nullptr)
-    {
-        return FALSE;
-    }
-
+    _pShadowWnd = std::make_unique<CShadowWindow>(this); // Use std::make_unique
     if (!_pShadowWnd->_Create(Global::AtomNotifyShadowWindow,
         WS_EX_TOPMOST | 
-		WS_EX_TOOLWINDOW | WS_EX_LAYERED,
-		WS_BORDER | WS_POPUP, this))
+        WS_EX_TOOLWINDOW | WS_EX_LAYERED,
+        WS_BORDER | WS_POPUP, this))
     {
-        _DeleteShadowWnd();
+        _pShadowWnd.reset(); // Automatically deletes the object
         return FALSE;
     }
 
@@ -198,7 +194,7 @@ void CNotifyWindow::_Move(int x, int y)
 #endif
 }
 void CNotifyWindow::_OnTimerID(UINT_PTR timerID)
-{   //animate the window faded out with layered tranparency
+{   //animate the window faded out with layered transparency
 	debugPrint(L"CNotifyWindow::_OnTimer(): timerID = %d,  _animationStage = %d", timerID, _animationStage);
 	switch (timerID)
 	{
@@ -342,7 +338,7 @@ LRESULT CALLBACK CNotifyWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT uM
 					_cyTitle = _TextMetric.tmHeight *2;
 				}
 				_x = -32768;
-				_y = -32768;  //out of screen intially
+				_y = -32768;  //out of screen initially
 				
 				
 				debugPrint(L"CNotifyWindow::_WindowProcCallback():WM_CREATE, _cxTitle = %d, _cyTitle=%d, _TextMetric.tmAveCharWidt = %d", 
@@ -384,7 +380,7 @@ LRESULT CALLBACK CNotifyWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT uM
                     _pShadowWnd->_Show(FALSE);
                 }
 
-                // don't go behaind of shadow
+                // don't go behind of shadow
                 if (((pWndPos->flags & SWP_NOZORDER) == 0) && (pWndPos->hwndInsertAfter == _pShadowWnd->_GetWnd()))
                 {
                     pWndPos->flags |= SWP_NOZORDER;
@@ -443,7 +439,7 @@ LRESULT CALLBACK CNotifyWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT uM
     case WM_MBUTTONUP:
     case WM_RBUTTONUP:
         {
-            POINT point;
+        POINT point = { 0,0 };
 
             POINTSTOPOINT(point, MAKEPOINTS(lParam));
 
@@ -541,7 +537,7 @@ void CNotifyWindow::_DrawText(_In_ HDC dcHandle, _In_ RECT *prc)
 	_cyTitle = size.cy * 3/2;
 	debugPrint(L"CNotifyWindow::_DrawText(), _cxTitle = %d, _cyTitle=%d, text size x = %d, y = %d", _cxTitle, _cyTitle, size.cx, size.cy);
 	
-    RECT rc;
+    RECT rc = { 0,0,0,0 };
 	if(prc)
 	{
 		rc.top = prc->top;
@@ -572,26 +568,25 @@ void CNotifyWindow::_DrawText(_In_ HDC dcHandle, _In_ RECT *prc)
 void CNotifyWindow::_DrawBorder(_In_ HWND wndHandle, _In_ int cx)
 {
     RECT rcWnd;
-
     HDC dcHandle = GetWindowDC(wndHandle);
 
     GetWindowRect(wndHandle, &rcWnd);
-    // zero based
-    OffsetRect(&rcWnd, -rcWnd.left, -rcWnd.top); 
+    OffsetRect(&rcWnd, -rcWnd.left, -rcWnd.top); // Zero-based
 
-	HPEN hPen = CreatePen(PS_SOLID, cx, NOTIFYWND_BORDER_COLOR);
-    HPEN hPenOld = (HPEN)SelectObject(dcHandle, hPen);
+    // Use RAII for GDI objects
+    HPEN hPen = CreatePen(PS_SOLID, cx, NOTIFYWND_BORDER_COLOR);
     HBRUSH hBorderBrush = (HBRUSH)GetStockObject(NULL_BRUSH);
+
+    HPEN hPenOld = (HPEN)SelectObject(dcHandle, hPen);
     HBRUSH hBorderBrushOld = (HBRUSH)SelectObject(dcHandle, hBorderBrush);
 
     Rectangle(dcHandle, rcWnd.left, rcWnd.top, rcWnd.right, rcWnd.bottom);
 
     SelectObject(dcHandle, hPenOld);
     SelectObject(dcHandle, hBorderBrushOld);
-    DeleteObject(hPen);
-    DeleteObject(hBorderBrush);
-    ReleaseDC(wndHandle, dcHandle);
 
+    DeleteObject(hPen);
+    ReleaseDC(wndHandle, dcHandle);
 }
 
 //+---------------------------------------------------------------------------
@@ -630,25 +625,19 @@ void CNotifyWindow::_AddString(_Inout_ const CStringRange *pNotifyText)
 
 void CNotifyWindow::_SetString(_Inout_ const CStringRange *pNotifyText)
 {
-	debugPrint(L"CNotifyWindow::_SetString()");
-	if(pNotifyText == nullptr) return;
-	size_t notifyTextLen = pNotifyText->GetLength();
-    WCHAR* pwchString = nullptr;
+    debugPrint(L"CNotifyWindow::_SetString()");
+    if (pNotifyText == nullptr) return;
+
+    size_t notifyTextLen = pNotifyText->GetLength();
     if (notifyTextLen)
     {
-		delete [] _notifyText.Get();
-        pwchString = new (std::nothrow) WCHAR[ notifyTextLen + 1];
-        if (!pwchString)
-        {
-            return;
-        }
-		StringCchCopyN(pwchString, notifyTextLen + 1, pNotifyText->Get(), notifyTextLen);
-		_notifyText.Set(pwchString, notifyTextLen);
+        // Use std::unique_ptr for safe memory management
+        std::unique_ptr<WCHAR[]> pwchString = std::make_unique<WCHAR[]>(notifyTextLen + 1);
+        StringCchCopyN(pwchString.get(), notifyTextLen + 1, pNotifyText->Get(), notifyTextLen);
 
-		debugPrint(L"CNotifyWindow::_SetString(), notifyTextLen =%d", notifyTextLen);
-
+        _notifyText.Set(pwchString.release(), notifyTextLen); // Transfer ownership
+        debugPrint(L"CNotifyWindow::_SetString(), notifyTextLen =%d", notifyTextLen);
     }
-   
 }
 
 //+---------------------------------------------------------------------------
@@ -706,11 +695,8 @@ void CNotifyWindow::_FireMessageToLightDismiss(_In_ HWND wndHandle, _In_ WINDOWP
 
 void CNotifyWindow::_DeleteShadowWnd()
 {
-    if (nullptr != _pShadowWnd)
-    {
-        delete _pShadowWnd;
-        _pShadowWnd = nullptr;
-    }
+    debugPrint(L"CNotifyWindow::_DeleteShadowWnd(), gdiObjects = %d", GetGuiResources(GetCurrentProcess(), GR_GDIOBJECTS));
+    _pShadowWnd.reset(); // Automatically deletes the object
 }
 
 

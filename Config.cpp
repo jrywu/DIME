@@ -47,7 +47,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 #pragma comment(lib, "Shlwapi.lib")
-//static configuration settings initilization
+//static configuration settings initialization
 IME_MODE CConfig::_imeMode = IME_MODE::IME_MODE_NONE;
 BOOL CConfig::_loadTableMode = FALSE;
 ARRAY_SCOPE CConfig::_arrayScope = ARRAY_SCOPE::ARRAY30_UNICODE_EXT_A;
@@ -132,7 +132,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 	HDC hdc;
 	HFONT hFont;
 	CHOOSEFONT cf;
-	LOGFONT lf;
+	LOGFONT lf = { 0 };
 	int fontpoint = 12, fontweight = FW_NORMAL, x, y;
 	size_t i;
 	BOOL fontitalic = FALSE;
@@ -140,10 +140,10 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 	WCHAR* pwszFontFaceName;
 	WCHAR num[16] = { 0 };
 	RECT rect;
-	POINT pt;
+	POINT pt = { 0,0 };
 	UINT sel = 0;
 
-	CHOOSECOLORW cc;
+	CHOOSECOLORW cc = { 0 };
 	static COLORREF colCust[16];
 	PAINTSTRUCT ps;
 
@@ -297,7 +297,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 					CheckDlgButton(hDlg, IDC_CHECKBOX_AUTOCOMPOSE, BST_UNCHECKED);
 					CheckDlgButton(hDlg, IDC_CHECKBOX_SPACEASPAGEDOWN, BST_CHECKED);
 				}
-				else // autocompse is alwyas true in ARRAY30
+				else // autocompose is always true in ARRAY30
 					_autoCompose = TRUE;
 
 				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_SINGLEQUOTE_CUSTOM_PHRASE),
@@ -309,7 +309,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_AUTOCOMPOSE),
 					(_arrayScope != ARRAY_SCOPE::ARRAY40_BIG5) ? SW_HIDE : SW_SHOW);
 
-				debugPrint(L"selected arrray scope item is %d", _arrayScope);
+				debugPrint(L"selected array scope item is %d", _arrayScope);
 				break;
 			default:
 				break;
@@ -487,7 +487,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 
 			hwnd = GetDlgItem(hDlg, IDC_COMBO_REVERSE_CONVERSION);
 			sel = (UINT)SendMessage(hwnd, CB_GETCURSEL, 0, 0);
-			debugPrint(L"selected reverse convertion item is %d", sel);
+			debugPrint(L"selected reverse conversion item is %d", sel);
 			if (sel == 0)
 			{
 				_reverseConverstionCLSID = CLSID_NULL;
@@ -522,7 +522,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 				ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_AUTOCOMPOSE),
 					(_arrayScope != ARRAY_SCOPE::ARRAY40_BIG5) ? SW_HIDE : SW_SHOW);
 				
-				debugPrint(L"selected arrray scope item is %d", _arrayScope);
+				debugPrint(L"selected array scope item is %d", _arrayScope);
 			}
 
 			if (_imeMode == IME_MODE::IME_MODE_PHONETIC)
@@ -566,7 +566,7 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 	_T_GetOpenFileName _GetOpenFileName = NULL;
 	_T_GetSaveFileName _GetSaveFileName = NULL;
 
-	WCHAR custromTableName[MAX_PATH] = L"\0";
+	WCHAR customTableName[MAX_PATH] = L"\0";
 	WCHAR targetName[MAX_PATH] = L"\0";;
 	WCHAR wszAppData[MAX_PATH] = L"\0";;
 	WCHAR wszUserDoc[MAX_PATH] = L"\0";
@@ -581,7 +581,7 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 	}openFileType = OPEN_NULL;
 
 
-	//CSIDL_APPDATA  personal roadming application data.
+	//CSIDL_APPDATA  personal roaming application data.
 	SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);
 	SHGetSpecialFolderPath(NULL, wszUserDoc, CSIDL_MYDOCUMENTS, TRUE);
 
@@ -595,14 +595,14 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 	{
 	case WM_INITDIALOG:
 		if (_imeMode == IME_MODE::IME_MODE_DAYI)
-			StringCchPrintf(custromTableName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\DAYI-Custom.txt");
+			StringCchPrintf(customTableName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\DAYI-Custom.txt");
 		else if (_imeMode == IME_MODE::IME_MODE_ARRAY)
-			StringCchPrintf(custromTableName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\ARRAY-Custom.txt");
+			StringCchPrintf(customTableName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\ARRAY-Custom.txt");
 		else if (_imeMode == IME_MODE::IME_MODE_PHONETIC)
-			StringCchPrintf(custromTableName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\PHONETIC-Custom.txt");
+			StringCchPrintf(customTableName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\PHONETIC-Custom.txt");
 		else if (_imeMode == IME_MODE::IME_MODE_GENERIC)
-			StringCchPrintf(custromTableName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\GENERIC-Custom.txt");
-		importCustomTableFile(hDlg, custromTableName);
+			StringCchPrintf(customTableName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\GENERIC-Custom.txt");
+		importCustomTableFile(hDlg, customTableName);
 		_customTableChanged = FALSE;
 
 		if (!(_loadTableMode || _imeMode == IME_MODE::IME_MODE_GENERIC))
@@ -1017,7 +1017,7 @@ VOID CConfig::WriteConfig(BOOL confirmUpdated)
 
 	if(confirmUpdated && !failed && updated)
 	{
-		//The config file is udpated
+		//The config file is updated
 		MessageBox(GetFocus(), L"新設定未生效!\n設定檔已被其他程式更新，請避免在兩個程式同時開啟設定頁面。",
 			L"設定錯誤", MB_ICONERROR);
 		LoadConfig(_imeMode);
@@ -1115,7 +1115,7 @@ void CConfig::SetIMEMode(IME_MODE imeMode)
 		}
 
 		if (!PathFileExists(_pwzsDIMEProfile))
-		{   //DIME roadming profile is not exist. Create one.
+		{   //DIME roaming profile is not exist. Create one.
 			if (CreateDirectory(_pwzsDIMEProfile, NULL) == 0) return;
 		}
 		if (imeMode == IME_MODE::IME_MODE_DAYI)
@@ -1193,7 +1193,7 @@ BOOL CConfig::LoadConfig(IME_MODE imeMode)
 					iniTableDictionaryEngine->ParseConfig(imeMode); //parse config first.
 					debugPrint(L"CDIME::loadConfig() parsed. _loadTableMode = %d\n", _loadTableMode);
 				}
-				delete iniTableDictionaryEngine; // delete after config.ini config are pasrsed
+				delete iniTableDictionaryEngine; // delete after config.ini config are parsed
 				delete iniDictionaryFile;
 				SetDefaultTextFont();
 				_initTimeStamp.st_mtime = initTimeStamp.st_mtime;
@@ -1209,7 +1209,7 @@ BOOL CConfig::LoadConfig(IME_MODE imeMode)
 #endif
 			{
 				EXPLICIT_ACCESS ea;
-				// Get a pointer to the existing DACL (Conditionaly).
+				// Get a pointer to the existing DACL (Conditionally).
 				DWORD dwRes = GetNamedSecurityInfo(_pwzsDIMEProfile, SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, NULL, NULL, &pOldDACL, NULL, &pSD);
 				if (ERROR_SUCCESS != dwRes) goto ErrorExit;
 				// Initialize an EXPLICIT_ACCESS structure for the new ACE. 
@@ -1411,7 +1411,7 @@ BOOL CConfig::importCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToLoad)
 			WCHAR* outWStr = nullptr;
 			UINT codepage = 0;
 
-			//IMultiLanguage intilization
+			//IMultiLanguage initialization
 			if(FAILED(CoInitialize(NULL)))
 			{	// Error
 				success = FALSE;
@@ -1499,7 +1499,7 @@ BOOL CConfig::exportCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToWrite)
 		goto Cleanup;
 	}
 
-	//Write Byte order makr to the file if the first byte of buf is not BOM
+	//Write Byte order mark to the file if the first byte of buf is not BOM
 	
 	if (customText[0] != byteOrder && !WriteFile(hCustomTableFile, (LPCVOID)&byteOrder, (DWORD)sizeof(WCHAR), &lpNumberOfBytesWritten, NULL))
 	{	// Error
@@ -1524,7 +1524,7 @@ BOOL CConfig::parseCINFile(_In_ LPCWSTR pathToLoad, _In_ LPCWSTR pathToWrite, _I
 	FILE *fpr, *fpw;
 	errno_t ret;
 	BOOL success = TRUE;
-	ret = _wfopen_s(&fpr, pathToLoad, (customTableMode) ? L"r, ccs=UTF-16LE" : L"r, ccs=UTF-8"); // custom table custom.txt in romaing profile is in UTF-16LE encoding.
+	ret = _wfopen_s(&fpr, pathToLoad, (customTableMode) ? L"r, ccs=UTF-16LE" : L"r, ccs=UTF-8"); // custom table custom.txt in roaming profile is in UTF-16LE encoding.
 	if (ret != 0)
 	{
 		MessageBox(GetFocus(), L"指定檔案無法開啟!!", L"File open error!", MB_ICONERROR);
@@ -1578,7 +1578,7 @@ BOOL CConfig::parseCINFile(_In_ LPCWSTR pathToLoad, _In_ LPCWSTR pathToWrite, _I
 						{
 							StringCchCat(escapedKey, _countof(escapedKey), L"\\\"");
 						}
-						else if (key[i] == '\\') // escaoe \ .
+						else if (key[i] == '\\') // escape \ .
 						{
 							StringCchCat(escapedKey, _countof(escapedKey), L"\\\\");
 						}
@@ -1595,7 +1595,7 @@ BOOL CConfig::parseCINFile(_In_ LPCWSTR pathToLoad, _In_ LPCWSTR pathToWrite, _I
 						{
 							StringCchCat(escapedValue, _countof(escapedValue), L"\\\"");
 						}
-						else if (value[i] == '\\') // escaoe \ .
+						else if (value[i] == '\\') // escape \ .
 						{
 							StringCchCat(escapedValue, _countof(escapedValue), L"\\\\");
 						}

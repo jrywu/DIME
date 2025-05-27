@@ -299,7 +299,7 @@ public:
 
     T* Append()
     {
-        T newT;
+        T newT = T(); // Initialize newT with a default constructor or value.
         _innerVect.push_back(newT);
         T& backT = _innerVect.back();
 

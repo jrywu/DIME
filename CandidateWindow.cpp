@@ -36,6 +36,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Globals.h"
 #include "BaseWindow.h"
 #include "CandidateWindow.h"
+#include <memory> // Include for smart pointers
 
 #define NO_ANIMATION
 #define NO_WINDOW_SHADOW
@@ -103,7 +104,7 @@ CCandidateWindow::~CCandidateWindow()
 //
 // _Create
 //
-// CandidateWinow is the top window
+// CandidateWindow is the top window
 //----------------------------------------------------------------------------
 
 BOOL CCandidateWindow::_Create(_In_ UINT wndWidth, _In_ UINT fontSize, _In_opt_ HWND parentWndHandle)
@@ -157,8 +158,8 @@ BOOL CCandidateWindow::_CreateMainWindow(_In_opt_ HWND parentWndHandle)
 
 BOOL CCandidateWindow::_CreateBackGroundShadowWindow()
 {
-    _pShadowWnd = new (std::nothrow) CShadowWindow(this);
-    if (_pShadowWnd == nullptr)
+    _pShadowWnd = std::make_unique<CShadowWindow>(this);
+    if (!_pShadowWnd)
     {
         return FALSE;
     }
@@ -183,9 +184,9 @@ BOOL CCandidateWindow::_CreateVScrollWindow()
     SHELL_MODE shellMode = _isStoreAppMode ? STOREAPP : DESKTOP;
     CScrollBarWindowFactory* pFactory = CScrollBarWindowFactory::Instance();
 	if(pFactory == nullptr) return ret;
-    _pVScrollBarWnd = pFactory->MakeScrollBarWindow(shellMode);
+    _pVScrollBarWnd = std::unique_ptr<CScrollBarWindow>(pFactory->MakeScrollBarWindow(shellMode));
 
-    if (_pVScrollBarWnd == nullptr)
+    if (!_pVScrollBarWnd)
     {
         _DeleteShadowWnd();
         goto Exit;
@@ -257,7 +258,7 @@ void CCandidateWindow::_Move(int x, int y)
 }
 
 void CCandidateWindow::_OnTimerID(UINT_PTR timerID)
-{   //animate the window faded out with layered tranparency
+{   //animate the window faded out with layered transparency
 	debugPrint(L"CCandidateWindow::_OnTimer(): timerID = %d,  _animationStage = %d", timerID, _animationStage);
 	switch (timerID)
 	{
@@ -371,7 +372,7 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
 				if (pwszTestString == NULL) return 0;
 
 				pwszTestString[0] = L'\0';
-				for (UINT i = 0; i < _wndWidth; i++) StringCchCatN(pwszTestString, _wndWidth + 1, L"¼e", 1);
+				for (UINT i = 0; i < _wndWidth; i++) StringCchCatN(pwszTestString, static_cast<size_t>(_wndWidth) + 1, L"¼e", 1);
 
 				SIZE candSize;
 				GetTextExtentPoint32(dcHandle, pwszTestString, _wndWidth, &candSize); //don't trust the TextMetrics. Measurement the font height and width directly.
@@ -425,7 +426,7 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
                     _pShadowWnd->_Show(FALSE);
                 }
 
-                // don't go behaind of shadow
+                // don't go behind of shadow
                 if (((pWndPos->flags & SWP_NOZORDER) == 0) && (pWndPos->hwndInsertAfter == _pShadowWnd->_GetWnd()))
                 {
                     pWndPos->flags |= SWP_NOZORDER;
@@ -495,7 +496,7 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
     case WM_MBUTTONUP:
     case WM_RBUTTONUP:
         {
-            POINT point;
+            POINT point = { 0, 0 };;
 
             POINTSTOPOINT(point, MAKEPOINTS(lParam));
 
@@ -781,7 +782,7 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
     int candidateListPageCnt = _pIndexRange->Count();
 	int VScrollWidth = GetSystemMetrics(SM_CXVSCROLL) *3/2;
 
-    RECT rc;
+    RECT rc = { 0,0,0,0 };
 	const size_t numStringLen = 2;
 	
 	GetTextMetrics(dcHandle, &_TextMetric);
@@ -790,7 +791,7 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
 	if (pwszTestString)
 	{
 		pwszTestString[0] = L'\0';
-		for (UINT i = 0; i < _wndWidth; i++) StringCchCatN(pwszTestString, _wndWidth + 1, L"¼e", 1);
+		for (UINT i = 0; i < _wndWidth; i++) StringCchCatN(pwszTestString, static_cast<size_t>(_wndWidth) + 1, L"¼e", 1);
 		GetTextExtentPoint32(dcHandle, pwszTestString, _wndWidth, &candSize); //don't trust the TextMetrics. Measurement the font height and width directly.
 		delete[]pwszTestString;
 
@@ -850,7 +851,7 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
 		SIZE size;
 		WCHAR itemText[MAX_CAND_ITEM_LENGTH + 3] = { '\0' };
 		int itemLength = (int)pItemList->_ItemString.GetLength();
-		if (itemLength > MAX_CAND_ITEM_LENGTH) // if the legnth of item text > MAX_CAND_ITEM_LENGTH (13) , truncate the item text as "First 6 chars of itemtext"+"..."+"last 6 chars of itemtext"
+		if (itemLength > MAX_CAND_ITEM_LENGTH) // if the length of item text > MAX_CAND_ITEM_LENGTH (13) , truncate the item text as "First 6 chars of itemtext"+"..."+"last 6 chars of itemtext"
 		{
 			StringCchCatN(itemText, MAX_CAND_ITEM_LENGTH + 3, pItemList->_ItemString.Get(), 6);
 			StringCchCatN(itemText, MAX_CAND_ITEM_LENGTH + 3, L"¡K", 1);
@@ -1250,13 +1251,13 @@ BOOL CCandidateWindow::_MovePage(_In_ int offSet, _In_ BOOL isNotify)
 		_InvalidateRect();
         return FALSE;
     }
-	if(_currentSelection <0 ) _currentSelection = 0;//reset the selection postition for phrase cand (_currentselection is -1);
+	if(_currentSelection <0 ) _currentSelection = 0;//reset the selection position for phrase cand (_currentselection is -1);
 
     // If current selection is at the top of the page AND 
     // we are on the "default" page border, then we don't
     // want adjustment to eliminate empty entries.
     //
-    // We do this for keeping behavior inline with downlevel.
+    // We do this for keeping behavior inline with down level.
     if (_pIndexRange && _currentSelection % _pIndexRange->Count() == 0 && 
         _currentSelection == (INT) *_PageIndex.GetAt(currentPage)) 
     {
@@ -1301,7 +1302,7 @@ BOOL CCandidateWindow::_SetSelectionOffset(_In_ int offSet)
     if ((offSet == 1 || offSet == -1) &&
         fCurrentPageHasEmptyItems && _PageIndex.Count() > 1)
     {
-        int iPageIndex = *_PageIndex.GetAt(_PageIndex.Count() - 1);
+        int iPageIndex = *_PageIndex.GetAt(static_cast<size_t>(_PageIndex.Count()) - 1);
         // Moving on the last page and last page has empty items.
         if (newOffset >= iPageIndex)
         {
@@ -1480,7 +1481,7 @@ BOOL CCandidateWindow::_AdjustPageIndexForSelection()
 
     if (_candidateList.Count() < candidateListPageCnt)
     {
-        // no needed to restruct page index
+        // no needed to reconstruct page index
         return TRUE;
     }
 
@@ -1494,7 +1495,7 @@ BOOL CCandidateWindow::_AdjustPageIndexForSelection()
     //      (_currentSelection - 1) / candidateListPageCnt + 1
     // A + B is (_CandidateListCount - 2) / candidateListPageCnt + 1
 
-	BOOL isBefore = _currentSelection > 0; //has to consider _currentSelection = -1 for assciated phrase
+	BOOL isBefore = _currentSelection > 0; //has to consider _currentSelection = -1 for associated phrase
 	BOOL isAfter = (_currentSelection <0 && _candidateList.Count() > candidateListPageCnt) || _candidateList.Count() > _currentSelection + candidateListPageCnt;
 
     // only have current page
@@ -1691,20 +1692,11 @@ Exit:
 void CCandidateWindow::_DeleteShadowWnd()
 {
 	debugPrint(L"CCandidateWindow::_DeleteShadowWnd(), gdiObjects = %d", GetGuiResources(GetCurrentProcess(), GR_GDIOBJECTS));
-    if (nullptr != _pShadowWnd)
-    {
-
-        delete _pShadowWnd;
-        _pShadowWnd = nullptr;
-    }
+    _pShadowWnd.reset();
 }
 
 void CCandidateWindow::_DeleteVScrollBarWnd()
 {
 	debugPrint(L"CCandidateWindow::_DeleteVScrollBarWnd(), gdiObjects = %d", GetGuiResources(GetCurrentProcess(), GR_GDIOBJECTS));
-    if (nullptr != _pVScrollBarWnd)
-    {
-        delete _pVScrollBarWnd;
-        _pVScrollBarWnd = nullptr;
-    }
+    _pVScrollBarWnd.reset();
 }

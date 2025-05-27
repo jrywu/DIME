@@ -127,7 +127,7 @@ BOOL CDIME::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pCod
     *pCodeOut = VKeyFromVKPacketAndWchar(codeIn, wch);
     if ((wch == THIRDPARTY_NEXTPAGE) || (wch == THIRDPARTY_PREVPAGE))
     {
-        // We always eat the above softkeyboard special keys
+        // We always eat the above soft keyboard special keys
         isTouchKeyboardSpecialKeys = TRUE;
         if (pwch)
         {

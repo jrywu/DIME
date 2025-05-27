@@ -272,7 +272,7 @@ void CShadowWindow::_InitShadow()
     HDC dcLayeredHandle = nullptr;
     RECT rcWindow = {0, 0, 0, 0};
     SIZE size = {0, 0};
-    BITMAPINFO bitmapInfo;
+    BITMAPINFO bitmapInfo = {};
     HBITMAP bitmapMemHandle = nullptr;
     HBITMAP bitmapOldHandle = nullptr;
     void* pDIBits = nullptr;
@@ -280,7 +280,7 @@ void CShadowWindow::_InitShadow()
     int j = 0;
     POINT ptSrc = {0, 0};
     POINT ptDst = {0, 0};
-    BLENDFUNCTION Blend;
+    BLENDFUNCTION Blend = {};
 
     if (!_isGradient)
     {
@@ -324,7 +324,7 @@ void CShadowWindow::_InitShadow()
         return;
     }
 
-    memset(pDIBits, 0, ((((32 * size.cx) + 31) & ~31) / 8) * size.cy);
+    memset(pDIBits, 0, (((((size_t)32 * size.cx) + 31) & ~31) / 8) * size.cy);
 
     // edges
     for (i = 0; i < SHADOW_ALPHANUMBER; i++) {
