@@ -1509,8 +1509,9 @@ void CCompositionProcessorEngine::SetupCandidateListRange(IME_MODE imeMode)
 		}
 		if (pNewPhraseIndexRange != nullptr)
 		{
-			StringCchCopy(phraseSelKey, MAX_CAND_SELKEY, L"!@#$%^&*()");
-			pNewPhraseIndexRange->Printable = phraseSelKey[i];
+                       // Use digit keys for phrase candidate selection so SHIFT is not required.
+                       StringCchCopy(phraseSelKey, MAX_CAND_SELKEY, L"1234567890");
+                       pNewPhraseIndexRange->Printable = phraseSelKey[i];
 			
 			UINT vKey, modifier;
 			GetVKeyFromPrintable(phraseSelKey[i], &vKey, &modifier);
@@ -1518,15 +1519,13 @@ void CCompositionProcessorEngine::SetupCandidateListRange(IME_MODE imeMode)
 			pNewPhraseIndexRange->Modifiers = modifier;
 			if (i != 9)
 			{
-				pNewPhraseIndexRange->Index = i + 1;
-				pNewPhraseIndexRange->CandIndex = WCHAR(i + 1 +0x30);  //ASCII 0x3x = x 
-				pNewPhraseIndexRange->Modifiers = TF_MOD_SHIFT;
+                               pNewPhraseIndexRange->Index = i + 1;
+                               pNewPhraseIndexRange->CandIndex = WCHAR(i + 1 +0x30);  //ASCII 0x3x = x
 			}
 			else
 			{
-				pNewPhraseIndexRange->CandIndex = L'0';
-				pNewPhraseIndexRange->Index = 0;
-				pNewPhraseIndexRange->Modifiers = TF_MOD_SHIFT;
+                               pNewPhraseIndexRange->CandIndex = L'0';
+                               pNewPhraseIndexRange->Index = 0;
 
 			}
 
