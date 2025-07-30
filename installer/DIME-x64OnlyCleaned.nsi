@@ -65,22 +65,13 @@ ShowUnInstDetails show
 LangString DESC_INSTALLING ${LANG_TradChinese} "安裝中"
 LangString DESC_DOWNLOADING1 ${LANG_TradChinese} "下載中"
 LangString DESC_DOWNLOADFAILED ${LANG_TradChinese} "下載失敗:"
-LangString DESC_VCX86 ${LANG_TradChinese} "Visual Studio Redistritable x86"
 LangString DESC_VCX64 ${LANG_TradChinese} "Visual Studio Redistritable x64"
-LangString DESC_VCARM64 ${LANG_TradChinese} "Visual Studio Redistritable ARM64"
-LangString DESC_VCX86_DECISION ${LANG_TradChinese} "安裝此輸入法之前，必須先安裝 $(DESC_VCX86)，若你想繼續安裝 \
-  ，您的電腦必須連接網路。$\n您要繼續這項安裝嗎？"
 LangString DESC_VCX64_DECISION ${LANG_TradChinese} "安裝此輸入法之前，必須先安裝 $(DESC_VCX64)，若你想繼續安裝 \
   ，您的電腦必須連接網路。$\n您要繼續這項安裝嗎？"
-LangString DESC_VCARM64_DECISION ${LANG_TradChinese} "安裝此輸入法之前，必須先安裝 $(DESC_VCARM64)，若你想繼續安裝 \
-  ，您的電腦必須連接網路。$\n您要繼續這項安裝嗎？"
 !define URL_VC_REDISTX64 https://aka.ms/vs/17/release/vc_redist.x64.exe
-!define URL_VC_REDISTX86 https://aka.ms/vs/17/release/vc_redist.x86.exe
 
 
-Var "URL_VCX86"
 Var "URL_VCX64"
-;Var "URL_VCARM64"
 
 Function .onInit
   InitPluginsDir
@@ -114,7 +105,6 @@ Section "CheckVCRedist" VCR
   ${If} ${RunningX64}
     SetRegView 64
 	ClearErrors	
-	${If} ${IsNativeAMD64}
 		ReadRegDword $R0 HKLM "SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\X64" "Minor"
 		IfErrors InstallVCx64Redist 0
 		${If} $R0 > 31
@@ -141,34 +131,8 @@ Section "CheckVCRedist" VCR
 	VCx64RedistInstalled:
 	${Endif}
     SetRegView 32
-  ${EndIf}
-  ClearErrors
-  IfErrors InstallVCx86Redist 0
-  ${If} $R0 > 31
-  	Goto VCRedistInstalled
-  ${EndIf}
-  ClearErrors
-  IfErrors InstallVCx86Redist 0
-  ${If} $R0 >= 31103
-	Goto VCRedistInstalled
-  ${EndIf}
-InstallVCx86Redist:
-  MessageBox MB_ICONEXCLAMATION|MB_YESNO|MB_DEFBUTTON2 "$(DESC_VCX86_DECISION)" /SD IDNO IDYES +1 IDNO VCRedistInstalledAbort
-  AddSize 7000
-  nsisdl::download /TIMEOUT=30000 "$URL_VCX86" "$PLUGINSDIR\vcredist_x86.exe"
-    Pop $0
-    StrCmp "$0" "success" lbl_continue
-    DetailPrint "$(DESC_DOWNLOADFAILED) $0"
-    Abort
-
-    lbl_continue:
-      DetailPrint "$(DESC_INSTALLING) $(DESC_VCX86)..."
-      nsExec::ExecToStack "$PLUGINSDIR\vcredist_x86.exe /q"
-      ;pop $DOTNET_RETURN_CODE
-  Goto VCRedistInstalled
 VCRedistInstalledAbort:
   Quit
-VCRedistInstalled:
   Exch $R0
 SectionEnd
 
@@ -178,10 +142,7 @@ Section "MainSection" SEC01
   SetOverwrite ifnewer
   ${If} ${RunningX64}
   	${DisableX64FSRedirection}
-	${If} ${IsNativeAMD64}
-    	File "system32.x64\DIME.dll"
-	${ElseIf} ${IsNativeARM64}
-	${EndIf}
+    File "system32.x64\DIME.dll"
   	ExecWait '"$SYSDIR\regsvr32.exe" /s $SYSDIR\DIME.dll'
   	${EnableX64FSRedirection}
   ${EndIf}
@@ -221,11 +182,7 @@ Section -Post
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "URLInfoAbout" "${PRODUCT_WEB_SITE}"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "Publisher" "${PRODUCT_PUBLISHER}"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayIcon" "$SYSDIR\DIME.dll"
-  ${If} ${RunningX64}
-  	WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "EstimatedSize" 286
-  ${Else}
-  	WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "EstimatedSize" 183
-   ${EndIf}
+  WriteRegDWORD ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "EstimatedSize" 286
 SectionEnd
 
 Function un.onUninstSuccess
