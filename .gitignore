@@ -221,3 +221,10 @@ DIME.VC.db
 *.lock
 *.bin
 
+# Claude Code
+.claude/
+CLAUDE.md
+nul
+
+# repos specified
+/reference/
