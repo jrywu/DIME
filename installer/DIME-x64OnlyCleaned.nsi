@@ -132,9 +132,7 @@ Section "CheckVCRedist" VCR
 	${Endif}
     SetRegView 32
 VCRedistInstalledAbort:
-  Quit
   Pop $R0
-  Exch $R0
 SectionEnd
 
 
