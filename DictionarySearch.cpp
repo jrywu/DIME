@@ -375,7 +375,12 @@ ReadValue:
 				*radical = '\0';
 				StringCchCopyN(radical, 16, valueStrings.GetAt(0)->Get(), valueStrings.GetAt(0)->GetLength());
 
-				assert(pRadicalMap->size() < MAX_RADICAL);
+				// Replace assert with runtime bounds checking
+				if (pRadicalMap->size() >= MAX_RADICAL)
+				{
+					debugPrint(L"Warning: RadicalMap size exceeds MAX_RADICAL limit, skipping entry");
+					goto FindNextLine;
+				}
 				(*pRadicalMap)[towupper(radicalChar)] = radical;
 				goto FindNextLine;
 			}
@@ -561,7 +566,12 @@ ReadValue:
 				WCHAR currentInitial = *keyword.Get();
 				if (currentInitial != lastInitial)
 				{
-					assert(pRadicalIndexMap->size() < MAX_RADICAL);
+					// Replace assert with runtime bounds checking
+					if (pRadicalIndexMap->size() >= MAX_RADICAL)
+					{
+						debugPrint(L"Warning: RadicalIndexMap size exceeds MAX_RADICAL limit, skipping entry");
+						goto FindNextLine;
+					}
 					(*pRadicalIndexMap)[towupper(currentInitial)] = indexTrace;
 				}
 
