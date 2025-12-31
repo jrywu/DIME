@@ -188,13 +188,33 @@ void CCompositionProcessorEngine::GetReadingString(_Inout_ CStringRange *pReadin
 					if (_pTableDictionaryEngine[(UINT)Global::imeMode]->GetRadicalMap() &&
 						item != _pTableDictionaryEngine[(UINT)Global::imeMode]->GetRadicalMap()->end())
 					{
-						assert(wcslen(pwchRadical) + wcslen(item->second) < MAX_READINGSTRING - 1);
-						StringCchCat(pwchRadical, MAX_READINGSTRING, item->second);
+						// Replace assert with runtime bounds checking
+						size_t currentLen = wcslen(pwchRadical);
+						size_t appendLen = wcslen(item->second);
+						if (currentLen + appendLen >= MAX_READINGSTRING - 1)
+						{
+							// Truncate to fit within buffer
+							size_t maxAppend = MAX_READINGSTRING - 1 - currentLen;
+							StringCchCatN(pwchRadical, MAX_READINGSTRING, item->second, maxAppend);
+						}
+						else
+						{
+							StringCchCat(pwchRadical, MAX_READINGSTRING, item->second);
+						}
 					}
 					else
 					{
-						assert(wcslen(pwchRadical) + 1 < MAX_READINGSTRING - 1);
-						StringCchCatN(pwchRadical, MAX_READINGSTRING, (pKeyStrokeBuffer->Get() + index), 1);
+						// Replace assert with runtime bounds checking
+						size_t currentLen = wcslen(pwchRadical);
+						if (currentLen + 1 >= MAX_READINGSTRING - 1)
+						{
+							// Buffer full, skip appending
+							debugPrint(L"Warning: Reading string buffer full, truncating input");
+						}
+						else
+						{
+							StringCchCatN(pwchRadical, MAX_READINGSTRING, (pKeyStrokeBuffer->Get() + index), 1);
+						}
 					}
 				}
 
@@ -208,8 +228,20 @@ void CCompositionProcessorEngine::GetReadingString(_Inout_ CStringRange *pReadin
 		}
 		else if (pKeyStrokeBuffer->GetLength())
 		{
-			assert(wcslen(pwchRadical) + pKeyStrokeBuffer->GetLength() < MAX_READINGSTRING - 1);
-			StringCchCatN(pwchRadical, MAX_READINGSTRING, (pKeyStrokeBuffer->Get()), pKeyStrokeBuffer->GetLength());
+			// Replace assert with runtime bounds checking
+			size_t currentLen = wcslen(pwchRadical);
+			size_t keyStrokeLen = pKeyStrokeBuffer->GetLength();
+			if (currentLen + keyStrokeLen >= MAX_READINGSTRING - 1)
+			{
+				// Truncate to fit within buffer
+				size_t maxAppend = MAX_READINGSTRING - 1 - currentLen;
+				StringCchCatN(pwchRadical, MAX_READINGSTRING, (pKeyStrokeBuffer->Get()), maxAppend);
+				debugPrint(L"Warning: Reading string buffer full, truncating keystroke input");
+			}
+			else
+			{
+				StringCchCatN(pwchRadical, MAX_READINGSTRING, (pKeyStrokeBuffer->Get()), keyStrokeLen);
+			}
 			pReadingString->Set(pwchRadical, wcslen(pwchRadical));
 		}
 
@@ -695,8 +727,20 @@ BOOL CCompositionProcessorEngine::GetArraySpeicalCodeFromConvertedText(_In_ CStr
 					pRadicalMap->find(towupper(*(candidateList.GetAt(0)->_FindKeyCode.Get() + i)));
 				if (item != pRadicalMap->end())
 				{
-					assert(wcslen(pwch) + wcslen(item->second) < MAX_READINGSTRING - 1);
-					StringCchCat(pwch, MAX_READINGSTRING, item->second);
+					// Replace assert with runtime bounds checking
+					size_t currentLen = wcslen(pwch);
+					size_t appendLen = wcslen(item->second);
+					if (currentLen + appendLen >= MAX_READINGSTRING - 1)
+					{
+						// Truncate to fit within buffer
+						size_t maxAppend = MAX_READINGSTRING - 1 - currentLen;
+						StringCchCatN(pwch, MAX_READINGSTRING, item->second, maxAppend);
+						debugPrint(L"Warning: Reading string buffer full, truncating radical mapping");
+					}
+					else
+					{
+						StringCchCat(pwch, MAX_READINGSTRING, item->second);
+					}
 				}
 			}
 			csrReslt->Set(pwch, wcslen(pwch));
