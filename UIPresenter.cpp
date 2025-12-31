@@ -1478,22 +1478,20 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange* pNotifyText, _In_opt_ UINT 
 			{
 				pView->GetWnd(&parentWndHandle);
 				debugPrint(L" parentWndHandle = %x , FocusHwnd = %x, ActiveHwnd =%x, ForeGroundHWnd = %x", parentWndHandle, GetFocus(), GetActiveWindow(), GetForegroundWindow());
-				GUITHREADINFO* guiInfo = new GUITHREADINFO;
-				if(guiInfo == nullptr) return;
-
-				POINT* pt = nullptr;
-				guiInfo->cbSize = sizeof(GUITHREADINFO);
-				GetGUIThreadInfo(NULL, guiInfo);
-				if(guiInfo && parentWndHandle) 
+				
+				// Use stack allocation instead of heap allocation to avoid memory leaks
+				GUITHREADINFO guiInfo = {0};
+				guiInfo.cbSize = sizeof(GUITHREADINFO);
+				
+				if(GetGUIThreadInfo(NULL, &guiInfo) && parentWndHandle) 
 				{   //for ancient non TSF aware apps with a floating composition window.  The caret position we can get is always the caret in the floating composition window.
-					pt = new POINT;
-					if(pt == nullptr) return;
-					pt->x = guiInfo->rcCaret.left;
-					pt->y = guiInfo->rcCaret.bottom;
-					ClientToScreen(parentWndHandle, pt);
-					debugPrint(L"current caret position from GetGUIThreadInfo, x = %d, y = %d", pt->x, pt->y);
-					if(_notifyLocation.x < 0) _notifyLocation.x = pt->x;
-					if(_notifyLocation.y < 0) _notifyLocation.y = pt->y;
+					POINT pt;
+					pt.x = guiInfo.rcCaret.left;
+					pt.y = guiInfo.rcCaret.bottom;
+					ClientToScreen(parentWndHandle, &pt);
+					debugPrint(L"current caret position from GetGUIThreadInfo, x = %d, y = %d", pt.x, pt.y);
+					if(_notifyLocation.x < 0) _notifyLocation.x = pt.x;
+					if(_notifyLocation.y < 0) _notifyLocation.y = pt.y;
 				}
 				else if(parentWndHandle)
 				{
