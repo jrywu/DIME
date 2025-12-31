@@ -1,6 +1,6 @@
 #define BUILD_VER_MAJOR 1 
 #define BUILD_VER_MINOR 2 
-#define BUILD_COMMIT_COUNT 371 
+#define BUILD_COMMIT_COUNT 377 
 #define BUILD_YEAR_4 週三 2 
 #define BUILD_YEAR_2  2 
 #define BUILD_YEAR_1  2 
@@ -8,5 +8,5 @@
 #define BUILD_DAY 12 
 #define BUILD_DATE_1  22512 
 #define BUILD_DATE_4 週三 22512 
-#define BUILD_VERSION 1.2.371. 22512 
-#define BUILD_VERSION_STR "1.2.371. 22512" 
+#define BUILD_VERSION 1.2.377. 22512 
+#define BUILD_VERSION_STR "1.2.377. 22512" 
