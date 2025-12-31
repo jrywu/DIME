@@ -1,4 +1,4 @@
-/* DIME IME for Windows 7/8/10/11
+ï»¿/* DIME IME for Windows 7/8/10/11
 
 BSD 3-Clause License
 
@@ -372,7 +372,7 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
 				if (pwszTestString == NULL) return 0;
 
 				pwszTestString[0] = L'\0';
-				for (UINT i = 0; i < _wndWidth; i++) StringCchCatN(pwszTestString, static_cast<size_t>(_wndWidth) + 1, L"¼e", 1);
+				for (UINT i = 0; i < _wndWidth; i++) StringCchCatN(pwszTestString, static_cast<size_t>(_wndWidth) + 1, L"å¯¬", 1);
 
 				SIZE candSize;
 				GetTextExtentPoint32(dcHandle, pwszTestString, _wndWidth, &candSize); //don't trust the TextMetrics. Measurement the font height and width directly.
@@ -791,7 +791,7 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
 	if (pwszTestString)
 	{
 		pwszTestString[0] = L'\0';
-		for (UINT i = 0; i < _wndWidth; i++) StringCchCatN(pwszTestString, static_cast<size_t>(_wndWidth) + 1, L"¼e", 1);
+		for (UINT i = 0; i < _wndWidth; i++) StringCchCatN(pwszTestString, static_cast<size_t>(_wndWidth) + 1, L"å¯¬", 1);
 		GetTextExtentPoint32(dcHandle, pwszTestString, _wndWidth, &candSize); //don't trust the TextMetrics. Measurement the font height and width directly.
 		delete[]pwszTestString;
 
@@ -854,7 +854,7 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
 		if (itemLength > MAX_CAND_ITEM_LENGTH) // if the length of item text > MAX_CAND_ITEM_LENGTH (13) , truncate the item text as "First 6 chars of itemtext"+"..."+"last 6 chars of itemtext"
 		{
 			StringCchCatN(itemText, MAX_CAND_ITEM_LENGTH + 3, pItemList->_ItemString.Get(), 6);
-			StringCchCatN(itemText, MAX_CAND_ITEM_LENGTH + 3, L"¡K", 1);
+			StringCchCatN(itemText, MAX_CAND_ITEM_LENGTH + 3, L"â€¦", 1);
 			StringCchCatN(itemText, MAX_CAND_ITEM_LENGTH + 3, (pItemList->_ItemString.Get() + itemLength - 6), 6);
 			itemLength = MAX_CAND_ITEM_LENGTH;
 		}

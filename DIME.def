@@ -1,4 +1,4 @@
-LIBRARY DIME.dll
+﻿LIBRARY DIME.dll
 
 EXPORTS
         DllGetClassObject    PRIVATE
