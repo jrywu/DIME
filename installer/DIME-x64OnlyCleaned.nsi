@@ -1,4 +1,4 @@
-Unicode True
+ï»¿Unicode True
 !include MUI2.nsh
 ;!include "Registry.nsh"
 !include x64.nsh
@@ -41,7 +41,7 @@ BrandingText " "
 ; Instfiles page
 !insertmacro MUI_PAGE_INSTFILES
 ; Finish page
-!define MUI_FINISHPAGE_TITLE "¦w¸Ë§¹¦¨"
+!define MUI_FINISHPAGE_TITLE "å®‰è£å®Œæˆ"
 !insertmacro MUI_PAGE_FINISH
 
 ; Uninstaller pages
@@ -62,12 +62,12 @@ ShowInstDetails show
 ShowUnInstDetails show
 
 ; Language Strings
-LangString DESC_INSTALLING ${LANG_TradChinese} "¦w¸Ë¤¤"
-LangString DESC_DOWNLOADING1 ${LANG_TradChinese} "¤U¸ü¤¤"
-LangString DESC_DOWNLOADFAILED ${LANG_TradChinese} "¤U¸ü¥¢±Ñ:"
+LangString DESC_INSTALLING ${LANG_TradChinese} "å®‰è£ä¸­"
+LangString DESC_DOWNLOADING1 ${LANG_TradChinese} "ä¸‹è¼‰ä¸­"
+LangString DESC_DOWNLOADFAILED ${LANG_TradChinese} "ä¸‹è¼‰å¤±æ•—:"
 LangString DESC_VCX64 ${LANG_TradChinese} "Visual Studio Redistritable x64"
-LangString DESC_VCX64_DECISION ${LANG_TradChinese} "¦w¸Ë¦¹¿é¤Jªk¤§«e¡A¥²¶·¥ı¦w¸Ë $(DESC_VCX64)¡A­Y§A·QÄ~Äò¦w¸Ë \
-  ¡A±zªº¹q¸£¥²¶·³s±µºô¸ô¡C$\n±z­nÄ~Äò³o¶µ¦w¸Ë¶Ü¡H"
+LangString DESC_VCX64_DECISION ${LANG_TradChinese} "å®‰è£æ­¤è¼¸å…¥æ³•ä¹‹å‰ï¼Œå¿…é ˆå…ˆå®‰è£ $(DESC_VCX64)ï¼Œè‹¥ä½ æƒ³ç¹¼çºŒå®‰è£ \
+  ï¼Œæ‚¨çš„é›»è…¦å¿…é ˆé€£æ¥ç¶²è·¯ã€‚$\næ‚¨è¦ç¹¼çºŒé€™é …å®‰è£å—ï¼Ÿ"
 !define URL_VC_REDISTX64 https://aka.ms/vs/17/release/vc_redist.x64.exe
 
 
@@ -82,20 +82,20 @@ Function .onInit
   ReadRegStr $0 ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayVersion"
   StrCmp $0 "" StartInstall 0
 
-  MessageBox MB_OKCANCEL|MB_ICONQUESTION "°»´ú¨ìÂÂª© $0¡A¥²¶·¥ı²¾°£¤~¯à¦w¸Ë·sª©¡C¬O§_­n²{¦b¶i¦æ¡H" IDOK +2
+  MessageBox MB_OKCANCEL|MB_ICONQUESTION "åµæ¸¬åˆ°èˆŠç‰ˆ $0ï¼Œå¿…é ˆå…ˆç§»é™¤æ‰èƒ½å®‰è£æ–°ç‰ˆã€‚æ˜¯å¦è¦ç¾åœ¨é€²è¡Œï¼Ÿ" IDOK +2
   	Abort
   ExecWait '"$INSTDIR\uninst.exe" /S _?=$INSTDIR'
   ${If} ${RunningX64}
   	${DisableX64FSRedirection}
-  	IfFileExists "$SYSDIR\DIME.dll"  0 CheckX64     ;¥Nªí¤Ï¦w¸Ë¥¢±Ñ
+  	IfFileExists "$SYSDIR\DIME.dll"  0 CheckX64     ;ä»£è¡¨åå®‰è£å¤±æ•—
   		Abort
   CheckX64:
  	${EnableX64FSRedirection}
   ${EndIf}
-  IfFileExists "$SYSDIR\DIME.dll"  0 RemoveFinished     ;¥Nªí¤Ï¦w¸Ë¥¢±Ñ
+  IfFileExists "$SYSDIR\DIME.dll"  0 RemoveFinished     ;ä»£è¡¨åå®‰è£å¤±æ•—
         Abort
   RemoveFinished:
-    	MessageBox MB_ICONINFORMATION|MB_OK "ÂÂª©¤w²¾°£¡C"
+    	MessageBox MB_ICONINFORMATION|MB_OK "èˆŠç‰ˆå·²ç§»é™¤ã€‚"
 StartInstall:
 ;!insertmacro MUI_LANGDLL_DISPLAY
 FunctionEnd
@@ -132,8 +132,7 @@ Section "CheckVCRedist" VCR
 	${Endif}
     SetRegView 32
 VCRedistInstalledAbort:
-  Quit
-  Exch $R0
+  Pop $R0
 SectionEnd
 
 
@@ -167,7 +166,7 @@ Section -AdditionalIcons
   SetOutPath $SMPROGRAMS\DIME
   CreateDirectory "$SMPROGRAMS\DIME"
   CreateShortCut "$SMPROGRAMS\DIME\Uninstall.lnk" "$INSTDIR\uninst.exe"
-  CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\DIME³]©w.lnk" "$INSTDIR\DIMESettings.exe"
+  CreateShortCut "$SMPROGRAMS\${PRODUCT_NAME}\DIMEè¨­å®š.lnk" "$INSTDIR\DIMESettings.exe"
 SectionEnd
 
 Section -Post
@@ -186,12 +185,12 @@ Section -Post
 SectionEnd
 
 Function un.onUninstSuccess
-  MessageBox MB_ICONINFORMATION|MB_OK "$(^Name)¤w²¾°£¦¨¥\¡C" /SD IDOK
+  MessageBox MB_ICONINFORMATION|MB_OK "$(^Name)å·²ç§»é™¤æˆåŠŸã€‚" /SD IDOK
 FunctionEnd
 
 Function un.onInit
 ;!insertmacro MUI_UNGETLANGUAGE
-  MessageBox MB_ICONQUESTION|MB_YESNO|MB_DEFBUTTON2 "½T©w­n§¹¥ş²¾°£$(^Name)¡H" /SD IDYES IDYES +2
+  MessageBox MB_ICONQUESTION|MB_YESNO|MB_DEFBUTTON2 "ç¢ºå®šè¦å®Œå…¨ç§»é™¤$(^Name)ï¼Ÿ" /SD IDYES IDYES +2
   Abort
 FunctionEnd
 
@@ -218,11 +217,11 @@ Section Uninstall
   IfErrors lbNeedReboot lbContinueUninstall
 
   lbNeedReboot:
-  MessageBox MB_ICONSTOP|MB_YESNO "°»´ú¨ì¦³µ{¦¡¥¿¦b¨Ï¥Î¿é¤Jªk¡A½Ğ­«·s¶}¾÷¥HÄ~Äò²¾°£ÂÂª©¡C¬O§_­n¥ß§Y­«·s¶}¾÷¡H" IDNO lbNoReboot
+  MessageBox MB_ICONSTOP|MB_YESNO "åµæ¸¬åˆ°æœ‰ç¨‹å¼æ­£åœ¨ä½¿ç”¨è¼¸å…¥æ³•ï¼Œè«‹é‡æ–°é–‹æ©Ÿä»¥ç¹¼çºŒç§»é™¤èˆŠç‰ˆã€‚æ˜¯å¦è¦ç«‹å³é‡æ–°é–‹æ©Ÿï¼Ÿ" IDNO lbNoReboot
   Reboot
 
   lbNoReboot:
-  MessageBox MB_ICONSTOP|MB_OK "½Ğ±N©Ò¦³µ{¦¡Ãö³¬¡A¦A¹Á¸Õ°õ¦æ¥»¦w¸Ëµ{¦¡¡C­Y¤´¬İ¨ì¦¹µe­±¡A½Ğ­«·s¶}¾÷¡C" IDOK +1
+  MessageBox MB_ICONSTOP|MB_OK "è«‹å°‡æ‰€æœ‰ç¨‹å¼é—œé–‰ï¼Œå†å˜—è©¦åŸ·è¡Œæœ¬å®‰è£ç¨‹å¼ã€‚è‹¥ä»çœ‹åˆ°æ­¤ç•«é¢ï¼Œè«‹é‡æ–°é–‹æ©Ÿã€‚" IDOK +1
   Quit
   lbContinueUninstall:
 

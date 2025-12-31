@@ -1,4 +1,4 @@
-chcp 950 
+chcp 65001
 git rev-list HEAD --count > commitcount.txt
 FOR /f "tokens=1" %%a in ('findstr /R "^[0-9][0-9]*" commitcount.txt') do set _CommitCount=%%a
 del commitcount.txt

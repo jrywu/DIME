@@ -1,4 +1,4 @@
-/* DIME IME for Windows 7/8/10/11
+Ôªø/* DIME IME for Windows 7/8/10/11
 
 BSD 3-Clause License
 
@@ -250,23 +250,23 @@ extern const WCHAR DayiSymbolCharTable[] = L" !\\\"#$%&\'()*+,-./0123456789:;<>?
 // defined directly input address characters
 //---------------------------------------------------------------------
 extern const _DAYI_ADDRESS_DIRECT_INPUT dayiAddressCharTable[6] = {
-	{ L'`', L'´—' },
-	{L'\'', L'∏π'},
-	{L'[', L'∏Ù'},
-	{L']', L'µÛ'},
-	{L'-', L'∂m'},
-	{L'\\', L'¬Ì'}
+	{ L'`', L'Â∑∑' },
+	{L'\'', L'Ëôü'},
+	{L'[', L'Ë∑Ø'},
+	{L']', L'Ë°ó'},
+	{L'-', L'ÈÑâ'},
+	{L'\\', L'ÈéÆ'}
 };
 //---------------------------------------------------------------------
 // defined directly input full shaped symbols in article modes
 //---------------------------------------------------------------------
 extern const _DAYI_ADDRESS_DIRECT_INPUT dayiArticleCharTable[6] = {
-	{ L'`', L'°G' },
-	{ L'\'', L'°A' },
-	{ L'[', L'°C' },
-	{ L']', L'°H' },
-	{ L'-', L'°B' },
-	{ L'\\', L'°F' }
+	{ L'`', L'Ôºö' },
+	{ L'\'', L'Ôºå' },
+	{ L'[', L'„ÄÇ' },
+	{ L']', L'Ôºü' },
+	{ L'-', L'„ÄÅ' },
+	{ L'\\', L'Ôºõ' }
 };
 
 

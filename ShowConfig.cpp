@@ -1,4 +1,4 @@
-/* DIME IME for Windows 7/8/10/11
+ï»¿/* DIME IME for Windows 7/8/10/11
 
 BSD 3-Clause License
 
@@ -142,13 +142,13 @@ HRESULT CDIME::Show(_In_opt_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID
 	WCHAR dialogCaption[MAX_PATH] = { 0 };
 
 	if (CConfig::GetIMEMode() == IME_MODE::IME_MODE_DAYI)
-		StringCchCat(dialogCaption, MAX_PATH,  L"DIME ¤j©ö¿é¤Jªk³]©w");
+		StringCchCat(dialogCaption, MAX_PATH,  L"DIME å¤§æ˜“è¼¸å…¥æ³•è¨­å®š");
 	else if (CConfig::GetIMEMode() == IME_MODE::IME_MODE_ARRAY)
-		StringCchCat(dialogCaption, MAX_PATH, L"DIME ¦æ¦C¿é¤Jªk³]©w");
+		StringCchCat(dialogCaption, MAX_PATH, L"DIME è¡Œåˆ—è¼¸å…¥æ³•è¨­å®š");
 	else if (CConfig::GetIMEMode() == IME_MODE::IME_MODE_GENERIC)
-		StringCchCat(dialogCaption, MAX_PATH, L"DIME ¦Û«Ø¿é¤Jªk³]©w");
+		StringCchCat(dialogCaption, MAX_PATH, L"DIME è‡ªå»ºè¼¸å…¥æ³•è¨­å®š");
 	else if (CConfig::GetIMEMode() == IME_MODE::IME_MODE_PHONETIC)
-		StringCchCat(dialogCaption, MAX_PATH, L"DIME ¶Ç²Îª`­µ¿é¤Jªk³]©w");
+		StringCchCat(dialogCaption, MAX_PATH, L"DIME å‚³çµ±æ³¨éŸ³è¼¸å…¥æ³•è¨­å®š");
 
 	StringCchPrintf(dialogCaption, MAX_PATH, L"%s v%d.%d.%d.%d", dialogCaption,
 		 BUILD_VER_MAJOR, BUILD_VER_MINOR, BUILD_COMMIT_COUNT, BUILD_DATE_1);

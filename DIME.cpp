@@ -1,4 +1,4 @@
-/* DIME IME for Windows 7/8/10/11
+ï»¿/* DIME IME for Windows 7/8/10/11
 
 BSD 3-Clause License
 
@@ -1065,7 +1065,7 @@ void CDIME::_LoadConfig(BOOL isForce, IME_MODE imeMode)
 					CConfig::GetReverseConversionGUIDProfile(), NULL, &_pITfReverseConversion[(UINT)imeMode])) && _pITfReverseConversion[(UINT)imeMode])
 				{   //test if the interface can really do reverse conversion
 					BSTR bstr;
-					bstr = SysAllocStringLen(L"¤@" , (UINT) 1);
+					bstr = SysAllocStringLen(L"ä¸€" , (UINT) 1);
 					ITfReverseConversionList* reverseConversionList = nullptr;
 					if(bstr && FAILED(_pITfReverseConversion[(UINT)imeMode]->DoReverseConversion(bstr, &reverseConversionList)) || reverseConversionList == nullptr)
 					{
@@ -1099,7 +1099,7 @@ void CDIME::DoBeep(BEEP_TYPE type)
 	{
 		CStringRange notify;
 		if (_pUIPresenter)
-            _pUIPresenter->ShowNotifyText(&notify.Set(L"¿ù»~²Õ¦r", 4), 0, 1000, NOTIFY_TYPE::NOTIFY_BEEP);
+            _pUIPresenter->ShowNotifyText(&notify.Set(L"éŒ¯èª¤çµ„å­—", 4), 0, 1000, NOTIFY_TYPE::NOTIFY_BEEP);
 	}
 		
 }

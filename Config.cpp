@@ -1,4 +1,4 @@
-/* DIME IME for Windows 7/8/10/11
+ï»¿/* DIME IME for Windows 7/8/10/11
 
 BSD 3-Clause License
 
@@ -92,7 +92,7 @@ WCHAR CConfig::_pwszINIFileName[] = L"\0";
 IME_MODE CConfig::_configIMEMode = IME_MODE::IME_MODE_NONE;
 BOOL CConfig::_reloadReverseConversion = FALSE;
 
-WCHAR CConfig::_pFontFaceName[] = { L"·L³n¥¿¶ÂÅé" };
+WCHAR CConfig::_pFontFaceName[] = { L"å¾®è»Ÿæ­£é»‘é«”" };
 COLORREF CConfig::_itemColor = CANDWND_ITEM_COLOR;
 COLORREF CConfig::_itemBGColor = GetSysColor(COLOR_3DHIGHLIGHT);
 COLORREF CConfig::_selectedColor = CANDWND_SELECTED_ITEM_COLOR;
@@ -200,7 +200,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			ret = TRUE;
 			break;
 		case IDC_BUTTON_RESTOREDEFAULT:
-			wcsncpy_s(fontname, { L"·L³n¥¿¶ÂÅé" }, _TRUNCATE);
+			wcsncpy_s(fontname, { L"å¾®è»Ÿæ­£é»‘é«”" }, _TRUNCATE);
 
 			fontpoint = 12;
 			fontweight = FW_NORMAL;
@@ -494,7 +494,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 				_reverseConversionGUIDProfile = CLSID_NULL;
 				_reverseConversionDescription = new (std::nothrow) WCHAR[4];
 				if(_reverseConversionDescription)
-					StringCchCopy(_reverseConversionDescription, 4, L"(µL)");
+					StringCchCopy(_reverseConversionDescription, 4, L"(ç„¡)");
 			}
 			else
 			{
@@ -698,7 +698,7 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 			ofn.lpstrFile = pathToLoad;
 			ofn.nMaxFile = MAX_PATH;
 			ofn.Flags = (openFileType != EXPORT_CUSTOM_TABLE) ? OFN_FILEMUSTEXIST : OFN_OVERWRITEPROMPT;
-			ofn.lpstrFilter = (openFileType == LOAD_CIN_TABLE) ? L"CIN TXT Files(*.txt, *.cin)\0*.cin;*.txt\0\0" : L"µü®w¤å¦rÀÉ(*.txt)\0*.txt\0\0";
+			ofn.lpstrFilter = (openFileType == LOAD_CIN_TABLE) ? L"CIN TXT Files(*.txt, *.cin)\0*.cin;*.txt\0\0" : L"è©åº«æ–‡å­—æª”(*.txt)\0*.txt\0\0";
 
 
 			if (openFileType == EXPORT_CUSTOM_TABLE && _GetSaveFileName && (_GetSaveFileName)(&ofn) != 0)
@@ -719,9 +719,9 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 				else
 				{
 					if (parseCINFile(pathToLoad, pathToWrite))
-						MessageBox(GetFocus(), L"¦Û­q½Xªí¸ü¤J§¹¦¨¡C", L"DIME ¦Û­q½Xªí", MB_ICONINFORMATION);
+						MessageBox(GetFocus(), L"è‡ªè¨‚ç¢¼è¡¨è¼‰å…¥å®Œæˆã€‚", L"DIME è‡ªè¨‚ç¢¼è¡¨", MB_ICONINFORMATION);
 					else
-						MessageBox(GetFocus(), L"¦Û­q½Xªí¸ü¤Jµo¥Í¿ù»~ !!", L"DIME ¦Û­q½Xªí", MB_ICONERROR);
+						MessageBox(GetFocus(), L"è‡ªè¨‚ç¢¼è¡¨è¼‰å…¥ç™¼ç”ŸéŒ¯èª¤ !!", L"DIME è‡ªè¨‚ç¢¼è¡¨", MB_ICONERROR);
 
 
 				}
@@ -776,7 +776,7 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 				exportCustomTableFile(hDlg, pathToLoad);
 				// parse custom.txt file to UTF-16 and internal format
 				if (!parseCINFile(pathToLoad, pathToWrite, TRUE))
-					MessageBox(GetFocus(), L"¦Û«Øµü®w¸ü¤Jµo¥Í¿ù»~ !!", L"DIME ¦Û­qµü®w", MB_ICONERROR);
+					MessageBox(GetFocus(), L"è‡ªå»ºè©åº«è¼‰å…¥ç™¼ç”ŸéŒ¯èª¤ !!", L"DIME è‡ªè¨‚è©åº«", MB_ICONERROR);
 			}
 
 			//CConfig::WriteConfig();
@@ -862,7 +862,7 @@ void CConfig::ParseConfig(HWND hDlg, BOOL initDiag)
 	hwnd = GetDlgItem(hDlg, IDC_COMBO_REVERSE_CONVERSION);
 
 	if(initDiag)
-		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"(µL)");
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"(ç„¡)");
 	
 	if (IsEqualCLSID(_reverseConversionGUIDProfile, CLSID_NULL))
 		SendMessage(hwnd, CB_SETCURSEL, (WPARAM)0, 0);
@@ -909,19 +909,19 @@ void CConfig::ParseConfig(HWND hDlg, BOOL initDiag)
 	hwnd = GetDlgItem(hDlg, IDC_COMBO_IME_SHIFT_MODE);
 	if(initDiag)
 	{	
-		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"¥ª¥kSHIFTÁä");
-		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"¥kSHIFTÁä");
-		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"¥ªSHIFTÁä");
-		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"µL(¶ÈCtrl-SpaceÁä)");
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"å·¦å³SHIFTéµ");
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"å³SHIFTéµ");
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"å·¦SHIFTéµ");
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"ç„¡(åƒ…Ctrl-Spaceéµ)");
 	}
 	SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_imeShiftMode, 0);
 
 	hwnd = GetDlgItem(hDlg, IDC_COMBO_DOUBLE_SINGLE_BYTE);
 	if (initDiag)
 	{
-		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"¥H Shift-Space ¼öÁä¤Á´«");
-		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"¥b«¬");
-		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"¥ş«¬");
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"ä»¥ Shift-Space ç†±éµåˆ‡æ›");
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"åŠå‹");
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"å…¨å‹");
 	}
 	SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_doubleSingleByteMode, 0);
 
@@ -929,9 +929,9 @@ void CConfig::ParseConfig(HWND hDlg, BOOL initDiag)
 	hwnd = GetDlgItem(hDlg, IDC_COMBO_NUMERIC_PAD);
 	if (initDiag)
 	{
-		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"¼Æ¦rÁä½L¿é¤J¼Æ¦r²Å¸¹");
-		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"¼Æ¦rÁä½L¿é¤J¦r®Ú");
-		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"¶È¥Î¼Æ¦rÁä½L¿é¤J¦r®Ú");
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"æ•¸å­—éµç›¤è¼¸å…¥æ•¸å­—ç¬¦è™Ÿ");
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"æ•¸å­—éµç›¤è¼¸å…¥å­—æ ¹");
+		SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"åƒ…ç”¨æ•¸å­—éµç›¤è¼¸å…¥å­—æ ¹");
 	}
 	SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_numericPad, 0);
 
@@ -965,8 +965,8 @@ void CConfig::ParseConfig(HWND hDlg, BOOL initDiag)
 		hwnd = GetDlgItem(hDlg, IDC_COMBO_PHONETIC_KEYBOARD);
 		if (initDiag)
 		{
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"¼Ğ·ÇÁä½L");
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"­Ê¤ÑÁä½L");
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"æ¨™æº–éµç›¤");
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"å€šå¤©éµç›¤");
 		}
 		SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_phoneticKeyboardLayout, 0);
 	}
@@ -987,11 +987,11 @@ void CConfig::ParseConfig(HWND hDlg, BOOL initDiag)
 		hwnd = GetDlgItem(hDlg, IDC_COMBO_ARRAY_SCOPE);
 		if (initDiag)
 		{
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"¦æ¦C30 Unicode Ext-A");
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"¦æ¦C30 Unicode Ext-AB");
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"¦æ¦C30 Unicode Ext-A~D");
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"¦æ¦C30 Unicode Ext-A~G");
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"¦æ¦C40 Big5");
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"è¡Œåˆ—30 Unicode Ext-A");
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"è¡Œåˆ—30 Unicode Ext-AB");
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"è¡Œåˆ—30 Unicode Ext-A~D");
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"è¡Œåˆ—30 Unicode Ext-A~G");
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"è¡Œåˆ—40 Big5");
 		}
 		SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_arrayScope, 0);
 
@@ -1018,8 +1018,8 @@ VOID CConfig::WriteConfig(BOOL confirmUpdated)
 	if(confirmUpdated && !failed && updated)
 	{
 		//The config file is updated
-		MessageBox(GetFocus(), L"·s³]©w¥¼¥Í®Ä!\n³]©wÀÉ¤w³Q¨ä¥Lµ{¦¡§ó·s¡A½ĞÁ×§K¦b¨â­Óµ{¦¡¦P®É¶}±Ò³]©w­¶­±¡C",
-			L"³]©w¿ù»~", MB_ICONERROR);
+		MessageBox(GetFocus(), L"æ–°è¨­å®šæœªç”Ÿæ•ˆ!\nè¨­å®šæª”å·²è¢«å…¶ä»–ç¨‹å¼æ›´æ–°ï¼Œè«‹é¿å…åœ¨å…©å€‹ç¨‹å¼åŒæ™‚é–‹å•Ÿè¨­å®šé é¢ã€‚",
+			L"è¨­å®šéŒ¯èª¤", MB_ICONERROR);
 		LoadConfig(_imeMode);
 	}
 	if(!confirmUpdated || failed || !updated)
@@ -1527,7 +1527,7 @@ BOOL CConfig::parseCINFile(_In_ LPCWSTR pathToLoad, _In_ LPCWSTR pathToWrite, _I
 	ret = _wfopen_s(&fpr, pathToLoad, (customTableMode) ? L"r, ccs=UTF-16LE" : L"r, ccs=UTF-8"); // custom table custom.txt in roaming profile is in UTF-16LE encoding.
 	if (ret != 0)
 	{
-		MessageBox(GetFocus(), L"«ü©wÀÉ®×µLªk¶}±Ò!!", L"File open error!", MB_ICONERROR);
+		MessageBox(GetFocus(), L"æŒ‡å®šæª”æ¡ˆç„¡æ³•é–‹å•Ÿ!!", L"File open error!", MB_ICONERROR);
 	}
 	else
 	{

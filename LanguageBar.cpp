@@ -1,4 +1,4 @@
-/* DIME IME for Windows 7/8/10/11
+Ôªø/* DIME IME for Windows 7/8/10/11
 
 BSD 3-Clause License
 
@@ -1159,12 +1159,12 @@ void CDIME::showChnEngNotify(BOOL isChinese, UINT delayShow)
 	CStringRange notify;
     // Remove _IsStoreAppMode for Win 11 explorer, notepad and paint using XAML inputs.
     if (CConfig::GetShowNotifyDesktop() && _pUIPresenter)
-        _pUIPresenter->ShowNotifyText(&notify.Set(isChinese ? L"§§§Â" : L"≠^§Â", 2), delayShow, CHN_ENG_NOTIFY_DELAY, NOTIFY_TYPE::NOTIFY_CHN_ENG);
+        _pUIPresenter->ShowNotifyText(&notify.Set(isChinese ? L"‰∏≠Êñá" : L"Ëã±Êñá", 2), delayShow, CHN_ENG_NOTIFY_DELAY, NOTIFY_TYPE::NOTIFY_CHN_ENG);
 }
 void CDIME::showFullHalfShapeNotify(BOOL isFullShape, UINT delayShow)
 {
 	CStringRange notify;
     // Remove _IsStoreAppMode for Win 11 explorer, notepad and paint using XAML inputs.
     if (CConfig::GetShowNotifyDesktop() && _pUIPresenter)
-        _pUIPresenter->ShowNotifyText(&notify.Set(isFullShape ? L"•˛ßŒ" : L"•bßŒ", 2), delayShow, CHN_ENG_NOTIFY_DELAY, NOTIFY_TYPE::NOTIFY_CHN_ENG);
+        _pUIPresenter->ShowNotifyText(&notify.Set(isFullShape ? L"ÂÖ®ÂΩ¢" : L"ÂçäÂΩ¢", 2), delayShow, CHN_ENG_NOTIFY_DELAY, NOTIFY_TYPE::NOTIFY_CHN_ENG);
 }
