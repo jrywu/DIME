@@ -199,7 +199,6 @@ LRESULT CALLBACK CScrollBarWindow::_WindowProcCallback(_In_ HWND wndHandle, _In_
 				_pBtnDn->_OnPaint(dcHandle, &ps);
 
             EndPaint(wndHandle, &ps);
-			ReleaseDC(wndHandle, dcHandle);
         }
         return 0;
     }

@@ -470,7 +470,6 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
 			_DrawBorder(wndHandle, CANDWND_BORDER_WIDTH);
             _OnPaint(dcHandle, &ps);
             EndPaint(wndHandle, &ps);
-			ReleaseDC(wndHandle, dcHandle);
 			debugPrint(L"CCandidateWindow::_WindowProcCallback():WM_PAINT ended. gdiObjects = %d", GetGuiResources(GetCurrentProcess(), GR_GDIOBJECTS));
         }
 

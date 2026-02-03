@@ -114,7 +114,6 @@ LRESULT CALLBACK CShadowWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT uM
             FillRect(dcHandle, &ps.rcPaint, hBrush);
             DeleteObject(hBrush);
             EndPaint(wndHandle, &ps);
-			ReleaseDC(wndHandle, dcHandle);
         }
         return 0;
 
