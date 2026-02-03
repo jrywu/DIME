@@ -153,6 +153,9 @@ HRESULT CKeyStateCategory::KeyStateHandler(KEYSTROKE_FUNCTION function, KeyHandl
     case KEYSTROKE_FUNCTION::FUNCTION_DOUBLE_SINGLE_BYTE:
         return HandleKeyDoubleSingleByte(dto);
 
+    case KEYSTROKE_FUNCTION::FUNCTION_SHIFT_ENGLISH_INPUT:
+        return HandleKeyShiftEnglishInput(dto);
+
     case KEYSTROKE_FUNCTION::FUNCTION_ADDRESS_DIRECT_INPUT:
         return HandleKeyAddressChar(dto);
 
@@ -292,6 +295,12 @@ HRESULT CKeyStateCategory::HandleKeyAddressChar(KeyHandlerEditSessionDTO dto)
     return E_NOTIMPL;
 }
 
+HRESULT CKeyStateCategory::HandleKeyShiftEnglishInput(KeyHandlerEditSessionDTO dto)
+{
+	dto;
+    return E_NOTIMPL;
+}
+
 
 
 /*
@@ -400,6 +409,12 @@ HRESULT CKeyStateComposing::HandleKeyAddressChar(KeyHandlerEditSessionDTO dto)
 {
 	if(_pTextService == nullptr) return E_FAIL;
 	return _pTextService->_HandleCompositionAddressChar(dto.ec, dto.pContext, dto.wch);
+}
+
+HRESULT CKeyStateComposing::HandleKeyShiftEnglishInput(KeyHandlerEditSessionDTO dto)
+{
+	if(_pTextService == nullptr) return E_FAIL;
+	return _pTextService->_HandleCompositionShiftEnglishInput(dto.ec, dto.pContext, dto.wch);
 }
 
 

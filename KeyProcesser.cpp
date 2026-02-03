@@ -568,17 +568,34 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 		}
 		
 	}
-	// cancel associated phrase with anykey except shift
+    // cancel associated phrase with anykey except shift
 	if (candidateMode == CANDIDATE_MODE::CANDIDATE_PHRASE
-		&& !(GetCandidateListPhraseModifier() == 0 && uCode == VK_SHIFT))
+	&& !(GetCandidateListPhraseModifier() == 0 && uCode == VK_SHIFT))
 	{
-		if (pKeyState)
-		{
-			pKeyState->Category = KEYSTROKE_CATEGORY::CATEGORY_CANDIDATE;
-			pKeyState->Function = KEYSTROKE_FUNCTION::FUNCTION_CANCEL;
-		}
-		return FALSE;
+	if (pKeyState)
+	{
+	pKeyState->Category = KEYSTROKE_CATEGORY::CATEGORY_CANDIDATE;
+	pKeyState->Function = KEYSTROKE_FUNCTION::FUNCTION_CANCEL;
 	}
+	return FALSE;
+	}
+	
+	// Handle Shift+letter for inverted English input (lowercase when CapsLock off, uppercase when CapsLock on)
+	if (pwch && *pwch)
+	{
+	WCHAR c = towupper(*pwch);
+	if (c >= 'A' && c <= 'Z' && (Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_RSHIFT | TF_MOD_SHIFT)) != 0)
+	{
+	// Eat the key and handle inverted case ourselves
+	if (pKeyState)
+	{
+	pKeyState->Category = KEYSTROKE_CATEGORY::CATEGORY_COMPOSING;
+	pKeyState->Function = KEYSTROKE_FUNCTION::FUNCTION_SHIFT_ENGLISH_INPUT;
+	}
+	return TRUE;
+	}
+	}
+	
 	//Processing Composing keys -------------------------------------------------------------------------------------------
 	if (fComposing)
 	{

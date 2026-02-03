@@ -117,7 +117,7 @@ HRESULT CDIME::_HandleCancel(TfEditCookie ec, _In_ ITfContext *pContext)
 
 HRESULT CDIME::_HandleCompositionInput(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch)
 {
-	debugPrint(L"CDIME::_HandleCompositionInput(), _candidateMode = %d", _candidateMode );
+	debugPrint(L"CDIME::_HandleCompositionInput(), _candidateMode = %d, wch = %c (0x%x)", _candidateMode, wch, wch);
     ITfRange* pRangeComposition = nullptr;
     TF_SELECTION tfSelection;
     ULONG fetched = 0;
@@ -160,9 +160,13 @@ HRESULT CDIME::_HandleCompositionInput(TfEditCookie ec, _In_ ITfContext *pContex
 
     // Add virtual key to composition processor engine
 	if (pCompositionProcessorEngine->AddVirtualKey(wch))
+	{
+		debugPrint(L"CDIME::_HandleCompositionInput() AddVirtualKey succeeded with wch=%c (0x%x)", wch, wch);
 		_HandleCompositionInputWorker(pCompositionProcessorEngine, ec, pContext);
+	}
 	else
 	{
+		debugPrint(L"CDIME::_HandleCompositionInput() AddVirtualKey FAILED with wch=%c (0x%x)", wch, wch);
 		if (Global::imeMode == IME_MODE::IME_MODE_PHONETIC)
 			DoBeep(BEEP_TYPE::BEEP_WARNING);
 		else
@@ -513,6 +517,60 @@ HRESULT CDIME::_HandleCompositionDoubleSingleByte(TfEditCookie ec, _In_ ITfConte
     return S_OK;
 }
 
+
+//+---------------------------------------------------------------------------
+//
+// _HandleCompositionShiftEnglishInput
+//
+// Handle Shift+letter for inverted English input:
+// - CapsLock OFF: produce lowercase letter
+// - CapsLock ON: produce uppercase letter
+//----------------------------------------------------------------------------
+
+HRESULT CDIME::_HandleCompositionShiftEnglishInput(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch)
+{
+    HRESULT hr = S_OK;
+
+    // Cancel any existing composition first
+    if (_IsComposing())
+    {
+        _HandleCancel(ec, pContext);
+    }
+
+    // Determine the correct case based on CapsLock state
+    // GetKeyState returns the toggle state in the low-order bit
+    BOOL isCapsLockOn = (GetKeyState(VK_CAPITAL) & 0x0001) != 0;
+    
+    WCHAR outputChar;
+    WCHAR upperChar = towupper(wch);
+    WCHAR lowerChar = towlower(wch);
+    
+    // Inverted behavior:
+    // - CapsLock OFF + Shift ¡÷ lowercase
+    // - CapsLock ON + Shift ¡÷ uppercase
+    if (isCapsLockOn)
+    {
+        outputChar = upperChar;
+    }
+    else
+    {
+        outputChar = lowerChar;
+    }
+
+    CStringRange charString;
+    charString.Set(&outputChar, 1);
+
+    // Finalize character directly
+    hr = _AddCharAndFinalize(ec, pContext, &charString);
+    if (FAILED(hr))
+    {
+        return hr;
+    }
+
+    _HandleCancel(ec, pContext);
+
+    return S_OK;
+}
 
 //+---------------------------------------------------------------------------
 //

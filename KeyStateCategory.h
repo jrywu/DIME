@@ -136,8 +136,11 @@ protected:
     // HandleKeySelectByNumber
     virtual HRESULT HandleKeySelectByNumber(KeyHandlerEditSessionDTO dto);
 
-	// HandleKeyAddressChar
-    virtual HRESULT HandleKeyAddressChar(KeyHandlerEditSessionDTO dto);
+    // HandleKeyAddressChar
+       virtual HRESULT HandleKeyAddressChar(KeyHandlerEditSessionDTO dto);
+
+	// HandleKeyShiftEnglishInput
+       virtual HRESULT HandleKeyShiftEnglishInput(KeyHandlerEditSessionDTO dto);
 
 	
 protected:
@@ -195,8 +198,11 @@ protected:
     // HandleKeyDoubleSingleByte
     HRESULT HandleKeyDoubleSingleByte(KeyHandlerEditSessionDTO dto);
 
-	// HandleKeyAddressChar
-    HRESULT HandleKeyAddressChar(KeyHandlerEditSessionDTO dto);
+    // HandleKeyAddressChar
+       HRESULT HandleKeyAddressChar(KeyHandlerEditSessionDTO dto);
+
+	// HandleKeyShiftEnglishInput
+       HRESULT HandleKeyShiftEnglishInput(KeyHandlerEditSessionDTO dto);
 	
 
 };
