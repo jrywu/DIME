@@ -596,6 +596,12 @@ cleanup:
 
 void CCandidateWindow::_OnLButtonDown(POINT pt)
 {
+	// Safety check: ensure window is still valid
+	if (!IsWindow(_GetWnd()))
+	{
+		return;
+	}
+
 	if(_pIndexRange == nullptr) return;
 
     RECT rcWindow = {0, 0, 0, 0};;
@@ -629,7 +635,10 @@ void CCandidateWindow::_OnLButtonDown(POINT pt)
         {
             SetCursor(LoadCursor(NULL, IDC_HAND));
             _currentSelection = index;
-            _pfnCallback(_pObj, CANDWND_ACTION::CAND_ITEM_SELECT);
+            // Store callback pointer before calling to prevent use-after-free
+            CANDWNDCALLBACK pfnCallback = _pfnCallback;
+            void* pObj = _pObj;
+            pfnCallback(pObj, CANDWND_ACTION::CAND_ITEM_SELECT);
             return;
         }
     }
@@ -898,22 +907,28 @@ void CCandidateWindow::_DrawBorder(_In_ HWND wndHandle, _In_ int cx)
     RECT rcWnd;
 
     HDC dcHandle = GetWindowDC(wndHandle);
+    if (!dcHandle)
+    {
+        return;
+    }
 
     GetWindowRect(wndHandle, &rcWnd);
     // zero based
     OffsetRect(&rcWnd, -rcWnd.left, -rcWnd.top); 
 
     HPEN hPen = CreatePen(PS_SOLID, cx, CANDWND_BORDER_COLOR);
-    HPEN hPenOld = (HPEN)SelectObject(dcHandle, hPen);
-    HBRUSH hBorderBrush = (HBRUSH)GetStockObject(NULL_BRUSH);
-    HBRUSH hBorderBrushOld = (HBRUSH)SelectObject(dcHandle, hBorderBrush);
+    if (hPen)
+    {
+        HPEN hPenOld = (HPEN)SelectObject(dcHandle, hPen);
+        HBRUSH hBorderBrush = (HBRUSH)GetStockObject(NULL_BRUSH);
+        HBRUSH hBorderBrushOld = (HBRUSH)SelectObject(dcHandle, hBorderBrush);
 
-    Rectangle(dcHandle, rcWnd.left, rcWnd.top, rcWnd.right, rcWnd.bottom);
+        Rectangle(dcHandle, rcWnd.left, rcWnd.top, rcWnd.right, rcWnd.bottom);
 
-    SelectObject(dcHandle, hPenOld);
-    SelectObject(dcHandle, hBorderBrushOld);
-    DeleteObject(hPen);
-    DeleteObject(hBorderBrush);
+        SelectObject(dcHandle, hPenOld);
+        SelectObject(dcHandle, hBorderBrushOld);
+        DeleteObject(hPen);
+    }
     ReleaseDC(wndHandle, dcHandle);
 
 }
@@ -928,58 +943,45 @@ void CCandidateWindow::_AddString(_Inout_ CCandidateListItem *pCandidateItem, _I
 {
 	debugPrint(L"CCandidateWindow::_AddString()");
 	if(pCandidateItem == nullptr) return;
+
+    // Use smart pointers for automatic cleanup
+    std::unique_ptr<WCHAR[]> pwchString;
     DWORD_PTR dwItemString = pCandidateItem->_ItemString.GetLength();
-    const WCHAR* pwchString = nullptr;
     if (dwItemString)
     {
-        pwchString = new (std::nothrow) WCHAR[ dwItemString ];
+        pwchString = std::make_unique<WCHAR[]>(dwItemString);
         if (!pwchString)
         {
             return;
         }
-        memcpy((void*)pwchString, pCandidateItem->_ItemString.Get(), dwItemString * sizeof(WCHAR));
+        memcpy(pwchString.get(), pCandidateItem->_ItemString.Get(), dwItemString * sizeof(WCHAR));
     }
 
+    std::unique_ptr<WCHAR[]> pwchWildcard;
     DWORD_PTR itemWildcard = pCandidateItem->_FindKeyCode.GetLength();
-    const WCHAR* pwchWildcard = nullptr;
     if (itemWildcard && isAddFindKeyCode)
     {
-        pwchWildcard = new (std::nothrow) WCHAR[ itemWildcard ];
+        pwchWildcard = std::make_unique<WCHAR[]>(itemWildcard);
         if (!pwchWildcard)
         {
-            if (pwchString)
-            {
-                delete [] pwchString;
-            }
             return;
         }
-        memcpy((void*)pwchWildcard, pCandidateItem->_FindKeyCode.Get(), itemWildcard * sizeof(WCHAR));
+        memcpy(pwchWildcard.get(), pCandidateItem->_FindKeyCode.Get(), itemWildcard * sizeof(WCHAR));
     }
 
-    CCandidateListItem* pLI = nullptr;
-    pLI = _candidateList.Append();
+    CCandidateListItem* pLI = _candidateList.Append();
     if (!pLI)
     {
-        if (pwchString)
-        {
-            delete [] pwchString;
-            pwchString = nullptr;
-        }
-        if (pwchWildcard)
-        {
-            delete [] pwchWildcard;
-            pwchWildcard = nullptr;
-        }
         return;
     }
 
     if (pwchString && pLI)
     {
-        pLI->_ItemString.Set(pwchString, dwItemString);
+        pLI->_ItemString.Set(pwchString.release(), dwItemString);
     }
-    if (pwchWildcard)
+    if (pwchWildcard && pLI)
     {
-        pLI->_FindKeyCode.Set(pwchWildcard, itemWildcard);
+        pLI->_FindKeyCode.Set(pwchWildcard.release(), itemWildcard);
     }
 #ifndef ALWAYS_SHOW_SCROLL
 	if(_pVScrollBarWnd) _pVScrollBarWnd->_Show(FALSE); // hide the scrollbar in the beginning
@@ -997,10 +999,23 @@ void CCandidateWindow::_ClearList()
 {
     for (UINT index = 0; index < _candidateList.Count(); index++)
     {
-        CCandidateListItem* pItemList = nullptr;
-        pItemList = _candidateList.GetAt(index);
-        delete [] pItemList->_ItemString.Get();
-        delete [] pItemList->_FindKeyCode.Get();
+        CCandidateListItem* pItemList = _candidateList.GetAt(index);
+        if (pItemList)
+        {
+            const WCHAR* pItemString = pItemList->_ItemString.Get();
+            const WCHAR* pFindKeyCode = pItemList->_FindKeyCode.Get();
+            
+            if (pItemString)
+            {
+                delete[] pItemString;
+                pItemList->_ItemString.Set(nullptr, 0);
+            }
+            if (pFindKeyCode)
+            {
+                delete[] pFindKeyCode;
+                pItemList->_FindKeyCode.Set(nullptr, 0);
+            }
+        }
     }
     _currentSelection = 0;
     _candidateList.Clear();

@@ -1083,6 +1083,7 @@ HRESULT CUIPresenter::_CandidateChangeNotification(_In_ enum CANDWND_ACTION acti
     ITfThreadMgr* pThreadMgr = nullptr;
     ITfDocumentMgr* pDocumentMgr = nullptr;
     ITfContext* pContext = _GetContextDocument();
+    BOOL needReleaseContext = FALSE;
 
     // Initialize KeyState to avoid uninitialized variable usage
     _KEYSTROKE_STATE KeyState = { KEYSTROKE_CATEGORY::CATEGORY_NONE, KEYSTROKE_FUNCTION::FUNCTION_NONE };
@@ -1096,7 +1097,13 @@ HRESULT CUIPresenter::_CandidateChangeNotification(_In_ enum CANDWND_ACTION acti
         goto Exit;
     }
 
-    if (pContext == nullptr)
+    // Keep context alive during the entire operation
+    if (pContext)
+    {
+        pContext->AddRef();
+        needReleaseContext = TRUE;
+    }
+    else
     {
         pThreadMgr = _pTextService->_GetThreadMgr();
         if (nullptr == pThreadMgr)
@@ -1113,9 +1120,13 @@ HRESULT CUIPresenter::_CandidateChangeNotification(_In_ enum CANDWND_ACTION acti
         hr = pDocumentMgr->GetTop(&pContext);
         if (FAILED(hr) || pContext == nullptr)
         {
-            pDocumentMgr->Release();
+            if (pDocumentMgr)
+                pDocumentMgr->Release();
             goto Exit;
         }
+        needReleaseContext = TRUE;
+        if (pDocumentMgr)
+            pDocumentMgr->Release();
     }
 
     CKeyHandlerEditSession* pEditSession = new (std::nothrow) CKeyHandlerEditSession(_pTextService, pContext, 0, 0, KeyState);
@@ -1130,12 +1141,11 @@ HRESULT CUIPresenter::_CandidateChangeNotification(_In_ enum CANDWND_ACTION acti
         pEditSession->Release();
     }
 
-    if (pContext)
-        pContext->Release();
-    if (pDocumentMgr)
-        pDocumentMgr->Release();
-
 Exit:
+    if (needReleaseContext && pContext)
+    {
+        pContext->Release();
+    }
     return hr;
 }
 
