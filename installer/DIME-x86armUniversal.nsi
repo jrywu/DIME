@@ -75,9 +75,9 @@ LangString DESC_VCX64_DECISION ${LANG_TradChinese} "安裝此輸入法之前，必須先安裝
   ，您的電腦必須連接網路。$\n您要繼續這項安裝嗎？"
 LangString DESC_VCARM64_DECISION ${LANG_TradChinese} "安裝此輸入法之前，必須先安裝 $(DESC_VCARM64)，若你想繼續安裝 \
   ，您的電腦必須連接網路。$\n您要繼續這項安裝嗎？"
-!define URL_VC_REDISTX64 https://aka.ms/vs/17/release/vc_redist.x64.exe
-!define URL_VC_REDISTX86 https://aka.ms/vs/17/release/vc_redist.x86.exe
-!define URL_VC_REDISTARM64 https://aka.ms/vs/17/release/VC_redist.arm64.exe
+!define URL_VC_REDISTX64 https://aka.ms/vs/18/release/vc_redist.x64.exe
+!define URL_VC_REDISTX86 https://aka.ms/vs/18/release/vc_redist.x86.exe
+!define URL_VC_REDISTARM64 https://aka.ms/vs/18/release/VC_redist.arm64.exe
 
 
 Var "URL_VCX86"
@@ -121,13 +121,13 @@ Section "CheckVCRedist" VCR
 	${If} ${IsNativeAMD64}
 		ReadRegDword $R0 HKLM "SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\X64" "Minor"
 		IfErrors InstallVCx64Redist 0
-		${If} $R0 > 31
+		${If} $R0 > 50
 			Goto VCx64RedistInstalled
 		${EndIf}
 		ClearErrors
 		ReadRegDword $R0 HKLM "SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\X64" "Bld"
 		IfErrors InstallVCx64Redist 0
-		${If} $R0 >= 31103
+		${If} $R0 >= 35719
 			Goto VCx64RedistInstalled
 		${EndIf}
 	InstallVCx64Redist:
@@ -146,13 +146,13 @@ Section "CheckVCRedist" VCR
 	${ElseIf} ${IsNativeARM64}
 		ReadRegDword $R0 HKLM "SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\arm64" "Minor"
 		IfErrors InstallVCarm64Redist 0
-		${If} $R0 > 31
+		${If} $R0 > 50
 			Goto VCarm64RedistInstalled
 		${EndIf}
 		ClearErrors
 		ReadRegDword $R0 HKLM "SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\arm64" "Bld"
 		IfErrors InstallVCx64Redist 0
-		${If} $R0 >= 31103
+		${If} $R0 >= 35719
 			Goto VCarm64RedistInstalled
 		${EndIf}
 	InstallVCarm64Redist:
@@ -174,13 +174,13 @@ Section "CheckVCRedist" VCR
   ClearErrors
   ReadRegDword $R0 HKLM "SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\X86" "Minor"
   IfErrors InstallVCx86Redist 0
-  ${If} $R0 > 31
+  ${If} $R0 > 50
   	Goto VCRedistInstalled
   ${EndIf}
   ClearErrors
   ReadRegDword $R0 HKLM "SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\X86" "Bld"
   IfErrors InstallVCx86Redist 0
-  ${If} $R0 >= 31103
+  ${If} $R0 >= 35719
 	Goto VCRedistInstalled
   ${EndIf}
 InstallVCx86Redist:
