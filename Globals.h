@@ -184,6 +184,19 @@ extern const GUID DIMEGuidImeModePreserveKey;
 extern const GUID DIMEGuidDoubleSingleBytePreserveKey;
 extern const GUID DIMEGuidConfigPreserveKey;
 
+//---------------------------------------------------------------------
+// GetInstallationPath - Gets DIME installation directory
+// For MSIX packages: returns package installation path
+// For legacy installer: returns Program Files\DIME
+//---------------------------------------------------------------------
+BOOL GetInstallationPath(_Out_writes_(cchPath) LPWSTR pwszPath, _In_ DWORD cchPath);
+
+//---------------------------------------------------------------------
+// IsMSIXPackage - Checks if DIME was installed via MSIX package
+// Checks the DLL location rather than the host process context
+//---------------------------------------------------------------------
+BOOL IsMSIXPackage();
+
 //LRESULT CALLBACK ThreadKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam);
 BOOL CheckModifiers(UINT uModCurrent, UINT uMod);
 BOOL UpdateModifiers(WPARAM wParam, LPARAM lParam);

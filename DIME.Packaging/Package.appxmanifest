@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
+  xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
+  xmlns:com4="http://schemas.microsoft.com/appx/manifest/com/windows10/4"
+  xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap uap3 com com4 desktop rescap">
+
+  <Identity
+    Name="JeremyWu.DIME"
+    Publisher="CN=DIME Dev"
+    Version="1.2.361.0" />
+
+  <Properties>
+    <DisplayName>DIME</DisplayName>
+    <PublisherDisplayName>Jeremy Wu</PublisherDisplayName>
+    <Logo>Images\StoreLogo.png</Logo>
+    <Description>DIME (Dayi Input Method Editor) - A customizable input method for Windows</Description>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="zh-Hant"/>
+    <Resource Language="en-US"/>
+  </Resources>
+
+  <Applications>
+    <Application Id="DIME"
+      Executable="DIMESettings.exe"
+      EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+        DisplayName="DIME Settings"
+        Description="DIME, Universal Input Method Editor for Windows platform."
+        BackgroundColor="transparent"
+        Square150x150Logo="Images\Square150x150Logo.png"
+        Square44x44Logo="Images\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="Images\Wide310x150Logo.png" ShortName="DIME"/>
+        <uap:SplashScreen Image="Images\SplashScreen.png" />
+      </uap:VisualElements>
+      <Extensions>
+        <com:Extension Category="windows.comServer">
+          <com:ComServer>
+            <com:SurrogateServer DisplayName="DIME Input Method">
+              <com:Class Id="1DE68A87-FF3B-46A0-8F80-46730B2491B1" Path="DIME\DIME.dll" ThreadingModel="STA" />
+            </com:SurrogateServer>
+          </com:ComServer>
+        </com:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>

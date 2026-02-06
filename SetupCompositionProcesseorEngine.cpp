@@ -628,11 +628,9 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 	WCHAR pwszProgramFiles[MAX_PATH] = { 0 }; // Initialize the array to zero.;
 	WCHAR pwszAppData[MAX_PATH] = { 0 }; // Initialize the array to zero.;
 
-	if (GetEnvironmentVariable(L"ProgramW6432", pwszProgramFiles, MAX_PATH) == 0)
-	{//on 64-bit vista only 32bit app has this environment variable.  Which means the call failed when the apps running in 64-bit.
-		//on 32-bit windows, this will definitely failed.  Get ProgramFiles environment variable now will retrieve the correct program files path.
-		GetEnvironmentVariable(L"ProgramFiles", pwszProgramFiles, MAX_PATH);
-	}
+	// Get installation path (works for both MSIX and legacy installer)
+	Global::GetInstallationPath(pwszProgramFiles, MAX_PATH);
+	debugPrint(L"CCompositionProcessorEngine::SetupDictionaryFile() GetInstallationPath=%s\n", pwszProgramFiles);
 
 	//CSIDL_APPDATA  personal roaming application data.
 	if (pwszAppData)
@@ -660,6 +658,8 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 
 	StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME");
 
+	debugPrint(L"CCompositionProcessorEngine::SetupDictionaryFile() pwszCINFileName=%s\n", pwszCINFileName);
+
 	if (!PathFileExists(pwszCINFileName))
 	{
 		//DIME roaming profile is not exist. Create one.
@@ -683,12 +683,17 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 		if (CConfig::GetArrayScope() == ARRAY_SCOPE::ARRAY40_BIG5)
 		{
 			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Array40.cin");
-			StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array40.cin");
+			StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Array40.cin");
+
+			debugPrint(L"CCompositionProcessorEngine::SetupDictionaryFile() Array40.cin pwszCINFileName=%s\n", pwszCINFileName);
 		}
 		else
 		{
 			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Array.cin");
-			StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array.cin");
+			StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Array.cin");
+
+			debugPrint(L"CCompositionProcessorEngine::SetupDictionaryFile() Array.cin pwszCINFileName=%s\n", pwszCINFileName);
+
 		}
 		if (PathFileExists(pwszCINFileNameProgramFiles))
 			_wstat(pwszCINFileNameProgramFiles, &programFilesTimeStamp);
@@ -701,7 +706,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 		if (!PathFileExists(pwszCINFileName)) //failed back to try preload array.cin in program files.
 		{
 			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, 
-				(CConfig::GetArrayScope() == ARRAY_SCOPE::ARRAY40_BIG5)?L"\\DIME\\Array40.cin":L"\\DIME\\Array.cin");
+				(CConfig::GetArrayScope() == ARRAY_SCOPE::ARRAY40_BIG5)?L"\\Array40.cin":L"\\Array.cin");
 			if (PathFileExists(pwszCINFileName)) // failed to find Array.cin in program files either
 			{
 				cinFound = TRUE;
@@ -723,7 +728,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 	{
 		BOOL cinFound = FALSE, wstatFailed = TRUE, updated = TRUE;
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Phone.cin");
-		StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Phone.cin");
+		StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Phone.cin");
 
 		if (PathFileExists(pwszCINFileNameProgramFiles))
 			_wstat(pwszCINFileNameProgramFiles, &programFilesTimeStamp);
@@ -735,7 +740,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 
 		if (!PathFileExists(pwszCINFileName)) //failed back to pre-install Phone.cin in program files.
 		{
-			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Phone.cin");
+			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Phone.cin");
 			if (PathFileExists(pwszCINFileName)) // failed to find Array.in in program files either
 			{
 				cinFound = TRUE;
@@ -796,15 +801,18 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 	{
 		if (_pTableDictionaryEngine[(UINT)imeMode] == nullptr)
 		{
-			_pTableDictionaryFile[(UINT)imeMode] = new (std::nothrow) CFile();
+		_pTableDictionaryFile[(UINT)imeMode] = new (std::nothrow) CFile();
 			if (_pTableDictionaryFile[(UINT)imeMode] == nullptr)  goto ErrorExit;
 
 			if (!PathFileExists(pwszTTSFileName))
 			{
+				// Windows system TTS files are always in the actual Program Files directory
+				WCHAR wszSystemProgramFiles[MAX_PATH] = { 0 };
+				SHGetSpecialFolderPath(NULL, wszSystemProgramFiles, CSIDL_PROGRAM_FILES, FALSE);
 				if (imeMode != IME_MODE::IME_MODE_ARRAY)
-					StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Windows NT\\TableTextService\\TableTextServiceDaYi.txt");
+					StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", wszSystemProgramFiles, L"\\Windows NT\\TableTextService\\TableTextServiceDaYi.txt");
 				else
-					StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Windows NT\\TableTextService\\TableTextServiceArray.txt");
+					StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", wszSystemProgramFiles, L"\\Windows NT\\TableTextService\\TableTextServiceArray.txt");
 				CopyFile(pwszCINFileNameProgramFiles, pwszTTSFileName, TRUE);
 
 			}
@@ -861,15 +869,18 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 	}
 	else if (_pPhraseTableDictionaryEngine == nullptr)
 	{
-		_pPhraseDictionaryFile = new (std::nothrow) CFile();
+	_pPhraseDictionaryFile = new (std::nothrow) CFile();
 		if (_pPhraseDictionaryFile == nullptr)  goto ErrorExit;
 
 		if (!PathFileExists(pwszTTSFileName))
 		{
+			// Windows system TTS files are always in the actual Program Files directory
+			WCHAR wszSystemProgramFiles[MAX_PATH] = { 0 };
+			SHGetSpecialFolderPath(NULL, wszSystemProgramFiles, CSIDL_PROGRAM_FILES, FALSE);
 			if (imeMode != IME_MODE::IME_MODE_ARRAY)
-				StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Windows NT\\TableTextService\\TableTextServiceDaYi.txt");
+				StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", wszSystemProgramFiles, L"\\Windows NT\\TableTextService\\TableTextServiceDaYi.txt");
 			else
-				StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Windows NT\\TableTextService\\TableTextServiceArray.txt");
+				StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", wszSystemProgramFiles, L"\\Windows NT\\TableTextService\\TableTextServiceArray.txt");
 			CopyFile(pwszCINFileNameProgramFiles, pwszTTSFileName, TRUE);
 
 		}
@@ -900,7 +911,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 		{
 			//Ext-B
 			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Array-Ext-B.cin");
-			StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-Ext-B.cin");
+            StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Array-Ext-B.cin");
 
 			if (PathFileExists(pwszCINFileNameProgramFiles))
 				_wstat(pwszCINFileNameProgramFiles, &programFilesTimeStamp);
@@ -911,7 +922,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 				CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, FALSE);
 
 			if (!PathFileExists(pwszCINFileName)) //failed back to preload array-special.cin in program files.
-				StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-Ext-B.cin");
+                StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Array-Ext-B.cin");
 			else if (_pArrayExtBDictionaryFile && _pTextService &&
 				CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pArrayExtBDictionaryFile->GetFileName(), -1) != CSTR_EQUAL)
 			{ // cin filename is different. force reload the cin file
@@ -942,7 +953,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			}
 			//Ext-CD
 			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Array-Ext-CD.cin");
-			StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-Ext-CD.cin");
+            StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Array-Ext-CD.cin");
 
 			wstatFailed = TRUE; updated = TRUE;
 			if (PathFileExists(pwszCINFileNameProgramFiles))
@@ -954,7 +965,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 				CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, FALSE);
 
 			if (!PathFileExists(pwszCINFileName)) //failed back to preload array-special.cin in program files.
-				StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-Ext-CD.cin");
+                StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Array-Ext-CD.cin");
 			else if (_pArrayExtCDDictionaryFile && _pTextService &&
 				CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pArrayExtCDDictionaryFile->GetFileName(), -1) != CSTR_EQUAL)
 			{ // cin filename is different. force reload the cin file
@@ -986,7 +997,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 
 			//Ext-EFG
 			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Array-Ext-EF.cin");
-			StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-Ext-EF.cin");
+            StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Array-Ext-EF.cin");
 
 			wstatFailed = TRUE; updated = TRUE;
 			if (PathFileExists(pwszCINFileNameProgramFiles))
@@ -998,7 +1009,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 				CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, FALSE);
 
 			if (!PathFileExists(pwszCINFileName)) //failed back to preload array-special.cin in program files.
-				StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-Ext-EF.cin");
+                StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Array-Ext-EF.cin");
 			else if (_pArrayExtEDictionaryFile && _pTextService &&
 				CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pArrayExtEDictionaryFile->GetFileName(), -1) != CSTR_EQUAL)
 			{ // cin filename is different. force reload the cin file
@@ -1027,7 +1038,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			}
 			//Array-phrase
 			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Array-Phrase.cin");
-			StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-Phrase.cin");
+            StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Array-Phrase.cin");
 
 			wstatFailed = TRUE; updated = TRUE;
 			if (PathFileExists(pwszCINFileNameProgramFiles))
@@ -1039,7 +1050,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 				CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, FALSE);
 
 			if (!PathFileExists(pwszCINFileName)) //failed back to preload array-phrase.cin in program files.
-				StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-Phrase.cin");
+                StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Array-Phrase.cin");
 
 			if (PathFileExists(pwszCINFileName))
 			{
@@ -1064,7 +1075,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			}
 			//Special
 			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Array-special.cin");
-			StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-special.cin");
+            StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Array-special.cin");
 
 			wstatFailed = TRUE; updated = TRUE;
 			if (PathFileExists(pwszCINFileNameProgramFiles))
@@ -1076,7 +1087,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 				CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, FALSE);
 
 			if (!PathFileExists(pwszCINFileName)) //failed back to preload array-special.cin in program files.
-				StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-special.cin");
+                StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Array-special.cin");
 			else if (_pArraySpecialCodeDictionaryFile && _pTextService &&
 				CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pArraySpecialCodeDictionaryFile->GetFileName(), -1) != CSTR_EQUAL)
 			{ //indicate the previous table is built with system preload file in program files, and now user provides their own.
@@ -1107,7 +1118,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 			}
 			//Short-code
 			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszAppData, L"\\DIME\\Array-shortcode.cin");
-			StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-shortcode.cin");
+            StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Array-shortcode.cin");
 
 			wstatFailed = TRUE; updated = TRUE;
 			if (PathFileExists(pwszCINFileNameProgramFiles))
@@ -1119,7 +1130,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode)
 				CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, FALSE);
 
 			if (!PathFileExists(pwszCINFileName)) //failed back to preload array-shortcode.cin in program files.
-				StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\DIME\\Array-shortcode.cin");
+                StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", pwszProgramFiles, L"\\Array-shortcode.cin");
 			else if (_pArrayShortCodeDictionaryFile && _pTextService &&
 				CompareString(_pTextService->GetLocale(), NORM_IGNORECASE, pwszCINFileName, -1, _pArrayShortCodeDictionaryFile->GetFileName(), -1) != CSTR_EQUAL)
 			{ //indicate the previous table is built with system preload file in program files, and now user provides their own.
@@ -1200,19 +1211,16 @@ BOOL CCompositionProcessorEngine::SetupHanCovertTable()
 
 	if (CConfig::GetDoHanConvert() && _pTCSCTableDictionaryEngine == nullptr)
 	{
-		WCHAR wszProgramFiles[MAX_PATH];
-		WCHAR wszAppData[MAX_PATH];
+		WCHAR wszProgramFiles[MAX_PATH] = { 0 };
+		WCHAR wszAppData[MAX_PATH] = { 0 };
 
-		if (GetEnvironmentVariable(L"ProgramW6432", wszProgramFiles, MAX_PATH) == 0)
-		{//on 64-bit vista only 32bit app has this environment variable.  Which means the call failed when the apps running is 64-bit.
-			//on 32-bit windows, this will definitely failed.  Get ProgramFiles environment variable now will retrieve the correct program files path.
-			GetEnvironmentVariable(L"ProgramFiles", wszProgramFiles, MAX_PATH);
-		}
+		// Get installation path (works for both MSIX and legacy installer)
+		Global::GetInstallationPath(wszProgramFiles, MAX_PATH);
 
 		//CSIDL_APPDATA  personal roaming application data.
 		SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);
 
-		debugPrint(L"CCompositionProcessorEngine::SetupDictionaryFile() :wszProgramFiles = %s", wszProgramFiles);
+		debugPrint(L"CCompositionProcessorEngine::SetupTCSCTable() :wszProgramFiles = %s", wszProgramFiles);
 
 		WCHAR* pwszCINFileName = new (std::nothrow) WCHAR[MAX_PATH];
 		WCHAR* pwszCINFileNameProgramFiles = new (std::nothrow) WCHAR[MAX_PATH];
@@ -1222,11 +1230,11 @@ BOOL CCompositionProcessorEngine::SetupHanCovertTable()
 		*pwszCINFileNameProgramFiles = L'\0';
 
 		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\TCSC.cin");
-		StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", wszProgramFiles, L"\\DIME\\TCSC.cin");
+		StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", wszProgramFiles, L"\\TCSC.cin");
 		if (PathFileExists(pwszCINFileNameProgramFiles) && !PathFileExists(pwszCINFileName))
 			CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, TRUE);
 		if (!PathFileExists(pwszCINFileName)) //failed back to try program files
-			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\DIME\\TCSC.cin");
+			StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\TCSC.cin");
 
 		if (_pTCSCTableDictionaryFile == nullptr)
 		{
@@ -1249,36 +1257,33 @@ BOOL CCompositionProcessorEngine::SetupHanCovertTable()
 
 BOOL CCompositionProcessorEngine::SetupTCFreqTable()
 {
-	debugPrint(L"CCompositionProcessorEngine::SetupTCFreqTable() \n");
+debugPrint(L"CCompositionProcessorEngine::SetupTCFreqTable() \n");
 
-	BOOL bRet = FALSE;
+BOOL bRet = FALSE;
 
-	WCHAR wszProgramFiles[MAX_PATH];
-	WCHAR wszAppData[MAX_PATH];
+WCHAR wszProgramFiles[MAX_PATH] = { 0 };
+WCHAR wszAppData[MAX_PATH] = { 0 };
 
-	if (GetEnvironmentVariable(L"ProgramW6432", wszProgramFiles, MAX_PATH) == 0)
-	{//on 64-bit vista only 32bit app has this environment variable.  Which means the call failed when the apps running is 64-bit.
-		//on 32-bit windows, this will definitely failed.  Get ProgramFiles environment variable now will retrieve the correct program files path.
-		GetEnvironmentVariable(L"ProgramFiles", wszProgramFiles, MAX_PATH);
-	}
+// Get installation path (works for both MSIX and legacy installer)
+Global::GetInstallationPath(wszProgramFiles, MAX_PATH);
 
-	//CSIDL_APPDATA  personal roaming application data.
-	SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);
+//CSIDL_APPDATA  personal roaming application data.
+SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);
 
-	debugPrint(L"CCompositionProcessorEngine::SetupTCFreqTable() :wszProgramFiles = %s", wszProgramFiles);
+debugPrint(L"CCompositionProcessorEngine::SetupTCFreqTable() :wszProgramFiles = %s", wszProgramFiles);
 
-	WCHAR* pwszCINFileName = new (std::nothrow) WCHAR[MAX_PATH];
-	WCHAR* pwszCINFileNameProgramFiles = new (std::nothrow) WCHAR[MAX_PATH];
-	if (pwszCINFileName == NULL || pwszCINFileNameProgramFiles == NULL)  goto ErrorExit;
-	*pwszCINFileName = L'\0';
-	*pwszCINFileNameProgramFiles = L'\0';
+WCHAR* pwszCINFileName = new (std::nothrow) WCHAR[MAX_PATH];
+WCHAR* pwszCINFileNameProgramFiles = new (std::nothrow) WCHAR[MAX_PATH];
+if (pwszCINFileName == NULL || pwszCINFileNameProgramFiles == NULL)  goto ErrorExit;
+*pwszCINFileName = L'\0';
+*pwszCINFileNameProgramFiles = L'\0';
 
-	StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\TCFreq.cin");
-	StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", wszProgramFiles, L"\\DIME\\TCFreq.cin");
-	if (PathFileExists(pwszCINFileNameProgramFiles) && !PathFileExists(pwszCINFileName))
-		CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, TRUE);
-	if (!PathFileExists(pwszCINFileName)) //failed back to try program files
-		StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\DIME\\TCFreq.cin");
+StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\TCFreq.cin");
+StringCchPrintf(pwszCINFileNameProgramFiles, MAX_PATH, L"%s%s", wszProgramFiles, L"\\TCFreq.cin");
+if (PathFileExists(pwszCINFileNameProgramFiles) && !PathFileExists(pwszCINFileName))
+CopyFile(pwszCINFileNameProgramFiles, pwszCINFileName, TRUE);
+if (!PathFileExists(pwszCINFileName)) //failed back to try program files
+StringCchPrintf(pwszCINFileName, MAX_PATH, L"%s%s", wszProgramFiles, L"\\TCFreq.cin");
 
 	if (_pTCFreqTableDictionaryFile == nullptr)
 	{

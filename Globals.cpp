@@ -38,6 +38,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "BaseWindow.h"
 #include "define.h"
 #include "BaseStructure.h"
+#include <appmodel.h>  // For GetCurrentPackageFullName (MSIX detection)
+
+#pragma comment(lib, "kernel32.lib")  // GetCurrentPackageFullName is in kernel32
 
 
 namespace Global {
@@ -485,6 +488,91 @@ BOOL UpdateModifiers(WPARAM wParam, LPARAM lParam)
 BOOL CompareElements(LCID locale, const CStringRange* pElement1, const CStringRange* pElement2)
 {
     return (CStringRange::Compare(locale, (CStringRange*)pElement1, (CStringRange*)pElement2) == CSTR_EQUAL) ? TRUE : FALSE;
+}
+
+//---------------------------------------------------------------------
+// IsMSIXPackage - Checks if DIME was installed via MSIX package
+// Checks if DIME.dll is located in the WindowsApps folder
+// Note: We can't use GetCurrentPackageFullName() because the IME DLL
+// may be loaded into a packaged app's process, which would incorrectly
+// return that app's package info instead of DIME's installation type.
+//---------------------------------------------------------------------
+BOOL IsMSIXPackage()
+{
+    static int cachedResult = -1; // -1 = not checked, 0 = not MSIX, 1 = MSIX
+    
+    if (cachedResult >= 0)
+        return cachedResult == 1;
+    
+    // Check if DIME.dll is located in the WindowsApps folder (MSIX installation)
+    WCHAR wszModulePath[MAX_PATH] = { 0 };
+    if (GetModuleFileNameW(dllInstanceHandle, wszModulePath, MAX_PATH) > 0)
+    {
+        // Convert to lowercase for case-insensitive comparison
+        _wcslwr_s(wszModulePath, MAX_PATH);
+        cachedResult = (wcsstr(wszModulePath, L"windowsapps") != nullptr) ? 1 : 0;
+    }
+    else
+    {
+        cachedResult = 0;
+    }
+    
+    return cachedResult == 1;
+}
+
+//---------------------------------------------------------------------
+// GetInstallationPath - Gets DIME installation directory for .cin files
+// For MSIX packages: returns package root (parent of DIME.dll location)
+// For legacy installer: returns Program Files\DIME
+//---------------------------------------------------------------------
+BOOL GetInstallationPath(_Out_writes_(cchPath) LPWSTR pwszPath, _In_ DWORD cchPath)
+{
+    if (pwszPath == nullptr || cchPath == 0)
+        return FALSE;
+
+    *pwszPath = L'\0';
+
+    if (IsMSIXPackage())
+    {
+        // For MSIX: Get the package root from the DLL location
+        // DIME.dll is in: <PackageRoot>\DIME\DIME.dll
+        // .cin files are in: <PackageRoot>\*.cin
+        // So we need to go up one level from the DLL directory
+        WCHAR wszModulePath[MAX_PATH] = { 0 };
+        if (GetModuleFileNameW(dllInstanceHandle, wszModulePath, MAX_PATH) > 0)
+        {
+            // Remove the DLL filename to get the DIME subfolder
+            WCHAR* pLastSlash = wcsrchr(wszModulePath, L'\\');
+            if (pLastSlash)
+            {
+                *pLastSlash = L'\0';
+                // Now go up one more level to get package root where .cin files are
+                pLastSlash = wcsrchr(wszModulePath, L'\\');
+                if (pLastSlash)
+                {
+                    *pLastSlash = L'\0';
+                    StringCchCopyW(pwszPath, cchPath, wszModulePath);
+                    return TRUE;
+                }
+            }
+        }
+        return FALSE;
+    }
+    else
+    {
+        // For legacy installer: use Program Files\DIME
+        WCHAR wszProgramFiles[MAX_PATH] = { 0 };
+        
+        if (GetEnvironmentVariableW(L"ProgramW6432", wszProgramFiles, MAX_PATH) == 0)
+        {
+            // On 64-bit Vista only 32-bit app has this environment variable
+            // On 32-bit Windows, this will fail. Get ProgramFiles instead.
+            GetEnvironmentVariableW(L"ProgramFiles", wszProgramFiles, MAX_PATH);
+        }
+        
+        StringCchPrintfW(pwszPath, cchPath, L"%s\\DIME", wszProgramFiles);
+        return TRUE;
+    }
 }
 #endif
 

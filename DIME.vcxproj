@@ -35,6 +35,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <None Include="DIME_Cleanup_registration.ps1" />
     <None Include="image\DoubleSingleByteOff.ico" />
     <None Include="image\DoubleSingleByteOn.ico" />
     <None Include="image\ImeModeOff.ico" />
@@ -374,7 +375,7 @@
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
     <PreBuildEvent>
-      <Command>BuildInfo.cmd</Command>
+      <Command>powershell.exe -ExecutionPolicy Bypass -NoProfile -File "$(ProjectDir)BuildInfo.ps1"</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -400,7 +401,7 @@
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
     <PreBuildEvent>
-      <Command>BuildInfo.cmd</Command>
+      <Command>powershell.exe -ExecutionPolicy Bypass -NoProfile -File "$(ProjectDir)BuildInfo.ps1"</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
@@ -427,7 +428,7 @@
       <TargetMachine>MachineARM64</TargetMachine>
     </Link>
     <PreBuildEvent>
-      <Command>BuildInfo.cmd</Command>
+      <Command>powershell.exe -ExecutionPolicy Bypass -NoProfile -File "$(ProjectDir)BuildInfo.ps1"</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64EC'">
@@ -454,7 +455,7 @@
       <TargetMachine>MachineARM64X</TargetMachine>
     </Link>
     <PreBuildEvent>
-      <Command>BuildInfo.cmd</Command>
+      <Command>powershell.exe -ExecutionPolicy Bypass -NoProfile -File "$(ProjectDir)BuildInfo.ps1"</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

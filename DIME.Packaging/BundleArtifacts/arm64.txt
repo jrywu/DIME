@@ -1,0 +1,2 @@
+MainPackage=C:\Users\Jeremy\Documents\GitHub\DIME\DIME.Packaging\bin\ARM64\Release\DIME.msix
+SymbolPackage=C:\Users\Jeremy\Documents\GitHub\DIME\DIME.Packaging\obj\ARM64\Release\Symbols\DIME.appxsym
