@@ -75,6 +75,8 @@
     <None Include="DIME.def">
       <Filter>Source Files</Filter>
     </None>
+    <None Include="README.md" />
+    <None Include="LICENSE.md" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BaseWindow.h">
@@ -364,6 +366,9 @@
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="image\TSFPhonetic.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="image\DIMESettings.ico">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

@@ -40,6 +40,8 @@
     <None Include="image\ImeModeOff.ico" />
     <None Include="image\ImeModeOn.ico" />
     <None Include="DIME.def" />
+    <None Include="LICENSE.md" />
+    <None Include="README.md" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BaseWindow.h" />
@@ -140,6 +142,7 @@
     <ResourceCompile Include="DIME.rc" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="image\DIMESettings.ico" />
     <Image Include="image\TSFArray.ico" />
     <Image Include="image\TSFDayi.ico" />
     <Image Include="image\TSFGeneric.ico" />
