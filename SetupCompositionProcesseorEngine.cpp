@@ -1447,7 +1447,7 @@ void CCompositionProcessorEngine::SetupCandidateListRange(IME_MODE imeMode)
 
 	if (pSelkey == nullptr || wcslen(pSelkey) == 0)
 	{
-		StringCchCopy(localSelKey, MAX_CAND_SELKEY, (imeMode == IME_MODE::IME_MODE_DAYI) ? L"'[]\\-\"{}|" : L"1234567890");
+		StringCchCopy(localSelKey, MAX_CAND_SELKEY, (imeMode == IME_MODE::IME_MODE_DAYI) ? L"'[]-\\\"{}_" : L"1234567890");
 		pSelkey = localSelKey;
 		_candidatePageSize = (imeMode == IME_MODE::IME_MODE_PHONETIC) ? 9 : 10;
 	}
