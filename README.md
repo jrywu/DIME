@@ -3,7 +3,7 @@
 [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](LICENSE)
 [![Windows](https://img.shields.io/badge/Windows-7%7C8%20%7C%2010%20%7C%2011-blue)](https://github.com/jrywu/DIME)
 
-DIME 是一套適用於 Windows 7/8/10/11 的輸入法框架，支援多種中文輸入法，包含大易、行列、注音、自建輸入法。
+DIME 是一套適用於 Windows 8/10/11 的輸入法框架，支援多種中文輸入法，包含大易、行列、注音、自建輸入法。
 
 ## 功能特色
 
@@ -43,7 +43,7 @@ DIME 是一套適用於 Windows 7/8/10/11 的輸入法框架，支援多種中�
 - **DIME大易** - 大易輸入法
 - **DIME行列** - 行列輸入法
 
-> **注意：** 安裝程式未經數位簽章，執行時會出現 Windows SmartScreen 安全警告。這是因為程式碼簽章憑證費用高昂，而 DIME 是免費的開源軟體。DIME 為 100% 開源專案，不包含任何外部程式碼、函式庫或二進位檔案相依性，安全風險極低。如有疑慮，歡迎檢視[原始碼](https://github.com/jrywu/DIME)。
+> **注意：** 安裝程式未經數位簽章，執行時會出現末知發行商安全警告。這是因為程式碼簽章憑證費用高昂，而 DIME 是免費的開源軟體。DIME 為 100% 開源專案，不包含任何外部程式碼、函式庫或二進位檔案相依性，安全風險極低。如有疑慮，歡迎檢視[原始碼](https://github.com/jrywu/DIME)。
 
 4. 如不需要全部輸入法，可在「設定」→「時間與語言」→「語言」→「中文(台灣)」→「選項」中，點選不需要的輸入法旁的「⋯」選單，選擇「移除」
 
