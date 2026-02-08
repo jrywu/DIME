@@ -320,7 +320,7 @@ function Stage-Platform {
         Write-Host "  Copied: Images" -ForegroundColor Gray
     }
     
-    # Copy cleanup script (deployed to LocalAppData during registration for post-uninstall cleanup)
+    # Copy cleanup script (deployed to ProgramData during registration for post-uninstall cleanup)
     $cleanupScript = "$ScriptDir\DIME_Cleanup.ps1"
     if (Test-Path $cleanupScript) {
         Copy-Item $cleanupScript "$stagingDir\" -Force

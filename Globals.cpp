@@ -39,6 +39,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "define.h"
 #include "BaseStructure.h"
 #include <appmodel.h>  // For GetCurrentPackageFullName (MSIX detection)
+#include <ShlObj.h>    // For SHGetFolderPathW, CSIDL_COMMON_APPDATA
 
 #pragma comment(lib, "kernel32.lib")  // GetCurrentPackageFullName is in kernel32
 
@@ -522,7 +523,7 @@ BOOL IsMSIXPackage()
 
 //---------------------------------------------------------------------
 // GetInstallationPath - Gets DIME installation directory for .cin files
-// For MSIX packages: returns package root (parent of DIME.dll location)
+// For MSIX packages: returns C:\ProgramData\DIME (where DIMESettings deploys files)
 // For legacy installer: returns Program Files\DIME
 //---------------------------------------------------------------------
 BOOL GetInstallationPath(_Out_writes_(cchPath) LPWSTR pwszPath, _In_ DWORD cchPath)
@@ -534,27 +535,13 @@ BOOL GetInstallationPath(_Out_writes_(cchPath) LPWSTR pwszPath, _In_ DWORD cchPa
 
     if (IsMSIXPackage())
     {
-        // For MSIX: Get the package root from the DLL location
-        // DIME.dll is in: <PackageRoot>\DIME\DIME.dll
-        // .cin files are in: <PackageRoot>\*.cin
-        // So we need to go up one level from the DLL directory
-        WCHAR wszModulePath[MAX_PATH] = { 0 };
-        if (GetModuleFileNameW(dllInstanceHandle, wszModulePath, MAX_PATH) > 0)
+        // For MSIX: Files are deployed to C:\ProgramData\DIME by DIMESettings.exe
+        // This location is accessible by all apps (unlike WindowsApps folder)
+        WCHAR wszProgramData[MAX_PATH] = { 0 };
+        if (SHGetFolderPathW(NULL, CSIDL_COMMON_APPDATA, NULL, 0, wszProgramData) == S_OK)
         {
-            // Remove the DLL filename to get the DIME subfolder
-            WCHAR* pLastSlash = wcsrchr(wszModulePath, L'\\');
-            if (pLastSlash)
-            {
-                *pLastSlash = L'\0';
-                // Now go up one more level to get package root where .cin files are
-                pLastSlash = wcsrchr(wszModulePath, L'\\');
-                if (pLastSlash)
-                {
-                    *pLastSlash = L'\0';
-                    StringCchCopyW(pwszPath, cchPath, wszModulePath);
-                    return TRUE;
-                }
-            }
+            StringCchPrintfW(pwszPath, cchPath, L"%s\\DIME", wszProgramData);
+            return TRUE;
         }
         return FALSE;
     }

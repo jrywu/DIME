@@ -7,6 +7,7 @@
 #include <appmodel.h>  // For GetCurrentPackageFullName
 #include <shellapi.h>  // For ShellExecuteEx (elevation)
 #include <ShlObj.h>    // For SHGetFolderPath
+#include <msctf.h>     // For ITfInputProcessorProfileMgr, ITfCategoryMgr
 #include "DIMESettings.h"
 #include "..\Globals.h"
 #include "..\Config.h"
@@ -16,13 +17,29 @@
 #pragma comment(lib, "ComCtl32.lib")  
 constexpr wchar_t DIME_SETTINGS_INSTANCE_MUTEX_NAME[] = L"{B11F1FB2-3ECC-409E-A036-4162ADCEF1A3}";
 
+// TSF registration constants (same as in Register.cpp)
+#define TEXTSERVICE_LANGID    MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_TRADITIONAL)
+// Icon indices are defined in Define.h as negative resource IDs:
+// TEXTSERVICE_DAYI_ICON_INDEX = -IDI_DAYI = -11
+// TEXTSERVICE_ARRAY_ICON_INDEX = -IDI_ARRAY = -12
+// TEXTSERVICE_PHONETIC_ICON_INDEX = -IDI_PHONETIC = -13
+// TEXTSERVICE_GENERIC_ICON_INDEX = -IDI_GENERIC = -14
+// (Define.h is included via Globals.h)
+
+// TSF Category GUIDs to register
+static const GUID SupportCategories[] = {
+    GUID_TFCAT_TIP_KEYBOARD,
+    GUID_TFCAT_DISPLAYATTRIBUTEPROVIDER,
+    GUID_TFCAT_TIPCAP_UIELEMENTENABLED, 
+    GUID_TFCAT_TIPCAP_SECUREMODE,
+    GUID_TFCAT_TIPCAP_COMLESS,
+    GUID_TFCAT_TIPCAP_INPUTMODECOMPARTMENT,
+    GUID_TFCAT_TIPCAP_IMMERSIVESUPPORT, 
+    GUID_TFCAT_TIPCAP_SYSTRAYSUPPORT,
+};
+
 // Global Variables:
 HINSTANCE hInst;                                // current instance
-
-// Function pointer types for DLL exports
-typedef HRESULT (STDAPICALLTYPE *PFN_DllRegisterTSFProfiles)(void);
-typedef HRESULT (STDAPICALLTYPE *PFN_DllRegisterServer)(void);
-typedef HRESULT (STDAPICALLTYPE *PFN_DllUnregisterServer)(void);
 
 // Forward declarations
 static void GetPackageDllPath(LPCWSTR dllSubPath, LPWSTR outPath, size_t outPathSize);
@@ -31,8 +48,12 @@ static BOOL DeployDllToAccessibleLocation(LPCWSTR sourcePath, LPCWSTR destPath);
 static void RemoveDeployedDlls();
 static BOOL RegisterCOMServerToRegistry(LPCWSTR dllPath, BOOL isWow64Dll);
 static BOOL UnregisterCOMServerFromRegistry(BOOL isWow64Dll);
+static BOOL RegisterTSFProfiles(LPCWSTR dllPath);
+static BOOL RegisterTSFCategories();
+static void UnregisterTSFProfiles();
+static void UnregisterTSFCategories();
 static void UnregisterIMEForMSIX();
-static void RegisterIMEForMSIX(BOOL isElevated);  // Note: TSF requires HKLM, per-user not possible
+static void RegisterIMEForMSIX(BOOL isElevated, BOOL testMode = FALSE);  // Note: TSF requires HKLM, per-user not possible
 
 // Check if process is running with admin privileges
 static BOOL IsRunningAsAdmin()
@@ -65,6 +86,88 @@ static BOOL RelaunchAsAdmin(LPCWSTR args)
     sei.nShow = SW_NORMAL;
     
     return ShellExecuteExW(&sei);
+}
+
+// Pre-stage DLLs from WindowsApps to TEMP folder before elevation
+// This is necessary because the elevated process loses package identity
+// and cannot read from WindowsApps folder
+// Returns TRUE if at least one DLL was staged
+static BOOL PreStageDllsToTemp(LPWSTR tempX64Path, size_t tempX64Size, 
+                                LPWSTR tempX86Path, size_t tempX86Size)
+{
+    // Get temp folder
+    WCHAR tempDir[MAX_PATH];
+    DWORD len = GetTempPathW(MAX_PATH, tempDir);
+    if (len == 0 || len >= MAX_PATH)
+    {
+        return FALSE;
+    }
+    
+    // Create DIME subfolder in temp
+    WCHAR tempDimeDir[MAX_PATH];
+    StringCchPrintfW(tempDimeDir, MAX_PATH, L"%sDIME_Stage", tempDir);
+    CreateDirectoryW(tempDimeDir, NULL);
+    
+    WCHAR srcPath[MAX_PATH];
+    BOOL anySuccess = FALSE;
+    
+    // Copy x64 DLL
+    GetPackageDllPath(L"DIME\\DIME.dll", srcPath, MAX_PATH);
+    if (GetFileAttributesW(srcPath) != INVALID_FILE_ATTRIBUTES)
+    {
+        StringCchPrintfW(tempX64Path, tempX64Size, L"%s\\DIME_x64.dll", tempDimeDir);
+        if (CopyFileW(srcPath, tempX64Path, FALSE))
+        {
+            anySuccess = TRUE;
+        }
+        else
+        {
+            tempX64Path[0] = L'\0';
+            debugPrint(L"PreStageDlls: Failed to copy x64 DLL, error=%d", GetLastError());
+        }
+    }
+    else
+    {
+        tempX64Path[0] = L'\0';
+    }
+    
+    // Copy x86 DLL
+    GetPackageDllPath(L"DIME.x86\\DIME.dll", srcPath, MAX_PATH);
+    if (GetFileAttributesW(srcPath) != INVALID_FILE_ATTRIBUTES)
+    {
+        StringCchPrintfW(tempX86Path, tempX86Size, L"%s\\DIME_x86.dll", tempDimeDir);
+        if (CopyFileW(srcPath, tempX86Path, FALSE))
+        {
+            anySuccess = TRUE;
+        }
+        else
+        {
+            tempX86Path[0] = L'\0';
+            debugPrint(L"PreStageDlls: Failed to copy x86 DLL, error=%d", GetLastError());
+        }
+    }
+    else
+    {
+        tempX86Path[0] = L'\0';
+    }
+    
+    return anySuccess;
+}
+
+// Clean up staged DLL files from temp
+static void CleanupStagedDlls()
+{
+    WCHAR tempDir[MAX_PATH];
+    DWORD len = GetTempPathW(MAX_PATH, tempDir);
+    if (len == 0 || len >= MAX_PATH) return;
+    
+    WCHAR path[MAX_PATH];
+    StringCchPrintfW(path, MAX_PATH, L"%sDIME_Stage\\DIME_x64.dll", tempDir);
+    DeleteFileW(path);
+    StringCchPrintfW(path, MAX_PATH, L"%sDIME_Stage\\DIME_x86.dll", tempDir);
+    DeleteFileW(path);
+    StringCchPrintfW(path, MAX_PATH, L"%sDIME_Stage", tempDir);
+    RemoveDirectoryW(path);
 }
 
 // Check if DIMESettings.exe is running as MSIX package
@@ -124,10 +227,6 @@ static BOOL RegisterDllWithRegsvr32(LPCWSTR dllPath, BOOL useWow64)
     WCHAR cmdLine[MAX_PATH * 2];
     StringCchPrintfW(cmdLine, MAX_PATH * 2, L"/s \"%s\"", dllPath);
     
-    WCHAR debugMsg[1024];
-    StringCchPrintfW(debugMsg, 1024, L"執行 regsvr32:\n\n%s %s", regsvr32Path, cmdLine);
-    MessageBoxW(NULL, debugMsg, L"DEBUG regsvr32", MB_OK);
-    
     SHELLEXECUTEINFOW sei = { sizeof(sei) };
     sei.fMask = SEE_MASK_NOCLOSEPROCESS;
     sei.lpVerb = L"open";  // Already elevated
@@ -141,15 +240,10 @@ static BOOL RegisterDllWithRegsvr32(LPCWSTR dllPath, BOOL useWow64)
         DWORD exitCode = 0;
         GetExitCodeProcess(sei.hProcess, &exitCode);
         CloseHandle(sei.hProcess);
-        
-        StringCchPrintfW(debugMsg, 1024, L"regsvr32 完成\n\n退出碼: %d", exitCode);
-        MessageBoxW(NULL, debugMsg, L"DEBUG regsvr32 結果", MB_OK);
         return (exitCode == 0);
     }
     else
     {
-        StringCchPrintfW(debugMsg, 1024, L"regsvr32 執行失敗\n\n錯誤碼: %d", GetLastError());
-        MessageBoxW(NULL, debugMsg, L"DEBUG regsvr32 錯誤", MB_OK | MB_ICONERROR);
         return FALSE;
     }
 }
@@ -197,11 +291,6 @@ static BOOL RegisterCOMServerToRegistry(LPCWSTR dllPath, BOOL isWow64Dll)
         }
     }
     
-    WCHAR debugMsg[1024];
-    StringCchPrintfW(debugMsg, 1024, L"COM 註冊 %s\n\n路徑: %s\n32位元: %s", 
-        success ? L"成功" : L"失敗", dllPath, isWow64Dll ? L"是" : L"否");
-    MessageBoxW(NULL, debugMsg, L"DEBUG COM 註冊", MB_OK);
-    
     return success;
 }
 
@@ -247,8 +336,228 @@ static BOOL UnregisterCOMServerFromRegistry(BOOL isWow64Dll)
     return success;
 }
 
+// Register TSF profiles directly using ITfInputProcessorProfileMgr
+// This allows DIMESettings.exe to register profiles without loading the DLL
+// dllPath: The path to the DLL (used for icon)
+static BOOL RegisterTSFProfiles(LPCWSTR dllPath)
+{
+    HRESULT hr = S_FALSE;
+    ITfInputProcessorProfileMgr *pProfileMgr = nullptr;
+    
+    hr = CoCreateInstance(CLSID_TF_InputProcessorProfiles, NULL, CLSCTX_INPROC_SERVER,
+        IID_ITfInputProcessorProfileMgr, (void**)&pProfileMgr);
+    if (FAILED(hr))
+    {
+        return FALSE;
+    }
+    
+    DWORD cchPath = (DWORD)wcslen(dllPath);
+    
+    // Profile descriptions
+    WCHAR descDayi[64] = L"DIME 大易輸入法";
+    WCHAR descArray[64] = L"DIME 行列輸入法";
+    WCHAR descPhonetic[64] = L"DIME 傳統注音";
+    WCHAR descGeneric[64] = L"DIME 自建輸入法";
+    
+    // Register Dayi profile
+    hr = pProfileMgr->RegisterProfile(
+        Global::DIMECLSID,
+        TEXTSERVICE_LANGID,
+        Global::DIMEDayiGuidProfile,
+        descDayi, (ULONG)wcslen(descDayi),
+        dllPath, cchPath,
+        (UINT)TEXTSERVICE_DAYI_ICON_INDEX,
+        NULL, 0, TRUE, 0);
+    
+    // Register Array profile
+    hr = pProfileMgr->RegisterProfile(
+        Global::DIMECLSID,
+        TEXTSERVICE_LANGID,
+        Global::DIMEArrayGuidProfile,
+        descArray, (ULONG)wcslen(descArray),
+        dllPath, cchPath,
+        (UINT)TEXTSERVICE_ARRAY_ICON_INDEX,
+        NULL, 0, TRUE, 0);
+    
+    // Register Phonetic profile
+    hr = pProfileMgr->RegisterProfile(
+        Global::DIMECLSID,
+        TEXTSERVICE_LANGID,
+        Global::DIMEPhoneticGuidProfile,
+        descPhonetic, (ULONG)wcslen(descPhonetic),
+        dllPath, cchPath,
+        (UINT)TEXTSERVICE_PHONETIC_ICON_INDEX,
+        NULL, 0, TRUE, 0);
+    
+    // Register Generic profile
+    hr = pProfileMgr->RegisterProfile(
+        Global::DIMECLSID,
+        TEXTSERVICE_LANGID,
+        Global::DIMEGenericGuidProfile,
+        descGeneric, (ULONG)wcslen(descGeneric),
+        dllPath, cchPath,
+        (UINT)TEXTSERVICE_GENERIC_ICON_INDEX,
+        NULL, 0, TRUE, 0);
+    
+    pProfileMgr->Release();
+    return TRUE;
+}
+
+// Register TSF categories
+static BOOL RegisterTSFCategories()
+{
+    ITfCategoryMgr* pCategoryMgr = nullptr;
+    HRESULT hr = S_OK;
+
+    hr = CoCreateInstance(CLSID_TF_CategoryMgr, NULL, CLSCTX_INPROC_SERVER, 
+        IID_ITfCategoryMgr, (void**)&pCategoryMgr);
+    if (FAILED(hr))
+    {
+        return FALSE;
+    }
+
+    for (int i = 0; i < ARRAYSIZE(SupportCategories); i++)
+    {
+        pCategoryMgr->RegisterCategory(Global::DIMECLSID, SupportCategories[i], Global::DIMECLSID);
+    }
+
+    pCategoryMgr->Release();
+    return TRUE;
+}
+
+// Fix TIP registry entries to use correct DLL paths and icon indices
+// TSF's RegisterProfile() writes the same icon path to both 32-bit and 64-bit registry,
+// but we need x64 DLL path for 64-bit registry and x86 DLL path for 32-bit registry.
+// This function manually corrects the IconFile and IconIndex entries after TSF registration.
+//
+// NOTE: HKLM\SOFTWARE\Microsoft\CTF\TIP is NOT WOW64-virtualized!
+// Both 32-bit and 64-bit processes see the SAME registry key.
+// So we only need to write once - using x64 path (preferred for 64-bit Windows).
+// 32-bit apps can still load icons from x64 DLL path.
+static BOOL FixTIPRegistryPaths(LPCWSTR x64DllPath, LPCWSTR x86DllPath)
+{
+    // DIME CLSID: {1DE68A87-FF3B-46A0-8F80-46730B2491B1}
+    // TIP registry location: HKLM\SOFTWARE\Microsoft\CTF\TIP\{CLSID}\LanguageProfile\{langid}\{profileGUID}
+    
+    // Determine which path to use: prefer x64, fall back to x86
+    LPCWSTR iconPath = NULL;
+    if (x64DllPath && x64DllPath[0] != L'\0')
+    {
+        iconPath = x64DllPath;
+    }
+    else if (x86DllPath && x86DllPath[0] != L'\0')
+    {
+        iconPath = x86DllPath;
+    }
+    
+    if (!iconPath)
+    {
+        return FALSE;
+    }
+    
+    // LANGID 0x0404 = Traditional Chinese
+    // Profiles and their corresponding icon indices (negative resource IDs)
+    struct ProfileInfo {
+        const GUID* guid;
+        DWORD iconIndex;  // Stored as DWORD in registry
+    };
+    
+    const ProfileInfo profiles[] = {
+        { &Global::DIMEDayiGuidProfile, (DWORD)TEXTSERVICE_DAYI_ICON_INDEX },      // -11 = 0xFFFFFFF5
+        { &Global::DIMEArrayGuidProfile, (DWORD)TEXTSERVICE_ARRAY_ICON_INDEX },    // -12 = 0xFFFFFFF4
+        { &Global::DIMEPhoneticGuidProfile, (DWORD)TEXTSERVICE_PHONETIC_ICON_INDEX }, // -13 = 0xFFFFFFF3
+        { &Global::DIMEGenericGuidProfile, (DWORD)TEXTSERVICE_GENERIC_ICON_INDEX }   // -14 = 0xFFFFFFF2
+    };
+    
+    WCHAR clsidStr[64];
+    StringFromGUID2(Global::DIMECLSID, clsidStr, 64);
+    
+    int updated = 0;
+    
+    for (int i = 0; i < ARRAYSIZE(profiles); i++)
+    {
+        WCHAR profileGuidStr[64];
+        StringFromGUID2(*profiles[i].guid, profileGuidStr, 64);
+        
+        WCHAR keyPath[MAX_PATH];
+        HKEY hKey = NULL;
+        LONG result;
+        
+        StringCchPrintfW(keyPath, MAX_PATH, 
+            L"SOFTWARE\\Microsoft\\CTF\\TIP\\%s\\LanguageProfile\\0x00000404\\%s",
+            clsidStr, profileGuidStr);
+        
+        // CTF\TIP is NOT WOW64-virtualized - don't use KEY_WOW64_64KEY or KEY_WOW64_32KEY
+        // Both 32-bit and 64-bit apps see the same key
+        result = RegOpenKeyExW(HKEY_LOCAL_MACHINE, keyPath, 0, 
+            KEY_WRITE, &hKey);
+        if (result == ERROR_SUCCESS)
+        {
+            // Set IconFile (path to DLL)
+            RegSetValueExW(hKey, L"IconFile", 0, REG_SZ, 
+                (BYTE*)iconPath, (DWORD)(wcslen(iconPath) + 1) * sizeof(WCHAR));
+            
+            // Set IconIndex (negative resource ID stored as DWORD)
+            DWORD iconIndex = profiles[i].iconIndex;
+            RegSetValueExW(hKey, L"IconIndex", 0, REG_DWORD, 
+                (BYTE*)&iconIndex, sizeof(DWORD));
+            
+            RegCloseKey(hKey);
+            updated++;
+        }
+        else
+        {
+            debugPrint(L"FixTIPRegistryPaths: Failed to open key, error=%d, path=%s", result, keyPath);
+        }
+    }
+    
+    return (updated > 0);
+}
+
+// Unregister TSF profiles
+static void UnregisterTSFProfiles()
+{
+    HRESULT hr = S_OK;
+    ITfInputProcessorProfileMgr *pProfileMgr = nullptr;
+    
+    hr = CoCreateInstance(CLSID_TF_InputProcessorProfiles, NULL, CLSCTX_INPROC_SERVER,
+        IID_ITfInputProcessorProfileMgr, (void**)&pProfileMgr);
+    if (FAILED(hr))
+    {
+        return;
+    }
+    
+    pProfileMgr->UnregisterProfile(Global::DIMECLSID, TEXTSERVICE_LANGID, Global::DIMEDayiGuidProfile, 0);
+    pProfileMgr->UnregisterProfile(Global::DIMECLSID, TEXTSERVICE_LANGID, Global::DIMEArrayGuidProfile, 0);
+    pProfileMgr->UnregisterProfile(Global::DIMECLSID, TEXTSERVICE_LANGID, Global::DIMEPhoneticGuidProfile, 0);
+    pProfileMgr->UnregisterProfile(Global::DIMECLSID, TEXTSERVICE_LANGID, Global::DIMEGenericGuidProfile, 0);
+    
+    pProfileMgr->Release();
+}
+
+// Unregister TSF categories
+static void UnregisterTSFCategories()
+{
+    ITfCategoryMgr* pCategoryMgr = nullptr;
+    HRESULT hr = S_OK;
+
+    hr = CoCreateInstance(CLSID_TF_CategoryMgr, NULL, CLSCTX_INPROC_SERVER, 
+        IID_ITfCategoryMgr, (void**)&pCategoryMgr);
+    if (FAILED(hr))
+    {
+        return;
+    }
+
+    for (int i = 0; i < ARRAYSIZE(SupportCategories); i++)
+    {
+        pCategoryMgr->UnregisterCategory(Global::DIMECLSID, SupportCategories[i], Global::DIMECLSID);
+    }
+
+    pCategoryMgr->Release();
+}
+
 // Unregister IME for MSIX package (called during uninstall)
-// 1. Unregister TSF profiles via DllUnregisterServer
+// 1. Unregister TSF profiles and categories
 // 2. Remove COM registration from HKLM (both 64-bit and 32-bit views)
 // 3. Delete deployed DLLs from C:\ProgramData\DIME
 static void UnregisterIMEForMSIX()
@@ -295,24 +604,9 @@ static void UnregisterIMEForMSIX()
     // Elevated path - do the actual cleanup
     CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
     
-    WCHAR dllPath[MAX_PATH];
-    
-    // Load deployed x86 DLL to call DllUnregisterServer for TSF profiles
-    GetDeployedDllPath(TRUE, dllPath, MAX_PATH);  // x86 path
-    if (GetFileAttributesW(dllPath) != INVALID_FILE_ATTRIBUTES)
-    {
-        HMODULE hDIME = LoadLibraryW(dllPath);
-        if (hDIME)
-        {
-            PFN_DllUnregisterServer pfnUnregister = 
-                (PFN_DllUnregisterServer)GetProcAddress(hDIME, "DllUnregisterServer");
-            if (pfnUnregister)
-            {
-                pfnUnregister();  // Unregisters TSF profiles and categories
-            }
-            FreeLibrary(hDIME);
-        }
-    }
+    // Unregister TSF profiles and categories directly (no DLL loading needed)
+    UnregisterTSFProfiles();
+    UnregisterTSFCategories();
     
     // Unregister COM from HKLM (both 64-bit and 32-bit registry views)
     UnregisterCOMServerFromRegistry(FALSE);  // 64-bit view
@@ -373,23 +667,38 @@ static BOOL DeployDllToAccessibleLocation(LPCWSTR sourcePath, LPCWSTR destPath)
         if (slash)
         {
             *slash = L'\0';
-            CreateDirectoryW(parentDir, NULL);  // Create C:\ProgramData\DIME
+            // Create C:\ProgramData\DIME (ignore error if already exists)
+            if (!CreateDirectoryW(parentDir, NULL))
+            {
+                DWORD err = GetLastError();
+                if (err != ERROR_ALREADY_EXISTS)
+                {
+                    debugPrint(L"DeployDll: Failed to create parent dir %s, error=%d", parentDir, err);
+                }
+            }
         }
-        CreateDirectoryW(destDir, NULL);  // Create C:\ProgramData\DIME\x64 or x86
+        // Create C:\ProgramData\DIME\x64 or x86 (ignore error if already exists)
+        if (!CreateDirectoryW(destDir, NULL))
+        {
+            DWORD err = GetLastError();
+            if (err != ERROR_ALREADY_EXISTS)
+            {
+                debugPrint(L"DeployDll: Failed to create dest dir %s, error=%d", destDir, err);
+            }
+        }
     }
     
-    // Copy the DLL
+    // Copy the DLL (overwrite if exists)
     BOOL result = CopyFileW(sourcePath, destPath, FALSE);
-    
-    WCHAR msg[1024];
-    StringCchPrintfW(msg, 1024, L"複製 DLL:\n\n來源: %s\n目標: %s\n結果: %s", 
-        sourcePath, destPath, result ? L"成功" : L"失敗");
-    MessageBoxW(NULL, msg, L"DEBUG 部署 DLL", MB_OK);
-    
+    if (!result)
+    {
+        DWORD err = GetLastError();
+        debugPrint(L"DeployDll: CopyFile failed, error=%d, src=%s, dest=%s", err, sourcePath, destPath);
+    }
     return result;
 }
 
-// Remove deployed DLLs during uninstall
+// Remove deployed DLLs and CIN files during uninstall
 static void RemoveDeployedDlls()
 {
     WCHAR programData[MAX_PATH];
@@ -409,30 +718,91 @@ static void RemoveDeployedDlls()
         StringCchPrintfW(path, MAX_PATH, L"%s\\DIME\\x86", programData);
         RemoveDirectoryW(path);
         
+        // Delete .cin files
+        const WCHAR* cinFiles[] = {
+            L"Array.cin", L"Array40.cin", L"Dayi.cin", L"Phone.cin",
+            L"Array-shortcode.cin", L"Array-special.cin",
+            L"CnsPhone.cin", L"TCSC.cin"
+        };
+        for (int i = 0; i < ARRAYSIZE(cinFiles); i++)
+        {
+            StringCchPrintfW(path, MAX_PATH, L"%s\\DIME\\%s", programData, cinFiles[i]);
+            DeleteFileW(path);
+        }
+        
         // Delete DIME folder
         StringCchPrintfW(path, MAX_PATH, L"%s\\DIME", programData);
         RemoveDirectoryW(path);
     }
 }
 
-// Deploy cleanup script to %LOCALAPPDATA%\DIME\ for post-uninstall cleanup
+// Deploy .cin files from package to C:\ProgramData\DIME\
+// These files need to be accessible by all apps (unlike WindowsApps folder)
+static BOOL DeployCinFiles()
+{
+    WCHAR programData[MAX_PATH];
+    if (FAILED(SHGetFolderPathW(NULL, CSIDL_COMMON_APPDATA, NULL, 0, programData)))
+    {
+        return FALSE;
+    }
+    
+    // Create C:\ProgramData\DIME folder
+    WCHAR destDir[MAX_PATH];
+    StringCchPrintfW(destDir, MAX_PATH, L"%s\\DIME", programData);
+    CreateDirectoryW(destDir, NULL);
+    
+    // List of .cin files to deploy
+    const WCHAR* cinFiles[] = {
+        L"Array.cin", L"Array40.cin", L"Dayi.cin", L"Phone.cin",
+        L"Array-shortcode.cin", L"Array-special.cin",
+        L"CnsPhone.cin", L"TCSC.cin"
+    };
+    
+    int deployed = 0;
+    WCHAR srcPath[MAX_PATH];
+    WCHAR destPath[MAX_PATH];
+    
+    for (int i = 0; i < ARRAYSIZE(cinFiles); i++)
+    {
+        // Source is in package root (same folder as DIMESettings.exe)
+        GetPackageDllPath(cinFiles[i], srcPath, MAX_PATH);
+        StringCchPrintfW(destPath, MAX_PATH, L"%s\\DIME\\%s", programData, cinFiles[i]);
+        
+        if (GetFileAttributesW(srcPath) != INVALID_FILE_ATTRIBUTES)
+        {
+            if (CopyFileW(srcPath, destPath, FALSE))
+            {
+                deployed++;
+                debugPrint(L"DeployCinFiles: Deployed %s", cinFiles[i]);
+            }
+            else
+            {
+                debugPrint(L"DeployCinFiles: Failed to copy %s, error=%d", cinFiles[i], GetLastError());
+            }
+        }
+    }
+    
+    debugPrint(L"DeployCinFiles: Deployed %d cin files", deployed);
+    return (deployed > 0);
+}
+
+// Deploy cleanup script to C:\ProgramData\DIME\ for post-uninstall cleanup
 // This script can be run by the user after uninstalling MSIX to clean up
 // COM registrations, TSF profiles, and deployed DLLs
 static BOOL DeployCleanupScript()
 {
-    WCHAR localAppData[MAX_PATH];
-    if (FAILED(SHGetFolderPathW(NULL, CSIDL_LOCAL_APPDATA, NULL, 0, localAppData)))
+    WCHAR programData[MAX_PATH];
+    if (FAILED(SHGetFolderPathW(NULL, CSIDL_COMMON_APPDATA, NULL, 0, programData)))
     {
-        MessageBoxW(NULL, L"無法取得 LocalAppData 路徑", L"DEBUG DeployCleanupScript", MB_OK | MB_ICONERROR);
         return FALSE;
     }
     
-    // Create %LOCALAPPDATA%\DIME folder
+    // Create C:\ProgramData\DIME folder (should already exist from DLL deployment)
     WCHAR destDir[MAX_PATH];
-    StringCchPrintfW(destDir, MAX_PATH, L"%s\\DIME", localAppData);
+    StringCchPrintfW(destDir, MAX_PATH, L"%s\\DIME", programData);
     CreateDirectoryW(destDir, NULL);
     
-    // Copy DIME_Cleanup.ps1 from package to LocalAppData
+    // Copy DIME_Cleanup.ps1 from package to ProgramData
     WCHAR srcPath[MAX_PATH];
     WCHAR destPath[MAX_PATH];
     
@@ -449,46 +819,54 @@ static BOOL DeployCleanupScript()
     // Check if source file exists
     if (GetFileAttributesW(srcPath) == INVALID_FILE_ATTRIBUTES)
     {
-        WCHAR msg[1024];
-        StringCchPrintfW(msg, 1024, L"清理腳本不存在!\n\n來源: %s\n錯誤碼: %d", srcPath, GetLastError());
-        MessageBoxW(NULL, msg, L"DEBUG DeployCleanupScript", MB_OK | MB_ICONERROR);
+        debugPrint(L"DeployCleanupScript: Source not found: %s", srcPath);
         return FALSE;
     }
     
     BOOL result = CopyFileW(srcPath, destPath, FALSE);
-    
-    WCHAR msg[1024];
-    StringCchPrintfW(msg, 1024, L"複製清理腳本:\n\n來源: %s\n目標: %s\n結果: %s\n錯誤碼: %d", 
-        srcPath, destPath, result ? L"成功" : L"失敗", GetLastError());
-    MessageBoxW(NULL, msg, L"DEBUG DeployCleanupScript", MB_OK);
-    
-    debugPrint(L"DeployCleanupScript: %s -> %s, result=%d", srcPath, destPath, result);
+    if (!result)
+    {
+        DWORD err = GetLastError();
+        debugPrint(L"DeployCleanupScript: CopyFile failed, error=%d, src=%s, dest=%s", err, srcPath, destPath);
+    }
+    else
+    {
+        debugPrint(L"DeployCleanupScript: Success, %s -> %s", srcPath, destPath);
+    }
     
     return result;
 }
 
+// Get the path to the deployed cleanup script in ProgramData
+static void GetCleanupScriptPath(LPWSTR outPath, size_t outPathSize)
+{
+    WCHAR programData[MAX_PATH];
+    if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_COMMON_APPDATA, NULL, 0, programData)))
+    {
+        StringCchPrintfW(outPath, outPathSize, L"%s\\DIME\\DIME_Cleanup.ps1", programData);
+    }
+}
+
 // Create a Start Menu shortcut that runs the cleanup script
-// This shortcut survives MSIX uninstall since it's in user's AppData
+// This shortcut is in the common Start Menu (all users) since cleanup requires admin
 static BOOL CreateCleanupShortcut()
 {
-    // Get paths
-    WCHAR appData[MAX_PATH];
-    WCHAR localAppData[MAX_PATH];
-    if (FAILED(SHGetFolderPathW(NULL, CSIDL_APPDATA, NULL, 0, appData)) ||
-        FAILED(SHGetFolderPathW(NULL, CSIDL_LOCAL_APPDATA, NULL, 0, localAppData)))
+    // Get common program data path for script and shortcut
+    WCHAR programData[MAX_PATH];
+    if (FAILED(SHGetFolderPathW(NULL, CSIDL_COMMON_APPDATA, NULL, 0, programData)))
     {
-        MessageBoxW(NULL, L"無法取得 AppData 路徑", L"DEBUG CreateCleanupShortcut", MB_OK | MB_ICONERROR);
         return FALSE;
     }
     
-    // Shortcut path: %APPDATA%\Microsoft\Windows\Start Menu\Programs\DIME 清理.lnk
+    // Shortcut path: C:\ProgramData\Microsoft\Windows\Start Menu\Programs\DIME 清理.lnk
+    // This is the common Start Menu, visible to all users
     WCHAR shortcutPath[MAX_PATH];
     StringCchPrintfW(shortcutPath, MAX_PATH, 
-        L"%s\\Microsoft\\Windows\\Start Menu\\Programs\\DIME 清理.lnk", appData);
+        L"%s\\Microsoft\\Windows\\Start Menu\\Programs\\DIME 清理.lnk", programData);
     
-    // Script path: %LOCALAPPDATA%\DIME\DIME_Cleanup.ps1
+    // Script path: C:\ProgramData\DIME\DIME_Cleanup.ps1
     WCHAR scriptPath[MAX_PATH];
-    StringCchPrintfW(scriptPath, MAX_PATH, L"%s\\DIME\\DIME_Cleanup.ps1", localAppData);
+    GetCleanupScriptPath(scriptPath, MAX_PATH);
     
     // Create shortcut using COM
     // Note: Don't call CoInitialize here - it's already initialized by caller
@@ -517,7 +895,7 @@ static BOOL CreateCleanupShortcut()
         
         // Working directory
         WCHAR workingDir[MAX_PATH];
-        StringCchPrintfW(workingDir, MAX_PATH, L"%s\\DIME", localAppData);
+        StringCchPrintfW(workingDir, MAX_PATH, L"%s\\DIME", programData);
         pShellLink->SetWorkingDirectory(workingDir);
         
         // Save shortcut
@@ -528,32 +906,23 @@ static BOOL CreateCleanupShortcut()
             if (SUCCEEDED(hr))
             {
                 success = TRUE;
-                WCHAR msg[1024];
-                StringCchPrintfW(msg, 1024, L"捷徑建立成功!\n\n路徑: %s", shortcutPath);
-                MessageBoxW(NULL, msg, L"DEBUG CreateCleanupShortcut", MB_OK | MB_ICONINFORMATION);
-                debugPrint(L"Created cleanup shortcut: %s", shortcutPath);
+                debugPrint(L"CreateCleanupShortcut: Success at %s", shortcutPath);
             }
             else
             {
-                WCHAR msg[1024];
-                StringCchPrintfW(msg, 1024, L"儲存捷徑失敗!\n\n路徑: %s\nHRESULT: 0x%08X", shortcutPath, hr);
-                MessageBoxW(NULL, msg, L"DEBUG CreateCleanupShortcut", MB_OK | MB_ICONERROR);
+                debugPrint(L"CreateCleanupShortcut: IPersistFile::Save failed, hr=0x%08X, path=%s", hr, shortcutPath);
             }
             pPersistFile->Release();
         }
         else
         {
-            WCHAR msg[512];
-            StringCchPrintfW(msg, 512, L"QueryInterface(IPersistFile) 失敗\nHRESULT: 0x%08X", hr);
-            MessageBoxW(NULL, msg, L"DEBUG CreateCleanupShortcut", MB_OK | MB_ICONERROR);
+            debugPrint(L"CreateCleanupShortcut: QueryInterface(IPersistFile) failed, hr=0x%08X", hr);
         }
         pShellLink->Release();
     }
     else
     {
-        WCHAR msg[512];
-        StringCchPrintfW(msg, 512, L"CoCreateInstance(ShellLink) 失敗\nHRESULT: 0x%08X", hr);
-        MessageBoxW(NULL, msg, L"DEBUG CreateCleanupShortcut", MB_OK | MB_ICONERROR);
+        debugPrint(L"CreateCleanupShortcut: CoCreateInstance(ShellLink) failed, hr=0x%08X", hr);
     }
     
     return success;
@@ -561,138 +930,168 @@ static BOOL CreateCleanupShortcut()
 
 // Register IME for MSIX package
 // 1. Copy DLLs from WindowsApps to C:\ProgramData\DIME\ (accessible by all apps)
-// 2. Register COM with the deployed paths
-// 3. Register TSF profiles using the deployed DLL
-static void RegisterIMEForMSIX(BOOL isElevated)
+// 2. Register COM directly to registry (for both x64 and x86)
+// 3. Register TSF profiles and categories directly (no DLL loading needed)
+// testMode: TRUE to skip MSIX check (for testing without rebuilding package)
+static void RegisterIMEForMSIX(BOOL isElevated, BOOL testMode)
 {
-    MessageBoxW(NULL, L"進入 RegisterIMEForMSIX 函數", L"DEBUG 1", MB_OK);
-    
-    // Only register if running from MSIX package
-    if (!IsRunningAsMSIX())
+    // Only register if running from MSIX package (unless in test mode)
+    if (!testMode && !IsRunningAsMSIX())
     {
-        MessageBoxW(NULL, L"IsRunningAsMSIX 返回 FALSE，跳過註冊", L"DEBUG 2", MB_OK);
         debugPrint(L"Not running as MSIX, skipping registration");
         return;
     }
 
     if (!isElevated)
     {
-        MessageBoxW(NULL, L"未提權，跳過註冊", L"DEBUG", MB_OK);
         debugPrint(L"Not elevated, skipping registration");
         return;
     }
 
-
-    MessageBoxW(NULL, L"IsRunningAsMSIX=TRUE, isElevated=TRUE，開始註冊", L"DEBUG 3", MB_OK);
     debugPrint(L"RegisterIMEForMSIX: Starting deployment and registration");
+    
     
     // Initialize COM for TSF registration (ITfInputProcessorProfileMgr, ITfCategoryMgr)
     CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
     
     WCHAR srcPath[MAX_PATH];
     WCHAR destPath[MAX_PATH];
-    WCHAR msg[512];
+    WCHAR iconDllPath[MAX_PATH] = {0};  // Path for TSF profile icon
     
-    // Deploy and register native architecture DLL (x64 on x64 Windows, ARM64 on ARM64)
+    // Deploy x64 DLL and register COM (for 64-bit apps)
     GetPackageDllPath(L"DIME\\DIME.dll", srcPath, MAX_PATH);
     GetDeployedDllPath(FALSE, destPath, MAX_PATH);  // x64 path
     
-    if (GetFileAttributesW(srcPath) != INVALID_FILE_ATTRIBUTES)
+    BOOL x64Deployed = FALSE;
+    BOOL x64Available = FALSE;  // TRUE if x64 DLL exists at destination (deployed or already there)
+    BOOL x64SourceExists = (GetFileAttributesW(srcPath) != INVALID_FILE_ATTRIBUTES);
+    BOOL x64DestExists = (GetFileAttributesW(destPath) != INVALID_FILE_ATTRIBUTES);
+    
+    if (x64SourceExists)
     {
-        StringCchPrintfW(msg, 512, L"部署 Native DLL:\n來源: %s\n目標: %s", srcPath, destPath);
-        MessageBoxW(NULL, msg, L"DEBUG Native DLL", MB_OK);
-        
-        // Copy DLL to accessible location
-        if (DeployDllToAccessibleLocation(srcPath, destPath))
-        {
-            // Register COM with the DEPLOYED path (not WindowsApps path)
-            // FALSE for isWow64Dll (native DLL)
-            RegisterCOMServerToRegistry(destPath, FALSE);
-        }
-    }
-    else
-    {
-        StringCchPrintfW(msg, 512, L"Native DLL 不存在: %s", srcPath);
-        MessageBoxW(NULL, msg, L"DEBUG - 檔案不存在", MB_OK | MB_ICONWARNING);
+        x64Deployed = DeployDllToAccessibleLocation(srcPath, destPath);
     }
     
-    // Deploy and register x86 DLL for 32-bit application support
+    // Check if destination exists (either deployed now, already existed, or in test mode)
+    x64DestExists = (GetFileAttributesW(destPath) != INVALID_FILE_ATTRIBUTES);
+    if (x64DestExists)
+    {
+        x64Available = TRUE;
+        // Register COM server to 64-bit registry view
+        RegisterCOMServerToRegistry(destPath, FALSE);  // FALSE = 64-bit view
+    }
+    
+    // Deploy x86 DLL and register COM (for 32-bit apps)
     GetPackageDllPath(L"DIME.x86\\DIME.dll", srcPath, MAX_PATH);
     GetDeployedDllPath(TRUE, destPath, MAX_PATH);  // x86 path
     
-    if (GetFileAttributesW(srcPath) != INVALID_FILE_ATTRIBUTES)
-    {
-        StringCchPrintfW(msg, 512, L"部署 x86 DLL:\n來源: %s\n目標: %s", srcPath, destPath);
-        MessageBoxW(NULL, msg, L"DEBUG x86 DLL", MB_OK);
-        
-        // Copy DLL to accessible location
-        if (DeployDllToAccessibleLocation(srcPath, destPath))
-        {
-            // Register COM with the DEPLOYED path (32-bit view / WOW6432Node)
-            // TRUE for isWow64Dll (x86 DLL)
-            RegisterCOMServerToRegistry(destPath, TRUE);
-            
-            // Load the DEPLOYED x86 DLL to call TSF registration
-            // This ensures the icon path in TSF registration points to the accessible location
-            HMODULE hDIME = LoadLibraryW(destPath);
-            if (hDIME)
-            {
-                PFN_DllRegisterTSFProfiles pfnRegisterTSF = 
-                    (PFN_DllRegisterTSFProfiles)GetProcAddress(hDIME, "DllRegisterTSFProfiles");
-                if (pfnRegisterTSF)
-                {
-                    HRESULT hr = pfnRegisterTSF();
-                    StringCchPrintfW(msg, 512, L"DllRegisterTSFProfiles: 0x%08X", hr);
-                    MessageBoxW(NULL, msg, L"DEBUG TSF 註冊", MB_OK);
-                }
-                else
-                {
-                    MessageBoxW(NULL, L"找不到 DllRegisterTSFProfiles 函數", L"DEBUG", MB_OK | MB_ICONWARNING);
-                }
-                FreeLibrary(hDIME);
-            }
-            else
-            {
-                DWORD err = GetLastError();
-                StringCchPrintfW(msg, 512, L"無法載入已部署的 x86 DLL\n錯誤碼: %d", err);
-                MessageBoxW(NULL, msg, L"DEBUG LoadLibrary 失敗", MB_OK | MB_ICONWARNING);
-            }
-        }
-    }
-    else
-        {
-            debugPrint(L"x86 DLL not found (optional): %s", srcPath);
-        }
+    BOOL x86Deployed = FALSE;
+    BOOL x86Available = FALSE;  // TRUE if x86 DLL exists at destination
+    BOOL x86SourceExists = (GetFileAttributesW(srcPath) != INVALID_FILE_ATTRIBUTES);
+    BOOL x86DestExists = (GetFileAttributesW(destPath) != INVALID_FILE_ATTRIBUTES);
+    WCHAR x86DllPath[MAX_PATH] = {0};  // Track x86 deployed path
     
-        // Deploy cleanup script and create Start Menu shortcut
-        // These survive MSIX uninstall and allow users to clean up manually
-        debugPrint(L"RegisterIMEForMSIX: Deploying cleanup script...");
-        if (DeployCleanupScript())
+    if (x86SourceExists)
+    {
+        x86Deployed = DeployDllToAccessibleLocation(srcPath, destPath);
+    }
+    
+    // Check if destination exists
+    x86DestExists = (GetFileAttributesW(destPath) != INVALID_FILE_ATTRIBUTES);
+    if (x86DestExists)
+    {
+        x86Available = TRUE;
+        // Register COM server to 32-bit registry view (WOW6432Node)
+        RegisterCOMServerToRegistry(destPath, TRUE);  // TRUE = 32-bit view
+        StringCchCopyW(x86DllPath, MAX_PATH, destPath);  // Save x86 path
+    }
+    
+    // Get deployed DLL paths for TSF registration
+    // x64 path for 64-bit registry, x86 path for 32-bit registry
+    WCHAR x64DllPath[MAX_PATH] = {0};
+    if (x64Available)
+    {
+        GetDeployedDllPath(FALSE, x64DllPath, MAX_PATH);  // x64 path
+    }
+    
+    // For TSF profile registration, use x64 DLL path if available,
+    // otherwise fall back to x86 path for initial registration.
+    if (x64Available)
+    {
+        StringCchCopyW(iconDllPath, MAX_PATH, x64DllPath);
+    }
+    else if (x86Available)
+    {
+        StringCchCopyW(iconDllPath, MAX_PATH, x86DllPath);
+    }
+    
+    // Register TSF profiles and categories directly (no DLL loading!)
+    // This works because TSF COM interfaces can be called from any process
+    if (iconDllPath[0] != L'\0')
+    {
+        RegisterTSFProfiles(iconDllPath);
+        RegisterTSFCategories();
+        
+        // Fix TIP registry to use correct DLL paths for each registry view
+        // TSF writes the same path to both views, but we need:
+        // - x64 DLL path in 64-bit registry (for 64-bit apps)
+        // - x86 DLL path in 32-bit registry/WOW6432Node (for 32-bit apps)
+        FixTIPRegistryPaths(x64DllPath, x86DllPath);
+    }
+    
+    // Deploy .cin files from package to C:\ProgramData\DIME\
+    // These need to be accessible by all apps for the IME to load dictionaries
+    debugPrint(L"RegisterIMEForMSIX: Deploying .cin files...");
+    DeployCinFiles();
+    
+    // Deploy cleanup script and create Start Menu shortcut
+    // These survive MSIX uninstall and allow users to clean up manually
+    debugPrint(L"RegisterIMEForMSIX: Deploying cleanup script...");
+    BOOL cleanupScriptDeployed = DeployCleanupScript();
+    BOOL cleanupShortcutCreated = FALSE;
+    
+    if (cleanupScriptDeployed)
+    {
+        cleanupShortcutCreated = CreateCleanupShortcut();
+        if (cleanupShortcutCreated)
         {
-            if (CreateCleanupShortcut())
-            {
-                debugPrint(L"Cleanup shortcut created in Start Menu");
-            }
-            else
-            {
-                debugPrint(L"Failed to create cleanup shortcut");
-            }
+            debugPrint(L"Cleanup shortcut created in Start Menu");
         }
         else
         {
-            debugPrint(L"Failed to deploy cleanup script");
+            debugPrint(L"Failed to create cleanup shortcut");
         }
+    }
+    else
+    {
+        debugPrint(L"Failed to deploy cleanup script");
+    }
     
-        debugPrint(L"RegisterIMEForMSIX: Completed");
+    debugPrint(L"RegisterIMEForMSIX: Completed");
     
-        CoUninitialize();
+    CoUninitialize();
     
-        MessageBoxW(NULL, 
+    // Show completion message with cleanup status
+    WCHAR msg[512];
+    if (cleanupScriptDeployed && cleanupShortcutCreated)
+    {
+        StringCchPrintfW(msg, 512,
             L"DIME 輸入法註冊完成!\n\n"
             L"注意: 解除安裝 DIME 後，請從開始功能表執行\n"
-            L"「DIME 清理」以移除系統登錄項目。", 
-            L"DIME 註冊", MB_OK | MB_ICONINFORMATION);
+            L"「DIME 清理」以移除系統登錄項目。");
     }
+    else
+    {
+        StringCchPrintfW(msg, 512,
+            L"DIME 輸入法註冊完成!\n\n"
+            L"警告: 清理工具部署失敗 (腳本=%s, 捷徑=%s)\n"
+            L"解除安裝後，請手動清除 DIME 的登錄項目。",
+            cleanupScriptDeployed ? L"成功" : L"失敗",
+            cleanupShortcutCreated ? L"成功" : L"失敗");
+    }
+    
+    MessageBoxW(NULL, msg, L"DIME 註冊", MB_OK | MB_ICONINFORMATION);
+}
 
 
 typedef _Return_type_success_(return >= 0) LONG NTSTATUS;
@@ -784,24 +1183,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         // Do the actual unregistration work
         CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
         
-        WCHAR dllPath[MAX_PATH];
-        
-        // Load deployed x86 DLL to call DllUnregisterServer for TSF profiles
-        GetDeployedDllPath(TRUE, dllPath, MAX_PATH);
-        if (GetFileAttributesW(dllPath) != INVALID_FILE_ATTRIBUTES)
-        {
-            HMODULE hDIME = LoadLibraryW(dllPath);
-            if (hDIME)
-            {
-                PFN_DllUnregisterServer pfnUnregister = 
-                    (PFN_DllUnregisterServer)GetProcAddress(hDIME, "DllUnregisterServer");
-                if (pfnUnregister)
-                {
-                    pfnUnregister();
-                }
-                FreeLibrary(hDIME);
-            }
-        }
+        // Unregister TSF profiles and categories directly (no DLL loading)
+        UnregisterTSFProfiles();
+        UnregisterTSFCategories();
         
         // Unregister COM from HKLM
         UnregisterCOMServerFromRegistry(FALSE);
@@ -825,17 +1209,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     
     if (lpCmdLine && wcsstr(lpCmdLine, L"/register") != NULL)
     {
-        MessageBoxW(NULL, L"進入 /register 模式", L"DIMESettings", MB_OK);
-        
         // Silent registration mode - called after elevation
         // This does exactly what regsvr32 does: DllRegisterServer()
-        if (isMSIX)
+        // TODO: Remove /test bypass after testing
+        BOOL testMode = (wcsstr(lpCmdLine, L"/test") != NULL);
+        if (isMSIX || testMode)
         {
-            RegisterIMEForMSIX(isElevated);
-        }
-        else
-        {
-            MessageBoxW(NULL, L"不是 MSIX 模式，跳過註冊", L"DIMESettings", MB_OK);
+            RegisterIMEForMSIX(isElevated, testMode);
         }
         return 0;  // Exit after registration
     }

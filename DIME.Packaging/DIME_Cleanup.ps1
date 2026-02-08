@@ -1,6 +1,6 @@
 # DIME_Cleanup.ps1
 # Cleanup script for DIME IME after MSIX uninstall
-# This script is deployed to %LOCALAPPDATA%\DIME\ during registration
+# This script is deployed to %ProgramData%\DIME\ during registration
 # and a Start Menu shortcut is created that survives MSIX uninstall.
 #
 # Run this script after uninstalling DIME MSIX to clean up:
@@ -117,15 +117,24 @@ foreach ($catBasePath in $categoryPaths) {
     }
 }
 
-# 6. Remove deployed DLLs from ProgramData
+# 6. Remove deployed DLLs from ProgramData (only x64 and x86 subfolders, not entire DIME folder)
 Write-Host "[6/7] Removing deployed DLLs..." -ForegroundColor Yellow
-$deployedPath = "$env:ProgramData\DIME"
-if (Test-Path $deployedPath) {
-    Remove-Item -Path $deployedPath -Recurse -Force -ErrorAction SilentlyContinue
-    Write-Host "  Removed: $deployedPath" -ForegroundColor Green
-    $cleanupLog += "已部署 DLLs: $deployedPath"
-} else {
-    Write-Host "  Not found: $deployedPath" -ForegroundColor Gray
+$deployedBasePath = "$env:ProgramData\DIME"
+$x64Path = Join-Path $deployedBasePath "x64"
+$x86Path = Join-Path $deployedBasePath "x86"
+
+if (Test-Path $x64Path) {
+    Remove-Item -Path $x64Path -Recurse -Force -ErrorAction SilentlyContinue
+    Write-Host "  Removed: $x64Path" -ForegroundColor Green
+    $cleanupLog += "已部署 DLLs (x64)"
+}
+if (Test-Path $x86Path) {
+    Remove-Item -Path $x86Path -Recurse -Force -ErrorAction SilentlyContinue
+    Write-Host "  Removed: $x86Path" -ForegroundColor Green
+    $cleanupLog += "已部署 DLLs (x86)"
+}
+if (-not (Test-Path $x64Path) -and -not (Test-Path $x86Path)) {
+    Write-Host "  DLL folders not found (may already be removed)" -ForegroundColor Gray
 }
 
 # Also check HKCU COM registration (per-user)
@@ -140,12 +149,12 @@ if (Test-Path $comPathCU) {
     Write-Host "  Not found: $comPathCU" -ForegroundColor Gray
 }
 
-# 7. Remove Start Menu shortcut and LocalAppData files
+# 7. Remove Start Menu shortcut
 Write-Host ""
-Write-Host "[7/7] Removing Start Menu shortcut and cleanup files..." -ForegroundColor Yellow
+Write-Host "[7/7] Removing Start Menu shortcut..." -ForegroundColor Yellow
 
-# Remove Start Menu shortcut
-$startMenuPath = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs"
+# Remove Start Menu shortcut from common Start Menu (ProgramData)
+$startMenuPath = Join-Path $env:ProgramData "Microsoft\Windows\Start Menu\Programs"
 $shortcutPath = Join-Path $startMenuPath "DIME 清理.lnk"
 if (Test-Path $shortcutPath) {
     Remove-Item -Path $shortcutPath -Force -ErrorAction SilentlyContinue
@@ -181,13 +190,13 @@ if (-not $Silent) {
         [System.Windows.Forms.MessageBoxIcon]::Information) | Out-Null
 }
 
-# Self-cleanup: Remove LocalAppData\DIME folder (including this script)
-$localAppDataDIME = Join-Path $env:LOCALAPPDATA "DIME"
-if (Test-Path $localAppDataDIME) {
+# Self-cleanup: Remove ProgramData\DIME folder (including this script)
+$programDataDIME = Join-Path $env:ProgramData "DIME"
+if (Test-Path $programDataDIME) {
     # Schedule deletion after script exits
     $selfCleanupScript = @"
 Start-Sleep -Seconds 2
-Remove-Item -Path '$localAppDataDIME' -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -Path '$programDataDIME' -Recurse -Force -ErrorAction SilentlyContinue
 "@
     Start-Process powershell.exe -ArgumentList "-WindowStyle Hidden -ExecutionPolicy Bypass -Command `"$selfCleanupScript`"" -WindowStyle Hidden
     Write-Host ""
