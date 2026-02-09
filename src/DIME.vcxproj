@@ -35,14 +35,14 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <None Include="create-readme.ps1" />
+    <None Include="..\LICENSE.md" />
+    <None Include="..\README.md" />
     <None Include="image\DoubleSingleByteOff.ico" />
     <None Include="image\DoubleSingleByteOn.ico" />
     <None Include="image\ImeModeOff.ico" />
     <None Include="image\ImeModeOn.ico" />
     <None Include="DIME.def" />
-    <None Include="LICENSE.md" />
-    <None Include="README.md" />
+    <None Include="src\fix_readme.py" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BaseWindow.h" />

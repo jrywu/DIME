@@ -75,9 +75,9 @@
     <None Include="DIME.def">
       <Filter>Source Files</Filter>
     </None>
-    <None Include="README.md" />
-    <None Include="LICENSE.md" />
-    <None Include="create-readme.ps1" />
+    <None Include="..\README.md" />
+    <None Include="..\LICENSE.md" />
+    <None Include="src\fix_readme.py" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BaseWindow.h">
