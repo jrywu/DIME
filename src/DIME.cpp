@@ -1064,7 +1064,7 @@ void CDIME::_LoadConfig(BOOL isForce, IME_MODE imeMode)
 				if(SUCCEEDED( pITfReverseConversionMgr->GetReverseConversion(_langid, 
 					CConfig::GetReverseConversionGUIDProfile(), NULL, &_pITfReverseConversion[(UINT)imeMode])) && _pITfReverseConversion[(UINT)imeMode])
 				{   //test if the interface can really do reverse conversion
-					BSTR bstr;
+					BSTR bstr = nullptr;
 					bstr = SysAllocStringLen(L"¤@" , (UINT) 1);
 					ITfReverseConversionList* reverseConversionList = nullptr;
 					if(bstr && FAILED(_pITfReverseConversion[(UINT)imeMode]->DoReverseConversion(bstr, &reverseConversionList)) || reverseConversionList == nullptr)
@@ -1075,6 +1075,7 @@ void CDIME::_LoadConfig(BOOL isForce, IME_MODE imeMode)
 					{
 						reverseConversionList->Release();
 					}
+					SysFreeString(bstr);
 				}
 				pITfReverseConversionMgr->Release();
 			}

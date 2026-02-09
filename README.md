@@ -1,4 +1,4 @@
-﻿# DIME 輸入法
+# DIME 輸入法
 
 [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](LICENSE)
 [![Windows](https://img.shields.io/badge/Windows-8%20%7C%2010%20%7C%2011-blue)](https://github.com/jrywu/DIME)
@@ -38,9 +38,35 @@ DIME 是一套適用於 Windows 8/10/11 的輸入法框架，支援多種中文�
 1. 下載通用安裝檔 [DIME-x86armUniversal.zip](https://github.com/jrywu/DIME/raw/refs/heads/master/installer/DIME-x86armUniversal.zip)
    （單一安裝檔同時支援 x86/x64/ARM64 三種平台，安裝程式會自動偵測並安裝對應檔案）
 
-2. 解壓縮至任意目錄
+2. 解壓縮 `DIME-x86armUniversal.zip` 取得 `DIME-x86armUniversal.exe` 安裝檔至任意目錄
 
-3. 執行 `DIME-x86armUniversal.exe` 進行安裝，安裝後會自動新增以下四種輸入法：
+3. **（建議）驗證檔案完整性：**
+   
+<!-- CHECKSUM_START -->
+
+   **最新版本 SHA-256 CHECKSUM (更新日期: 2026-02-09):**
+   
+   | 檔案 | SHA-256 CHECKSUM |
+   |------|----------------|
+   | DIME-x86armUniversal.exe | `DB1453570248CE948AA8030AC169AE461593E63C3A3200FCD90BA51D9C1306B3` |
+   | DIME-x86armUniversal.zip | `F5AE12AB4E27118D402E1824E174BB5BC40A52BEBD2FA0803B1DDD99803ADA3F` |
+
+   <!-- CHECKSUM_END -->
+   
+建議用如下Powershell指令，取得 SHA-256 CHECKSUM，將顯示的CHECKSUM 與上方表格中公布的值比對。
+```powershell
+# 驗證 .exe 檔案
+Get-FileHash DIME-x86armUniversal.exe -Algorithm SHA256
+
+# 或驗證 .zip 檔案
+Get-FileHash DIME-x86armUniversal.zip -Algorithm SHA256
+```
+   
+
+   
+   > **為什麼需要驗證？** 安裝程式未經數位簽章，因此無法透過 Windows 驗證發行商身分。透過校驗和可確保下載的檔案與DIME正式發布版本完全一致，未經竄改。
+
+4. 執行 `DIME-x86armUniversal.exe` 進行安裝，安裝後會自動新增以下四種輸入法：
 - **DIME自建** - 自訂 .cin 碼表輸入法
 - **DIME傳統注音** - 傳統注音輸入法
 - **DIME大易** - 大易輸入法
@@ -48,7 +74,46 @@ DIME 是一套適用於 Windows 8/10/11 的輸入法框架，支援多種中文�
 
 > **注意：** 安裝程式未經數位簽章，執行時會出現末知發行商安全警告。這是因為程式碼簽章憑證費用高昂，而 DIME 是免費的開源軟體。DIME 為 100% 開源專案，不包含任何外部程式碼、函式庫或二進位檔案相依性，安全風險極低。如有疑慮，歡迎檢視[原始碼](https://github.com/jrywu/DIME)。
 
-4. 如不需要全部輸入法，可在「設定」→「時間與語言」→「語言」→「中文(台灣)」→「選項」中，點選不需要的輸入法旁的「⋯」選單，選擇「移除」
+5. 如不需要全部輸入法，可在「設定」→「時間與語言」→「語言」→「中文(台灣)」→「選項」中，點選不需要的輸入法旁的「⋯」選單，選擇「移除」
+
+### 安裝時的安全警告
+
+執行 DIME 安裝程式時，Windows 會顯示使用者帳戶控制 (UAC) 提示，如下所示：
+
+<img src="docs/UAC.png" alt="使用者帳戶控制提示" width="50%" />
+
+#### 為什麼需要系統管理員權限？
+
+DIME 安裝程式需要系統管理員權限 (elevation rights) 才能完成以下操作：
+
+- **註冊輸入法服務**：將 DIME 註冊為 Windows Text Services Framework (TSF) 輸入法，需要寫入系統登錄檔
+- **複製系統檔案**：將輸入法 DLL 檔案安裝到系統目錄（例如 `C:\Program Files\DIME`）
+- **設定系統組態**：配置輸入法在所有使用者帳戶中可用的相關設定
+
+這些操作都需要系統管理員權限才能執行，這是所有輸入法安裝程式的標準要求。
+
+#### 為什麼顯示「未知的發行者」？
+
+UAC 對話框中顯示「**未知的發行者**」(Unknown Publisher)，並且檔案資訊顯示「無法驗證發行者」，這是因為：
+
+- **未經數位簽章**：DIME 安裝程式未使用程式碼簽章憑證 (Code Signing Certificate) 進行數位簽章
+- **簽章成本考量**：程式碼簽章憑證每年需要數百至數千美元的費用，對於免費開源專案來說成本過高
+- **Windows 安全機制**：Windows 無法驗證安裝程式的發行者身分，因此會顯示此警告
+
+#### 這樣安全嗎？
+
+儘管顯示未知發行者警告，DIME 仍然是安全的，原因如下：
+
+✅ **100% 開源**：所有原始碼公開於 [GitHub](https://github.com/jrywu/DIME)，任何人都可以檢視和審查
+
+✅ **無外部依賴**：使用純 C++ 開發，不包含任何第三方程式庫、外部程式碼或可疑的二進位檔案
+
+✅ **可驗證完整性**：請務必從[DIME GitHub 頁面下載安裝包](https://github.com/jrywu/DIME) 並比對 SHA-256 CHECKSUM，以確認下載的檔案未經竄改（見步驟 3）
+
+✅ **無網路連線**：不會連接網路，不會收集或傳送任何使用者資料
+
+✅ **社群驗證**：開源社群可以驗證程式碼的安全性
+
 
 ### 移除
 
@@ -410,12 +475,34 @@ DIME 執行時一律從此目錄讀取主碼表（.cin），碼表來源有兩�
 
 使用者透過各輸入法設定頁面的「自建詞庫」功能新增自訂字詞時，會自動建立對應的詞庫檔案：
 
-| 檔案 | 說明 |
-|------|------|
-| `DAYI-CUSTOM.cin` | 大易自建詞庫 |
-| `ARRAY-CUSTOM.cin` | 行列自建詞庫 |
-| `PHONETIC-CUSTOM.cin` | 注音自建詞庫 |
-| `GENERIC-CUSTOM.cin` | 自建輸入法自建詞庫 |
+
+| 檔案類型 | 檔案名稱 | 說明 |
+|---------|---------|------|
+| 使用者編輯格式 (.txt) | `DAYI-CUSTOM.txt` | 大易自建詞庫（可直接編輯的文字檔） |
+| 輸入法引擎格式 (.cin) | `DAYI-CUSTOM.cin` | 大易自建詞庫（輸入法實際使用） |
+| 使用者編輯格式 (.txt) | `ARRAY-CUSTOM.txt` | 行列自建詞庫（可直接編輯的文字檔） |
+| 輸入法引擎格式 (.cin) | `ARRAY-CUSTOM.cin` | 行列自建詞庫（輸入法實際使用） |
+| 使用者編輯格式 (.txt) | `PHONETIC-CUSTOM.txt` | 注音自建詞庫（可直接編輯的文字檔） |
+| 輸入法引擎格式 (.cin) | `PHONETIC-CUSTOM.cin` | 注音自建詞庫（輸入法實際使用） |
+| 使用者編輯格式 (.txt) | `GENERIC-CUSTOM.txt` | 自建輸入法自建詞庫（可直接編輯的文字檔） |
+| 輸入法引擎格式 (.cin) | `GENERIC-CUSTOM.cin` | 自建輸入法自建詞庫（輸入法實際使用） |
+```
+.txt 檔案（使用者編輯格式）
+  📝 使用者可直接用文字編輯器開啟修改
+  💾 UTF-16LE 編碼（含 BOM）
+  📋 簡化格式：僅包含 `輸入碼 字詞` 的內容
+  🖊️ 設定頁面編輯框顯示和編輯的就是此檔案內容
+  💡 可手動編輯後，下次開啟設定頁面會自動載入
+
+.cin 檔案（輸入法引擎格式）
+  ⚙️ 輸入法引擎實際載入使用的碼表
+  💾 UTF-16LE 編碼
+  📋 標準 .cin 格式：包含 `%chardef begin/end` 控制區段
+  🔤 特殊字元自動跳脫處理（`\` → `\\`、`"` → `\"`，並視需要加上雙引號）
+  🔄 每次點選「套用」時，會自動從 `.txt` 轉換生成
+```
+
+
 
 **聯想詞庫：**
 

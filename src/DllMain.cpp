@@ -97,56 +97,75 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID pvReserved)
     switch (dwReason)
     {
     case DLL_PROCESS_ATTACH:
-        debugPrint(L"DllMain() DLL_PROCESS_ATTACH");
-        Global::dllInstanceHandle = hInstance;
-
-        if (!InitializeCriticalSectionAndSpinCount(&Global::CS, 0))
+        __try
         {
+            debugPrint(L"DllMain() DLL_PROCESS_ATTACH");
+            Global::dllInstanceHandle = hInstance;
+
+            if (!InitializeCriticalSectionAndSpinCount(&Global::CS, 0))
+            {
+                return FALSE;
+            }
+
+            if (!Global::RegisterWindowClass()) {
+                return FALSE;
+            }
+
+            // Check Windows version using IsWindows* macros
+            if (IsWindowsVersionOrGreater(8,0))
+            { // Windows 8 or greater
+                Global::isWindows8 = TRUE;
+            }
+            if (IsWindowsVersionOrGreater(8,1))
+            { // Windows 8.1 or greater. Load Shcore.dll for DPI-aware font size adjustment
+                Global::hShcore = LoadLibrary(L"Shcore.dll");
+                _T_GetDpiForMonitor getDpiForMonitor = nullptr;
+                if (Global::hShcore)
+                    getDpiForMonitor = reinterpret_cast<_T_GetDpiForMonitor>(GetProcAddress(Global::hShcore, "GetDpiForMonitor"));
+                if (getDpiForMonitor)
+                    CConfig::SetGetDpiForMonitor(getDpiForMonitor);
+                else
+                    debugPrint(L"DllMain() Failed to cast function GetDpiForMonitor in Shcore.dll");
+            }
+
+            // Load global resource strings
+            LoadString(Global::dllInstanceHandle, IDS_IME_MODE, Global::ImeModeDescription, 50);
+            LoadString(Global::dllInstanceHandle, IDS_DOUBLE_SINGLE_BYTE, Global::DoubleSingleByteDescription, 50);
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER)
+        {
+            // L-03: SEH protection in DllMain
+            // If exception occurs during initialization, fail gracefully
+            debugPrint(L"DllMain() Exception caught during DLL_PROCESS_ATTACH: 0x%08X", GetExceptionCode());
             return FALSE;
         }
-
-        if (!Global::RegisterWindowClass()) {
-            return FALSE;
-        }
-
-        // Check Windows version using IsWindows* macros
-        if (IsWindowsVersionOrGreater(8,0))
-        { // Windows 8 or greater
-            Global::isWindows8 = TRUE;
-        }
-        if (IsWindowsVersionOrGreater(8,1))
-        { // Windows 8.1 or greater. Load Shcore.dll for DPI-aware font size adjustment
-            Global::hShcore = LoadLibrary(L"Shcore.dll");
-            _T_GetDpiForMonitor getDpiForMonitor = nullptr;
-            if (Global::hShcore)
-                getDpiForMonitor = reinterpret_cast<_T_GetDpiForMonitor>(GetProcAddress(Global::hShcore, "GetDpiForMonitor"));
-            if (getDpiForMonitor)
-                CConfig::SetGetDpiForMonitor(getDpiForMonitor);
-            else
-                debugPrint(L"DllMain() Failed to cast function GetDpiForMonitor in Shcore.dll");
-        }
-
-        // Load global resource strings
-        LoadString(Global::dllInstanceHandle, IDS_IME_MODE, Global::ImeModeDescription, 50);
-        LoadString(Global::dllInstanceHandle, IDS_DOUBLE_SINGLE_BYTE, Global::DoubleSingleByteDescription, 50);
-
         break;
 
     case DLL_PROCESS_DETACH:
-        debugPrint(L"DllMain() DLL_PROCESS_DETACH");
-
-        if (Global::hShcore)
+        __try
         {
-            FreeLibrary(Global::hShcore);
-            Global::hShcore = nullptr; // Set to nullptr after freeing
-        }
+            debugPrint(L"DllMain() DLL_PROCESS_DETACH");
 
-        DeleteCriticalSection(&Global::CS);
+            if (Global::hShcore)
+            {
+                FreeLibrary(Global::hShcore);
+                Global::hShcore = nullptr; // Set to nullptr after freeing
+            }
+
+            DeleteCriticalSection(&Global::CS);
 
 #ifdef _DEBUG
-        // Report memory leaks at process detach, after other cleanup
-        _CrtDumpMemoryLeaks();
+            // Report memory leaks at process detach, after other cleanup
+            _CrtDumpMemoryLeaks();
 #endif
+        }
+        __except (EXCEPTION_EXECUTE_HANDLER)
+        {
+            // L-03: SEH protection in DllMain
+            // If exception occurs during cleanup, log it but don't crash the process
+            // Process is terminating anyway, so we can't do much else
+            debugPrint(L"DllMain() Exception caught during DLL_PROCESS_DETACH: 0x%08X", GetExceptionCode());
+        }
         break;
 
     case DLL_THREAD_ATTACH:

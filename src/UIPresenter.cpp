@@ -35,6 +35,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define CANCEL_CAND_ON_KILL_FOCUS
 
 #include "Private.h"
+#include "UIConstants.h"
 #include "CandidateWindow.h"
 #include "UIPresenter.h"
 #include "CompositionProcessorEngine.h"
@@ -69,9 +70,9 @@ CUIPresenter::CUIPresenter(_In_ CDIME *pTextService, CCompositionProcessorEngine
     _refCount = 1;
 
     // Initialize locations off-screen
-    _candLocation = { -32768, -32768 };
-    _notifyLocation = { -32768, -32768 };
-    _rectCompRange = { -32768, -32768, -32768, -32768 };
+    _candLocation = { UI::DEFAULT_WINDOW_X, UI::DEFAULT_WINDOW_Y };
+    _notifyLocation = { UI::DEFAULT_WINDOW_X, UI::DEFAULT_WINDOW_Y };
+    _rectCompRange = { UI::DEFAULT_WINDOW_X, UI::DEFAULT_WINDOW_Y, UI::DEFAULT_WINDOW_X, UI::DEFAULT_WINDOW_Y };
     _inFocus = FALSE;
 }
 

@@ -71,6 +71,15 @@ extern const GUID DIMEGuidImeModePreserveKey;
 extern const GUID DIMEGuidDoubleSingleBytePreserveKey;
 extern const GUID DIMEGuidConfigPreserveKey;
 
+//---------------------------------------------------------------------
+// File Security Constraints
+//---------------------------------------------------------------------
+// Maximum .cin file size enforced during file loading
+// Rationale: Typical .cin files are 1-10 MB. Largest known tables with
+// 80,000+ entries are ~15 MB. This generous limit prevents memory
+// exhaustion attacks while accommodating all legitimate use cases.
+constexpr DWORD MAX_CIN_FILE_SIZE = 100 * 1024 * 1024;  // 100 MB
+
 #ifndef DIMESettings
 //---------------------------------------------------------------------
 // inline
@@ -209,6 +218,64 @@ extern const GUID DIMEGuidDisplayAttributeConverted;
 
 extern const GUID DIMEGuidCandUIElement;
 
+//---------------------------------------------------------------------
+// HRESULT Usage Conventions
+//---------------------------------------------------------------------
+// Use standard Windows HRESULT values consistently across DIME codebase.
+// These are defined in <winerror.h> - do not redefine them.
+//
+// S_OK (0x00000000)
+//   - Operation succeeded completely
+//   - Use as the default success return value
+//
+// S_FALSE (0x00000001)
+//   - Operation succeeded but returned no data/results
+//   - Example: Search completed successfully but found no matches
+//   - Example: Optional operation was skipped intentionally
+//   - Use when the caller needs to distinguish "success with data" from "success without data"
+//
+// E_OUTOFMEMORY (0x8007000E)
+//   - Memory allocation failed (new, SysAllocString, malloc, etc.)
+//   - Always use std::nothrow with new and check for nullptr
+//   - Example: if (!ptr) return E_OUTOFMEMORY;
+//
+// E_INVALIDARG (0x80070057)
+//   - Invalid parameter passed to function
+//   - Use for input validation failures
+//   - Example: if (param == nullptr) return E_INVALIDARG;
+//   - Example: if (index >= count) return E_INVALIDARG;
+//
+// E_UNEXPECTED (0x8000FFFF)
+//   - Catastrophic failure, should not happen in normal operation
+//   - Use for internal state corruption or assertion-like failures
+//   - Indicates a programming error rather than a runtime condition
+//   - Example: if (requiredPtr == nullptr) return E_UNEXPECTED;  // Should never be null
+//
+// E_FAIL (0x80004005)
+//   - Generic failure (use sparingly)
+//   - Prefer more specific error codes when possible
+//   - Use when no other error code accurately describes the failure
+//
+// HRESULT_FROM_WIN32(GetLastError())
+//   - Convert Win32 API errors to HRESULT
+//   - Use immediately after Win32 API calls that fail
+//   - Example: if (CreateFile(...) == INVALID_HANDLE_VALUE)
+//                  return HRESULT_FROM_WIN32(GetLastError());
+//
+// Pattern for error propagation:
+//   HRESULT hr = SomeFunction();
+//   if (FAILED(hr)) return hr;  // Propagate errors up the call stack
+//
+// Pattern for cleanup with goto Exit:
+//   HRESULT hr = E_FAIL;
+//   if (condition) { hr = S_OK; goto Exit; }
+//   // ... more code ...
+//   Exit:
+//       // cleanup code
+//       return hr;
+//
+// Note: These conventions apply to new code. Existing code uses these
+// values but may not follow these conventions consistently.
 
 
 extern WCHAR ImeModeDescription[50];

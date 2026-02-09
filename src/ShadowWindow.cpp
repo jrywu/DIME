@@ -34,10 +34,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "Private.h"
 #include "Globals.h"
+#include "UIConstants.h"
 #include "BaseWindow.h"
 #include "ShadowWindow.h"
 
-#define SHADOW_ALPHANUMBER (5)
+// Use centralized shadow constant from UIConstants.h
+#define SHADOW_ALPHANUMBER UI::SHADOW_WIDTH
 #define ALPHA(x) (255 - (x))
 
 //// Gray scale values for the shadow grades

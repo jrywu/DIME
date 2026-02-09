@@ -114,7 +114,7 @@ public:
     REFCLSID _rclsid;
     HRESULT (*_pfnCreateInstance)(IUnknown *pUnkOuter, REFIID riid, _COM_Outptr_ void **ppvObj);
 private:
-	CClassFactory& operator=(const CClassFactory& rhn) {rhn;};
+	CClassFactory& operator=(const CClassFactory& rhn) { (void)rhn; return *this; }
 };
 
 //+---------------------------------------------------------------------------
@@ -227,7 +227,11 @@ void FreeGlobalObjects(void)
         }
     }
 
-    DeleteObject(Global::defaultlFontHandle);
+    if (Global::defaultlFontHandle != nullptr)
+    {
+        DeleteObject(Global::defaultlFontHandle);
+        Global::defaultlFontHandle = nullptr;
+    }
 }
 
 //+---------------------------------------------------------------------------
@@ -281,6 +285,8 @@ STDAPI  DllGetClassObject(
 //
 //----------------------------------------------------------------------------
 
+#pragma warning(push)
+#pragma warning(disable:28251) // Inconsistent annotation warning for standard COM export
 STDAPI DllCanUnloadNow(void)
 {
 	debugPrint(L"DllCanUnloadNow()");
@@ -291,6 +297,7 @@ STDAPI DllCanUnloadNow(void)
 
     return S_OK;
 }
+#pragma warning(pop)
 
 //+---------------------------------------------------------------------------
 //

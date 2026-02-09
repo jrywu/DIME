@@ -316,6 +316,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 		}
 		else
 		{
+			delete[] pwch;
 			return;
 		}
 		BOOL customTablePriority = CConfig::getCustomTablePriority();
@@ -331,6 +332,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 
 		if (pCandidateList && 0 >= pCandidateList->Count())
 		{
+			delete[] pwch;
 			return;
 		}
 
@@ -417,6 +419,12 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 			else if (Global::imeMode != IME_MODE::IME_MODE_ARRAY || (Global::imeMode == IME_MODE::IME_MODE_ARRAY && CConfig::GetArrayScope() != ARRAY_SCOPE::ARRAY40_BIG5
 				&& (CConfig::GetArraySingleQuoteCustomPhrase() == isArrayPhraseEnding)))
 				_pCustomTableDictionaryEngine[(UINT)Global::imeMode]->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList);
+		}
+
+		// Cleanup noToneKeyStroke buffer after last use
+		if (phoneticAnyTone && noToneKeyStroke.Get())
+		{
+			delete[] noToneKeyStroke.Get();
 		}
 
 		//Search Array unicode extensions
@@ -558,6 +566,7 @@ void CCompositionProcessorEngine::GetCandidateStringInConverted(CStringRange &se
 	size_t len = 0;
 	if (StringCchLength(pwch, STRSAFE_MAX_CCH, &len) != S_OK)
 	{
+		delete[] pwch;
 		return;
 	}
 	searchText.Set(pwch, len);

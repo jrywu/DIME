@@ -1,4 +1,4 @@
-/* DIME IME for Windows 7/8/10/11
+﻿/* DIME IME for Windows 7/8/10/11
 
 BSD 3-Clause License
 
@@ -50,6 +50,7 @@ CFile::CFile(UINT codePage)
     _fileSize = 0;
     _filePosPointer = 0;
     _pFileName = nullptr;
+    memset(&_timeStamp, 0, sizeof(_timeStamp));
 
 }
 
@@ -85,8 +86,8 @@ CFile::~CFile()
 //---------------------------------------------------------------------
 
 BOOL CFile::CreateFile(_In_ PCWSTR pFileName, DWORD desiredAccess,
-    DWORD creationDisposition,
-    DWORD sharedMode, _Inout_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD flagsAndAttributes, _Inout_opt_ HANDLE templateFileHandle)
+DWORD creationDisposition,
+DWORD sharedMode, _Inout_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD flagsAndAttributes, _Inout_opt_ HANDLE templateFileHandle)
 {
 	debugPrint(L" CFile::CreateFile() filename = %s", pFileName);
     size_t fullPathLen = wcslen(pFileName);
@@ -110,7 +111,25 @@ BOOL CFile::CreateFile(_In_ PCWSTR pFileName, DWORD desiredAccess,
     }
 
 	_wstat(pFileName, & _timeStamp);
-    _fileSize = ::GetFileSize(_fileHandle, NULL);
+    DWORD fileSize = ::GetFileSize(_fileHandle, NULL);
+    
+    // MS-01: Validate GetFileSize return value
+    if (fileSize == INVALID_FILE_SIZE)
+    {
+        CloseHandle(_fileHandle);
+        _fileHandle = INVALID_HANDLE_VALUE;
+        return FALSE;
+    }
+    
+    // MS-02: Enforce maximum file size for .cin files
+    if (fileSize > Global::MAX_CIN_FILE_SIZE)
+    {
+        CloseHandle(_fileHandle);
+        _fileHandle = INVALID_HANDLE_VALUE;
+        return FALSE;
+    }
+    
+    _fileSize = fileSize;
 
     return TRUE;
 }
@@ -127,7 +146,8 @@ BOOL CFile::SetupReadBuffer()
 	debugPrint(L" CFile::CreateFile()");
    
 	BOOL ret = TRUE;
-	const WCHAR* pWideBuffer = new (std::nothrow) WCHAR[_fileSize / sizeof(WCHAR) - 1];
+	const WCHAR* pWideBuffer = nullptr;
+	size_t wcharCount = 0;
 
 	DWORD dwNumberOfByteRead = 0;
 	if(_fileSize < sizeof(WCHAR) ) 
@@ -135,16 +155,29 @@ BOOL CFile::SetupReadBuffer()
 		ret = FALSE;
 		goto errorExit;
 	}
-	// Read file in allocated buffer
+	// Safe arithmetic: calculate buffer size safely
+	wcharCount = (_fileSize - sizeof(WCHAR)) / sizeof(WCHAR);
+	if (wcharCount == 0)
+	{
+		ret = FALSE;
+		goto errorExit;
+	}
 	
+	// Allocate buffer for unicode string (without BOM)
+	pWideBuffer = new (std::nothrow) WCHAR[wcharCount];
 	if (!pWideBuffer)
 	{
 		ret = FALSE;
 		goto errorExit;
 	}
 
-	// skip unicode byte-order signature
-	SetFilePointer(_fileHandle, sizeof(WCHAR), NULL, FILE_BEGIN);
+	// Skip unicode byte-order signature and check result
+	if (SetFilePointer(_fileHandle, sizeof(WCHAR), NULL, FILE_BEGIN) == INVALID_SET_FILE_POINTER)
+	{
+		delete [] pWideBuffer;
+		ret = FALSE;
+		goto errorExit;
+	}
 
 	if (!ReadFile(_fileHandle, (LPVOID)pWideBuffer, (DWORD)(_fileSize - sizeof(WCHAR)), &dwNumberOfByteRead, NULL) 
 		|| !IsTextUnicode(pWideBuffer, dwNumberOfByteRead, NULL))

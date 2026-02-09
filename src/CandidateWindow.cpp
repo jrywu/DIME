@@ -34,14 +34,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //#define DEBUG_PRINT
 //#define ALWAYS_SHOW_SCROLL
 #include "Globals.h"
+#include "UIConstants.h"
 #include "BaseWindow.h"
 #include "CandidateWindow.h"
 #include <memory> // Include for smart pointers
 
 #define NO_ANIMATION
 #define NO_WINDOW_SHADOW
-#define ANIMATION_STEP_TIME 8
-#define ANIMATION_TIMER_ID 39773
 //+---------------------------------------------------------------------------
 //
 // ctor
@@ -67,7 +66,7 @@ CCandidateWindow::CCandidateWindow(_In_ CANDWNDCALLBACK pfnCallback, _In_ void *
 
     _pShadowWnd = nullptr;
 
-    _cyRow = CANDWND_ROW_WIDTH;
+    _cyRow = UI::CANDIDATE_ROW_WIDTH;
     _cxTitle = 0;
 
     _pVScrollBarWnd = nullptr;
@@ -80,8 +79,8 @@ CCandidateWindow::CCandidateWindow(_In_ CANDWNDCALLBACK pfnCallback, _In_ void *
 
 	_fontSize = _TextMetric.tmHeight;
 
-	_x = -32768;
-	_y = -32768;
+	_x = UI::DEFAULT_WINDOW_X;
+	_y = UI::DEFAULT_WINDOW_Y;
 
 }
 
@@ -143,7 +142,7 @@ BOOL CCandidateWindow::_CreateMainWindow(_In_opt_ HWND parentWndHandle)
 {
     _SetUIWnd(this);
 
-	if (!CBaseWindow::_Create(Global::AtomCandidateWindow,
+    if (!CBaseWindow::_Create(Global::AtomCandidateWindow,
         WS_EX_TOPMOST |  WS_EX_LAYERED |
 		WS_EX_TOOLWINDOW, 
         WS_BORDER | WS_POPUP,
@@ -151,7 +150,7 @@ BOOL CCandidateWindow::_CreateMainWindow(_In_opt_ HWND parentWndHandle)
     {
         return FALSE;
     }
-	SetLayeredWindowAttributes(_GetWnd(), 0, (255 * 5) / 100, LWA_ALPHA);  // animation started from 5% alpha
+	SetLayeredWindowAttributes(_GetWnd(), 0, (255 * UI::ANIMATION_ALPHA_START) / 100, LWA_ALPHA);  // animation started from UI::ANIMATION_ALPHA_START% alpha
 
     return TRUE;
 }
@@ -252,8 +251,8 @@ void CCandidateWindow::_Move(int x, int y)
 #else
     SetLayeredWindowAttributes(_GetWnd(), 0, 255 * (5 / 100), LWA_ALPHA); // staring from 30% transparent 
 	_animationStage = 10;	
-	_EndTimer(ANIMATION_TIMER_ID);
-	_StartTimer(ANIMATION_STEP_TIME, ANIMATION_TIMER_ID);
+	_EndTimer(UI::ANIMATION_TIMER_ID);
+	_StartTimer(UI::ANIMATION_STEP_TIME_MS, UI::ANIMATION_TIMER_ID);
 #endif
 }
 
@@ -262,20 +261,20 @@ void CCandidateWindow::_OnTimerID(UINT_PTR timerID)
 	debugPrint(L"CCandidateWindow::_OnTimer(): timerID = %d,  _animationStage = %d", timerID, _animationStage);
 	switch (timerID)
 	{
-	case ANIMATION_TIMER_ID:
+	case UI::ANIMATION_TIMER_ID:
 		if(_animationStage)
 		{
-			BYTE transparentLevel = (255 * (5 + 9 * (11 - _animationStage))) / 100; 
-			debugPrint(L"CCandidateWindow::_OnTimer() transparentLevel = %d", transparentLevel);
+		BYTE transparentLevel = (255 * (5 + 9 * (11 - _animationStage))) / 100; 
+		debugPrint(L"CCandidateWindow::_OnTimer() transparentLevel = %d", transparentLevel);
 
-			SetLayeredWindowAttributes(_GetWnd(), 0, transparentLevel , LWA_ALPHA); 
-			_StartTimer(ANIMATION_STEP_TIME, ANIMATION_TIMER_ID);
-			_animationStage --;
+		SetLayeredWindowAttributes(_GetWnd(), 0, transparentLevel , LWA_ALPHA); 
+		_StartTimer(UI::ANIMATION_STEP_TIME_MS, UI::ANIMATION_TIMER_ID);
+		_animationStage --;
 
 		}
 		else
 		{
-			_EndTimer(ANIMATION_TIMER_ID);
+		_EndTimer(UI::ANIMATION_TIMER_ID);
 			SetLayeredWindowAttributes(_GetWnd(), 0,  (255 * 95) / 100, LWA_ALPHA); 
 		}
 		break;

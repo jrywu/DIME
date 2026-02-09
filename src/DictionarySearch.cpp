@@ -482,6 +482,7 @@ ReadValue:
 					assert(valueStrings.GetAt(0)->GetLength() < LF_FACESIZE-1);
 					StringCchCopyN(pwszFontFaceName, LF_FACESIZE, valueStrings.GetAt(0)->Get(), valueStrings.GetAt(0)->GetLength());
 					CConfig::SetFontFaceName(pwszFontFaceName);
+					delete[] pwszFontFaceName;
 				}
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"LoadTableMode", 13)) == CSTR_EQUAL)
 					CConfig::SetLoadTableMode((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));

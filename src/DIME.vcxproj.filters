@@ -77,7 +77,6 @@
     </None>
     <None Include="..\README.md" />
     <None Include="..\LICENSE.md" />
-    <None Include="src\fix_readme.py" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BaseWindow.h">
@@ -195,6 +194,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="PhoneticSymbols.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="UIConstants.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

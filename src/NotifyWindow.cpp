@@ -34,15 +34,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "Private.h"
 #include "Globals.h"
+#include "UIConstants.h"
 #include "BaseWindow.h"
 #include "NotifyWindow.h"
 #include <memory> // Include for smart pointers
 #define NO_ANIMATION
 #define NO_WINDOW_SHADOW
-#define ANIMATION_STEP_TIME 15
-#define ANIMATION_TIMER_ID 39773
-#define DELAY_SHOW_TIMER_ID 39775
-#define TIME_TO_HIDE_TIMER_ID 39776
 //+---------------------------------------------------------------------------
 //
 // ctor
@@ -69,11 +66,11 @@ CNotifyWindow::CNotifyWindow(_In_ NOTIFYWNDCALLBACK pfnCallback, _In_ void *pv, 
 
     _pShadowWnd = nullptr;
 
-	_x =0;
-	_y =0;
+	_x = UI::DEFAULT_WINDOW_X;
+	_y = UI::DEFAULT_WINDOW_Y;
 
 
-	_fontSize = 12;
+	_fontSize = UI::DEFAULT_FONT_SIZE;
 	
 	_delayShow = 0;
 	_timeToHide = 0;
@@ -143,7 +140,7 @@ BOOL CNotifyWindow::_CreateMainWindow(_In_opt_ HWND parentWndHandle)
         return FALSE;
     }
 #ifndef NO_ANIMATION	
-	SetLayeredWindowAttributes(_GetWnd(), 0,  (255 * 5) / 100, LWA_ALPHA);
+	SetLayeredWindowAttributes(_GetWnd(), 0, (255 * UI::ANIMATION_ALPHA_START) / 100, LWA_ALPHA);
 #endif
     return TRUE;
 }
@@ -187,10 +184,10 @@ void CNotifyWindow::_Move(int x, int y)
 	_y = y;
     CBaseWindow::_Move(_x, _y);
 #ifndef NO_ANIMATION	
-	SetLayeredWindowAttributes(_GetWnd(), 0,  255 * (5 / 100), LWA_ALPHA); // 5% transparent faded out to 95 %
+	SetLayeredWindowAttributes(_GetWnd(), 0, (255 * UI::ANIMATION_ALPHA_START) / 100, LWA_ALPHA); // Animation starts at 5% opaque, fades to 95%
 	_animationStage = 10;	
-	_EndTimer(ANIMATION_TIMER_ID);
-	_StartTimer(ANIMATION_STEP_TIME, ANIMATION_TIMER_ID);
+	_EndTimer(UI::ANIMATION_TIMER_ID);
+	_StartTimer(UI::NOTIFY_ANIMATION_STEP_TIME_MS, UI::ANIMATION_TIMER_ID);
 #endif
 }
 void CNotifyWindow::_OnTimerID(UINT_PTR timerID)
@@ -199,29 +196,29 @@ void CNotifyWindow::_OnTimerID(UINT_PTR timerID)
 	switch (timerID)
 	{
 #ifndef NO_ANIMATION
-	case ANIMATION_TIMER_ID:
+	case UI::ANIMATION_TIMER_ID:
 		if(_animationStage)
 		{
-			BYTE transparentLevel = (255 * (5 + 9 * (11 - (BYTE)_animationStage))) / 100; 
+			BYTE transparentLevel = (255 * (UI::ANIMATION_ALPHA_START + 9 * (11 - (BYTE)_animationStage))) / 100; 
 			debugPrint(L"CNotifyWindow::_OnTimer() transparentLevel = %d", transparentLevel);
 
 			SetLayeredWindowAttributes(_GetWnd(), 0, transparentLevel , LWA_ALPHA); 
-			_StartTimer(ANIMATION_STEP_TIME, ANIMATION_TIMER_ID);
+			_StartTimer(UI::NOTIFY_ANIMATION_STEP_TIME_MS, UI::ANIMATION_TIMER_ID);
 			_animationStage --;
 
 		}
 		else
 		{
-			_EndTimer(ANIMATION_TIMER_ID);
-			SetLayeredWindowAttributes(_GetWnd(), 0,  (255 * 95) / 100, LWA_ALPHA); 
+			_EndTimer(UI::ANIMATION_TIMER_ID);
+			SetLayeredWindowAttributes(_GetWnd(), 0, (255 * UI::ANIMATION_ALPHA_END) / 100, LWA_ALPHA); 
 		}
 		break;
 #endif
-	case DELAY_SHOW_TIMER_ID:
- 		_EndTimer(DELAY_SHOW_TIMER_ID);
+	case UI::DELAY_SHOW_TIMER_ID:
+ 		_EndTimer(UI::DELAY_SHOW_TIMER_ID);
 		_pfnCallback(_pObj, NOTIFY_WND::SHOW_NOTIFY, _timeToHide , (LPARAM) _notifyType);
 		break;
-	case TIME_TO_HIDE_TIMER_ID:
+	case UI::TIME_TO_HIDE_TIMER_ID:
 		_Show(FALSE, 0, 0);
 		break;
 	}
@@ -242,8 +239,8 @@ void CNotifyWindow::_Show(BOOL isShowWnd, UINT delayShow, UINT timeToHide)
 	if(_IsTimer()) 
 	{
 		debugPrint(L"CNotifyWindow::_Show(), end old timers first");
-		_EndTimer(DELAY_SHOW_TIMER_ID);
-		_EndTimer(TIME_TO_HIDE_TIMER_ID);
+		_EndTimer(UI::DELAY_SHOW_TIMER_ID);
+		_EndTimer(UI::TIME_TO_HIDE_TIMER_ID);
 	}
 
 	if(!isShowWnd || delayShow == 0) //ignore delayShow if isShowWnd is FALSE
@@ -259,13 +256,13 @@ void CNotifyWindow::_Show(BOOL isShowWnd, UINT delayShow, UINT timeToHide)
 
 		if(delayShow > 0 )
 		{
-			debugPrint(L"CNotifyWindow::_Show(), set delay show timer, id = %d", DELAY_SHOW_TIMER_ID);
-			_StartTimer(delayShow, DELAY_SHOW_TIMER_ID);//Show the notify after delay Show
+			debugPrint(L"CNotifyWindow::_Show(), set delay show timer, id = %d", UI::DELAY_SHOW_TIMER_ID);
+			_StartTimer(delayShow, UI::DELAY_SHOW_TIMER_ID);//Show the notify after delay Show
 		}
 		else if(timeToHide > 0)
 		{
 			debugPrint(L"CNotifyWindow::_Show(), set time to hide timer");
-			_StartTimer(timeToHide, TIME_TO_HIDE_TIMER_ID);//Show the notify after delay Show
+			_StartTimer(timeToHide, UI::TIME_TO_HIDE_TIMER_ID);//Show the notify after delay Show
 		}
 	}
 	if( delayShow == 0 )

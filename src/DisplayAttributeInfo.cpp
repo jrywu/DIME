@@ -89,6 +89,7 @@ CDisplayAttributeInfo::CDisplayAttributeInfo()
 
     _pguid = nullptr;
     _pDisplayAttribute = nullptr;
+    _pDescription = nullptr;
     _pValueName = nullptr;
 
     _refCount = 1;

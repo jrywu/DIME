@@ -458,13 +458,14 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			_fontWeight = lf.lfWeight;
 			_fontItalic = lf.lfItalic;
 
-			pwszFontFaceName = new (std::nothrow) WCHAR[LF_FACESIZE];
-			if (pwszFontFaceName)
-			{
-				GetDlgItemText(hDlg, IDC_EDIT_FONTNAME, pwszFontFaceName, LF_FACESIZE);
-				if (_pFontFaceName)
-					StringCchCopy(_pFontFaceName, LF_FACESIZE, pwszFontFaceName);
-			}
+		pwszFontFaceName = new (std::nothrow) WCHAR[LF_FACESIZE];
+		if (pwszFontFaceName)
+		{
+			GetDlgItemText(hDlg, IDC_EDIT_FONTNAME, pwszFontFaceName, LF_FACESIZE);
+			if (_pFontFaceName)
+				StringCchCopy(_pFontFaceName, LF_FACESIZE, pwszFontFaceName);
+			delete[] pwszFontFaceName;
+		}
 
 			_itemColor = colors[0].color;
 			_selectedColor = colors[1].color;

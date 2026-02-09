@@ -91,28 +91,46 @@ HRESULT CDIME::_AsyncReverseConversionNotification(_In_ TfEditCookie ec,_In_ ITf
 {
 	ec;
 	debugPrint(L"CDIME::_AsyncReverseConversionNotification() pContext = %x\n", pContext);
-	BSTR bstr;
+	HRESULT hr = S_FALSE;
+	BSTR bstr = nullptr;
+	BSTR bstrResult = nullptr;
+	WCHAR* pwch = nullptr;
+	ITfReverseConversionList* reverseConversionList = nullptr;
+
 	bstr = SysAllocStringLen(_commitString , (UINT) wcslen(_commitString));
-	if (bstr == nullptr) return E_OUTOFMEMORY;
-	ITfReverseConversionList* reverseConversionList;
+	if (bstr == nullptr)
+	{
+		hr = E_OUTOFMEMORY;
+		goto Exit;
+	}
 	if(SUCCEEDED(_pITfReverseConversion[(UINT)Global::imeMode]->DoReverseConversion(bstr, &reverseConversionList)) && reverseConversionList)
 	{
 		UINT hasResult;
-		if(reverseConversionList && SUCCEEDED(reverseConversionList->GetLength(&hasResult)) && hasResult)
+		if(SUCCEEDED(reverseConversionList->GetLength(&hasResult)) && hasResult)
 		{
-			BSTR bstrResult;
-			if(SUCCEEDED(reverseConversionList->GetString(0, &bstrResult))  && bstrResult && SysStringLen(bstrResult))
+			if(SUCCEEDED(reverseConversionList->GetString(0, &bstrResult)) && bstrResult && SysStringLen(bstrResult))
 			{
 				CStringRange reverseConvNotify;
-				WCHAR* pwch = new (std::nothrow) WCHAR[SysStringLen(bstrResult)+1];
-				StringCchCopy(pwch, SysStringLen(bstrResult)+1, (WCHAR*) bstrResult);
-				_pUIPresenter->ShowNotifyText(&reverseConvNotify.Set(pwch, wcslen(pwch)), 0, 0, NOTIFY_TYPE::NOTIFY_OTHERS);
+				pwch = new (std::nothrow) WCHAR[SysStringLen(bstrResult)+1];
+				if (pwch)
+				{
+					StringCchCopy(pwch, SysStringLen(bstrResult)+1, (WCHAR*) bstrResult);
+					_pUIPresenter->ShowNotifyText(&reverseConvNotify.Set(pwch, wcslen(pwch)), 0, 0, NOTIFY_TYPE::NOTIFY_OTHERS);
+				}
 			}
 		}
-		reverseConversionList->Release();
-		return S_OK;
+		hr = S_OK;
 	}
-	return S_FALSE;
+
+Exit:
+	if (reverseConversionList)
+	{
+		reverseConversionList->Release();
+	}
+	SysFreeString(bstrResult);
+	SysFreeString(bstr);
+	delete[] pwch;
+	return hr;
 }
 
 
