@@ -1190,7 +1190,7 @@ BOOL CConfig::LoadConfig(IME_MODE imeMode)
 				iniTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(MAKELCID(1028, SORT_DEFAULT), iniDictionaryFile, DICTIONARY_TYPE::INI_DICTIONARY);//CHT:1028
 				if (iniTableDictionaryEngine)
 				{
-					_loadTableMode = FALSE; // reset _loadTableMode first. If no _loadTableMode is exist we should not should load tables buttons
+					_loadTableMode = TRUE; // reset _loadTableMode first. If no _loadTableMode is exist we should not should load tables buttons
 					iniTableDictionaryEngine->ParseConfig(imeMode); //parse config first.
 					debugPrint(L"CDIME::loadConfig() parsed. _loadTableMode = %d\n", _loadTableMode);
 				}
