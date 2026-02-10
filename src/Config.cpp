@@ -1569,6 +1569,11 @@ BOOL CConfig::parseCINFile(_In_ LPCWSTR pathToLoad, _In_ LPCWSTR pathToWrite, _I
 					fwprintf_s(fpw, L"%s %s\n", key, value);
 					continue;
 				}
+				else if (CompareString(1028, NORM_IGNORECASE, key, (int)wcslen(key), L"%encoding", 9) == CSTR_EQUAL)
+				{
+					fwprintf_s(fpw, L"%s\tUTF-16LE\n", key);
+					continue;
+				}
 
 				if (doEscape)
 				{
