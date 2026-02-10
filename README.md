@@ -1,4 +1,4 @@
-# DIME 輸入法
+﻿# DIME 輸入法
 
 [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](LICENSE)
 [![Windows](https://img.shields.io/badge/Windows-8%20%7C%2010%20%7C%2011-blue)](https://github.com/jrywu/DIME)
@@ -62,19 +62,14 @@ Get-FileHash DIME-x86armUniversal.exe -Algorithm SHA256
 Get-FileHash DIME-x86armUniversal.zip -Algorithm SHA256
 ```
    
-
    
-   > **為什麼需要驗證？** 安裝程式未經數位簽章，因此無法透過 Windows 驗證發行商身分。透過校驗和可確保下載的檔案與DIME正式發布版本完全一致，未經竄改。
+   > **為什麼需要驗證？** 安裝程式未經數位簽章，因此無法透過 Windows 驗證發行商身分。透過比對 SHA-256 CHECKSUM 可確保下載的檔案與DIME正式發布版本完全一致，未經竄改。
 
 4. 執行 `DIME-x86armUniversal.exe` 進行安裝，安裝後會自動新增以下四種輸入法：
 - **DIME自建** - 自訂 .cin 碼表輸入法
 - **DIME傳統注音** - 傳統注音輸入法
 - **DIME大易** - 大易輸入法
 - **DIME行列** - 行列輸入法
-
-> **注意：** 安裝程式未經數位簽章，執行時會出現末知發行商安全警告。這是因為程式碼簽章憑證費用高昂，而 DIME 是免費的開源軟體。DIME 為 100% 開源專案，不包含任何外部程式碼、函式庫或二進位檔案相依性，安全風險極低。如有疑慮，歡迎檢視[原始碼](https://github.com/jrywu/DIME)。
-
-5. 如不需要全部輸入法，可在「設定」→「時間與語言」→「語言」→「中文(台灣)」→「選項」中，點選不需要的輸入法旁的「⋯」選單，選擇「移除」
 
 ### 安裝時的安全警告
 
@@ -87,7 +82,7 @@ Get-FileHash DIME-x86armUniversal.zip -Algorithm SHA256
 DIME 安裝程式需要系統管理員權限 (elevation rights) 才能完成以下操作：
 
 - **註冊輸入法服務**：將 DIME 註冊為 Windows Text Services Framework (TSF) 輸入法，需要寫入系統登錄檔
-- **複製系統檔案**：將輸入法 DLL 檔案安裝到系統目錄（例如 `C:\Program Files\DIME`）
+- **複製系統檔案**：將輸入法 DLL 檔案安裝到系統目錄（詳見[檔案說明](#檔案說明)）
 - **設定系統組態**：配置輸入法在所有使用者帳戶中可用的相關設定
 
 這些操作都需要系統管理員權限才能執行，這是所有輸入法安裝程式的標準要求。
@@ -113,6 +108,9 @@ UAC 對話框中顯示「**未知的發行者**」(Unknown Publisher)，並且�
 ✅ **無網路連線**：不會連接網路，不會收集或傳送任何使用者資料
 
 ✅ **社群驗證**：開源社群可以驗證程式碼的安全性
+
+5. 如不需要全部輸入法，可在「設定」→「時間與語言」→「語言」→「中文(台灣)」→「選項」中，點選不需要的輸入法旁的「⋯」選單，選擇「移除」
+
 
 
 ### 移除
@@ -520,7 +518,7 @@ DIME 執行時一律從此目錄讀取主碼表（.cin），碼表來源有兩�
 |------|------|
 | `Array-Ext-B.cin` | CJK Ext-B 擴充字 |
 | `Array-Ext-CD.cin` | CJK Ext-CD 擴充字 |
-| `Array-Ext-EF.cin` | CJK Ext-EF 擴充字 |
+| `Array-Ext-EF.cin` | CJK Ext-EFG 擴充字 |
 | `Array-Phrase.cin` | 行列詞庫 |
 | `Array-shortcode.cin` | 行列簡碼 |
 | `Array-special.cin` | 行列特別碼 |
