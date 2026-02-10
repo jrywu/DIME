@@ -1159,7 +1159,7 @@ void CDIME::showChnEngNotify(BOOL isChinese, UINT delayShow)
 	CStringRange notify;
     // Remove _IsStoreAppMode for Win 11 explorer, notepad and paint using XAML inputs.
     if (CConfig::GetShowNotifyDesktop() && _pUIPresenter)
-        _pUIPresenter->ShowNotifyText(&notify.Set(isChinese ? L"中文" : L"英文", 2), delayShow, CHN_ENG_NOTIFY_DELAY, NOTIFY_TYPE::NOTIFY_CHN_ENG);
+        _pUIPresenter->ShowNotifyText(&notify.Set(isChinese ? L"中文" : L"英數", 2), delayShow, CHN_ENG_NOTIFY_DELAY, NOTIFY_TYPE::NOTIFY_CHN_ENG);
 }
 void CDIME::showFullHalfShapeNotify(BOOL isFullShape, UINT delayShow)
 {
