@@ -1,4 +1,4 @@
-# DIME 輸入法
+﻿# DIME 輸入法
 
 [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](LICENSE)
 [![Windows](https://img.shields.io/badge/Windows-8%20%7C%2010%20%7C%2011-blue)](https://github.com/jrywu/DIME)
@@ -553,6 +553,30 @@ DIME 執行時一律從此目錄讀取碼表（.cin），碼表來源有兩種�
 | `TCFreq.cin` | 常用字頻率表 |
 | `TCSC.cin` | 繁簡轉換表 |
 | `TableTextServiceDaYi.txt` | Windows 內建大易碼表 (首次使用從 `%PROGRAMFILES%\Windows NT\TableTextService` 目錄複製) |
+
+## 開發者 / For Developers
+
+DIME 是開源專案，歡迎開發者 fork 並基於 DIME 建立衍生專案或軟體。
+
+DIME is an open-source project. Developers are welcome to fork and build derivative projects or software based on DIME.
+
+**專案特色 / Project Highlights:**
+- ✅ **100% 原生 C++** / 100% Native C++ - 無外部依賴 / No external dependencies
+- ✅ **BSD 3-Clause 授權** / BSD 3-Clause License - 商業與非商業皆可使用 / Free for commercial and non-commercial use
+- ✅ **多平台支援** / Multi-platform Support - x86/x64/ARM64EC 單一程式碼基底 / Single codebase for all platforms
+- ✅ **完整的 TSF 實作** / Complete TSF Implementation - Windows Text Services Framework 標準實作 / Standard Windows TSF implementation
+
+**從原始碼建置 DIME / Building DIME from Source:**
+
+如果您想要自行編譯 DIME 或修改原始碼，請參閱完整的編譯指南：
+
+If you want to build DIME yourself or modify the source code, please refer to the complete build guide:
+
+📖 **[HOW_TO_BUILD](docs/HOW_TO_BUILD.md)**
+
+此文件包含詳細的編譯步驟、開發環境設定、多平台建置說明與疑難排解。
+
+This document contains detailed build instructions, development environment setup, multi-platform build guidance, and troubleshooting.
 
 ## 問題回報
 
