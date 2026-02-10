@@ -574,9 +574,9 @@ If you want to build DIME yourself or modify the source code, please refer to th
 
 📖 **[HOW_TO_BUILD](docs/HOW_TO_BUILD.md)**
 
-此文件包含詳細的編譯步驟、開發環境設定、多平台建置說明與疑難排解。
+此文件包含詳細的編譯步驟、開發環境設定、多平台建置說明。
 
-This document contains detailed build instructions, development environment setup, multi-platform build guidance, and troubleshooting.
+This document contains detailed build instructions, development environment setup, multi-platform build guidance.
 
 ## 問題回報
 
