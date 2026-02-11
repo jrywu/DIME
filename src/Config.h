@@ -161,6 +161,7 @@ public:
 
 	static VOID WriteConfig(BOOL silent = FALSE);
 	static BOOL LoadConfig(IME_MODE imeMode);
+	static struct _stat GetInitTimeStamp() { return _initTimeStamp; }
 	
 	static void SetDefaultTextFont(HWND hWnd = nullptr);
 

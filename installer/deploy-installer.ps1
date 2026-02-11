@@ -89,7 +89,7 @@ Write-Host "  Using NSIS: $nsisPath" -ForegroundColor Gray
 
 # Run NSIS
 try {
-    & $nsisPath "DIME-x86armUniversal.nsi"
+    & $nsisPath "DIME-Universal.nsi"
     Write-Host "  Installer built successfully!" -ForegroundColor Green
 } catch {
     Write-Host "  ERROR: Failed to build installer!" -ForegroundColor Red
@@ -112,8 +112,8 @@ Write-Host "Creating ZIP archive..." -ForegroundColor Cyan
 Write-Host "===============================================================================" -ForegroundColor Cyan
 Write-Host ""
 
-$installerFile = "DIME-x86armUniversal.exe"
-$zipFile = "DIME-x86armUniversal.zip"
+$installerFile = "DIME-Universal.exe"
+$zipFile = "DIME-Universal.zip"
 
 if (-not (Test-Path $installerFile)) {
     Write-Host "ERROR: $installerFile not found!" -ForegroundColor Red
@@ -173,11 +173,11 @@ if (-not (Test-Path $readmePath)) {
     $content = $content -replace $datePattern, "($([char]0x66F4)$([char]0x65B0)$([char]0x65E5)$([char]0x671F): $date)"
     
     # Update exe hash - more specific pattern to match the table row
-    $exePattern = '(\| DIME-x86armUniversal\.exe \| `)([A-F0-9]{64})(`)'
+    $exePattern = '(\| DIME-Universal\.exe \| `)([A-F0-9]{64})(`)'
     $content = $content -replace $exePattern, ('${1}' + $exeHash + '${3}')
     
     # Update zip hash
-    $zipPattern = '(\| DIME-x86armUniversal\.zip \| `)([A-F0-9]{64}|[^\`]+)(`)'
+    $zipPattern = '(\| DIME-Universal\.zip \| `)([A-F0-9]{64}|[^\`]+)(`)'
     $content = $content -replace $zipPattern, ('${1}' + $zipHash + '${3}')
     
     # Write back to file with UTF8 encoding (no BOM)
@@ -198,8 +198,8 @@ Write-Host "Deployment Complete!" -ForegroundColor Cyan
 Write-Host "===============================================================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "CREATED FILES:" -ForegroundColor Yellow
-Write-Host "  - DIME-x86armUniversal.exe (Installer)" -ForegroundColor White
-Write-Host "  - DIME-x86armUniversal.zip (ZIP Archive)" -ForegroundColor White
+Write-Host "  - DIME-Universal.exe (Installer)" -ForegroundColor White
+Write-Host "  - DIME-Universal.zip (ZIP Archive)" -ForegroundColor White
 Write-Host ""
 Write-Host "NEXT STEPS:" -ForegroundColor Yellow
 Write-Host "  1. Review the updated README.md with checksums" -ForegroundColor White

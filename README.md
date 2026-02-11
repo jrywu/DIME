@@ -1,4 +1,4 @@
-﻿# DIME 輸入法
+# DIME 輸入法
 
 [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](LICENSE)
 [![Windows](https://img.shields.io/badge/Windows-8%20%7C%2010%20%7C%2011-blue)](https://github.com/jrywu/DIME)
@@ -35,37 +35,37 @@ DIME 是一套適用於 Windows 8/10/11 的輸入法框架，支援多種中文�
 
 ### 下載與安裝步驟
 
-1. 下載通用安裝檔 [DIME-x86armUniversal.zip](https://github.com/jrywu/DIME/raw/refs/heads/master/installer/DIME-x86armUniversal.zip)
+1. 下載通用安裝檔 [DIME-Universal.zip](https://github.com/jrywu/DIME/raw/refs/heads/master/installer/DIME-Universal.zip)
    （單一安裝檔同時支援 x86/x64/ARM64 三種平台，安裝程式會自動偵測並安裝對應檔案）
 
-2. 解壓縮 `DIME-x86armUniversal.zip` 取得 `DIME-x86armUniversal.exe` 安裝檔至任意目錄
+2. 解壓縮 `DIME-Universal.zip` 取得 `DIME-Universal.exe` 安裝檔至任意目錄
 
 3. **（建議）驗證檔案完整性：**
    
 <!-- CHECKSUM_START -->
 
-   **最新版本 SHA-256 CHECKSUM (更新日期: 2026-02-10):**
+   **最新版本 SHA-256 CHECKSUM (更新日期: 2026-02-11):**
    
    | 檔案 | SHA-256 CHECKSUM |
    |------|----------------|
-   | DIME-x86armUniversal.exe | `AD688EB04F62BA06D245E394E7EB75AA89601D199D5DE0BED6A59763379BF1D8` |
-   | DIME-x86armUniversal.zip | `502CD1BCB1290E4366A57DDA351D8D40B70F76E7301D8C16FAED386C495D6830` |
+   | DIME-Universal.exe | `010D3CD3F1F006CBF7BC7BBB815C3E1CBBAE98DAC2A830FB280686C47947C888` |
+   | DIME-Universal.zip | `D42C52F46BBC3D4F9A465F210F4F801E2643102591FAF7950509CC74E84136C1` |
 
    <!-- CHECKSUM_END -->
    
 建議用如下Powershell指令，取得 SHA-256 CHECKSUM，將顯示的CHECKSUM 與上方表格中公布的值比對。
 ```powershell
 # 驗證 .exe 檔案
-Get-FileHash DIME-x86armUniversal.exe -Algorithm SHA256
+Get-FileHash DIME-Universal.exe -Algorithm SHA256
 
 # 或驗證 .zip 檔案
-Get-FileHash DIME-x86armUniversal.zip -Algorithm SHA256
+Get-FileHash DIME-Universal.zip -Algorithm SHA256
 ```
    
    
    > **為什麼需要驗證？** 安裝程式未經數位簽章，因此無法透過 Windows 驗證發行商身分。透過比對 SHA-256 CHECKSUM 可確保下載的檔案與DIME正式發布版本完全一致，未經竄改。
 
-4. 執行 `DIME-x86armUniversal.exe` 進行安裝，安裝後會自動新增以下四種輸入法：
+4. 執行 `DIME-Universal.exe` 進行安裝，安裝後會自動新增以下四種輸入法：
 - **DIME自建** - 自建 .cin 碼表輸入法
 - **DIME傳統注音** - 傳統注音輸入法
 - **DIME大易** - 大易輸入法

@@ -46,11 +46,11 @@ DIME supports the following build configurations:
 
 | 組態 Configuration | 平台 Platform | 說明 Description |
 |-------------------|--------------|-----------------|
-| Debug | x86 | 32 位元除錯版本 / 32-bit debug build |
+| Debug | Win32 | 32 位元除錯版本 / 32-bit debug build |
 | Debug | x64 | 64 位元除錯版本 / 64-bit debug build |
 | Debug | ARM64 | ARM64 除錯版本 / ARM64 debug build |
 | Debug | ARM64EC | ARM64EC 除錯版本 / ARM64EC debug build |
-| Release | x86 | 32 位元正式版本 / 32-bit release build |
+| Release | Win32 | 32 位元正式版本 / 32-bit release build |
 | Release | x64 | 64 位元正式版本 / 64-bit release build |
 | Release | ARM64 | ARM64 正式版本 / ARM64 release build |
 | Release | ARM64EC | ARM64EC 正式版本 / ARM64EC release build |
@@ -63,7 +63,7 @@ DIME supports the following build configurations:
 
 #### 編譯單一平台 / Build Single Platform
 
-1. 在工具列選擇組態（Debug/Release）和平台（x86/x64/ARM64/ARM64EC）
+1. 在工具列選擇組態（Debug/Release）和平台（Win32/x64/ARM64/ARM64EC）
 2. 選擇 **建置 → 建置方案** (Ctrl+Shift+B)
 
 或使用命令列：
@@ -74,8 +74,8 @@ Or use command line:
 # 建置 x64 Release 版本
 msbuild DIME.sln /p:Configuration=Release /p:Platform=x64
 
-# 建置 x86 Release 版本
-msbuild DIME.sln /p:Configuration=Release /p:Platform=x86
+# 建置 Win32 Release 版本
+msbuild DIME.sln /p:Configuration=Release /p:Platform=Win32
 
 # 建置 ARM64EC Release 版本
 msbuild DIME.sln /p:Configuration=Release /p:Platform=ARM64EC
@@ -87,11 +87,11 @@ msbuild DIME.sln /p:Configuration=Release /p:Platform=ARM64EC
 
 Building the installer requires at least the following Release builds:
 - **DIME 專案 (DIME project):**
-  - Release x86 → `DIME.dll`
+  - Release Win32 → `DIME.dll`
   - Release x64 → `DIME.dll`
   - Release ARM64EC → `DIME.dll`
 - **DIMESettings 專案 (DIMESettings project):**
-  - Release x86 → `DIMESettings.exe` (僅支援 x86 / x86 only)
+  - Release Win32 → `DIMESettings.exe` (僅支援 Win32 / Win32 only)
 
 使用批次建置功能：
 
@@ -99,15 +99,15 @@ Use Batch Build feature:
 
 1. 選擇 **建置 → 批次建置** (Build → Batch Build)
 2. 勾選以下組態 / Select the following configurations:
-   - **DIME** - Release x86
+   - **DIME** - Release Win32
    - **DIME** - Release x64
    - **DIME** - Release ARM64EC
-   - **DIMESettings** - Release x86
+   - **DIMESettings** - Release Win32
 3. 點選 **建置** (Build)
 
-**說明：** DIME.sln 方案包含兩個專案：**DIME** 專案建置輸入法核心 `DIME.dll`（支援多平台），**DIMESettings** 專案建置設定程式 `DIMESettings.exe`（僅支援 x86）。
+**說明：** DIME.sln 方案包含兩個專案：**DIME** 專案建置輸入法核心 `DIME.dll`（支援多平台），**DIMESettings** 專案建置設定程式 `DIMESettings.exe`（僅支援 Win32）。
 
-**Note:** The DIME.sln solution contains two projects: **DIME** project builds the IME core `DIME.dll` (multi-platform support), and **DIMESettings** project builds the settings program `DIMESettings.exe` (x86 only).
+**Note:** The DIME.sln solution contains two projects: **DIME** project builds the IME core `DIME.dll` (multi-platform support), and **DIMESettings** project builds the settings program `DIMESettings.exe` (Win32 only).
 
 或使用命令列編譯所有 Release 組態：
 
@@ -115,12 +115,12 @@ Or build all required Release configurations via command line:
 
 ```bash
 # 建置 DIME 專案的所有平台 / Build DIME project for all platforms
-msbuild DIME.sln /p:Configuration=Release /p:Platform=x86 /t:DIME
+msbuild DIME.sln /p:Configuration=Release /p:Platform=Win32 /t:DIME
 msbuild DIME.sln /p:Configuration=Release /p:Platform=x64 /t:DIME
 msbuild DIME.sln /p:Configuration=Release /p:Platform=ARM64EC /t:DIME
 
-# 建置 DIMESettings 專案 (僅 x86) / Build DIMESettings project (x86 only)
-msbuild DIME.sln /p:Configuration=Release /p:Platform=x86 /t:DIMESettings
+# 建置 DIMESettings 專案 (僅 Win32) / Build DIMESettings project (Win32 only)
+msbuild DIME.sln /p:Configuration=Release /p:Platform=Win32 /t:DIMESettings
 ```
 
 ### 5. 建置輸出 / Build Output
@@ -131,22 +131,20 @@ After building, output files are located at:
 
 ```
 DIME/
-├── bin/
-│   ├── x86/
-│   │   └── Release/
-│   │       ├── DIME.dll          # DIME 專案：32 位元輸入法核心
-│   │       └── DIMESettings.exe  # DIMESettings 專案：設定程式 (所有平台共用)
-│   ├── x64/
-│   │   └── Release/
-│   │       └── DIME.dll          # DIME 專案：64 位元輸入法核心
-│   └── ARM64EC/
-│       └── Release/
+├── src/
+│   └── Release/
+│       ├── Win32/
+│       │   ├── DIME.dll          # DIME 專案：32 位元輸入法核心
+│       │   └── DIMESettings.exe  # DIMESettings 專案：設定程式 (所有平台共用)
+│       ├── x64/
+│       │   └── DIME.dll          # DIME 專案：64 位元輸入法核心
+│       └── ARM64EC/
 │           └── DIME.dll          # DIME 專案：ARM64EC 輸入法核心
 ```
 
-**注意：** DIME.sln 包含兩個專案。**DIME** 專案建置 `DIME.dll` (支援 x86/x64/ARM64EC)，**DIMESettings** 專案建置 `DIMESettings.exe` (僅支援 x86，供所有平台共用)。
+**注意：** DIME.sln 包含兩個專案。**DIME** 專案建置 `DIME.dll` (支援 Win32/x64/ARM64EC)，**DIMESettings** 專案建置 `DIMESettings.exe` (僅支援 Win32，供所有平台共用)。
 
-**Note:** DIME.sln contains two projects. **DIME** project builds `DIME.dll` (supports x86/x64/ARM64EC), and **DIMESettings** project builds `DIMESettings.exe` (x86 only, shared across all platforms).
+**Note:** DIME.sln contains two projects. **DIME** project builds `DIME.dll` (supports Win32/x64/ARM64EC), and **DIMESettings** project builds `DIMESettings.exe` (Win32 only, shared across all platforms).
 
 ## 編譯安裝程式 / Build Installer
 
@@ -182,19 +180,19 @@ installer/
 Copy the built DLL and EXE files to the `installer/` directory:
 
 ```bash
-# 從 bin/ 目錄複製到 installer/
+# 從 src/Release/ 目錄複製到 installer/
 # DIME.dll 需要三個平台版本 / DIME.dll requires three platform versions
-copy bin\x86\Release\DIME.dll installer\system32.x86\
-copy bin\x64\Release\DIME.dll installer\system32.x64\
-copy bin\ARM64EC\Release\DIME.dll installer\system32.arm64\
+copy src\Release\Win32\DIME.dll installer\system32.x86\
+copy src\Release\x64\DIME.dll installer\system32.x64\
+copy src\Release\ARM64EC\DIME.dll installer\system32.arm64\
 
-# DIMESettings.exe 使用 x86 版本 / DIMESettings.exe uses x86 build
-copy bin\x86\Release\DIMESettings.exe installer\
+# DIMESettings.exe 使用 Win32 版本 / DIMESettings.exe uses Win32 build
+copy src\Release\Win32\DIMESettings.exe installer\
 ```
 
-**注意：** 安裝程式需要來自 **x86 Release** 建置的 `DIMESettings.exe`，以確保相容性。
+**注意：** 安裝程式需要來自 **Win32 Release** 建置的 `DIMESettings.exe`，以確保相容性。
 
-**Note:** The installer requires `DIMESettings.exe` from the **x86 Release** build for compatibility.
+**Note:** The installer requires `DIMESettings.exe` from the **Win32 Release** build for compatibility.
 
 ### 3. 自動建置安裝程式與校驗和 / Automated Installer Build and Checksums
 
@@ -211,8 +209,8 @@ cd installer
 
 This script automatically performs the following steps:
 
-1. 使用 NSIS 編譯 `DIME-x86armUniversal.exe` 安裝程式
-2. 建立 `DIME-x86armUniversal.zip` 壓縮檔
+1. 使用 NSIS 編譯 `DIME-Universal.exe` 安裝程式
+2. 建立 `DIME-Universal.zip` 壓縮檔
 3. 計算 `.exe` 和 `.zip` 的 SHA-256 校驗和
 4. 自動更新 `README.md` 中的校驗和表格（`CHECKSUM_START` ~ `CHECKSUM_END` 區段）
 
@@ -226,10 +224,10 @@ This script automatically performs the following steps:
 
 ```
 installer/
-├── DIME-x86armUniversal.exe    # 通用安裝程式
-└── DIME-x86armUniversal.zip    # 安裝程式壓縮檔
+├── DIME-Universal.exe    # 通用安裝程式
+└── DIME-Universal.zip    # 安裝程式壓縮檔
 ```
 
 ---
 
-**最後更新 / Last Updated:** 2025-02-09
+**最後更新 / Last Updated:** 2025-02-11

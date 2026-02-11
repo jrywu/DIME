@@ -160,7 +160,9 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 	switch (message)
 	{
 	case WM_INITDIALOG:
-
+		// Reload config to ensure we have the latest values from disk
+		// This prevents showing stale values when multiple processes have DIME loaded
+		LoadConfig(_imeMode);
 		ParseConfig(hDlg, TRUE);
 		ret = TRUE;
 		break;
@@ -595,6 +597,9 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 	switch (message)
 	{
 	case WM_INITDIALOG:
+		// Reload config to ensure we have the latest values from disk
+		// This prevents showing wrong buttons when config updated in another process
+		LoadConfig(_imeMode);
 		if (_imeMode == IME_MODE::IME_MODE_DAYI)
 			StringCchPrintf(customTableName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\DAYI-Custom.txt");
 		else if (_imeMode == IME_MODE::IME_MODE_ARRAY)
