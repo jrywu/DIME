@@ -1,0 +1,117 @@
+﻿VSTest version 18.3.0 (x64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\DIMETests.dll
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test file size: 266 bytes
+Found 2 candidates for 'a'
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Testing customTableMode=TRUE (Custom User Table)
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Testing customTableMode=FALSE (CIN Format Conversion UTF-8 癒繩 UTF-16LE)
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+  Passed ParseValidCINFile [2 ms]
+  Standard Output Messages:
+ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test file size: 266 bytes Found 2 candidates for 'a'
+
+  Passed ParseCINFileWithEscapeCharacters [1 ms]
+  Standard Output Messages:
+ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+
+  Passed SearchSingleRadical [1 ms]
+  Standard Output Messages:
+ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+
+  Passed SearchMultipleRadicals [1 ms]
+  Standard Output Messages:
+ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+
+  Passed SearchInvalidRadical [1 ms]
+  Standard Output Messages:
+ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+
+  Passed CustomTablePriority [1 ms]
+  Standard Output Messages:
+ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+
+  Passed CustomTableConversion [5 ms]
+  Standard Output Messages:
+ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Testing customTableMode=TRUE (Custom User Table) Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+
+  Passed CINFormatConversion [3 ms]
+  Standard Output Messages:
+ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Testing customTableMode=FALSE (CIN Format Conversion UTF-8 癒繩 UTF-16LE) Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\ Test data directory: C:\Users\Jeremy\Documents\GitHub\DIME\src\tests\bin\x64\Debug\TestData\
+
+  Passed GetReadBufferPointer_UTF16LE [1 ms]

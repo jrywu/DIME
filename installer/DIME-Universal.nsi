@@ -14,6 +14,15 @@
 
 ; ## HKCU = HKEY_CURRENT_USER
 
+; Add version information to reduce false positives
+VIProductVersion "${PRODUCT_VERSION}.0.0"
+VIAddVersionKey "ProductName" "DIME Input Method Editor"
+VIAddVersionKey "CompanyName" "${PRODUCT_PUBLISHER}"
+VIAddVersionKey "LegalCopyright" "© ${PRODUCT_PUBLISHER}"
+VIAddVersionKey "FileDescription" "DIME IME Installer"
+VIAddVersionKey "FileVersion" "${PRODUCT_VERSION}.0.0"
+VIAddVersionKey "ProductVersion" "${PRODUCT_VERSION}.0.0"
+
 SetCompressor lzma
 ManifestDPIAware true
 BrandingText " "
