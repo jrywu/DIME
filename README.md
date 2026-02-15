@@ -37,9 +37,9 @@ DIME 是一套適用於 Windows 8/10/11 的輸入法框架，支援多種中文�
 
 1. 下載通用安裝檔
 
-   **最新穩定發行版本 DIME v.1.2.378**（更新日期: 2026-02-13）
+   **最新穩定發行版本 DIME v.1.2.380**（更新日期: 2026-02-15）
 
-   [DIME-Universal.zip](https://github.com/jrywu/DIME/raw/1.2.378/installer/DIME-Universal.zip)
+   [DIME-Universal.zip](https://github.com/jrywu/DIME/raw/1.2.380/installer/DIME-Universal.zip)
  
    **最新開發版本**
 
