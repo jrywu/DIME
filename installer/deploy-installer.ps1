@@ -1,4 +1,4 @@
-# ==============================================================================
+﻿# ==============================================================================
 # DIME Input Method Framework - Installer Deployment Script
 # ==============================================================================
 # This script:
@@ -165,20 +165,27 @@ if (-not (Test-Path $readmePath)) {
 } else {
     # Use .NET methods for better encoding control
     $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+    $utf8WithBom = New-Object System.Text.UTF8Encoding $true
     $readmeFullPath = (Resolve-Path $readmePath).Path
     $content = [System.IO.File]::ReadAllText($readmeFullPath, $utf8NoBom)
     
-    # Update date pattern - matches (更新日期: YYYY-MM-DD)
-    $datePattern = '\(\S+\s*\S*\s*\d{4}-\d{2}-\d{2}\)'
-    $content = $content -replace $datePattern, "($([char]0x66F4)$([char]0x65B0)$([char]0x65E5)$([char]0x671F): $date)"
+    # Build the new checksum section with direct Chinese text
+    # Note: This script file should be saved as UTF-8 with BOM for proper encoding
+    $checksumSection = @"
+
+   **最新開發中版本 SHA-256 CHECKSUM (更新日期: $date):**
+   
+   | 檔案 | SHA-256 CHECKSUM |
+   |------|----------------|
+   | DIME-Universal.exe | ``$exeHash`` |
+   | DIME-Universal.zip | ``$zipHash`` |
+
+"@
     
-    # Update exe hash - more specific pattern to match the table row
-    $exePattern = '(\| DIME-Universal\.exe \| `)([A-F0-9]{64})(`)'
-    $content = $content -replace $exePattern, ('${1}' + $exeHash + '${3}')
-    
-    # Update zip hash
-    $zipPattern = '(\| DIME-Universal\.zip \| `)([A-F0-9]{64}|[^\`]+)(`)'
-    $content = $content -replace $zipPattern, ('${1}' + $zipHash + '${3}')
+    # Replace content between CHECKSUM_START and CHECKSUM_END markers
+    $pattern = '(?s)(   <!-- CHECKSUM_START -->).*?(   <!-- CHECKSUM_END -->)'
+    $replacement = "`${1}$checksumSection`${2}"
+    $content = $content -replace $pattern, $replacement
     
     # Write back to file with UTF8 encoding (no BOM)
     [System.IO.File]::WriteAllText($readmeFullPath, $content, $utf8NoBom)
