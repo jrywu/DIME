@@ -23,7 +23,7 @@ VIAddVersionKey "FileDescription" "DIME IME Installer"
 VIAddVersionKey "FileVersion" "${PRODUCT_VERSION}.0.0"
 VIAddVersionKey "ProductVersion" "${PRODUCT_VERSION}.0.0"
 
-SetCompressor lzma
+SetCompressor zlib
 ManifestDPIAware true
 BrandingText " "
 
