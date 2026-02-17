@@ -15,6 +15,7 @@ local.properties
 .settings/
 .loadpath
 Staging/
+coverage_results/
 
 # External tool builders
 .externalToolBuilders/

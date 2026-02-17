@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <!-- Configuration for code coverage -->
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="Code Coverage" uri="datacollector://Microsoft/CodeCoverage/2.0" assemblyQualifiedName="Microsoft.VisualStudio.Coverage.DynamicCoverageDataCollector, Microsoft.VisualStudio.TraceCollector, Version=11.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+        <Configuration>
+          <CodeCoverage>
+            <!-- Match the test DLL that contains our source code -->
+            <ModulePaths>
+              <Include>
+                <ModulePath>.*DIMETests\.dll$</ModulePath>
+              </Include>
+              <Exclude>
+                <!-- Exclude Microsoft and test framework DLLs -->
+                <ModulePath>.*microsoft.*</ModulePath>
+                <ModulePath>.*vstest.*</ModulePath>
+                <ModulePath>.*testhost.*</ModulePath>
+              </Exclude>
+            </ModulePaths>
+
+            <!-- Include our source files -->
+            <Sources>
+              <Include>
+                <Source>.*\\src\\Config\.cpp</Source>
+                <Source>.*\\src\\Globals\.cpp</Source>
+                <Source>.*\\src\\File\.cpp</Source>
+                <Source>.*\\src\\BaseStructure\.cpp</Source>
+                <Source>.*\\src\\TableDictionaryEngine\.cpp</Source>
+                <Source>.*\\src\\DictionaryParser\.cpp</Source>
+                <Source>.*\\src\\DictionarySearch\.cpp</Source>
+              </Include>
+              <Exclude>
+                <!-- Exclude test files -->
+                <Source>.*\\tests\\.*</Source>
+              </Exclude>
+            </Sources>
+
+            <!-- Exclude test code from coverage -->
+            <Functions>
+              <Exclude>
+                <Function>.*DIMETests::.*</Function>
+                <Function>.*Microsoft::VisualStudio::CppUnitTestFramework::.*</Function>
+              </Exclude>
+            </Functions>
+
+            <!-- Collect coverage for these attributes -->
+            <Attributes>
+              <Exclude>
+                <Attribute>^System\.Diagnostics\.DebuggerHidden.*</Attribute>
+                <Attribute>^System\.Diagnostics\.DebuggerNonUserCode.*</Attribute>
+                <Attribute>^System\.CodeDom\.Compiler\.GeneratedCode.*</Attribute>
+                <Attribute>^System\.Diagnostics\.CodeAnalysis\.ExcludeFromCodeCoverage.*</Attribute>
+              </Exclude>
+            </Attributes>
+
+            <!-- Use symbolic information -->
+            <UseVerifiableInstrumentation>True</UseVerifiableInstrumentation>
+            <AllowLowIntegrityProcesses>True</AllowLowIntegrityProcesses>
+            <CollectFromChildProcesses>True</CollectFromChildProcesses>
+            <CollectAspDotNet>False</CollectAspDotNet>
+          </CodeCoverage>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

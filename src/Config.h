@@ -36,6 +36,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <Commdlg.h>
 
+#ifdef DIME_UNIT_TESTING
+// Forward declaration for unit testing
+namespace DIMETests { class DictionaryTest; }
+#endif
+
 struct ColorInfo
 {
 	int id;
@@ -51,6 +56,11 @@ typedef BOOL(__stdcall * _T_GetSaveFileName)(_Inout_  LPOPENFILENAME  lpofn);
 
 class CConfig
 {
+#ifdef DIME_UNIT_TESTING
+	// Friend class for unit testing
+	friend class DIMETests::DictionaryTest;
+#endif
+
 public:
 	//The configuration settings maybe read/write from ITfFnConfigure::Show() by explorer and which is before OnActivateEX(), thus no objects are created at that time.
 	//Thus all the settings should be static and can be accesses program wide.

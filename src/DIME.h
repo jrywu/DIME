@@ -40,6 +40,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Compartment.h"
 #include "LanguageBar.h"
 
+#ifdef DIME_UNIT_TESTING
+// Forward declaration for integration tests
+namespace TSFIntegrationTests {
+    class TSFIntegrationTest;
+}
+#endif
+
 
 class CLangBarItemButton;
 class CUIPresenter;
@@ -286,7 +293,12 @@ private:
 
     BOOL VerifyDIMECLSID(_In_ REFCLSID clsid);
 
-    //friend LRESULT CALLBACK CDIME_WindowProc(HWND wndHandle, UINT uMsg, WPARAM wParam, LPARAM lParam);
+	//friend LRESULT CALLBACK CDIME_WindowProc(HWND wndHandle, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
+#ifdef DIME_UNIT_TESTING
+	// Friend declaration for integration tests - allows access to private members for testing
+	friend class TSFIntegrationTests::TSFIntegrationTest;
+#endif
 
 	// function for process candidate
 	VOID _DeleteCandidateList(BOOL fForce, _In_opt_ ITfContext *pContext);

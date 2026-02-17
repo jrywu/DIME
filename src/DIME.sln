@@ -1,11 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.1.32210.238
+# Visual Studio Version 18
+VisualStudioVersion = 18.2.11430.68 d18.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DIME", "DIME.vcxproj", "{0C8FE010-5146-44D8-AF99-82702C15FEA5}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DIMESettings", "DIMESettings\DIMESettings.vcxproj", "{9F5017ED-34B2-4B01-8D92-EF3D8BFC427A}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DIMETests", "tests\DIMETests.vcxproj", "{8B3E9F7C-1234-4567-89AB-CDEF01234567}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -43,6 +45,22 @@ Global
 		{9F5017ED-34B2-4B01-8D92-EF3D8BFC427A}.Release|Win32.ActiveCfg = Release|Win32
 		{9F5017ED-34B2-4B01-8D92-EF3D8BFC427A}.Release|Win32.Build.0 = Release|Win32
 		{9F5017ED-34B2-4B01-8D92-EF3D8BFC427A}.Release|x64.ActiveCfg = Release|Win32
+		{8B3E9F7C-1234-4567-89AB-CDEF01234567}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{8B3E9F7C-1234-4567-89AB-CDEF01234567}.Debug|ARM64.Build.0 = Debug|ARM64
+		{8B3E9F7C-1234-4567-89AB-CDEF01234567}.Debug|ARM64EC.ActiveCfg = Debug|ARM64EC
+		{8B3E9F7C-1234-4567-89AB-CDEF01234567}.Debug|ARM64EC.Build.0 = Debug|ARM64EC
+		{8B3E9F7C-1234-4567-89AB-CDEF01234567}.Debug|Win32.ActiveCfg = Debug|Win32
+		{8B3E9F7C-1234-4567-89AB-CDEF01234567}.Debug|Win32.Build.0 = Debug|Win32
+		{8B3E9F7C-1234-4567-89AB-CDEF01234567}.Debug|x64.ActiveCfg = Debug|x64
+		{8B3E9F7C-1234-4567-89AB-CDEF01234567}.Debug|x64.Build.0 = Debug|x64
+		{8B3E9F7C-1234-4567-89AB-CDEF01234567}.Release|ARM64.ActiveCfg = Release|ARM64
+		{8B3E9F7C-1234-4567-89AB-CDEF01234567}.Release|ARM64.Build.0 = Release|ARM64
+		{8B3E9F7C-1234-4567-89AB-CDEF01234567}.Release|ARM64EC.ActiveCfg = Release|ARM64EC
+		{8B3E9F7C-1234-4567-89AB-CDEF01234567}.Release|ARM64EC.Build.0 = Release|ARM64EC
+		{8B3E9F7C-1234-4567-89AB-CDEF01234567}.Release|Win32.ActiveCfg = Release|Win32
+		{8B3E9F7C-1234-4567-89AB-CDEF01234567}.Release|Win32.Build.0 = Release|Win32
+		{8B3E9F7C-1234-4567-89AB-CDEF01234567}.Release|x64.ActiveCfg = Release|x64
+		{8B3E9F7C-1234-4567-89AB-CDEF01234567}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

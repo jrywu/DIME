@@ -43,6 +43,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "DIME.h"
 #include "BaseStructure.h"
 
+#ifdef DIME_UNIT_TESTING
+// Forward declaration for integration tests
+namespace TSFIntegrationTests {
+    class UIPresenterIntegrationTest;
+}
+#endif
+
 class CReadingLine;
 class CCompositionProcessorEngine;
 class CDIME;
@@ -62,6 +69,11 @@ class CUIPresenter :
     public ITfCandidateListUIElementBehavior,
     public ITfIntegratableCandidateListUIElement
 {
+#ifdef DIME_UNIT_TESTING
+    // Friend declaration for integration tests
+    friend class TSFIntegrationTests::UIPresenterIntegrationTest;
+#endif
+
 public:
     CUIPresenter(_In_ CDIME *pTextService, CCompositionProcessorEngine *pCompositionProcessorEngine);
     virtual ~CUIPresenter();

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|ARM64">
@@ -42,9 +42,12 @@
     <None Include="image\ImeModeOff.ico" />
     <None Include="image\ImeModeOn.ico" />
     <None Include="DIME.def" />
+    <None Include="src\DIME_updated.sln" />
+    <None Include="tests\DIMETests.vcxproj" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BaseWindow.h" />
+    <ClInclude Include="BuildInfo.h" />
     <ClInclude Include="ButtonWindow.h" />
     <ClInclude Include="CandidateWindow.h" />
     <ClInclude Include="Compartment.h" />

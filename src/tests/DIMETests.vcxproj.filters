@@ -1,0 +1,224 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Documentation">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>md</Extensions>
+    </Filter>
+    <Filter Include="Source Files\Unit Tests">
+      <UniqueIdentifier>{1234567-89AB-CDEF-0123-456789ABCDEF}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\DIME Source">
+      <UniqueIdentifier>{ABCDEF01-2345-6789-ABCD-EF0123456789}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Integration Tests">
+      <UniqueIdentifier>{3d7fd59c-94bc-412b-ae1c-0dd950f1f443}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="pch.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="pch.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ConfigTest.cpp">
+      <Filter>Source Files\Unit Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="TestStubs.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\BaseStructure.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\Config.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\File.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\Globals.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\TableDictionaryEngine.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="StringTest.cpp">
+      <Filter>Source Files\Unit Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="MemoryTest.cpp">
+      <Filter>Source Files\Unit Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="TableDictionaryEngineTest.cpp">
+      <Filter>Source Files\Unit Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="TSFIntegrationTest.cpp">
+      <Filter>Source Files\Integration Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="TSFIntegrationTest_Simple.cpp">
+      <Filter>Source Files\Integration Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="NotificationWindowIntegrationTest.cpp">
+      <Filter>Source Files\Integration Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\DIME.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\BaseWindow.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\CompositionProcessorEngine.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\ActiveLanguageProfileNotifySink.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\ButtonWindow.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\CandidateHandler.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\CandidateWindow.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\Compartment.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\Composition.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\DictionaryParser.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\DictionarySearch.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\DisplayAttribute.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\DisplayAttributeInfo.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\DisplayAttributeProvider.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\EditSession.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\EndComposition.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\EnumDisplayAttributeInfo.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\EnumTfCandidates.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\FunctionProviderSink.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\GetTextExtentEditSession.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\KeyEventSink.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\KeyHandler.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\KeyHandlerEditSession.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\KeyProcesser.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\KeyStateCategory.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\LanguageBar.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\NotifyWindow.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\RegKey.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\ReverseConversion.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\ReverseConversionProvider.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\ScrollBarWindow.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\SearchCandidateProvider.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\SetupCompositionProcesseorEngine.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\ShadowWindow.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\ShowConfig.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\StartComposition.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\TextEditSink.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\TfInputProcessorProfile.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\TfTextLayoutSink.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\ThreadFocusSink.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\ThreadMgrEventSink.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\TipCandidateList.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\TipCandidateString.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\UIPresenter.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="LanguageBarIntegrationTest.cpp">
+      <Filter>Source Files\Integration Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="CandidateWindowIntegrationTest.cpp">
+      <Filter>Source Files\Integration Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="SettingsDialogIntegrationTest.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\docs\TEST_REPORT.md">
+      <Filter>Documentation</Filter>
+    </None>
+    <None Include="..\..\docs\TEST_PLAN.md">
+      <Filter>Documentation</Filter>
+    </None>
+  </ItemGroup>
+</Project>

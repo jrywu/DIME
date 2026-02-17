@@ -146,6 +146,9 @@ STDAPI CUIPresenter::QueryInterface(REFIID riid, _Outptr_ void **ppvObj)
 
 STDAPI_(ULONG) CUIPresenter::AddRef()
 {
+    // Increment both refcounts to maintain consistency
+    // Parent class manages ITfTextLayoutSink refcount
+    // This class manages overall COM object refcount
     CTfTextLayoutSink::AddRef();
     return ++_refCount;
 }
@@ -158,16 +161,21 @@ STDAPI_(ULONG) CUIPresenter::AddRef()
 
 STDAPI_(ULONG) CUIPresenter::Release()
 {
-    CTfTextLayoutSink::Release();
-
+    // Must decrement our refcount first and check for zero
+    // before calling parent Release, because parent Release
+    // may delete the object if its refcount hits zero
     LONG cr = --_refCount;
 
     assert(_refCount >= 0);
 
     if (_refCount == 0)
     {
-        delete this;
+        delete this;  // Destructor calls parent destructor which will handle parent refcount
+        return 0;
     }
+
+    // Still alive, so also decrement parent refcount
+    CTfTextLayoutSink::Release();
 
     return cr;
 }
@@ -1582,7 +1590,7 @@ HRESULT CUIPresenter::MakeCandidateWindow(_In_ ITfContext *pContextDocument, _In
 
     HWND parentWndHandle = nullptr;
     ITfContextView* pView = nullptr;
-    if (SUCCEEDED(pContextDocument->GetActiveView(&pView)) && pView)
+    if (pContextDocument && SUCCEEDED(pContextDocument->GetActiveView(&pView)) && pView)
     {
         pView->GetWnd(&parentWndHandle);
     }

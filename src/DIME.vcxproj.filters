@@ -77,6 +77,8 @@
     </None>
     <None Include="..\README.md" />
     <None Include="..\LICENSE.md" />
+    <None Include="src\DIME_updated.sln" />
+    <None Include="tests\DIMETests.vcxproj" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BaseWindow.h">
@@ -197,6 +199,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="UIConstants.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BuildInfo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

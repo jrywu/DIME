@@ -46,15 +46,20 @@ public:
     BOOL CreateFile(_In_ PCWSTR pFileName, DWORD desiredAccess, DWORD creationDisposition,
         DWORD sharedMode = 0, _Inout_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes = nullptr, DWORD flagsAndAttributes = 0, _Inout_opt_ HANDLE templateFileHandle = nullptr);
 
-    _Ret_maybenull_
-    const WCHAR *GetReadBufferPointer(_Inout_opt_ BOOL *fileReloaded = nullptr);
-    DWORD_PTR GetFileSize() { return _fileSize;}
+	_Ret_maybenull_
+	const WCHAR *GetReadBufferPointer(_Inout_opt_ BOOL *fileReloaded = nullptr);
+	DWORD_PTR GetFileSize() { return _fileSize;}
 
-    LPCWSTR GetFileName() { return _pFileName;}
+	LPCWSTR GetFileName() { return _pFileName;}
 	BOOL IsFileUpdated();
 
+#ifdef DIME_UNIT_TESTING
+	// Test interface to expose protected methods for unit testing
+	virtual BOOL TestHook_SetupReadBuffer() { return SetupReadBuffer(); }
+#endif
+
 protected:
-    virtual BOOL SetupReadBuffer();
+	virtual BOOL SetupReadBuffer();
 
 
 protected:
