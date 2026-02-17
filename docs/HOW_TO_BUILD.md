@@ -14,7 +14,13 @@ This document describes how to build DIME IME from source code.
   - 需安裝 Windows SDK (建議 10.0.19041.0 或更新版本) / Windows SDK (Recommended 10.0.19041.0 or later)
   - 需安裝 ARM64 建置工具 (若要編譯 ARM64 版本) / ARM64 build tools (for ARM64 build)
 - **Git** (用於版本控制與自動版號生成 / For version control and auto versioning)
-- **PowerShell 5.0 或更新版本** (用於自動產生安裝包)
+- **PowerShell 5.0 或更新版本** (用於自動產生安裝包 / For automated installer packaging)
+- **NSIS (Nullsoft Scriptable Install System)** (用於編譯安裝程式 / For compiling the installer)
+  - 必須加入系統 PATH / Must be added to system PATH
+  - 下載位置 / Download: [https://nsis.sourceforge.io/](https://nsis.sourceforge.io/)
+- **NSIS Registry Plugin** (NSIS 註冊表擴充外掛 / NSIS registry extension plugin)
+  - 用於安裝程式的註冊表操作 / For registry operations in the installer
+  - 下載位置 / Download: [https://nsis.sourceforge.io/Registry_plug-in](https://nsis.sourceforge.io/Registry_plug-in)
 
 ## 編譯步驟 / Build Steps
 
