@@ -1,0 +1,46 @@
+name: Build Installer
+
+on:
+  workflow_run:
+    workflows: ["DIME Tests"]
+    types:
+      - completed
+    branches: [main]
+
+jobs:
+  build-installer:
+    name: Build Installer
+    runs-on: windows-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v2
+      
+      - name: Build All Platforms (Release)
+        run: |
+          cd src
+          msbuild DIME.sln /p:Configuration=Release /p:Platform=Win32 /t:DIME
+          msbuild DIME.sln /p:Configuration=Release /p:Platform=x64 /t:DIME
+          msbuild DIME.sln /p:Configuration=Release /p:Platform=ARM64 /t:DIME
+          msbuild DIME.sln /p:Configuration=Release /p:Platform=Win32 /t:DIMESettings
+      
+      - name: Install NSIS
+        run: choco install nsis -y
+      
+      - name: Build Installer with PowerShell Script
+        run: |
+          cd installer
+          .\deploy-installer.ps1
+        shell: pwsh
+      
+      - name: Commit ZIP and Updated README
+        run: |
+          #git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          #git config --local user.name "github-actions[bot]"
+          #git add installer/DIME-Universal.zip
+          #git add README.md
+          #git diff --staged --quiet || git commit -m "Update installer and checksums [skip ci]"
+          #git push
+        shell: pwsh
