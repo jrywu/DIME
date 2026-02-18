@@ -18,7 +18,7 @@ jobs:
       - name: Build & Run Tests
         run: |
           cd src
-          msbuild DIME.sln /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }}
+          msbuild DIME.sln /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /p:PlatformToolset=v143
           vstest.console.exe bin\${{ matrix.platform }}\${{ matrix.configuration }}\DIMETests.dll /logger:trx      
       - name: Upload Results
         uses: actions/upload-artifact@v4
