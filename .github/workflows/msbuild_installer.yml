@@ -6,7 +6,7 @@ on:
     types:
       - completed
     branches: [main]
-
+  workflow_dispatch:  # Add this to trigger manually
 jobs:
   build-installer:
     name: Build Installer
