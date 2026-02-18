@@ -1,17 +1,14 @@
 name: Build Installer
 
 on:
-  workflow_run:
-    workflows: ["DIME Tests"]
-    types:
-      - completed
+  workflow_dispatch:
+  push:
     branches: [main]
-  workflow_dispatch:  # Add this to trigger manually
+
 jobs:
   build-installer:
     name: Build Installer
     runs-on: windows-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - uses: actions/checkout@v4
       
