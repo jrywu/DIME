@@ -4,29 +4,42 @@ on: [push, pull_request]
 
 jobs:
   test:
-    runs-on: ${{ matrix.platform == 'ARM64' && 'windows-arm64' || 'windows-latest' }}
+    runs-on: windows-latest
     strategy:
       matrix:
         platform: [Win32, x64, ARM64]
         configuration: [Debug, Release]
+        include:
+          - platform: Win32
+            run-tests: true
+          - platform: x64
+            run-tests: true
+          - platform: ARM64
+            run-tests: false
     steps:
       - uses: actions/checkout@v4
+      
       - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@v2
+      
       - name: Setup VSTest
+        if: matrix.run-tests
         uses: darenm/Setup-VSTest@v1.3
-      - name: Skip ARM64 on non-ARM runners
-        if: matrix.platform == 'ARM64' && runner.arch != 'ARM64'
-        run: |
-          echo "Skipping ARM64 tests on non-ARM64 runner"
-          exit 0
-      - name: Build & Run Tests
+      
+      - name: Build
         run: |
           cd src
           msbuild DIME.sln /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /p:PlatformToolset=v143
-          vstest.console.exe bin\${{ matrix.platform }}\${{ matrix.configuration }}\DIMETests.dll /logger:trx      
+      
+      - name: Run Tests
+        if: matrix.run-tests
+        run: |
+          cd src
+          vstest.console.exe bin\${{ matrix.platform }}\${{ matrix.configuration }}\DIMETests.dll /logger:trx
+      
       - name: Upload Results
+        if: matrix.run-tests
         uses: actions/upload-artifact@v4
         with:
           name: test-results-${{ matrix.platform }}-${{ matrix.configuration }}
-          path: TestResults/*.trx
+          path: src/TestResults/*.trx
