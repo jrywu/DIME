@@ -18,10 +18,10 @@ jobs:
       - name: Build All Platforms (Release)
         run: |
           cd src
-          msbuild DIME.sln /p:Configuration=Release /p:Platform=Win32 /t:DIME
-          msbuild DIME.sln /p:Configuration=Release /p:Platform=x64 /t:DIME
-          msbuild DIME.sln /p:Configuration=Release /p:Platform=ARM64 /t:DIME
-          msbuild DIME.sln /p:Configuration=Release /p:Platform=Win32 /t:DIMESettings
+          msbuild DIME.sln /p:Configuration=Release /p:Platform=Win32 /p:PlatformToolset=v143 /t:DIME
+          msbuild DIME.sln /p:Configuration=Release /p:Platform=x64 /p:PlatformToolset=v143 /t:DIME
+          msbuild DIME.sln /p:Configuration=Release /p:Platform=ARM64 /p:PlatformToolset=v143 /t:DIME
+          msbuild DIME.sln /p:Configuration=Release /p:Platform=Win32 /p:PlatformToolset=v143 /t:DIMESettings
       
       - name: Install NSIS
         run: choco install nsis -y
