@@ -11,6 +11,8 @@ jobs:
         configuration: [Debug, Release]
     steps:
       - uses: actions/checkout@v4
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v2
       - name: Build & Run Tests
         run: |
           msbuild DIME.sln /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }}
