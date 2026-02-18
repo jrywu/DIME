@@ -37,6 +37,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "CompositionProcessorEngine.h"
 #include "BaseStructure.h"
 #include "Globals.h"
+#include "KeyHandlerEditSession.h"
 
 void CCompositionProcessorEngine::ReleaseDictionaryFiles()  
 {  
@@ -553,9 +554,38 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL* pIsE
 	else if (IsEqualGUID(rguid, _PreservedKey_DoubleSingleByte.Guid))
 	{
 		if (CConfig::GetDoubleSingleByteMode() != DOUBLE_SINGLE_BYTE_MODE::DOUBLE_SINGLE_BYTE_SHIFT_SPACE)
-			//|| !CheckShiftKeyOnly(&_PreservedKey_DoubleSingleByte.TSFPreservedKeyTable))
 		{
-			*pIsEaten = FALSE;
+			// When not in Shift-Space switching mode, inject a space character instead
+			ITfDocumentMgr* pDocMgrFocus = nullptr;
+			ITfContext* pContext = nullptr;
+			
+			if (SUCCEEDED(pThreadMgr->GetFocus(&pDocMgrFocus)) && pDocMgrFocus)
+			{
+				if (SUCCEEDED(pDocMgrFocus->GetTop(&pContext)) && pContext)
+				{
+					// Inject space character via shift English input handler
+					_KEYSTROKE_STATE keyState;
+					keyState.Category = KEYSTROKE_CATEGORY::CATEGORY_COMPOSING;
+					keyState.Function = KEYSTROKE_FUNCTION::FUNCTION_SHIFT_ENGLISH_INPUT;
+					
+					if (_pTextService)
+					{
+						// Create an edit session to inject the space character
+						CKeyHandlerEditSession* pEditSession = new (std::nothrow) CKeyHandlerEditSession(_pTextService, pContext, VK_SPACE, L' ', keyState);
+						if (pEditSession)
+						{
+							HRESULT hrSession = S_OK;
+							pContext->RequestEditSession(_pTextService->_GetClientId(), pEditSession, TF_ES_ASYNCDONTCARE | TF_ES_READWRITE, &hrSession);
+							pEditSession->Release();
+						}
+					}
+					
+					pContext->Release();
+				}
+				pDocMgrFocus->Release();
+			}
+			
+			*pIsEaten = TRUE;
 			return;
 		}
 		BOOL isDouble = FALSE;

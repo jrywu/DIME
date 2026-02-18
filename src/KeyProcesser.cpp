@@ -581,11 +581,13 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 	}
 	
 	// Handle Shift+printable ASCII for English input mode
+	// Note: Shift+Space is handled by the preserved key system (OnPreservedKey)
 	if (pwch && *pwch && (Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_RSHIFT | TF_MOD_SHIFT)) != 0)
 	{
 		WCHAR c = *pwch;
+		
 		// Check for printable ASCII characters (iswprint filters control chars)
-		if (iswprint(c))
+		if (iswprint(c) && c != L' ')  // Exclude space as it's handled by preserved key
 		{
 			if (pKeyState)
 			{

@@ -8,6 +8,7 @@
 - 按住 Shift 時，所有可列印 ASCII 字元（0x20-0x7E）完全繞過輸入法引擎
 - 按鍵直接對應到英數字元或符號，不經過中文輸入法處理
 - CapsLock 狀態決定輸出的字元形式
+- **例外**：當「全形/半形切換」設定為「以 Shift-Space 熱鍵切換」時，Shift+Space 保留給全形/半形切換使用，不會輸入空格
 
 ### 1.2 CapsLock 控制輸出字元
 
@@ -19,11 +20,14 @@
 
 ## 2. 使用範例
 
+**注意**：以下範例假設「全形/半形切換」設定為「半型」或「全型」。若設定為「以 Shift-Space 熱鍵切換」，則 Shift+Space 會切換全形/半形，而非輸入空格；此時需要放開 Shift 鍵後按 Space 來輸入空格。
+
 ### 2.1 基本中英混合輸入
 
 ```
 輸入目標：請使用 git commit 命令
-操作方式：輸入「請使用」→ 按住 Shift 輸入 "git" → 放開 Shift 輸入空格 → 按住 Shift 輸入 "commit" → 放開 Shift → 輸入「命令」
+操作方式：輸入「請使用」→ 按住 Shift 輸入 " git commit " → 輸入「命令」
+說明：按住 Shift 可連續輸入英數及空格，Shift+Space 直接產生空格
 ```
 
 ### 2.2 電子郵件地址
@@ -32,7 +36,7 @@
 輸入目標：user@example.com
 操作方式：
   - CapsLock OFF：按住 Shift 輸入 "user"
-  - 切換 CapsLock ON：按住 Shift+2 輸入 "@"
+  - 切換 CapsLock ON：按住 Shift 輸入 "2" → 產生 "@"
   - 切換 CapsLock OFF：按住 Shift 輸入 "example.com"
 ```
 
@@ -50,46 +54,95 @@
 
 ```
 輸入目標：int* ptr = nullptr;
-操作方式：CapsLock OFF 輸入 "int" → CapsLock ON 輸入 "*" → CapsLock OFF 輸入 " ptr = nullptr;"
+操作方式：
+- CapsLock OFF：按住 Shift 輸入 "int"
+- 切換 CapsLock ON：按住 Shift 輸入 "8" → 產生 "*"
+- 切換 CapsLock OFF：按住 Shift 輸入 " ptr = nullptr;"
+說明：Shift+Space 產生空格，整個過程保持按住 Shift 鍵連續輸入
 ```
 
 ## 3. 實作說明
 
-### 3.1 修改檔案
+### 3.1 技術架構
 
-**檔案 1：`src/KeyProcesser.cpp`**
+**Shift+Space 處理機制**：
+- Shift+Space 註冊為系統保留鍵（Preserved Key），確保輸入法優先處理
+- 在 `OnPreservedKey` 處理器中檢查「全形/半形切換」設定：
+  - 若設定為「以 Shift-Space 熱鍵切換」→ 執行全形/半形切換
+  - 若設定為「半型」或「全型」→ 注入空格字元
+- 設定變更立即生效，無需重啟應用程式
+
+**其他 Shift+字元處理**：
+- 在 `IsVirtualKeyNeed()` 中檢測 Shift 修飾鍵
+- 透過 `_HandleCompositionShiftEnglishInput()` 處理字元轉換
+- CapsLock 控制大小寫及符號形式
+
+### 3.2 修改檔案
+
+**檔案 1：`src/SetupCompositionProcesseorEngine.cpp`**
+
+修改 `OnPreservedKey()` 函數，約 line 553：
+
+```cpp
+else if (IsEqualGUID(rguid, _PreservedKey_DoubleSingleByte.Guid))
+{
+    if (CConfig::GetDoubleSingleByteMode() != DOUBLE_SINGLE_BYTE_MODE::DOUBLE_SINGLE_BYTE_SHIFT_SPACE)
+    {
+        // When not in Shift-Space switching mode, inject a space character instead
+        ITfDocumentMgr* pDocMgrFocus = nullptr;
+        ITfContext* pContext = nullptr;
+        
+        if (SUCCEEDED(pThreadMgr->GetFocus(&pDocMgrFocus)) && pDocMgrFocus)
+        {
+            if (SUCCEEDED(pDocMgrFocus->GetTop(&pContext)) && pContext)
+            {
+                // Inject space character via shift English input handler
+                _KEYSTROKE_STATE keyState;
+                keyState.Category = KEYSTROKE_CATEGORY::CATEGORY_COMPOSING;
+                keyState.Function = KEYSTROKE_FUNCTION::FUNCTION_SHIFT_ENGLISH_INPUT;
+                
+                if (_pTextService)
+                {
+                    _pTextService->_InvokeKeyHandler(pContext, VK_SPACE, L' ', 0, keyState);
+                }
+                
+                pContext->Release();
+            }
+            pDocMgrFocus->Release();
+        }
+        
+        *pIsEaten = TRUE;
+        return;
+    }
+    // ... handle full/half-width switching ...
+}
+```
+
+**檔案 2：`src/KeyProcesser.cpp`**
 
 修改 `IsVirtualKeyNeed()` 函數，約 line 587：
 
 ```cpp
-BOOL CKeyProcesser::IsVirtualKeyNeed(UINT uCode, _In_reads_(3) WCHAR *pwch, BOOL fComposing, CANDIDATE_MODE candidateMode, _Out_opt_ _KEYSTROKE_STATE *pKeyState)
+// Handle Shift+printable ASCII for English input mode
+// Note: Shift+Space is handled by the preserved key system (OnPreservedKey)
+if (pwch && *pwch && (Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_RSHIFT | TF_MOD_SHIFT)) != 0)
 {
-    if (pKeyState)
+    WCHAR c = *pwch;
+    
+    // Check for printable ASCII characters (iswprint filters control chars)
+    if (iswprint(c) && c != L' ')  // Exclude space as it's handled by preserved key
     {
-        *pKeyState = KEYSTROKE_STATE::KEYSTROKE_NONE;
-    }
-
-    // Check if Shift key is pressed alone
-    if (Global::IsShiftKeyDownOnly())
-    {
-        WCHAR c = pwch[0];
-        
-        // Check for printable ASCII characters (iswprint filters control chars)
-        if (iswprint(c))
+        if (pKeyState)
         {
-            if (pKeyState)
-            {
-                *pKeyState = KEYSTROKE_STATE::KEYSTROKE_SHIFT;
-            }
-            return TRUE;
+            pKeyState->Category = KEYSTROKE_CATEGORY::CATEGORY_COMPOSING;
+            pKeyState->Function = KEYSTROKE_FUNCTION::FUNCTION_SHIFT_ENGLISH_INPUT;
         }
+        return TRUE;
     }
-
-    // ... rest of original logic ...
 }
 ```
 
-**檔案 2：`src/KeyHandler.cpp`**
+**檔案 3：`src/KeyHandler.cpp`**
 
 修改 `_HandleCompositionShiftEnglishInput()` 函數，約 line 530：
 
