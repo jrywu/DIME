@@ -38,7 +38,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef DIME_UNIT_TESTING
 // Forward declaration for unit testing
-namespace DIMETests { class DictionaryTest; }
+namespace DIMETests { 
+	class DictionaryTest;
+	class SettingsDialogIntegrationTest; // IT-07 friend access
+}
 #endif
 
 struct ColorInfo
@@ -59,6 +62,7 @@ class CConfig
 #ifdef DIME_UNIT_TESTING
 	// Friend class for unit testing
 	friend class DIMETests::DictionaryTest;
+	friend class DIMETests::SettingsDialogIntegrationTest;
 #endif
 
 public:

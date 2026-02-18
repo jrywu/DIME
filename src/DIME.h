@@ -42,7 +42,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef DIME_UNIT_TESTING
 // Forward declaration for integration tests
-namespace TSFIntegrationTests {
+namespace DIMEIntegratedTests {
     class TSFIntegrationTest;
 }
 #endif
@@ -297,7 +297,7 @@ private:
 
 #ifdef DIME_UNIT_TESTING
 	// Friend declaration for integration tests - allows access to private members for testing
-	friend class TSFIntegrationTests::TSFIntegrationTest;
+	friend class DIMEIntegratedTests::TSFIntegrationTest;
 #endif
 
 	// function for process candidate
