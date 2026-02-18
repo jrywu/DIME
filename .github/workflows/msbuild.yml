@@ -15,6 +15,11 @@ jobs:
         uses: microsoft/setup-msbuild@v2
       - name: Setup VSTest
         uses: darenm/Setup-VSTest@v1.3
+      - name: Skip ARM64 on non-ARM runners
+        if: matrix.platform == 'ARM64' && runner.arch != 'ARM64'
+        run: |
+          echo "Skipping ARM64 tests on non-ARM64 runner"
+          exit 0
       - name: Build & Run Tests
         run: |
           cd src
