@@ -19,7 +19,7 @@
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
-namespace TSFIntegrationTests
+namespace DIMEIntegratedTests
 {
     // Helper class: Minimal ITfContext stub for testing
     class StubTfContext : public ITfContext

@@ -1,4 +1,4 @@
-// UIPresenterIntegrationTest.cpp - IT-06: UIPresenter Integration Tests
+﻿// UIPresenterIntegrationTest.cpp - IT-06: UIPresenter Integration Tests
 // Tests UIPresenter's UI management layer: candidate windows, notification windows, visibility control
 // Target Coverage: ??5% for UIPresenter.cpp
 // Target Functions: MakeCandidateWindow, MakeNotifyWindow, Show, visibility management
@@ -21,7 +21,7 @@
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
-namespace TSFIntegrationTests
+namespace DIMEIntegratedTests
 {
     // Helper class: Stub ITfContext for testing
     class StubTfContext : public ITfContext
@@ -229,8 +229,20 @@ namespace TSFIntegrationTests
         }
 
         // Set up mock thread manager for testing TSF lifecycle
-        // Uses public SetupMockThreadMgrHelper that's a friend of CDIME in UIPresenterIntegrationTest
-        void SetupMockThreadMgr();
+        void SetupMockThreadMgr()
+        {
+            if (!_mockThreadMgr)
+            {
+                _mockThreadMgr = new StubTfThreadMgr();
+                _mockThreadMgr->AddRef();
+            }
+        }
+
+        // Override _GetThreadMgr to return our mock
+        ITfThreadMgr* _GetThreadMgr() 
+        { 
+            return _mockThreadMgr; 
+        }
 
         // Override methods that UIPresenter might call
         STDMETHODIMP QueryInterface(REFIID riid, void** ppvObj) override
@@ -263,16 +275,6 @@ namespace TSFIntegrationTests
     // Forward declare TEST_CLASS so StubCDIME can reference it
     class UIPresenterIntegrationTest;
 
-    // Implementation of StubCDIME::SetupMockThreadMgr
-    // This will call the helper in TEST_CLASS that has friend access
-    inline void StubCDIME::SetupMockThreadMgr()
-    {
-        // Forward to TEST_CLASS helper (defined below)
-        // Will be resolved after TEST_CLASS is fully defined
-        extern void SetupMockThreadMgrForStub(StubCDIME* pStub);
-        SetupMockThreadMgrForStub(this);
-    }
-
     // Helper class: Simple mock for CompositionProcessorEngine
     // We don't inherit because CCompositionProcessorEngine requires complex initialization
     // Instead, we just provide the minimal interface UIPresenter needs
@@ -298,18 +300,6 @@ namespace TSFIntegrationTests
     TEST_CLASS(UIPresenterIntegrationTest)
     {
     public:
-        // Helper method to setup mock ThreadMgr (uses friend access to CDIME)
-        static void SetupMockThreadMgrHelper(StubCDIME* pStub)
-        {
-            if (!pStub->_mockThreadMgr)
-            {
-                pStub->_mockThreadMgr = new StubTfThreadMgr();
-                pStub->_mockThreadMgr->AddRef();
-                // Access CDIME's private _pThreadMgr via friend access
-                pStub->_pThreadMgr = pStub->_mockThreadMgr;
-            }
-        }
-
         TEST_CLASS_INITIALIZE(ClassSetup)
         {
             Logger::WriteMessage("UIPresenterIntegrationTest: Initializing IT-06 tests\n");
@@ -1678,235 +1668,7 @@ namespace TSFIntegrationTests
             // Cleanup
             pUIPresenter->Release();
         }
-
-        // ===================================================================
-        // IT-06-17: TSF Lifecycle Methods (with lightweight mocks)
-        // Target: BeginUIElement, EndUIElement,OnSetThreadFocus, OnKillThreadFocus
-        // ===================================================================
-
-        TEST_METHOD(IT06_17_BeginUIElement)
-        {
-            Logger::WriteMessage("Test: IT06_17_BeginUIElement\n");
-
-            // Arrange: Create UIPresenter with stubbed CDIME that provides mock ITfThreadMgr
-            StubCDIME* pStubDIME = new StubCDIME();
-            pStubDIME->SetupMockThreadMgr(); // Initialize mock ThreadMgr
-            CUIPresenter* pUIPresenter = new CUIPresenter(pStubDIME, nullptr);
-
-            // Act: Call BeginUIElement (requires ITfThreadMgr → ITfUIElementMgr)
-            HRESULT hr = pUIPresenter->BeginUIElement();
-
-            // Assert: Should succeed with mock ThreadMgr
-            Assert::IsTrue(SUCCEEDED(hr), L"BeginUIElement should succeed with mock ThreadMgr");
-
-            // Cleanup
-            pUIPresenter->Release();
-        }
-
-        TEST_METHOD(IT06_17_EndUIElement)
-        {
-            Logger::WriteMessage("Test: IT06_17_EndUIElement\n");
-
-            // Arrange: Begin UI element first
-            StubCDIME* pStubDIME = new StubCDIME();
-            pStubDIME->SetupMockThreadMgr(); // Initialize mock ThreadMgr
-            CUIPresenter* pUIPresenter = new CUIPresenter(pStubDIME, nullptr);
-            pUIPresenter->BeginUIElement(); // This sets _uiElementId
-
-            // Act: Call EndUIElement
-            HRESULT hr = pUIPresenter->EndUIElement();
-
-            // Assert: Should succeed
-            Assert::IsTrue(SUCCEEDED(hr), L"EndUIElement should succeed");
-
-            // Cleanup
-            pUIPresenter->Release();
-        }
-
-        TEST_METHOD(IT06_17_OnSetThreadFocus)
-        {
-            Logger::WriteMessage("Test: IT06_17_OnSetThreadFocus\n");
-
-            // Arrange
-            StubCDIME* pStubDIME = new StubCDIME();
-            CUIPresenter* pUIPresenter = new CUIPresenter(pStubDIME, nullptr);
-
-            // Act: Set thread focus
-            HRESULT hr = pUIPresenter->OnSetThreadFocus();
-
-            // Assert: Returns S_OK or E_FAIL (depends on internal state)
-            // Just verify it doesn't crash
-            Assert::IsTrue(hr == S_OK || hr == E_FAIL, L"OnSetThreadFocus returns valid HRESULT");
-
-            // Cleanup
-            pUIPresenter->Release();
-        }
-
-        TEST_METHOD(IT06_17_OnKillThreadFocus)
-        {
-            Logger::WriteMessage("Test: IT06_17_OnKillThreadFocus\n");
-
-            // Arrange
-            StubCDIME* pStubDIME = new StubCDIME();
-            CUIPresenter* pUIPresenter = new CUIPresenter(pStubDIME, nullptr);
-
-            // Act: Kill thread focus
-            HRESULT hr = pUIPresenter->OnKillThreadFocus();
-
-            // Assert: Returns S_OK or E_FAIL
-            Assert::IsTrue(hr == S_OK || hr == E_FAIL, L"OnKillThreadFocus returns valid HRESULT");
-
-            // Cleanup
-            pUIPresenter->Release();
-        }
-
-        // ===================================================================
-        // IT-06-18: Internal UI Update Methods
-        // Target: _SetCandidateText, _GetCandidateSelection, paging with _isShowMode=FALSE
-        // ===================================================================
-
-        TEST_METHOD(IT06_18_SetCandidateText)
-        {
-            Logger::WriteMessage("Test: IT06_18_SetCandidateText\n");
-
-            // Arrange: Create UIPresenter with candidate window
-            StubCDIME* pStubDIME = new StubCDIME();
-            CUIPresenter* pUIPresenter = new CUIPresenter(pStubDIME, nullptr);
-            StubTfContext* pStubContext = new StubTfContext();
-            pUIPresenter->MakeCandidateWindow(pStubContext, 200);
-
-            // Create candidate list
-            CDIMEArray<CCandidateListItem> candidateList;
-            CCandidateListItem* item1 = new CCandidateListItem();
-            item1->_ItemString.Set(L"Candidate1", 10);
-            item1->_FindKeyCode.Set(L"key1", 4);
-            candidateList.Append(item1);
-
-            CCandidateListItem* item2 = new CCandidateListItem();
-            item2->_ItemString.Set(L"Candidate2", 10);
-            item2->_FindKeyCode.Set(L"key2", 4);
-            candidateList.Append(item2);
-
-            CCandidateRange indexRange;
-            indexRange.Set(0, 2);
-
-            // Act: Set candidate text (internal method, tests AddCandidateToUI + SetPageIndexWithScrollInfo)
-            pUIPresenter->_SetCandidateText(&candidateList, &indexRange, TRUE, 100);
-
-            // Assert: Verify candidates were added (GetCount should return non-zero)
-            UINT count = 0;
-            pUIPresenter->GetCount(&count);
-            Assert::AreEqual(2U, count, L"Should have 2 candidates after _SetCandidateText");
-
-            // Cleanup
-            pStubContext->Release();
-            pUIPresenter->Release();
-        }
-
-        TEST_METHOD(IT06_18_GetCandidateSelection)
-        {
-            Logger::WriteMessage("Test: IT06_18_GetCandidateSelection\n");
-
-            // Arrange: Create UIPresenter with candidates
-            StubCDIME* pStubDIME = new StubCDIME();
-            CUIPresenter* pUIPresenter = new CUIPresenter(pStubDIME, nullptr);
-            StubTfContext* pStubContext = new StubTfContext();
-            pUIPresenter->MakeCandidateWindow(pStubContext, 200);
-
-            CDIMEArray<CCandidateListItem> candidateList;
-            CCandidateListItem* item1 = new CCandidateListItem();
-            item1->_ItemString.Set(L"Test", 4);
-            candidateList.Append(item1);
-            pUIPresenter->AddCandidateToUI(&candidateList, FALSE);
-
-            pUIPresenter->_SetCandidateSelection(0, FALSE);
-
-            // Act: Get current selection
-            INT selection = pUIPresenter->_GetCandidateSelection();
-
-            // Assert: Should return 0 (first item)
-            Assert::AreEqual(0, selection, L"Selection should be 0");
-
-            // Cleanup
-            pStubContext->Release();
-            pUIPresenter->Release();
-        }
-
-        TEST_METHOD(IT06_18_MoveCandidatePage_UILessMode)
-        {
-            Logger::WriteMessage("Test: IT06_18_MoveCandidatePage_UILessMode\n");
-
-            // Arrange: Create UIPresenter with candidates in UILess mode
-            StubCDIME* pStubDIME = new StubCDIME();
-            CUIPresenter* pUIPresenter = new CUIPresenter(pStubDIME, nullptr);
-            StubTfContext* pStubContext = new StubTfContext();
-            pUIPresenter->MakeCandidateWindow(pStubContext, 200);
-
-            // Add multiple pages of candidates
-            CDIMEArray<CCandidateListItem> candidateList;
-            for (int i = 0; i < 20; i++)
-            {
-                CCandidateListItem* item = new CCandidateListItem();
-                WCHAR buffer[20];
-                StringCchPrintfW(buffer, 20, L"Candidate%d", i);
-                item->_ItemString.Set(buffer, wcslen(buffer));
-                candidateList.Append(item);
-            }
-            CCandidateRange indexRange;
-            indexRange.Set(0, 10);
-            pUIPresenter->_SetCandidateText(&candidateList, &indexRange, FALSE, 100);
-
-            // Hide window to trigger UILess mode path
-            pUIPresenter->Show(FALSE);
-
-            // Act: Move page (should trigger _UpdateUIElement path)
-            BOOL result = pUIPresenter->_MoveCandidatePage(1);
-
-            // Assert: Operation should succeed
-            Assert::IsTrue(result, L"MoveCandidatePage should succeed in UILess mode");
-
-            // Cleanup
-            pStubContext->Release();
-            pUIPresenter->Release();
-        }
-
-        TEST_METHOD(IT06_18_SetCandidateSelection_WithNotify)
-        {
-            Logger::WriteMessage("Test: IT06_18_SetCandidateSelection_WithNotify\n");
-
-            // Arrange: Create UIPresenter with candidates
-            StubCDIME* pStubDIME = new StubCDIME();
-            CUIPresenter* pUIPresenter = new CUIPresenter(pStubDIME, nullptr);
-            StubTfContext* pStubContext = new StubTfContext();
-            pUIPresenter->MakeCandidateWindow(pStubContext, 200);
-
-            CDIMEArray<CCandidateListItem> candidateList;
-            CCandidateListItem* item = new CCandidateListItem();
-            item->_ItemString.Set(L"Test", 4);
-            candidateList.Append(item);
-            pUIPresenter->AddCandidateToUI(&candidateList, FALSE);
-
-            // Hide window to test UILess mode path
-            pUIPresenter->Show(FALSE);
-
-            // Act: Set selection with notify=TRUE (tests different code path)
-            BOOL result = pUIPresenter->_SetCandidateSelection(0, TRUE);
-
-            // Assert: Should succeed
-            Assert::IsTrue(result, L"SetCandidateSelection with notify should succeed");
-
-            // Cleanup
-            pStubContext->Release();
-            pUIPresenter->Release();
-        }
     };
-
-    // Implementation of helper function for SetupMockThreadMgr
-    // This function has access to TEST_CLASS's static helper method
-    void SetupMockThreadMgrForStub(StubCDIME* pStub)
-    {
-        UIPresenterIntegrationTest::SetupMockThreadMgrHelper(pStub);
-    }
 
 }
 

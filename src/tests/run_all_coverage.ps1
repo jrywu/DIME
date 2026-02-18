@@ -15,14 +15,14 @@ if (-not $opencpp) {
 }
 
 # Find vstest.console.exe
-$vstest = "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\TestWindow\vstest.console.exe"
+$vstest = "C:\Program Files\Microsoft Visual Studio\18\Community\Common7\IDE\CommonExtensions\Microsoft\TestWindow\vstest.console.exe"
 if (-not (Test-Path $vstest)) {
     Write-Host "ERROR: vstest.console.exe not found at expected location" -ForegroundColor Red
     exit 1
 }
 
-Write-Host "✓ OpenCppCoverage found" -ForegroundColor Green
-Write-Host "✓ vstest.console.exe found" -ForegroundColor Green
+Write-Host "CheckMark OpenCppCoverage found" -ForegroundColor Green
+Write-Host "CheckMark vstest.console.exe found" -ForegroundColor Green
 Write-Host ""
 
 # Navigate to root DIME directory
@@ -32,20 +32,14 @@ Set-Location $rootDir
 
 # Build paths
 $dllPath = "src\tests\bin\x64\Debug\DIMETests.dll"
-$dimeDllPath = "src\Debug\x64\DIME.dll"
 
 if (-not (Test-Path $dllPath)) {
     Write-Host "ERROR: Test DLL not found at: $dllPath" -ForegroundColor Red
+    Write-Host "Please build the test project first." -ForegroundColor Yellow
     exit 1
 }
 
-if (-not (Test-Path $dimeDllPath)) {
-    Write-Host "ERROR: DIME.dll not found at: $dimeDllPath" -ForegroundColor Red
-    exit 1
-}
-
-Write-Host "✓ Test DLL found: $dllPath" -ForegroundColor Green
-Write-Host "✓ DIME.dll found: $dimeDllPath" -ForegroundColor Green
+Write-Host "CheckMark Test DLL found: $dllPath" -ForegroundColor Green
 Write-Host ""
 
 # Create output directory
@@ -61,9 +55,9 @@ Write-Host ""
 $outputFile = "$outputDir\AllTests_Coverage.xml"
 
 $args = @(
-    "--modules", "*DIME.dll",
-    "--sources", "C:\Users\Jeremy\Documents\GitHub\DIME\src\*",
-    "--excluded_sources", "*\tests\*",
+    "--modules", "*DIMETests.dll",
+    "--sources", "src\*",
+    "--excluded_sources", "*\tests\*;*Test*.cpp;*\pch.cpp;*\TestStubs.cpp",
     "--export_type=cobertura:$outputFile",
     "--", $vstest, $dllPath
 )
@@ -96,7 +90,9 @@ if ($LASTEXITCODE -eq 0) {
             Write-Host "========================================" -ForegroundColor Cyan
             Write-Host "COVERAGE SUMMARY" -ForegroundColor Cyan
             Write-Host "========================================" -ForegroundColor Cyan
-            Write-Host "Line Coverage:   $lineRate% ($coveredLines / $totalLines lines)" -ForegroundColor $(if ($lineRate -ge 90) { "Green" } elseif ($lineRate -ge 80) { "Yellow" } else { "Red" })
+            
+            $lineInfo = "$coveredLines / $totalLines lines"
+            Write-Host "Line Coverage:   $lineRate% ($lineInfo)" -ForegroundColor $(if ($lineRate -ge 90) { "Green" } elseif ($lineRate -ge 80) { "Yellow" } else { "Red" })
             Write-Host "Branch Coverage: $branchRate%" -ForegroundColor $(if ($branchRate -ge 85) { "Green" } elseif ($branchRate -ge 75) { "Yellow" } else { "Red" })
             Write-Host ""
         }

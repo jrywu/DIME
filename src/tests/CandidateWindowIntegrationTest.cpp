@@ -41,7 +41,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
-namespace TSFIntegrationTests
+namespace DIMEIntegratedTests
 {
     // Helper callback for candidate window
     HRESULT CALLBACK TestCandidateCallback(void* pv, enum CANDWND_ACTION action)

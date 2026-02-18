@@ -79,6 +79,8 @@
     <None Include="..\LICENSE.md" />
     <None Include="src\DIME_updated.sln" />
     <None Include="tests\DIMETests.vcxproj" />
+    <None Include="docs\TEST_PLAN.md" />
+    <None Include="docs\TEST_REPORT.md" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BaseWindow.h">

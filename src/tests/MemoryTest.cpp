@@ -1,4 +1,4 @@
-/* DIME IME for Windows 7/8/10/11
+﻿/* DIME IME for Windows 7/8/10/11
 
 BSD 3-Clause License
 
@@ -56,7 +56,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
-namespace DIMETests
+namespace DIMEUnitTests
 {
     TEST_CLASS(MemoryTest)
     {

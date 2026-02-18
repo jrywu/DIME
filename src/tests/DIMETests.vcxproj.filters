@@ -209,6 +209,12 @@
     <ClCompile Include="CandidateWindowIntegrationTest.cpp">
       <Filter>Source Files\Integration Tests</Filter>
     </ClCompile>
+    <ClCompile Include="TSFCoreLogicIntegrationTest.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="UIPresenterIntegrationTest.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="SettingsDialogIntegrationTest.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

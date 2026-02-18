@@ -37,6 +37,8 @@
   <ItemGroup>
     <None Include="..\LICENSE.md" />
     <None Include="..\README.md" />
+    <None Include="docs\TEST_PLAN.md" />
+    <None Include="docs\TEST_REPORT.md" />
     <None Include="image\DoubleSingleByteOff.ico" />
     <None Include="image\DoubleSingleByteOn.ico" />
     <None Include="image\ImeModeOff.ico" />

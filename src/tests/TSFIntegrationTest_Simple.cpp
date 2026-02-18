@@ -17,7 +17,7 @@
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
-namespace TSFIntegrationTests
+namespace DIMEIntegratedTests
 {
     TEST_CLASS(TSFIntegrationTest_Simple)
     {

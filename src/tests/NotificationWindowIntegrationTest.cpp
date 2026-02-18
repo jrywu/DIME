@@ -1,4 +1,4 @@
-/* DIME IME for Windows 7/8/10/11
+﻿/* DIME IME for Windows 7/8/10/11
 
 BSD 3-Clause License
 
@@ -41,7 +41,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
-namespace TSFIntegrationTests
+namespace DIMEIntegratedTests
 {
     // Helper callback function for CNotifyWindow
     static HRESULT TestNotifyCallback(void *pv, enum NOTIFY_WND action, _In_ WPARAM wParam, _In_ LPARAM lParam)
