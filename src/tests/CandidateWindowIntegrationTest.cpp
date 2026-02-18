@@ -44,7 +44,7 @@ using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 namespace DIMEIntegratedTests
 {
     // Helper callback for candidate window
-    HRESULT CALLBACK TestCandidateCallback(void* pv, enum CANDWND_ACTION action)
+    HRESULT TestCandidateCallback(void* pv, enum CANDWND_ACTION action)
     {
         // Simple test callback
         return S_OK;

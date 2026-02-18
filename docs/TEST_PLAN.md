@@ -449,16 +449,25 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        platform: [x86, x64, ARM64EC]
+        platform: [Win32, x64, ARM64EC]
         configuration: [Debug, Release]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+      
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v2
+      
+      - name: Setup VSTest
+        uses: darenm/Setup-VSTest@v1.3
+      
       - name: Build & Run Tests
         run: |
-          msbuild DIME.sln /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }}
+          cd src
+          msbuild DIME.sln /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /p:PlatformToolset=v143
           vstest.console.exe bin\${{ matrix.platform }}\${{ matrix.configuration }}\DIMETests.dll /logger:trx
+      
       - name: Upload Results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: test-results-${{ matrix.platform }}-${{ matrix.configuration }}
           path: TestResults/*.trx
