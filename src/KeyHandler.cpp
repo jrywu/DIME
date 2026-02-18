@@ -547,7 +547,8 @@ HRESULT CDIME::_HandleCompositionShiftEnglishInput(TfEditCookie ec, _In_ ITfCont
     }
     else
     {
-        // For non-alphabetic characters (numbers, symbols), use keyboard state
+        // For non-alphabetic characters (numbers, symbols, space), use keyboard state
+        // Note: Space character is unaffected by CapsLock/Shift - ToUnicodeEx always returns space
         UINT vKey = VkKeyScanExW(wch, GetKeyboardLayout(0));
         
         if (vKey != 0xFFFF)  // Valid key found

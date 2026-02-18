@@ -103,7 +103,14 @@ else if (IsEqualGUID(rguid, _PreservedKey_DoubleSingleByte.Guid))
                 
                 if (_pTextService)
                 {
-                    _pTextService->_InvokeKeyHandler(pContext, VK_SPACE, L' ', 0, keyState);
+                    // Create an edit session to inject the space character
+                    CKeyHandlerEditSession* pEditSession = new (std::nothrow) CKeyHandlerEditSession(_pTextService, pContext, VK_SPACE, L' ', keyState);
+                    if (pEditSession)
+                    {
+                        HRESULT hrSession = S_OK;
+                        pContext->RequestEditSession(_pTextService->_GetClientId(), pEditSession, TF_ES_ASYNCDONTCARE | TF_ES_READWRITE, &hrSession);
+                        pEditSession->Release();
+                    }
                 }
                 
                 pContext->Release();
