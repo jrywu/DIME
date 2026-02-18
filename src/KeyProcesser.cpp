@@ -1,4 +1,4 @@
-/* DIME IME for Windows 7/8/10/11
+﻿/* DIME IME for Windows 7/8/10/11
 
 BSD 3-Clause License
 
@@ -580,20 +580,20 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 	return FALSE;
 	}
 	
-	// Handle Shift+letter for inverted English input (lowercase when CapsLock off, uppercase when CapsLock on)
-	if (pwch && *pwch)
+	// Handle Shift+printable ASCII for English input mode
+	if (pwch && *pwch && (Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_RSHIFT | TF_MOD_SHIFT)) != 0)
 	{
-	WCHAR c = towupper(*pwch);
-	if (c >= 'A' && c <= 'Z' && (Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_RSHIFT | TF_MOD_SHIFT)) != 0)
-	{
-	// Eat the key and handle inverted case ourselves
-	if (pKeyState)
-	{
-	pKeyState->Category = KEYSTROKE_CATEGORY::CATEGORY_COMPOSING;
-	pKeyState->Function = KEYSTROKE_FUNCTION::FUNCTION_SHIFT_ENGLISH_INPUT;
-	}
-	return TRUE;
-	}
+		WCHAR c = *pwch;
+		// Check for printable ASCII characters (iswprint filters control chars)
+		if (iswprint(c))
+		{
+			if (pKeyState)
+			{
+				pKeyState->Category = KEYSTROKE_CATEGORY::CATEGORY_COMPOSING;
+				pKeyState->Function = KEYSTROKE_FUNCTION::FUNCTION_SHIFT_ENGLISH_INPUT;
+			}
+			return TRUE;
+		}
 	}
 	
 	//Processing Composing keys -------------------------------------------------------------------------------------------

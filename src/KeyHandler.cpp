@@ -522,9 +522,9 @@ HRESULT CDIME::_HandleCompositionDoubleSingleByte(TfEditCookie ec, _In_ ITfConte
 //
 // _HandleCompositionShiftEnglishInput
 //
-// Handle Shift+letter for inverted English input:
-// - CapsLock OFF: produce lowercase letter
-// - CapsLock ON: produce uppercase letter
+// Handle Shift+printable ASCII for English input:
+// - CapsLock OFF: produce base characters (a, 1, -)
+// - CapsLock ON: produce shifted characters (A, !, _)
 //----------------------------------------------------------------------------
 
 HRESULT CDIME::_HandleCompositionShiftEnglishInput(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch)
@@ -537,30 +537,55 @@ HRESULT CDIME::_HandleCompositionShiftEnglishInput(TfEditCookie ec, _In_ ITfCont
         _HandleCancel(ec, pContext);
     }
 
-    // Determine the correct case based on CapsLock state
-    // GetKeyState returns the toggle state in the low-order bit
+    WCHAR outputChar = wch; // Default fallback
     BOOL isCapsLockOn = (GetKeyState(VK_CAPITAL) & 0x0001) != 0;
     
-    WCHAR outputChar;
-    WCHAR upperChar = towupper(wch);
-    WCHAR lowerChar = towlower(wch);
-    
-    // Inverted behavior:
-    // - CapsLock OFF + Shift ¡÷ lowercase
-    // - CapsLock ON + Shift ¡÷ uppercase
-    if (isCapsLockOn)
+    // For alphabetic characters, simply apply case conversion based on CapsLock
+    if (iswalpha(wch))
     {
-        outputChar = upperChar;
+        outputChar = isCapsLockOn ? towupper(wch) : towlower(wch);
     }
     else
     {
-        outputChar = lowerChar;
+        // For non-alphabetic characters (numbers, symbols), use keyboard state
+        UINT vKey = VkKeyScanExW(wch, GetKeyboardLayout(0));
+        
+        if (vKey != 0xFFFF)  // Valid key found
+        {
+            BYTE scanCode = (BYTE)MapVirtualKey(LOBYTE(vKey), MAPVK_VK_TO_VSC);
+            BYTE keyState[256] = {0};
+            WCHAR result[2] = {0};
+            
+            // Set up keyboard state based on CapsLock
+            // CapsLock OFF: clear shift (get base character - numbers, lowercase, base symbols)
+            // CapsLock ON: keep shift (get shifted character - special chars, uppercase)
+            if (!isCapsLockOn)
+            {
+                // Clear shift to get base character
+                keyState[VK_SHIFT] = 0x00;
+                keyState[VK_LSHIFT] = 0x00;
+                keyState[VK_RSHIFT] = 0x00;
+                keyState[VK_CAPITAL] = 0x00; // CapsLock OFF
+            }
+            else
+            {
+                // Keep shift pressed to get shifted character
+                keyState[VK_SHIFT] = 0x80;
+                keyState[VK_CAPITAL] = 0x01; // CapsLock ON
+            }
+            
+            // Get the character with the modified keyboard state
+            // This automatically handles all keyboard layouts
+            if (ToUnicodeEx(LOBYTE(vKey), scanCode, keyState, result, 2, 0, GetKeyboardLayout(0)) == 1)
+            {
+                outputChar = result[0];
+            }
+        }
     }
 
     CStringRange charString;
     charString.Set(&outputChar, 1);
 
-    // Finalize character directly
     hr = _AddCharAndFinalize(ec, pContext, &charString);
     if (FAILED(hr))
     {
@@ -568,8 +593,7 @@ HRESULT CDIME::_HandleCompositionShiftEnglishInput(TfEditCookie ec, _In_ ITfCont
     }
 
     _HandleCancel(ec, pContext);
-
-    return S_OK;
+    return hr;
 }
 
 //+---------------------------------------------------------------------------
