@@ -417,7 +417,12 @@ ReadValue:
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"IMEShiftMode", 12)) == CSTR_EQUAL)
 					CConfig::SetIMEShiftMode((IME_SHIFT_MODE)_wtoi(valueStrings.GetAt(0)->Get()));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"MaxCodes", 8)) == CSTR_EQUAL)
-					CConfig::SetMaxCodes(_wtoi(valueStrings.GetAt(0)->Get()));
+				{
+					int maxCodes = _wtoi(valueStrings.GetAt(0)->Get());
+					if (maxCodes > 0 && maxCodes <= MAX_CODES) // Validate range
+						CConfig::SetMaxCodes(maxCodes);
+					// If invalid, keep the current default value
+				}
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ActivatedKeyboardMode", 21)) == CSTR_EQUAL)
 					CConfig::SetActivatedKeyboardMode((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"MakePhrase", 10)) == CSTR_EQUAL)

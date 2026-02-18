@@ -1165,6 +1165,53 @@ void CConfig::SetIMEMode(IME_MODE imeMode)
 //
 //----------------------------------------------------------------------------
 
+//+---------------------------------------------------------------------------
+//
+// SetIMEModeDefaults
+//
+// Set IME-specific default values based on mode
+// This ensures corrupted config values fall back to appropriate defaults
+//
+//----------------------------------------------------------------------------
+void CConfig::SetIMEModeDefaults(IME_MODE imeMode)
+{
+	if (imeMode == IME_MODE::IME_MODE_ARRAY)
+	{
+		_arrayScope = ARRAY_SCOPE::ARRAY30_UNICODE_EXT_A;
+		_autoCompose = TRUE;
+		_maxCodes = 5;
+		_spaceAsPageDown = 0;
+		_spaceAsFirstCandSelkey = 0;
+	}
+	else if (imeMode == IME_MODE::IME_MODE_PHONETIC)
+	{
+		_autoCompose = FALSE;
+		_maxCodes = 4;
+		_spaceAsPageDown = 1;
+		_spaceAsFirstCandSelkey = 0;
+	}
+	else if (imeMode == IME_MODE::IME_MODE_DAYI)
+	{
+		_autoCompose = FALSE;
+		_maxCodes = 4;
+		_spaceAsPageDown = 0;
+		_spaceAsFirstCandSelkey = 1;
+	}
+	else
+	{
+		_autoCompose = FALSE;
+		_maxCodes = 4;
+		_spaceAsPageDown = 0;
+		_spaceAsFirstCandSelkey = 0;
+	}
+}
+
+//+---------------------------------------------------------------------------
+//
+// LoadConfig
+//
+//----------------------------------------------------------------------------
+
 BOOL CConfig::LoadConfig(IME_MODE imeMode)
 {
 	debugPrint(L"CDIME::loadConfig() \n");
@@ -1187,6 +1234,11 @@ BOOL CConfig::LoadConfig(IME_MODE imeMode)
 		if (failed || updated || _configIMEMode!=imeMode)
 		{
 			bRET = TRUE;
+			
+			// Set IME-specific defaults before parsing
+			// Valid config values will override defaults; corrupted values are skipped keeping defaults
+			SetIMEModeDefaults(imeMode);
+			
 			CFile* iniDictionaryFile;
 			iniDictionaryFile = new (std::nothrow) CFile();
 			if (iniDictionaryFile && (iniDictionaryFile)->CreateFile(_pwszINIFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ | FILE_SHARE_WRITE))
@@ -1246,37 +1298,8 @@ BOOL CConfig::LoadConfig(IME_MODE imeMode)
 	}
 	else
 	{
-		//should do IM specific default here.
-		if (imeMode == IME_MODE::IME_MODE_ARRAY)
-		{
-			_arrayScope = ARRAY_SCOPE::ARRAY30_UNICODE_EXT_A;
-			_autoCompose = TRUE;
-			_maxCodes = 5;
-			_spaceAsPageDown = 0;
-			_spaceAsFirstCandSelkey = 0;
-
-		}
-		else if (imeMode == IME_MODE::IME_MODE_PHONETIC)
-		{
-			_autoCompose = FALSE;
-			_maxCodes = 4;
-			_spaceAsPageDown = 1;
-			_spaceAsFirstCandSelkey = 0;
-		}
-		else if (imeMode == IME_MODE::IME_MODE_DAYI)
-		{
-			_autoCompose = FALSE;
-			_maxCodes = 4;
-			_spaceAsPageDown = 0;
-			_spaceAsFirstCandSelkey = 1;
-		}
-		else
-		{
-			_autoCompose = FALSE;
-			_maxCodes = 4;
-			_spaceAsPageDown = 0;
-			_spaceAsFirstCandSelkey = 0;
-		}
+		// Config file doesn't exist - set IME-specific defaults
+		SetIMEModeDefaults(imeMode);
 
 		if (imeMode != IME_MODE::IME_MODE_NONE)
 			WriteConfig(FALSE); // config.ini is not there. create one.

@@ -251,6 +251,8 @@ private:
 
 	static void clearReverseConvervsionInfoList();
 
+	static void SetIMEModeDefaults(IME_MODE imeMode);
+
 	static ColorInfo colors[6];
 
 	static UINT _dpiY;

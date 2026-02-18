@@ -93,6 +93,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define MAX_CAND_ITEM_LENGTH 13//6+6+1
 #define TRAILING_SPACE 1
 
+// Maximum codes (radicals) per character lookup
+#define MAX_CODES 20
 
 //---------------------------------------------------------------------
 // Maximum radical size and candidate selkey size

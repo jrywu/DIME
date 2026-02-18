@@ -837,7 +837,7 @@ namespace DIMEUnitTests
 
             // Assert: Should use defaults or handle gracefully
             int maxCodes = CConfig::GetMaxCodes();
-            Assert::IsTrue(maxCodes > 0 && maxCodes <= 10,
+            Assert::IsTrue(maxCodes > 0 && maxCodes <= MAX_CODES,
                 L"LoadConfig should handle corrupted keys gracefully with valid defaults");
         }
 
