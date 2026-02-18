@@ -2,6 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](LICENSE.md)
 [![Windows](https://img.shields.io/badge/Windows-8%20%7C%2010%20%7C%2011-blue)](https://github.com/jrywu/DIME)
+[![DIME Tests](https://github.com/jrywu/DIME/workflows/DIME%20Tests/badge.svg)](https://github.com/jrywu/DIME/actions)
 
 DIME 是一套適用於 Windows 8/10/11 的輸入法框架，支援多種中文輸入法，包含大易、行列、注音、自建輸入法。
 
