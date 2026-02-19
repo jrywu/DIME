@@ -182,7 +182,7 @@ if (-not (Test-Path $readmePath)) {
     # Note: This script file should be saved as UTF-8 with BOM for proper encoding
     $checksumSection = @"
 
-   **最新開發中版本 DIME v1.2.$commitCount SHA-256 CHECKSUM (更新日期: $date):**
+   **最新開發版本 DIME v1.2.$commitCount SHA-256 CHECKSUM (更新日期: $date):**
    
    | 檔案 | SHA-256 CHECKSUM |
    |------|----------------|
