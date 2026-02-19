@@ -4,7 +4,7 @@ name: Build Installer
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [master]
     paths:
       - 'src/**/*.cpp'
       - 'src/**/*.h'
@@ -16,7 +16,7 @@ on:
       - 'installer/*.nsi'
       - 'installer/*.ps1'
   pull_request:
-    branches: [main]
+    branches: [master]
     paths:
       - 'src/**/*.cpp'
       - 'src/**/*.h'
