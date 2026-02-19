@@ -168,12 +168,21 @@ if (-not (Test-Path $readmePath)) {
     $utf8WithBom = New-Object System.Text.UTF8Encoding $true
     $readmeFullPath = (Resolve-Path $readmePath).Path
     $content = [System.IO.File]::ReadAllText($readmeFullPath, $utf8NoBom)
+    # Extract commit count from buildInfo.h
+    $buildInfoPath = "..\src\buildInfo.h"
+    $commitCount = 0
+    if (Test-Path $buildInfoPath) {
+        $buildInfoContent = Get-Content $buildInfoPath | Select-String "#define BUILD_COMMIT_COUNT\s+(\d+)"
+        if ($buildInfoContent) {
+            $commitCount = [int]($buildInfoContent.Matches[0].Groups[1].Value)
+        }
+    }
     
     # Build the new checksum section with direct Chinese text
     # Note: This script file should be saved as UTF-8 with BOM for proper encoding
     $checksumSection = @"
 
-   **最新開發中版本 SHA-256 CHECKSUM (更新日期: $date):**
+   **最新開發版本 DIME v1.2.$commitCount SHA-256 CHECKSUM (更新日期: $date):**
    
    | 檔案 | SHA-256 CHECKSUM |
    |------|----------------|
