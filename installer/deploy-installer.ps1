@@ -89,7 +89,7 @@ Write-Host "  Using NSIS: $nsisPath" -ForegroundColor Gray
 
 # Run NSIS
 try {
-    & $nsisPath "DIME-Universal.nsi"
+    & $nsisPath "..\Installer\DIME-Universal.nsi"
     Write-Host "  Installer built successfully!" -ForegroundColor Green
 } catch {
     Write-Host "  ERROR: Failed to build installer!" -ForegroundColor Red
