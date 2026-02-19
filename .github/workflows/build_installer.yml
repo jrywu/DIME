@@ -69,5 +69,6 @@ jobs:
           git add README.md
           git add installer/DIME-Universal.zip
           git diff --staged --quiet || git commit -m "Update DIME installer and checksums [bot]"
+          git pull --rebase
           git push
         shell: pwsh
