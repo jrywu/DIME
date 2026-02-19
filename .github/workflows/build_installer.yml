@@ -55,7 +55,8 @@ jobs:
       
       - name: Build Installer with PowerShell Script
         run: |
-          installer/deploy-installer.ps1
+          cd installer
+          ./deploy-installer.ps1
         shell: pwsh
       
       
