@@ -69,22 +69,3 @@ jobs:
         with:
           name: test-results-${{ matrix.platform }}-${{ matrix.configuration }}
           path: src/TestResults/*.trx
-        uses: darenm/Setup-VSTest@v1.3
-      
-      - name: Build
-        run: |
-          cd src
-          msbuild DIME.sln /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /p:PlatformToolset=v143
-      
-      - name: Run Tests
-        if: matrix.run-tests
-        run: |
-          cd src
-          vstest.console.exe bin\${{ matrix.platform }}\${{ matrix.configuration }}\DIMETests.dll /logger:trx
-      
-      - name: Upload Results
-        if: matrix.run-tests
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results-${{ matrix.platform }}-${{ matrix.configuration }}
-          path: src/TestResults/*.trx
