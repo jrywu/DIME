@@ -38,6 +38,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       
       - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@v2
