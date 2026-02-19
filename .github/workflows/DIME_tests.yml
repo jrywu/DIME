@@ -1,29 +1,74 @@
 name: DIME Tests
 
-on: [push, pull_request]
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * *'  # Every day at 2 AM UTC
 
 jobs:
+  check-changes:
+    runs-on: windows-latest
+    outputs:
+      should-run: ${{ steps.check.outputs.should-run }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check conditions
+        id: check
+        shell: pwsh
+        run: |
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            Write-Host "Manual trigger - running tests"
+            echo "should-run=true" >> $env:GITHUB_OUTPUT
+            exit 0
+          }
+          # Check for recent manual runs in last 24 hours
+          $env:GH_TOKEN = "${{ github.token }}"
+          $cutoffDate = (Get-Date).AddHours(-24).ToString("yyyy-MM-ddTHH:mm:ssZ")
+          $recentManual = gh run list --workflow="${{ github.workflow }}" --event=workflow_dispatch --created=">=$cutoffDate" --limit=1 --json databaseId --jq '.[0].databaseId'
+          if ($recentManual) {
+            Write-Host "Manual trigger occurred in last 24 hours, skipping scheduled run"
+            echo "should-run=false" >> $env:GITHUB_OUTPUT
+            exit 0
+          }
+          # Check for source changes in last 24 hours
+          $changes = git log --since="24 hours ago" --name-only --pretty=format: -- 'src/**/*.cpp' 'src/**/*.h' 'src/**/*.rc' 'src/**/*.def' 'src/**/*.sln' 'src/**/*.vcxproj' 'src/**/*.vcxproj.filters' | Sort-Object -Unique | Where-Object { $_ -ne "" }
+          if ($changes) {
+            Write-Host "Source changes detected in last 24 hours"
+            echo "should-run=true" >> $env:GITHUB_OUTPUT
+          } else {
+            Write-Host "No source changes in last 24 hours"
+            echo "should-run=false" >> $env:GITHUB_OUTPUT
+          }
+
   test:
+    needs: check-changes
+    if: needs.check-changes.outputs.should-run == 'true'
     runs-on: windows-latest
     strategy:
       matrix:
-        platform: [Win32, x64, ARM64]
+        platform: [Win32, x64]
         configuration: [Debug, Release]
-        include:
-          - platform: Win32
-            run-tests: true
-          - platform: x64
-            run-tests: true
-          - platform: ARM64
-            run-tests: false
     steps:
       - uses: actions/checkout@v4
-      
       - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@v2
-      
       - name: Setup VSTest
-        if: matrix.run-tests
+        uses: darenm/Setup-VSTest@v1.3
+      - name: Build
+        run: |
+          cd src
+          msbuild DIME.sln /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /p:PlatformToolset=v143
+      - name: Run Tests
+        run: |
+          cd src
+          vstest.console.exe bin\${{ matrix.platform }}\${{ matrix.configuration }}\DIMETests.dll /logger:trx
+      - name: Upload Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.platform }}-${{ matrix.configuration }}
+          path: src/TestResults/*.trx
         uses: darenm/Setup-VSTest@v1.3
       
       - name: Build

@@ -1,6 +1,5 @@
 ﻿Unicode True
 !include MUI2.nsh
-;!include "Registry.nsh"
 !include x64.nsh
 
 
