@@ -55,8 +55,7 @@ jobs:
       
       - name: Build Installer with PowerShell Script
         run: |
-          cd installer
-          .\deploy-installer.ps1
+          installer/deploy-installer.ps1
         shell: pwsh
       
       
@@ -64,7 +63,7 @@ jobs:
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add docs\README.md
+          git add README.md
           git add installer/DIME-Universal.zip
           git diff --staged --quiet || git commit -m "Update test installer and checksums [skip ci]"
           git push
