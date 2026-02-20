@@ -3,7 +3,7 @@ name: DIME Tests
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 2 * * *'  # Every day at 2 AM UTC
+    - cron: '0 18 * * *'  # 2:00 AM Asia/Taipei == 18:00 UTC previous day
 
 jobs:
   check-changes:
