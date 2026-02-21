@@ -191,11 +191,24 @@ if (-not (Test-Path $readmePath)) {
 
 "@
     
+    # Replace content between DOWNLOAD_START and DOWNLOAD_END markers
+    $downloadSection = @"
+
+   **最新開發版本 DIME v1.2.$commitCount (更新日期: $date)**
+
+"@
+    $downloadPattern = '(?s)(   <!-- DOWNLOAD_START -->).*?(   <!-- DOWNLOAD_END -->)'
+    $downloadReplacement = "`${1}$downloadSection`${2}"
+    $content = $content -replace $downloadPattern, $downloadReplacement
+
     # Replace content between CHECKSUM_START and CHECKSUM_END markers
     $pattern = '(?s)(   <!-- CHECKSUM_START -->).*?(   <!-- CHECKSUM_END -->)'
     $replacement = "`${1}$checksumSection`${2}"
     $content = $content -replace $pattern, $replacement
     
+    
+
+
     # Write back to file with UTF8 encoding (no BOM)
     [System.IO.File]::WriteAllText($readmeFullPath, $content, $utf8NoBom)
     
