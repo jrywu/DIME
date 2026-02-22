@@ -82,10 +82,11 @@ BOOL CCompositionProcessorEngine::AddVirtualKey(WCHAR wch)
 	else
 	{
 
-		// Skip max codes limit for phonetic custom phrase mode ('\' trigger),
-		// since custom phrase codes can be longer than the 4-char phonetic syllable limit.
-		if (!(Global::imeMode == IME_MODE::IME_MODE_PHONETIC && IsEscapeInputLeading())
-			&& (UINT)_keystrokeBuffer.GetLength() >= CConfig::GetMaxCodes())
+		// In escape input mode (e.g. '\' for phonetic custom phrase, '=' for Dayi symbol),
+		// use MAX_KEY_LENGTH instead of the IM-specific max codes limit,
+		// since custom phrase/symbol codes can be longer than normal composition codes.
+		UINT maxLen = IsEscapeInputLeading() ? MAX_KEY_LENGTH : CConfig::GetMaxCodes();
+		if ((UINT)_keystrokeBuffer.GetLength() >= maxLen)
 		{
 			_pTextService->DoBeep(BEEP_TYPE::BEEP_WARNING); // do not eat the key if keystroke buffer length >= _maxcodes
 			return FALSE;
