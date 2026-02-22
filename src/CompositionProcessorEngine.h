@@ -75,10 +75,10 @@ public:
     // Preserved key handler
     void OnPreservedKey(REFGUID rguid, _Out_ BOOL *pIsEaten, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId);
 
-    // Symbol mode
-    BOOL IsSymbolChar(WCHAR wch);
-	BOOL IsSymbol();
-	BOOL IsSymbolLeading();
+    // Escape input mode (symbol input for Dayi/Array, custom phrase for Phonetic)
+    BOOL IsEscapeInputChar(WCHAR wch);
+	BOOL IsEscapeInput();
+	BOOL IsEscapeInputLeading();
 
 	//Phonetic composingkey
 	BOOL isEndComposingKey(WCHAR wch);

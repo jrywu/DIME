@@ -52,8 +52,10 @@ BOOL CCompositionProcessorEngine::AddVirtualKey(WCHAR wch)
 	{
 		return FALSE;
 	}
-	if (Global::imeMode == IME_MODE::IME_MODE_PHONETIC)
+	if (Global::imeMode == IME_MODE::IME_MODE_PHONETIC
+		&& wch != L'\\' && !IsEscapeInputLeading())
 	{
+		// Normal phonetic syllable processing
 		UINT oldSyllable = phoneticSyllable;
 		//DWORD_PTR len = _keystrokeBuffer.GetLength();
 
@@ -80,7 +82,10 @@ BOOL CCompositionProcessorEngine::AddVirtualKey(WCHAR wch)
 	else
 	{
 
-		if ((UINT)_keystrokeBuffer.GetLength() >= CConfig::GetMaxCodes())
+		// Skip max codes limit for phonetic custom phrase mode ('\' trigger),
+		// since custom phrase codes can be longer than the 4-char phonetic syllable limit.
+		if (!(Global::imeMode == IME_MODE::IME_MODE_PHONETIC && IsEscapeInputLeading())
+			&& (UINT)_keystrokeBuffer.GetLength() >= CConfig::GetMaxCodes())
 		{
 			_pTextService->DoBeep(BEEP_TYPE::BEEP_WARNING); // do not eat the key if keystroke buffer length >= _maxcodes
 			return FALSE;
@@ -284,31 +289,32 @@ UINT CCompositionProcessorEngine::removeLastPhoneticSymbol()
 }
 //+---------------------------------------------------------------------------
 //
-// IsSymbolLeading()
+// IsEscapeInputLeading()
 //
 //----------------------------------------------------------------------------
-BOOL CCompositionProcessorEngine::IsSymbolLeading()
+BOOL CCompositionProcessorEngine::IsEscapeInputLeading()
 {
-	//debugPrint(L"CCompositionProcessorEngine::IsSymbolLeading()");
+	//debugPrint(L"CCompositionProcessorEngine::IsEscapeInputLeading()");
 	if (_keystrokeBuffer.Get() == nullptr || _keystrokeBuffer.GetLength() ==0)
 		return FALSE;
 	WCHAR c = *_keystrokeBuffer.Get();
 	if ((Global::imeMode == IME_MODE::IME_MODE_DAYI && c == L'=') ||
 		(Global::imeMode == IME_MODE::IME_MODE_ARRAY && (
 			(CConfig::GetArrayScope() != ARRAY_SCOPE::ARRAY40_BIG5 && towupper(c) == L'W') ||
-			CConfig::GetArrayScope() == ARRAY_SCOPE::ARRAY40_BIG5 && (towupper(c) == L'H' || c == L'8'))))
+			CConfig::GetArrayScope() == ARRAY_SCOPE::ARRAY40_BIG5 && (towupper(c) == L'H' || c == L'8'))) ||
+		(Global::imeMode == IME_MODE::IME_MODE_PHONETIC && c == L'\\'))
 		return TRUE;
 	else
 		return FALSE;
 }
 //+---------------------------------------------------------------------------
 //
-// IsSymbol
+// IsEscapeInput
 //
 //----------------------------------------------------------------------------
-BOOL CCompositionProcessorEngine::IsSymbol()
+BOOL CCompositionProcessorEngine::IsEscapeInput()
 {
-	//debugPrint(L"CCompositionProcessorEngine::IsSymbol()");
+	//debugPrint(L"CCompositionProcessorEngine::IsEscapeInput()");
 
 	if (_keystrokeBuffer.Get() == nullptr) 
 		return FALSE;
@@ -329,21 +335,37 @@ BOOL CCompositionProcessorEngine::IsSymbol()
 			return TRUE;
 
 	}
-	//debugPrint(L"CCompositionProcessorEngine::IsSymbol() return FALSE");
+
+	if (Global::imeMode == IME_MODE::IME_MODE_PHONETIC && c == L'\\' && len >= 2)
+		return TRUE;
+
+	//debugPrint(L"CCompositionProcessorEngine::IsEscapeInput() return FALSE");
 	return FALSE;
 }
 
 //+---------------------------------------------------------------------------
 //
-// IsSymbolChar
+// IsEscapeInputChar
 //
 //----------------------------------------------------------------------------
-BOOL CCompositionProcessorEngine::IsSymbolChar(WCHAR wch)
+BOOL CCompositionProcessorEngine::IsEscapeInputChar(WCHAR wch)
 {
-	//debugPrint(L"CCompositionProcessorEngine::IsSymbolChar()");
+	//debugPrint(L"CCompositionProcessorEngine::IsEscapeInputChar()");
+	// Phonetic custom phrase mode: '\' as trigger, alphanumeric chars accepted as code
+	if (Global::imeMode == IME_MODE::IME_MODE_PHONETIC)
+	{
+		if (_keystrokeBuffer.GetLength() == 0 && wch == L'\\')
+			return TRUE;
+		if (_keystrokeBuffer.GetLength() >= 1 && _keystrokeBuffer.Get() && *_keystrokeBuffer.Get() == L'\\')
+		{
+			// Only accept alphanumeric as custom phrase code chars; space/enter/etc. fall through to convert handling
+			if ((wch >= L'a' && wch <= L'z') || (wch >= L'A' && wch <= L'Z') || (wch >= L'0' && wch <= L'9'))
+				return TRUE;
+		}
+	}
 	if (_keystrokeBuffer.Get() == nullptr || _keystrokeBuffer.GetLength() > 1)
 		goto exit;
-	debugPrint(L"CCompositionProcessorEngine::IsSymbolChar(), len = %d, c = %d", _keystrokeBuffer.GetLength(), *_keystrokeBuffer.Get());
+	debugPrint(L"CCompositionProcessorEngine::IsEscapeInputChar(), len = %d, c = %d", _keystrokeBuffer.GetLength(), *_keystrokeBuffer.Get());
 	
 	if (_keystrokeBuffer.GetLength() == 0)
 	{
@@ -373,7 +395,7 @@ BOOL CCompositionProcessorEngine::IsSymbolChar(WCHAR wch)
 		}
 	}
 exit:
-	debugPrint(L"CCompositionProcessorEngine::IsSymbolChar() return FALSE");
+	debugPrint(L"CCompositionProcessorEngine::IsEscapeInputChar() return FALSE");
 	return FALSE;
 }
 
@@ -472,14 +494,30 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 	}
 	// Processing dayi address input ---------------------------------------------------------
 	// // Symbol mode start with L'=' for dayi, L'w' for array30; L'H' and L'8' for array40
-	if (IsSymbolChar(*pwch) && uCode != VK_SHIFT && candidateMode != CANDIDATE_MODE::CANDIDATE_ORIGINAL &&
+	if (IsEscapeInputChar(*pwch) && uCode != VK_SHIFT && candidateMode != CANDIDATE_MODE::CANDIDATE_ORIGINAL &&
 		!(CConfig::GetNumericPad() == NUMERIC_PAD::NUMERIC_PAD_MUMERIC && uCode >= VK_NUMPAD0 && uCode <= VK_DIVIDE))
 	{
 		if (pKeyState)
 		{
 			pKeyState->Category = KEYSTROKE_CATEGORY::CATEGORY_COMPOSING;
-			pKeyState->Function = KEYSTROKE_FUNCTION::FUNCTION_INPUT_AND_CONVERT;
-			
+			// Phonetic custom phrase: just accumulate input, don't convert on each keystroke
+			if (Global::imeMode == IME_MODE::IME_MODE_PHONETIC)
+				pKeyState->Function = KEYSTROKE_FUNCTION::FUNCTION_INPUT;
+			else
+				pKeyState->Function = KEYSTROKE_FUNCTION::FUNCTION_INPUT_AND_CONVERT;
+
+		}
+		return TRUE;
+	}
+	// Phonetic custom phrase: space/enter triggers convert
+	if (Global::imeMode == IME_MODE::IME_MODE_PHONETIC && IsEscapeInputLeading() &&
+		candidateMode != CANDIDATE_MODE::CANDIDATE_ORIGINAL &&
+		(uCode == VK_SPACE || uCode == VK_RETURN))
+	{
+		if (pKeyState)
+		{
+			pKeyState->Category = KEYSTROKE_CATEGORY::CATEGORY_COMPOSING;
+			pKeyState->Function = KEYSTROKE_FUNCTION::FUNCTION_CONVERT;
 		}
 		return TRUE;
 	}
@@ -581,13 +619,17 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 	}
 	
 	// Handle Shift+printable ASCII for English input mode
+	// Only when not composing (empty buffer)
 	// Note: Shift+Space is handled by the preserved key system (OnPreservedKey)
-	if (pwch && *pwch && (Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_RSHIFT | TF_MOD_SHIFT)) != 0)
+	if (!fComposing && pwch && *pwch && (Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_RSHIFT | TF_MOD_SHIFT)) != 0)
 	{
 		WCHAR c = *pwch;
-		
+
 		// Check for printable ASCII characters (iswprint filters control chars)
-		if (iswprint(c) && c != L' ')  // Exclude space as it's handled by preserved key
+		// Exclude valid wildcard chars so they enter composition for wildcard search
+		// In Phonetic mode, only ? is a valid wildcard (* is not mapped)
+		if (iswprint(c) && c != L' ' &&
+			!(IsWildcardChar(c) && !(Global::imeMode == IME_MODE::IME_MODE_PHONETIC && c == L'*')))  // Exclude space as it's handled by preserved key
 		{
 			if (pKeyState)
 			{
@@ -703,14 +745,13 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 	}
 	if (fComposing || candidateMode == CANDIDATE_MODE::CANDIDATE_INCREMENTAL || candidateMode == CANDIDATE_MODE::CANDIDATE_NONE)
 	{
-		// Bypassing wildcard keys 
-		if (IsWildcardChar(*pwch))
+		// Bypassing wildcard keys (in Phonetic mode, only ? is valid, not *)
+		if (IsWildcardChar(*pwch) && !(Global::imeMode == IME_MODE::IME_MODE_PHONETIC && *pwch == L'*'))
 		{
 			if (pKeyState)
 			{
 				pKeyState->Category = KEYSTROKE_CATEGORY::CATEGORY_COMPOSING;
-				// Send wildcard char directly if it's the first key in composition
-				pKeyState->Function = (_keystrokeBuffer.GetLength() == 0)? KEYSTROKE_FUNCTION::FUNCTION_INPUT_AND_CONVERT: KEYSTROKE_FUNCTION::FUNCTION_INPUT;
+				pKeyState->Function = KEYSTROKE_FUNCTION::FUNCTION_INPUT;
 
 			}
 			return TRUE;

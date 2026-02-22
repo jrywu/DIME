@@ -626,7 +626,11 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 			ShowWindow(GetDlgItem(hDlg, IDC_BUTTON_LOAD_ARRAY_PHRASE), SW_HIDE);
 			ShowWindow(GetDlgItem(hDlg, IDC_BUTTON_LOAD_ARRAY40), SW_HIDE);
 		}
-
+		if (_imeMode == IME_MODE::IME_MODE_PHONETIC)
+		{
+			SetDlgItemText(hDlg, IDC_STATIC,
+				L"自建詞庫: 注音模式下需以\\鍵開啓自建詞輸入模式 \n每組自訂字詞一行，以空白間隔輸入碼與自訂字詞");
+		}
 		ret = TRUE;
 		break;
 
@@ -966,6 +970,7 @@ void CConfig::ParseConfig(HWND hDlg, BOOL initDiag)
 	
 	if (_imeMode == IME_MODE::IME_MODE_PHONETIC)
 	{
+		ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_CUSTOM_TABLE_PRIORITY), SW_HIDE);
 		ShowWindow(GetDlgItem(hDlg, IDC_EDIT_MAXWIDTH), SW_HIDE);
 		ShowWindow(GetDlgItem(hDlg, IDC_STATIC_EDIT_MAXWIDTH), SW_HIDE);
 		hwnd = GetDlgItem(hDlg, IDC_COMBO_PHONETIC_KEYBOARD);

@@ -427,7 +427,7 @@ HRESULT CDIME::_HandleCompositionBackspace(TfEditCookie ec, _In_ ITfContext *pCo
 
     if (vKeyLen)
     {
-		BOOL symbolMode = pCompositionProcessorEngine->IsSymbol();
+		BOOL symbolMode = pCompositionProcessorEngine->IsEscapeInput();
         pCompositionProcessorEngine->RemoveVirtualKey(vKeyLen - 1);
 
 		if ((pCompositionProcessorEngine->GetVirtualKeyLength() && !symbolMode) &&

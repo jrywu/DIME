@@ -170,6 +170,18 @@ BOOL CDIME::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pCod
 			candiSelection = _pUIPresenter->_GetCandidateSelection();
 		}
 	
+		// If already in shifted english mode and wildcard char is typed, continue as shifted english
+		if (_isShiftedEnglish && !_IsComposing() && pwch && (*pwch == L'*' || *pwch == L'?') &&
+			(Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_RSHIFT | TF_MOD_SHIFT)) != 0)
+		{
+			if (pKeyState)
+			{
+				pKeyState->Category = KEYSTROKE_CATEGORY::CATEGORY_COMPOSING;
+				pKeyState->Function = KEYSTROKE_FUNCTION::FUNCTION_SHIFT_ENGLISH_INPUT;
+			}
+			return TRUE;
+		}
+
 		if (pCompositionProcessorEngine->IsVirtualKeyNeed(*pCodeOut, pwch, _IsComposing(), _candidateMode, _isCandidateWithWildcard, candiCount, candiSelection, pKeyState))
         {
             return TRUE;
@@ -393,6 +405,9 @@ STDAPI CDIME::OnKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL
         KeystrokeState.Category = KEYSTROKE_CATEGORY::CATEGORY_COMPOSING;
         _InvokeKeyHandler(pContext, code, wch, (DWORD)lParam, KeystrokeState);
     }
+
+    // Track shifted english mode for wildcard key handling
+    _isShiftedEnglish = (KeystrokeState.Function == KEYSTROKE_FUNCTION::FUNCTION_SHIFT_ENGLISH_INPUT);
 
     return S_OK;
 }

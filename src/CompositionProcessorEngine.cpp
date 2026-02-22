@@ -175,13 +175,13 @@ void CCompositionProcessorEngine::GetReadingString(_Inout_ CStringRange *pReadin
 		*pwchRadical = L'\0';
 
 		if (_pTableDictionaryEngine[(UINT)Global::imeMode]->GetRadicalMap() &&
-			_pTableDictionaryEngine[(UINT)Global::imeMode]->GetRadicalMap()->size() && !IsSymbol())
+			_pTableDictionaryEngine[(UINT)Global::imeMode]->GetRadicalMap()->size() && !IsEscapeInput())
 		{
 
 			for (DWORD index = 0; index < pKeyStrokeBuffer->GetLength(); index++)
 			{
 				if (_pTableDictionaryEngine[(UINT)Global::imeMode]->GetRadicalMap() &&
-					_pTableDictionaryEngine[(UINT)Global::imeMode]->GetRadicalMap()->size() && !IsSymbol()) // if radicalMap is valid (size()>0), then convert the keystroke buffer 
+					_pTableDictionaryEngine[(UINT)Global::imeMode]->GetRadicalMap()->size() && !IsEscapeInput()) // if radicalMap is valid (size()>0), then convert the keystroke buffer 
 				{
 					_T_RadicalMap::iterator item =
 						_pTableDictionaryEngine[(UINT)Global::imeMode]->GetRadicalMap()->find(towupper(*(pKeyStrokeBuffer->Get() + index)));
@@ -361,11 +361,30 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 
 		delete[] pwch;
 	}
-	else if (IsSymbol() && (Global::imeMode == IME_MODE::IME_MODE_DAYI || Global::imeMode == IME_MODE::IME_MODE_ARRAY))
+	else if (IsEscapeInput() && (Global::imeMode == IME_MODE::IME_MODE_DAYI || Global::imeMode == IME_MODE::IME_MODE_ARRAY))
 	{
 		if (_pTableDictionaryEngine[(UINT)Global::imeMode]->GetDictionaryType() == DICTIONARY_TYPE::TTS_DICTIONARY)
 			_pTableDictionaryEngine[(UINT)Global::imeMode]->SetSearchSection(SEARCH_SECTION::SEARCH_SECTION_SYMBOL);
 		_pTableDictionaryEngine[(UINT)Global::imeMode]->CollectWord(&_keystrokeBuffer, pCandidateList);
+	}
+	else if (IsEscapeInput() && Global::imeMode == IME_MODE::IME_MODE_PHONETIC)
+	{
+		// Phonetic custom phrase: strip '\' prefix, search custom phrase table with wildcard
+		DWORD_PTR keyLen = _keystrokeBuffer.GetLength() - 1;
+		PWCHAR pwchCustom = new (std::nothrow) WCHAR[keyLen + 2];
+		if (pwchCustom)
+		{
+			StringCchCopyN(pwchCustom, keyLen + 2, _keystrokeBuffer.Get() + 1, keyLen);
+			StringCchCat(pwchCustom, keyLen + 2, L"*");
+			CStringRange customPhraseKey;
+			customPhraseKey.Set(pwchCustom, keyLen + 1);
+
+			if (_pCustomTableDictionaryEngine[(UINT)Global::imeMode])
+				_pCustomTableDictionaryEngine[(UINT)Global::imeMode]->CollectWordForWildcard(
+					&customPhraseKey, pCandidateList);
+
+			delete[] pwchCustom;
+		}
 	}
 	else if (isWildcardSearch)
 	{
