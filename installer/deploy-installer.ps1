@@ -87,9 +87,26 @@ if (-not $nsisPath) {
 
 Write-Host "  Using NSIS: $nsisPath" -ForegroundColor Gray
 
-# Run NSIS
+# Extract commit count from BuildInfo.h for installer version
+$buildInfoPath = "..\src\BuildInfo.h"
+$commitCount = 0
+if (Test-Path $buildInfoPath) {
+    $buildInfoContent = Get-Content $buildInfoPath | Select-String "#define BUILD_COMMIT_COUNT\s+(\d+)"
+    if ($buildInfoContent) {
+        $commitCount = [int]($buildInfoContent.Matches[0].Groups[1].Value)
+    }
+}
+Write-Host "  Commit count: $commitCount (version 1.2.$commitCount)" -ForegroundColor Gray
+
+# Patch PRODUCT_VERSION in NSI file with commit count, build, then restore
+$nsiFile = "..\Installer\DIME-Universal.nsi"
+$nsiFullPath = (Resolve-Path $nsiFile).Path
+$nsiContent = Get-Content $nsiFullPath -Raw -Encoding UTF8
+$nsiContent = $nsiContent -replace '(!define PRODUCT_VERSION ")[\d.]+"', "`${1}1.2.$commitCount`""
+Set-Content -Path $nsiFullPath -Value $nsiContent -Encoding UTF8 -NoNewline
+
 try {
-    & $nsisPath "..\Installer\DIME-Universal.nsi"
+    & $nsisPath $nsiFullPath
     Write-Host "  Installer built successfully!" -ForegroundColor Green
 } catch {
     Write-Host "  ERROR: Failed to build installer!" -ForegroundColor Red
@@ -168,16 +185,7 @@ if (-not (Test-Path $readmePath)) {
     $utf8WithBom = New-Object System.Text.UTF8Encoding $true
     $readmeFullPath = (Resolve-Path $readmePath).Path
     $content = [System.IO.File]::ReadAllText($readmeFullPath, $utf8NoBom)
-    # Extract commit count from buildInfo.h
-    $buildInfoPath = "..\src\buildInfo.h"
-    $commitCount = 0
-    if (Test-Path $buildInfoPath) {
-        $buildInfoContent = Get-Content $buildInfoPath | Select-String "#define BUILD_COMMIT_COUNT\s+(\d+)"
-        if ($buildInfoContent) {
-            $commitCount = [int]($buildInfoContent.Matches[0].Groups[1].Value)
-        }
-    }
-    
+
     # Build the new checksum section with direct Chinese text
     # Note: This script file should be saved as UTF-8 with BOM for proper encoding
     $checksumSection = @"
@@ -206,7 +214,7 @@ if (-not (Test-Path $readmePath)) {
     $replacement = "`${1}$checksumSection`${2}"
     $content = $content -replace $pattern, $replacement
     
-    
+
 
 
     # Write back to file with UTF8 encoding (no BOM)

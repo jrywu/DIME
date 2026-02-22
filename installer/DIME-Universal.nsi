@@ -4,7 +4,7 @@
 
 
 !define PRODUCT_NAME "DIME"
-!define PRODUCT_VERSION "1.2"
+!define PRODUCT_VERSION "1.2.443"
 !define PRODUCT_PUBLISHER "Jeremy Wu"
 !define PRODUCT_WEB_SITE "http://github.com/jrywu/DIME"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
@@ -14,7 +14,7 @@
 ; ## HKCU = HKEY_CURRENT_USER
 
 ; Add version information to reduce false positives
-VIProductVersion "${PRODUCT_VERSION}.0.0"
+VIProductVersion "${PRODUCT_VERSION}.0"
 VIAddVersionKey "ProductName" "DIME Input Method Editor"
 VIAddVersionKey "CompanyName" "${PRODUCT_PUBLISHER}"
 VIAddVersionKey "LegalCopyright" "© ${PRODUCT_PUBLISHER}"
