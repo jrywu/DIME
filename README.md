@@ -44,7 +44,7 @@ DIME 是一套適用於 Windows 8/10/11 的輸入法框架，支援多種中文�
    [DIME-Universal.zip](https://github.com/jrywu/DIME/raw/1.2.441/installer/DIME-Universal.zip)
 
    <!-- DOWNLOAD_START -->
-   **最新開發版本 DIME v1.2.441 (更新日期: 2026-02-21)**
+   **最新開發版本 DIME v1.2.444 (更新日期: 2026-02-22)**
    <!-- DOWNLOAD_END --> 
 
    [DIME-Universal.zip](https://github.com/jrywu/DIME/raw/refs/heads/master/installer/DIME-Universal.zip)
@@ -63,12 +63,12 @@ DIME 是一套適用於 Windows 8/10/11 的輸入法框架，支援多種中文�
    | DIME-Universal.zip | `871CA2A359414F77946824D6FBEB471CE1A11A1C32F132EF652C574320EA95CB` |
    
    <!-- CHECKSUM_START -->
-   **最新開發版本 DIME v1.2.441 SHA-256 CHECKSUM (更新日期: 2026-02-21):**
+   **最新開發版本 DIME v1.2.444 SHA-256 CHECKSUM (更新日期: 2026-02-22):**
    
    | 檔案 | SHA-256 CHECKSUM |
    |------|----------------|
-   | DIME-Universal.exe | `693AF358A4D43964FF6D4AC42ED870331EB242C0149554C9AF512EAC6B9A1EF6` |
-   | DIME-Universal.zip | `871CA2A359414F77946824D6FBEB471CE1A11A1C32F132EF652C574320EA95CB` |
+   | DIME-Universal.exe | `B6B87DD7D50B62A04A4D04CBD2193FA5140A823AC751228E80AF06EFF7F15683` |
+   | DIME-Universal.zip | `0ACFDC13C25521601D99605A07BFE811153AC57F3562A39F905231A16BEF0B30` |
    <!-- CHECKSUM_END -->
    
    建議用如下Powershell指令，取得 SHA-256 CHECKSUM，將顯示的CHECKSUM 與上方表格中公布的值比對。
