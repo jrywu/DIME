@@ -5,7 +5,7 @@
 
 !define PRODUCT_NAME "DIME"
 !define PRODUCT_VERSION "1.2"
-!define PRODUCT_SUBVERSION "451.60223"
+!define PRODUCT_SUBVERSION "452.60223"
 !define PRODUCT_PUBLISHER "Jeremy Wu"
 !define PRODUCT_WEB_SITE "http://github.com/jrywu/DIME"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
@@ -64,7 +64,7 @@ BrandingText " "
 
 ; MUI end ------
 
-Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
+Name "${PRODUCT_NAME} ${PRODUCT_VERSION}.${PRODUCT_SUBVERSION}"
 RequestExecutionLevel admin
 OutFile "DIME-Universal.exe"
 InstallDir "$PROGRAMFILES64\DIME"
@@ -259,7 +259,7 @@ Section -Post
   ${EndIf}
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "UninstallString" "$INSTDIR\uninst.exe"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayName" "${PRODUCT_NAME}"
-  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayVersion" "${PRODUCT_VERSION}"
+  WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayVersion" "${PRODUCT_VERSION}.${PRODUCT_SUBVERSION}"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "URLInfoAbout" "${PRODUCT_WEB_SITE}"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "Publisher" "${PRODUCT_PUBLISHER}"
   WriteRegStr ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}" "DisplayIcon" "$SYSDIR\DIME.dll"

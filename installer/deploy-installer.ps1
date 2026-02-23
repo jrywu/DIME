@@ -111,12 +111,12 @@ Write-Host "  BUILD_VERSION_STR: $buildVersionStr" -ForegroundColor Gray
 $nsiFile = "..\Installer\DIME-Universal.nsi"
 $nsiFullPath = (Resolve-Path $nsiFile).Path
 $nsiContent = Get-Content $nsiFullPath -Raw -Encoding UTF8
-$nsiContent = $nsiContent -replace '(!define PRODUCT_SUBVERSION ")[\d.]+"', "`${1}$buildSubVersionStr`""
+$nsiContent = $nsiContent -replace '(!define PRODUCT_SUBVERSION ")[\d.]*"', "`${1}$buildSubVersionStr`""
 
 Set-Content -Path $nsiFullPath -Value $nsiContent -Encoding UTF8 -NoNewline
 
 try {
-    & $nsisPath $nsiFullPath
+    & $nsisPath /INPUTCHARSET UTF8 $nsiFullPath
     Write-Host "  Installer built successfully!" -ForegroundColor Green
 } catch {
     Write-Host "  ERROR: Failed to build installer!" -ForegroundColor Red
