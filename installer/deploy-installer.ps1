@@ -87,22 +87,31 @@ if (-not $nsisPath) {
 
 Write-Host "  Using NSIS: $nsisPath" -ForegroundColor Gray
 
-# Extract commit count from BuildInfo.h for installer version
+
+# Extract commit count and BUILD_VERSION_STR from BuildInfo.h for installer version
 $buildInfoPath = "..\src\BuildInfo.h"
 $commitCount = 0
+$buildVersionStr = ""
 if (Test-Path $buildInfoPath) {
-    $buildInfoContent = Get-Content $buildInfoPath | Select-String "#define BUILD_COMMIT_COUNT\s+(\d+)"
-    if ($buildInfoContent) {
-        $commitCount = [int]($buildInfoContent.Matches[0].Groups[1].Value)
+    $buildInfoContent = Get-Content $buildInfoPath -Raw
+    $commitMatch = [regex]::Match($buildInfoContent, "#define BUILD_COMMIT_COUNT\s+(\d+)")
+    if ($commitMatch.Success) {
+        $commitCount = [int]$commitMatch.Groups[1].Value
+    }
+    $versionStrMatch = [regex]::Match($buildInfoContent, '#define BUILD_VERSION_STR\s+"([^"]+)"')
+    if ($versionStrMatch.Success) {
+        $buildVersionStr = $versionStrMatch.Groups[1].Value
     }
 }
-Write-Host "  Commit count: $commitCount (version 1.2.$commitCount)" -ForegroundColor Gray
 
-# Patch PRODUCT_VERSION in NSI file with commit count, build, then restore
+Write-Host "  Commit count: $commitCount (BUILD_VERSION_STR: $buildVersionStr)" -ForegroundColor Gray
+
+# Patch PRODUCT_VERSION in NSI file with BUILD_VERSION_STR, build, then restore
 $nsiFile = "..\Installer\DIME-Universal.nsi"
 $nsiFullPath = (Resolve-Path $nsiFile).Path
 $nsiContent = Get-Content $nsiFullPath -Raw -Encoding UTF8
-$nsiContent = $nsiContent -replace '(!define PRODUCT_VERSION ")[\d.]+"', "`${1}1.2.$commitCount`""
+$nsiContent = $nsiContent -replace '(!define PRODUCT_VERSION ")[\d.]+"', "`${1}$buildVersionStr`""
+
 Set-Content -Path $nsiFullPath -Value $nsiContent -Encoding UTF8 -NoNewline
 
 try {
@@ -190,7 +199,7 @@ if (-not (Test-Path $readmePath)) {
     # Note: This script file should be saved as UTF-8 with BOM for proper encoding
     $checksumSection = @"
 
-   **最新開發版本 DIME v1.2.$commitCount SHA-256 CHECKSUM (更新日期: $date):**
+   **最新開發版本 DIME v$buildVersionStr SHA-256 CHECKSUM (更新日期: $date):**
    
    | 檔案 | SHA-256 CHECKSUM |
    |------|----------------|
@@ -202,7 +211,7 @@ if (-not (Test-Path $readmePath)) {
     # Replace content between DOWNLOAD_START and DOWNLOAD_END markers
     $downloadSection = @"
 
-   **最新開發版本 DIME v1.2.$commitCount (更新日期: $date)**
+   **最新開發版本 DIME v$buildVersionStr (更新日期: $date)**
 
 "@
     $downloadPattern = '(?s)(   <!-- DOWNLOAD_START -->).*?(   <!-- DOWNLOAD_END -->)'

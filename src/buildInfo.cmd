@@ -14,7 +14,7 @@ for /f %%a in ('powershell -NoProfile -Command "Get-Date -Format MM"') do set BU
 for /f %%a in ('powershell -NoProfile -Command "Get-Date -Format dd"') do set BUILD_DAY=%%a
 
 rem Construct build date strings
-set _BuildDate1=%BUILD_YEAR_2%%BUILD_MONTH%%BUILD_DAY%
+set _BuildDate1=%BUILD_YEAR_1%%BUILD_MONTH%%BUILD_DAY%
 set _BuildDate4=%BUILD_YEAR_4%%BUILD_MONTH%%BUILD_DAY%
 set _BuildVersion=1.2.%_CommitCount%.%_BuildDate1%
 
