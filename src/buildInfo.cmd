@@ -16,6 +16,7 @@ for /f %%a in ('powershell -NoProfile -Command "Get-Date -Format dd"') do set BU
 rem Construct build date strings
 set _BuildDate1=%BUILD_YEAR_1%%BUILD_MONTH%%BUILD_DAY%
 set _BuildDate4=%BUILD_YEAR_4%%BUILD_MONTH%%BUILD_DAY%
+set _BuildSubVersion=%_CommitCount%.%_BuildDate1%
 set _BuildVersion=1.2.%_CommitCount%.%_BuildDate1%
 
 rem Generate BuildInfo.h
@@ -30,7 +31,9 @@ echo #define BUILD_DAY %BUILD_DAY% >>BuildInfo.h
 echo #define BUILD_DATE_1 %_BuildDate1% >>BuildInfo.h
 echo #define BUILD_DATE_4 %_BuildDate4% >>BuildInfo.h
 echo #define BUILD_VERSION %_BuildVersion% >>BuildInfo.h
+echo #define BUILD_SUBVERSION %_BuildSubVersion% >>BuildInfo.h
 echo #define BUILD_VERSION_STR "%_BuildVersion%" >>BuildInfo.h
+echo #define BUILD_SUBVERSION_STR "%_BuildSubVersion%" >>BuildInfo.h
 
 echo BuildInfo.h generated successfully.
 

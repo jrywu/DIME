@@ -90,13 +90,13 @@ Write-Host "  Using NSIS: $nsisPath" -ForegroundColor Gray
 
 # Extract commit count and BUILD_VERSION_STR from BuildInfo.h for installer version
 $buildInfoPath = "..\src\BuildInfo.h"
-$commitCount = 0
+$buildSubVersionStr = ""
 $buildVersionStr = ""
 if (Test-Path $buildInfoPath) {
     $buildInfoContent = Get-Content $buildInfoPath -Raw
-    $commitMatch = [regex]::Match($buildInfoContent, "#define BUILD_COMMIT_COUNT\s+(\d+)")
-    if ($commitMatch.Success) {
-        $commitCount = [int]$commitMatch.Groups[1].Value
+    $subVersionStrMatch = [regex]::Match($buildInfoContent, '#define BUILD_SUBVERSION_STR\s+"([^"]+)"')
+    if ($subVersionStrMatch.Success) {
+        $buildSubVersionStr = $subVersionStrMatch.Groups[1].Value
     }
     $versionStrMatch = [regex]::Match($buildInfoContent, '#define BUILD_VERSION_STR\s+"([^"]+)"')
     if ($versionStrMatch.Success) {
@@ -104,13 +104,14 @@ if (Test-Path $buildInfoPath) {
     }
 }
 
-Write-Host "  Commit count: $commitCount (BUILD_VERSION_STR: $buildVersionStr)" -ForegroundColor Gray
+Write-Host "  BUILD_SUBVERSION_STR: $buildSubVersionStr" -ForegroundColor Gray
+Write-Host "  BUILD_VERSION_STR: $buildVersionStr" -ForegroundColor Gray
 
 # Patch PRODUCT_VERSION in NSI file with BUILD_VERSION_STR, build, then restore
 $nsiFile = "..\Installer\DIME-Universal.nsi"
 $nsiFullPath = (Resolve-Path $nsiFile).Path
 $nsiContent = Get-Content $nsiFullPath -Raw -Encoding UTF8
-$nsiContent = $nsiContent -replace '(!define PRODUCT_VERSION ")[\d.]+"', "`${1}$buildVersionStr`""
+$nsiContent = $nsiContent -replace '(!define PRODUCT_SUBVERSION ")[\d.]+"', "`${1}$buildSubVersionStr`""
 
 Set-Content -Path $nsiFullPath -Value $nsiContent -Encoding UTF8 -NoNewline
 

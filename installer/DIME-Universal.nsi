@@ -4,7 +4,8 @@
 
 
 !define PRODUCT_NAME "DIME"
-!define PRODUCT_VERSION "1.2.449.60223"
+!define PRODUCT_VERSION "1.2"
+!define PRODUCT_SUBVERSION "451.60223"
 !define PRODUCT_PUBLISHER "Jeremy Wu"
 !define PRODUCT_WEB_SITE "http://github.com/jrywu/DIME"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
@@ -14,13 +15,13 @@
 ; ## HKCU = HKEY_CURRENT_USER
 
 ; Add version information to reduce false positives
-VIProductVersion "${PRODUCT_VERSION}.0"
+VIProductVersion "${PRODUCT_VERSION}.${PRODUCT_SUBVERSION}"
 VIAddVersionKey "ProductName" "DIME Input Method Editor"
 VIAddVersionKey "CompanyName" "${PRODUCT_PUBLISHER}"
 VIAddVersionKey "LegalCopyright" "${PRODUCT_PUBLISHER}"
 VIAddVersionKey "FileDescription" "DIME IME Installer"
-VIAddVersionKey "FileVersion" "${PRODUCT_VERSION}.0.0"
-VIAddVersionKey "ProductVersion" "${PRODUCT_VERSION}.0.0"
+VIAddVersionKey "FileVersion" "${PRODUCT_VERSION}.${PRODUCT_SUBVERSION}"
+VIAddVersionKey "ProductVersion" "${PRODUCT_VERSION}.${PRODUCT_SUBVERSION}"
 
 SetCompressor zlib
 ManifestDPIAware true
