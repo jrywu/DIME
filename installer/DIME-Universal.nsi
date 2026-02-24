@@ -4,8 +4,8 @@
 
 
 !define PRODUCT_NAME "DIME"
-!define PRODUCT_VERSION "1.2"
-!define PRODUCT_SUBVERSION "452.60223"
+!define PRODUCT_VERSION "1.2.457"
+!define PRODUCT_SUBVERSION "60224"
 !define PRODUCT_PUBLISHER "Jeremy Wu"
 !define PRODUCT_WEB_SITE "http://github.com/jrywu/DIME"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
@@ -64,7 +64,7 @@ BrandingText " "
 
 ; MUI end ------
 
-Name "${PRODUCT_NAME} ${PRODUCT_VERSION}.${PRODUCT_SUBVERSION}"
+Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
 RequestExecutionLevel admin
 OutFile "DIME-Universal.exe"
 InstallDir "$PROGRAMFILES64\DIME"
