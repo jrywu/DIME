@@ -2,7 +2,7 @@
 
 **Version**: 2.0 (Practical CI/CD Edition)  
 **Last Updated**: 2026-02-18  
-**Status**: ✅ **COMPLETED** - 271 tests, 37.2% coverage
+**Status**: ✅ **COMPLETED** - 282 tests, 37.2% coverage
 
 ---
 
@@ -13,9 +13,9 @@
 | Metric | Target | Actual | Status |
 |--------|--------|--------|--------|
 | **Overall Coverage** | 80-85% | **37.2%** | ⚠️ **BELOW TARGET** (7,289/19,589 lines) |
-| **Unit Tests** | 96 tests | **96 tests** | ✅ COMPLETE |
+| **Unit Tests** | 107 tests | **107 tests** | ✅ COMPLETE |
 | **Integration Tests** | 175 tests | **175 tests** | ✅ COMPLETE |
-| **Total Automated Tests** | 271 tests | **271 tests** | ✅ COMPLETE |
+| **Total Automated Tests** | 282 tests | **282 tests** | ✅ COMPLETE |
 | **Execution Time** | < 60s | **~35 seconds** | ✅ EXCELLENT |
 | **CI/CD Ready** | Yes | **Yes** | ✅ AUTO-RUN |
 
@@ -116,7 +116,7 @@ OpenCppCoverage --sources DIME --excluded_sources tests ^
 
 ## Test Suite Summary
 
-### Unit Tests Overview (96 tests, ~15 seconds)
+### Unit Tests Overview (107 tests, ~15 seconds)
 
 | Suite | Tests | Coverage Target | Actual Coverage | Files Tested |
 |-------|-------|----------------|-----------------|--------------|
@@ -126,7 +126,8 @@ OpenCppCoverage --sources DIME --excluded_sources tests ^
 | **UT-04: Memory Management** | 2 tests | ≥85% | ~95% | `BaseStructure.h` (CDIMEArray), `File.cpp` |
 | **UT-05: File I/O** | 2 tests | ≥90% | ~95% | `File.cpp`, `Config.cpp` |
 | **UT-06: TableDictionaryEngine** | 6 tests | ≥85% | ~72%* | `TableDictionaryEngine.cpp` |
-| **Total Unit Tests** | **96** | **≥85%** | **~88%** | **Core functionality** |
+| **UT-07: CIN File Parsing** | 11 tests | ≥85% | ~90% | `Config.cpp` (`parseCINFile`) |
+| **Total Unit Tests** | **107** | **≥85%** | **~88%** | **Core functionality** |
 
 *UT-06 has room for improvement in wildcard/reverse lookup coverage
 
@@ -238,6 +239,32 @@ Single comprehensive test covering all `CStringRange` operations:
 | **UT-06-06: CIN Config Parsing** | 3 tests | ≥95% | Header parsing, radical map building, index map building, sorted CIN detection |
 
 **Coverage Gap**: ~13% gap to target (CollectWordForWildcard, CollectWordFromConvertedString need improvement)
+
+### UT-07: CIN File Parsing (11 tests)
+
+**Target**: `Config.cpp` (`parseCINFile`) | **Coverage**: ~90%
+
+| Test | Target Functions | Key Validations |
+|------|------------------|-----------------|
+| **UT-07-01: Tab-Separated** | `parseCINFile()` pattern 1 | Basic key\tvalue parsing and output |
+| **UT-07-02: Space-Separated** | `parseCINFile()` pattern 2 | key value (space delimiter) parsing |
+| **UT-07-03: Escape Quotes/Backslashes** | `parseCINFile()` escape logic | `"` and `\` escaped inside %chardef sections |
+| **UT-07-04: Keyname Section** | `parseCINFile()` %keyname handling | %keyname begin/end triggers escape mode |
+| **UT-07-05: Encoding Directive** | `parseCINFile()` %encoding handling | `%encoding UTF-8` → `%encoding\tUTF-16LE` |
+| **UT-07-06: Unparsable Lines** | `parseCINFile()` fallback path | Unparsable lines written as-is outside escape |
+| **UT-07-07: Unparsable in Escape** | `parseCINFile()` skip logic | Unparsable lines skipped inside escape sections |
+| **UT-07-08: Custom Table Mode** | `parseCINFile(customTableMode=TRUE)` | Output wrapped with %chardef begin/end |
+| **UT-07-09: Value With Spaces** | `parseCINFile()` pattern 3 | `key value with spaces` parsed via fallback pattern |
+| **UT-07-10: Empty File** | `parseCINFile()` | Empty input produces empty output |
+| **UT-07-11: Escape Mode Toggle** | `parseCINFile()` doEscape state | doEscape resets after %chardef end |
+
+**Key Features Tested**:
+- ✅ Three `swscanf_s` parsing patterns (tab, space, value-with-spaces)
+- ✅ Escape quoting of `"` and `\` in %chardef and %keyname sections
+- ✅ Encoding directive conversion to UTF-16LE
+- ✅ Custom table mode (UTF-16LE input, %chardef wrapping)
+- ✅ Unparsable line handling (write vs skip based on escape state)
+- ✅ Escape mode toggling (doEscape on/off across sections)
 
 ---
 

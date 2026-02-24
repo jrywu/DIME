@@ -1573,16 +1573,22 @@ BOOL CConfig::parseCINFile(_In_ LPCWSTR pathToLoad, _In_ LPCWSTR pathToWrite, _I
 
 			if (customTableMode) fwprintf_s(fpw, L"%s", L"%chardef begin\n");
 
-			while (fgetws(line, 256, fpr) != NULL)
+			while (fgetws(line, MAX_TABLE_LINE_LENGTH, fpr) != NULL)
 			{
-				if (swscanf_s(line, L"%[^\t\r\n]%[ \t\r\n]%[^ \t\r\n]%s", key, (int)_countof(key), sep, (int)_countof(sep), value, (int)_countof(value), others, (int)_countof(others)) != 3)
+				// Try parsing key-value pair with 3 format patterns:
+				// 1) key (with spaces, delimited by tab/newline) + whitespace sep + value (no spaces)
+				// 2) key (no spaces) + whitespace sep + value (no spaces)
+				// 3) key (no spaces) + whitespace sep + value (with spaces)
+				if (swscanf_s(line, L"%[^\t\r\n]%[ \t\r\n]%[^ \t\r\n]%s", key, (int)_countof(key), sep, (int)_countof(sep), value, (int)_countof(value), others, (int)_countof(others)) != 3
+					&& swscanf_s(line, L"%[^ \t\r\n]%[ \t\r\n]%[^ \t\r\n]%s", key, (int)_countof(key), sep, (int)_countof(sep), value, (int)_countof(value), others, (int)_countof(others)) != 3
+					&& swscanf_s(line, L"%[^ \t\r\n]%[ \t\r\n]%[^\t\r\n]", key, (int)_countof(key), sep, (int)_countof(sep), value, (int)_countof(value)) != 3)
 				{
-					if (swscanf_s(line, L"%[^ \t\r\n]%[ \t\r\n]%[^ \t\r\n]%s", key, (int)_countof(key), sep, (int)_countof(sep), value, (int)_countof(value), others, (int)_countof(others)) != 3)
-					{
-						if (!doEscape)
-							fwprintf_s(fpw, L"%s", line);
-						continue;
-					}
+					// All 3 patterns failed to parse a key-value pair, so treat the line as unparsable.
+					// Write unparsable lines as-is only outside of escape sections;
+					// inside escape sections, skip them to avoid corrupting escaped output.
+					if (!doEscape)
+						fwprintf_s(fpw, L"%s", line);
+					continue;
 				}
 				if ((CompareString(1028, NORM_IGNORECASE, key, (int)wcslen(key), L"%keyname", 8) == CSTR_EQUAL
 					&& CompareString(1028, NORM_IGNORECASE, value, (int)wcslen(value), L"begin", 5) == CSTR_EQUAL) ||

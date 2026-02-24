@@ -35,6 +35,9 @@
     <ClCompile Include="ConfigTest.cpp">
       <Filter>Source Files\Unit Tests</Filter>
     </ClCompile>
+    <ClCompile Include="CINParserTest.cpp">
+      <Filter>Source Files\Unit Tests</Filter>
+    </ClCompile>
     <ClCompile Include="TestStubs.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
