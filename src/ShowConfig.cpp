@@ -90,6 +90,9 @@ HRESULT CDIME::Show(_In_opt_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID
 	// comctl32.dll and comdlg32.dll can't be loaded into immersivemode (app container), thus use late binding here.
 	HINSTANCE dllCtlHandle = NULL;
 	dllCtlHandle = LoadLibrary(L"comctl32.dll");
+	
+	// Load Rich Edit control library (must be loaded before dialog creation)
+	HINSTANCE dllRichEditHandle = LoadLibrary(L"msftedit.dll");
 
 	// Load Rich Edit control library (must be loaded before dialog creation)
 	HINSTANCE dllRichEditHandle = LoadLibrary(L"msftedit.dll");

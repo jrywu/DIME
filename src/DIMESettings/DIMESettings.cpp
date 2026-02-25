@@ -221,6 +221,8 @@ static void showIMESettings(HWND hDlg, IME_MODE imeMode)
     HINSTANCE dllRichEditHandle = LoadLibrary(L"msftedit.dll");
 
     PropertySheetW(&psh);
+    if (dllRichEditHandle)
+        FreeLibrary(dllRichEditHandle);
 
     if (dllRichEditHandle)
         FreeLibrary(dllRichEditHandle);

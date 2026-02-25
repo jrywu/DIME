@@ -223,3 +223,4 @@ DIME.VC.db
 *.lock
 *.bin
 
+/.claude

@@ -865,6 +865,8 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 		importCustomTableFile(hDlg, customTableName);
 		// Enable EN_CHANGE notifications for Rich Edit control (not sent by default unlike standard edit controls)
 		SendMessage(GetDlgItem(hDlg, IDC_EDIT_CUSTOM_TABLE), EM_SETEVENTMASK, 0, ENM_CHANGE);
+		// Enable EN_CHANGE notifications for Rich Edit control (not sent by default unlike standard edit controls)
+		SendMessage(GetDlgItem(hDlg, IDC_EDIT_CUSTOM_TABLE), EM_SETEVENTMASK, 0, ENM_CHANGE);
 		_customTableChanged = FALSE;
 
 		if (!(_loadTableMode || _imeMode == IME_MODE::IME_MODE_GENERIC))

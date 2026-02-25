@@ -122,7 +122,7 @@ $nsiContent = $nsiContent -replace '(!define PRODUCT_SUBVERSION ")[\d.]+"', "`${
 Set-Content -Path $nsiFullPath -Value $nsiContent -Encoding UTF8 -NoNewline
 
 try {
-    & $nsisPath $nsiFullPath
+    & $nsisPath /INPUTCHARSET UTF8 $nsiFullPath
     Write-Host "  Installer built successfully!" -ForegroundColor Green
 } catch {
     Write-Host "  ERROR: Failed to build installer!" -ForegroundColor Red
