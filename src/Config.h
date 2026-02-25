@@ -212,6 +212,7 @@ private:
 	static BOOL _showNotifyDesktop;
 	static UINT _maxCodes;
 	static WCHAR _pFontFaceName[LF_FACESIZE];
+	static WCHAR _pMlFontFaceName[LF_FACESIZE];
 	static COLORREF _itemColor;
 	static COLORREF _phraseColor;
 	static COLORREF _numberColor;

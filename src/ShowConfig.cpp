@@ -91,6 +91,9 @@ HRESULT CDIME::Show(_In_opt_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID
 	HINSTANCE dllCtlHandle = NULL;
 	dllCtlHandle = LoadLibrary(L"comctl32.dll");
 
+	// Load Rich Edit control library (must be loaded before dialog creation)
+	HINSTANCE dllRichEditHandle = LoadLibrary(L"msftedit.dll");
+
 	_T_CreatePropertySheetPage _CreatePropertySheetPage = NULL;
 	_T_PropertySheet _PropertySheet = NULL;
 
@@ -126,6 +129,9 @@ HRESULT CDIME::Show(_In_opt_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID
 	{
 		psp.pszTemplate = MAKEINTRESOURCE(DlgPage[i].id);
 		psp.pfnDlgProc = DlgPage[i].DlgProc;
+		// Pass CDIME instance pointer to the page so the page proc can access
+		// the composition engine via PROPSHEETPAGE.lParam in WM_INITDIALOG.
+		psp.lParam = (LPARAM)this;
 		if (_CreatePropertySheetPage)
 			hpsp[i] = (*_CreatePropertySheetPage)(&psp);
 	}
@@ -160,5 +166,7 @@ HRESULT CDIME::Show(_In_opt_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID
 
 	if(dllCtlHandle)
 		FreeLibrary(dllCtlHandle);
+	if (dllRichEditHandle)
+		FreeLibrary(dllRichEditHandle);
 	return S_OK;
 }

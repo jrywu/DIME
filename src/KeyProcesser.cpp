@@ -185,6 +185,9 @@ WCHAR CCompositionProcessorEngine::GetVirtualKey(DWORD_PTR dwIndex)
 	return 0;
 }
 
+// (Removed: ValidateCompositionKeyChar is implemented inline in the header to avoid
+// linkage dependency for the settings UI project.)
+
 BOOL CCompositionProcessorEngine::isEndComposingKey(WCHAR wch)
 {
 	//debugPrint(L"CCompositionProcessorEngine::isEndComposingKey()");

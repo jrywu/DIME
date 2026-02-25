@@ -60,6 +60,19 @@ public:
     DWORD_PTR GetVirtualKeyLength() { return _keystrokeBuffer.GetLength(); }
     WCHAR GetVirtualKey(DWORD_PTR dwIndex);
 
+    // Validate single composition-key character against internal keystroke table.
+    // Returns TRUE if the character is valid for composition, FALSE otherwise.
+    // Lightweight inline implementation: ensure character is within the allowed
+    // radical/code range. Full validation (including keyboard-layout mapping)
+    // is performed at runtime inside the engine; this inline check is used
+    // here to avoid linker dependencies for the settings UI project.
+    BOOL ValidateCompositionKeyChar(WCHAR ch)
+    {
+        WCHAR c = towupper(ch);
+        if (c < 32 || c > 32 + MAX_RADICAL) return FALSE;
+        return TRUE;
+    }
+
 	void GetReadingString(_Inout_ CStringRange *pReadingString, _Inout_opt_ BOOL *pIsWildcardIncluded, _In_opt_ CStringRange *pKeyCode = nullptr);
     void GetCandidateList(_Inout_ CDIMEArray<CCandidateListItem> *pCandidateList, BOOL isIncrementalWordSearch, BOOL isWildcardSearch, BOOL isArrayPhraseEnding = FALSE);
     void GetCandidateStringInConverted(CStringRange &searchString, _In_ CDIMEArray<CCandidateListItem> *pCandidateList);

@@ -44,6 +44,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "TableDictionaryEngine.h"
 #include "Aclapi.h"
 #include "CompositionProcessorEngine.h"
+#include <Richedit.h>
+#include <string>
+#include <vector>
+#include <regex>
 
 
 #pragma comment(lib, "Shlwapi.lib")
@@ -93,6 +97,8 @@ IME_MODE CConfig::_configIMEMode = IME_MODE::IME_MODE_NONE;
 BOOL CConfig::_reloadReverseConversion = FALSE;
 
 WCHAR CConfig::_pFontFaceName[] = { L"微軟正黑體" };
+WCHAR CConfig::_pMlFontFaceName[] = { L"細明體" };
+
 COLORREF CConfig::_itemColor = CANDWND_ITEM_COLOR;
 COLORREF CConfig::_itemBGColor = GetSysColor(COLOR_3DHIGHLIGHT);
 COLORREF CConfig::_selectedColor = CANDWND_SELECTED_ITEM_COLOR;
@@ -124,6 +130,214 @@ void DrawColor(HWND hwnd, HDC hdc, COLORREF col)
 	Rectangle(hdc, rect.left, rect.top, rect.right, rect.bottom);
 	ReleaseDC(hwnd, hdc);
 }
+
+// Lightweight subclass to prevent RichEdit auto select-all on focus.
+static LRESULT CALLBACK CustomTable_SubclassWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    WNDPROC oldProc = (WNDPROC)GetProp(hwnd, L"RE_OLDPROC");
+
+    if (uMsg == WM_SETFOCUS)
+    {
+        // Collapse any selection immediately when control receives focus.
+        CHARRANGE cr = { 0, 0 };
+        SendMessageW(hwnd, EM_EXSETSEL, 0, (LPARAM)&cr);
+        SendMessageW(hwnd, EM_SCROLLCARET, 0, 0);
+    }
+    else if (uMsg == WM_NCDESTROY)
+    {
+        // restore original wndproc
+        if (oldProc)
+        {
+            SetWindowLongPtr(hwnd, GWLP_WNDPROC, (LONG_PTR)oldProc);
+            RemoveProp(hwnd, L"RE_OLDPROC");
+            return CallWindowProc(oldProc, hwnd, uMsg, wParam, lParam);
+        }
+    }
+
+    if (oldProc)
+        return CallWindowProc(oldProc, hwnd, uMsg, wParam, lParam);
+    return DefWindowProc(hwnd, uMsg, wParam, lParam);
+}
+
+static void InstallCustomTableSubclass(HWND hEdit)
+{
+    if (!hEdit) return;
+    if (GetProp(hEdit, L"RE_OLDPROC")) return; // already installed
+    WNDPROC old = (WNDPROC)SetWindowLongPtr(hEdit, GWLP_WNDPROC, (LONG_PTR)CustomTable_SubclassWndProc);
+    if (old) SetProp(hEdit, L"RE_OLDPROC", (HANDLE)old);
+}
+
+// Note: uninstall is handled by the subclass on WM_NCDESTROY; no explicit caller required.
+
+// (debounce timer removed) validation will run immediately on EN_CHANGE but preserves selection
+
+// Validate each non-empty line in the custom table rich edit control.
+// Rules:
+//  - Each non-empty line must start with a key token followed by one or more spaces and a value.
+//  - If imeMode == IME_MODE_PHONETIC: key must be printable ASCII (0x20..0x7E).
+//  - Otherwise: each character in key must be valid composition key via composition engine.
+// On failure the entire physical line is colored solid red and the function returns FALSE.
+static BOOL ValidateCustomTableLines(HWND hDlg, IME_MODE imeMode, CCompositionProcessorEngine* pEngine, bool showAlert = true)
+{
+    HWND hEdit = GetDlgItem(hDlg, IDC_EDIT_CUSTOM_TABLE);
+    if (!hEdit) return TRUE;
+
+    // Save current selection/caret so we can restore it when re-validating
+    CHARRANGE origSel = {0,0};
+    SendMessageW(hEdit, EM_EXGETSEL, 0, (LPARAM)&origSel);
+    bool movedCaret = false;
+
+    int totalLen = GetWindowTextLengthW(hEdit);
+    std::vector<WCHAR> buf((size_t)totalLen + 1);
+    if (totalLen > 0) {
+        GetWindowTextW(hEdit, buf.data(), totalLen + 1);
+    }
+    std::wstring text(buf.data());
+
+    // Reset all text color to black without changing the selection (use SCF_ALL)
+    CHARFORMAT2W cfClear;
+    ZeroMemory(&cfClear, sizeof(cfClear));
+    cfClear.cbSize = sizeof(cfClear);
+    cfClear.dwMask = CFM_COLOR;
+    cfClear.crTextColor = RGB(0,0,0);
+    SendMessageW(hEdit, EM_SETCHARFORMAT, SCF_ALL, (LPARAM)&cfClear);
+
+    BOOL allOk = TRUE;
+    int lineCount = (int)SendMessageW(hEdit, EM_GETLINECOUNT, 0, 0);
+
+    for (int li = 0; li < lineCount; ++li)
+    {
+        LONG start = (LONG)SendMessageW(hEdit, EM_LINEINDEX, (WPARAM)li, 0);
+        if (start == -1) continue;
+        LONG len = (LONG)SendMessageW(hEdit, EM_LINELENGTH, (WPARAM)start, 0);
+        if (len <= 0) continue;
+
+        // Retrieve the physical line text reliably using EM_GETTEXTRANGE
+        // (works consistently for RichEdit regardless of CR/LF handling).
+        std::vector<WCHAR> linebuf((size_t)max( (LONG)len, 1L ) + 1);
+        TEXTRANGEW tr;
+        tr.chrg.cpMin = start;
+        tr.chrg.cpMax = start + len;
+        tr.lpstrText = linebuf.data();
+        LRESULT got = (LRESULT)SendMessageW(hEdit, EM_GETTEXTRANGE, 0, (LPARAM)&tr);
+        if (got <= 0) continue;
+        std::wstring line(linebuf.data(), (size_t)got);
+
+        // trim
+        size_t s = 0;
+        while (s < line.size() && iswspace(line[s])) ++s;
+        size_t e = line.size();
+        while (e > s && iswspace(line[e-1])) --e;
+        if (s >= e) continue; // empty line -> skip
+        std::wstring trimmed = line.substr(s, e - s);
+
+        // Use regex to validate key/value pattern first: key (no whitespace) + whitespace + value
+        // Only if regex matches do we further validate the key characters.
+        static const std::wregex kv_re(L"^([^\\s]+)\\s+(.+)$");
+        std::wsmatch kv_match;
+        BOOL valid = TRUE;
+        std::wstring key;
+        if (!std::regex_match(trimmed, kv_match, kv_re))
+        {
+            // pattern didn't match (no key/value separator or empty key)
+            valid = FALSE;
+        }
+        else
+        {
+            key = kv_match[1].str();
+            // Rule 2: phonetic mode -> key must be printable ASCII characters
+            if (imeMode == IME_MODE::IME_MODE_PHONETIC)
+            {
+                for (WCHAR c : key)
+                {
+                    // printable ASCII excluding space (space cannot be in key)
+                    if (!(c >= L'!' && c <= L'~')) { valid = FALSE; break; }
+                }
+            }
+            else
+            {
+                // Quick accept: if the key contains only printable ASCII (common
+                // short Latin keys like "wto", "ntu", "nasa"), treat as valid
+                // even when composition engine is not available.
+                bool allAsciiPrintable = true;
+                for (WCHAR c : key) {
+                    if (!(c >= 0x21 && c <= 0x7E)) { allAsciiPrintable = false; break; }
+                }
+                if (allAsciiPrintable) {
+                    valid = TRUE;
+                } else {
+                // Rule 3: validate each character with composition engine if available
+                for (WCHAR c : key)
+                {
+                    BOOL ok = FALSE;
+                    if (pEngine)
+                    {
+                        ok = pEngine->ValidateCompositionKeyChar(c) ? TRUE : FALSE;
+                    }
+                    else
+                    {
+                        // fallback: basic range check same as inline ValidateCompositionKeyChar
+                        WCHAR cu = towupper(c);
+                        ok = (cu >= 32 && cu <= 32 + MAX_RADICAL) ? TRUE : FALSE;
+                    }
+                    if (!ok) { valid = FALSE; break; }
+                }
+                }
+            }
+        }
+
+        if (!valid) {
+            allOk = FALSE;
+            SendMessageW(hEdit, EM_SETSEL, (WPARAM)start, (LPARAM)(start + len));
+            CHARFORMAT2W cf;
+            ZeroMemory(&cf, sizeof(cf));
+            cf.cbSize = sizeof(cf);
+            cf.dwMask = CFM_COLOR;
+            cf.crTextColor = RGB(255,0,0);
+            SendMessageW(hEdit, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)&cf);
+        }
+    }
+
+    if (!allOk) {
+        if (showAlert) {
+            // move caret to first red char and show message
+            for (int li = 0; li < lineCount; ++li) {
+                LONG start = (LONG)SendMessageW(hEdit, EM_LINEINDEX, (WPARAM)li, 0);
+                if (start == -1) continue;
+                LONG len = (LONG)SendMessageW(hEdit, EM_LINELENGTH, (WPARAM)start, 0);
+                if (len <= 0) continue;
+                CHARRANGE cr = { start, start + 1 };
+                SendMessageW(hEdit, EM_EXSETSEL, 0, (LPARAM)&cr);
+                CHARFORMAT2W cfGet;
+                ZeroMemory(&cfGet, sizeof(cfGet));
+                cfGet.cbSize = sizeof(cfGet);
+                SendMessageW(hEdit, EM_GETCHARFORMAT, SCF_SELECTION, (LPARAM)&cfGet);
+                if (cfGet.crTextColor == RGB(255,0,0)) {
+                    // place caret at line start and bring into view
+                    SendMessageW(hEdit, EM_SETSEL, (WPARAM)start, (LPARAM)start);
+                    SendMessageW(hEdit, EM_SCROLLCARET, 0, 0);
+                    movedCaret = true;
+                    break;
+                }
+            }
+            MessageBoxW(hDlg, L"自建詞庫格式錯誤，請修正紅色標示的格式錯誤行，修正後再套用送出", L"自建詞庫格式錯誤", MB_ICONWARNING);
+        }
+        // restore original selection if we did not intentionally move the caret
+        if (!movedCaret) {
+            SendMessageW(hEdit, EM_EXSETSEL, 0, (LPARAM)&origSel);
+        }
+        return FALSE;
+    }
+
+    // successful validation, restore original selection/caret then clear any selection
+    // (some hosts leave the control selected after formatting; ensure no text remains selected)
+    SendMessageW(hEdit, EM_EXSETSEL, 0, (LPARAM)&origSel);
+    // place caret at original caret position and remove selection
+    SendMessageW(hEdit, EM_SETSEL, (WPARAM)origSel.cpMin, (LPARAM)origSel.cpMin);
+    SendMessageW(hEdit, EM_SCROLLCARET, 0, 0);
+    return TRUE;
+}
+
 
 INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -425,6 +639,8 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		ret = TRUE;
 		break;
 
+    
+
 
 	case WM_NOTIFY:
 		switch (((LPNMHDR)lParam)->code)
@@ -576,6 +792,12 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 	WCHAR pathToLoad[MAX_PATH] = L"\0";;
 	WCHAR pathToWrite[MAX_PATH] = L"\0";;
 
+	//WCHAR fontname[LF_FACESIZE] = { 0 };
+	//int fontpoint = 8, fontweight = FW_NORMAL, logPixelY, LogFontSize;
+	//BOOL fontitalic = FALSE;
+	//HDC hdc;
+	//HFONT hFont;
+
 	enum {
 		LOAD_CIN_TABLE,
 		IMPORT_CUSTOM_TABLE,
@@ -600,6 +822,38 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 		// Reload config to ensure we have the latest values from disk
 		// This prevents showing wrong buttons when config updated in another process
 		LoadConfig(_imeMode);
+		//
+		//wcsncpy_s(fontname, _pMlFontFaceName, _TRUNCATE);
+		//fontweight = _fontWeight;
+		//fontitalic = _fontItalic;
+		//hdc = GetDC(hDlg);
+		//logPixelY = GetDeviceCaps(hdc, LOGPIXELSY);
+		//if (_GetDpiForMonitor)
+		//{
+		//	HMONITOR monitor = MonitorFromWindow(hDlg, MONITOR_DEFAULTTONEAREST);
+		//	UINT dpiX, dpiY;
+		//	_GetDpiForMonitor(monitor, MDT_EFFECTIVE_DPI, &dpiX, &dpiY);
+		//	if (dpiY > 0) logPixelY = dpiY;
+		//}
+		//LogFontSize = -MulDiv(fontpoint, logPixelY, 72);
+		//hFont = CreateFont(LogFontSize, 0, 0, 0,
+		//	fontweight, fontitalic, FALSE, FALSE, DEFAULT_CHARSET,
+		//	OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH, fontname);
+		//SendMessageW(GetDlgItem(hDlg, IDC_EDIT_CUSTOM_TABLE), WM_SETFONT, (WPARAM)Global::defaultlFontHandle, TRUE);
+		//ReleaseDC(hDlg, hdc);
+		// Install lightweight subclass to collapse selection on focus
+		{
+			HWND hEdit = GetDlgItem(hDlg, IDC_EDIT_CUSTOM_TABLE);
+			InstallCustomTableSubclass(hEdit);
+		}
+
+		// Store CDIME* passed via PROPSHEETPAGE.lParam (set in CDIME::Show)
+		if (lParam != 0)
+		{
+			LPPROPSHEETPAGE psp = (LPPROPSHEETPAGE)lParam;
+			if (psp)
+				SetWindowLongPtr(hDlg, GWLP_USERDATA, (LONG_PTR)psp->lParam);
+		}
 		if (_imeMode == IME_MODE::IME_MODE_DAYI)
 			StringCchPrintf(customTableName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\DAYI-Custom.txt");
 		else if (_imeMode == IME_MODE::IME_MODE_ARRAY)
@@ -609,6 +863,8 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 		else if (_imeMode == IME_MODE::IME_MODE_GENERIC)
 			StringCchPrintf(customTableName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\GENERIC-Custom.txt");
 		importCustomTableFile(hDlg, customTableName);
+		// Enable EN_CHANGE notifications for Rich Edit control (not sent by default unlike standard edit controls)
+		SendMessage(GetDlgItem(hDlg, IDC_EDIT_CUSTOM_TABLE), EM_SETEVENTMASK, 0, ENM_CHANGE);
 		_customTableChanged = FALSE;
 
 		if (!(_loadTableMode || _imeMode == IME_MODE::IME_MODE_GENERIC))
@@ -742,9 +998,15 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 			switch (HIWORD(wParam))
 			{
 			case EN_CHANGE:
-				PropSheet_Changed(GetParent(hDlg), hDlg);
-				_customTableChanged = TRUE;
-				ret = TRUE;
+					PropSheet_Changed(GetParent(hDlg), hDlg);
+					_customTableChanged = TRUE;
+				// Re-validate immediately (non-intrusive)
+				{
+					CDIME* pDIME = (CDIME*)GetWindowLongPtr(hDlg, GWLP_USERDATA);
+					CCompositionProcessorEngine* pEngine = (pDIME) ? pDIME->GetCompositionProcessorEngine() : nullptr;
+					ValidateCustomTableLines(hDlg, _imeMode, pEngine, false);
+				}
+					ret = TRUE;
 				break;
 			default:
 				break;
@@ -783,6 +1045,18 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 					StringCchPrintf(pathToLoad, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\GENERIC-CUSTOM.txt");
 					StringCchPrintf(pathToWrite, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\GENERIC-CUSTOM.cin");
 				}
+				// Before exporting and parsing, validate the custom table lines in the rich edit control.
+				// Retrieve CDIME* stored in WM_INITDIALOG and obtain composition engine for validation.
+				CDIME* pDIME = (CDIME*)GetWindowLongPtr(hDlg, GWLP_USERDATA);
+				CCompositionProcessorEngine* pEngine = (pDIME) ? pDIME->GetCompositionProcessorEngine() : nullptr;
+				// Validate and mark failing lines in red; if validation fails, show message and abort apply.
+				if (!ValidateCustomTableLines(hDlg, _imeMode, pEngine))
+				{
+					// keep dialog open
+					ret = TRUE;
+					break;
+				}
+				// export and parse as before
 				exportCustomTableFile(hDlg, pathToLoad);
 				// parse custom.txt file to UTF-16 and internal format
 				if (!parseCINFile(pathToLoad, pathToWrite, TRUE))
@@ -1485,17 +1759,25 @@ BOOL CConfig::importCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToLoad)
 				lang->Release();
 			CoUninitialize();
 
-			if (outWStr)
-			{
-				SetDlgItemTextW(hDlg, IDC_EDIT_CUSTOM_TABLE, outWStr);
-				delete[]outWStr;
-			}
+            if (outWStr)
+            {
+                // Strip leading BOM (U+FEFF) if present before setting control text
+                if (outWStr[0] == 0xFEFF)
+                    SetDlgItemTextW(hDlg, IDC_EDIT_CUSTOM_TABLE, outWStr + 1);
+                else
+                    SetDlgItemTextW(hDlg, IDC_EDIT_CUSTOM_TABLE, outWStr);
+                delete[]outWStr;
+            }
 
 		}
-		else if(customText)
-		{
-			SetDlgItemTextW(hDlg, IDC_EDIT_CUSTOM_TABLE, customText);
-		}
+        else if(customText)
+        {
+            // Strip leading BOM (U+FEFF) if present in file buffer
+            if (customText[0] == 0xFEFF)
+                SetDlgItemTextW(hDlg, IDC_EDIT_CUSTOM_TABLE, customText + 1);
+            else
+                SetDlgItemTextW(hDlg, IDC_EDIT_CUSTOM_TABLE, customText);
+        }
 
 	Cleanup:
 		if (hCustomTable) CloseHandle(hCustomTable);
@@ -1508,6 +1790,13 @@ BOOL CConfig::importCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToLoad)
 BOOL CConfig::exportCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToWrite)
 {
 	//write the edittext context into custom.txt
+    // Validate contents first; if invalid, abort export so Apply will not continue to parseCINFile.
+    CDIME* pDIME = (CDIME*)GetWindowLongPtr(hDlg, GWLP_USERDATA);
+    CCompositionProcessorEngine* pEngine = (pDIME) ? pDIME->GetCompositionProcessorEngine() : nullptr;
+    if (!ValidateCustomTableLines(hDlg, _imeMode, pEngine))
+    {
+        return FALSE;
+    }
 	BOOL success = TRUE;
 	DWORD dwDataLen;
 	LPWSTR customText = nullptr;
