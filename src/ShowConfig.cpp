@@ -94,8 +94,6 @@ HRESULT CDIME::Show(_In_opt_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID
 	// Load Rich Edit control library (must be loaded before dialog creation)
 	HINSTANCE dllRichEditHandle = LoadLibrary(L"msftedit.dll");
 
-	// Load Rich Edit control library (must be loaded before dialog creation)
-	HINSTANCE dllRichEditHandle = LoadLibrary(L"msftedit.dll");
 
 	_T_CreatePropertySheetPage _CreatePropertySheetPage = NULL;
 	_T_PropertySheet _PropertySheet = NULL;
