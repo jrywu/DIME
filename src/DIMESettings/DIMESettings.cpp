@@ -217,7 +217,11 @@ static void showIMESettings(HWND hDlg, IME_MODE imeMode)
         BUILD_VER_MAJOR, BUILD_VER_MINOR, BUILD_COMMIT_COUNT, BUILD_DATE_1);
     psh.pszCaption = dialogCaption;
 
+    // Load Rich Edit control library (must be loaded before dialog creation)
+    HINSTANCE dllRichEditHandle = LoadLibrary(L"msftedit.dll");
     PropertySheetW(&psh);
+    if (dllRichEditHandle)
+        FreeLibrary(dllRichEditHandle);
 
 }
 

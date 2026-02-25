@@ -44,6 +44,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "TableDictionaryEngine.h"
 #include "Aclapi.h"
 #include "CompositionProcessorEngine.h"
+#include <Richedit.h>
 
 
 #pragma comment(lib, "Shlwapi.lib")
@@ -609,6 +610,8 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 		else if (_imeMode == IME_MODE::IME_MODE_GENERIC)
 			StringCchPrintf(customTableName, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\GENERIC-Custom.txt");
 		importCustomTableFile(hDlg, customTableName);
+		// Enable EN_CHANGE notifications for Rich Edit control (not sent by default unlike standard edit controls)
+		SendMessage(GetDlgItem(hDlg, IDC_EDIT_CUSTOM_TABLE), EM_SETEVENTMASK, 0, ENM_CHANGE);
 		_customTableChanged = FALSE;
 
 		if (!(_loadTableMode || _imeMode == IME_MODE::IME_MODE_GENERIC))
