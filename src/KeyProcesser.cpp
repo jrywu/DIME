@@ -360,12 +360,11 @@ BOOL CCompositionProcessorEngine::IsEscapeInputChar(WCHAR wch)
 	{
 		if (_keystrokeBuffer.GetLength() == 0 && wch == L'\\')
 			return TRUE;
-		if (_keystrokeBuffer.GetLength() >= 1 && _keystrokeBuffer.Get() && *_keystrokeBuffer.Get() == L'\\')
-		{
-			// Only accept alphanumeric as custom phrase code chars; space/enter/etc. fall through to convert handling
-			if ((wch >= L'a' && wch <= L'z') || (wch >= L'A' && wch <= L'Z') || (wch >= L'0' && wch <= L'9'))
-				return TRUE;
-		}
+		// Allow all printable ASCII (including shifted punctuation) as part of phonetic escape composition,
+		// but keep space excluded so space/enter still end/convert the escape input.
+		if (_keystrokeBuffer.GetLength() >= 1 && _keystrokeBuffer.Get() && *_keystrokeBuffer.Get() == L'\\'
+			&& IsDoubleSingleByte(wch) && wch != L' ')
+			return TRUE;
 	}
 	if (_keystrokeBuffer.Get() == nullptr || _keystrokeBuffer.GetLength() > 1)
 		goto exit;
@@ -497,7 +496,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 		fComposing = FALSE;
 	}
 	// Processing dayi address input ---------------------------------------------------------
-	// // Symbol mode start with L'=' for dayi, L'w' for array30; L'H' and L'8' for array40
+	// // Symbol mode start with L'=' for dayi, L'w' for array30; L'H' and L'8' for array40 and \for Phonetic custom phrase input
 	if (IsEscapeInputChar(*pwch) && uCode != VK_SHIFT && candidateMode != CANDIDATE_MODE::CANDIDATE_ORIGINAL &&
 		!(CConfig::GetNumericPad() == NUMERIC_PAD::NUMERIC_PAD_MUMERIC && uCode >= VK_NUMPAD0 && uCode <= VK_DIVIDE))
 	{
@@ -622,10 +621,11 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 	return FALSE;
 	}
 	
-	// Handle Shift+printable ASCII for English input mode
+	// Handle Shift+printable ASCII for English input mode-----------------------------------------------------
 	// Only when not composing (empty buffer)
 	// Note: Shift+Space is handled by the preserved key system (OnPreservedKey)
-	if (!fComposing && pwch && *pwch && (Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_RSHIFT | TF_MOD_SHIFT)) != 0)
+	if (!(Global::imeMode == IME_MODE::IME_MODE_PHONETIC && IsEscapeInputLeading()) &&
+		!fComposing && pwch && *pwch && (Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_RSHIFT | TF_MOD_SHIFT)) != 0 )
 	{
 		WCHAR c = *pwch;
 
@@ -834,7 +834,8 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeComposition(UINT uCode, P
 	//Check if valid keystroke in keystroke table
 	pKeystroke = _KeystrokeComposition.GetAt(c - 32);
 
-	if (c >= 'A' && c <= 'Z' && (Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT)) != 0) return FALSE; //  input English with shift-a~z 
+	if (c >= 'A' && c <= 'Z' && (Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT)) != 0
+		&& !(Global::imeMode == IME_MODE::IME_MODE_PHONETIC && IsEscapeInputLeading())) return FALSE; //  input English with shift-a~z 
 
 	if (pKeystroke != nullptr && pKeystroke->Function != KEYSTROKE_FUNCTION::FUNCTION_NONE &&
 		!(CConfig::GetNumericPad() == NUMERIC_PAD::NUMERIC_PAD_MUMERIC && uCode >= VK_NUMPAD0 && uCode <= VK_DIVIDE))

@@ -861,7 +861,7 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
 		if (itemLength > MAX_CAND_ITEM_LENGTH) // if the length of item text > MAX_CAND_ITEM_LENGTH (13) , truncate the item text as "First 6 chars of itemtext"+"..."+"last 6 chars of itemtext"
 		{
 			StringCchCatN(itemText, MAX_CAND_ITEM_LENGTH + 3, pItemList->_ItemString.Get(), 6);
-			StringCchCatN(itemText, MAX_CAND_ITEM_LENGTH + 3, L"�K", 1);
+            StringCchCatN(itemText, MAX_CAND_ITEM_LENGTH + 3, L"…", 1);
 			StringCchCatN(itemText, MAX_CAND_ITEM_LENGTH + 3, (pItemList->_ItemString.Get() + itemLength - 6), 6);
 			itemLength = MAX_CAND_ITEM_LENGTH;
 		}
