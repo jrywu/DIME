@@ -48,6 +48,27 @@ class CCompositionProcessorEngine
 public:
     CCompositionProcessorEngine(_In_ CDIME *pTextService);
     ~CCompositionProcessorEngine(void);
+
+    // Full validation that uses internal keystroke composition logic.
+    // This delegates to the internal IsVirtualKeyKeystrokeComposition helper
+    // to perform the same validation used at runtime by the engine.
+    //
+    // NOTE: The settings/config UI build defines `DIMESettings` and does not
+    // link the full composition engine implementation. Guard this wrapper so
+    // the UI build continues to use the lightweight inline check.
+#ifndef DIMESettings
+    BOOL ValidateCompositionKeyCharFull(WCHAR ch)
+    {
+        PWCH pwch = &ch;
+        // IsVirtualKeyKeystrokeComposition requires a non-null _KEYSTROKE_STATE
+        // pointer. Provide a local stack instance so the call can perform full
+        // validation without depending on an external state object.
+        _KEYSTROKE_STATE ks;
+        ks.Category = KEYSTROKE_CATEGORY::CATEGORY_NONE;
+        ks.Function = KEYSTROKE_FUNCTION::FUNCTION_NONE;
+        return IsVirtualKeyKeystrokeComposition(0, pwch, &ks, KEYSTROKE_FUNCTION::FUNCTION_INPUT) ? TRUE : FALSE;
+    }
+#endif
 	
 	
 

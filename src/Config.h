@@ -36,6 +36,18 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <Commdlg.h>
 
+// Forward declare to avoid including CompositionProcessorEngine.h in this header
+class CCompositionProcessorEngine;
+
+// Lightweight dialog context passed to property pages via PROPSHEETPAGE.lParam
+// Holds a pointer to the composition engine and whether the engine is owned
+// by the dialog (and therefore should be deleted by the dialog proc).
+struct DialogContext {
+    CCompositionProcessorEngine* pEngine;
+    bool engineOwned;
+    DialogContext() : pEngine(nullptr), engineOwned(false) {}
+};
+
 #ifdef DIME_UNIT_TESTING
 // Forward declaration for unit testing
 namespace DIMETests {
@@ -263,6 +275,7 @@ private:
 	
 
 	static void ParseConfig(HWND hDlg, BOOL initDiag = FALSE);
+	static BOOL ValidateCustomTableLines(HWND hDlg, IME_MODE imeMode, CCompositionProcessorEngine* pEngine, bool showAlert = true);
 
 	static BOOL importCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToLoad);
 	static BOOL exportCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToWrite);

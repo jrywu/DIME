@@ -154,9 +154,29 @@ static void showIMESettings(HWND hDlg, IME_MODE imeMode)
     {
         psp.pszTemplate = MAKEINTRESOURCE(DlgPage[i].id);
         psp.pfnDlgProc = DlgPage[i].DlgProc;
+        // Create an owned DialogContext with its own temporary engine for settings UI.
+        DialogContext* pCtx = new (std::nothrow) DialogContext();
+        if (pCtx) {
+            pCtx->pEngine = new (std::nothrow) CCompositionProcessorEngine(nullptr);
+            pCtx->engineOwned = true;
+            if (pCtx->pEngine) {
+                // Initialize engine state for settings dialog
+                pCtx->pEngine->SetupDictionaryFile(imeMode);
+                pCtx->pEngine->SetupConfiguration(imeMode);
+                pCtx->pEngine->SetupKeystroke(imeMode);
+            }
+            psp.lParam = (LPARAM)pCtx;
+        } else {
+            psp.lParam = 0;
+        }
         if (CreatePropertySheetPageW != nullptr) // Ensure the function pointer is valid
         {
             hpsp[i] = CreatePropertySheetPageW(&psp); // Call the function with the required argument
+        }
+        if (!hpsp[i] && pCtx) {
+            // cleanup if page creation failed
+            if (pCtx->engineOwned && pCtx->pEngine) delete pCtx->pEngine;
+            delete pCtx;
         }
     }
 

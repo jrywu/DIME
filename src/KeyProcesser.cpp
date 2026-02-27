@@ -805,6 +805,8 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 
 BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeComposition(UINT uCode, PWCH pwch, _Inout_opt_ _KEYSTROKE_STATE* pKeyState, KEYSTROKE_FUNCTION function)
 {
+	//debugPrint(L"CCompositionProcessorEngine::IsVirtualKeyKeystrokeComposition() pwch=%c, uCode=%d, function=%d", *pwch, uCode, function);
+
 	
 	if (!IsDictionaryAvailable(_imeMode) || pKeyState == nullptr || _KeystrokeComposition.Count() == 0)
 	{
@@ -833,6 +835,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeComposition(UINT uCode, P
 	}
 	//Check if valid keystroke in keystroke table
 	pKeystroke = _KeystrokeComposition.GetAt(c - 32);
+	//debugPrint(L"CCompositionProcessorEngine::IsVirtualKeyKeystrokeComposition() mapped keystroke=%c", pKeystroke->Printable);
 
 	if (c >= 'A' && c <= 'Z' && (Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_SHIFT)) != 0
 		&& !(Global::imeMode == IME_MODE::IME_MODE_PHONETIC && IsEscapeInputLeading())) return FALSE; //  input English with shift-a~z 
@@ -844,15 +847,18 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyKeystrokeComposition(UINT uCode, P
 		{
 			pKeyState->Category = KEYSTROKE_CATEGORY::CATEGORY_COMPOSING;
 			pKeyState->Function = pKeystroke->Function;
+			//debugPrint(L"CCompositionProcessorEngine::IsVirtualKeyKeystrokeComposition() matched keystroke function=%d", pKeyState->Function);	
 			return TRUE;
 		}
 		else if (function == pKeystroke->Function)
 		{
 			pKeyState->Category = KEYSTROKE_CATEGORY::CATEGORY_COMPOSING;
 			pKeyState->Function = pKeystroke->Function;
+			//debugPrint(L"CCompositionProcessorEngine::IsVirtualKeyKeystrokeComposition() matched keystroke function=%d", pKeyState->Function);
 			return TRUE;
 		}
 	}
+	//debugPrint(L"CCompositionProcessorEngine::IsVirtualKeyKeystrokeComposition() no match");
 	return FALSE;
 }
 

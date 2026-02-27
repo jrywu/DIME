@@ -126,16 +126,25 @@ HRESULT CDIME::Show(_In_opt_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID
 	psp.dwFlags = PSP_PREMATURE;
 	psp.hInstance = Global::dllInstanceHandle;
 
-	for (i = 0; i<_countof(DlgPage); i++)
-	{
-		psp.pszTemplate = MAKEINTRESOURCE(DlgPage[i].id);
-		psp.pfnDlgProc = DlgPage[i].DlgProc;
-		// Pass CDIME instance pointer to the page so the page proc can access
-		// the composition engine via PROPSHEETPAGE.lParam in WM_INITDIALOG.
-		psp.lParam = (LPARAM)this;
-		if (_CreatePropertySheetPage)
-			hpsp[i] = (*_CreatePropertySheetPage)(&psp);
-	}
+    for (i = 0; i<_countof(DlgPage); i++)
+    {
+        psp.pszTemplate = MAKEINTRESOURCE(DlgPage[i].id);
+        psp.pfnDlgProc = DlgPage[i].DlgProc;
+        // Allocate a per-page DialogContext carrying the engine pointer.
+        // The dialog proc will free this context on WM_DESTROY.
+        DialogContext* pCtx = new (std::nothrow) DialogContext();
+        if (pCtx) {
+            pCtx->pEngine = _pCompositionProcessorEngine;
+            pCtx->engineOwned = false; // runtime engine owned by CDIME
+            psp.lParam = (LPARAM)pCtx;
+        } else {
+            psp.lParam = 0;
+        }
+        if (_CreatePropertySheetPage)
+            hpsp[i] = (*_CreatePropertySheetPage)(&psp);
+        // If page creation failed, free the allocated context
+        if (!hpsp[i] && pCtx) { delete pCtx; }
+    }
 
 	ZeroMemory(&psh, sizeof(PROPSHEETHEADER));
 	psh.dwSize = sizeof(PROPSHEETHEADER);

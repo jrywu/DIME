@@ -177,8 +177,9 @@ static void InstallCustomTableSubclass(HWND hEdit)
 //  - If imeMode == IME_MODE_PHONETIC: key must be printable ASCII (0x20..0x7E).
 //  - Otherwise: each character in key must be valid composition key via composition engine.
 // On failure the entire physical line is colored solid red and the function returns FALSE.
-static BOOL ValidateCustomTableLines(HWND hDlg, IME_MODE imeMode, CCompositionProcessorEngine* pEngine, bool showAlert = true)
+BOOL CConfig::ValidateCustomTableLines(HWND hDlg, IME_MODE imeMode, CCompositionProcessorEngine* pEngine, bool showAlert)
 {
+	debugPrint(L"CConfig::ValidateCustomTableLines(), imeMode=%d", (int)imeMode);
     HWND hEdit = GetDlgItem(hDlg, IDC_EDIT_CUSTOM_TABLE);
     if (!hEdit) return TRUE;
 
@@ -241,6 +242,7 @@ static BOOL ValidateCustomTableLines(HWND hDlg, IME_MODE imeMode, CCompositionPr
         {
             // pattern didn't match (no key/value separator or empty key)
             valid = FALSE;
+			debugPrint(L"Line %d regex validation failed: pattern match failed", li);
         }
         else
         {
@@ -256,32 +258,45 @@ static BOOL ValidateCustomTableLines(HWND hDlg, IME_MODE imeMode, CCompositionPr
             }
             else
             {
-                // Quick accept: if the key contains only printable ASCII (common
+                // Quick accept: if the key contains only letters
                 // short Latin keys like "wto", "ntu", "nasa"), treat as valid
                 // even when composition engine is not available.
+                // Accept only ASCII alphabetic letters (A-Z), ignore case
                 bool allAsciiPrintable = true;
                 for (WCHAR c : key) {
-                    if (!(c >= 0x21 && c <= 0x7E)) { allAsciiPrintable = false; break; }
+                    WCHAR cu = towupper(c);
+                    if (!(cu >= L'A' && cu <= L'Z')) { allAsciiPrintable = false; break; }
                 }
                 if (allAsciiPrintable) {
                     valid = TRUE;
+					debugPrint(L"Line %d quick accept: all ASCII letters, key = %s", li, key.c_str());
                 } else {
                 // Rule 3: validate each character with composition engine if available
-                for (WCHAR c : key)
-                {
-                    BOOL ok = FALSE;
-                    if (pEngine)
+                    for (WCHAR c : key)
                     {
-                        ok = pEngine->ValidateCompositionKeyChar(c) ? TRUE : FALSE;
+                        BOOL ok = FALSE;
+                        if (pEngine)
+                        {
+#ifdef DIMESettings
+                            // Settings build: engine implementation not linked, use lightweight check
+                            ok = pEngine->ValidateCompositionKeyChar(c) ? TRUE : FALSE;
+#else
+                            // Normal build: use engine's full validation logic
+                            ok = pEngine->ValidateCompositionKeyCharFull(toupper(c)) ? TRUE : FALSE;
+							debugPrint(L"Line %d engine validation: char '%c' (0x%04X) is %s", li, c, c, ok ? L"valid" : L"invalid");	
+#endif
+                        }
+                        else
+                        {
+                            // fallback: basic range check same as inline ValidateCompositionKeyChar
+                            WCHAR cu = towupper(c);
+                            ok = (cu >= 32 && cu <= 32 + MAX_RADICAL) ? TRUE : FALSE;
+							debugPrint(L"Line %d fallback validation: char '%c' (0x%04X) is %s", li, c, c, ok ? L"valid" : L"invalid");
+                        }
+                        if (!ok) { 
+							valid = FALSE; break; 
+						}
                     }
-                    else
-                    {
-                        // fallback: basic range check same as inline ValidateCompositionKeyChar
-                        WCHAR cu = towupper(c);
-                        ok = (cu >= 32 && cu <= 32 + MAX_RADICAL) ? TRUE : FALSE;
-                    }
-                    if (!ok) { valid = FALSE; break; }
-                }
                 }
             }
         }
@@ -373,7 +388,27 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 
 	switch (message)
 	{
+    case WM_DESTROY:
+        {
+            // Free per-page DialogContext if any
+            DialogContext* pCtx = (DialogContext*)GetWindowLongPtr(hDlg, GWLP_USERDATA);
+            if (pCtx)
+            {
+                if (pCtx->engineOwned && pCtx->pEngine)
+                    delete pCtx->pEngine;
+                delete pCtx;
+                SetWindowLongPtr(hDlg, GWLP_USERDATA, 0);
+            }
+        }
+        break;
 	case WM_INITDIALOG:
+		// Store DialogContext* passed via PROPSHEETPAGE.lParam (set by caller)
+		if (lParam != 0)
+		{
+			LPPROPSHEETPAGE psp = (LPPROPSHEETPAGE)lParam;
+			if (psp)
+				SetWindowLongPtr(hDlg, GWLP_USERDATA, (LONG_PTR)psp->lParam);
+		}
 		// Reload config to ensure we have the latest values from disk
 		// This prevents showing stale values when multiple processes have DIME loaded
 		LoadConfig(_imeMode);
@@ -822,19 +857,7 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 		// Reload config to ensure we have the latest values from disk
 		// This prevents showing wrong buttons when config updated in another process
 		LoadConfig(_imeMode);
-		//
-		//wcsncpy_s(fontname, _pMlFontFaceName, _TRUNCATE);
-		//fontweight = _fontWeight;
-		//fontitalic = _fontItalic;
-		//hdc = GetDC(hDlg);
-		//logPixelY = GetDeviceCaps(hdc, LOGPIXELSY);
-		//if (_GetDpiForMonitor)
-		//{
-		//	HMONITOR monitor = MonitorFromWindow(hDlg, MONITOR_DEFAULTTONEAREST);
-		//	UINT dpiX, dpiY;
-		//	_GetDpiForMonitor(monitor, MDT_EFFECTIVE_DPI, &dpiX, &dpiY);
-		//	if (dpiY > 0) logPixelY = dpiY;
-		//}
+		
 		//LogFontSize = -MulDiv(fontpoint, logPixelY, 72);
 		//hFont = CreateFont(LogFontSize, 0, 0, 0,
 		//	fontweight, fontitalic, FALSE, FALSE, DEFAULT_CHARSET,
@@ -847,7 +870,7 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 			InstallCustomTableSubclass(hEdit);
 		}
 
-		// Store CDIME* passed via PROPSHEETPAGE.lParam (set in CDIME::Show)
+		// Store DialogContext* passed via PROPSHEETPAGE.lParam (set by caller)
 		if (lParam != 0)
 		{
 			LPPROPSHEETPAGE psp = (LPPROPSHEETPAGE)lParam;
@@ -1002,12 +1025,13 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 			case EN_CHANGE:
 					PropSheet_Changed(GetParent(hDlg), hDlg);
 					_customTableChanged = TRUE;
-				// Re-validate immediately (non-intrusive)
-				{
-					CDIME* pDIME = (CDIME*)GetWindowLongPtr(hDlg, GWLP_USERDATA);
-					CCompositionProcessorEngine* pEngine = (pDIME) ? pDIME->GetCompositionProcessorEngine() : nullptr;
-					ValidateCustomTableLines(hDlg, _imeMode, pEngine, false);
-				}
+                // Re-validate immediately (non-intrusive)
+                {
+                    // GWLP_USERDATA stores DialogContext* (set by caller)
+                    DialogContext* pCtx = (DialogContext*)GetWindowLongPtr(hDlg, GWLP_USERDATA);
+                    CCompositionProcessorEngine* pEngine = (pCtx) ? pCtx->pEngine : nullptr;
+                    CConfig::ValidateCustomTableLines(hDlg, _imeMode, pEngine, false);
+                }
 					ret = TRUE;
 				break;
 			default:
@@ -1047,12 +1071,13 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 					StringCchPrintf(pathToLoad, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\GENERIC-CUSTOM.txt");
 					StringCchPrintf(pathToWrite, MAX_PATH, L"%s%s", wszAppData, L"\\DIME\\GENERIC-CUSTOM.cin");
 				}
-				// Before exporting and parsing, validate the custom table lines in the rich edit control.
-				// Retrieve CDIME* stored in WM_INITDIALOG and obtain composition engine for validation.
-				CDIME* pDIME = (CDIME*)GetWindowLongPtr(hDlg, GWLP_USERDATA);
-				CCompositionProcessorEngine* pEngine = (pDIME) ? pDIME->GetCompositionProcessorEngine() : nullptr;
+                // Before exporting and parsing, validate the custom table lines in the rich edit control.
+                // GWLP_USERDATA now stores a pointer to DialogContext (set by caller).
+                DialogContext* pCtx = (DialogContext*)GetWindowLongPtr(hDlg, GWLP_USERDATA);
+                CCompositionProcessorEngine* pEngine = (pCtx) ? pCtx->pEngine : nullptr;
+                
 				// Validate and mark failing lines in red; if validation fails, show message and abort apply.
-				if (!ValidateCustomTableLines(hDlg, _imeMode, pEngine))
+                if (!CConfig::ValidateCustomTableLines(hDlg, _imeMode, pEngine))
 				{
 					// keep dialog open
 					ret = TRUE;
@@ -1294,7 +1319,7 @@ void CConfig::ParseConfig(HWND hDlg, BOOL initDiag)
 
 VOID CConfig::WriteConfig(BOOL confirmUpdated)
 {
-	debugPrint(L"CDIME::WriteConfig() \n");
+	debugPrint(L"CConfig::WriteConfig() \n");
 
 	struct _stat initTimeStamp;
 	BOOL failed = _wstat(_pwszINIFileName, &initTimeStamp) != 0;
@@ -1495,7 +1520,7 @@ void CConfig::SetIMEModeDefaults(IME_MODE imeMode)
 
 BOOL CConfig::LoadConfig(IME_MODE imeMode)
 {
-	debugPrint(L"CDIME::loadConfig() \n");
+	debugPrint(L"CConfig::loadConfig() \n");
 	SetIMEMode (imeMode);
 	
 	PACL pOldDACL = NULL, pNewDACL = NULL;
@@ -1504,14 +1529,14 @@ BOOL CConfig::LoadConfig(IME_MODE imeMode)
 
 	if (PathFileExists(_pwszINIFileName))
 	{
-		debugPrint(L"CDIME::loadConfig() config file = %s exists\n", _pwszINIFileName);
+		debugPrint(L"CConfig::loadConfig() config file = %s exists\n", _pwszINIFileName);
 		struct _stat initTimeStamp;
 		BOOL failed = _wstat(_pwszINIFileName, &initTimeStamp) != 0;  //error for retrieving timestamp
 		BOOL updated = FALSE;
 		if (!failed)
 			updated = difftime(initTimeStamp.st_mtime, _initTimeStamp.st_mtime) > 0;
 		
-		debugPrint(L"CDIME::loadConfig() wstat failed = %d, config file updated = %d\n", failed, updated);
+		debugPrint(L"CConfig::loadConfig() wstat failed = %d, config file updated = %d\n", failed, updated);
 		if (failed || updated || _configIMEMode!=imeMode)
 		{
 			bRET = TRUE;
@@ -1530,7 +1555,7 @@ BOOL CConfig::LoadConfig(IME_MODE imeMode)
 				{
 					_loadTableMode = TRUE; // reset _loadTableMode first. If no _loadTableMode is exist we should not should load tables buttons
 					iniTableDictionaryEngine->ParseConfig(imeMode); //parse config first.
-					debugPrint(L"CDIME::loadConfig() parsed. _loadTableMode = %d\n", _loadTableMode);
+					debugPrint(L"CConfig::loadConfig() parsed. _loadTableMode = %d\n", _loadTableMode);
 				}
 				delete iniTableDictionaryEngine; // delete after config.ini config are parsed
 				delete iniDictionaryFile;
@@ -1793,8 +1818,9 @@ BOOL CConfig::exportCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToWrite)
 {
 	//write the edittext context into custom.txt
     // Validate contents first; if invalid, abort export so Apply will not continue to parseCINFile.
-    CDIME* pDIME = (CDIME*)GetWindowLongPtr(hDlg, GWLP_USERDATA);
-    CCompositionProcessorEngine* pEngine = (pDIME) ? pDIME->GetCompositionProcessorEngine() : nullptr;
+    // GWLP_USERDATA stores DialogContext* (set by caller)
+    DialogContext* pCtx = (DialogContext*)GetWindowLongPtr(hDlg, GWLP_USERDATA);
+    CCompositionProcessorEngine* pEngine = (pCtx) ? pCtx->pEngine : nullptr;
     if (!ValidateCustomTableLines(hDlg, _imeMode, pEngine))
     {
         return FALSE;
@@ -1862,7 +1888,10 @@ BOOL CConfig::parseCINFile(_In_ LPCWSTR pathToLoad, _In_ LPCWSTR pathToWrite, _I
 				escapedValue[MAX_VALUE_LENGTH] = { 0 },	sep[MAX_KEY_LENGTH] = { 0 }, others[MAX_COMMIT_LENGTH] = { 0 };
 			BOOL doEscape = FALSE;
 
-			if (customTableMode) fwprintf_s(fpw, L"%s", L"%chardef begin\n");
+			if (customTableMode) {
+				fwprintf_s(fpw, L"%s", L"%chardef begin\n");
+				doEscape = TRUE;
+			}
 
 			while (fgetws(line, MAX_TABLE_LINE_LENGTH, fpr) != NULL)
 			{
