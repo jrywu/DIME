@@ -39,6 +39,9 @@
     <ClInclude Include="..\resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\CompositionProcessorEngine.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DIMESettings.cpp">
@@ -66,6 +69,12 @@
       <Filter>Source Files\DIME</Filter>
     </ClCompile>
     <ClCompile Include="..\TfInputProcessorProfile.cpp">
+      <Filter>Source Files\DIME</Filter>
+    </ClCompile>
+    <ClCompile Include="..\CompositionProcessorEngine.cpp">
+      <Filter>Source Files\DIME</Filter>
+    </ClCompile>
+    <ClCompile Include="..\SetupCompositionProcesseorEngine.cpp">
       <Filter>Source Files\DIME</Filter>
     </ClCompile>
   </ItemGroup>

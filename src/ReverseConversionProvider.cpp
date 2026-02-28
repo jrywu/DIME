@@ -61,7 +61,7 @@ HRESULT CDIME::GetReverseConversion(_In_ LANGID langid, _In_   REFGUID guidProfi
 		return E_OUTOFMEMORY;
 	}
 	
-	_pCompositionProcessorEngine->SetupDictionaryFile(imeMode);
+	_pCompositionProcessorEngine->SetupDictionaryFile(imeMode, GetLocale());
 
 	if(_pReverseConversion[(UINT)imeMode] == nullptr)
 	{

@@ -89,6 +89,7 @@
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\CompositionProcessorEngine.h" />
     <ClInclude Include="..\Config.h" />
     <ClInclude Include="..\Globals.h" />
     <ClInclude Include="..\resource.h" />
@@ -99,11 +100,13 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\BaseStructure.cpp" />
+    <ClCompile Include="..\CompositionProcessorEngine.cpp" />
     <ClCompile Include="..\Config.cpp" />
     <ClCompile Include="..\DictionaryParser.cpp" />
     <ClCompile Include="..\DictionarySearch.cpp" />
     <ClCompile Include="..\File.cpp" />
     <ClCompile Include="..\Globals.cpp" />
+    <ClCompile Include="..\SetupCompositionProcesseorEngine.cpp" />
     <ClCompile Include="..\TableDictionaryEngine.cpp" />
     <ClCompile Include="..\TfInputProcessorProfile.cpp" />
     <ClCompile Include="DIMESettings.cpp" />

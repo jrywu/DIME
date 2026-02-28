@@ -1009,7 +1009,7 @@ BOOL CDIME::SetupLanguageProfile(LANGID langid, REFGUID guidLanguageProfile, _In
 
 
 			_pCompositionProcessorEngine->SetupPreserved(pThreadMgr, tfClientId);
-			_pCompositionProcessorEngine->SetupDictionaryFile(imeMode);
+			_pCompositionProcessorEngine->SetupDictionaryFile(imeMode, GetLocale());
 			
             CConfig::LoadConfig(Global::imeMode);
 			_pCompositionProcessorEngine->SetupConfiguration(imeMode);
@@ -1040,7 +1040,7 @@ void CDIME::_LoadConfig(BOOL isForce, IME_MODE imeMode)
         BOOL configUpdated = CConfig::LoadConfig(Global::imeMode);
         BOOL dictionaryUpdated = FALSE;
         if (_pCompositionProcessorEngine)
-            dictionaryUpdated = _pCompositionProcessorEngine->SetupDictionaryFile(Global::imeMode);
+            dictionaryUpdated = _pCompositionProcessorEngine->SetupDictionaryFile(Global::imeMode, GetLocale());
         if (configUpdated || dictionaryUpdated) // config file updated
         {
             _pCompositionProcessorEngine->SetupConfiguration(Global::imeMode);

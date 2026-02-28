@@ -68,8 +68,19 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CDIME *pTextServic
 		_pCustomTableDictionaryFile[i] = nullptr;
 	}
 
+#ifndef DIMESettings
 	//phoneticKeyboardLayout = PHONETIC_STANDARD_KEYBOARD_LAYOUT;
 	phoneticSyllable = 0;
+
+	_tfClientId = TF_CLIENTID_NULL;
+	_pActiveCandidateListIndexRange = &_candidateListIndexRange;
+	_hasWildcardIncludedInKeystrokeBuffer = FALSE;
+
+
+	_candidateWndWidth = DEFAULT_CAND_ITEM_LENGTH + TRAILING_SPACE;  //default with =  3 charaters +  trailling space
+	_candidateListPhraseModifier = 0;
+	_candidatePageSize = 0;
+#endif
 
 	//Array
 	_pArrayShortCodeTableDictionaryEngine = nullptr;
@@ -102,11 +113,8 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CDIME *pTextServic
 
 	_pEndkey = nullptr;
 
-	_tfClientId = TF_CLIENTID_NULL;
 
-	_pActiveCandidateListIndexRange = &_candidateListIndexRange;
 
-	_hasWildcardIncludedInKeystrokeBuffer = FALSE;
 
 	_isKeystrokeSort = FALSE;
 
@@ -114,11 +122,6 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CDIME *pTextServic
 
 
 
-	_candidateWndWidth = DEFAULT_CAND_ITEM_LENGTH + TRAILING_SPACE;  //default with =  3 charaters +  trailling space
-
-	_candidateListPhraseModifier = 0;
-
-	_candidatePageSize = 0;
 
 
 
@@ -134,10 +137,26 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CDIME *pTextServic
 CCompositionProcessorEngine::~CCompositionProcessorEngine()
 {
 	debugPrint(L"CCompositionProcessorEngine::~CCompositionProcessorEngine() destructor");
-	if (_pTextService) _pTextService->Release();
+	if (_pTextService) 
+		_pTextService->Release();
 	ReleaseDictionaryFiles();
 }
 
+BOOL CCompositionProcessorEngine::ValidateCompositionKeyCharFull(WCHAR ch)
+{
+    WCHAR c = towupper(ch);
+    debugPrint(L"CCompositionProcessorEngine::ValidateCompositionKeyCharFull() char = %c", c);
+    if (c < 32 || c >= 32 + MAX_RADICAL)
+        return FALSE;
+    if ((c - 32) < 0 || (UINT)(c - 32) >= _KeystrokeComposition.Count())
+        return FALSE;
+    const _KEYSTROKE& ks = *_KeystrokeComposition.GetAt(c - 32);
+    debugPrint(L"KeystrokeComposition entry: Index=%d, Printable=%c, CandIndex=%c, VirtualKey=0x%02X, Modifiers=0x%02X, Function=%d",
+        ks.Index, ks.Printable, ks.CandIndex, ks.VirtualKey, ks.Modifiers, ks.Function);
+    return ks.Function == KEYSTROKE_FUNCTION::FUNCTION_INPUT ? TRUE : FALSE;
+}
+
+#ifndef DIMESettings
 //+---------------------------------------------------------------------------
 //
 // GetReadingString
@@ -622,6 +641,7 @@ void CCompositionProcessorEngine::GetCandidateStringInConverted(CStringRange &se
 }
 
 
+
 //+---------------------------------------------------------------------------
 //
 // GetDayiAddressChar
@@ -813,3 +833,4 @@ CStringRange CCompositionProcessorEngine::buildKeyStrokesFromPhoneticSyllable(UI
 	}
 	return csr;
 }
+#endif

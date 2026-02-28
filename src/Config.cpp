@@ -277,14 +277,9 @@ BOOL CConfig::ValidateCustomTableLines(HWND hDlg, IME_MODE imeMode, CComposition
                         BOOL ok = FALSE;
                         if (pEngine)
                         {
-#ifdef DIMESettings
-                            // Settings build: engine implementation not linked, use lightweight check
-                            ok = pEngine->ValidateCompositionKeyChar(c) ? TRUE : FALSE;
-#else
                             // Normal build: use engine's full validation logic
-                            ok = pEngine->ValidateCompositionKeyCharFull(toupper(c)) ? TRUE : FALSE;
+                            ok = pEngine->ValidateCompositionKeyCharFull(c) ? TRUE : FALSE;
 							debugPrint(L"Line %d engine validation: char '%c' (0x%04X) is %s", li, c, c, ok ? L"valid" : L"invalid");	
-#endif
                         }
                         else
                         {

@@ -6,6 +6,7 @@
 #include <ntddkbd.h>
 #include "DIMESettings.h"
 #include "..\Globals.h"
+#include "..\CompositionProcessorEngine.h"
 #include "..\Config.h"
 #include "..\BuildInfo.h"
 #include "..\TfInputProcessorProfile.h"
@@ -157,10 +158,11 @@ static void showIMESettings(HWND hDlg, IME_MODE imeMode)
         // Create an owned DialogContext with its own temporary engine for settings UI.
         DialogContext* pCtx = new (std::nothrow) DialogContext();
         if (pCtx) {
+            // Construct a temporary composition engine for the settings dialog
+            // so the UI uses the same validation logic as the runtime IME.
             pCtx->pEngine = new (std::nothrow) CCompositionProcessorEngine(nullptr);
             pCtx->engineOwned = true;
             if (pCtx->pEngine) {
-                // Initialize engine state for settings dialog
                 pCtx->pEngine->SetupDictionaryFile(imeMode);
                 pCtx->pEngine->SetupConfiguration(imeMode);
                 pCtx->pEngine->SetupKeystroke(imeMode);

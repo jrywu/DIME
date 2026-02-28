@@ -49,29 +49,39 @@ public:
     CCompositionProcessorEngine(_In_ CDIME *pTextService);
     ~CCompositionProcessorEngine(void);
 
-    // Full validation that uses internal keystroke composition logic.
-    // This delegates to the internal IsVirtualKeyKeystrokeComposition helper
-    // to perform the same validation used at runtime by the engine.
-    //
-    // NOTE: The settings/config UI build defines `DIMESettings` and does not
-    // link the full composition engine implementation. Guard this wrapper so
-    // the UI build continues to use the lightweight inline check.
-#ifndef DIMESettings
-    BOOL ValidateCompositionKeyCharFull(WCHAR ch)
-    {
-        PWCH pwch = &ch;
-        // IsVirtualKeyKeystrokeComposition requires a non-null _KEYSTROKE_STATE
-        // pointer. Provide a local stack instance so the call can perform full
-        // validation without depending on an external state object.
-        _KEYSTROKE_STATE ks;
-        ks.Category = KEYSTROKE_CATEGORY::CATEGORY_NONE;
-        ks.Function = KEYSTROKE_FUNCTION::FUNCTION_NONE;
-        return IsVirtualKeyKeystrokeComposition(0, pwch, &ks, KEYSTROKE_FUNCTION::FUNCTION_INPUT) ? TRUE : FALSE;
-    }
-#endif
-	
-	
+    // Always-available minimal setup API for DIMESettings
+    void SetupConfiguration(IME_MODE imeMode);
+    void SetupKeystroke(IME_MODE imeMode);
+    BOOL SetupDictionaryFile(IME_MODE imeMode, LCID locale=MAKELCID(MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_TRADITIONAL), SORT_DEFAULT));
 
+    void ReleaseDictionaryFiles();
+
+
+    // Dictionary engine
+    BOOL IsDictionaryAvailable(IME_MODE imeMode) {
+        return (_pTableDictionaryEngine[(UINT)imeMode] &&
+            _pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap() && !_pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap()->empty() ? TRUE : FALSE);
+    }
+
+    void GetVKeyFromPrintable(WCHAR printable, UINT* vKey, UINT* modifier);
+
+    //_KEYSTROKE _keystrokeTable[MAX_RADICAL];
+    void SetImeMode(IME_MODE imeMode) { _imeMode = imeMode; }
+    IME_MODE GetImeMode() { return _imeMode; }
+
+    _T_RadicalMap* GetRadicalMap(IME_MODE imeMode) {
+        if (_pTableDictionaryEngine[(UINT)imeMode])
+            return _pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap();
+        else return nullptr;
+    }
+
+    // Full validation uses internal keystroke composition logic so the
+    // settings UI and runtime IME behave identically.
+    BOOL ValidateCompositionKeyCharFull(WCHAR ch);
+
+  
+
+#ifndef DIMESettings
 	BOOL IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCHAR *pwch, BOOL fComposing, CANDIDATE_MODE candidateMode, BOOL hasCandidateWithWildcard, UINT candiCount, INT candiSelection, _Inout_opt_ _KEYSTROKE_STATE *pKeyState);
 
     BOOL AddVirtualKey(WCHAR wch);
@@ -81,18 +91,6 @@ public:
     DWORD_PTR GetVirtualKeyLength() { return _keystrokeBuffer.GetLength(); }
     WCHAR GetVirtualKey(DWORD_PTR dwIndex);
 
-    // Validate single composition-key character against internal keystroke table.
-    // Returns TRUE if the character is valid for composition, FALSE otherwise.
-    // Lightweight inline implementation: ensure character is within the allowed
-    // radical/code range. Full validation (including keyboard-layout mapping)
-    // is performed at runtime inside the engine; this inline check is used
-    // here to avoid linker dependencies for the settings UI project.
-    BOOL ValidateCompositionKeyChar(WCHAR ch)
-    {
-        WCHAR c = towupper(ch);
-        if (c < 32 || c > 32 + MAX_RADICAL) return FALSE;
-        return TRUE;
-    }
 
 	void GetReadingString(_Inout_ CStringRange *pReadingString, _Inout_opt_ BOOL *pIsWildcardIncluded, _In_opt_ CStringRange *pKeyCode = nullptr);
     void GetCandidateList(_Inout_ CDIMEArray<CCandidateListItem> *pCandidateList, BOOL isIncrementalWordSearch, BOOL isWildcardSearch, BOOL isArrayPhraseEnding = FALSE);
@@ -135,10 +133,6 @@ public:
     BOOL IsWildcardAllChar(WCHAR wch) { return (wch==L'*' ? TRUE : FALSE); }
     BOOL IsKeystrokeSort() { return _isKeystrokeSort; }
 
-    // Dictionary engine
-	BOOL IsDictionaryAvailable(IME_MODE imeMode) { return (_pTableDictionaryEngine[(UINT)imeMode] && 
-		_pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap()&&!_pTableDictionaryEngine[(UINT)imeMode] ->GetRadicalMap()->empty() ? TRUE : FALSE);}
-
   
 
     inline CCandidateRange *GetCandidateListIndexRange() { return _pActiveCandidateListIndexRange; }
@@ -147,32 +141,61 @@ public:
 	inline UINT GetCandidatePageSize() { return _candidatePageSize; }
 
 
-	_KEYSTROKE _keystrokeTable[MAX_RADICAL];
-    
     void SetupPreserved(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId);
-	void SetupConfiguration(IME_MODE imeMode);
-	void SetupKeystroke(IME_MODE imeMode);
-	BOOL SetupDictionaryFile(IME_MODE imeMode);
 	void SetupCandidateListRange(IME_MODE imeMode);
 
-	void ReleaseDictionaryFiles();
 	BOOL SetupHanCovertTable();
 	BOOL SetupTCFreqTable();
 
-	//BOOL UpdateDictionaryFile();
-
-	void GetVKeyFromPrintable(WCHAR printable, UINT* vKey, UINT* modifier);
 
 	IME_MODE GetImeModeFromGuidProfile(REFGUID guidLanguageProfile);
 	void SetImeMode(REFGUID guidLanguageProfile) { _imeMode = GetImeModeFromGuidProfile(guidLanguageProfile);}
-	void SetImeMode(IME_MODE imeMode) {_imeMode = imeMode;}
-	IME_MODE GetImeMode() { return _imeMode;}
-
-	_T_RadicalMap* GetRadicalMap(IME_MODE imeMode) {if(_pTableDictionaryEngine[(UINT)imeMode] )
-														return _pTableDictionaryEngine[(UINT)imeMode]->GetRadicalMap();
-													else return nullptr; }
-
+	
+#endif // DIMESettings
 private:
+
+    CFile* _pTableDictionaryFile[IM_SLOTS];
+    CFile* _pCustomTableDictionaryFile[IM_SLOTS];
+    CFile* _pPhraseDictionaryFile;
+    CFile* _pArrayShortCodeDictionaryFile;
+    CFile* _pArrayPhraseDictionaryFile;
+    CFile* _pArrayExtBDictionaryFile;
+    CFile* _pArrayExtCDDictionaryFile;
+    CFile* _pArrayExtEDictionaryFile;
+    CFile* _pArraySpecialCodeDictionaryFile;
+    CFile* _pTCSCTableDictionaryFile;
+    CFile* _pTCFreqTableDictionaryFile;
+
+
+    IME_MODE _imeMode;
+
+    CTableDictionaryEngine* _pTableDictionaryEngine[IM_SLOTS];
+    CTableDictionaryEngine* _pCustomTableDictionaryEngine[IM_SLOTS];
+    CTableDictionaryEngine* _pPhraseTableDictionaryEngine;
+    CTableDictionaryEngine* _pArrayShortCodeTableDictionaryEngine;
+    CTableDictionaryEngine* _pArrayPhraseTableDictionaryEngine;
+    CTableDictionaryEngine* _pArrayExtBTableDictionaryEngine;
+    CTableDictionaryEngine* _pArrayExtCDTableDictionaryEngine;
+    CTableDictionaryEngine* _pArrayExtETableDictionaryEngine;
+    CTableDictionaryEngine* _pArraySpecialCodeTableDictionaryEngine;
+    CTableDictionaryEngine* _pTCSCTableDictionaryEngine;
+    CTableDictionaryEngine* _pTCFreqTableDictionaryEngine;
+
+    CFile* GetDictionaryFile() const;
+
+    BOOL _isKeystrokeSort;
+    BOOL _isWildCardWordFreqSort;
+
+    CDIMEArray<_KEYSTROKE> _KeystrokeComposition;
+    WCHAR* _pEndkey;
+
+    CDIME* _pTextService;
+ 
+
+    //static const int OUT_OF_FILE_INDEX = -1;
+
+#ifndef DIMESettings
+
 
     BOOL IsVirtualKeyKeystrokeComposition(UINT uCode, PWCH pwch, _Inout_opt_ _KEYSTROKE_STATE *pKeyState, KEYSTROKE_FUNCTION function);
     //BOOL IsVirtualKeyKeystrokeCandidate(UINT uCode, _In_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode, _Out_ BOOL *pfRetCode, _In_ CDIMEArray<_KEYSTROKE> *pKeystrokeMetric);
@@ -185,48 +208,18 @@ private:
     BOOL CheckShiftKeyOnly(_In_ CDIMEArray<TF_PRESERVEDKEY> *pTSFPreservedKeyTable);
   
 
-
-    CFile* GetDictionaryFile() const;
-
-	CDIME* _pTextService;
     
-	IME_MODE _imeMode;
-
-    CTableDictionaryEngine* _pTableDictionaryEngine[IM_SLOTS];
-	CTableDictionaryEngine* _pCustomTableDictionaryEngine[IM_SLOTS];
-	CTableDictionaryEngine* _pPhraseTableDictionaryEngine;
-	CTableDictionaryEngine* _pArrayShortCodeTableDictionaryEngine;
-	CTableDictionaryEngine* _pArrayPhraseTableDictionaryEngine;
-	CTableDictionaryEngine* _pArrayExtBTableDictionaryEngine;
-	CTableDictionaryEngine* _pArrayExtCDTableDictionaryEngine;
-	CTableDictionaryEngine* _pArrayExtETableDictionaryEngine;
-	CTableDictionaryEngine* _pArraySpecialCodeTableDictionaryEngine;
-	CTableDictionaryEngine* _pTCSCTableDictionaryEngine;
-	CTableDictionaryEngine* _pTCFreqTableDictionaryEngine;
-
-	CFile* _pTableDictionaryFile[IM_SLOTS];
-	CFile* _pCustomTableDictionaryFile[IM_SLOTS];
-	CFile* _pPhraseDictionaryFile;
-	CFile* _pArrayShortCodeDictionaryFile;
-	CFile* _pArrayPhraseDictionaryFile;
-	CFile* _pArrayExtBDictionaryFile;
-	CFile* _pArrayExtCDDictionaryFile;
-	CFile* _pArrayExtEDictionaryFile;
-	CFile* _pArraySpecialCodeDictionaryFile;
-	CFile* _pTCSCTableDictionaryFile;
-	CFile* _pTCFreqTableDictionaryFile;
-
 	//void sortListItemByFindWordFreq(_Inout_ CDIMEArray<CCandidateListItem> *pCandidateList);
 
     CStringRange _keystrokeBuffer;
 
-	WCHAR* _pEndkey;
+	
 
     BOOL _hasWildcardIncludedInKeystrokeBuffer;
 
     TfClientId  _tfClientId;
 
-    CDIMEArray<_KEYSTROKE> _KeystrokeComposition;
+    
 
     // Preserved key data
     class XPreservedKey
@@ -246,13 +239,6 @@ private:
     XPreservedKey _PreservedKey_DoubleSingleByte;
 	XPreservedKey _PreservedKey_Config;
  
-	
-
-    // Configuration data
-    //BOOL _isWildcard;
-    //BOOL _isDisableWildcardAtFirst;
-    BOOL _isKeystrokeSort;
-	BOOL _isWildCardWordFreqSort;
 
 	CCandidateRange* _pActiveCandidateListIndexRange;
 	CCandidateRange _candidateListIndexRange;
@@ -261,7 +247,6 @@ private:
     UINT _candidateWndWidth; 
 	UINT _candidatePageSize;
 
-    static const int OUT_OF_FILE_INDEX = -1;
 	
 	private:  //phonetic composition
 	//PHONETIC_KEYBOARD_LAYOUT phoneticKeyboardLayout;
@@ -272,7 +257,8 @@ private:
 	CStringRange buildKeyStrokesFromPhoneticSyllable(UINT syllable);
 	WCHAR VPSymbolToStandardLayoutChar(UINT syllable);
 
-	
+#endif
 };
+
 #endif
 

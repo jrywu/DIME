@@ -118,7 +118,7 @@ HRESULT CDIME::Show(_In_opt_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID
 		{ IDD_DIALOG_DICTIONARY, CConfig::DictionaryPropertyPageWndProc }
 
 	};
-	HPROPSHEETPAGE hpsp[_countof(DlgPage)];
+	HPROPSHEETPAGE hpsp[_countof(DlgPage)]{};
 	int i;
 
 	ZeroMemory(&psp, sizeof(PROPSHEETPAGE));
