@@ -73,6 +73,30 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define NOTIFYWND_TEXT_BK_COLOR			(RGB(0xFF, 0xFF, 0xFF))
 
 //---------------------------------------------------------------------
+// Custom table validation settings
+//---------------------------------------------------------------------
+#define CUSTOM_TABLE_VALIDATE_KEYSTROKE_THRESHOLD  3    // Validate every N keystrokes on same line
+#define CUSTOM_TABLE_LARGE_DELETION_THRESHOLD      10   // Chars deleted to trigger full validation
+
+// Custom table validation color codes (3-level error hierarchy, theme-aware)
+// Light theme colors (dark/saturated — contrast on white background)
+#define CUSTOM_TABLE_LIGHT_ERROR_FORMAT   RGB(255, 0, 0)      // Bright red
+#define CUSTOM_TABLE_LIGHT_ERROR_LENGTH   RGB(200, 100, 0)    // Dark orange
+#define CUSTOM_TABLE_LIGHT_ERROR_CHAR     RGB(0, 150, 255)    // Cyan-blue
+#define CUSTOM_TABLE_LIGHT_VALID          RGB(0, 0, 0)        // Black
+// Dark theme colors (light/bright — contrast on dark background)
+#define CUSTOM_TABLE_DARK_ERROR_FORMAT    RGB(255, 120, 120)  // Light red (pastel)
+#define CUSTOM_TABLE_DARK_ERROR_LENGTH    RGB(255, 180, 0)    // Bright orange
+#define CUSTOM_TABLE_DARK_ERROR_CHAR      RGB(100, 200, 255)  // Cyan-blue (light)
+#define CUSTOM_TABLE_DARK_VALID           RGB(255, 255, 255)  // White
+
+// Dark theme dialog colors
+#define DARK_DIALOG_BG          RGB(32, 32, 32)     // Dialog/page background
+#define DARK_CONTROL_BG         RGB(45, 45, 48)     // Control input backgrounds
+#define DARK_TEXT               RGB(220, 220, 220)  // Primary text color
+#define DARK_DISABLED_TEXT      RGB(128, 128, 128)  // Disabled/grayed text
+
+//---------------------------------------------------------------------
 // defined modifier
 //---------------------------------------------------------------------
 #define _TF_MOD_ON_KEYUP_SHIFT_ONLY    (0x00010000 | TF_MOD_ON_KEYUP)

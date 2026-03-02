@@ -11,6 +11,40 @@
 #include "..\BuildInfo.h"
 #include "..\TfInputProcessorProfile.h"
 
+#include <dwmapi.h>
+#include <uxtheme.h>
+#pragma comment(lib, "dwmapi.lib")
+#pragma comment(lib, "uxtheme.lib")
+
+#ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
+#define DWMWA_USE_IMMERSIVE_DARK_MODE 20
+#endif
+
+// Theme state for main launcher
+static bool   s_isDarkTheme  = false;
+static HBRUSH s_hBrushDlgBg  = nullptr;
+static HBRUSH s_hBrushControlBg = nullptr;
+// Set while showIMESettings is active to suppress re-applying theme during
+// WM_THEMECHANGED broadcasts triggered by SetWindowTheme on property-sheet controls.
+static bool   s_suppressThemeReapply = false;
+
+// Calls uxtheme ordinal 135 SetPreferredAppMode:
+//   1 = AllowDark  (dark mode enabled for windows that opt in)
+//   3 = ForceLight (locks the entire process to light mode; DWM ignores AllowDarkModeForWindow)
+// Must be called before any window is created and whenever the system theme changes.
+#define WM_REASSERT_TITLEBAR (WM_APP + 1)
+static void SetAppPreferredMode(int mode)
+{
+    typedef void (WINAPI* FnSetPreferredAppMode)(int);
+    HMODULE hUxtheme = GetModuleHandleW(L"uxtheme.dll");
+    if (hUxtheme) {
+        auto pFn = reinterpret_cast<FnSetPreferredAppMode>(
+            GetProcAddress(hUxtheme, MAKEINTRESOURCEA(135))
+        );
+        if (pFn) pFn(mode);
+    }
+}
+
 #pragma comment(lib, "ComCtl32.lib")  
 constexpr wchar_t DIME_SETTINGS_INSTANCE_MUTEX_NAME[] = L"{B11F1FB2-3ECC-409E-A036-4162ADCEF1A3}";
 
@@ -23,42 +57,39 @@ typedef _Return_type_success_(return >= 0) LONG NTSTATUS;
 #define STATUS_REVISION_MISMATCH ((NTSTATUS)0xC0000059)
 typedef LONG(WINAPI* PFN_RtlVerifyVersionInfo)(OSVERSIONINFOEXW*, ULONG, ULONGLONG);
 
-static BOOL inline IsWindowsVersionOrGreater(WORD major, WORD minor)
+// Global Windows version info for DIMESettings
+namespace Global {
+    DWORD g_WinMajorVersion = 0;
+    DWORD g_WinMinorVersion = 0;
+    DWORD g_WinBuildNumber = 0;
+}
+
+// Returns TRUE if current Windows version is at least (major, minor, build)
+BOOL IsWindowsVersionOrGreater(DWORD major, DWORD minor, DWORD build)
 {
-    static PFN_RtlVerifyVersionInfo RtlVerifyVersionInfoFn = NULL;
-    if (!RtlVerifyVersionInfoFn)
-    {
-        HMODULE ntdllModule = GetModuleHandleW(L"ntdll.dll");
-        if (ntdllModule)
-        {
-            RtlVerifyVersionInfoFn = (PFN_RtlVerifyVersionInfo)GetProcAddress(ntdllModule, "RtlVerifyVersionInfo");
+    // Get version info once and cache
+    static bool versionFetched = false;
+    if (!versionFetched) {
+        typedef NTSTATUS (WINAPI* RtlGetVersionFn)(PRTL_OSVERSIONINFOW);
+        HMODULE hNtdll = GetModuleHandleW(L"ntdll.dll");
+        if (hNtdll) {
+            auto pFn = reinterpret_cast<RtlGetVersionFn>(
+                GetProcAddress(hNtdll, "RtlGetVersion")
+            );
+            RTL_OSVERSIONINFOW osvi = { sizeof(osvi) };
+            if (pFn && pFn(&osvi) == 0) {
+                Global::g_WinMajorVersion = osvi.dwMajorVersion;
+                Global::g_WinMinorVersion = osvi.dwMinorVersion;
+                Global::g_WinBuildNumber = osvi.dwBuildNumber;
+            }
         }
+        versionFetched = true;
     }
-
-    // Check if RtlVerifyVersionInfoFn is still NULL
-    if (!RtlVerifyVersionInfoFn)
-    {
-        debugPrint(L"RtlVerifyVersionInfo function not found.");
-        return FALSE; // Return FALSE if the function pointer is NULL
-    }
-
-    RTL_OSVERSIONINFOEXW versionInfo = { 0 };
-    NTSTATUS status;
-    ULONGLONG conditionMask = 0;
-    versionInfo.dwOSVersionInfoSize = sizeof(RTL_OSVERSIONINFOEXW);
-    versionInfo.dwMajorVersion = major;
-    versionInfo.dwMinorVersion = minor;
-
-    VER_SET_CONDITION(conditionMask, VER_MAJORVERSION, VER_GREATER_EQUAL);
-    VER_SET_CONDITION(conditionMask, VER_MINORVERSION, VER_GREATER_EQUAL);
-
-    status = RtlVerifyVersionInfoFn(&versionInfo,
-        VER_MAJORVERSION | VER_MINORVERSION,
-        conditionMask);
-
-    if (status == STATUS_SUCCESS)
-        return TRUE;
-
+    if (Global::g_WinMajorVersion > major) return TRUE;
+    if (Global::g_WinMajorVersion < major) return FALSE;
+    if (Global::g_WinMinorVersion > minor) return TRUE;
+    if (Global::g_WinMinorVersion < minor) return FALSE;
+    if (Global::g_WinBuildNumber >= build) return TRUE;
     return FALSE;
 }
 
@@ -113,6 +144,14 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     MSG msg;
     BOOL ret;
 
+    // Set preferred app mode BEFORE any window is created.
+    // In dark mode: AllowDark(1) so our windows can opt-in.
+    // In light mode: do NOT call SetPreferredAppMode at all — Windows defaults to
+    // light and any call here primes uxtheme to track the window, causing
+    // WM_THEMECHANGED broadcasts from the property sheet to flip the title bar.
+    if (CConfig::IsSystemDarkTheme())
+        SetAppPreferredMode(1);
+
     InitCommonControls();
     hDlg = CreateDialogParam(hInst, MAKEINTRESOURCE(IDD_DIMESETTINGS), 0, WndProc, 0);
     ShowWindow(hDlg, nCmdShow);
@@ -129,6 +168,28 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     return 0;
 
+}
+
+static void ReassertTitleBarTheme(HWND hDlg)
+{
+    // In light mode, call NO dark-mode APIs — Windows defaults to light
+    // naturally. Calling DwmSetWindowAttribute/AllowDarkModeForWindow even
+    // with FALSE values primes uxtheme to track this window, and subsequent
+    // WM_THEMECHANGED broadcasts from SetWindowTheme can then flip the title
+    // bar dark. The default (no API calls) is always correct for light mode.
+    if (!s_isDarkTheme) return;
+    BOOL useDark = TRUE;
+    DwmSetWindowAttribute(hDlg, DWMWA_USE_IMMERSIVE_DARK_MODE, &useDark, sizeof(BOOL));
+    typedef BOOL (WINAPI* FnAllowDarkModeForWindow)(HWND, BOOL);
+    HMODULE hUxtheme = GetModuleHandleW(L"uxtheme.dll");
+    if (hUxtheme) {
+        auto pFn = reinterpret_cast<FnAllowDarkModeForWindow>(
+            GetProcAddress(hUxtheme, MAKEINTRESOURCEA(133))
+        );
+        if (pFn) pFn(hDlg, TRUE);
+    }
+    SetWindowPos(hDlg, nullptr, 0, 0, 0, 0,
+        SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
 }
 
 static void showIMESettings(HWND hDlg, IME_MODE imeMode)
@@ -155,22 +216,25 @@ static void showIMESettings(HWND hDlg, IME_MODE imeMode)
     {
         psp.pszTemplate = MAKEINTRESOURCE(DlgPage[i].id);
         psp.pfnDlgProc = DlgPage[i].DlgProc;
-        // Create an owned DialogContext with its own temporary engine for settings UI.
-        DialogContext* pCtx = new (std::nothrow) DialogContext();
-        if (pCtx) {
-            // Construct a temporary composition engine for the settings dialog
-            // so the UI uses the same validation logic as the runtime IME.
-            pCtx->pEngine = new (std::nothrow) CCompositionProcessorEngine(nullptr);
-            pCtx->engineOwned = true;
-            if (pCtx->pEngine) {
-                pCtx->pEngine->SetupDictionaryFile(imeMode);
-                pCtx->pEngine->SetupConfiguration(imeMode);
-                pCtx->pEngine->SetupKeystroke(imeMode);
-            }
-            psp.lParam = (LPARAM)pCtx;
-        } else {
-            psp.lParam = 0;
-        }
+		// Create an owned DialogContext with its own temporary engine for settings UI.
+		DialogContext* pCtx = new (std::nothrow) DialogContext();
+		if (pCtx) {
+			// Construct a temporary composition engine for the settings dialog
+			// so the UI uses the same validation logic as the runtime IME.
+			pCtx->imeMode = imeMode;
+			// Set maxCodes based on IME mode (phonetic uses longer keys)
+			pCtx->maxCodes = (imeMode == IME_MODE::IME_MODE_PHONETIC) ? MAX_KEY_LENGTH : CConfig::GetMaxCodes();
+			pCtx->pEngine = new (std::nothrow) CCompositionProcessorEngine(nullptr);
+			pCtx->engineOwned = true;
+			if (pCtx->pEngine) {
+				pCtx->pEngine->SetupDictionaryFile(imeMode);
+				pCtx->pEngine->SetupConfiguration(imeMode);
+				pCtx->pEngine->SetupKeystroke(imeMode);
+			}
+			psp.lParam = (LPARAM)pCtx;
+		} else {
+			psp.lParam = 0;
+		}
         if (CreatePropertySheetPageW != nullptr) // Ensure the function pointer is valid
         {
             hpsp[i] = CreatePropertySheetPageW(&psp); // Call the function with the required argument
@@ -184,7 +248,8 @@ static void showIMESettings(HWND hDlg, IME_MODE imeMode)
 
     ZeroMemory(&psh, sizeof(PROPSHEETHEADER));
     psh.dwSize = sizeof(PROPSHEETHEADER);
-    psh.dwFlags = PSH_DEFAULT | PSH_NOCONTEXTHELP;
+    psh.dwFlags = PSH_DEFAULT | PSH_NOCONTEXTHELP | PSH_USECALLBACK;
+    psh.pfnCallback = CConfig::PropSheetCallback;
     psh.hInstance = hInst;
     psh.hwndParent = hDlg;
     psh.nPages = _countof(DlgPage);
@@ -245,9 +310,10 @@ static void showIMESettings(HWND hDlg, IME_MODE imeMode)
     PropertySheetW(&psh);
     if (dllRichEditHandle)
         FreeLibrary(dllRichEditHandle);
-
-    if (dllRichEditHandle)
-        FreeLibrary(dllRichEditHandle);
+    // PropertySheetW is blocking. When it returns, queued WM_THEMECHANGED / WM_NCACTIVATE
+    // messages from property-sheet teardown may still be pending in the queue.
+    // Post a deferred message so ReassertTitleBarTheme runs AFTER all those are drained.
+    PostMessage(hDlg, WM_REASSERT_TITLEBAR, 0, 0);
 }
 
 // Message handler for about box.
@@ -257,6 +323,93 @@ INT_PTR CALLBACK WndProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
     switch (message)
     {
     case WM_INITDIALOG:
+        s_isDarkTheme = CConfig::IsSystemDarkTheme();
+        if (s_isDarkTheme) {
+            s_hBrushDlgBg    = CreateSolidBrush(DARK_DIALOG_BG);
+            s_hBrushControlBg = CreateSolidBrush(DARK_CONTROL_BG);
+        }
+        // Apply dark/light theme to child controls first; SetWindowTheme() inside broadcasts
+        // WM_THEMECHANGED which can trigger DWM to re-read dark-mode state — so we set the
+        // DWM title-bar attribute AFTER all child theming is complete.
+        s_suppressThemeReapply = true;
+        CConfig::ApplyDialogDarkTheme(hDlg, s_isDarkTheme);
+        s_suppressThemeReapply = false;
+        ReassertTitleBarTheme(hDlg);
+        return (INT_PTR)TRUE;
+
+    case WM_CTLCOLORDLG:
+        if (s_isDarkTheme && s_hBrushDlgBg)
+        {
+            SetBkColor((HDC)wParam, DARK_DIALOG_BG);
+            return (INT_PTR)s_hBrushDlgBg;
+        }
+        break;
+
+    case WM_CTLCOLORSTATIC:
+        if (s_isDarkTheme && s_hBrushDlgBg)
+        {
+            SetTextColor((HDC)wParam, DARK_TEXT);
+            SetBkColor((HDC)wParam, DARK_DIALOG_BG);
+            return (INT_PTR)s_hBrushDlgBg;
+        }
+        break;
+
+    case WM_CTLCOLORBTN:
+        if (s_isDarkTheme && s_hBrushControlBg)
+        {
+            SetTextColor((HDC)wParam, DARK_TEXT);
+            SetBkColor((HDC)wParam, DARK_CONTROL_BG);
+            SetBkMode((HDC)wParam, OPAQUE);
+            return (INT_PTR)s_hBrushControlBg;
+        }
+        break;
+
+    case WM_DRAWITEM:
+        {
+            LPDRAWITEMSTRUCT pdis = (LPDRAWITEMSTRUCT)lParam;
+            if (pdis && pdis->CtlType == ODT_BUTTON && s_isDarkTheme)
+            {
+                CConfig::DrawDarkButton(pdis);
+                return (INT_PTR)TRUE;
+            }
+        }
+        break;
+
+    case WM_NCACTIVATE:
+        // Only reassert in dark mode. In light mode, touching dark-mode APIs here
+        // primes uxtheme and causes the title bar to flip on WM_THEMECHANGED storms.
+        if (s_isDarkTheme)
+            ReassertTitleBarTheme(hDlg);
+        break;
+
+    case WM_THEMECHANGED:
+        if (s_suppressThemeReapply) {
+            ReassertTitleBarTheme(hDlg); // no-op in light mode
+            break;
+        }
+        s_isDarkTheme = CConfig::IsSystemDarkTheme();
+        // Update process-wide mode only when switching to dark.
+        // In light mode, calling SetAppPreferredMode triggers uxtheme tracking
+        // that can flip the title bar on subsequent WM_THEMECHANGED storms.
+        if (s_isDarkTheme)
+            SetAppPreferredMode(1);
+        if (s_hBrushDlgBg) { DeleteObject(s_hBrushDlgBg); s_hBrushDlgBg = nullptr; }
+        if (s_hBrushControlBg) { DeleteObject(s_hBrushControlBg); s_hBrushControlBg = nullptr; }
+        if (s_isDarkTheme) {
+            s_hBrushDlgBg    = CreateSolidBrush(DARK_DIALOG_BG);
+            s_hBrushControlBg = CreateSolidBrush(DARK_CONTROL_BG);
+        }
+        s_suppressThemeReapply = true;
+        CConfig::ApplyDialogDarkTheme(hDlg, s_isDarkTheme);
+        s_suppressThemeReapply = false;
+        ReassertTitleBarTheme(hDlg); // no-op in light mode
+        InvalidateRect(hDlg, NULL, TRUE);
+        break;
+
+    case WM_REASSERT_TITLEBAR:
+        // Deferred re-assertion posted after PropertySheetW returns so we run
+        // after all teardown broadcasts have been fully processed by the message loop.
+        ReassertTitleBarTheme(hDlg);
         return (INT_PTR)TRUE;
 
     case WM_COMMAND:
@@ -282,13 +435,14 @@ INT_PTR CALLBACK WndProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 			break;
 		}
         break;
-    
-        break;
+
     case WM_CLOSE:
         DestroyWindow(hDlg);
         return (INT_PTR)TRUE;
 
     case WM_DESTROY:
+        if (s_hBrushDlgBg) { DeleteObject(s_hBrushDlgBg); s_hBrushDlgBg = nullptr; }
+        if (s_hBrushControlBg) { DeleteObject(s_hBrushControlBg); s_hBrushControlBg = nullptr; }
         PostQuitMessage(0);
         return (INT_PTR)TRUE;
 

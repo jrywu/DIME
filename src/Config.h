@@ -43,17 +43,46 @@ class CCompositionProcessorEngine;
 // Holds a pointer to the composition engine and whether the engine is owned
 // by the dialog (and therefore should be deleted by the dialog proc).
 struct DialogContext {
-    CCompositionProcessorEngine* pEngine;
-    bool engineOwned;
-    DialogContext() : pEngine(nullptr), engineOwned(false) {}
+	IME_MODE imeMode;
+	UINT maxCodes;                 // Max key length for this IME mode
+	CCompositionProcessorEngine* pEngine;
+	bool engineOwned;
+
+	// Smart validation tracking
+	int lastEditedLine;            // Track which line user is editing
+	int lastLineCount;             // Track total line count to detect paste/delete
+	int keystrokesSinceValidation; // Validate every N keystrokes
+
+	// Dark mode theme support
+	bool isDarkTheme;              // true = Windows dark mode active
+	HBRUSH hBrushBackground;       // Solid brush for dialog/static backgrounds
+	HBRUSH hBrushEditControl;      // Solid brush for edit control backgrounds
+
+	DialogContext() 
+		: imeMode(IME_MODE::IME_MODE_NONE)
+		, maxCodes(4)
+		, pEngine(nullptr)
+		, engineOwned(false)
+		, lastEditedLine(-1)
+		, lastLineCount(0)
+		, keystrokesSinceValidation(0)
+		, isDarkTheme(false)
+		, hBrushBackground(nullptr)
+		, hBrushEditControl(nullptr)
+	{}
 };
 
 #ifdef DIME_UNIT_TESTING
 // Forward declaration for unit testing
-namespace DIMETests {
+namespace DIMEUnitTests {
 	class DictionaryTest;
-	class SettingsDialogIntegrationTest; // IT-07 friend access
 	class CINParserTest; // UT-07 parseCINFile tests
+	class ConfigTest; // UT-01 config management tests
+	class CustomTableValidationUnitTest; // UT-CV custom table validation tests
+}
+namespace DIMEIntegratedTests {
+	class SettingsDialogIntegrationTest; // IT-01 Settings Dialog tests
+	class CustomTableValidationIntegrationTest; // IT-CV custom table validation integration tests
 }
 #endif
 
@@ -74,9 +103,12 @@ class CConfig
 {
 #ifdef DIME_UNIT_TESTING
 	// Friend class for unit testing
-	friend class DIMETests::DictionaryTest;
-	friend class DIMETests::SettingsDialogIntegrationTest;
-	friend class DIMETests::CINParserTest;
+	friend class DIMEUnitTests::DictionaryTest;
+	friend class DIMEUnitTests::CINParserTest;
+	friend class DIMEUnitTests::ConfigTest;
+	friend class DIMEUnitTests::CustomTableValidationUnitTest;
+	friend class DIMEIntegratedTests::SettingsDialogIntegrationTest;
+	friend class DIMEIntegratedTests::CustomTableValidationIntegrationTest;
 #endif
 
 public:
@@ -187,11 +219,16 @@ public:
 	static void setPhoneticKeyboardLayout(PHONETIC_KEYBOARD_LAYOUT layout) { _phoneticKeyboardLayout = layout; }
 	static PHONETIC_KEYBOARD_LAYOUT getPhoneticKeyboardLayout() { return _phoneticKeyboardLayout; }
 
-	static VOID WriteConfig(BOOL silent = FALSE);
+	static VOID WriteConfig(IME_MODE imeMode, BOOL silent = FALSE);
 	static BOOL LoadConfig(IME_MODE imeMode);
 	static struct _stat GetInitTimeStamp() { return _initTimeStamp; }
 	
 	static void SetDefaultTextFont(HWND hWnd = nullptr);
+	static BOOL ValidateCustomTableLines(HWND hDlg, IME_MODE imeMode, CCompositionProcessorEngine* pEngine, UINT maxCodes, bool showAlert = true);
+	static bool IsSystemDarkTheme();
+	static void ApplyDialogDarkTheme(HWND hDlg, bool isDark);
+	static void DrawDarkButton(LPDRAWITEMSTRUCT pdis);
+	static int CALLBACK PropSheetCallback(HWND hwndDlg, UINT uMsg, LPARAM lParam);
 
 	//configuration propertysheet dialog
 	static INT_PTR CALLBACK CommonPropertyPageWndProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
@@ -274,11 +311,10 @@ private:
 	static _T_GetDpiForMonitor _GetDpiForMonitor;
 	
 
-	static void ParseConfig(HWND hDlg, BOOL initDiag = FALSE);
-	static BOOL ValidateCustomTableLines(HWND hDlg, IME_MODE imeMode, CCompositionProcessorEngine* pEngine, bool showAlert = true);
+	static void ParseConfig(HWND hDlg, IME_MODE imeMode, BOOL initDiag = FALSE);
 
 	static BOOL importCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToLoad);
-	static BOOL exportCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToWrite);
+	static BOOL exportCustomTableFile(_In_ HWND hDlg, IME_MODE imeMode, _In_ LPCWSTR pathToWrite);
 	static BOOL parseCINFile(_In_ LPCWSTR pathToLoad, _In_ LPCWSTR pathToWrite, _In_ BOOL customTableMode = FALSE);
 };
 

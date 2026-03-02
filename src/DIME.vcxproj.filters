@@ -81,6 +81,7 @@
     <None Include="tests\DIMETests.vcxproj" />
     <None Include="docs\TEST_PLAN.md" />
     <None Include="docs\TEST_REPORT.md" />
+    <None Include="docs\CUSTOM_TABLE_VALIDATION.md" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BaseWindow.h">

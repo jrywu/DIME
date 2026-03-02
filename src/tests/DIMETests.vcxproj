@@ -340,6 +340,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|ARM64EC'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="CandidateWindowIntegrationTest.cpp" />
+    <ClCompile Include="DictionaryTest.cpp" />
     <ClCompile Include="LanguageBarIntegrationTest.cpp" />
     <ClCompile Include="SettingsDialogIntegrationTest.cpp" />
     <ClCompile Include="TestStubs.cpp">

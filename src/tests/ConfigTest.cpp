@@ -80,7 +80,7 @@ namespace DIMEUnitTests
             CConfig::SetIMEMode(mode);
             CConfig::SetMaxCodes(maxCodes);
             CConfig::SetAutoCompose(autoCompose);
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(mode, FALSE);
             Sleep(100); // Ensure file system flushes
             
             // Restore original state (without writing)
@@ -142,7 +142,7 @@ namespace DIMEUnitTests
             CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
             CConfig::SetMaxCodes(5);
             CConfig::SetAutoCompose(TRUE);
-            CConfig::WriteConfig(FALSE); // Create config file first
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE); // Create config file first
 
             // Wait to ensure file timestamp is different
             Sleep(1100);
@@ -202,9 +202,9 @@ namespace DIMEUnitTests
             CConfig::SetMaxCodes(8);
             CConfig::SetAutoCompose(TRUE);
             CConfig::SetShowNotifyDesktop(FALSE);
-            
+
             // Act
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
             
             // Assert: Reload and verify
             CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
@@ -220,7 +220,7 @@ namespace DIMEUnitTests
             // Arrange: Load configuration
             CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
             CConfig::SetMaxCodes(5);
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
             CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
             
             struct _stat oldTimestamp = CConfig::GetInitTimeStamp();
@@ -268,16 +268,16 @@ namespace DIMEUnitTests
             // Arrange: Create initial config
             CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
             CConfig::SetMaxCodes(5);
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
             CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
-            
+
             // Act: Externally modify file
             Sleep(1100);
             SimulateExternalProcessConfigWrite(IME_MODE::IME_MODE_ARRAY, 10, TRUE);
-            
+
             // Try to write with timestamp check
             CConfig::SetMaxCodes(7);
-            CConfig::WriteConfig(TRUE); // checkTime = TRUE, returns void
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, TRUE); // checkTime = TRUE, returns void
             
             // Assert: Write should detect the external change
             // Implementation may either reject write or reload first
@@ -299,7 +299,7 @@ namespace DIMEUnitTests
             // Arrange: Initialize config file and ensure it gets loaded once
             CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
             CConfig::SetMaxCodes(5);
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
             
             // Wait and reload to ensure file is properly created
             Sleep(1100);
@@ -345,7 +345,7 @@ namespace DIMEUnitTests
             // Arrange: Process A loads config at timestamp T1
             CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
             CConfig::SetMaxCodes(5);
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
             CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY); // Ensure file exists
             Sleep(1100);
             
@@ -358,7 +358,7 @@ namespace DIMEUnitTests
             SimulateExternalProcessConfigWrite(IME_MODE::IME_MODE_ARRAY, 8, TRUE);
             
             // Process A attempts to write its old settings (timestamp T1)
-            CConfig::WriteConfig(TRUE); // checkTime=TRUE should detect conflict
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, TRUE); // checkTime=TRUE should detect conflict
             
             // Process A should reload to get latest settings
             CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
@@ -383,7 +383,7 @@ namespace DIMEUnitTests
             // Arrange: Process A loads config and prepares to modify
             CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
             CConfig::SetMaxCodes(5);
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
             Sleep(1100);
             
             CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
@@ -396,7 +396,7 @@ namespace DIMEUnitTests
             SimulateExternalProcessConfigWrite(IME_MODE::IME_MODE_ARRAY, 10, TRUE);
             
             // Process A attempts to write with timestamp check enabled
-            CConfig::WriteConfig(TRUE); // Returns void
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, TRUE); // Returns void
             
             // After write attempt, verify current file state
             CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
@@ -420,7 +420,7 @@ namespace DIMEUnitTests
         {
             // Arrange: Simulate multiple processes writing in sequence
             CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
             
             std::vector<int> expectedValues = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
             
@@ -430,7 +430,7 @@ namespace DIMEUnitTests
                 Sleep(100); // Small delay between writes
                 CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
                 CConfig::SetMaxCodes(value);
-                CConfig::WriteConfig(FALSE);
+                CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
             }
             
             // Assert: Final value should be the last write
@@ -443,7 +443,7 @@ namespace DIMEUnitTests
             // Arrange: Multiple processes attempting concurrent writes
             CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
             CConfig::SetMaxCodes(0);
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
             
             // Act: Launch multiple threads simulating concurrent processes
             const int WRITER_COUNT = 5;
@@ -462,7 +462,7 @@ namespace DIMEUnitTests
                     CConfig::SetMaxCodes(i);
                     
                     // Write with timestamp check
-                    CConfig::WriteConfig(TRUE); // Returns void
+                    CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, TRUE); // Returns void
                     // Assume write succeeded
                     successfulWrites++;
                 });
@@ -493,7 +493,7 @@ namespace DIMEUnitTests
             CConfig::SetMaxCodes(7);
             CConfig::SetAutoCompose(TRUE);
             CConfig::SetShowNotifyDesktop(FALSE);
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
             
             Sleep(100); // Ensure file system flush
             
@@ -511,7 +511,7 @@ namespace DIMEUnitTests
             // Arrange: Classic lost update scenario
             CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
             CConfig::SetMaxCodes(5);
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
             Sleep(1100);
             
             // Process A loads
@@ -528,7 +528,7 @@ namespace DIMEUnitTests
             // Process A also increments and attempts to write
             CConfig::SetMaxCodes(valueA + 1); // Also 6, but based on old read
             Sleep(1100);
-            CConfig::WriteConfig(TRUE); // Should detect conflict
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, TRUE); // Should detect conflict
             
             // Assert: Final value should not have lost Process B's update
             CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
@@ -546,7 +546,7 @@ namespace DIMEUnitTests
             // Arrange: Setup initial config
             CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
             CConfig::SetMaxCodes(5);
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
             
             // Wait and update timestamp
             Sleep(1100);
@@ -573,7 +573,7 @@ namespace DIMEUnitTests
             BOOL loadResult1 = CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
             
             // Act: Perform write and read
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
             Sleep(100);
             
             // Read the value (LoadConfig may return FALSE if timestamp unchanged)
@@ -590,7 +590,7 @@ namespace DIMEUnitTests
             // Arrange: Create valid config first
             CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
             CConfig::SetMaxCodes(5);
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
             CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY); // Ensure file is created
             
             // Simulate corruption by truncating file
@@ -632,7 +632,7 @@ namespace DIMEUnitTests
             // Act: Set DAYI mode - this tests Config.cpp::SetIMEMode DAYI branch
             CConfig::SetIMEMode(IME_MODE::IME_MODE_DAYI);
             CConfig::SetMaxCodes(6);
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_DAYI, FALSE);
 
             // Assert: Verify config file created at correct location
             std::wstring expectedPath = GetConfigFilePath(IME_MODE::IME_MODE_DAYI);
@@ -653,7 +653,7 @@ namespace DIMEUnitTests
             CConfig::SetIMEMode(IME_MODE::IME_MODE_PHONETIC);
             CConfig::SetMaxCodes(7);
             CConfig::SetAutoCompose(TRUE);
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_PHONETIC, FALSE);
 
             // Small delay to ensure file write completes
             Sleep(100);
@@ -673,7 +673,7 @@ namespace DIMEUnitTests
             // Act: Set GENERIC mode - this tests Config.cpp::SetIMEMode GENERIC branch
             CConfig::SetIMEMode(IME_MODE::IME_MODE_GENERIC);
             CConfig::SetMaxCodes(8);
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_GENERIC, FALSE);
 
             // Assert: Verify config file created
             WCHAR appDataPath[MAX_PATH] = {0};
@@ -745,7 +745,7 @@ namespace DIMEUnitTests
             CConfig::SetFontSize(12);
             CConfig::SetFontWeight(FW_NORMAL);
             CConfig::SetFontItalic(FALSE);
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
 
             // Act: Load config which should trigger SetDefaultTextFont
             CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
@@ -753,7 +753,7 @@ namespace DIMEUnitTests
             // Assert: Verify font settings were preserved
             // This tests Config.cpp SetDefaultTextFont function (lines 1298-1339)
             // Note: CConfig doesn't expose getters for font settings, so we verify by persistence
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
             Sleep(100);
             CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
 
@@ -766,7 +766,7 @@ namespace DIMEUnitTests
             // Arrange: Create initial config
             CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
             CConfig::SetMaxCodes(5);
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
             CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
 
             // Modify a setting
@@ -778,7 +778,7 @@ namespace DIMEUnitTests
 
             // Write with timestamp check - this should trigger lines 1027-1029
             // Note: MessageBox will NOT show in automated tests (no UI), but the code path executes
-            CConfig::WriteConfig(TRUE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, TRUE);
 
             // Assert: Verify that LoadConfig was called (config should be reloaded)
             CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
@@ -794,11 +794,11 @@ namespace DIMEUnitTests
             // Arrange: Create initial config
             CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
             CConfig::SetMaxCodes(5);
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
 
             // Act: Write without timestamp check (checkTime = FALSE)
             CConfig::SetMaxCodes(8);
-            CConfig::WriteConfig(FALSE); // This should always write
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE); // This should always write
 
             // Assert: Verify value was written
             CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
@@ -812,7 +812,7 @@ namespace DIMEUnitTests
             CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
             CConfig::SetMaxCodes(5);
             CConfig::SetAutoCompose(TRUE);
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
 
             // Manually corrupt the config file by writing invalid data
             std::wstring configPath = GetConfigFilePath(IME_MODE::IME_MODE_ARRAY);
@@ -850,7 +850,7 @@ namespace DIMEUnitTests
             // Set a known mode first
             CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
             CConfig::SetMaxCodes(5);
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
 
             // Verify the config.ini pattern works (default path)
             std::wstring configPath = GetConfigFilePath(IME_MODE::IME_MODE_ARRAY);
@@ -887,7 +887,7 @@ namespace DIMEUnitTests
                 // Act
                 CConfig::SetIMEMode(test.mode);
                 CConfig::SetMaxCodes(7);
-                CConfig::WriteConfig(FALSE);
+                CConfig::WriteConfig(test.mode, FALSE);
 
                 // Assert
                 std::wstring configPath = GetConfigFilePath(test.mode);
@@ -902,6 +902,358 @@ namespace DIMEUnitTests
                 // Clean up
                 DeleteConfigFile(test.mode);
             }
+        }
+
+    };
+
+    // ====================================================================
+    // Phase 5 Unit Tests: Custom Table Validation (UT-CV)
+    // Covers: DialogContext defaults, validation constants, ValidateCustomTableLines
+    // ====================================================================
+
+    TEST_CLASS(CustomTableValidationUnitTest)
+    {
+    private:
+        // Creates a hidden parent window with a RICHEDIT50W child registered as
+        // IDC_EDIT_CUSTOM_TABLE so ValidateCustomTableLines can be called directly.
+        struct TestEditHost
+        {
+            HMODULE hRichEdit = nullptr;
+            HWND    hParent   = nullptr;
+            bool    ok        = false;
+
+            TestEditHost()
+            {
+                hRichEdit = LoadLibraryW(L"MSFTEDIT.DLL");
+                if (!hRichEdit) return;
+
+                // Register minimal window class (ignore failure if already registered)
+                WNDCLASSW wc = {};
+                wc.lpfnWndProc   = DefWindowProcW;
+                wc.hInstance     = GetModuleHandleW(nullptr);
+                wc.lpszClassName = L"DIME_TestCV_Parent";
+                RegisterClassW(&wc);
+
+                hParent = CreateWindowExW(0, L"DIME_TestCV_Parent", nullptr,
+                    WS_POPUP, 0, 0, 400, 300,
+                    nullptr, nullptr, GetModuleHandleW(nullptr), nullptr);
+                if (!hParent) return;
+
+                HWND hEdit = CreateWindowExW(0, L"RICHEDIT50W", nullptr,
+                    WS_CHILD | WS_VISIBLE | ES_MULTILINE | ES_WANTRETURN | ES_AUTOVSCROLL,
+                    0, 0, 400, 300,
+                    hParent, (HMENU)(INT_PTR)IDC_EDIT_CUSTOM_TABLE,
+                    GetModuleHandleW(nullptr), nullptr);
+                ok = (hEdit != nullptr);
+            }
+
+            void SetText(const wchar_t* text)
+            {
+                HWND hEdit = GetDlgItem(hParent, IDC_EDIT_CUSTOM_TABLE);
+                if (hEdit) SetWindowTextW(hEdit, text);
+            }
+
+            ~TestEditHost()
+            {
+                if (hParent) { DestroyWindow(hParent); hParent = nullptr; }
+                if (hRichEdit) { FreeLibrary(hRichEdit); hRichEdit = nullptr; }
+            }
+        };
+
+    public:
+        TEST_CLASS_INITIALIZE(CV_ClassSetup) { CoInitialize(NULL); }
+        TEST_CLASS_CLEANUP(CV_ClassCleanup) { CoUninitialize(); }
+
+        // ------------------------------------------------------------------
+        // UT-CV-01: DialogContext default initialization
+        // ------------------------------------------------------------------
+        TEST_METHOD(DialogContext_DefaultInitialization_CorrectValues)
+        {
+            DialogContext ctx;
+            Assert::IsTrue(ctx.imeMode == IME_MODE::IME_MODE_NONE,
+                L"Default imeMode should be NONE");
+            Assert::AreEqual((UINT)4, ctx.maxCodes,
+                L"Default maxCodes should be 4");
+            Assert::IsNull(ctx.pEngine,
+                L"Default pEngine should be nullptr");
+            Assert::IsFalse(ctx.engineOwned,
+                L"Default engineOwned should be false");
+            Assert::AreEqual(-1, ctx.lastEditedLine,
+                L"Default lastEditedLine should be -1");
+            Assert::AreEqual(0, ctx.lastLineCount,
+                L"Default lastLineCount should be 0");
+            Assert::AreEqual(0, ctx.keystrokesSinceValidation,
+                L"Default keystrokesSinceValidation should be 0");
+            Assert::IsFalse(ctx.isDarkTheme,
+                L"Default isDarkTheme should be false");
+            Assert::IsNull(ctx.hBrushBackground,
+                L"Default hBrushBackground should be nullptr");
+            Assert::IsNull(ctx.hBrushEditControl,
+                L"Default hBrushEditControl should be nullptr");
+        }
+
+        // ------------------------------------------------------------------
+        // UT-CV-02: Validation threshold constants
+        // ------------------------------------------------------------------
+        TEST_METHOD(Constants_KeystrokeThreshold_IsThree)
+        {
+            Assert::AreEqual(3, (int)CUSTOM_TABLE_VALIDATE_KEYSTROKE_THRESHOLD,
+                L"Keystroke validation threshold should be 3");
+        }
+
+        TEST_METHOD(Constants_LargeDeletionThreshold_IsTen)
+        {
+            Assert::AreEqual(10, (int)CUSTOM_TABLE_LARGE_DELETION_THRESHOLD,
+                L"Large deletion threshold should be 10");
+        }
+
+        // ------------------------------------------------------------------
+        // UT-CV-03: IsSystemDarkTheme returns without crashing
+        // ------------------------------------------------------------------
+        TEST_METHOD(IsSystemDarkTheme_DoesNotCrash_ReturnsBool)
+        {
+            bool result = CConfig::IsSystemDarkTheme();
+            Assert::IsTrue(result == true || result == false,
+                L"IsSystemDarkTheme should return a boolean value");
+        }
+
+        // ------------------------------------------------------------------
+        // UT-CV-04: ValidateCustomTableLines with no RichEdit child returns TRUE
+        // ------------------------------------------------------------------
+        TEST_METHOD(ValidateCustomTableLines_NullEdit_ReturnsTrue)
+        {
+            WNDCLASSW wc = {};
+            wc.lpfnWndProc   = DefWindowProcW;
+            wc.hInstance     = GetModuleHandleW(nullptr);
+            wc.lpszClassName = L"DIME_TestCV_Empty";
+            RegisterClassW(&wc);
+
+            HWND hEmpty = CreateWindowExW(0, L"DIME_TestCV_Empty", nullptr,
+                WS_POPUP, 0, 0, 10, 10,
+                nullptr, nullptr, GetModuleHandleW(nullptr), nullptr);
+            Assert::IsNotNull(hEmpty, L"Test parent window should be created");
+
+            // No IDC_EDIT_CUSTOM_TABLE child → should return TRUE immediately
+            BOOL result = CConfig::ValidateCustomTableLines(
+                hEmpty, IME_MODE::IME_MODE_ARRAY, nullptr, 4, false);
+
+            Assert::IsTrue(result == TRUE,
+                L"ValidateCustomTableLines with no RichEdit child should return TRUE");
+
+            DestroyWindow(hEmpty);
+        }
+
+        // ------------------------------------------------------------------
+        // UT-CV-05: Valid single line passes
+        // ------------------------------------------------------------------
+        TEST_METHOD(ValidateCustomTableLines_ValidLine_ReturnsTrue)
+        {
+            TestEditHost host;
+            if (!host.ok) { Logger::WriteMessage(L"Skip: MSFTEDIT.DLL not available"); return; }
+
+            host.SetText(L"abc 測試詞彙");
+
+            BOOL result = CConfig::ValidateCustomTableLines(
+                host.hParent, IME_MODE::IME_MODE_ARRAY, nullptr, 4, false);
+
+            Assert::IsTrue(result == TRUE, L"Valid line should pass validation");
+        }
+
+        // ------------------------------------------------------------------
+        // UT-CV-06: Empty content passes
+        // ------------------------------------------------------------------
+        TEST_METHOD(ValidateCustomTableLines_EmptyContent_ReturnsTrue)
+        {
+            TestEditHost host;
+            if (!host.ok) { Logger::WriteMessage(L"Skip"); return; }
+
+            host.SetText(L"");
+
+            BOOL result = CConfig::ValidateCustomTableLines(
+                host.hParent, IME_MODE::IME_MODE_ARRAY, nullptr, 4, false);
+
+            Assert::IsTrue(result == TRUE, L"Empty content should pass validation");
+        }
+
+        // ------------------------------------------------------------------
+        // UT-CV-07: Missing separator (Level 1) fails
+        // ------------------------------------------------------------------
+        TEST_METHOD(ValidateCustomTableLines_NoSeparator_ReturnsFalse)
+        {
+            TestEditHost host;
+            if (!host.ok) { Logger::WriteMessage(L"Skip"); return; }
+
+            host.SetText(L"abc測試"); // no whitespace separator
+
+            BOOL result = CConfig::ValidateCustomTableLines(
+                host.hParent, IME_MODE::IME_MODE_ARRAY, nullptr, 4, false);
+
+            Assert::IsTrue(result == FALSE, L"Line without separator should fail Level 1");
+        }
+
+        // ------------------------------------------------------------------
+        // UT-CV-08: Key too long (Level 2) fails
+        // ------------------------------------------------------------------
+        TEST_METHOD(ValidateCustomTableLines_KeyTooLong_ReturnsFalse)
+        {
+            TestEditHost host;
+            if (!host.ok) { Logger::WriteMessage(L"Skip"); return; }
+
+            // "abcde" is 5 chars, maxCodes = 4 → Level 2 failure
+            host.SetText(L"abcde 測試");
+
+            BOOL result = CConfig::ValidateCustomTableLines(
+                host.hParent, IME_MODE::IME_MODE_ARRAY, nullptr, 4, false);
+
+            Assert::IsTrue(result == FALSE, L"Key longer than maxCodes should fail Level 2");
+        }
+
+        // ------------------------------------------------------------------
+        // UT-CV-09: Key exactly at maxCodes boundary passes
+        // ------------------------------------------------------------------
+        TEST_METHOD(ValidateCustomTableLines_KeyAtMaxCodes_ReturnsTrue)
+        {
+            TestEditHost host;
+            if (!host.ok) { Logger::WriteMessage(L"Skip"); return; }
+
+            // "abcd" is exactly 4 chars = maxCodes: should pass
+            host.SetText(L"abcd 測試");
+
+            BOOL result = CConfig::ValidateCustomTableLines(
+                host.hParent, IME_MODE::IME_MODE_ARRAY, nullptr, 4, false);
+
+            Assert::IsTrue(result == TRUE, L"Key of exactly maxCodes length should pass");
+        }
+
+        // ------------------------------------------------------------------
+        // UT-CV-10: Multiple valid lines all pass
+        // ------------------------------------------------------------------
+        TEST_METHOD(ValidateCustomTableLines_MultipleValidLines_ReturnsTrue)
+        {
+            TestEditHost host;
+            if (!host.ok) { Logger::WriteMessage(L"Skip"); return; }
+
+            host.SetText(L"ab 測試\r\ncd 驗證\r\nef 通過");
+
+            BOOL result = CConfig::ValidateCustomTableLines(
+                host.hParent, IME_MODE::IME_MODE_ARRAY, nullptr, 4, false);
+
+            Assert::IsTrue(result == TRUE, L"Multiple valid lines should all pass");
+        }
+
+        // ------------------------------------------------------------------
+        // UT-CV-11: Mixed valid/invalid lines → FALSE
+        // ------------------------------------------------------------------
+        TEST_METHOD(ValidateCustomTableLines_MixedLines_ReturnsFalse)
+        {
+            TestEditHost host;
+            if (!host.ok) { Logger::WriteMessage(L"Skip"); return; }
+
+            // Second line missing separator
+            host.SetText(L"ab 測試\r\ncd驗證\r\nef 通過");
+
+            BOOL result = CConfig::ValidateCustomTableLines(
+                host.hParent, IME_MODE::IME_MODE_ARRAY, nullptr, 4, false);
+
+            Assert::IsTrue(result == FALSE, L"One bad line should make overall result FALSE");
+        }
+
+        // ------------------------------------------------------------------
+        // UT-CV-12: Empty lines interspersed with valid lines pass
+        // ------------------------------------------------------------------
+        TEST_METHOD(ValidateCustomTableLines_EmptyLinesInterspersed_ReturnsTrue)
+        {
+            TestEditHost host;
+            if (!host.ok) { Logger::WriteMessage(L"Skip"); return; }
+
+            host.SetText(L"ab 測試\r\n\r\ncd 驗證\r\n");
+
+            BOOL result = CConfig::ValidateCustomTableLines(
+                host.hParent, IME_MODE::IME_MODE_ARRAY, nullptr, 4, false);
+
+            Assert::IsTrue(result == TRUE, L"Empty lines between valid entries should be skipped");
+        }
+
+        // ------------------------------------------------------------------
+        // UT-CV-13: Phonetic mode — printable ASCII key passes
+        // ------------------------------------------------------------------
+        TEST_METHOD(ValidateCustomTableLines_PhoneticMode_PrintableASCII_ReturnsTrue)
+        {
+            TestEditHost host;
+            if (!host.ok) { Logger::WriteMessage(L"Skip"); return; }
+
+            host.SetText(L"aB1 測試"); // printable ASCII '!' to '~' range
+
+            BOOL result = CConfig::ValidateCustomTableLines(
+                host.hParent, IME_MODE::IME_MODE_PHONETIC, nullptr, 10, false);
+
+            Assert::IsTrue(result == TRUE, L"Phonetic mode: printable ASCII key should pass");
+        }
+
+        // ------------------------------------------------------------------
+        // UT-CV-14: Phonetic mode — non-ASCII character in key fails (Level 3)
+        // ------------------------------------------------------------------
+        TEST_METHOD(ValidateCustomTableLines_PhoneticMode_NonASCIIChar_ReturnsFalse)
+        {
+            TestEditHost host;
+            if (!host.ok) { Logger::WriteMessage(L"Skip"); return; }
+
+            // Key contains a Chinese character — invalid for phonetic mode
+            host.SetText(L"a測b 詞彙");
+
+            BOOL result = CConfig::ValidateCustomTableLines(
+                host.hParent, IME_MODE::IME_MODE_PHONETIC, nullptr, 10, false);
+
+            Assert::IsTrue(result == FALSE,
+                L"Phonetic mode: non-ASCII key character should fail Level 3");
+        }
+
+        // ------------------------------------------------------------------
+        // UT-CV-15: Light and dark theme color constants are distinct
+        // ------------------------------------------------------------------
+        TEST_METHOD(ThemeColorConstants_LightAndDark_AreDifferent)
+        {
+            Assert::AreNotEqual(
+                (DWORD)CUSTOM_TABLE_LIGHT_ERROR_FORMAT,
+                (DWORD)CUSTOM_TABLE_DARK_ERROR_FORMAT,
+                L"Light and dark error format colors should differ");
+            Assert::AreNotEqual(
+                (DWORD)CUSTOM_TABLE_LIGHT_ERROR_LENGTH,
+                (DWORD)CUSTOM_TABLE_DARK_ERROR_LENGTH,
+                L"Light and dark error length colors should differ");
+            Assert::AreNotEqual(
+                (DWORD)CUSTOM_TABLE_LIGHT_ERROR_CHAR,
+                (DWORD)CUSTOM_TABLE_DARK_ERROR_CHAR,
+                L"Light and dark error char colors should differ");
+            Assert::AreNotEqual(
+                (DWORD)CUSTOM_TABLE_LIGHT_VALID,
+                (DWORD)CUSTOM_TABLE_DARK_VALID,
+                L"Light and dark valid text colors should differ");
+        }
+
+        // ------------------------------------------------------------------
+        // UT-CV-16: isDarkTheme in DialogContext affects color selection path
+        // ------------------------------------------------------------------
+        TEST_METHOD(ValidateCustomTableLines_DarkThemeContext_DoesNotCrash)
+        {
+            TestEditHost host;
+            if (!host.ok) { Logger::WriteMessage(L"Skip"); return; }
+
+            host.SetText(L"ab 測試");
+
+            // Set up a DialogContext with isDarkTheme = true via GWLP_USERDATA
+            DialogContext ctx;
+            ctx.isDarkTheme = true;
+            SetWindowLongPtr(host.hParent, GWLP_USERDATA, (LONG_PTR)&ctx);
+
+            BOOL result = CConfig::ValidateCustomTableLines(
+                host.hParent, IME_MODE::IME_MODE_ARRAY, nullptr, 4, false);
+
+            Assert::IsTrue(result == TRUE,
+                L"Dark theme context: valid line should still pass");
+
+            // Clean up GWLP_USERDATA (prevent dangling ptr after test)
+            SetWindowLongPtr(host.hParent, GWLP_USERDATA, 0);
         }
 
     };

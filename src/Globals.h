@@ -40,7 +40,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "BaseStructure.h"
 #include "Config.h"
 
-
+// Expose Windows version check for DIMESettings
+BOOL IsWindowsVersionOrGreater(DWORD major, DWORD minor, DWORD build = 0);
 
 void DllAddRef();
 void DllRelease();
@@ -50,6 +51,9 @@ namespace Global {
 
 extern IME_MODE imeMode;
 extern BOOL isWindows8; //OS Version
+ extern DWORD g_WinMajorVersion;
+ extern DWORD g_WinMinorVersion;
+ extern DWORD g_WinBuildNumber;
 extern HFONT defaultlFontHandle;  // Global font object we use everywhere
 
 extern BOOL hasPhraseSection; // the dictionary file has TTS [Phrase] section

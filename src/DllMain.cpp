@@ -44,42 +44,40 @@ typedef _Return_type_success_(return >= 0) LONG NTSTATUS;
 #define STATUS_REVISION_MISMATCH ((NTSTATUS)0xC0000059)
 typedef LONG(WINAPI* PFN_RtlVerifyVersionInfo)(OSVERSIONINFOEXW*, ULONG, ULONGLONG);
 
-static BOOL inline IsWindowsVersionOrGreater(WORD major, WORD minor)
+
+// Global Windows version info
+namespace Global {
+    DWORD g_WinMajorVersion = 0;
+    DWORD g_WinMinorVersion = 0;
+    DWORD g_WinBuildNumber = 0;
+}
+
+// Returns TRUE if current Windows version is at least (major, minor, build)
+BOOL IsWindowsVersionOrGreater(DWORD major, DWORD minor, DWORD build)
 {
-    static PFN_RtlVerifyVersionInfo RtlVerifyVersionInfoFn = NULL;
-    if (!RtlVerifyVersionInfoFn)
-    {
-        HMODULE ntdllModule = GetModuleHandleW(L"ntdll.dll");
-        if (ntdllModule)
-        {
-            RtlVerifyVersionInfoFn = (PFN_RtlVerifyVersionInfo)GetProcAddress(ntdllModule, "RtlVerifyVersionInfo");
+    // Get version info once and cache
+    static bool versionFetched = false;
+    if (!versionFetched) {
+        typedef NTSTATUS (WINAPI* RtlGetVersionFn)(PRTL_OSVERSIONINFOW);
+        HMODULE hNtdll = GetModuleHandleW(L"ntdll.dll");
+        if (hNtdll) {
+            auto pFn = reinterpret_cast<RtlGetVersionFn>(
+                GetProcAddress(hNtdll, "RtlGetVersion")
+            );
+            RTL_OSVERSIONINFOW osvi = { sizeof(osvi) };
+            if (pFn && pFn(&osvi) == 0) {
+                Global::g_WinMajorVersion = osvi.dwMajorVersion;
+                Global::g_WinMinorVersion = osvi.dwMinorVersion;
+                Global::g_WinBuildNumber = osvi.dwBuildNumber;
+            }
         }
+        versionFetched = true;
     }
-
-    // Check if RtlVerifyVersionInfoFn is still NULL
-    if (!RtlVerifyVersionInfoFn)
-    {
-        debugPrint(L"RtlVerifyVersionInfo function not found.");
-        return FALSE; // Return FALSE if the function pointer is NULL
-    }
-
-    RTL_OSVERSIONINFOEXW versionInfo = { 0 };
-    NTSTATUS status;
-    ULONGLONG conditionMask = 0;
-    versionInfo.dwOSVersionInfoSize = sizeof(RTL_OSVERSIONINFOEXW);
-    versionInfo.dwMajorVersion = major;
-    versionInfo.dwMinorVersion = minor;
-
-    VER_SET_CONDITION(conditionMask, VER_MAJORVERSION, VER_GREATER_EQUAL);
-    VER_SET_CONDITION(conditionMask, VER_MINORVERSION, VER_GREATER_EQUAL);
-
-    status = RtlVerifyVersionInfoFn(&versionInfo,
-        VER_MAJORVERSION | VER_MINORVERSION,
-        conditionMask);
-
-    if (status == STATUS_SUCCESS)
-        return TRUE;
-
+    if (Global::g_WinMajorVersion > major) return TRUE;
+    if (Global::g_WinMajorVersion < major) return FALSE;
+    if (Global::g_WinMinorVersion > minor) return TRUE;
+    if (Global::g_WinMinorVersion < minor) return FALSE;
+    if (Global::g_WinBuildNumber >= build) return TRUE;
     return FALSE;
 }
 

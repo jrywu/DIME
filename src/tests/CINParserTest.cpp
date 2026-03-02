@@ -11,7 +11,7 @@
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
-namespace DIMETests
+namespace DIMEUnitTests
 {
     TEST_CLASS(CINParserTest)
     {

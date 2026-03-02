@@ -8,6 +8,7 @@
 #include "../resource.h"
 #include <shlwapi.h>
 #include <Prsht.h>
+#include <richedit.h>
 
 #pragma comment(lib, "shlwapi.lib")
 
@@ -84,7 +85,7 @@ namespace DIMEIntegratedTests
             DestroyWindow(hDlg);
             FreeLibrary(hDimeDll);
             CConfig::SetFontSize(originalSize);
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
         }
 
         // IT07_02: REMOVED - No dialog control for FontWeight
@@ -139,7 +140,7 @@ namespace DIMEIntegratedTests
             DestroyWindow(hDlg);
             FreeLibrary(hDimeDll);
             CConfig::SetMaxCodes(originalMax);
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
         }
 
         TEST_METHOD(IT07_04_AutoCompose_LoadChangeApplyVerify)
@@ -186,7 +187,7 @@ namespace DIMEIntegratedTests
             DestroyWindow(hDlg);
             FreeLibrary(hDimeDll);
             CConfig::SetAutoCompose(original);
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
         }
 
         TEST_METHOD(IT07_05_ClearOnBeep_LoadChangeApplyVerify)
@@ -221,7 +222,7 @@ namespace DIMEIntegratedTests
             DestroyWindow(hDlg);
             FreeLibrary(hDimeDll);
             CConfig::SetClearOnBeep(original);
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
         }
 
         // ====================================================================
@@ -260,7 +261,7 @@ namespace DIMEIntegratedTests
             DestroyWindow(hDlg);
             FreeLibrary(hDimeDll);
             CConfig::SetDoBeep(original);
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_DAYI, FALSE);
         }
 
         TEST_METHOD(IT07_07_DoBeepNotify_LoadChangeApplyVerify)
@@ -295,7 +296,7 @@ namespace DIMEIntegratedTests
             DestroyWindow(hDlg);
             FreeLibrary(hDimeDll);
             CConfig::SetDoBeepNotify(original);
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_DAYI, FALSE);
         }
 
         TEST_METHOD(IT07_08_DoBeepOnCandi_LoadChangeApplyVerify)
@@ -330,7 +331,7 @@ namespace DIMEIntegratedTests
             DestroyWindow(hDlg);
             FreeLibrary(hDimeDll);
             CConfig::SetDoBeepOnCandi(original);
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_DAYI, FALSE);
         }
 
         // ====================================================================
@@ -380,7 +381,7 @@ namespace DIMEIntegratedTests
             DestroyWindow(hDlg);
             FreeLibrary(hDimeDll);
             CConfig::SetIMEShiftMode(original);
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
         }
 
         // ====================================================================
@@ -429,7 +430,7 @@ namespace DIMEIntegratedTests
             DestroyWindow(hDlg);
             FreeLibrary(hDimeDll);
             CConfig::SetDoubleSingleByteMode(original);
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
         }
 
         // ====================================================================
@@ -480,7 +481,7 @@ namespace DIMEIntegratedTests
             DestroyWindow(hDlg);
             FreeLibrary(hDimeDll);
             CConfig::SetArrayScope(original);
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
         }
 
         // ====================================================================
@@ -529,7 +530,7 @@ namespace DIMEIntegratedTests
             DestroyWindow(hDlg);
             FreeLibrary(hDimeDll);
             CConfig::SetNumericPad(original);
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
         }
 
         // ====================================================================
@@ -577,7 +578,7 @@ namespace DIMEIntegratedTests
             DestroyWindow(hDlg);
             FreeLibrary(hDimeDll);
             CConfig::setPhoneticKeyboardLayout(original);
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_PHONETIC, FALSE);
         }
 
         // ====================================================================
@@ -616,7 +617,7 @@ namespace DIMEIntegratedTests
             DestroyWindow(hDlg);
             FreeLibrary(hDimeDll);
             CConfig::SetMakePhrase(original);
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_DAYI, FALSE);
         }
 
         // ====================================================================
@@ -655,7 +656,430 @@ namespace DIMEIntegratedTests
             DestroyWindow(hDlg);
             FreeLibrary(hDimeDll);
             CConfig::SetShowNotifyDesktop(original);
-            CConfig::WriteConfig(FALSE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
         }
+    };
+
+    // ====================================================================
+    // Phase 5 Integration Tests: Custom Table Validation (IT-CV)
+    // Covers: per-IME-mode validation, WM_THEMECHANGED, performance, context isolation
+    // ====================================================================
+
+    TEST_CLASS(CustomTableValidationIntegrationTest)
+    {
+    private:
+        // Shared RichEdit host used by most tests.
+        // Creates a popup parent window containing a RICHEDIT50W child
+        // with control ID = IDC_EDIT_CUSTOM_TABLE so that
+        // CConfig::ValidateCustomTableLines can be called against it directly.
+        struct TestEditHost
+        {
+            HMODULE hRichEdit = nullptr;
+            HWND    hParent   = nullptr;
+            bool    ok        = false;
+
+            TestEditHost()
+            {
+                hRichEdit = LoadLibraryW(L"MSFTEDIT.DLL");
+                if (!hRichEdit) return;
+
+                WNDCLASSW wc = {};
+                wc.lpfnWndProc   = DefWindowProcW;
+                wc.hInstance     = GetModuleHandleW(nullptr);
+                wc.lpszClassName = L"DIME_ITCV_Parent";
+                RegisterClassW(&wc);
+
+                hParent = CreateWindowExW(0, L"DIME_ITCV_Parent", nullptr,
+                    WS_POPUP, 0, 0, 600, 400,
+                    nullptr, nullptr, GetModuleHandleW(nullptr), nullptr);
+                if (!hParent) return;
+
+                HWND hEdit = CreateWindowExW(0, L"RICHEDIT50W", nullptr,
+                    WS_CHILD | WS_VISIBLE | ES_MULTILINE | ES_WANTRETURN | ES_AUTOVSCROLL,
+                    0, 0, 600, 400,
+                    hParent, (HMENU)(INT_PTR)IDC_EDIT_CUSTOM_TABLE,
+                    GetModuleHandleW(nullptr), nullptr);
+                ok = (hEdit != nullptr);
+            }
+
+            void SetText(const wchar_t* text)
+            {
+                HWND hEdit = GetDlgItem(hParent, IDC_EDIT_CUSTOM_TABLE);
+                if (hEdit) SetWindowTextW(hEdit, text);
+            }
+
+            ~TestEditHost()
+            {
+                if (hParent) { DestroyWindow(hParent); hParent = nullptr; }
+                if (hRichEdit) { FreeLibrary(hRichEdit); hRichEdit = nullptr; }
+            }
+        };
+
+    public:
+        TEST_CLASS_INITIALIZE(ITCV_ClassSetup) { CoInitialize(NULL); }
+        TEST_CLASS_CLEANUP(ITCV_ClassCleanup) { CoUninitialize(); }
+
+        // ------------------------------------------------------------------
+        // IT-CV-01: Array mode — valid 4-char key passes, 5-char key fails
+        // ------------------------------------------------------------------
+        TEST_METHOD(IT_CV_01_ArrayMode_MaxCodes4_BoundaryCheck)
+        {
+            TestEditHost host;
+            if (!host.ok) { Logger::WriteMessage(L"Skip: MSFTEDIT.DLL not available"); return; }
+
+            // Exactly 4 chars (maxCodes = 4): should pass
+            host.SetText(L"abcd 測試詞");
+            BOOL result4 = CConfig::ValidateCustomTableLines(
+                host.hParent, IME_MODE::IME_MODE_ARRAY, nullptr, 4, false);
+            Assert::IsTrue(result4 == TRUE, L"Array: 4-char key should pass");
+
+            // 5 chars: Level 2 failure
+            host.SetText(L"abcde 測試詞");
+            BOOL result5 = CConfig::ValidateCustomTableLines(
+                host.hParent, IME_MODE::IME_MODE_ARRAY, nullptr, 4, false);
+            Assert::IsTrue(result5 == FALSE, L"Array: 5-char key should fail Level 2");
+        }
+
+        // ------------------------------------------------------------------
+        // IT-CV-02: Dayi mode — valid ASCII-only key passes
+        // ------------------------------------------------------------------
+        TEST_METHOD(IT_CV_02_DayiMode_ASCIILetterKey_Passes)
+        {
+            TestEditHost host;
+            if (!host.ok) { Logger::WriteMessage(L"Skip"); return; }
+
+            host.SetText(L"ab 大義字根");
+
+            BOOL result = CConfig::ValidateCustomTableLines(
+                host.hParent, IME_MODE::IME_MODE_DAYI, nullptr, 4, false);
+
+            Assert::IsTrue(result == TRUE, L"Dayi mode: ASCII-letter key should pass");
+        }
+
+        // ------------------------------------------------------------------
+        // IT-CV-03: Phonetic mode — ASCII-letter key passes
+        // ------------------------------------------------------------------
+        TEST_METHOD(IT_CV_03_PhoneticMode_ValidKey_Passes)
+        {
+            TestEditHost host;
+            if (!host.ok) { Logger::WriteMessage(L"Skip"); return; }
+
+            host.SetText(L"su3 速度");
+
+            BOOL result = CConfig::ValidateCustomTableLines(
+                host.hParent, IME_MODE::IME_MODE_PHONETIC, nullptr, 10, false);
+
+            Assert::IsTrue(result == TRUE, L"Phonetic mode: printable ASCII key should pass");
+        }
+
+        // ------------------------------------------------------------------
+        // IT-CV-04: Phonetic mode — wildcard '*' in key fails (Level 3)
+        // ------------------------------------------------------------------
+        TEST_METHOD(IT_CV_04_PhoneticMode_WildcardInKey_Fails)
+        {
+            TestEditHost host;
+            if (!host.ok) { Logger::WriteMessage(L"Skip"); return; }
+
+            // '*' is excluded from valid phonetic key characters
+            host.SetText(L"a*b 測試");
+
+            BOOL result = CConfig::ValidateCustomTableLines(
+                host.hParent, IME_MODE::IME_MODE_PHONETIC, nullptr, 10, false);
+
+            Assert::IsTrue(result == FALSE,
+                L"Phonetic mode: wildcard '*' in key should fail Level 3");
+        }
+
+        // ------------------------------------------------------------------
+        // IT-CV-05: Phonetic mode — separator '?' in key fails (Level 3)
+        // ------------------------------------------------------------------
+        TEST_METHOD(IT_CV_05_PhoneticMode_QuestionMarkInKey_Fails)
+        {
+            TestEditHost host;
+            if (!host.ok) { Logger::WriteMessage(L"Skip"); return; }
+
+            host.SetText(L"a?b 測試");
+
+            BOOL result = CConfig::ValidateCustomTableLines(
+                host.hParent, IME_MODE::IME_MODE_PHONETIC, nullptr, 10, false);
+
+            Assert::IsTrue(result == FALSE,
+                L"Phonetic mode: '?' separator character in key should fail Level 3");
+        }
+
+        // ------------------------------------------------------------------
+        // IT-CV-06: Generic mode — ASCII-letter key passes
+        // ------------------------------------------------------------------
+        TEST_METHOD(IT_CV_06_GenericMode_ASCIIKey_Passes)
+        {
+            TestEditHost host;
+            if (!host.ok) { Logger::WriteMessage(L"Skip"); return; }
+
+            host.SetText(L"abc 通用詞");
+
+            BOOL result = CConfig::ValidateCustomTableLines(
+                host.hParent, IME_MODE::IME_MODE_GENERIC, nullptr, 4, false);
+
+            Assert::IsTrue(result == TRUE, L"Generic mode: ASCII-letter key should pass");
+        }
+
+        // ------------------------------------------------------------------
+        // IT-CV-07: All 4 IME modes accept same valid line format
+        // ------------------------------------------------------------------
+        TEST_METHOD(IT_CV_07_AllIMEModes_ValidLine_AllPass)
+        {
+            TestEditHost host;
+            if (!host.ok) { Logger::WriteMessage(L"Skip"); return; }
+
+            IME_MODE modes[] = {
+                IME_MODE::IME_MODE_ARRAY,
+                IME_MODE::IME_MODE_DAYI,
+                IME_MODE::IME_MODE_PHONETIC,
+                IME_MODE::IME_MODE_GENERIC
+            };
+
+            const wchar_t* validLine = L"ab 詞彙";
+
+            for (IME_MODE mode : modes)
+            {
+                host.SetText(validLine);
+                BOOL result = CConfig::ValidateCustomTableLines(
+                    host.hParent, mode, nullptr, 10, false);
+                Assert::IsTrue(result == TRUE,
+                    L"All IME modes should accept a valid ASCII-key line");
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // IT-CV-08: All 4 IME modes reject line without separator
+        // ------------------------------------------------------------------
+        TEST_METHOD(IT_CV_08_AllIMEModes_NoSeparator_AllFail)
+        {
+            TestEditHost host;
+            if (!host.ok) { Logger::WriteMessage(L"Skip"); return; }
+
+            IME_MODE modes[] = {
+                IME_MODE::IME_MODE_ARRAY,
+                IME_MODE::IME_MODE_DAYI,
+                IME_MODE::IME_MODE_PHONETIC,
+                IME_MODE::IME_MODE_GENERIC
+            };
+
+            const wchar_t* badLine = L"ab詞彙"; // no space
+
+            for (IME_MODE mode : modes)
+            {
+                host.SetText(badLine);
+                BOOL result = CConfig::ValidateCustomTableLines(
+                    host.hParent, mode, nullptr, 10, false);
+                Assert::IsTrue(result == FALSE,
+                    L"All IME modes should reject a line without separator");
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // IT-CV-09: WM_THEMECHANGED on a window with DialogContext updates isDarkTheme
+        // ------------------------------------------------------------------
+        TEST_METHOD(IT_CV_09_WM_THEMECHANGED_UpdatesDarkThemeFlag)
+        {
+            // Use the Common page dialog (simpler setup than Dictionary page)
+            // to test that WM_THEMECHANGED in CommonPropertyPageWndProc
+            // re-reads IsSystemDarkTheme() and stores it in pCtx->isDarkTheme.
+            HMODULE hDimeDll = LoadLibraryW(L"DIME.dll");
+            if (!hDimeDll) { Logger::WriteMessage(L"Skip: DIME.dll not available"); return; }
+
+            DialogContext* pCtx = new DialogContext();
+            pCtx->imeMode  = IME_MODE::IME_MODE_ARRAY;
+            pCtx->maxCodes = 4;
+
+            // Deliberately set isDarkTheme to the *opposite* of the real theme
+            // so we can detect the update.
+            bool realTheme = CConfig::IsSystemDarkTheme();
+            pCtx->isDarkTheme = !realTheme;
+
+            // Inject pCtx via GWLP_USERDATA on a test window that uses
+            // CommonPropertyPageWndProc as its dialog proc.
+            HWND hDlg = CreateDialogParamW(hDimeDll,
+                MAKEINTRESOURCE(IDD_DIALOG_COMMON), nullptr,
+                CConfig::CommonPropertyPageWndProc, 0);
+
+            if (!hDlg)
+            {
+                Logger::WriteMessage(L"Skip: could not create common dialog");
+                delete pCtx;
+                FreeLibrary(hDimeDll);
+                return;
+            }
+
+            // Override GWLP_USERDATA with our test context
+            pCtx->isDarkTheme = !realTheme;
+            SetWindowLongPtr(hDlg, GWLP_USERDATA, (LONG_PTR)pCtx);
+
+            // Send WM_THEMECHANGED — should call IsSystemDarkTheme() and update pCtx
+            SendMessage(hDlg, WM_THEMECHANGED, 0, 0);
+
+            // Verify isDarkTheme now matches the real system theme
+            bool updated = pCtx->isDarkTheme;
+
+            // Clean up before asserting (avoid leaking on failure)
+            SetWindowLongPtr(hDlg, GWLP_USERDATA, 0);
+            DestroyWindow(hDlg);
+            FreeLibrary(hDimeDll);
+            if (pCtx->hBrushBackground) { DeleteObject(pCtx->hBrushBackground); }
+            if (pCtx->hBrushEditControl) { DeleteObject(pCtx->hBrushEditControl); }
+            delete pCtx;
+
+            Assert::AreEqual(realTheme, updated,
+                L"WM_THEMECHANGED should update isDarkTheme to match system theme");
+        }
+
+        // ------------------------------------------------------------------
+        // IT-CV-10: Context isolation — each DialogContext stores its own imeMode
+        // ------------------------------------------------------------------
+        TEST_METHOD(IT_CV_10_ContextIsolation_Each_DialogContext_StoresOwnMode)
+        {
+            DialogContext ctx1, ctx2;
+            ctx1.imeMode = IME_MODE::IME_MODE_ARRAY;
+            ctx2.imeMode = IME_MODE::IME_MODE_PHONETIC;
+
+            // Change global _imeMode (simulates user switching the system IME)
+            IME_MODE original = CConfig::GetIMEMode();
+            CConfig::SetIMEMode(IME_MODE::IME_MODE_DAYI);
+
+            // DialogContext values must not change when global mode changes
+            Assert::IsTrue(ctx1.imeMode == IME_MODE::IME_MODE_ARRAY,
+                L"ctx1.imeMode should remain ARRAY after global mode change");
+            Assert::IsTrue(ctx2.imeMode == IME_MODE::IME_MODE_PHONETIC,
+                L"ctx2.imeMode should remain PHONETIC after global mode change");
+
+            // Restore
+            CConfig::SetIMEMode(original);
+        }
+
+        // ------------------------------------------------------------------
+        // IT-CV-11: Performance — 1000 valid lines validate within 500 ms
+        // ------------------------------------------------------------------
+        TEST_METHOD(IT_CV_11_Performance_1000ValidLines_CompletesWithin500ms)
+        {
+            TestEditHost host;
+            if (!host.ok) { Logger::WriteMessage(L"Skip"); return; }
+
+            // Build 1000 valid lines
+            std::wstring content;
+            content.reserve(1000 * 20);
+            for (int i = 0; i < 1000; ++i)
+            {
+                content += L"ab 詞彙\r\n";
+            }
+            host.SetText(content.c_str());
+
+            DWORD start = GetTickCount();
+            BOOL result = CConfig::ValidateCustomTableLines(
+                host.hParent, IME_MODE::IME_MODE_ARRAY, nullptr, 4, false);
+            DWORD elapsed = GetTickCount() - start;
+
+            Assert::IsTrue(result == TRUE, L"1000 valid lines should pass validation");
+            Assert::IsTrue(elapsed < 500,
+                L"Validation of 1000 lines should complete within 500ms");
+
+            WCHAR msg[64];
+            swprintf_s(msg, L"1000-line validation: %u ms", elapsed);
+            Logger::WriteMessage(msg);
+        }
+
+        // ------------------------------------------------------------------
+        // IT-CV-12: Performance — 100 lines with errors validates within 200 ms
+        // ------------------------------------------------------------------
+        TEST_METHOD(IT_CV_12_Performance_100ErrorLines_CompletesWithin200ms)
+        {
+            TestEditHost host;
+            if (!host.ok) { Logger::WriteMessage(L"Skip"); return; }
+
+            // Alternate valid/invalid lines
+            std::wstring content;
+            for (int i = 0; i < 50; ++i)
+            {
+                content += L"ab 詞彙\r\n";
+                content += L"abcdef詞彙\r\n"; // no separator: Level 1 error
+            }
+            host.SetText(content.c_str());
+
+            DWORD start = GetTickCount();
+            BOOL result = CConfig::ValidateCustomTableLines(
+                host.hParent, IME_MODE::IME_MODE_ARRAY, nullptr, 4, false);
+            DWORD elapsed = GetTickCount() - start;
+
+            Assert::IsTrue(result == FALSE, L"Content with errors should fail validation");
+            Assert::IsTrue(elapsed < 200,
+                L"Validation of 100 lines (with errors) should complete within 200ms");
+
+            WCHAR msg[64];
+            swprintf_s(msg, L"100-line error validation: %u ms", elapsed);
+            Logger::WriteMessage(msg);
+        }
+
+        // ------------------------------------------------------------------
+        // IT-CV-13: Dark theme context produces dark valid color on RichEdit
+        // ------------------------------------------------------------------
+        TEST_METHOD(IT_CV_13_DarkThemeContext_ValidLine_UsesWhiteColor)
+        {
+            TestEditHost host;
+            if (!host.ok) { Logger::WriteMessage(L"Skip"); return; }
+
+            host.SetText(L"ab 測試");
+
+            // Inject a dark-theme DialogContext
+            DialogContext ctx;
+            ctx.isDarkTheme = true;
+            SetWindowLongPtr(host.hParent, GWLP_USERDATA, (LONG_PTR)&ctx);
+
+            BOOL result = CConfig::ValidateCustomTableLines(
+                host.hParent, IME_MODE::IME_MODE_ARRAY, nullptr, 4, false);
+
+            // After validation the text color for a valid line should be white (dark valid)
+            HWND hEdit = GetDlgItem(host.hParent, IDC_EDIT_CUSTOM_TABLE);
+            CHARFORMAT2W cf = {};
+            cf.cbSize = sizeof(cf);
+            SendMessageW(hEdit, EM_SETSEL, 0, 1);
+            SendMessageW(hEdit, EM_GETCHARFORMAT, SCF_SELECTION, (LPARAM)&cf);
+
+            SetWindowLongPtr(host.hParent, GWLP_USERDATA, 0);
+
+            Assert::IsTrue(result == TRUE, L"Valid line should pass in dark theme");
+            Assert::AreEqual((DWORD)CUSTOM_TABLE_DARK_VALID, (DWORD)cf.crTextColor,
+                L"Dark theme: valid text should be painted white");
+        }
+
+        // ------------------------------------------------------------------
+        // IT-CV-14: Light theme context produces black valid color on RichEdit
+        // ------------------------------------------------------------------
+        TEST_METHOD(IT_CV_14_LightThemeContext_ValidLine_UsesBlackColor)
+        {
+            TestEditHost host;
+            if (!host.ok) { Logger::WriteMessage(L"Skip"); return; }
+
+            host.SetText(L"ab 測試");
+
+            // Light theme (isDarkTheme = false, the default)
+            DialogContext ctx;
+            ctx.isDarkTheme = false;
+            SetWindowLongPtr(host.hParent, GWLP_USERDATA, (LONG_PTR)&ctx);
+
+            BOOL result = CConfig::ValidateCustomTableLines(
+                host.hParent, IME_MODE::IME_MODE_ARRAY, nullptr, 4, false);
+
+            HWND hEdit = GetDlgItem(host.hParent, IDC_EDIT_CUSTOM_TABLE);
+            CHARFORMAT2W cf = {};
+            cf.cbSize = sizeof(cf);
+            SendMessageW(hEdit, EM_SETSEL, 0, 1);
+            SendMessageW(hEdit, EM_GETCHARFORMAT, SCF_SELECTION, (LPARAM)&cf);
+
+            SetWindowLongPtr(host.hParent, GWLP_USERDATA, 0);
+
+            Assert::IsTrue(result == TRUE, L"Valid line should pass in light theme");
+            Assert::AreEqual((DWORD)CUSTOM_TABLE_LIGHT_VALID, (DWORD)cf.crTextColor,
+                L"Light theme: valid text should be painted black");
+        }
+
     };
 }

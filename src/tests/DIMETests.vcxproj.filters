@@ -212,14 +212,17 @@
     <ClCompile Include="CandidateWindowIntegrationTest.cpp">
       <Filter>Source Files\Integration Tests</Filter>
     </ClCompile>
+    <ClCompile Include="SettingsDialogIntegrationTest.cpp">
+      <Filter>Source Files\Integration Tests</Filter>
+    </ClCompile>
     <ClCompile Include="TSFCoreLogicIntegrationTest.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Integration Tests</Filter>
     </ClCompile>
     <ClCompile Include="UIPresenterIntegrationTest.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Integration Tests</Filter>
     </ClCompile>
-    <ClCompile Include="SettingsDialogIntegrationTest.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="DictionaryTest.cpp">
+      <Filter>Source Files\Unit Tests</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
