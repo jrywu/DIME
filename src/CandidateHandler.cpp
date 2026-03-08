@@ -213,12 +213,8 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 		{
 
 			_pUIPresenter->_ClearCandidateList();
-			_pUIPresenter->_SetCandidateTextColor(CConfig::GetPhraseColor(), CConfig::GetItemBGColor());    // Text color is green
-			_pUIPresenter->_SetCandidateSelectedTextColor(CConfig::GetSelectedColor(), CConfig::GetSelectedBGColor());    
-			_pUIPresenter->_SetCandidateNumberColor(CConfig::GetNumberColor(), CConfig::GetItemBGColor());    
-			_pUIPresenter->_SetCandidateFillColor(CConfig::GetItemBGColor());//(HBRUSH)(COLOR_WINDOW+1));    // Background color is window
 			_pUIPresenter->_SetCandidateText(&candidatePhraseList, _pCompositionProcessorEngine->GetCandidateListIndexRange(),
-				FALSE, _pCompositionProcessorEngine->GetCandidateWindowWidth());
+				FALSE, _pCompositionProcessorEngine->GetCandidateWindowWidth(), true);
 			_pUIPresenter->_SetCandidateSelection(-1, FALSE); // set selected index to -1 if showing phrase candidates
 			_candidateMode = CANDIDATE_MODE::CANDIDATE_PHRASE;
 			_isCandidateWithWildcard = FALSE;	

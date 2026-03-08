@@ -1,4 +1,4 @@
-/* DIME IME for Windows 7/8/10/11
+﻿/* DIME IME for Windows 7/8/10/11
 
 BSD 3-Clause License
 
@@ -100,12 +100,12 @@ HRESULT CTfInputProcessorProfile::GetReverseConversionProviders(LANGID langid, C
 		ULONG fetch = 0;
 		while (S_OK == pEnumProf->Next(1, &langProfile, &fetch))
 		{
-			BSTR bstrDescription;
+			BSTR bstrDescription = nullptr;  // always initialize — SysFreeString is called unconditionally below
 			BOOL active = false;
 
-			hr = _pInputProcessorProfile->GetLanguageProfileDescription(langProfile.clsid, langid, langProfile.guidProfile, &bstrDescription);
+			HRESULT hrDesc = _pInputProcessorProfile->GetLanguageProfileDescription(langProfile.clsid, langid, langProfile.guidProfile, &bstrDescription);
 			hr = _pInputProcessorProfile->IsEnabledLanguageProfile(langProfile.clsid, langid, langProfile.guidProfile, &active);
-			if (SUCCEEDED(hr))
+			if (SUCCEEDED(hrDesc) && SUCCEEDED(hr))
 			{
 				debugPrint(L"CTfInputProcessorProfile::GetReverseConversionProviders() Got IM with descrition = %s and enabled = %d", bstrDescription, active);
 				ITfReverseConversionMgr * pITfReverseConversionMgr;
@@ -140,7 +140,7 @@ HRESULT CTfInputProcessorProfile::GetReverseConversionProviders(LANGID langid, C
 								
 			}
 
-			SysFreeString(bstrDescription);
+			SysFreeString(bstrDescription);  // safe: SysFreeString(nullptr) is a no-op
 
 		}
 

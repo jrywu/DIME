@@ -1,4 +1,4 @@
-// SettingsDialogIntegrationTest.cpp - IT-07 Settings Dialog Integration Tests
+﻿// SettingsDialogIntegrationTest.cpp - IT-07 Settings Dialog Integration Tests
 // Tests: Create Dialog → Change Controls → Send PSN_APPLY → Verify Persistence
 
 #include "pch.h"
@@ -658,6 +658,231 @@ namespace DIMEIntegratedTests
             CConfig::SetShowNotifyDesktop(original);
             CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
         }
+
+        // ====================================================================
+        // IT-CM-01: Color mode combo initialises with the currently saved mode
+        // ====================================================================
+
+        TEST_METHOD(IT_CM_01_ColorModeCombo_InitialisesWithSavedValue)
+        {
+            CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
+            IME_COLOR_MODE savedMode = CConfig::GetColorMode();
+
+            // Arrange: persist DARK mode then reload so in-memory == DARK
+            CConfig::SetColorMode(IME_COLOR_MODE::IME_COLOR_MODE_DARK);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
+            CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
+
+            HMODULE hDimeDll = LoadLibrary(L"DIME.dll");
+            if (!hDimeDll) { Logger::WriteMessage(L"Skip: DIME.dll not available\n"); goto cleanup_mode_01; }
+
+            {
+                HWND hDlg = CreateDialogParam(hDimeDll, MAKEINTRESOURCE(IDD_DIALOG_COMMON), NULL,
+                    CConfig::CommonPropertyPageWndProc, 0);
+                if (!hDlg) { FreeLibrary(hDimeDll); goto cleanup_mode_01; }
+
+                SendMessage(hDlg, WM_INITDIALOG, 0, 0);
+
+                HWND hCombo = GetDlgItem(hDlg, IDC_COMBO_COLOR_MODE);
+                Assert::IsNotNull(hCombo, L"IDC_COMBO_COLOR_MODE must exist in dialog");
+
+                int sel = (int)SendMessage(hCombo, CB_GETCURSEL, 0, 0);
+                Assert::AreEqual(
+                    static_cast<int>(IME_COLOR_MODE::IME_COLOR_MODE_DARK), sel,
+                    L"Combo selection must reflect the saved DARK mode (index 2)");
+
+                DestroyWindow(hDlg);
+                FreeLibrary(hDimeDll);
+            }
+
+        cleanup_mode_01:
+            CConfig::SetColorMode(savedMode);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
+        }
+
+        // ====================================================================
+        // IT-CM-02: Color boxes enabled only when CUSTOM mode is active
+        // ====================================================================
+
+        TEST_METHOD(IT_CM_02_ColorBoxes_DisabledUnlessCustomMode)
+        {
+            CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
+            IME_COLOR_MODE savedMode = CConfig::GetColorMode();
+            CConfig::SetColorMode(IME_COLOR_MODE::IME_COLOR_MODE_LIGHT);
+
+            HMODULE hDimeDll = LoadLibrary(L"DIME.dll");
+            if (!hDimeDll) { Logger::WriteMessage(L"Skip: DIME.dll not available\n"); goto cleanup_mode_02; }
+
+            {
+                HWND hDlg = CreateDialogParam(hDimeDll, MAKEINTRESOURCE(IDD_DIALOG_COMMON), NULL,
+                    CConfig::CommonPropertyPageWndProc, 0);
+                if (!hDlg) { FreeLibrary(hDimeDll); goto cleanup_mode_02; }
+
+                SendMessage(hDlg, WM_INITDIALOG, 0, 0);
+
+                const int colorBoxIds[] = {
+                    IDC_COL_BG, IDC_COL_FR, IDC_COL_NU,
+                    IDC_COL_PHRASE, IDC_COL_SEBG, IDC_COL_SEFR
+                };
+
+                // In LIGHT mode all 6 colour boxes must be disabled
+                for (int id : colorBoxIds)
+                {
+                    HWND hBox = GetDlgItem(hDlg, id);
+                    if (hBox)
+                        Assert::IsFalse(IsWindowEnabled(hBox) != FALSE,
+                            L"Colour box must be disabled in LIGHT mode");
+                }
+
+                // Switch combo to CUSTOM and verify boxes become enabled
+                HWND hCombo = GetDlgItem(hDlg, IDC_COMBO_COLOR_MODE);
+                if (hCombo)
+                {
+                    SendMessage(hCombo, CB_SETCURSEL,
+                        static_cast<WPARAM>(IME_COLOR_MODE::IME_COLOR_MODE_CUSTOM), 0);
+                    SendMessage(hDlg, WM_COMMAND,
+                        MAKEWPARAM(IDC_COMBO_COLOR_MODE, CBN_SELCHANGE), (LPARAM)hCombo);
+
+                    for (int id : colorBoxIds)
+                    {
+                        HWND hBox = GetDlgItem(hDlg, id);
+                        if (hBox)
+                            Assert::IsTrue(IsWindowEnabled(hBox) != FALSE,
+                                L"Colour box must be enabled in CUSTOM mode");
+                    }
+                }
+
+                DestroyWindow(hDlg);
+                FreeLibrary(hDimeDll);
+            }
+
+        cleanup_mode_02:
+            CConfig::SetColorMode(savedMode);
+        }
+
+        // ====================================================================
+        // IT-CM-03: PSN_APPLY persists the combo-selected colour mode to disk
+        // ====================================================================
+
+        TEST_METHOD(IT_CM_03_PSN_Apply_PersistsColorMode)
+        {
+            CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
+            IME_COLOR_MODE savedMode = CConfig::GetColorMode();
+
+            // Start from SYSTEM on disk
+            CConfig::SetColorMode(IME_COLOR_MODE::IME_COLOR_MODE_SYSTEM);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
+
+            HMODULE hDimeDll = LoadLibrary(L"DIME.dll");
+            if (!hDimeDll) { Logger::WriteMessage(L"Skip: DIME.dll not available\n"); goto cleanup_mode_03; }
+
+            {
+                HWND hDlg = CreateDialogParam(hDimeDll, MAKEINTRESOURCE(IDD_DIALOG_COMMON), NULL,
+                    CConfig::CommonPropertyPageWndProc, 0);
+                if (!hDlg) { FreeLibrary(hDimeDll); goto cleanup_mode_03; }
+
+                SendMessage(hDlg, WM_INITDIALOG, 0, 0);
+
+                // Change combo selection to DARK
+                HWND hCombo = GetDlgItem(hDlg, IDC_COMBO_COLOR_MODE);
+                if (hCombo)
+                {
+                    SendMessage(hCombo, CB_SETCURSEL,
+                        static_cast<WPARAM>(IME_COLOR_MODE::IME_COLOR_MODE_DARK), 0);
+                    SendMessage(hDlg, WM_COMMAND,
+                        MAKEWPARAM(IDC_COMBO_COLOR_MODE, CBN_SELCHANGE), (LPARAM)hCombo);
+                }
+
+                // Simulate PSN_APPLY
+                PSHNOTIFY psh = {0};
+                psh.hdr.code     = PSN_APPLY;
+                psh.hdr.hwndFrom = hDlg;
+                SendMessage(hDlg, WM_NOTIFY, 0, (LPARAM)&psh);
+
+                DestroyWindow(hDlg);
+                FreeLibrary(hDimeDll);
+
+                // Reload from disk and verify DARK was persisted
+                CConfig::SetColorMode(IME_COLOR_MODE::IME_COLOR_MODE_SYSTEM); // perturb
+                CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
+                Assert::AreEqual(
+                    static_cast<int>(IME_COLOR_MODE::IME_COLOR_MODE_DARK),
+                    static_cast<int>(CConfig::GetColorMode()),
+                    L"DARK mode must be persisted to disk after PSN_APPLY");
+            }
+
+        cleanup_mode_03:
+            CConfig::SetColorMode(savedMode);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
+        }
+
+        // ====================================================================
+        // IT-CM-04: Restore Default resets only the current palette; combo unchanged
+        // ====================================================================
+
+        TEST_METHOD(IT_CM_04_RestoreDefault_ResetsCurrentPaletteOnly)
+        {
+            CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
+            IME_COLOR_MODE savedMode = CConfig::GetColorMode();
+            COLORREF savedItemColor = CConfig::GetItemColor();
+            CConfig::SetColorMode(IME_COLOR_MODE::IME_COLOR_MODE_CUSTOM);
+            // Dirty the custom palette so we can verify reset
+            CConfig::SetItemColor(0x123456);
+
+            HMODULE hDimeDll = LoadLibrary(L"DIME.dll");
+            if (!hDimeDll) { Logger::WriteMessage(L"Skip: DIME.dll not available\n"); goto cleanup_mode_04; }
+
+            {
+                HWND hDlg = CreateDialogParam(hDimeDll, MAKEINTRESOURCE(IDD_DIALOG_COMMON), NULL,
+                    CConfig::CommonPropertyPageWndProc, 0);
+                if (!hDlg) { FreeLibrary(hDimeDll); goto cleanup_mode_04; }
+
+                SendMessage(hDlg, WM_INITDIALOG, 0, 0);
+
+                // Click Restore Default
+                HWND hBtn = GetDlgItem(hDlg, IDC_BUTTON_RESTOREDEFAULT);
+                if (hBtn)
+                    SendMessage(hDlg, WM_COMMAND,
+                        MAKEWPARAM(IDC_BUTTON_RESTOREDEFAULT, BN_CLICKED), (LPARAM)hBtn);
+
+                // Combo must still show CUSTOM — not reset to SYSTEM
+                HWND hCombo = GetDlgItem(hDlg, IDC_COMBO_COLOR_MODE);
+                if (hCombo)
+                {
+                    IME_COLOR_MODE mode = CConfig::GetComboSelectedMode(hCombo);
+                    Assert::AreEqual(
+                        static_cast<int>(IME_COLOR_MODE::IME_COLOR_MODE_CUSTOM),
+                        static_cast<int>(mode),
+                        L"Combo must remain CUSTOM after Restore Default");
+                }
+
+                // Colour boxes must remain enabled (CUSTOM mode keeps them enabled)
+                const int colorBoxIds[] = {
+                    IDC_COL_BG, IDC_COL_FR, IDC_COL_NU,
+                    IDC_COL_PHRASE, IDC_COL_SEBG, IDC_COL_SEFR
+                };
+                for (int id : colorBoxIds)
+                {
+                    HWND hBox = GetDlgItem(hDlg, id);
+                    if (hBox)
+                        Assert::IsTrue(IsWindowEnabled(hBox) != FALSE,
+                            L"Colour boxes must remain enabled in CUSTOM mode after Restore Default");
+                }
+
+                // Custom item color must be back to factory default
+                Assert::AreEqual(
+                    static_cast<DWORD>(CANDWND_ITEM_COLOR),
+                    static_cast<DWORD>(CConfig::GetItemColor()),
+                    L"Custom item color must be reset to factory default");
+
+                DestroyWindow(hDlg);
+                FreeLibrary(hDimeDll);
+            }
+
+        cleanup_mode_04:
+            CConfig::SetItemColor(savedItemColor);
+            CConfig::SetColorMode(savedMode);
+        }
     };
 
     // ====================================================================
@@ -1079,6 +1304,161 @@ namespace DIMEIntegratedTests
             Assert::IsTrue(result == TRUE, L"Valid line should pass in light theme");
             Assert::AreEqual((DWORD)CUSTOM_TABLE_LIGHT_VALID, (DWORD)cf.crTextColor,
                 L"Light theme: valid text should be painted black");
+        }
+
+        // ====================================================================
+        // IT-PT: Per-theme palette customization integration tests
+        // ====================================================================
+
+        // IT-PT-01: LIGHT mode – GetEffectiveDarkMode returns false
+        TEST_METHOD(IT_PT_01_LightMode_EffectiveDarkModeFalse)
+        {
+            IME_COLOR_MODE saved = CConfig::GetColorMode();
+            CConfig::SetColorMode(IME_COLOR_MODE::IME_COLOR_MODE_LIGHT);
+            Assert::IsFalse(CConfig::GetEffectiveDarkMode(),
+                L"LIGHT mode must report GetEffectiveDarkMode() == false");
+            CConfig::SetColorMode(saved);
+        }
+
+        // IT-PT-02: DARK mode – GetEffectiveDarkMode returns true
+        TEST_METHOD(IT_PT_02_DarkMode_EffectiveDarkModeTrue)
+        {
+            IME_COLOR_MODE saved = CConfig::GetColorMode();
+            CConfig::SetColorMode(IME_COLOR_MODE::IME_COLOR_MODE_DARK);
+            Assert::IsTrue(CConfig::GetEffectiveDarkMode(),
+                L"DARK mode must report GetEffectiveDarkMode() == true");
+            CConfig::SetColorMode(saved);
+        }
+
+        // IT-PT-03: CUSTOM mode – GetEffectiveDarkMode returns false
+        TEST_METHOD(IT_PT_03_CustomMode_EffectiveDarkModeFalse)
+        {
+            IME_COLOR_MODE saved = CConfig::GetColorMode();
+            CConfig::SetColorMode(IME_COLOR_MODE::IME_COLOR_MODE_CUSTOM);
+            Assert::IsFalse(CConfig::GetEffectiveDarkMode(),
+                L"CUSTOM mode must report GetEffectiveDarkMode() == false");
+            CConfig::SetColorMode(saved);
+        }
+
+        // IT-PT-04: Light palette getter/setter round-trip in memory
+        TEST_METHOD(IT_PT_04_LightPalette_GetSet_RoundTrip)
+        {
+            COLORREF savedItem = CConfig::GetLightItemColor();
+            COLORREF savedPhrase = CConfig::GetLightPhraseColor();
+            COLORREF savedBG = CConfig::GetLightItemBGColor();
+
+            CConfig::SetLightItemColor(0xABCDEF);
+            CConfig::SetLightPhraseColor(0x123456);
+            CConfig::SetLightItemBGColor(0xFEDCBA);
+
+            Assert::AreEqual(0xABCDEFul, (unsigned long)CConfig::GetLightItemColor(),
+                L"LightItemColor get/set in memory");
+            Assert::AreEqual(0x123456ul, (unsigned long)CConfig::GetLightPhraseColor(),
+                L"LightPhraseColor get/set in memory");
+            Assert::AreEqual(0xFEDCBAul, (unsigned long)CConfig::GetLightItemBGColor(),
+                L"LightItemBGColor get/set in memory");
+
+            CConfig::SetLightItemColor(savedItem);
+            CConfig::SetLightPhraseColor(savedPhrase);
+            CConfig::SetLightItemBGColor(savedBG);
+        }
+
+        // IT-PT-05: Dark palette getter/setter round-trip in memory
+        TEST_METHOD(IT_PT_05_DarkPalette_GetSet_RoundTrip)
+        {
+            COLORREF savedItem = CConfig::GetDarkItemColor();
+            COLORREF savedPhrase = CConfig::GetDarkPhraseColor();
+            COLORREF savedBG = CConfig::GetDarkItemBGColor();
+
+            CConfig::SetDarkItemColor(0x112233);
+            CConfig::SetDarkPhraseColor(0x445566);
+            CConfig::SetDarkItemBGColor(0x778899);
+
+            Assert::AreEqual(0x112233ul, (unsigned long)CConfig::GetDarkItemColor(),
+                L"DarkItemColor get/set in memory");
+            Assert::AreEqual(0x445566ul, (unsigned long)CConfig::GetDarkPhraseColor(),
+                L"DarkPhraseColor get/set in memory");
+            Assert::AreEqual(0x778899ul, (unsigned long)CConfig::GetDarkItemBGColor(),
+                L"DarkItemBGColor get/set in memory");
+
+            CConfig::SetDarkItemColor(savedItem);
+            CConfig::SetDarkPhraseColor(savedPhrase);
+            CConfig::SetDarkItemBGColor(savedBG);
+        }
+
+        // IT-PT-06: Light palette factory defaults match compile-time constants
+        TEST_METHOD(IT_PT_06_LightPalette_StaticDefaults_MatchConstants)
+        {
+            // Reset to factory defaults
+            CConfig::SetLightItemColor(CANDWND_ITEM_COLOR);
+            CConfig::SetLightPhraseColor(CANDWND_PHRASE_COLOR);
+            CConfig::SetLightNumberColor(CANDWND_NUM_COLOR);
+            CConfig::SetLightSelectedColor(CANDWND_SELECTED_ITEM_COLOR);
+            CConfig::SetLightSelectedBGColor(CANDWND_SELECTED_BK_COLOR);
+
+            Assert::AreEqual((unsigned long)CANDWND_ITEM_COLOR,
+                (unsigned long)CConfig::GetLightItemColor(),
+                L"Light ItemColor factory default");
+            Assert::AreEqual((unsigned long)CANDWND_PHRASE_COLOR,
+                (unsigned long)CConfig::GetLightPhraseColor(),
+                L"Light PhraseColor factory default");
+            Assert::AreEqual((unsigned long)CANDWND_NUM_COLOR,
+                (unsigned long)CConfig::GetLightNumberColor(),
+                L"Light NumberColor factory default");
+            Assert::AreEqual((unsigned long)CANDWND_SELECTED_ITEM_COLOR,
+                (unsigned long)CConfig::GetLightSelectedColor(),
+                L"Light SelectedColor factory default");
+            Assert::AreEqual((unsigned long)CANDWND_SELECTED_BK_COLOR,
+                (unsigned long)CConfig::GetLightSelectedBGColor(),
+                L"Light SelectedBGColor factory default");
+        }
+
+        // IT-PT-07: Dark palette factory defaults match compile-time constants
+        TEST_METHOD(IT_PT_07_DarkPalette_StaticDefaults_MatchConstants)
+        {
+            CConfig::SetDarkItemColor(CANDWND_DARK_ITEM_COLOR);
+            CConfig::SetDarkPhraseColor(CANDWND_DARK_PHRASE_COLOR);
+            CConfig::SetDarkNumberColor(CANDWND_DARK_NUM_COLOR);
+            CConfig::SetDarkItemBGColor(CANDWND_DARK_ITEM_BG_COLOR);
+            CConfig::SetDarkSelectedColor(CANDWND_DARK_SELECTED_COLOR);
+            CConfig::SetDarkSelectedBGColor(CANDWND_DARK_SELECTED_BG_COLOR);
+
+            Assert::AreEqual((unsigned long)CANDWND_DARK_ITEM_COLOR,
+                (unsigned long)CConfig::GetDarkItemColor(),
+                L"Dark ItemColor factory default");
+            Assert::AreEqual((unsigned long)CANDWND_DARK_PHRASE_COLOR,
+                (unsigned long)CConfig::GetDarkPhraseColor(),
+                L"Dark PhraseColor factory default");
+            Assert::AreEqual((unsigned long)CANDWND_DARK_NUM_COLOR,
+                (unsigned long)CConfig::GetDarkNumberColor(),
+                L"Dark NumberColor factory default");
+            Assert::AreEqual((unsigned long)CANDWND_DARK_ITEM_BG_COLOR,
+                (unsigned long)CConfig::GetDarkItemBGColor(),
+                L"Dark ItemBGColor factory default");
+            Assert::AreEqual((unsigned long)CANDWND_DARK_SELECTED_COLOR,
+                (unsigned long)CConfig::GetDarkSelectedColor(),
+                L"Dark SelectedColor factory default");
+            Assert::AreEqual((unsigned long)CANDWND_DARK_SELECTED_BG_COLOR,
+                (unsigned long)CConfig::GetDarkSelectedBGColor(),
+                L"Dark SelectedBGColor factory default");
+        }
+
+        // IT-PT-08: Dark palette has higher luminance than light palette for
+        //           item colors (dark mode text must be lighter than black)
+        TEST_METHOD(IT_PT_08_DarkPalette_ItemColor_LighterThanLight)
+        {
+            COLORREF lightItem = CANDWND_ITEM_COLOR;        // RGB(0,0,0) = black
+            COLORREF darkItem  = CANDWND_DARK_ITEM_COLOR;   // RGB(220,220,220) = near-white
+
+            auto luminance = [](COLORREF c) -> int {
+                return GetRValue(c) + GetGValue(c) + GetBValue(c);
+            };
+
+            int lightLum = luminance(lightItem);
+            int darkLum  = luminance(darkItem);
+
+            Assert::IsTrue(darkLum > lightLum,
+                L"Dark item color must have higher total luminance than light item color (dark text must be lighter for visibility)");
         }
 
     };

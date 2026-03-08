@@ -1,4 +1,4 @@
-/* DIME IME for Windows 7/8/10/11
+﻿/* DIME IME for Windows 7/8/10/11
 
 BSD 3-Clause License
 
@@ -95,6 +95,31 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define DARK_CONTROL_BG         RGB(45, 45, 48)     // Control input backgrounds
 #define DARK_TEXT               RGB(220, 220, 220)  // Primary text color
 #define DARK_DISABLED_TEXT      RGB(128, 128, 128)  // Disabled/grayed text
+
+//---------------------------------------------------------------------
+// IME Color Mode (candidate/notify window theming)
+//---------------------------------------------------------------------
+enum class IME_COLOR_MODE : int
+{
+    IME_COLOR_MODE_SYSTEM = 0,  // Follow Windows light/dark theme
+    IME_COLOR_MODE_LIGHT  = 1,  // Always light (built-in presets)
+    IME_COLOR_MODE_DARK   = 2,  // Always dark (built-in presets)
+    IME_COLOR_MODE_CUSTOM = 3,  // Use user-configured 6-color set
+};
+
+// Candidate window — dark preset colors
+#define CANDWND_DARK_ITEM_COLOR          RGB(220, 220, 220)  // Normal text
+#define CANDWND_DARK_PHRASE_COLOR        RGB(144, 238, 144)  // Phrase/green tint
+#define CANDWND_DARK_NUM_COLOR           RGB(128, 128, 128)  // Sequence number
+#define CANDWND_DARK_ITEM_BG_COLOR       RGB(30,  30,  30)   // Window background
+#define CANDWND_DARK_SELECTED_COLOR      RGB(30,  30,  30)   // Selected text
+#define CANDWND_DARK_SELECTED_BG_COLOR   RGB(0,   120, 215)  // Selected highlight (Win10 blue)
+#define CANDWND_DARK_BORDER_COLOR        RGB(80,  80,  80)   // Window border
+
+// Notify window — dark preset colors
+#define NOTIFYWND_DARK_TEXT_COLOR        RGB(220, 220, 220)
+#define NOTIFYWND_DARK_TEXT_BK_COLOR     RGB(30,  30,  30)
+#define NOTIFYWND_DARK_BORDER_COLOR      RGB(80,  80,  80)
 
 //---------------------------------------------------------------------
 // defined modifier

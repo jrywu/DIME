@@ -44,6 +44,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "TableDictionaryEngine.h"
 #include "Aclapi.h"
 #include "CompositionProcessorEngine.h"
+#ifndef DIMESettings
+#include "UIPresenter.h"
+#endif
 #include <Richedit.h>
 #include <string>
 #include <vector>
@@ -116,6 +119,20 @@ COLORREF CConfig::_selectedColor = CANDWND_SELECTED_ITEM_COLOR;
 COLORREF CConfig::_selectedBGColor = CANDWND_SELECTED_BK_COLOR;
 COLORREF CConfig::_phraseColor = CANDWND_PHRASE_COLOR;
 COLORREF CConfig::_numberColor = CANDWND_NUM_COLOR;
+COLORREF CConfig::_lightItemColor = CANDWND_ITEM_COLOR;
+COLORREF CConfig::_lightItemBGColor = GetSysColor(COLOR_3DHIGHLIGHT);
+COLORREF CConfig::_lightSelectedColor = CANDWND_SELECTED_ITEM_COLOR;
+COLORREF CConfig::_lightSelectedBGColor = CANDWND_SELECTED_BK_COLOR;
+COLORREF CConfig::_lightPhraseColor = CANDWND_PHRASE_COLOR;
+COLORREF CConfig::_lightNumberColor = CANDWND_NUM_COLOR;
+COLORREF CConfig::_darkItemColor = CANDWND_DARK_ITEM_COLOR;
+COLORREF CConfig::_darkItemBGColor = CANDWND_DARK_ITEM_BG_COLOR;
+COLORREF CConfig::_darkSelectedColor = CANDWND_DARK_SELECTED_COLOR;
+COLORREF CConfig::_darkSelectedBGColor = CANDWND_DARK_SELECTED_BG_COLOR;
+COLORREF CConfig::_darkPhraseColor = CANDWND_DARK_PHRASE_COLOR;
+COLORREF CConfig::_darkNumberColor = CANDWND_DARK_NUM_COLOR;
+IME_COLOR_MODE CConfig::_colorMode = IME_COLOR_MODE::IME_COLOR_MODE_SYSTEM;
+bool CConfig::_colorModeKeyFound = false;
 ColorInfo CConfig::colors[6] =
 {
 	{ IDC_COL_FR, CANDWND_ITEM_COLOR },
@@ -129,17 +146,106 @@ ColorInfo CConfig::colors[6] =
 struct _stat CConfig::_initTimeStamp = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }; //zero the timestamp
 
 
-void DrawColor(HWND hwnd, HDC hdc, COLORREF col)
-{
-	RECT rect;
+// Tracks which palette is currently displayed in the dialog color boxes
+static IME_COLOR_MODE _colorDisplayedMode = IME_COLOR_MODE::IME_COLOR_MODE_LIGHT;
 
-	hdc = GetDC(hwnd);
-	SelectObject(hdc, GetStockObject(BLACK_PEN));
-	SetDCBrushColor(hdc, col);
-	SelectObject(hdc, GetStockObject(DC_BRUSH));
-	GetClientRect(hwnd, &rect);
-	Rectangle(hdc, rect.left, rect.top, rect.right, rect.bottom);
-	ReleaseDC(hwnd, hdc);
+
+// Load colors[] from the palette for the given mode.
+void CConfig::LoadColorsForMode(IME_COLOR_MODE mode)
+{
+	switch (mode)
+	{
+	case IME_COLOR_MODE::IME_COLOR_MODE_DARK:
+		colors[0].color = _darkItemColor;
+		colors[1].color = _darkSelectedColor;
+		colors[2].color = _darkItemBGColor;
+		colors[3].color = _darkPhraseColor;
+		colors[4].color = _darkNumberColor;
+		colors[5].color = _darkSelectedBGColor;
+		break;
+	case IME_COLOR_MODE::IME_COLOR_MODE_CUSTOM:
+		colors[0].color = _itemColor;
+		colors[1].color = _selectedColor;
+		colors[2].color = _itemBGColor;
+		colors[3].color = _phraseColor;
+		colors[4].color = _numberColor;
+		colors[5].color = _selectedBGColor;
+		break;
+	case IME_COLOR_MODE::IME_COLOR_MODE_SYSTEM:
+		if (IsSystemDarkTheme())
+		{
+			colors[0].color = _darkItemColor;
+			colors[1].color = _darkSelectedColor;
+			colors[2].color = _darkItemBGColor;
+			colors[3].color = _darkPhraseColor;
+			colors[4].color = _darkNumberColor;
+			colors[5].color = _darkSelectedBGColor;
+		}
+		else
+		{
+			colors[0].color = _lightItemColor;
+			colors[1].color = _lightSelectedColor;
+			colors[2].color = _lightItemBGColor;
+			colors[3].color = _lightPhraseColor;
+			colors[4].color = _lightNumberColor;
+			colors[5].color = _lightSelectedBGColor;
+		}
+		break;
+	case IME_COLOR_MODE::IME_COLOR_MODE_LIGHT:
+	default:
+		colors[0].color = _lightItemColor;
+		colors[1].color = _lightSelectedColor;
+		colors[2].color = _lightItemBGColor;
+		colors[3].color = _lightPhraseColor;
+		colors[4].color = _lightNumberColor;
+		colors[5].color = _lightSelectedBGColor;
+		break;
+	}
+}
+
+// Save colors[] back to the palette for the given mode.
+void CConfig::SaveColorsForMode(IME_COLOR_MODE mode)
+{
+	switch (mode)
+	{
+	case IME_COLOR_MODE::IME_COLOR_MODE_DARK:
+		_darkItemColor     = colors[0].color;
+		_darkSelectedColor = colors[1].color;
+		_darkItemBGColor   = colors[2].color;
+		_darkPhraseColor   = colors[3].color;
+		_darkNumberColor   = colors[4].color;
+		_darkSelectedBGColor = colors[5].color;
+		break;
+	case IME_COLOR_MODE::IME_COLOR_MODE_CUSTOM:
+		_itemColor         = colors[0].color;
+		_selectedColor     = colors[1].color;
+		_itemBGColor       = colors[2].color;
+		_phraseColor       = colors[3].color;
+		_numberColor       = colors[4].color;
+		_selectedBGColor   = colors[5].color;
+		break;
+	case IME_COLOR_MODE::IME_COLOR_MODE_SYSTEM:
+		break; // color boxes disabled in SYSTEM mode — nothing to save
+	case IME_COLOR_MODE::IME_COLOR_MODE_LIGHT:
+	default:
+		_lightItemColor     = colors[0].color;
+		_lightSelectedColor = colors[1].color;
+		_lightItemBGColor   = colors[2].color;
+		_lightPhraseColor   = colors[3].color;
+		_lightNumberColor   = colors[4].color;
+		_lightSelectedBGColor = colors[5].color;
+		break;
+	}
+}
+
+// Read the IME_COLOR_MODE stored as item data in the currently selected combo item.
+IME_COLOR_MODE CConfig::GetComboSelectedMode(HWND hCombo)
+{
+	int sel = (int)SendMessage(hCombo, CB_GETCURSEL, 0, 0);
+	if (sel == CB_ERR) return IME_COLOR_MODE::IME_COLOR_MODE_SYSTEM;
+	LRESULT data = SendMessage(hCombo, CB_GETITEMDATA, (WPARAM)sel, 0);
+	if (data == CB_ERR) return IME_COLOR_MODE::IME_COLOR_MODE_SYSTEM;
+	return static_cast<IME_COLOR_MODE>(data);
 }
 
 // Detect Windows dark theme (safe on Win7/8/10/11)
@@ -179,6 +285,55 @@ bool CConfig::IsSystemDarkTheme()
 		RRF_RT_REG_DWORD, nullptr, &lightTheme, &cb);
 	return lightTheme == 0;
 }
+
+bool CConfig::GetEffectiveDarkMode()
+{
+	switch (_colorMode)
+	{
+	case IME_COLOR_MODE::IME_COLOR_MODE_LIGHT:  return false;
+	case IME_COLOR_MODE::IME_COLOR_MODE_DARK:   return true;
+	case IME_COLOR_MODE::IME_COLOR_MODE_CUSTOM: return false; // custom uses user colors, no dark preset
+	case IME_COLOR_MODE::IME_COLOR_MODE_SYSTEM:
+	default:
+		return IsSystemDarkTheme();
+	}
+}
+
+#ifndef DIMESettings
+void CConfig::ApplyIMEColorSet(CUIPresenter* pPresenter, bool isPhraseMode)
+{
+	if (!pPresenter) return;
+
+	bool dark = GetEffectiveDarkMode();
+
+	if (_colorMode == IME_COLOR_MODE::IME_COLOR_MODE_CUSTOM)
+	{
+		// Use the 6 user-configured colors
+		COLORREF textColor = isPhraseMode ? _phraseColor : _itemColor;
+		pPresenter->_SetCandidateTextColor(textColor, _itemBGColor);
+		pPresenter->_SetCandidateNumberColor(_numberColor, _itemBGColor);
+		pPresenter->_SetCandidateSelectedTextColor(_selectedColor, _selectedBGColor);
+		pPresenter->_SetCandidateFillColor(_itemBGColor);
+	}
+	else if (dark)
+	{
+		COLORREF textColor = isPhraseMode ? _darkPhraseColor : _darkItemColor;
+		pPresenter->_SetCandidateTextColor(textColor, _darkItemBGColor);
+		pPresenter->_SetCandidateNumberColor(_darkNumberColor, _darkItemBGColor);
+		pPresenter->_SetCandidateSelectedTextColor(_darkSelectedColor, _darkSelectedBGColor);
+		pPresenter->_SetCandidateFillColor(_darkItemBGColor);
+	}
+	else
+	{
+		// Light palette (customizable; defaults match compile-time constants)
+		COLORREF textColor = isPhraseMode ? _lightPhraseColor : _lightItemColor;
+		pPresenter->_SetCandidateTextColor(textColor, _lightItemBGColor);
+		pPresenter->_SetCandidateNumberColor(_lightNumberColor, _lightItemBGColor);
+		pPresenter->_SetCandidateSelectedTextColor(_lightSelectedColor, _lightSelectedBGColor);
+		pPresenter->_SetCandidateFillColor(_lightItemBGColor);
+	}
+}
+#endif // !DIMESettings
 
 // Per-property-sheet subclass data
 struct PropSheetThemeData {
@@ -1120,7 +1275,30 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		{
 			DialogContext* pCtx = (DialogContext*)GetWindowLongPtr(hDlg, GWLP_USERDATA);
 			LPDRAWITEMSTRUCT pdis = (LPDRAWITEMSTRUCT)lParam;
-			if (pdis && pdis->CtlType == ODT_BUTTON && pCtx && pCtx->isDarkTheme) {
+			if (!pdis) break;
+			if (pdis->CtlType == ODT_STATIC)
+			{
+				// Color box controls: draw solid color, dimmed when disabled
+				for (int ci = 0; ci < _countof(colors); ci++)
+				{
+					if (pdis->hwndItem == GetDlgItem(hDlg, colors[ci].id))
+					{
+						COLORREF col = colors[ci].color;
+						if (pdis->itemState & ODS_DISABLED)
+							col = RGB((GetRValue(col) + 255) / 2,
+							          (GetGValue(col) + 255) / 2,
+							          (GetBValue(col) + 255) / 2);
+						SelectObject(pdis->hDC, GetStockObject(BLACK_PEN));
+						SetDCBrushColor(pdis->hDC, col);
+						SelectObject(pdis->hDC, GetStockObject(DC_BRUSH));
+						Rectangle(pdis->hDC,
+						          pdis->rcItem.left, pdis->rcItem.top,
+						          pdis->rcItem.right, pdis->rcItem.bottom);
+						return (INT_PTR)TRUE;
+					}
+				}
+			}
+			if (pdis->CtlType == ODT_BUTTON && pCtx && pCtx->isDarkTheme) {
 				CConfig::DrawDarkButton(pdis);
 				return (INT_PTR)TRUE;
 			}
@@ -1211,22 +1389,76 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			SetDlgItemInt(hDlg, IDC_EDIT_FONTPOINT, fontpoint, FALSE);
 
 
-			colors[0].color = CANDWND_ITEM_COLOR;
-			colors[1].color = CANDWND_SELECTED_ITEM_COLOR;
-			colors[2].color = GetSysColor(COLOR_3DHIGHLIGHT);
-			colors[3].color = CANDWND_PHRASE_COLOR;
-			colors[4].color = CANDWND_NUM_COLOR;
-			colors[5].color = CANDWND_SELECTED_BK_COLOR;
-
-			hdc = BeginPaint(hDlg, &ps);
-			for (i = 0; i < _countof(colors); i++)
+			// Reset only the currently displayed palette to factory defaults
+			switch (_colorDisplayedMode)
 			{
-				DrawColor(GetDlgItem(hDlg, colors[i].id), hdc, colors[i].color);
+			case IME_COLOR_MODE::IME_COLOR_MODE_LIGHT:
+				_lightItemColor       = CANDWND_ITEM_COLOR;
+				_lightPhraseColor     = CANDWND_PHRASE_COLOR;
+				_lightNumberColor     = CANDWND_NUM_COLOR;
+				_lightItemBGColor     = GetSysColor(COLOR_3DHIGHLIGHT);
+				_lightSelectedColor   = CANDWND_SELECTED_ITEM_COLOR;
+				_lightSelectedBGColor = CANDWND_SELECTED_BK_COLOR;
+				break;
+			case IME_COLOR_MODE::IME_COLOR_MODE_DARK:
+				_darkItemColor       = CANDWND_DARK_ITEM_COLOR;
+				_darkPhraseColor     = CANDWND_DARK_PHRASE_COLOR;
+				_darkNumberColor     = CANDWND_DARK_NUM_COLOR;
+				_darkItemBGColor     = CANDWND_DARK_ITEM_BG_COLOR;
+				_darkSelectedColor   = CANDWND_DARK_SELECTED_COLOR;
+				_darkSelectedBGColor = CANDWND_DARK_SELECTED_BG_COLOR;
+				break;
+			case IME_COLOR_MODE::IME_COLOR_MODE_CUSTOM:
+				_itemColor       = CANDWND_ITEM_COLOR;
+				_phraseColor     = CANDWND_PHRASE_COLOR;
+				_numberColor     = CANDWND_NUM_COLOR;
+				_itemBGColor     = GetSysColor(COLOR_3DHIGHLIGHT);
+				_selectedColor   = CANDWND_SELECTED_ITEM_COLOR;
+				_selectedBGColor = CANDWND_SELECTED_BK_COLOR;
+				break;
+			case IME_COLOR_MODE::IME_COLOR_MODE_SYSTEM:
+			default:
+				break; // font already reset above; no palette to reset for SYSTEM
 			}
-			EndPaint(hDlg, &ps);
+			LoadColorsForMode(_colorDisplayedMode);
+
+			for (i = 0; i < _countof(colors); i++)
+				InvalidateRect(GetDlgItem(hDlg, colors[i].id), NULL, TRUE);
 			PropSheet_Changed(GetParent(hDlg), hDlg);
 			ret = TRUE;
 			break;
+		case IDC_COMBO_COLOR_MODE:
+			switch (HIWORD(wParam))
+			{
+			case CBN_SELCHANGE:
+				{
+					HWND hCombo = GetDlgItem(hDlg, IDC_COMBO_COLOR_MODE);
+					IME_COLOR_MODE newMode = GetComboSelectedMode(hCombo);
+					// Save the current color boxes back to the palette that was displayed
+					SaveColorsForMode(_colorDisplayedMode);
+					// Switch color boxes to the new mode's palette
+					LoadColorsForMode(newMode);
+					_colorDisplayedMode = newMode;
+					{
+						BOOL enableColors = (newMode != IME_COLOR_MODE::IME_COLOR_MODE_SYSTEM) ? TRUE : FALSE;
+						for (int ci = 0; ci < _countof(colors); ci++)
+							EnableWindow(GetDlgItem(hDlg, colors[ci].id), enableColors);
+						static const int labelIds[] = {
+							IDC_LABEL_COL_FR, IDC_LABEL_COL_SEFR, IDC_LABEL_COL_BG,
+							IDC_LABEL_COL_PHRASE, IDC_LABEL_COL_NU, IDC_LABEL_COL_SEBG
+						};
+						for (int id : labelIds)
+							EnableWindow(GetDlgItem(hDlg, id), enableColors);
+					}
+					for (int ci = 0; ci < _countof(colors); ci++)
+					InvalidateRect(GetDlgItem(hDlg, colors[ci].id), NULL, TRUE);
+					PropSheet_Changed(GetParent(hDlg), hDlg);
+					ret = TRUE;
+				}
+				break;
+			}
+			break;
+
 		case IDC_EDIT_MAXWIDTH:
 			switch (HIWORD(wParam))
 			{
@@ -1374,6 +1606,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		break;
 
 	case WM_LBUTTONDOWN:
+		if (_colorDisplayedMode == IME_COLOR_MODE::IME_COLOR_MODE_SYSTEM) break; // no color picking in system-follow mode
 		for (i = 0; i < _countof(colors); i++)
 		{
 			hwnd = GetDlgItem(hDlg, colors[i].id);
@@ -1397,10 +1630,8 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 
 				if (_ChooseColor && ((*_ChooseColor)(&cc)))
 				{
-					hdc = GetDC(hDlg);
-					DrawColor(hwnd, hdc, cc.rgbResult);
-					ReleaseDC(hDlg, hdc);
 					colors[i].color = cc.rgbResult;
+					InvalidateRect(hwnd, NULL, TRUE);
 					PropSheet_Changed(GetParent(hDlg), hDlg);
 					ret = TRUE;
 				}
@@ -1411,10 +1642,6 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 
 	case WM_PAINT:
 		hdc = BeginPaint(hDlg, &ps);
-		for (i = 0; i < _countof(colors); i++)
-		{
-			DrawColor(GetDlgItem(hDlg, colors[i].id), hdc, colors[i].color);
-		}
 		EndPaint(hDlg, &ps);
 		ret = TRUE;
 		break;
@@ -1465,12 +1692,9 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			delete[] pwszFontFaceName;
 		}
 
-			_itemColor = colors[0].color;
-			_selectedColor = colors[1].color;
-			_itemBGColor = colors[2].color;
-			_phraseColor = colors[3].color;
-			_numberColor = colors[4].color;
-			_selectedBGColor = colors[5].color;
+			hwnd = GetDlgItem(hDlg, IDC_COMBO_COLOR_MODE);
+			_colorMode = GetComboSelectedMode(hwnd);
+			SaveColorsForMode(_colorMode);
 
 			hwnd = GetDlgItem(hDlg, IDC_COMBO_IME_SHIFT_MODE);
 			_imeShiftMode = (IME_SHIFT_MODE)SendMessage(hwnd, CB_GETCURSEL, 0, 0);
@@ -2112,13 +2336,66 @@ void CConfig::ParseConfig(HWND hDlg, IME_MODE imeMode, BOOL initDiag)
 
 	ZeroMemory(&colCust, sizeof(colCust));
 
-	colors[0].color = _itemColor;
-	colors[1].color = _selectedColor;
-	colors[2].color = _itemBGColor;
-	colors[3].color = _phraseColor;
-	colors[4].color = _numberColor;
-	colors[5].color = _selectedBGColor;
+	// Load color boxes for the current color mode.
+	// On Windows older than 1809 the SYSTEM combo item is not added, so _colorMode
+	// may be SYSTEM while the combo falls back to LIGHT.  Snap _colorDisplayedMode
+	// to the actual combo selection after the combo is built (see below).
+	if (initDiag) _colorDisplayedMode = _colorMode;
 
+	// Color mode combo
+	hwnd = GetDlgItem(hDlg, IDC_COMBO_COLOR_MODE);
+	if (initDiag)
+	{
+		int idx;
+		if (Global::isWindows1809OrLater)
+		{
+			idx = (int)SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"跟隨系統模式");
+			SendMessage(hwnd, CB_SETITEMDATA, (WPARAM)idx, (LPARAM)static_cast<int>(IME_COLOR_MODE::IME_COLOR_MODE_SYSTEM));
+		}
+		idx = (int)SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"淡色模式");
+		SendMessage(hwnd, CB_SETITEMDATA, (WPARAM)idx, (LPARAM)static_cast<int>(IME_COLOR_MODE::IME_COLOR_MODE_LIGHT));
+		idx = (int)SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"深色模式");
+		SendMessage(hwnd, CB_SETITEMDATA, (WPARAM)idx, (LPARAM)static_cast<int>(IME_COLOR_MODE::IME_COLOR_MODE_DARK));
+		idx = (int)SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"自訂");
+		SendMessage(hwnd, CB_SETITEMDATA, (WPARAM)idx, (LPARAM)static_cast<int>(IME_COLOR_MODE::IME_COLOR_MODE_CUSTOM));
+	}
+	// Select the combo item that matches _colorMode (graceful fallback to first item)
+	{
+		int count = (int)SendMessage(hwnd, CB_GETCOUNT, 0, 0);
+		int toSelect = 0;
+		for (int ci = 0; ci < count; ci++)
+		{
+			if ((int)SendMessage(hwnd, CB_GETITEMDATA, (WPARAM)ci, 0) == static_cast<int>(_colorMode))
+			{
+				toSelect = ci;
+				break;
+			}
+		}
+		SendMessage(hwnd, CB_SETCURSEL, (WPARAM)toSelect, 0);
+	}
+	// Sync _colorDisplayedMode to the actual combo selection.
+	// If _colorMode == SYSTEM but SYSTEM wasn't added (old Windows), the combo
+	// fell back to LIGHT, so we must track LIGHT — otherwise SaveColorsForMode
+	// would be a no-op and any edits would be silently discarded.
+	if (initDiag)
+	{
+		IME_COLOR_MODE actualMode = GetComboSelectedMode(hwnd);
+		if (actualMode != _colorDisplayedMode)
+			_colorDisplayedMode = actualMode;
+	}
+	LoadColorsForMode(_colorDisplayedMode);
+	// Enable color boxes and labels for all modes except SYSTEM
+	{
+		BOOL enableColors = (GetComboSelectedMode(hwnd) != IME_COLOR_MODE::IME_COLOR_MODE_SYSTEM) ? TRUE : FALSE;
+		for (int ci = 0; ci < _countof(colors); ci++)
+			EnableWindow(GetDlgItem(hDlg, colors[ci].id), enableColors);
+		static const int labelIds[] = {
+			IDC_LABEL_COL_FR, IDC_LABEL_COL_SEFR, IDC_LABEL_COL_BG,
+			IDC_LABEL_COL_PHRASE, IDC_LABEL_COL_NU, IDC_LABEL_COL_SEBG
+		};
+		for (int id : labelIds)
+			EnableWindow(GetDlgItem(hDlg, id), enableColors);
+	}
 	hwnd = GetDlgItem(hDlg, IDC_COMBO_REVERSE_CONVERSION);
 
 	if(initDiag)
@@ -2309,12 +2586,25 @@ VOID CConfig::WriteConfig(IME_MODE imeMode, BOOL confirmUpdated)
 			fwprintf_s(fp, L"FontItalic = %d\n", _fontItalic ? 1 : 0);
 			fwprintf_s(fp, L"FontWeight = %d\n", _fontWeight);
 			fwprintf_s(fp, L"FontFaceName = %s\n", _pFontFaceName);
+			fwprintf_s(fp, L"ColorMode = %d\n", static_cast<int>(_colorMode));
 			fwprintf_s(fp, L"ItemColor = 0x%06X\n", _itemColor);
 			fwprintf_s(fp, L"PhraseColor = 0x%06X\n", _phraseColor);
 			fwprintf_s(fp, L"NumberColor = 0x%06X\n", _numberColor);
 			fwprintf_s(fp, L"ItemBGColor = 0x%06X\n", _itemBGColor);
 			fwprintf_s(fp, L"SelectedItemColor = 0x%06X\n", _selectedColor);
 			fwprintf_s(fp, L"SelectedBGItemColor = 0x%06X\n", _selectedBGColor);
+			fwprintf_s(fp, L"LightItemColor = 0x%06X\n", _lightItemColor);
+			fwprintf_s(fp, L"LightPhraseColor = 0x%06X\n", _lightPhraseColor);
+			fwprintf_s(fp, L"LightNumberColor = 0x%06X\n", _lightNumberColor);
+			fwprintf_s(fp, L"LightItemBGColor = 0x%06X\n", _lightItemBGColor);
+			fwprintf_s(fp, L"LightSelectedItemColor = 0x%06X\n", _lightSelectedColor);
+			fwprintf_s(fp, L"LightSelectedBGItemColor = 0x%06X\n", _lightSelectedBGColor);
+			fwprintf_s(fp, L"DarkItemColor = 0x%06X\n", _darkItemColor);
+			fwprintf_s(fp, L"DarkPhraseColor = 0x%06X\n", _darkPhraseColor);
+			fwprintf_s(fp, L"DarkNumberColor = 0x%06X\n", _darkNumberColor);
+			fwprintf_s(fp, L"DarkItemBGColor = 0x%06X\n", _darkItemBGColor);
+			fwprintf_s(fp, L"DarkSelectedItemColor = 0x%06X\n", _darkSelectedColor);
+			fwprintf_s(fp, L"DarkSelectedBGItemColor = 0x%06X\n", _darkSelectedBGColor);
 			fwprintf_s(fp, L"CustomTablePriority = %d\n", _customTablePriority ? 1 : 0);
 			//reversion conversion
 			fwprintf_s(fp, L"ReloadReverseConversion = %d\n", _reloadReverseConversion);
@@ -2503,8 +2793,31 @@ BOOL CConfig::LoadConfig(IME_MODE imeMode)
 				if (iniTableDictionaryEngine)
 				{
 					_loadTableMode = TRUE; // reset _loadTableMode first. If no _loadTableMode is exist we should not should load tables buttons
+					_colorModeKeyFound = false; // reset before parse so absence of key is detectable
+					_colorMode = IME_COLOR_MODE::IME_COLOR_MODE_SYSTEM;
 					iniTableDictionaryEngine->ParseConfig(imeMode); //parse config first.
 					debugPrint(L"CConfig::loadConfig() parsed. _loadTableMode = %d\n", _loadTableMode);
+
+					// Backward compat: old INI has no ColorMode key but may have the
+					// legacy 6 color keys (ItemColor etc.) from before Light/Dark/Custom
+					// palettes were introduced.  If the user had customized those colors,
+					// migrate to CUSTOM to preserve them.  If still factory defaults,
+					// migrate to SYSTEM (or LIGHT on pre-1809 Windows).
+					if (!_colorModeKeyFound)
+					{
+						bool isDefault =
+							_itemColor       == CANDWND_ITEM_COLOR &&
+							_selectedColor   == CANDWND_SELECTED_ITEM_COLOR &&
+							_selectedBGColor == CANDWND_SELECTED_BK_COLOR &&
+							_phraseColor     == CANDWND_PHRASE_COLOR &&
+							_numberColor     == CANDWND_NUM_COLOR &&
+							_itemBGColor     == GetSysColor(COLOR_3DHIGHLIGHT);
+						_colorMode = isDefault
+							? (Global::isWindows1809OrLater
+								? IME_COLOR_MODE::IME_COLOR_MODE_SYSTEM
+								: IME_COLOR_MODE::IME_COLOR_MODE_LIGHT)
+							: IME_COLOR_MODE::IME_COLOR_MODE_CUSTOM;
+					}
 				}
 				delete iniTableDictionaryEngine; // delete after config.ini config are parsed
 				delete iniDictionaryFile;
@@ -2555,6 +2868,11 @@ BOOL CConfig::LoadConfig(IME_MODE imeMode)
 	{
 		// Config file doesn't exist - set IME-specific defaults
 		SetIMEModeDefaults(imeMode);
+		// Use SYSTEM only on Win10 1809+; fall back to LIGHT on older Windows
+		// so the combo shows the correct selection when settings first open.
+		_colorMode = Global::isWindows1809OrLater
+			? IME_COLOR_MODE::IME_COLOR_MODE_SYSTEM
+			: IME_COLOR_MODE::IME_COLOR_MODE_LIGHT;
 
 		if (imeMode != IME_MODE::IME_MODE_NONE)
 			WriteConfig(imeMode, FALSE); // config.ini is not there. create one.

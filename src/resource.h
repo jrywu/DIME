@@ -92,6 +92,13 @@
 #define IDC_CHECKBOX_ARRAY_SINGLEQUOTE_CUSTOM_PHRASE				1160
 #define IDC_STATIC_NUMERIC_KEYPAD				1161
 #define IDC_COMBO_NUMERIC_PAD	1162
+#define IDC_COMBO_COLOR_MODE    1163
+#define IDC_LABEL_COL_FR        1164
+#define IDC_LABEL_COL_SEFR      1165
+#define IDC_LABEL_COL_BG        1166
+#define IDC_LABEL_COL_PHRASE    1167
+#define IDC_LABEL_COL_NU        1168
+#define IDC_LABEL_COL_SEBG      1169
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED

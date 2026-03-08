@@ -44,6 +44,7 @@ namespace Global {
 
 
 BOOL isWindows8 = FALSE;
+BOOL isWindows1809OrLater = FALSE;
 
 IME_MODE imeMode = IME_MODE::IME_MODE_NONE;
 

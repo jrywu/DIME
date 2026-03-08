@@ -599,9 +599,10 @@ void CUIPresenter::_EndCandidateList()
 //
 //----------------------------------------------------------------------------
 
-void CUIPresenter::_SetCandidateText(_In_ CDIMEArray<CCandidateListItem> *pCandidateList,_In_ CCandidateRange* pIndexRange, BOOL isAddFindKeyCode, UINT candWidth)
+void CUIPresenter::_SetCandidateText(_In_ CDIMEArray<CCandidateListItem> *pCandidateList,_In_ CCandidateRange* pIndexRange, BOOL isAddFindKeyCode, UINT candWidth, bool isPhraseMode)
 {
 	debugPrint(L"CUIPresenter::_SetCandidateText() candWidth = %d", candWidth);
+	CConfig::ApplyIMEColorSet(this, isPhraseMode);
 
 #ifdef DEBUG_PRINT
 	for (UINT i = 0; i < pCandidateList->Count(); i++)
@@ -1488,7 +1489,12 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange* pNotifyText, _In_opt_ UINT 
 		if(MakeNotifyWindow(pContext, pNotifyText, notifyType)== S_OK)
 		{
 		
-			_SetNotifyTextColor(CConfig::GetItemColor(), CConfig::GetItemBGColor());	
+			if (CConfig::GetEffectiveDarkMode())
+			_SetNotifyTextColor(CConfig::GetDarkItemColor(), CConfig::GetDarkItemBGColor());
+		else if (CConfig::GetColorMode() == IME_COLOR_MODE::IME_COLOR_MODE_CUSTOM)
+			_SetNotifyTextColor(CConfig::GetItemColor(), CConfig::GetItemBGColor());
+		else
+			_SetNotifyTextColor(CConfig::GetLightItemColor(), CConfig::GetLightItemBGColor());
 
 			HWND parentWndHandle = nullptr;
 			ITfContextView* pView = nullptr;

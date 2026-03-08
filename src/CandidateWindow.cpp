@@ -914,7 +914,8 @@ void CCandidateWindow::_DrawBorder(_In_ HWND wndHandle, _In_ int cx)
     // zero based
     OffsetRect(&rcWnd, -rcWnd.left, -rcWnd.top); 
 
-    HPEN hPen = CreatePen(PS_SOLID, cx, CANDWND_BORDER_COLOR);
+    COLORREF borderColor = CConfig::GetEffectiveDarkMode() ? CANDWND_DARK_BORDER_COLOR : CANDWND_BORDER_COLOR;
+    HPEN hPen = CreatePen(PS_SOLID, cx, borderColor);
     if (hPen)
     {
         HPEN hPenOld = (HPEN)SelectObject(dcHandle, hPen);

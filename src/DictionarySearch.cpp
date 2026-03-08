@@ -467,6 +467,11 @@ ReadValue:
 					CConfig::SetShowNotifyDesktop((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));			
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"AppPermissionSet", 16)) == CSTR_EQUAL)
 					CConfig::SetAppPermissionSet((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ColorMode", 10)) == CSTR_EQUAL)
+				{
+					CConfig::SetColorMode(static_cast<IME_COLOR_MODE>(wcstol(valueStrings.GetAt(0)->Get(), NULL, 0)));
+					CConfig::SetColorModeKeyFound(true);
+				}
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ItemColor", 10)) == CSTR_EQUAL)
 					CConfig::SetItemColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"PhraseColor", 12)) == CSTR_EQUAL)
@@ -479,6 +484,30 @@ ReadValue:
 					CConfig::SetSelectedColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"SelectedBGItemColor", 20)) == CSTR_EQUAL)
 					CConfig::SetSelectedBGColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));	
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"LightItemColor", 15)) == CSTR_EQUAL)
+					CConfig::SetLightItemColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"LightPhraseColor", 17)) == CSTR_EQUAL)
+					CConfig::SetLightPhraseColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"LightNumberColor", 17)) == CSTR_EQUAL)
+					CConfig::SetLightNumberColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"LightItemBGColor", 17)) == CSTR_EQUAL)
+					CConfig::SetLightItemBGColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"LightSelectedItemColor", 23)) == CSTR_EQUAL)
+					CConfig::SetLightSelectedColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"LightSelectedBGItemColor", 25)) == CSTR_EQUAL)
+					CConfig::SetLightSelectedBGColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"DarkItemColor", 14)) == CSTR_EQUAL)
+					CConfig::SetDarkItemColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"DarkPhraseColor", 16)) == CSTR_EQUAL)
+					CConfig::SetDarkPhraseColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"DarkNumberColor", 16)) == CSTR_EQUAL)
+					CConfig::SetDarkNumberColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"DarkItemBGColor", 16)) == CSTR_EQUAL)
+					CConfig::SetDarkItemBGColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"DarkSelectedItemColor", 22)) == CSTR_EQUAL)
+					CConfig::SetDarkSelectedColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"DarkSelectedBGItemColor", 24)) == CSTR_EQUAL)
+					CConfig::SetDarkSelectedBGColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"CustomTablePriority", 20)) == CSTR_EQUAL)
 					CConfig::setCustomTablePriority((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"FontFaceName", 12)) == CSTR_EQUAL)

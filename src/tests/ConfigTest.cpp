@@ -1,4 +1,4 @@
-// ConfigTest.cpp - Configuration Management Unit Tests
+﻿// ConfigTest.cpp - Configuration Management Unit Tests
 // Tests for Config.cpp and Config.h
 
 #include "pch.h"
@@ -8,6 +8,8 @@
 #include <thread>
 #include <vector>
 #include <atomic>
+#include <fstream>
+#include <sstream>
 #include <sys/stat.h>
 #include <shlwapi.h>
 
@@ -94,7 +96,24 @@ namespace DIMEUnitTests
         {
             // Initialize COM for tests
             CoInitialize(NULL);
-            
+
+            // DllMain normally sets this; initialize here so backward-compat
+            // logic (SYSTEM vs LIGHT) reflects the actual OS in unit tests.
+            // IsWindowsVersionOrGreater is defined in DllMain.cpp (not linked here),
+            // so perform the same RtlGetVersion check inline.
+            {
+                typedef NTSTATUS(WINAPI* RtlGetVersionFn)(PRTL_OSVERSIONINFOW);
+                HMODULE hNtdll = GetModuleHandleW(L"ntdll.dll");
+                if (hNtdll) {
+                    auto pFn = reinterpret_cast<RtlGetVersionFn>(GetProcAddress(hNtdll, "RtlGetVersion"));
+                    RTL_OSVERSIONINFOW osvi = { sizeof(osvi) };
+                    if (pFn && pFn(&osvi) == 0)
+                        Global::isWindows1809OrLater =
+                            (osvi.dwMajorVersion > 10 ||
+                            (osvi.dwMajorVersion == 10 && osvi.dwBuildNumber >= 17763));
+                }
+            }
+
             // Ensure config directory exists
             EnsureConfigDirectory();
         }
@@ -116,6 +135,15 @@ namespace DIMEUnitTests
             // This ensures SetIMEMode will always update _pwszINIFileName
             // because SetIMEMode only updates if (_imeMode != imeMode)
             CConfig::SetIMEMode(IME_MODE::IME_MODE_DAYI);
+
+            // Reset _configIMEMode to DAYI so any subsequent LoadConfig(ARRAY) call
+            // always re-parses (condition: _configIMEMode != imeMode).
+            // Without this, the timestamp guard in LoadConfig can silently skip
+            // re-parsing when WriteConfig and LoadConfig run in the same second.
+            CConfig::WriteConfig(IME_MODE::IME_MODE_DAYI, FALSE);
+            CConfig::LoadConfig(IME_MODE::IME_MODE_DAYI);  // sets _configIMEMode = DAYI
+            DeleteConfigFile(IME_MODE::IME_MODE_DAYI);
+
             CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
             CConfig::SetMaxCodes(5);
             CConfig::SetAutoCompose(FALSE);
@@ -904,6 +932,385 @@ namespace DIMEUnitTests
             }
         }
 
+        // ------------------------------------------------------------------
+        // UT-CM-02: ColorMode INI round-trip for all four values
+        // ------------------------------------------------------------------
+
+        TEST_METHOD(ColorMode_RoundTrip_System)
+        {
+            IME_COLOR_MODE saved = CConfig::GetColorMode();
+            CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
+            CConfig::SetColorMode(IME_COLOR_MODE::IME_COLOR_MODE_SYSTEM);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
+            CConfig::SetColorMode(IME_COLOR_MODE::IME_COLOR_MODE_DARK); // perturb in-memory
+            CConfig::SetColorModeKeyFound(false);
+            CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
+            Assert::IsTrue(CConfig::GetColorModeKeyFound(),
+                L"ColorMode key must be present in INI after WriteConfig");
+            Assert::AreEqual(
+                static_cast<int>(IME_COLOR_MODE::IME_COLOR_MODE_SYSTEM),
+                static_cast<int>(CConfig::GetColorMode()),
+                L"Reloaded ColorMode must equal written SYSTEM value");
+            CConfig::SetColorMode(saved);
+        }
+
+        TEST_METHOD(ColorMode_RoundTrip_Light)
+        {
+            IME_COLOR_MODE saved = CConfig::GetColorMode();
+            CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
+            CConfig::SetColorMode(IME_COLOR_MODE::IME_COLOR_MODE_LIGHT);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
+            CConfig::SetColorMode(IME_COLOR_MODE::IME_COLOR_MODE_SYSTEM);
+            CConfig::SetColorModeKeyFound(false);
+            CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
+            Assert::IsTrue(CConfig::GetColorModeKeyFound(),
+                L"ColorMode key must be present in INI after WriteConfig");
+            Assert::AreEqual(
+                static_cast<int>(IME_COLOR_MODE::IME_COLOR_MODE_LIGHT),
+                static_cast<int>(CConfig::GetColorMode()),
+                L"Reloaded ColorMode must equal written LIGHT value");
+            CConfig::SetColorMode(saved);
+        }
+
+        TEST_METHOD(ColorMode_RoundTrip_Dark)
+        {
+            IME_COLOR_MODE saved = CConfig::GetColorMode();
+            CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
+            CConfig::SetColorMode(IME_COLOR_MODE::IME_COLOR_MODE_DARK);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
+            CConfig::SetColorMode(IME_COLOR_MODE::IME_COLOR_MODE_SYSTEM);
+            CConfig::SetColorModeKeyFound(false);
+            CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
+            Assert::IsTrue(CConfig::GetColorModeKeyFound(),
+                L"ColorMode key must be present in INI after WriteConfig");
+            Assert::AreEqual(
+                static_cast<int>(IME_COLOR_MODE::IME_COLOR_MODE_DARK),
+                static_cast<int>(CConfig::GetColorMode()),
+                L"Reloaded ColorMode must equal written DARK value");
+            CConfig::SetColorMode(saved);
+        }
+
+        TEST_METHOD(ColorMode_RoundTrip_Custom)
+        {
+            IME_COLOR_MODE saved = CConfig::GetColorMode();
+            CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
+            CConfig::SetColorMode(IME_COLOR_MODE::IME_COLOR_MODE_CUSTOM);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
+            CConfig::SetColorMode(IME_COLOR_MODE::IME_COLOR_MODE_SYSTEM);
+            CConfig::SetColorModeKeyFound(false);
+            CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
+            Assert::IsTrue(CConfig::GetColorModeKeyFound(),
+                L"ColorMode key must be present in INI after WriteConfig");
+            Assert::AreEqual(
+                static_cast<int>(IME_COLOR_MODE::IME_COLOR_MODE_CUSTOM),
+                static_cast<int>(CConfig::GetColorMode()),
+                L"Reloaded ColorMode must equal written CUSTOM value");
+            CConfig::SetColorMode(saved);
+        }
+
+        // ------------------------------------------------------------------
+        // UT-PT-01: Light palette round-trips through INI
+        // ------------------------------------------------------------------
+        TEST_METHOD(LightPalette_RoundTrip)
+        {
+            // Save original values
+            COLORREF savedItem = CConfig::GetLightItemColor();
+            COLORREF savedPhrase = CConfig::GetLightPhraseColor();
+            COLORREF savedNumber = CConfig::GetLightNumberColor();
+            COLORREF savedBG = CConfig::GetLightItemBGColor();
+            COLORREF savedSel = CConfig::GetLightSelectedColor();
+            COLORREF savedSelBG = CConfig::GetLightSelectedBGColor();
+
+            // Set distinct test colors
+            CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
+            CConfig::SetLightItemColor(0x112233);
+            CConfig::SetLightPhraseColor(0x445566);
+            CConfig::SetLightNumberColor(0x778899);
+            CConfig::SetLightItemBGColor(0xAABBCC);
+            CConfig::SetLightSelectedColor(0xDDEEFF);
+            CConfig::SetLightSelectedBGColor(0x102030);
+
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
+
+            // Perturb in-memory values
+            CConfig::SetLightItemColor(0xFFFFFF);
+            CConfig::SetLightPhraseColor(0xFFFFFF);
+            CConfig::SetLightNumberColor(0xFFFFFF);
+            CConfig::SetLightItemBGColor(0xFFFFFF);
+            CConfig::SetLightSelectedColor(0xFFFFFF);
+            CConfig::SetLightSelectedBGColor(0xFFFFFF);
+
+            CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
+
+            Assert::AreEqual(0x112233ul, (unsigned long)CConfig::GetLightItemColor(), L"LightItemColor round-trip");
+            Assert::AreEqual(0x445566ul, (unsigned long)CConfig::GetLightPhraseColor(), L"LightPhraseColor round-trip");
+            Assert::AreEqual(0x778899ul, (unsigned long)CConfig::GetLightNumberColor(), L"LightNumberColor round-trip");
+            Assert::AreEqual(0xAABBCCul, (unsigned long)CConfig::GetLightItemBGColor(), L"LightItemBGColor round-trip");
+            Assert::AreEqual(0xDDEEFFul, (unsigned long)CConfig::GetLightSelectedColor(), L"LightSelectedColor round-trip");
+            Assert::AreEqual(0x102030ul, (unsigned long)CConfig::GetLightSelectedBGColor(), L"LightSelectedBGColor round-trip");
+
+            // Restore
+            CConfig::SetLightItemColor(savedItem);
+            CConfig::SetLightPhraseColor(savedPhrase);
+            CConfig::SetLightNumberColor(savedNumber);
+            CConfig::SetLightItemBGColor(savedBG);
+            CConfig::SetLightSelectedColor(savedSel);
+            CConfig::SetLightSelectedBGColor(savedSelBG);
+        }
+
+        // ------------------------------------------------------------------
+        // UT-PT-02: Dark palette round-trips through INI
+        // ------------------------------------------------------------------
+        TEST_METHOD(DarkPalette_RoundTrip)
+        {
+            COLORREF savedItem = CConfig::GetDarkItemColor();
+            COLORREF savedPhrase = CConfig::GetDarkPhraseColor();
+            COLORREF savedNumber = CConfig::GetDarkNumberColor();
+            COLORREF savedBG = CConfig::GetDarkItemBGColor();
+            COLORREF savedSel = CConfig::GetDarkSelectedColor();
+            COLORREF savedSelBG = CConfig::GetDarkSelectedBGColor();
+
+            CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
+            CConfig::SetDarkItemColor(0xAA1122);
+            CConfig::SetDarkPhraseColor(0xBB3344);
+            CConfig::SetDarkNumberColor(0xCC5566);
+            CConfig::SetDarkItemBGColor(0xDD7788);
+            CConfig::SetDarkSelectedColor(0xEE99AA);
+            CConfig::SetDarkSelectedBGColor(0xFF0011);
+
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
+
+            CConfig::SetDarkItemColor(0x000000);
+            CConfig::SetDarkPhraseColor(0x000000);
+            CConfig::SetDarkNumberColor(0x000000);
+            CConfig::SetDarkItemBGColor(0x000000);
+            CConfig::SetDarkSelectedColor(0x000000);
+            CConfig::SetDarkSelectedBGColor(0x000000);
+
+            CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
+
+            Assert::AreEqual(0xAA1122ul, (unsigned long)CConfig::GetDarkItemColor(), L"DarkItemColor round-trip");
+            Assert::AreEqual(0xBB3344ul, (unsigned long)CConfig::GetDarkPhraseColor(), L"DarkPhraseColor round-trip");
+            Assert::AreEqual(0xCC5566ul, (unsigned long)CConfig::GetDarkNumberColor(), L"DarkNumberColor round-trip");
+            Assert::AreEqual(0xDD7788ul, (unsigned long)CConfig::GetDarkItemBGColor(), L"DarkItemBGColor round-trip");
+            Assert::AreEqual(0xEE99AAul, (unsigned long)CConfig::GetDarkSelectedColor(), L"DarkSelectedColor round-trip");
+            Assert::AreEqual(0xFF0011ul, (unsigned long)CConfig::GetDarkSelectedBGColor(), L"DarkSelectedBGColor round-trip");
+
+            CConfig::SetDarkItemColor(savedItem);
+            CConfig::SetDarkPhraseColor(savedPhrase);
+            CConfig::SetDarkNumberColor(savedNumber);
+            CConfig::SetDarkItemBGColor(savedBG);
+            CConfig::SetDarkSelectedColor(savedSel);
+            CConfig::SetDarkSelectedBGColor(savedSelBG);
+        }
+
+        // ------------------------------------------------------------------
+        // UT-PT-03: Light palette factory defaults match light constants
+        // ------------------------------------------------------------------
+        TEST_METHOD(LightPalette_FactoryDefaults)
+        {
+            // Write with all-default config and reload to verify defaults
+            CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
+            CConfig::SetLightItemColor(CANDWND_ITEM_COLOR);
+            CConfig::SetLightPhraseColor(CANDWND_PHRASE_COLOR);
+            CConfig::SetLightNumberColor(CANDWND_NUM_COLOR);
+            CConfig::SetLightItemBGColor(GetSysColor(COLOR_3DHIGHLIGHT));
+            CConfig::SetLightSelectedColor(CANDWND_SELECTED_ITEM_COLOR);
+            CConfig::SetLightSelectedBGColor(CANDWND_SELECTED_BK_COLOR);
+
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
+            // Perturb and reload
+            CConfig::SetLightItemColor(0x123456);
+            CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
+
+            Assert::AreEqual((unsigned long)CANDWND_ITEM_COLOR, (unsigned long)CConfig::GetLightItemColor(),
+                L"Light factory default: ItemColor");
+            Assert::AreEqual((unsigned long)CANDWND_PHRASE_COLOR, (unsigned long)CConfig::GetLightPhraseColor(),
+                L"Light factory default: PhraseColor");
+            Assert::AreEqual((unsigned long)CANDWND_NUM_COLOR, (unsigned long)CConfig::GetLightNumberColor(),
+                L"Light factory default: NumberColor");
+            Assert::AreEqual((unsigned long)CANDWND_SELECTED_ITEM_COLOR, (unsigned long)CConfig::GetLightSelectedColor(),
+                L"Light factory default: SelectedColor");
+            Assert::AreEqual((unsigned long)CANDWND_SELECTED_BK_COLOR, (unsigned long)CConfig::GetLightSelectedBGColor(),
+                L"Light factory default: SelectedBGColor");
+        }
+
+        // ------------------------------------------------------------------
+        // UT-PT-04: Dark palette factory defaults match dark constants
+        // ------------------------------------------------------------------
+        TEST_METHOD(DarkPalette_FactoryDefaults)
+        {
+            CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
+            CConfig::SetDarkItemColor(CANDWND_DARK_ITEM_COLOR);
+            CConfig::SetDarkPhraseColor(CANDWND_DARK_PHRASE_COLOR);
+            CConfig::SetDarkNumberColor(CANDWND_DARK_NUM_COLOR);
+            CConfig::SetDarkItemBGColor(CANDWND_DARK_ITEM_BG_COLOR);
+            CConfig::SetDarkSelectedColor(CANDWND_DARK_SELECTED_COLOR);
+            CConfig::SetDarkSelectedBGColor(CANDWND_DARK_SELECTED_BG_COLOR);
+
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
+            CConfig::SetDarkItemColor(0x999999);
+            CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
+
+            Assert::AreEqual((unsigned long)CANDWND_DARK_ITEM_COLOR, (unsigned long)CConfig::GetDarkItemColor(),
+                L"Dark factory default: ItemColor");
+            Assert::AreEqual((unsigned long)CANDWND_DARK_PHRASE_COLOR, (unsigned long)CConfig::GetDarkPhraseColor(),
+                L"Dark factory default: PhraseColor");
+            Assert::AreEqual((unsigned long)CANDWND_DARK_NUM_COLOR, (unsigned long)CConfig::GetDarkNumberColor(),
+                L"Dark factory default: NumberColor");
+            Assert::AreEqual((unsigned long)CANDWND_DARK_ITEM_BG_COLOR, (unsigned long)CConfig::GetDarkItemBGColor(),
+                L"Dark factory default: ItemBGColor");
+            Assert::AreEqual((unsigned long)CANDWND_DARK_SELECTED_COLOR, (unsigned long)CConfig::GetDarkSelectedColor(),
+                L"Dark factory default: SelectedColor");
+            Assert::AreEqual((unsigned long)CANDWND_DARK_SELECTED_BG_COLOR, (unsigned long)CConfig::GetDarkSelectedBGColor(),
+                L"Dark factory default: SelectedBGColor");
+        }
+
+        // ------------------------------------------------------------------
+        // UT-PT-05: Backward compat — old INI with non-default colors and no
+        //           ColorMode key infers CUSTOM (colors preserved in _itemXxx)
+        // ------------------------------------------------------------------
+        TEST_METHOD(BackwardCompat_NonDefaultColors_InfersCustom)
+        {
+            CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
+            // Write an INI that has custom ItemColor but no ColorMode key
+            // We achieve this by writing once, then manually stripping ColorMode from INI
+            CConfig::SetColorMode(IME_COLOR_MODE::IME_COLOR_MODE_SYSTEM); // will be written
+            CConfig::SetItemColor(0x112233); // non-default
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
+
+            // Strip ColorMode key from the UTF-16LE INI file via the Windows API
+            // (narrow std::string I/O fails on UTF-16LE because of interleaved null bytes)
+            std::wstring path = GetConfigFilePath(IME_MODE::IME_MODE_ARRAY);
+            WritePrivateProfileStringW(L"Config", L"ColorMode", nullptr, path.c_str());
+
+            // Reset in-memory state and reload
+            CConfig::SetColorMode(IME_COLOR_MODE::IME_COLOR_MODE_DARK);
+            CConfig::SetColorModeKeyFound(false);
+            CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
+
+            Assert::IsFalse(CConfig::GetColorModeKeyFound(), L"ColorMode key must be absent from stripped INI");
+            Assert::AreEqual(
+                static_cast<int>(IME_COLOR_MODE::IME_COLOR_MODE_CUSTOM),
+                static_cast<int>(CConfig::GetColorMode()),
+                L"Non-default colors without ColorMode key must infer CUSTOM");
+            Assert::AreEqual(0x112233ul, (unsigned long)CConfig::GetItemColor(),
+                L"ItemColor must be preserved in _itemColor (custom palette)");
+
+            // Cleanup
+            CConfig::SetItemColor(CANDWND_ITEM_COLOR);
+        }
+
+        // ------------------------------------------------------------------
+        // UT-PT-06: Backward compat — old INI with all-default colors infers SYSTEM
+        // ------------------------------------------------------------------
+        TEST_METHOD(BackwardCompat_DefaultColors_InfersSystem)
+        {
+            CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
+            CConfig::SetColorMode(IME_COLOR_MODE::IME_COLOR_MODE_SYSTEM);
+            CConfig::SetItemColor(CANDWND_ITEM_COLOR);
+            CConfig::SetPhraseColor(CANDWND_PHRASE_COLOR);
+            CConfig::SetNumberColor(CANDWND_NUM_COLOR);
+            CConfig::SetItemBGColor(GetSysColor(COLOR_3DHIGHLIGHT));
+            CConfig::SetSelectedColor(CANDWND_SELECTED_ITEM_COLOR);
+            CConfig::SetSelectedBGColor(CANDWND_SELECTED_BK_COLOR);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
+
+            // Strip ColorMode key from the UTF-16LE INI file via the Windows API
+            // (narrow std::string I/O fails on UTF-16LE because of interleaved null bytes)
+            std::wstring path = GetConfigFilePath(IME_MODE::IME_MODE_ARRAY);
+            WritePrivateProfileStringW(L"Config", L"ColorMode", nullptr, path.c_str());
+
+            CConfig::SetColorMode(IME_COLOR_MODE::IME_COLOR_MODE_DARK);
+            CConfig::SetColorModeKeyFound(false);
+            CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
+
+            Assert::IsFalse(CConfig::GetColorModeKeyFound(), L"ColorMode key must be absent");
+            Assert::AreEqual(
+                static_cast<int>(IME_COLOR_MODE::IME_COLOR_MODE_SYSTEM),
+                static_cast<int>(CConfig::GetColorMode()),
+                L"All-default colors without ColorMode key must infer SYSTEM");
+        }
+
+        // ------------------------------------------------------------------
+        // UT-PT-07: All-mode round-trip — Light, Dark, and Custom palettes
+        //           survive a single WriteConfig/LoadConfig cycle together
+        // ------------------------------------------------------------------
+        TEST_METHOD(AllPalettes_RoundTrip_Together)
+        {
+            CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
+
+            // Set all 3 palettes to distinct values
+            CConfig::SetLightItemColor(0x010203);
+            CConfig::SetLightPhraseColor(0x040506);
+            CConfig::SetLightNumberColor(0x070809);
+            CConfig::SetLightItemBGColor(0x0A0B0C);
+            CConfig::SetLightSelectedColor(0x0D0E0F);
+            CConfig::SetLightSelectedBGColor(0x101112);
+
+            CConfig::SetDarkItemColor(0x212223);
+            CConfig::SetDarkPhraseColor(0x242526);
+            CConfig::SetDarkNumberColor(0x272829);
+            CConfig::SetDarkItemBGColor(0x2A2B2C);
+            CConfig::SetDarkSelectedColor(0x2D2E2F);
+            CConfig::SetDarkSelectedBGColor(0x303132);
+
+            CConfig::SetItemColor(0x414243);
+            CConfig::SetPhraseColor(0x444546);
+            CConfig::SetNumberColor(0x474849);
+            CConfig::SetItemBGColor(0x4A4B4C);
+            CConfig::SetSelectedColor(0x4D4E4F);
+            CConfig::SetSelectedBGColor(0x505152);
+
+            CConfig::SetColorMode(IME_COLOR_MODE::IME_COLOR_MODE_DARK);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
+
+            // Perturb everything
+            CConfig::SetLightItemColor(0x000000);
+            CConfig::SetDarkItemColor(0x000000);
+            CConfig::SetItemColor(0x000000);
+
+            CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
+
+            // Light palette
+            Assert::AreEqual(0x010203ul, (unsigned long)CConfig::GetLightItemColor(), L"Light ItemColor");
+            Assert::AreEqual(0x040506ul, (unsigned long)CConfig::GetLightPhraseColor(), L"Light PhraseColor");
+            Assert::AreEqual(0x070809ul, (unsigned long)CConfig::GetLightNumberColor(), L"Light NumberColor");
+            Assert::AreEqual(0x0A0B0Cul, (unsigned long)CConfig::GetLightItemBGColor(), L"Light ItemBGColor");
+            Assert::AreEqual(0x0D0E0Ful, (unsigned long)CConfig::GetLightSelectedColor(), L"Light SelectedColor");
+            Assert::AreEqual(0x101112ul, (unsigned long)CConfig::GetLightSelectedBGColor(), L"Light SelectedBGColor");
+
+            // Dark palette
+            Assert::AreEqual(0x212223ul, (unsigned long)CConfig::GetDarkItemColor(), L"Dark ItemColor");
+            Assert::AreEqual(0x242526ul, (unsigned long)CConfig::GetDarkPhraseColor(), L"Dark PhraseColor");
+            Assert::AreEqual(0x272829ul, (unsigned long)CConfig::GetDarkNumberColor(), L"Dark NumberColor");
+            Assert::AreEqual(0x2A2B2Cul, (unsigned long)CConfig::GetDarkItemBGColor(), L"Dark ItemBGColor");
+            Assert::AreEqual(0x2D2E2Ful, (unsigned long)CConfig::GetDarkSelectedColor(), L"Dark SelectedColor");
+            Assert::AreEqual(0x303132ul, (unsigned long)CConfig::GetDarkSelectedBGColor(), L"Dark SelectedBGColor");
+
+            // Custom palette
+            Assert::AreEqual(0x414243ul, (unsigned long)CConfig::GetItemColor(), L"Custom ItemColor");
+            Assert::AreEqual(0x444546ul, (unsigned long)CConfig::GetPhraseColor(), L"Custom PhraseColor");
+            Assert::AreEqual(0x474849ul, (unsigned long)CConfig::GetNumberColor(), L"Custom NumberColor");
+            Assert::AreEqual(0x4A4B4Cul, (unsigned long)CConfig::GetItemBGColor(), L"Custom ItemBGColor");
+            Assert::AreEqual(0x4D4E4Ful, (unsigned long)CConfig::GetSelectedColor(), L"Custom SelectedColor");
+            Assert::AreEqual(0x505152ul, (unsigned long)CConfig::GetSelectedBGColor(), L"Custom SelectedBGColor");
+
+            // ColorMode preserved
+            Assert::AreEqual(
+                static_cast<int>(IME_COLOR_MODE::IME_COLOR_MODE_DARK),
+                static_cast<int>(CConfig::GetColorMode()),
+                L"ColorMode DARK must survive round-trip");
+
+            // Restore custom palette defaults
+            CConfig::SetItemColor(CANDWND_ITEM_COLOR);
+            CConfig::SetPhraseColor(CANDWND_PHRASE_COLOR);
+            CConfig::SetNumberColor(CANDWND_NUM_COLOR);
+            CConfig::SetItemBGColor(GetSysColor(COLOR_3DHIGHLIGHT));
+            CConfig::SetSelectedColor(CANDWND_SELECTED_ITEM_COLOR);
+            CConfig::SetSelectedBGColor(CANDWND_SELECTED_BK_COLOR);
+        }
+
     };
 
     // ====================================================================
@@ -1254,6 +1661,103 @@ namespace DIMEUnitTests
 
             // Clean up GWLP_USERDATA (prevent dangling ptr after test)
             SetWindowLongPtr(host.hParent, GWLP_USERDATA, 0);
+        }
+
+        // ------------------------------------------------------------------
+        // UT-CM-01: GetEffectiveDarkMode returns correct value for each mode
+        // ------------------------------------------------------------------
+
+        TEST_METHOD(GetEffectiveDarkMode_LightMode_ReturnsFalse)
+        {
+            IME_COLOR_MODE saved = CConfig::GetColorMode();
+            CConfig::SetColorMode(IME_COLOR_MODE::IME_COLOR_MODE_LIGHT);
+            Assert::IsFalse(CConfig::GetEffectiveDarkMode(),
+                L"LIGHT mode must always return false regardless of system theme");
+            CConfig::SetColorMode(saved);
+        }
+
+        TEST_METHOD(GetEffectiveDarkMode_DarkMode_ReturnsTrue)
+        {
+            IME_COLOR_MODE saved = CConfig::GetColorMode();
+            CConfig::SetColorMode(IME_COLOR_MODE::IME_COLOR_MODE_DARK);
+            Assert::IsTrue(CConfig::GetEffectiveDarkMode(),
+                L"DARK mode must always return true regardless of system theme");
+            CConfig::SetColorMode(saved);
+        }
+
+        TEST_METHOD(GetEffectiveDarkMode_CustomMode_ReturnsFalse)
+        {
+            IME_COLOR_MODE saved = CConfig::GetColorMode();
+            CConfig::SetColorMode(IME_COLOR_MODE::IME_COLOR_MODE_CUSTOM);
+            Assert::IsFalse(CConfig::GetEffectiveDarkMode(),
+                L"CUSTOM mode must return false (colours come from user, not dark preset)");
+            CConfig::SetColorMode(saved);
+        }
+
+        TEST_METHOD(GetEffectiveDarkMode_SystemMode_MatchesSystemTheme)
+        {
+            IME_COLOR_MODE saved = CConfig::GetColorMode();
+            CConfig::SetColorMode(IME_COLOR_MODE::IME_COLOR_MODE_SYSTEM);
+            bool systemDark = CConfig::IsSystemDarkTheme();
+            Assert::AreEqual(systemDark, CConfig::GetEffectiveDarkMode(),
+                L"SYSTEM mode must mirror IsSystemDarkTheme()");
+            CConfig::SetColorMode(saved);
+        }
+
+        // ------------------------------------------------------------------
+        // UT-CM-03: SetColorModeKeyFound / GetColorModeKeyFound accessor pair
+        // ------------------------------------------------------------------
+
+        TEST_METHOD(ColorModeKeyFound_SetAndGet_RoundTrips)
+        {
+            CConfig::SetColorModeKeyFound(false);
+            Assert::IsFalse(CConfig::GetColorModeKeyFound(),
+                L"SetColorModeKeyFound(false) must be reflected by Get");
+            CConfig::SetColorModeKeyFound(true);
+            Assert::IsTrue(CConfig::GetColorModeKeyFound(),
+                L"SetColorModeKeyFound(true) must be reflected by Get");
+        }
+
+        // ------------------------------------------------------------------
+        // UT-CM-04: Dark color constant luminance and contrast checks
+        // ------------------------------------------------------------------
+
+        TEST_METHOD(DarkColorConstants_BackgroundsAreInDarkRange)
+        {
+            // Dark window backgrounds must have all RGB channels < 0x80
+            auto allDark = [](COLORREF c) {
+                return GetRValue(c) < 0x80 && GetGValue(c) < 0x80 && GetBValue(c) < 0x80;
+            };
+            Assert::IsTrue(allDark(CANDWND_DARK_ITEM_BG_COLOR),
+                L"Candidate dark item background must be a dark colour");
+            Assert::IsTrue(allDark(CANDWND_DARK_SELECTED_COLOR),
+                L"Candidate dark selected background must be a dark colour");
+            Assert::IsTrue(allDark(NOTIFYWND_DARK_TEXT_BK_COLOR),
+                L"Notify dark window background must be a dark colour");
+        }
+
+        TEST_METHOD(DarkColorConstants_TextColorsAreReadable)
+        {
+            // Text painted on a dark background needs at least one bright RGB channel
+            auto hasLightChannel = [](COLORREF c) {
+                return GetRValue(c) > 0x80 || GetGValue(c) > 0x80 || GetBValue(c) > 0x80;
+            };
+            Assert::IsTrue(hasLightChannel(CANDWND_DARK_ITEM_COLOR),
+                L"Dark item text must be readable against a dark background");
+            Assert::IsTrue(hasLightChannel(CANDWND_DARK_PHRASE_COLOR),
+                L"Dark phrase text must be readable against a dark background");
+            Assert::IsTrue(hasLightChannel(NOTIFYWND_DARK_TEXT_COLOR),
+                L"Dark notify text must be readable against a dark background");
+        }
+
+        TEST_METHOD(DarkBorderColors_DifferFromLightBorders)
+        {
+            Assert::AreNotEqual(
+                (DWORD)CANDWND_DARK_BORDER_COLOR, (DWORD)CANDWND_BORDER_COLOR,
+                L"Candidate dark and light border colours must differ");
+            Assert::AreNotEqual(
+                (DWORD)NOTIFYWND_DARK_BORDER_COLOR, (DWORD)NOTIFYWND_BORDER_COLOR,
+                L"Notify dark and light border colours must differ");
         }
 
     };

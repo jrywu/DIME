@@ -571,7 +571,8 @@ void CNotifyWindow::_DrawBorder(_In_ HWND wndHandle, _In_ int cx)
     OffsetRect(&rcWnd, -rcWnd.left, -rcWnd.top); // Zero-based
 
     // Use RAII for GDI objects
-    HPEN hPen = CreatePen(PS_SOLID, cx, NOTIFYWND_BORDER_COLOR);
+    COLORREF borderColor = CConfig::GetEffectiveDarkMode() ? NOTIFYWND_DARK_BORDER_COLOR : NOTIFYWND_BORDER_COLOR;
+    HPEN hPen = CreatePen(PS_SOLID, cx, borderColor);
     HBRUSH hBorderBrush = (HBRUSH)GetStockObject(NULL_BRUSH);
 
     HPEN hPenOld = (HPEN)SelectObject(dcHandle, hPen);

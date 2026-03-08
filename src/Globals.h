@@ -50,7 +50,8 @@ void DllRelease();
 namespace Global {
 
 extern IME_MODE imeMode;
-extern BOOL isWindows8; //OS Version
+extern BOOL isWindows8;        // Win8+
+extern BOOL isWindows1809OrLater; // Win10 1809+ (build 17763): dark theme support
  extern DWORD g_WinMajorVersion;
  extern DWORD g_WinMinorVersion;
  extern DWORD g_WinBuildNumber;

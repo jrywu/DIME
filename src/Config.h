@@ -156,7 +156,7 @@ public:
 	static void setCustomTablePriority(BOOL priority) { _customTablePriority = priority; }
 	static BOOL getCustomTablePriority() { return _customTablePriority; }
 
-	//colors
+	//colors (custom palette)
 	static void SetItemColor(UINT itemColor) { _itemColor = itemColor;}
 	static COLORREF GetItemColor(){return _itemColor;}
 	static void SetPhraseColor(UINT phraseColor) { _phraseColor = phraseColor;}
@@ -169,6 +169,44 @@ public:
 	static COLORREF GetSelectedColor(){return _selectedColor;}
 	static void SetSelectedBGColor(UINT selectedBGColor) { _selectedBGColor = selectedBGColor;}
 	static COLORREF GetSelectedBGColor(){return _selectedBGColor;}
+
+	//colors (light palette)
+	static void SetLightItemColor(COLORREF c) { _lightItemColor = c; }
+	static COLORREF GetLightItemColor() { return _lightItemColor; }
+	static void SetLightPhraseColor(COLORREF c) { _lightPhraseColor = c; }
+	static COLORREF GetLightPhraseColor() { return _lightPhraseColor; }
+	static void SetLightNumberColor(COLORREF c) { _lightNumberColor = c; }
+	static COLORREF GetLightNumberColor() { return _lightNumberColor; }
+	static void SetLightItemBGColor(COLORREF c) { _lightItemBGColor = c; }
+	static COLORREF GetLightItemBGColor() { return _lightItemBGColor; }
+	static void SetLightSelectedColor(COLORREF c) { _lightSelectedColor = c; }
+	static COLORREF GetLightSelectedColor() { return _lightSelectedColor; }
+	static void SetLightSelectedBGColor(COLORREF c) { _lightSelectedBGColor = c; }
+	static COLORREF GetLightSelectedBGColor() { return _lightSelectedBGColor; }
+
+	//colors (dark palette)
+	static void SetDarkItemColor(COLORREF c) { _darkItemColor = c; }
+	static COLORREF GetDarkItemColor() { return _darkItemColor; }
+	static void SetDarkPhraseColor(COLORREF c) { _darkPhraseColor = c; }
+	static COLORREF GetDarkPhraseColor() { return _darkPhraseColor; }
+	static void SetDarkNumberColor(COLORREF c) { _darkNumberColor = c; }
+	static COLORREF GetDarkNumberColor() { return _darkNumberColor; }
+	static void SetDarkItemBGColor(COLORREF c) { _darkItemBGColor = c; }
+	static COLORREF GetDarkItemBGColor() { return _darkItemBGColor; }
+	static void SetDarkSelectedColor(COLORREF c) { _darkSelectedColor = c; }
+	static COLORREF GetDarkSelectedColor() { return _darkSelectedColor; }
+	static void SetDarkSelectedBGColor(COLORREF c) { _darkSelectedBGColor = c; }
+	static COLORREF GetDarkSelectedBGColor() { return _darkSelectedBGColor; }
+
+	// color mode (candidate/notify window theming)
+	static void SetColorMode(IME_COLOR_MODE mode) { _colorMode = mode; }
+	static IME_COLOR_MODE GetColorMode() { return _colorMode; }
+	static void SetColorModeKeyFound(bool found) { _colorModeKeyFound = found; }
+	static bool GetColorModeKeyFound() { return _colorModeKeyFound; }
+	// Returns true when the IME windows should render in dark style
+	static bool GetEffectiveDarkMode();
+	// Applies the correct color set to the UIPresenter before painting
+	static void ApplyIMEColorSet(class CUIPresenter* pPresenter, bool isPhraseMode = false);
 
 	static void SetSpaceAsPageDown(BOOL spaceAsPageDown) { _spaceAsPageDown = spaceAsPageDown;}
 	static BOOL GetSpaceAsPageDown() {return _spaceAsPageDown;}
@@ -268,6 +306,20 @@ private:
 	static COLORREF _itemBGColor;
 	static COLORREF _selectedColor;
 	static COLORREF _selectedBGColor;
+	static COLORREF _lightItemColor;
+	static COLORREF _lightPhraseColor;
+	static COLORREF _lightNumberColor;
+	static COLORREF _lightItemBGColor;
+	static COLORREF _lightSelectedColor;
+	static COLORREF _lightSelectedBGColor;
+	static COLORREF _darkItemColor;
+	static COLORREF _darkPhraseColor;
+	static COLORREF _darkNumberColor;
+	static COLORREF _darkItemBGColor;
+	static COLORREF _darkSelectedColor;
+	static COLORREF _darkSelectedBGColor;
+	static IME_COLOR_MODE _colorMode;
+	static bool _colorModeKeyFound;
 
 	static BOOL _spaceAsPageDown;
 	static BOOL _spaceAsFirstCandSelkey;
@@ -310,6 +362,10 @@ private:
 	static UINT _dpiY;
 	static _T_GetDpiForMonitor _GetDpiForMonitor;
 	
+
+	static void LoadColorsForMode(IME_COLOR_MODE mode);
+	static void SaveColorsForMode(IME_COLOR_MODE mode);
+	static IME_COLOR_MODE GetComboSelectedMode(HWND hCombo);
 
 	static void ParseConfig(HWND hDlg, IME_MODE imeMode, BOOL initDiag = FALSE);
 

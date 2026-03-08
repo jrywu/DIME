@@ -1,8 +1,8 @@
 # DIME Test Plan
 
-**Version**: 2.0 (Practical CI/CD Edition)  
-**Last Updated**: 2026-02-18  
-**Status**: ✅ **COMPLETED** - 282 tests, 37.2% coverage
+**Version**: 2.2 (Palette + Custom-Table Validation Tests Added)
+**Last Updated**: 2026-03-07
+**Status**: ✅ **COMPLETED** - 339 tests passing (351 defined, ~12 auto-skip), 37.2% coverage baseline
 
 ---
 
@@ -13,10 +13,10 @@
 | Metric | Target | Actual | Status |
 |--------|--------|--------|--------|
 | **Overall Coverage** | 80-85% | **37.2%** | ⚠️ **BELOW TARGET** (7,289/19,589 lines) |
-| **Unit Tests** | 107 tests | **107 tests** | ✅ COMPLETE |
-| **Integration Tests** | 175 tests | **175 tests** | ✅ COMPLETE |
-| **Total Automated Tests** | 282 tests | **282 tests** | ✅ COMPLETE |
-| **Execution Time** | < 60s | **~35 seconds** | ✅ EXCELLENT |
+| **Unit Tests** | 119 tests | **143 tests** | ✅ COMPLETE |
+| **Integration Tests** | 186 tests | **208 tests** | ✅ COMPLETE |
+| **Total Automated Tests** | 324 tests | **339 passing** (351 defined) | ✅ COMPLETE |
+| **Execution Time** | < 60s | **~19 seconds** | ✅ EXCELLENT |
 | **CI/CD Ready** | Yes | **Yes** | ✅ AUTO-RUN |
 
 ### Coverage Philosophy
@@ -26,7 +26,7 @@
 **Current Status**: **37.2% coverage** (7,289 covered / 19,589 total lines)
 
 **Coverage Gap Analysis**:
-- **Automated tests (271 tests)**: Core functionality, APIs, integration points
+- **Automated tests (339 tests)**: Core functionality, APIs, integration points
 - **Coverage challenges**: 
   - Many TSF framework integration points require full IME installation
   - UI rendering code paths (WM_PAINT, GDI) difficult to test in automation
@@ -116,33 +116,38 @@ OpenCppCoverage --sources DIME --excluded_sources tests ^
 
 ## Test Suite Summary
 
-### Unit Tests Overview (107 tests, ~15 seconds)
+### Unit Tests Overview (143 tests, ~15 seconds)
 
 | Suite | Tests | Coverage Target | Actual Coverage | Files Tested |
 |-------|-------|----------------|-----------------|--------------|
-| **UT-01: Configuration** | 4 tests | ≥90% | ~95% | `Config.cpp`, `Config.h` |
-| **UT-02: Dictionary** | 3 tests | ≥85% | ~90% | `TableDictionaryEngine.cpp`, `DictionarySearch.cpp` |
-| **UT-03: String Processing** | 1 test | ≥90% | 100% | `BaseStructure.cpp` (CStringRange) |
-| **UT-04: Memory Management** | 2 tests | ≥85% | ~95% | `BaseStructure.h` (CDIMEArray), `File.cpp` |
-| **UT-05: File I/O** | 2 tests | ≥90% | ~95% | `File.cpp`, `Config.cpp` |
-| **UT-06: TableDictionaryEngine** | 6 tests | ≥85% | ~72%* | `TableDictionaryEngine.cpp` |
+| **UT-01: Configuration** | 26 tests | ≥90% | ~95% | `Config.cpp`, `Config.h` (ConfigTest class) |
+| **UT-02: Dictionary** | 8 tests | ≥85% | ~90% | `TableDictionaryEngine.cpp`, `DictionarySearch.cpp` |
+| **UT-03: String Processing** | 11 tests | ≥90% | ~100% | `BaseStructure.cpp` (CStringRange) |
+| **UT-04: Memory Management** | 14 tests | ≥85% | ~95% | `BaseStructure.h` (CDIMEArray), `File.cpp` |
+| **UT-05: File I/O** | 12 tests | ≥90% | ~95% | `File.cpp`, `Config.cpp` |
+| **UT-06: TableDictionaryEngine** | 25 tests | ≥85% | ~72%* | `TableDictionaryEngine.cpp` |
 | **UT-07: CIN File Parsing** | 11 tests | ≥85% | ~90% | `Config.cpp` (`parseCINFile`) |
-| **Total Unit Tests** | **107** | **≥85%** | **~88%** | **Core functionality** |
+| **UT-CM: Color Mode (GetEffectiveDarkMode, round-trip, constants)** | 8 tests | ≥90% | ~90% | `Config.cpp`, `Config.h`, `Define.h` |
+| **UT-CV: Custom Table Validation unit tests** | 17 tests | ≥90% | ~90% | `Config.cpp` (CustomTableValidationUnitTest class) |
+| **UT-PT: Palette round-trip + backward compat** | 11 tests | ≥90% | ~90% | `Config.cpp` (ConfigTest class) |
+| **Total Unit Tests** | **143** | **≥85%** | **~90%** | **Core functionality** |
 
 *UT-06 has room for improvement in wildcard/reverse lookup coverage
 
-### Integration Tests Overview (175 tests, ~20 seconds)
+### Integration Tests Overview (208 tests, ~20 seconds)
 
 | Suite | Tests | Coverage Target | Actual Coverage | Test Approach |
 |-------|-------|-----------------|-----------------|---------------|
 | **IT-01: TSF Integration** | 33 tests | 55-80% | Server: 54.5%, DIME: 30.4% | DLL exports + Direct instantiation + System-level |
-| **IT-02: Language Bar** | 16 tests | ≥85% | LanguageBar: 26.3%, Compartment: 72.9% | Button management, mode switching |
-| **IT-03: Candidate Window** | 20 tests | ≥80% | CandidateWindow: 29.8%, ShadowWindow: 4.6% | Win32 window testing |
-| **IT-04: Notification Window** | 19 tests | ≥30% | NotifyWindow: ~30%, BaseWindow: ~35% | Win32 window testing (no TSF) |
+| **IT-02: Language Bar** | 17 tests | ≥85% | LanguageBar: 26.3%, Compartment: 72.9% | Button management, mode switching |
+| **IT-03: Candidate Window** | 24 tests | ≥80% | CandidateWindow: 29.8%, ShadowWindow: 4.6% | Win32 window testing (incl. IT-CM-10–13) |
+| **IT-04: Notification Window** | 22 tests | ≥30% | NotifyWindow: ~30%, BaseWindow: ~35% | Win32 window testing (incl. IT-CM-20–22) |
 | **IT-05: TSF Core Logic** | 18 tests | ≥70% | KeyEventSink: 23.2%, Engine: 13.8% | Stub-based logic testing |
 | **IT-06: UIPresenter** | 54 tests | 55-60%* | **54.8%** | Stub-based testing (practical max) |
-| **IT-07: Settings Dialog** | 15 tests | ≥90% | Config: ~60-70% | End-to-end dialog integration |
-| **Total Integration Tests** | **175** | **≥75%** | **~37%** | **Interaction & workflows** |
+| **IT-07: Settings Dialog** | 18 tests | ≥90% | Config: ~60-70% | End-to-end dialog integration (incl. IT-CM-01–04) |
+| **IT-CV: Custom Table Validation integration** | 14 tests | ≥85% | Config: ~70% | DialogContext + mode-aware validation |
+| **IT-PT: Palette integration** | 8 tests | ≥90% | Config: ~80% | Light/dark palette get/set + static defaults |
+| **Total Integration Tests** | **208** | **≥75%** | **~37%** | **Interaction & workflows** |
 
 *IT-06 revised target: 55-60% is practical maximum without full TSF simulation infrastructure  
 **Overall project coverage limited by TSF/UI integration complexity
@@ -161,9 +166,9 @@ OpenCppCoverage --sources DIME --excluded_sources tests ^
 
 ## Unit Tests
 
-**Total:** 96 tests | **Execution Time:** ~15 seconds | **Coverage:** Forms foundation of 82.1% overall coverage
+**Total:** 143 tests | **Execution Time:** ~15 seconds | **Coverage:** Core logic and configuration
 
-### UT-01: Configuration Management (4 tests)
+### UT-01: Configuration Management (26 tests)
 
 **Target**: `Config.cpp`, `Config.h` | **Coverage**: ~95%
 
@@ -181,7 +186,7 @@ OpenCppCoverage --sources DIME --excluded_sources tests ^
 - ✅ Timestamp-based conflict detection
 - ✅ Graceful degradation on corruption
 
-### UT-02: Dictionary Search (3 tests)
+### UT-02: Dictionary Search (8 tests)
 
 **Target**: `TableDictionaryEngine.cpp`, `DictionarySearch.cpp`, `DictionaryParser.cpp`, `File.cpp` | **Coverage**: ~90%
 
@@ -197,17 +202,17 @@ OpenCppCoverage --sources DIME --excluded_sources tests ^
 - ✅ Custom table loading and priority
 - ✅ Encoding detection and conversion
 
-### UT-03: String Processing (1 test)
+### UT-03: String Processing (11 tests)
 
-**Target**: `BaseStructure.cpp` (CStringRange class) | **Coverage**: 100%
+**Target**: `BaseStructure.cpp` (CStringRange class) | **Coverage**: ~100%
 
-Single comprehensive test covering all `CStringRange` operations:
+Comprehensive tests covering all `CStringRange` operations:
 - Set/Clear/Get/GetLength: 100%
 - String comparison (equal/different): 100%
 - Null/empty string handling: 100%
 - Unicode character support: 100%
 
-### UT-04: Memory Management (2 tests)
+### UT-04: Memory Management (14 tests)
 
 **Target**: `BaseStructure.h` (CDIMEArray), `File.cpp` | **Coverage**: ~95%
 
@@ -216,7 +221,7 @@ Single comprehensive test covering all `CStringRange` operations:
 | **UT-04-01: CDIMEArray Operations** | `Append()`, `Insert()`, `RemoveAt()`, `Clear()`, `GetAt()` | All operations (100%), bounds checking (100%), memory leak detection (0 leaks after 10K iterations) |
 | **UT-04-02: File Memory Tests** | `CreateFile()`, `MAX_CIN_FILE_SIZE` validation | Large file handling (95MB, 100%), size limit enforcement (>100MB, 100%), MS-02 security fix validation |
 
-### UT-05: File I/O (2 tests)
+### UT-05: File I/O (12 tests)
 
 **Target**: `File.cpp`, `Config.cpp` | **Coverage**: ~95%
 
@@ -225,7 +230,7 @@ Single comprehensive test covering all `CStringRange` operations:
 | **UT-05-01: UTF-16LE Encoding** | `CreateFile()`, `_wfopen_s()` | Read/write UTF-16LE with BOM (100%), BOM verification (100%), Unicode preservation (100%) |
 | **UT-05-02: Encoding Auto-detection** | `importCustomTableFile()`, `MultiByteToWideChar()` | UTF-8 detection (100%), Big5 detection (100%), UTF-16LE pass-through (100%), fallback logic (90%) |
 
-### UT-06: TableDictionaryEngine (6 test categories, 25 tests)
+### UT-06: TableDictionaryEngine (25 tests)
 
 **Target**: `TableDictionaryEngine.cpp` (CTableDictionaryEngine class) | **Coverage**: ~72% (target: ≥85%)
 
@@ -239,6 +244,59 @@ Single comprehensive test covering all `CStringRange` operations:
 | **UT-06-06: CIN Config Parsing** | 3 tests | ≥95% | Header parsing, radical map building, index map building, sorted CIN detection |
 
 **Coverage Gap**: ~13% gap to target (CollectWordForWildcard, CollectWordFromConvertedString need improvement)
+
+### UT-CM: Color Mode (8 tests, in `CustomTableValidationUnitTest` class)
+
+**Target**: `Config.cpp`, `Config.h`, `Define.h` | **Coverage**: ~90%
+
+Part of the light/dark theme feature (see `docs/LIGHT_DARK_THEME.md` §12). Hosted in the `CustomTableValidationUnitTest` class in `ConfigTest.cpp`.
+
+| Test Category | Tests | Key Validations |
+|---------------|-------|-----------------|
+| **UT-CM-01: GetEffectiveDarkMode logic** | 4 tests | LIGHT→false, DARK→true, CUSTOM→false, SYSTEM→mirrors OS |
+| **UT-CM-03: Accessor pair** | 1 test | `SetColorModeKeyFound` / `GetColorModeKeyFound` symmetry |
+| **UT-CM-04: Dark color constant ranges** | 3 tests | Dark backgrounds are dark (<0x80), dark text is light (>0x80), border constants differ |
+
+UT-CM-02 (ColorMode INI round-trip, 4 tests) is in the `ConfigTest` class and counted under UT-PT.
+
+**Infrastructure fixes**:
+- `ConfigTest::TEST_METHOD_INITIALIZE` resets `_configIMEMode = DAYI` via a DAYI config ping so every `LoadConfig(ARRAY)` call re-parses, avoiding false negatives from `LoadConfig`'s same-second timestamp guard.
+- `ConfigTest::TEST_CLASS_INITIALIZE` now initialises `Global::isWindows1809OrLater` via inline `RtlGetVersion` (ntdll), since `DllMain` never runs in the test process — this ensures the backward-compat heuristic returns `SYSTEM` (not `LIGHT`) on Windows 10 1809+.
+
+---
+
+### UT-CV: Custom Table Validation (17 tests, in `CustomTableValidationUnitTest` class)
+
+**Target**: `Config.cpp` (`ValidateCustomTableLines`, `DialogContext`) | **Coverage**: ~90%
+
+| Test Category | Tests | Key Validations |
+|---------------|-------|-----------------|
+| **Constants & misc** | 4 tests | `DialogContext` default init, keystroke/deletion thresholds, `IsSystemDarkTheme` no-crash |
+| **ValidateCustomTableLines** | 11 tests | Null edit, valid line, empty content, no separator, key too long, key at max codes, multiple valid, mixed lines, empty interspersed, phonetic ASCII pass, phonetic non-ASCII fail |
+| **Theme & dark-context** | 2 tests | `ThemeColorConstants` light≠dark; `ValidateCustomTableLines` dark-context no-crash |
+
+---
+
+### UT-PT: Palette Round-trip & Backward Compat (11 tests, in `ConfigTest` class)
+
+**Target**: `Config.cpp`, `Config.h` | **Coverage**: ~90%
+
+Added alongside the light/dark theme feature to verify the three-palette (light/dark/custom) INI persistence and legacy backward-compatibility.
+
+| Test | Key Validations |
+|------|-----------------|
+| **ColorMode_RoundTrip_{System,Light,Dark,Custom}** (4) | All four `IME_COLOR_MODE` values survive `WriteConfig` → `LoadConfig`; `_colorModeKeyFound` set correctly |
+| **LightPalette_RoundTrip** | All 6 light-palette colors survive round-trip |
+| **DarkPalette_RoundTrip** | All 6 dark-palette colors survive round-trip |
+| **LightPalette_FactoryDefaults** | Light defaults match `CANDWND_*` constants |
+| **DarkPalette_FactoryDefaults** | Dark defaults match `CANDWND_DARK_*` constants |
+| **BackwardCompat_NonDefaultColors_InfersCustom** | Legacy INI without `ColorMode` + non-default colors → `IME_COLOR_MODE_CUSTOM` |
+| **BackwardCompat_DefaultColors_InfersSystem** | Legacy INI without `ColorMode` + all-default colors → `IME_COLOR_MODE_SYSTEM` (Win10 1809+) |
+| **AllPalettes_RoundTrip_Together** | All three palettes survive a single `WriteConfig`/`LoadConfig` cycle simultaneously |
+
+**Key fix**: Both backward-compat tests used narrow `std::string` I/O to strip the `ColorMode` key — this silently failed on UTF-16LE files. Fixed to `WritePrivateProfileStringW(L"Config", L"ColorMode", nullptr, path)`.
+
+---
 
 ### UT-07: CIN File Parsing (11 tests)
 
@@ -270,7 +328,7 @@ Single comprehensive test covering all `CStringRange` operations:
 
 ## Integration Tests
 
-**Total:** 175 tests | **Execution Time:** ~20 seconds | **Coverage:** Interaction & workflow validation
+**Total:** 208 tests | **Execution Time:** ~20 seconds | **Coverage:** Interaction & workflow validation
 
 ### Test Philosophy
 
@@ -303,7 +361,7 @@ Integration tests focus on **component interaction** rather than line coverage:
 - ✅ Graceful auto-skip when TSF unavailable (CI/CD friendly)
 - ✅ Manual validation confirms full DIME functionality in real applications
 
-### IT-02: Language Bar (16 tests)
+### IT-02: Language Bar (17 tests)
 
 **Target**: `LanguageBar.cpp`, `Compartment.cpp` | **Coverage**: LanguageBar: 26.30%, Compartment: 72.92%
 
@@ -311,7 +369,7 @@ Integration tests focus on **component interaction** rather than line coverage:
 - ✅ Chinese/English mode switching (state sync, icon update)
 - ✅ Full/half shape toggle (configuration update, state persistence)
 
-### IT-03: Candidate Window (20 tests)
+### IT-03: Candidate Window (24 tests, incl. IT-CM-10–13)
 
 **Target**: `CandidateWindow.cpp`, `ShadowWindow.cpp` | **Coverage**: CandidateWindow: 29.84%, ShadowWindow: 4.58%
 
@@ -319,7 +377,7 @@ Integration tests focus on **component interaction** rather than line coverage:
 - ✅ Candidate list display, show/hide operations (100%)
 - ✅ Shadow window creation, positioning, size tracking (100%)
 
-### IT-04: Notification Window (19 tests)
+### IT-04: Notification Window (22 tests, incl. IT-CM-20–22)
 
 **Target**: `NotifyWindow.cpp`, `BaseWindow.cpp` | **Coverage**: ~30-35% (UI rendering limited)  
 **Test Approach**: Win32 window testing (**no TSF required**)
@@ -390,19 +448,32 @@ Integration tests focus on **component interaction** rather than line coverage:
 
 **ROI Assessment**: To reach 70% coverage would require ~800 lines of mock infrastructure for 57 additional covered lines (14:1 ratio) - **impractical**
 
-### IT-07: Settings Dialog (15 tests)
+### IT-CM: Color Mode Integration Tests (11 tests)
 
-**Target**: `Config.cpp`, `DIMESettings.cpp`, `ShowConfig.cpp` | **Coverage**: Config ~60-70%  
+**Test Files**: `SettingsDialogIntegrationTest.cpp` (4), `CandidateWindowIntegrationTest.cpp` (4), `NotificationWindowIntegrationTest.cpp` (3)
+**Target**: Color-mode wiring across dialog, candidate window, and notify window
+**See**: `docs/LIGHT_DARK_THEME.md` §12 for full specifications
+
+| Sub-Category | Tests | File | Key Validations |
+|--------------|-------|------|-----------------|
+| **IT-CM-01 to IT-CM-04: Settings Dialog** | 4 tests | `SettingsDialogIntegrationTest.cpp` | Combo initialises from INI; color boxes disabled/enabled by mode; PSN_APPLY persists mode; Restore Default resets combo to SYSTEM |
+| **IT-CM-10 to IT-CM-13: Candidate Window** | 4 tests | `CandidateWindowIntegrationTest.cpp` | Light preset setter no-crash; dark preset setter no-crash; phrase≠item color; dark border luminance > light border luminance |
+| **IT-CM-20 to IT-CM-22: Notify Window** | 3 tests | `NotificationWindowIntegrationTest.cpp` | Dark text/bg setter no-crash; light colors differ from dark; dark border luminance > light border luminance |
+
+**Note**: IT-CM-13 and IT-CM-22 assert `darkLum > lightLum` because `CANDWND_BORDER_COLOR = RGB(0,0,0)` (pure black) — dark-theme borders must be *lighter* (gray) to remain visible against dark backgrounds.
+
+---
+
+### IT-07: Settings Dialog (18 tests, `SettingsDialogIntegrationTest` class)
+
+**Target**: `Config.cpp`, `DIMESettings.cpp`, `ShowConfig.cpp` | **Coverage**: Config ~60-70%
 **Test Approach**: End-to-end dialog integration testing
 
-**Actual Tests Implemented** (15 tests):
+**Tests Implemented** (14 core IT-07 + 4 IT-CM color-mode):
 - IT07_01: FontSize (edit control)
-- IT07_03: MaxCodes (edit control)
+- IT07_03: MaxCodes (edit control) — IT07_02 removed (FontWeight uses ChooseFont, no direct control)
 - IT07_04: AutoCompose (checkbox)
-- IT07_05: ClearOnBeep (checkbox)
-- IT07_06: DoBeep (checkbox)
-- IT07_07: DoBeepNotify (checkbox)
-- IT07_08: DoBeepOnCandi (checkbox)
+- IT07_05–08: ClearOnBeep, DoBeep, DoBeepNotify, DoBeepOnCandi (checkboxes)
 - IT07_09: IMEShiftMode (combo - 4 values)
 - IT07_10: DoubleSingleByteMode (combo - 3 values)
 - IT07_11: ArrayScope (combo - 5 values)
@@ -410,14 +481,37 @@ Integration tests focus on **component interaction** rather than line coverage:
 - IT07_13: PhoneticKeyboardLayout (combo - 2 values)
 - IT07_14: MakePhrase (checkbox)
 - IT07_15: ShowNotifyDesktop (checkbox)
-- Additional combo option tests (multiple values per setting)
-
-**What Makes This Integration Testing**:
-Complete workflow testing: Dialog Creation → WM_INITDIALOG → LoadConfig → User changes controls → PSN_APPLY → WriteConfig → File persistence verification
+- IT-CM-01–04: Color mode combo init, color-box enable/disable, PSN_APPLY persist, Restore Default reset
 
 **Integration Chain**: `Win32 Dialog UI ↔ PropertyPageWndProc ↔ CConfig ↔ File I/O ↔ INI Parser`
 
-**Note**: Original plan called for 55 tests covering 60+ settings. Current implementation focuses on 15 core settings with multiple test cases for combo boxes. Full implementation pending.
+---
+
+### IT-CV: Custom Table Validation Integration (14 tests, `CustomTableValidationIntegrationTest` class)
+
+**Target**: `Config.cpp` (`ValidateCustomTableLines`, `DialogContext`, `WM_THEMECHANGED`) | **Coverage**: ~70%
+**Test Approach**: IME-mode-aware validation with dialog context, theme change simulation, performance
+
+| Test | Key Validations |
+|------|-----------------|
+| **IT-CV-01–08: Mode & rule coverage** | ARRAY max-codes boundary, DAYI/Phonetic/Generic key rules, all-modes pass/fail |
+| **IT-CV-09: WM_THEMECHANGED** | Handler updates `isDarkTheme` flag in DialogContext |
+| **IT-CV-10: Context isolation** | Each `DialogContext` stores its own IME mode independently |
+| **IT-CV-11–12: Performance** | 1000 valid lines < 500ms; 100 error lines < 200ms |
+| **IT-CV-13–14: Dark/light color** | Dark context → white text; light context → black text |
+
+---
+
+### IT-PT: Palette Integration (8 tests, `CustomTableValidationIntegrationTest` class)
+
+**Target**: `Config.cpp`, `Config.h` (`GetEffectiveDarkMode`, light/dark palette accessors) | **Coverage**: ~80%
+
+| Test | Key Validations |
+|------|-----------------|
+| **IT-PT-01–03: EffectiveDarkMode** | LIGHT→false, DARK→true, CUSTOM→false (integration-level) |
+| **IT-PT-04–05: Palette get/set round-trip** | Light and dark palette colors survive set/get |
+| **IT-PT-06–07: Static defaults** | `GetLight*` and `GetDark*` accessors match `CANDWND_*` / `CANDWND_DARK_*` constants |
+| **IT-PT-08: Dark item color lighter than light** | `CANDWND_DARK_ITEM_COLOR` luminance > `CANDWND_ITEM_COLOR` (white on dark vs black on light) |
 
 ---
 
@@ -504,7 +598,28 @@ jobs:
 
 ## Document Revision History
 
-### Version 2.0 - 2026-02-18 (This Version)
+### Version 2.2 - 2026-03-07
+**Palette, custom-table validation, and backward-compat test additions:**
+
+- ✅ **Total: 339 tests passing** (351 defined, ~12 auto-skip when DIME.dll/TSF unavailable)
+- ✅ **Unit tests: 143** (up from 119) — UT-01 expanded to 26, UT-02–05 expanded, UT-PT (11), UT-CV (17)
+- ✅ **Integration tests: 208** (up from 186) — IT-CV (14), IT-PT (8), IT-03/04/07 counts updated
+- ✅ **UT-PT**: 11 palette round-trip + backward-compat tests; both backward-compat tests fixed (UTF-16LE strip via `WritePrivateProfileStringW`)
+- ✅ **UT-CV**: 17 custom table validation unit tests (new `CustomTableValidationUnitTest` class)
+- ✅ **IT-CV**: 14 custom table validation integration tests (new `CustomTableValidationIntegrationTest` class)
+- ✅ **IT-PT**: 8 palette integration tests
+- ✅ **Infrastructure fix**: `TEST_CLASS_INITIALIZE` now initialises `Global::isWindows1809OrLater` via inline `RtlGetVersion` so backward-compat heuristic returns SYSTEM (not LIGHT) on Windows 10 1809+
+- ✅ **UT-CM restructured**: UT-CM-02 round-trip tests moved to UT-PT; UT-CM-01/03/04 remain in `CustomTableValidationUnitTest`
+
+### Version 2.1 - 2026-03-06
+**Color-mode tests added (see `docs/LIGHT_DARK_THEME.md` §12):**
+
+- ✅ **Total: 324 tests** (119 unit + 186 integration est.)
+- ✅ **UT-CM**: 12 color-mode unit tests (GetEffectiveDarkMode, INI round-trip, accessor, constant ranges)
+- ✅ **IT-CM**: 11 color-mode integration tests (settings dialog, candidate window, notify window)
+- ✅ **Infrastructure fix**: `TEST_METHOD_INITIALIZE` resets `_configIMEMode = DAYI` to bypass timestamp guard
+
+### Version 2.0 - 2026-02-18
 **Major restructuring for practical CI/CD automation and improved readability:**
 
 - ✅ **Restructured for clarity**: Removed repetitive information, consolidated test descriptions

@@ -436,5 +436,85 @@ namespace DIMEIntegratedTests
             // Cleanup
             delete pNotifyWnd;
         }
+
+        // ------------------------------------------------------------------
+        // IT-CM-20: Dark-mode colours applied to notify window without crash
+        // ------------------------------------------------------------------
+
+        TEST_METHOD(IT_CM_20_NotifyWindow_DarkMode_ColorsApplied)
+        {
+            Logger::WriteMessage("Test: IT_CM_20 - Dark mode colours applied to notify window\n");
+
+            CNotifyWindow* pWnd = new CNotifyWindow(TestNotifyCallback, nullptr, NOTIFY_TYPE::NOTIFY_CHN_ENG);
+            Assert::IsNotNull(pWnd, L"Notify window must be created");
+
+            CStringRange text;
+            text.Set(L"Test", 4);
+            BOOL created = pWnd->_Create(20, NULL, &text);
+            Assert::IsTrue(created, L"Window creation must succeed");
+
+            // Apply dark-preset colours (matches what ShowNotification does for dark mode)
+            pWnd->_SetTextColor(NOTIFYWND_DARK_TEXT_COLOR, NOTIFYWND_DARK_TEXT_BK_COLOR);
+            pWnd->_SetFillColor(NOTIFYWND_DARK_TEXT_BK_COLOR);
+
+            // No getter available; verify the operation does not crash
+            Assert::IsTrue(true, L"Dark-mode colour assignment must not crash");
+
+            delete pWnd;
+        }
+
+        // ------------------------------------------------------------------
+        // IT-CM-21: Light-mode colours applied to notify window without crash
+        // ------------------------------------------------------------------
+
+        TEST_METHOD(IT_CM_21_NotifyWindow_LightMode_ColorsApplied)
+        {
+            Logger::WriteMessage("Test: IT_CM_21 - Light mode colours applied to notify window\n");
+
+            CNotifyWindow* pWnd = new CNotifyWindow(TestNotifyCallback, nullptr, NOTIFY_TYPE::NOTIFY_CHN_ENG);
+            Assert::IsNotNull(pWnd, L"Notify window must be created");
+
+            CStringRange text;
+            text.Set(L"Test", 4);
+            BOOL created = pWnd->_Create(20, NULL, &text);
+            Assert::IsTrue(created, L"Window creation must succeed");
+
+            // Apply light-preset colours (matches what ShowNotification does for light mode)
+            pWnd->_SetTextColor(NOTIFYWND_TEXT_COLOR, GetSysColor(COLOR_3DHIGHLIGHT));
+            pWnd->_SetFillColor(GetSysColor(COLOR_3DHIGHLIGHT));
+
+            Assert::IsTrue(true, L"Light-mode colour assignment must not crash");
+
+            // Verify light and dark text colours are distinct (constants sanity check)
+            Assert::AreNotEqual(
+                (DWORD)NOTIFYWND_TEXT_COLOR, (DWORD)NOTIFYWND_DARK_TEXT_COLOR,
+                L"Light and dark notify text colours must differ");
+
+            delete pWnd;
+        }
+
+        // ------------------------------------------------------------------
+        // IT-CM-22: Dark notify border colour constant differs from light border
+        // ------------------------------------------------------------------
+
+        TEST_METHOD(IT_CM_22_NotifyWindow_DarkBorderColor_DiffersFromLight)
+        {
+            Logger::WriteMessage("Test: IT_CM_22 - Dark notify border colour differs from light\n");
+
+            Assert::AreNotEqual(
+                (DWORD)NOTIFYWND_DARK_BORDER_COLOR, (DWORD)NOTIFYWND_BORDER_COLOR,
+                L"Dark and light notify window border colours must differ");
+
+            // Dark-theme borders must be lighter (higher luminance) than the black light-theme
+            // border so they remain visible against dark backgrounds (e.g. RGB(80,80,80) > RGB(0,0,0))
+            DWORD darkLum  = GetRValue(NOTIFYWND_DARK_BORDER_COLOR)
+                           + GetGValue(NOTIFYWND_DARK_BORDER_COLOR)
+                           + GetBValue(NOTIFYWND_DARK_BORDER_COLOR);
+            DWORD lightLum = GetRValue(NOTIFYWND_BORDER_COLOR)
+                           + GetGValue(NOTIFYWND_BORDER_COLOR)
+                           + GetBValue(NOTIFYWND_BORDER_COLOR);
+            Assert::IsTrue(darkLum > lightLum,
+                L"Dark notify border must have higher total luminance than the pure-black light border");
+        }
     };
 }

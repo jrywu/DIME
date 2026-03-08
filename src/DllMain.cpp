@@ -114,6 +114,10 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID pvReserved)
             { // Windows 8 or greater
                 Global::isWindows8 = TRUE;
             }
+            if (IsWindowsVersionOrGreater(10, 0, 17763))
+            { // Windows 10 1809 (build 17763) or later: dark theme APIs available
+                Global::isWindows1809OrLater = TRUE;
+            }
             if (IsWindowsVersionOrGreater(8,1))
             { // Windows 8.1 or greater. Load Shcore.dll for DPI-aware font size adjustment
                 Global::hShcore = LoadLibrary(L"Shcore.dll");

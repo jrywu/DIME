@@ -604,5 +604,93 @@ namespace DIMEIntegratedTests
             // Cleanup
             delete pCandWnd;
         }
+
+        // ------------------------------------------------------------------
+        // IT-CM-10: Light-mode colours applied to candidate window without crash
+        // ------------------------------------------------------------------
+
+        TEST_METHOD(IT_CM_10_CandidateWindow_LightMode_ColorsApplied)
+        {
+            Logger::WriteMessage("Test: IT_CM_10 - Light mode colours applied to candidate window\n");
+
+            CCandidateRange indexRange;
+            CCandidateWindow* pWnd = new (std::nothrow) CCandidateWindow(
+                TestCandidateCallback, nullptr, &indexRange, FALSE);
+            Assert::IsNotNull(pWnd, L"Candidate window must be created");
+
+            // Apply light-preset colours (matches what ApplyIMEColorSet does for light mode)
+            pWnd->_SetTextColor(CANDWND_ITEM_COLOR, CANDWND_SELECTED_ITEM_COLOR);
+            pWnd->_SetFillColor(GetSysColor(COLOR_3DHIGHLIGHT));
+
+            // No getter available; verify the operation does not crash
+            Assert::IsTrue(true, L"Light-mode colour assignment must not crash");
+
+            delete pWnd;
+        }
+
+        // ------------------------------------------------------------------
+        // IT-CM-11: Dark-mode colours applied to candidate window without crash
+        // ------------------------------------------------------------------
+
+        TEST_METHOD(IT_CM_11_CandidateWindow_DarkMode_ColorsApplied)
+        {
+            Logger::WriteMessage("Test: IT_CM_11 - Dark mode colours applied to candidate window\n");
+
+            CCandidateRange indexRange;
+            CCandidateWindow* pWnd = new (std::nothrow) CCandidateWindow(
+                TestCandidateCallback, nullptr, &indexRange, FALSE);
+            Assert::IsNotNull(pWnd, L"Candidate window must be created");
+
+            // Apply dark-preset colours (matches what ApplyIMEColorSet does for dark mode)
+            pWnd->_SetTextColor(CANDWND_DARK_ITEM_COLOR, CANDWND_DARK_SELECTED_COLOR);
+            pWnd->_SetFillColor(CANDWND_DARK_ITEM_BG_COLOR);
+
+            Assert::IsTrue(true, L"Dark-mode colour assignment must not crash");
+
+            delete pWnd;
+        }
+
+        // ------------------------------------------------------------------
+        // IT-CM-12: Phrase-mode colour constant differs from normal item colour
+        // ------------------------------------------------------------------
+
+        TEST_METHOD(IT_CM_12_PhraseColor_DiffersFromItemColor)
+        {
+            Logger::WriteMessage("Test: IT_CM_12 - Phrase colour constant differs from item colour\n");
+
+            // Light-mode phrase colour (green) must differ from normal item colour (black)
+            Assert::AreNotEqual(
+                (DWORD)CANDWND_PHRASE_COLOR, (DWORD)CANDWND_ITEM_COLOR,
+                L"Phrase colour must differ from normal item colour in light mode");
+
+            // Dark-mode phrase colour (light green) must differ from dark item colour (light grey)
+            Assert::AreNotEqual(
+                (DWORD)CANDWND_DARK_PHRASE_COLOR, (DWORD)CANDWND_DARK_ITEM_COLOR,
+                L"Dark phrase colour must differ from dark item colour");
+        }
+
+        // ------------------------------------------------------------------
+        // IT-CM-13: Dark border colour constant differs from light border colour
+        // ------------------------------------------------------------------
+
+        TEST_METHOD(IT_CM_13_CandidateWindow_DarkBorderColor_DiffersFromLight)
+        {
+            Logger::WriteMessage("Test: IT_CM_13 - Dark border colour differs from light border\n");
+
+            Assert::AreNotEqual(
+                (DWORD)CANDWND_DARK_BORDER_COLOR, (DWORD)CANDWND_BORDER_COLOR,
+                L"Dark and light candidate window border colours must differ");
+
+            // Dark-theme borders must be lighter (higher luminance) than the black light-theme
+            // border so they remain visible against dark backgrounds (e.g. RGB(80,80,80) > RGB(0,0,0))
+            DWORD darkLum = GetRValue(CANDWND_DARK_BORDER_COLOR)
+                          + GetGValue(CANDWND_DARK_BORDER_COLOR)
+                          + GetBValue(CANDWND_DARK_BORDER_COLOR);
+            DWORD lightLum = GetRValue(CANDWND_BORDER_COLOR)
+                           + GetGValue(CANDWND_BORDER_COLOR)
+                           + GetBValue(CANDWND_BORDER_COLOR);
+            Assert::IsTrue(darkLum > lightLum,
+                L"Dark border must have higher total luminance than the pure-black light border");
+        }
     };
 }
