@@ -205,6 +205,8 @@ public:
 	static bool GetColorModeKeyFound() { return _colorModeKeyFound; }
 	// Returns true when the IME windows should render in dark style
 	static bool GetEffectiveDarkMode();
+	// Returns the active candidate window background color for the current color mode
+	static COLORREF GetActiveItemBGColor();
 	// Applies the correct color set to the UIPresenter before painting
 	static void ApplyIMEColorSet(class CUIPresenter* pPresenter, bool isPhraseMode = false);
 

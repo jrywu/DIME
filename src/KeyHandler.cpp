@@ -229,10 +229,6 @@ HRESULT CDIME::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *p
 			if (SUCCEEDED(hr))
 			{
 				_pUIPresenter->_ClearCandidateList();
-				_pUIPresenter->_SetCandidateTextColor(CConfig::GetItemColor(), CConfig::GetItemBGColor()); 
-				_pUIPresenter->_SetCandidateSelectedTextColor(CConfig::GetSelectedColor(), CConfig::GetSelectedBGColor());    
-				_pUIPresenter->_SetCandidateNumberColor(CConfig::GetNumberColor(), CConfig::GetItemBGColor());    
-				_pUIPresenter->_SetCandidateFillColor(CConfig::GetItemBGColor());
 				_pUIPresenter->_SetCandidateText(&candidateList, _pCompositionProcessorEngine->GetCandidateListIndexRange(),
 							TRUE, pCompositionProcessorEngine->GetCandidateWindowWidth());
 				
@@ -347,10 +343,6 @@ HRESULT CDIME::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pCont
 			_candidateMode = CANDIDATE_MODE::CANDIDATE_ORIGINAL;
 			 _isCandidateWithWildcard = isWildcardSearch;
 			 _pUIPresenter->_ClearCandidateList();
-			 _pUIPresenter->_SetCandidateTextColor(CConfig::GetItemColor(), CConfig::GetItemBGColor());    
-			 _pUIPresenter->_SetCandidateSelectedTextColor(CConfig::GetSelectedColor(), CConfig::GetSelectedBGColor());    
-			 _pUIPresenter->_SetCandidateNumberColor(CConfig::GetNumberColor(), CConfig::GetItemBGColor());    
-			 _pUIPresenter->_SetCandidateFillColor(CConfig::GetItemBGColor());
 			 _pUIPresenter->_SetCandidateText(&candidateList, _pCompositionProcessorEngine->GetCandidateListIndexRange(),
 							TRUE, pCompositionProcessorEngine->GetCandidateWindowWidth());
 		 }

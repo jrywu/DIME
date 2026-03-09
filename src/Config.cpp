@@ -299,6 +299,19 @@ bool CConfig::GetEffectiveDarkMode()
 	}
 }
 
+COLORREF CConfig::GetActiveItemBGColor()
+{
+	switch (_colorMode)
+	{
+	case IME_COLOR_MODE::IME_COLOR_MODE_DARK:   return _darkItemBGColor;
+	case IME_COLOR_MODE::IME_COLOR_MODE_LIGHT:  return _lightItemBGColor;
+	case IME_COLOR_MODE::IME_COLOR_MODE_CUSTOM: return _itemBGColor;
+	case IME_COLOR_MODE::IME_COLOR_MODE_SYSTEM:
+	default:
+		return IsSystemDarkTheme() ? _darkItemBGColor : _lightItemBGColor;
+	}
+}
+
 #ifndef DIMESettings
 void CConfig::ApplyIMEColorSet(CUIPresenter* pPresenter, bool isPhraseMode)
 {
@@ -900,15 +913,15 @@ BOOL CConfig::ValidateCustomTableLines(HWND hDlg, IME_MODE imeMode, CComposition
     }
     std::wstring text(buf.data());
 
-    // Get dark theme state from dialog context
-    DialogContext* pCtx = (DialogContext*)GetWindowLongPtr(hDlg, GWLP_USERDATA);
-    bool isDarkTheme = (pCtx && pCtx->isDarkTheme);
+    // Derive dark/light validation colors from the active IME background color (covers CUSTOM mode too)
+    COLORREF bg = CConfig::GetActiveItemBGColor();
+    int lum = (GetRValue(bg) * 299 + GetGValue(bg) * 587 + GetBValue(bg) * 114) / 1000;
+    bool bgIsDark = (lum < 128);
 
-    // Choose validation colors based on theme (Step 2/3 of Phase 4 plan)
-    COLORREF errorFormat = isDarkTheme ? CUSTOM_TABLE_DARK_ERROR_FORMAT : CUSTOM_TABLE_LIGHT_ERROR_FORMAT;
-    COLORREF errorLength = isDarkTheme ? CUSTOM_TABLE_DARK_ERROR_LENGTH : CUSTOM_TABLE_LIGHT_ERROR_LENGTH;
-    COLORREF errorChar   = isDarkTheme ? CUSTOM_TABLE_DARK_ERROR_CHAR   : CUSTOM_TABLE_LIGHT_ERROR_CHAR;
-    COLORREF validColor  = isDarkTheme ? CUSTOM_TABLE_DARK_VALID        : CUSTOM_TABLE_LIGHT_VALID;
+    COLORREF errorFormat = bgIsDark ? CUSTOM_TABLE_DARK_ERROR_FORMAT : CUSTOM_TABLE_LIGHT_ERROR_FORMAT;
+    COLORREF errorLength = bgIsDark ? CUSTOM_TABLE_DARK_ERROR_LENGTH : CUSTOM_TABLE_LIGHT_ERROR_LENGTH;
+    COLORREF errorChar   = bgIsDark ? CUSTOM_TABLE_DARK_ERROR_CHAR   : CUSTOM_TABLE_LIGHT_ERROR_CHAR;
+    COLORREF validColor  = bgIsDark ? CUSTOM_TABLE_DARK_VALID        : CUSTOM_TABLE_LIGHT_VALID;
 
     // Reset all text color to default (light for dark theme, black for light theme)
     CHARFORMAT2W cfClear;
@@ -1117,16 +1130,16 @@ BOOL CConfig::ValidateCustomTableLines(HWND hDlg, IME_MODE imeMode, CComposition
 				}
 			}
 			// Enhanced error message explaining all 3 levels, colors match active theme
-			const wchar_t* msgText = isDarkTheme
+			const wchar_t* msgText = bgIsDark
 				? L"自建詞庫格式錯誤：\n\n"
-				  L"• 淡紅色整行 = 格式錯誤（需要：鍵碼 空格 詞彙）\n"
+				  L"• 淡洋紅色整行 = 格式錯誤（需要：鍵碼 空格 詞彙）\n"
 				  L"• 亮橙色鍵碼 = 鍵碼過長（超過最大長度限制）\n"
-				  L"• 淡青色字元 = 無效字元（不在輸入法字根範圍內）\n\n"
+				  L"• 淡紅色字元 = 無效字元（不在輸入法字根範圍內）\n\n"
 				  L"請修正所有標示的錯誤後再套用"
 				: L"自建詞庫格式錯誤：\n\n"
-				  L"• 紅色整行 = 格式錯誤（需要：鍵碼 空格 詞彙）\n"
+				  L"• 洋紅色整行 = 格式錯誤（需要：鍵碼 空格 詞彙）\n"
 				  L"• 橙色鍵碼 = 鍵碼過長（超過最大長度限制）\n"
-				  L"• 青色字元 = 無效字元（不在輸入法字根範圍內）\n\n"
+				  L"• 紅色字元 = 無效字元（不在輸入法字根範圍內）\n\n"
 				  L"請修正所有標示的錯誤後再套用";
 			MessageBoxW(hDlg, msgText, L"自建詞庫格式錯誤", MB_ICONWARNING | MB_OK);
 		}
@@ -3073,6 +3086,31 @@ BOOL CConfig::importCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToLoad)
             else
                 SetDlgItemTextW(hDlg, IDC_EDIT_CUSTOM_TABLE, customText);
         }
+
+		// Normalize the font of loaded text to match the dialog font.
+		// WM_SETTEXT on a RichEdit uses the control's internal default char format,
+		// which may differ from the font set via WM_SETFONT, causing a visual
+		// mismatch between loaded text and newly typed text.
+		{
+			HWND hEdit = GetDlgItem(hDlg, IDC_EDIT_CUSTOM_TABLE);
+			HFONT hDlgFont = hEdit ? (HFONT)SendMessageW(hEdit, WM_GETFONT, 0, 0) : nullptr;
+			if (hEdit && hDlgFont)
+			{
+				LOGFONT lf = {};
+				GetObject(hDlgFont, sizeof(lf), &lf);
+				HDC hdc = GetDC(hEdit);
+				int dpi = GetDeviceCaps(hdc, LOGPIXELSY);
+				ReleaseDC(hEdit, hdc);
+				CHARFORMAT2W cf = {};
+				cf.cbSize = sizeof(cf);
+				cf.dwMask = CFM_FACE | CFM_SIZE | CFM_WEIGHT | CFM_ITALIC;
+				StringCchCopyW(cf.szFaceName, LF_FACESIZE, lf.lfFaceName);
+				cf.yHeight = MulDiv(abs(lf.lfHeight), 72 * 20, dpi);
+				cf.wWeight = (WORD)lf.lfWeight;
+				if (lf.lfItalic) cf.dwEffects |= CFE_ITALIC;
+				SendMessageW(hEdit, EM_SETCHARFORMAT, SCF_ALL, (LPARAM)&cf);
+			}
+		}
 
 	Cleanup:
 		if (hCustomTable) CloseHandle(hCustomTable);

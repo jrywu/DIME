@@ -179,48 +179,44 @@ Exit:
 
 void UnregisterProfiles()
 {
-    HRESULT hr = S_OK;
-
+    // First let TSF cooperatively remove the profiles.
+    // This may silently succeed (return S_OK) without actually deleting registry keys
+    // when called from a SYSTEM-context deferred installer CA, so we always follow up
+    // with unconditional direct registry cleanup below.
     ITfInputProcessorProfileMgr *pITfInputProcessorProfileMgr = nullptr;
-    hr = CoCreateInstance(CLSID_TF_InputProcessorProfiles, NULL, CLSCTX_INPROC_SERVER,
+    HRESULT hr = CoCreateInstance(CLSID_TF_InputProcessorProfiles, NULL, CLSCTX_INPROC_SERVER,
         IID_ITfInputProcessorProfileMgr, (void**)&pITfInputProcessorProfileMgr);
-    if (FAILED(hr))
+    if (SUCCEEDED(hr))
     {
-        goto Exit;
-    }
 #ifndef NO_DAYI
-	//Dayi profile 
-    hr = pITfInputProcessorProfileMgr->UnregisterProfile(Global::DIMECLSID, TEXTSERVICE_LANGID, Global::DIMEDayiGuidProfile, 0);
-    if (FAILED(hr))
-    {
-        goto Exit;
-    }
+        pITfInputProcessorProfileMgr->UnregisterProfile(Global::DIMECLSID, TEXTSERVICE_LANGID, Global::DIMEDayiGuidProfile, 0);
 #endif
-	//Array profile 
-    hr = pITfInputProcessorProfileMgr->UnregisterProfile(Global::DIMECLSID, TEXTSERVICE_LANGID, Global::DIMEArrayGuidProfile, 0);
-    if (FAILED(hr))
-    {
-        goto Exit;
-    }
-	//Phonetic profile 
-	hr = pITfInputProcessorProfileMgr->UnregisterProfile(Global::DIMECLSID, TEXTSERVICE_LANGID, Global::DIMEPhoneticGuidProfile, 0);
-    if (FAILED(hr))
-    {
-        goto Exit;
-    }
-	//Generic profile 
-	hr = pITfInputProcessorProfileMgr->UnregisterProfile(Global::DIMECLSID, TEXTSERVICE_LANGID, Global::DIMEGenericGuidProfile, 0);
-    if (FAILED(hr))
-    {
-        goto Exit;
-    }
-Exit:
-    if (pITfInputProcessorProfileMgr)
-    {
+        pITfInputProcessorProfileMgr->UnregisterProfile(Global::DIMECLSID, TEXTSERVICE_LANGID, Global::DIMEArrayGuidProfile, 0);
+        pITfInputProcessorProfileMgr->UnregisterProfile(Global::DIMECLSID, TEXTSERVICE_LANGID, Global::DIMEPhoneticGuidProfile, 0);
+        pITfInputProcessorProfileMgr->UnregisterProfile(Global::DIMECLSID, TEXTSERVICE_LANGID, Global::DIMEGenericGuidProfile, 0);
         pITfInputProcessorProfileMgr->Release();
     }
 
-    return;
+    // Always clean up the TIP registry subtree directly, covering both the
+    // native (64-bit) and WOW64-redirected (32-bit) registry views.
+    // SOFTWARE\Microsoft\CTF\TIP may or may not be WOW64-redirected; deleting
+    // from both views is harmless when they are the same physical key.
+    WCHAR achCLSID[64] = {L'\0'};
+    if (0 == StringFromGUID2(Global::DIMECLSID, achCLSID, ARRAYSIZE(achCLSID))) return;
+
+    static const REGSAM rgSamViews[] = { KEY_WOW64_64KEY, KEY_WOW64_32KEY };
+    for (DWORD i = 0; i < ARRAYSIZE(rgSamViews); i++)
+    {
+        HKEY hTIP = nullptr;
+        if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\CTF\\TIP",
+                          0,
+                          rgSamViews[i] | DELETE | KEY_ENUMERATE_SUB_KEYS | KEY_QUERY_VALUE | KEY_SET_VALUE,
+                          &hTIP) == ERROR_SUCCESS)
+        {
+            RegDeleteTreeW(hTIP, achCLSID);
+            RegCloseKey(hTIP);
+        }
+    }
 }
 
 //+---------------------------------------------------------------------------

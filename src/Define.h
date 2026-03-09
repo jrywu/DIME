@@ -79,15 +79,18 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define CUSTOM_TABLE_LARGE_DELETION_THRESHOLD      10   // Chars deleted to trigger full validation
 
 // Custom table validation color codes (3-level error hierarchy, theme-aware)
-// Light theme colors (dark/saturated — contrast on white background)
-#define CUSTOM_TABLE_LIGHT_ERROR_FORMAT   RGB(255, 0, 0)      // Bright red
-#define CUSTOM_TABLE_LIGHT_ERROR_LENGTH   RGB(200, 100, 0)    // Dark orange
-#define CUSTOM_TABLE_LIGHT_ERROR_CHAR     RGB(0, 150, 255)    // Cyan-blue
+// Level 1 FORMAT (whole line): magenta — visible but yields red to the harder-to-spot single char error
+// Level 2 LENGTH (key span):   orange  — mid severity, spans multiple chars
+// Level 3 CHAR   (single char): red    — highest contrast for the smallest indicator
+// Light theme colors (dark/saturated — contrast on light background)
+#define CUSTOM_TABLE_LIGHT_ERROR_FORMAT   RGB(180, 0, 180)    // Magenta
+#define CUSTOM_TABLE_LIGHT_ERROR_LENGTH   RGB(200, 100, 0)    // Dark orange (unchanged)
+#define CUSTOM_TABLE_LIGHT_ERROR_CHAR     RGB(210, 0, 0)      // Red — max contrast for single char
 #define CUSTOM_TABLE_LIGHT_VALID          RGB(0, 0, 0)        // Black
 // Dark theme colors (light/bright — contrast on dark background)
-#define CUSTOM_TABLE_DARK_ERROR_FORMAT    RGB(255, 120, 120)  // Light red (pastel)
-#define CUSTOM_TABLE_DARK_ERROR_LENGTH    RGB(255, 180, 0)    // Bright orange
-#define CUSTOM_TABLE_DARK_ERROR_CHAR      RGB(100, 200, 255)  // Cyan-blue (light)
+#define CUSTOM_TABLE_DARK_ERROR_FORMAT    RGB(220, 100, 220)  // Light magenta
+#define CUSTOM_TABLE_DARK_ERROR_LENGTH    RGB(255, 180, 0)    // Bright orange (unchanged)
+#define CUSTOM_TABLE_DARK_ERROR_CHAR      RGB(255, 100, 100)  // Light red — max contrast for single char
 #define CUSTOM_TABLE_DARK_VALID           RGB(255, 255, 255)  // White
 
 // Dark theme dialog colors
