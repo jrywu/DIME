@@ -224,3 +224,5 @@ DIME.VC.db
 *.bin
 
 /.claude
+*.wixpdb
+

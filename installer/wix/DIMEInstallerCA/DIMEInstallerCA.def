@@ -1,0 +1,19 @@
+; DIMEInstallerCA.def
+;
+; Explicit export table so that x86 (__stdcall) decorated names
+; (_FunctionName@N) are suppressed.  MSI's GetProcAddress looks for the
+; bare undecorated name exactly as written in DllEntry="…".
+;
+; On x64 this file is a no-op (x64 has no per-function name decoration).
+;
+; Note: no LIBRARY directive — the output filenames are DIMEInstallerCA_x64.dll
+; and DIMEInstallerCA_x86.dll; specifying LIBRARY would cause LNK4070.
+
+EXPORTS
+    CleanupBurnARPEarly
+    CleanupBurnRegistration
+    CleanupDimeDllBak
+    ConfirmAndRemoveNsisInstall
+    ConfirmDowngrade
+    MoveLockedDimeDll
+    RollbackMoveLockedDimeDll

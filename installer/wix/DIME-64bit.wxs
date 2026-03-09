@@ -1,0 +1,594 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+  DIME-64bit.wxs
+  x64 MSI — covers AMD64 and ARM64 Windows.
+  Build: wix build DIME-64bit.wxs -arch x64 -d ProductVersion=... -d InstallerSourceDir=...
+             -ext WixToolset.Util.wixext -loc zh-TW.wxl -out DIME-64bit.msi
+
+  DLL layout (v1.3+):
+    %ProgramFiles%\DIME\amd64\DIME.dll   AMD64 native (MsiAMD64 condition)
+    %ProgramFiles%\DIME\arm64\DIME.dll   ARM64 native (MsiARM64 condition)
+    %ProgramFiles%\DIME\x86\DIME.dll     x86 WOW64 (always; registered via SysWOW64\regsvr32)
+    %ProgramFiles%\DIME\DIMESettings.exe
+    %ProgramFiles%\DIME\*.cin
+
+  ProgramFiles64Folder is never subject to WOW64 FS redirection in a 64-bit MSI.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+
+  <Package Name="DIME 輸入法"
+           Manufacturer="Jeremy Wu"
+           Version="$(var.ProductVersion)"
+           ProductCode="$(var.ProductCodeGuid)"
+           UpgradeCode="{6F8A4D2E-1B3C-5E7F-9A0B-2D4F6C8E0A1B}"
+           Language="1028"
+           Codepage="950"
+           Scope="perMachine"
+           InstallerVersion="500">
+
+    <SummaryInformation Description="DIME 輸入法安裝程式 (x64/ARM64)" Manufacturer="Jeremy Wu" />
+
+    <MajorUpgrade Schedule="afterInstallInitialize"
+                  AllowDowngrades="yes" />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- Native processor architecture detection.
+         MsiAMD64/MsiARM64 reflect the package architecture (x64) rather than the
+         native hardware when the x64 MSI runs under x64 emulation on ARM64 Windows.
+         Reading PROCESSOR_ARCHITECTURE from the 64-bit registry view always returns
+         the true native architecture ("AMD64" or "ARM64"). -->
+    <Property Id="NATIVE_PROCESSOR_ARCHITECTURE">
+      <RegistrySearch Id="SearchNativeProcessorArch"
+                      Root="HKLM"
+                      Key="SYSTEM\CurrentControlSet\Control\Session Manager\Environment"
+                      Name="PROCESSOR_ARCHITECTURE"
+                      Type="raw"
+                      Bitness="always64" />
+    </Property>
+
+    <!-- Suppress file-in-use dialogs: DIME.dll is an IME loaded by every app.
+         MSIRESTARTMANAGERCONTROL=Disable: disables Restart Manager (suppresses
+         MsiRMFilesInUse dialog). InstallUISequence suppresses both dialog actions
+         so neither the RM dialog nor the legacy FilesInUse dialog can appear.
+         MoveLockedDimeDll CA (deferred/SYSTEM) handles the actual rename. -->
+    <Property Id="MSIRESTARTMANAGERCONTROL" Value="Disable" />
+
+    <!-- Disable Change button in maintenance dialog: DIME has no selectable features. -->
+    <Property Id="ARPNOMODIFY" Value="1" />
+    <!-- Display version shown in dialog titles (e.g. "v1.2.478"), without the trailing build counter. -->
+    <Property Id="DisplayVersion" Value="$(var.DisplayVersion)" />
+
+    <!-- ================================================================
+         Detect old NSIS installation (for CA scheduling condition only).
+         The CA reads the registry directly — this property is only used
+         to skip the CA quickly when NSIS is absent.
+         ================================================================ -->
+    <Property Id="NSIS_UNINST_STR">
+      <RegistrySearch Id="SearchNsisUninstall32"
+                      Root="HKLM"
+                      Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\DIME"
+                      Name="UninstallString"
+                      Type="raw"
+                      Bitness="always32" />
+      <RegistrySearch Id="SearchNsisUninstall64"
+                      Root="HKLM"
+                      Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\DIME"
+                      Name="UninstallString"
+                      Type="raw"
+                      Bitness="always64" />
+    </Property>
+
+    <!-- ================================================================
+         Custom Action DLL (embedded binary)
+         ================================================================ -->
+    <Binary Id="BinDIMEInstallerCA"
+            SourceFile="$(var.InstallerSourceDir)\DIMEInstallerCA_x64.dll" />
+
+    <!-- NSIS migration: silent detect + rename-copy-back + uninst /S.
+         Execute="immediate" so it runs in the user session (UI thread). -->
+    <CustomAction Id="ConfirmAndRemoveNsisInstall"
+                  BinaryRef="BinDIMEInstallerCA"
+                  DllEntry="ConfirmAndRemoveNsisInstall"
+                  Execute="immediate"
+                  Return="check" />
+
+    <!-- Downgrade confirmation: older installer over currently-installed newer version.
+         AllowDowngrades="yes" on MajorUpgrade lets the MSI engine handle
+         RemoveExistingProducts + InstallFiles internally in one msiexec (no
+         _MSIExecute mutex issue).  This CA supplies the missing user-consent step.
+         Shows a bilingual (Chinese + English) Yes/No messagebox.
+         Returns ERROR_INSTALL_USEREXIT (1602) on No/Cancel; ERROR_SUCCESS on Yes. -->
+    <CustomAction Id="ConfirmDowngrade"
+                  BinaryRef="BinDIMEInstallerCA"
+                  DllEntry="ConfirmDowngrade"
+                  Execute="immediate"
+                  Return="check" />
+
+    <!-- ================================================================
+         Rename-away locked DIME.dll (deferred, SYSTEM)
+         CustomActionData: "{ProductVersion}|{amd64 dll}|{arm64 dll}|{x86 dll}"
+         The CA skips paths that do not exist (absent on wrong arch).
+         ================================================================ -->
+    <SetProperty Id="MoveLockedDimeDllInstall"
+                 Value="[ProductVersion]|[INSTALLDIR]amd64\DIME.dll|[INSTALLDIR]arm64\DIME.dll|[INSTALLDIR]x86\DIME.dll"
+                 Before="MoveLockedDimeDllInstall"
+                 Sequence="execute" />
+    <CustomAction Id="MoveLockedDimeDllInstall"
+                  BinaryRef="BinDIMEInstallerCA"
+                  DllEntry="MoveLockedDimeDll"
+                  Execute="deferred"
+                  Return="ignore"
+                  Impersonate="no" />
+
+    <SetProperty Id="MoveLockedDimeDllUninstall"
+                 Value="[ProductVersion]|[INSTALLDIR]amd64\DIME.dll|[INSTALLDIR]arm64\DIME.dll|[INSTALLDIR]x86\DIME.dll"
+                 Before="MoveLockedDimeDllUninstall"
+                 Sequence="execute" />
+    <CustomAction Id="MoveLockedDimeDllUninstall"
+                  BinaryRef="BinDIMEInstallerCA"
+                  DllEntry="MoveLockedDimeDll"
+                  Execute="deferred"
+                  Return="ignore"
+                  Impersonate="no" />
+
+    <!-- Rollback: reads bak paths from InstallerState (no CustomActionData needed) -->
+    <CustomAction Id="RollbackMoveLockedDimeDllInstall"
+                  BinaryRef="BinDIMEInstallerCA"
+                  DllEntry="RollbackMoveLockedDimeDll"
+                  Execute="rollback"
+                  Return="ignore"
+                  Impersonate="no" />
+    <CustomAction Id="RollbackMoveLockedDimeDllUninstall"
+                  BinaryRef="BinDIMEInstallerCA"
+                  DllEntry="RollbackMoveLockedDimeDll"
+                  Execute="rollback"
+                  Return="ignore"
+                  Impersonate="no" />
+
+    <!-- Commit: mark baks delete-pending + glob-scan stale baks -->
+    <!-- Two aliases for the same export (install vs uninstall context) -->
+    <CustomAction Id="CleanupDimeDllBakInstall"
+                  BinaryRef="BinDIMEInstallerCA"
+                  DllEntry="CleanupDimeDllBak"
+                  Execute="commit"
+                  Return="ignore"
+                  Impersonate="no" />
+    <CustomAction Id="CleanupDimeDllBakUninstall"
+                  BinaryRef="BinDIMEInstallerCA"
+                  DllEntry="CleanupDimeDllBak"
+                  Execute="commit"
+                  Return="ignore"
+                  Impersonate="no" />
+
+    <!-- Clean up all DIME Burn bundle ARP registry entries.
+         Fires on every install and uninstall (except the old-product remove
+         phase of a MajorUpgrade, where UPGRADINGPRODUCTCODE is set).
+         On install via Burn: deletes the entry Burn just created so only the
+         MSI ARP entry remains visible in Programs and Features.
+         On uninstall: removes any lingering Burn entries from prior installs. -->
+    <CustomAction Id="CleanupBurnRegistration"
+                  BinaryRef="BinDIMEInstallerCA"
+                  DllEntry="CleanupBurnRegistration"
+                  Execute="commit"
+                  Return="ignore"
+                  Impersonate="no" />
+
+    <!-- Burn writes its ARP entry at Apply-start, before the MSI runs.
+         If the user cancels (or closes the maintenance dialog without acting),
+         InstallExecuteSequence never commits and CleanupBurnRegistration never
+         fires.  This immediate variant runs in InstallUISequence, which executes
+         unconditionally on every MSI invocation — even on cancel — so orphaned
+         Burn ARP entries are always cleaned up. -->
+    <CustomAction Id="CleanupBurnARPEarly"
+                  BinaryRef="BinDIMEInstallerCA"
+                  DllEntry="CleanupBurnARPEarly"
+                  Execute="immediate"
+                  Return="ignore" />
+
+    <!-- Kill DIMESettings.exe before install/uninstall -->
+    <util:CloseApplication Id="CloseDIMESettings"
+                           Target="DIMESettings.exe"
+                           CloseMessage="yes"
+                           RebootPrompt="no"
+                           TerminateProcess="3000" />
+
+    <!-- ================================================================
+         DLL Registration — AMD64
+         [System64Folder]regsvr32.exe = native 64-bit regsvr32
+         ================================================================ -->
+    <SetProperty Id="RegisterAmd64Dll"
+                 Value="&quot;[System64Folder]regsvr32.exe&quot; /s &quot;[INSTALLDIR]amd64\DIME.dll&quot;"
+                 Before="RegisterAmd64Dll"
+                 Sequence="execute" />
+    <CustomAction Id="RegisterAmd64Dll"
+                  BinaryRef="Wix4UtilCA_X64"
+                  DllEntry="WixQuietExec64"
+                  Execute="deferred"
+                  Return="ignore"
+                  Impersonate="no" />
+
+    <SetProperty Id="RollbackRegisterAmd64Dll"
+                 Value="&quot;[System64Folder]regsvr32.exe&quot; /u /s &quot;[INSTALLDIR]amd64\DIME.dll&quot;"
+                 Before="RollbackRegisterAmd64Dll"
+                 Sequence="execute" />
+    <CustomAction Id="RollbackRegisterAmd64Dll"
+                  BinaryRef="Wix4UtilCA_X64"
+                  DllEntry="WixQuietExec64"
+                  Execute="rollback"
+                  Return="ignore"
+                  Impersonate="no" />
+
+    <SetProperty Id="UnregisterAmd64Dll"
+                 Value="&quot;[System64Folder]regsvr32.exe&quot; /u /s &quot;[INSTALLDIR]amd64\DIME.dll&quot;"
+                 Before="UnregisterAmd64Dll"
+                 Sequence="execute" />
+    <CustomAction Id="UnregisterAmd64Dll"
+                  BinaryRef="Wix4UtilCA_X64"
+                  DllEntry="WixQuietExec64"
+                  Execute="deferred"
+                  Return="ignore"
+                  Impersonate="no" />
+
+    <!-- ================================================================
+         DLL Registration — ARM64
+         [System64Folder]regsvr32.exe = ARM64 native regsvr32 on ARM64 OS
+         ================================================================ -->
+    <SetProperty Id="RegisterArm64Dll"
+                 Value="&quot;[System64Folder]regsvr32.exe&quot; /s &quot;[INSTALLDIR]arm64\DIME.dll&quot;"
+                 Before="RegisterArm64Dll"
+                 Sequence="execute" />
+    <CustomAction Id="RegisterArm64Dll"
+                  BinaryRef="Wix4UtilCA_X64"
+                  DllEntry="WixQuietExec64"
+                  Execute="deferred"
+                  Return="ignore"
+                  Impersonate="no" />
+
+    <SetProperty Id="RollbackRegisterArm64Dll"
+                 Value="&quot;[System64Folder]regsvr32.exe&quot; /u /s &quot;[INSTALLDIR]arm64\DIME.dll&quot;"
+                 Before="RollbackRegisterArm64Dll"
+                 Sequence="execute" />
+    <CustomAction Id="RollbackRegisterArm64Dll"
+                  BinaryRef="Wix4UtilCA_X64"
+                  DllEntry="WixQuietExec64"
+                  Execute="rollback"
+                  Return="ignore"
+                  Impersonate="no" />
+
+    <SetProperty Id="UnregisterArm64Dll"
+                 Value="&quot;[System64Folder]regsvr32.exe&quot; /u /s &quot;[INSTALLDIR]arm64\DIME.dll&quot;"
+                 Before="UnregisterArm64Dll"
+                 Sequence="execute" />
+    <CustomAction Id="UnregisterArm64Dll"
+                  BinaryRef="Wix4UtilCA_X64"
+                  DllEntry="WixQuietExec64"
+                  Execute="deferred"
+                  Return="ignore"
+                  Impersonate="no" />
+
+    <!-- ================================================================
+         DLL Registration — x86 (WOW64)
+         [SystemFolder] = SysWOW64\ in a 64-bit MSI.
+         SysWOW64\regsvr32.exe is the 32-bit regsvr32.
+         ================================================================ -->
+    <SetProperty Id="RegisterX86Dll"
+                 Value="&quot;[SystemFolder]regsvr32.exe&quot; /s &quot;[INSTALLDIR]x86\DIME.dll&quot;"
+                 Before="RegisterX86Dll"
+                 Sequence="execute" />
+    <CustomAction Id="RegisterX86Dll"
+                  BinaryRef="Wix4UtilCA_X64"
+                  DllEntry="WixQuietExec64"
+                  Execute="deferred"
+                  Return="ignore"
+                  Impersonate="no" />
+
+    <SetProperty Id="RollbackRegisterX86Dll"
+                 Value="&quot;[SystemFolder]regsvr32.exe&quot; /u /s &quot;[INSTALLDIR]x86\DIME.dll&quot;"
+                 Before="RollbackRegisterX86Dll"
+                 Sequence="execute" />
+    <CustomAction Id="RollbackRegisterX86Dll"
+                  BinaryRef="Wix4UtilCA_X64"
+                  DllEntry="WixQuietExec64"
+                  Execute="rollback"
+                  Return="ignore"
+                  Impersonate="no" />
+
+    <SetProperty Id="UnregisterX86Dll"
+                 Value="&quot;[SystemFolder]regsvr32.exe&quot; /u /s &quot;[INSTALLDIR]x86\DIME.dll&quot;"
+                 Before="UnregisterX86Dll"
+                 Sequence="execute" />
+    <CustomAction Id="UnregisterX86Dll"
+                  BinaryRef="Wix4UtilCA_X64"
+                  DllEntry="WixQuietExec64"
+                  Execute="deferred"
+                  Return="ignore"
+                  Impersonate="no" />
+
+    <!-- ================================================================
+         UI Sequence — suppress file-in-use dialogs
+         These actions live in InstallUISequence (user process, pre-elevation).
+         Suppressing here prevents the dialog regardless of elevation state.
+         ================================================================ -->
+    <InstallUISequence>
+      <MsiRMFilesInUse Suppress="yes" />
+      <FilesInUse Suppress="yes" />
+      <!-- Cleans orphaned Burn ARP entries. Runs unconditionally, even on cancel.
+           Fires before FindRelatedProducts so the ARP is already gone before
+           Burn's related-bundle detection could ever see it. -->
+      <Custom Action="CleanupBurnARPEarly" Before="FindRelatedProducts" />
+      <!-- Downgrade confirmation: runs in user session (pre-elevation) with
+           full UI access. Shows bilingual Yes/No messagebox. Cancels install
+           before elevation if user declines. Skipped for /quiet installs
+           (UISequence not run in silent mode — downgrade proceeds silently,
+           which is correct for automated/enterprise use). -->
+      <!-- No Condition here — the CA itself checks WIX_DOWNGRADE_DETECTED and
+           returns immediately if not a downgrade. Removing the condition means
+           the CA always fires and its log entries always appear, making it
+           possible to diagnose exactly what FindRelatedProducts returned. -->
+      <Custom Action="ConfirmDowngrade" After="FindRelatedProducts" />
+    </InstallUISequence>
+
+    <!-- ================================================================
+         Execute Sequence
+         ================================================================ -->
+    <InstallExecuteSequence>
+      <!-- Downgrade confirmation in silent/quiet mode (UILevel <= 2).
+           InstallUISequence is skipped for silent installs, so ConfirmDowngrade
+           is placed here to block silent Burn downgrades (returns 1602).
+           Condition "UILevel < 3" prevents a second invocation when UILevel >= 3
+           (interactive mode), where the UISequence entry already ran. -->
+      <Custom Action="ConfirmDowngrade" After="FindRelatedProducts"
+              Condition="UILevel &lt; 3" />
+
+      <!-- NSIS migration (immediate, user session).
+           Skip during upgrade/downgrade: if WIX_UPGRADE_DETECTED is set a WiX
+           version is already installed, meaning NSIS was migrated during that
+           first WiX install. Running it again on upgrade/downgrade would cause a
+           120-second hang if any NSIS residual registry entry is still present. -->
+      <Custom Action="ConfirmAndRemoveNsisInstall" Before="InstallInitialize"
+              Condition="NOT Installed AND NOT UPGRADINGPRODUCTCODE AND NOT WIX_UPGRADE_DETECTED" />
+
+      <!-- Install/upgrade/downgrade: rename old DLLs away BEFORE RemoveExistingProducts
+           so Windows Installer's file version costing sees them as absent and
+           installs the new version unconditionally (fixes downgrade DLL skip).
+           Guard: skip in maintenance-mode reinstall (Installed=1, no upgrade)
+           because InstallFiles won't re-lay unchanged files and CleanupDimeDllBak
+           would then permanently delete the renamed DLLs. -->
+      <Custom Action="RollbackMoveLockedDimeDllInstall" Before="MoveLockedDimeDllInstall"
+              Condition="NOT Installed OR UPGRADINGPRODUCTCODE" />
+      <Custom Action="MoveLockedDimeDllInstall" Before="InstallFiles"
+              Condition="NOT Installed OR UPGRADINGPRODUCTCODE" />
+
+      <!-- Register DLLs after InstallFiles -->
+      <Custom Action="RollbackRegisterAmd64Dll" After="InstallFiles"
+              Condition="NOT REMOVE AND NATIVE_PROCESSOR_ARCHITECTURE = &quot;AMD64&quot;" />
+      <Custom Action="RegisterAmd64Dll" After="RollbackRegisterAmd64Dll"
+              Condition="NOT REMOVE AND NATIVE_PROCESSOR_ARCHITECTURE = &quot;AMD64&quot;" />
+
+      <Custom Action="RollbackRegisterArm64Dll" After="InstallFiles"
+              Condition="NOT REMOVE AND NATIVE_PROCESSOR_ARCHITECTURE = &quot;ARM64&quot;" />
+      <Custom Action="RegisterArm64Dll" After="RollbackRegisterArm64Dll"
+              Condition="NOT REMOVE AND NATIVE_PROCESSOR_ARCHITECTURE = &quot;ARM64&quot;" />
+
+      <Custom Action="RollbackRegisterX86Dll" After="InstallFiles"
+              Condition="NOT REMOVE" />
+      <Custom Action="RegisterX86Dll" After="RollbackRegisterX86Dll"
+              Condition="NOT REMOVE" />
+
+      <!-- Commit: mark baks delete-pending after successful install -->
+      <Custom Action="CleanupDimeDllBakInstall" Before="InstallFinalize"
+              Condition="NOT REMOVE" />
+
+      <!-- Uninstall: unregister DLLs, then rename away before RemoveFiles.
+           Guard: skip when UPGRADINGPRODUCTCODE is set — the old product is being
+           removed as part of a major upgrade. The new product has already registered
+           its DLLs; unregistering here would break the freshly installed IME. -->
+      <Custom Action="UnregisterAmd64Dll" Before="RemoveFiles"
+              Condition="REMOVE AND NOT UPGRADINGPRODUCTCODE AND NATIVE_PROCESSOR_ARCHITECTURE = &quot;AMD64&quot;" />
+      <Custom Action="UnregisterArm64Dll" Before="RemoveFiles"
+              Condition="REMOVE AND NOT UPGRADINGPRODUCTCODE AND NATIVE_PROCESSOR_ARCHITECTURE = &quot;ARM64&quot;" />
+      <Custom Action="UnregisterX86Dll" Before="RemoveFiles"
+              Condition="REMOVE AND NOT UPGRADINGPRODUCTCODE" />
+
+      <Custom Action="RollbackMoveLockedDimeDllUninstall" Before="MoveLockedDimeDllUninstall"
+              Condition="REMOVE AND NOT UPGRADINGPRODUCTCODE" />
+      <Custom Action="MoveLockedDimeDllUninstall" After="UnregisterX86Dll"
+              Condition="REMOVE AND NOT UPGRADINGPRODUCTCODE" />
+
+      <!-- Commit: mark baks delete-pending after successful uninstall -->
+      <Custom Action="CleanupDimeDllBakUninstall" Before="InstallFinalize"
+              Condition="REMOVE AND NOT UPGRADINGPRODUCTCODE" />
+
+      <!-- Commit: delete all DIME Burn ARP registry entries.
+           Condition NOT UPGRADINGPRODUCTCODE skips the old-product remove phase
+           of a MajorUpgrade (the new product's install pass handles cleanup). -->
+      <Custom Action="CleanupBurnRegistration" Before="InstallFinalize"
+              Condition="NOT UPGRADINGPRODUCTCODE" />
+    </InstallExecuteSequence>
+
+    <!-- ================================================================
+         Directory Structure
+         ================================================================ -->
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLDIR" Name="DIME">
+
+        <!-- Per-architecture DLL subdirectories -->
+        <Directory Id="DirDIMEAmd64" Name="amd64">
+          <!-- AMD64 DIME.dll — only installed when native OS is AMD64 -->
+          <Component Id="CmpDIMEAmd64" Guid="*" Condition="NATIVE_PROCESSOR_ARCHITECTURE = &quot;AMD64&quot;">
+            <File Id="FileDIMEAmd64"
+                  Source="$(var.InstallerSourceDir)\amd64\DIME.dll"
+                  KeyPath="yes" />
+          </Component>
+        </Directory>
+
+        <Directory Id="DirDIMEArm64" Name="arm64">
+          <!-- ARM64 DIME.dll — only installed when native OS is ARM64 -->
+          <Component Id="CmpDIMEArm64" Guid="*" Condition="NATIVE_PROCESSOR_ARCHITECTURE = &quot;ARM64&quot;">
+            <File Id="FileDIMEArm64"
+                  Source="$(var.InstallerSourceDir)\arm64\DIME.dll"
+                  KeyPath="yes" />
+          </Component>
+        </Directory>
+
+        <Directory Id="DirDIMEx86" Name="x86">
+          <!-- x86 DIME.dll — always installed (WOW64 support on both AMD64 and ARM64) -->
+          <Component Id="CmpDIMEx86" Guid="*">
+            <File Id="FileDIMEx86"
+                  Source="$(var.InstallerSourceDir)\x86\DIME.dll"
+                  KeyPath="yes" />
+          </Component>
+        </Directory>
+
+        <!-- DIMESettings.exe -->
+        <Component Id="CmpDIMESettings" Guid="{3C5E7A9B-0D2E-4F6A-8B1C-5D7F9A2B3C4D}">
+          <File Id="FileDIMESettings"
+                Source="$(var.InstallerSourceDir)\DIMESettings.exe"
+                KeyPath="yes" />
+        </Component>
+
+        <!-- .cin input method table files -->
+        <Component Id="CmpCin_phone" Guid="*">
+          <File Source="$(var.InstallerSourceDir)\phone.cin" KeyPath="yes" />
+        </Component>
+        <Component Id="CmpCin_TCFreq" Guid="*">
+          <File Source="$(var.InstallerSourceDir)\TCFreq.cin" KeyPath="yes" />
+        </Component>
+        <Component Id="CmpCin_TCSC" Guid="*">
+          <File Source="$(var.InstallerSourceDir)\TCSC.cin" KeyPath="yes" />
+        </Component>
+        <Component Id="CmpCin_ArrayPhrase" Guid="*">
+          <File Source="$(var.InstallerSourceDir)\Array-Phrase.cin" KeyPath="yes" />
+        </Component>
+        <Component Id="CmpCin_ArrayExtB" Guid="*">
+          <File Source="$(var.InstallerSourceDir)\Array-Ext-B.cin" KeyPath="yes" />
+        </Component>
+        <Component Id="CmpCin_ArrayExtCD" Guid="*">
+          <File Source="$(var.InstallerSourceDir)\Array-Ext-CD.cin" KeyPath="yes" />
+        </Component>
+        <Component Id="CmpCin_ArrayExtEF" Guid="*">
+          <File Source="$(var.InstallerSourceDir)\Array-Ext-EF.cin" KeyPath="yes" />
+        </Component>
+        <Component Id="CmpCin_Array" Guid="*">
+          <File Source="$(var.InstallerSourceDir)\Array.cin" KeyPath="yes" />
+        </Component>
+        <Component Id="CmpCin_Array40" Guid="*">
+          <File Source="$(var.InstallerSourceDir)\Array40.cin" KeyPath="yes" />
+        </Component>
+        <Component Id="CmpCin_ArrayShortcode" Guid="*">
+          <File Source="$(var.InstallerSourceDir)\Array-shortcode.cin" KeyPath="yes" />
+        </Component>
+        <Component Id="CmpCin_ArraySpecial" Guid="*">
+          <File Source="$(var.InstallerSourceDir)\Array-special.cin" KeyPath="yes" />
+        </Component>
+
+        <!-- Start Menu shortcuts -->
+        <Component Id="CmpShortcuts" Guid="{4E6F8B0C-2D4E-6F8A-0B1C-5D7F9B1C3E5F}">
+          <RegistryValue Root="HKLM"
+                         Key="SOFTWARE\DIME"
+                         Name="ShortcutInstalled"
+                         Type="integer"
+                         Value="1"
+                         KeyPath="yes" />
+          <Shortcut Id="ShortcutDIMESettings"
+                    Directory="ProgramMenuDIME"
+                    Name="DIME設定"
+                    Target="[INSTALLDIR]DIMESettings.exe"
+                    WorkingDirectory="INSTALLDIR"
+                    Advertise="no" />
+          <RemoveFolder Id="RemoveProgramMenuDIME" Directory="ProgramMenuDIME" On="uninstall" />
+        </Component>
+
+        <!-- Records installed version for Burn downgrade detection.
+             Burn's own ARP key is suppressed by ARPSYSTEMCOMPONENT=1 so the
+             bundle cannot find its own BundleVersion in the registry.
+             This stable key lets the Bundle's RegistrySearch detect the
+             installed version before running any packages. -->
+        <Component Id="CmpInstalledVersion" Guid="{2A4C6E8F-1B3D-5E7A-9C0B-4F6A8E0C2D4F}">
+          <RegistryValue Root="HKLM"
+                         Key="SOFTWARE\DIME"
+                         Name="InstalledVersion"
+                         Type="string"
+                         Value="[ProductVersion]"
+                         KeyPath="yes" />
+        </Component>
+
+      </Directory>
+    </StandardDirectory>
+
+    <!-- Start Menu folder -->
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ProgramMenuDIME" Name="DIME" />
+    </StandardDirectory>
+
+    <!-- ================================================================
+         Feature
+         ================================================================ -->
+    <Feature Id="FeatureMain" Title="DIME 輸入法" Level="1">
+      <ComponentRef Id="CmpDIMEAmd64" />
+      <ComponentRef Id="CmpDIMEArm64" />
+      <ComponentRef Id="CmpDIMEx86" />
+      <ComponentRef Id="CmpDIMESettings" />
+      <ComponentRef Id="CmpCin_phone" />
+      <ComponentRef Id="CmpCin_TCFreq" />
+      <ComponentRef Id="CmpCin_TCSC" />
+      <ComponentRef Id="CmpCin_ArrayPhrase" />
+      <ComponentRef Id="CmpCin_ArrayExtB" />
+      <ComponentRef Id="CmpCin_ArrayExtCD" />
+      <ComponentRef Id="CmpCin_ArrayExtEF" />
+      <ComponentRef Id="CmpCin_Array" />
+      <ComponentRef Id="CmpCin_Array40" />
+      <ComponentRef Id="CmpCin_ArrayShortcode" />
+      <ComponentRef Id="CmpCin_ArraySpecial" />
+      <ComponentRef Id="CmpShortcuts" />
+      <ComponentRef Id="CmpInstalledVersion" />
+    </Feature>
+
+    <!-- Custom UI: WelcomeDlg (no EULA) → VerifyReadyDlg on first install/patch;
+         MaintenanceWelcomeDlg → MaintenanceTypeDlg on re-run. -->
+    <!-- Background bitmap for WelcomeDlg (493×312, 24-bit BMP — MSI Bitmap controls
+         require BMP format; PNG is not rendered by the GDI-based MSI dialog engine.
+         $(sys.SOURCEFILEDIR) expands to this WXS file's directory at build time. -->
+    <WixVariable Id="WixUIDialogBmp" Value="$(sys.SOURCEFILEDIR)DialogBG.bmp" />
+    <WixVariable Id="WixUIBannerBmp" Value="$(sys.SOURCEFILEDIR)banner.bmp" />
+    <UIRef Id="WixUI_Common" />
+    <UI>
+      <!-- Pull in dialogs not included by WixUI_Common -->
+      <DialogRef Id="WelcomeDlg" />
+      <DialogRef Id="MaintenanceWelcomeDlg" />
+      <DialogRef Id="MaintenanceTypeDlg" />
+      <DialogRef Id="VerifyReadyDlg" />
+      <DialogRef Id="WaitForCostingDlg" />
+      <!-- CancelDlg handles "are you sure you want to cancel?" during the
+           progress phase. Without this, any cancel attempt during execution
+           (including Windows firing the "not responding" timeout) triggers
+           error 2803 because ProgressDlg tries to navigate to an undefined
+           dialog. -->
+      <DialogRef Id="CancelDlg" />
+
+      <!-- WelcomeDlg: first install → VerifyReadyDlg.
+           (Patch path and Cancel are already in WelcomeDlg.wxs via WixUI_Common.) -->
+      <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog"
+               Value="VerifyReadyDlg" Order="1" Condition="NOT Installed" />
+
+      <!-- VerifyReadyDlg back navigation -->
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog"
+               Value="WelcomeDlg" Order="1" Condition="NOT Installed" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog"
+               Value="MaintenanceTypeDlg" Order="2" Condition="Installed AND NOT PATCH" />
+
+      <!-- Maintenance flow -->
+      <Publish Dialog="MaintenanceWelcomeDlg" Control="Next" Event="NewDialog"
+               Value="MaintenanceTypeDlg" />
+      <Publish Dialog="MaintenanceTypeDlg" Control="RepairButton" Event="NewDialog"
+               Value="VerifyReadyDlg" />
+      <Publish Dialog="MaintenanceTypeDlg" Control="RemoveButton" Event="NewDialog"
+               Value="VerifyReadyDlg" />
+      <Publish Dialog="MaintenanceTypeDlg" Control="Back" Event="NewDialog"
+               Value="MaintenanceWelcomeDlg" />
+    </UI>
+
+  </Package>
+</Wix>

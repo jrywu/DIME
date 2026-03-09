@@ -4,8 +4,8 @@
 
 
 !define PRODUCT_NAME "DIME"
-!define PRODUCT_VERSION "1.2.457"
-!define PRODUCT_SUBVERSION "60224"
+!define PRODUCT_VERSION "1.2.478"
+!define PRODUCT_SUBVERSION "60305"
 !define PRODUCT_PUBLISHER "Jeremy Wu"
 !define PRODUCT_WEB_SITE "http://github.com/jrywu/DIME"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
@@ -75,9 +75,9 @@ ShowUnInstDetails show
 LangString DESC_INSTALLING ${LANG_TradChinese} "安裝中"
 LangString DESC_DOWNLOADING1 ${LANG_TradChinese} "下載中"
 LangString DESC_DOWNLOADFAILED ${LANG_TradChinese} "下載失敗:"
-LangString DESC_VCX86 ${LANG_TradChinese} "Visual C++ Redistritable x86"
-LangString DESC_VCX64 ${LANG_TradChinese} "Visual C++ Redistritable x64"
-LangString DESC_VCARM64 ${LANG_TradChinese} "Visual C++ Redistritable ARM64"
+LangString DESC_VCX86 ${LANG_TradChinese} "Visual C++ Redistributable x86"
+LangString DESC_VCX64 ${LANG_TradChinese} "Visual C++ Redistributable x64"
+LangString DESC_VCARM64 ${LANG_TradChinese} "Visual C++ Redistributable ARM64"
 LangString DESC_VCX86_DECISION ${LANG_TradChinese} "安裝此輸入法之前，必須先安裝 $(DESC_VCX86)，若你想繼續安裝 \
   ，您的電腦必須連接網路。$\n您要繼續這項安裝嗎？"
 LangString DESC_VCX64_DECISION ${LANG_TradChinese} "安裝此輸入法之前，必須先安裝 $(DESC_VCX64)，若你想繼續安裝 \

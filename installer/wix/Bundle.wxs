@@ -1,0 +1,83 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Bundle.wxs — Burn bootstrapper for DIME-Universal.exe
+  Build with:  wix build Bundle.wxs -d ProductVersion=... -d InstallerSourceDir=...
+               -ext WixToolset.BootstrapperApplications.wixext
+               -loc zh-TW.wxl -out DIME-Universal.exe
+
+  Chain order:
+    [1] DIME-32bit.msi - x86 machines (PrimaryPackageType="x86")
+    [2] DIME-64bit.msi  - AMD64 or ARM64 (PrimaryPackageType="default")
+
+  Architecture selection:
+    WixInternalUIBootstrapperApplication detects native machine architecture
+    and selects the correct MSI primary package. No bundle UpgradeCode is set —
+    all upgrade/downgrade/reinstall logic is handled entirely by the MSIs.
+    The MSI's ConfirmDowngrade CA fires on WIX_DOWNGRADE_DETECTED for both
+    MSI-direct and Burn-managed installs.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal">
+
+  <Bundle Name="DIME 輸入法 $(var.ProductVersion)"
+          Id="DIMEBundle"
+          Manufacturer="Jeremy Wu"
+          Version="$(var.ProductVersion)"
+          AboutUrl="https://github.com/jrywu/DIME"
+          Compressed="yes">
+
+    <!-- No UpgradeCode on the Bundle — intentional.
+         UpgradeCode triggers Burn's related-bundle detection: if an older
+         installer sees a newer bundle's ARP entry it silently calls Quit().
+         Without UpgradeCode, Burn never looks for related bundles and always
+         runs the MSI normally. The MSI owns all upgrade/downgrade logic.
+
+         Burn's ARP entry is hidden (SystemComponent=1) so it never appears in
+         Programs & Features. The MSI CA also scans and deletes all DIME Burn
+         ARP entries (matched by Publisher + DisplayName + BundleVersion) at the
+         start of every MSI invocation so orphans never accumulate. -->
+    <Variable Name="ARPSYSTEMCOMPONENT" Type="numeric" Value="1" />
+
+    <!-- WixInternalUIBootstrapperApplication: Burn shows NO Burn UI itself.
+         It detects the native machine architecture and selects the correct
+         MSI primary package (x64 / x86). The selected MSI shows its own
+         full wizard UI (WixUI_Minimal). -->
+    <BootstrapperApplication>
+      <bal:WixInternalUIBootstrapperApplication />
+    </BootstrapperApplication>
+
+    <Chain>
+      <!-- x64 MSI: AMD64 and ARM64 Windows -->
+      <MsiPackage Id="PkgDIMEx64"
+                  DisplayName="DIME 輸入法"
+                  SourceFile="$(var.InstallerSourceDir)\DIME-64bit.msi"
+                  bal:PrimaryPackageType="default"
+                  Vital="yes"
+                  Compressed="yes"
+                  ForcePerMachine="yes">
+        <!-- Override Burn's automatic ARPSYSTEMCOMPONENT=1 so the MSI's own
+             ARP entry remains visible in Programs and Features. -->
+        <MsiProperty Name="ARPSYSTEMCOMPONENT" Value="" />
+        <!-- Pass the current bundle's provider GUID to the MSI CA so that
+             CleanupBurnRegistration can skip deleting the currently-running
+             bundle's ARP entry (only orphans from prior builds are deleted). -->
+        <MsiProperty Name="BURN_BUNDLE_ID" Value="[WixBundleProviderKey]" />
+      </MsiPackage>
+
+      <!-- x86 MSI: 32-bit Windows only -->
+      <MsiPackage Id="PkgDIMEx86"
+                  DisplayName="DIME 輸入法"
+                  SourceFile="$(var.InstallerSourceDir)\DIME-32bit.msi"
+                  bal:PrimaryPackageType="x86"
+                  Vital="yes"
+                  Compressed="yes"
+                  ForcePerMachine="yes">
+        <!-- Override Burn's automatic ARPSYSTEMCOMPONENT=1 so the MSI's own
+             ARP entry remains visible in Programs and Features. -->
+        <MsiProperty Name="ARPSYSTEMCOMPONENT" Value="" />
+        <MsiProperty Name="BURN_BUNDLE_ID" Value="[WixBundleProviderKey]" />
+      </MsiPackage>
+
+    </Chain>
+  </Bundle>
+</Wix>

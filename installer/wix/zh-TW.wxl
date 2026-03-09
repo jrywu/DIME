@@ -1,0 +1,155 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<WixLocalization xmlns="http://wixtoolset.org/schemas/v4/wxl" Culture="zh-TW" Language="1028" Codepage="950">
+  <String Id="DowngradeError" Value="偵測到較新版的 DIME，請先解除安裝新版後再安裝。"/>
+  <String Id="BundleManagedError" Value="DIME 輸入法目前由 DIME-Universal.exe 安裝程式套件管理，請使用原安裝程式套件進行修復或移除，而非直接執行 .msi 檔案。"/>
+  <String Id="x86OnlyWarning" Value="DIME-32bit.msi 僅適用於 32 位元 Windows　64 位元系統請使用 DIME-64bit.msi 或 DIME-Universal.exe 安裝程式。"/>
+  <String Id="WelcomeTitle" Value="歡迎使用 DIME 輸入法安裝程式"/>
+  <String Id="WelcomeText" Value="本安裝程式將引導您完成 DIME 輸入法的安裝程序。$\n$\n在開始安裝前，建議您關閉所有正在執行的應用程式。$\n$\n按下「安裝」開始安裝。"/>
+  <String Id="FinishTitle" Value="安裝完成"/>
+  <String Id="FinishText" Value="DIME 輸入法已成功安裝於您的電腦中。"/>
+  <String Id="BundleWelcomeTitle" Value="DIME 輸入法安裝程式"/>
+  <String Id="InstallButton" Value="安裝"/>
+  <String Id="UninstallButton" Value="解除安裝"/>
+  <String Id="RepairButton" Value="修復"/>
+  <String Id="CancelButton" Value="取消"/>
+  <String Id="CloseButton" Value="關閉"/>
+  <String Id="ProgressInstalling" Value="正在安裝 DIME 輸入法..."/>
+  <String Id="ProgressUninstalling" Value="正在解除安裝 DIME 輸入法..."/>
+
+  <!-- ================================================================
+       WixUI dialog strings (zh-TW translations)
+       ================================================================ -->
+
+  <!-- Common buttons -->
+  <String Id="WixUIBack"   Value="上一步(&amp;B)" />
+  <String Id="WixUINext"   Value="下一步(&amp;N)" />
+  <String Id="WixUICancel" Value="取消" />
+  <String Id="WixUIFinish" Value="完成(&amp;F)" />
+  <String Id="WixUIRetry"  Value="重試(&amp;R)" />
+  <String Id="WixUIIgnore" Value="略過(&amp;I)" />
+  <String Id="WixUIYes"    Value="是(&amp;Y)" />
+  <String Id="WixUINo"     Value="否(&amp;N)" />
+  <String Id="WixUIOK"     Value="確定" />
+  <String Id="WixUIPrint"  Value="列印(&amp;P)" />
+
+  <!-- WelcomeDlg -->
+  <String Id="WelcomeDlg_Title"   Value="[ProductName] [DisplayVersion] 安裝" />
+  <String Id="WelcomeDlgTitle"    Value="{\WixUI_Font_Bigger}歡迎使用 [ProductName] [DisplayVersion] 安裝精靈" />
+  <String Id="WelcomeDlgDescription"
+          Value="本安裝精靈將引導您完成 [ProductName] 的安裝程序。&#xA;&#xA;建議您在繼續前關閉所有其他應用程式，以免安裝過程中發生問題。&#xA;&#xA;按「下一步」繼續，或按「取消」結束安裝精靈。" />
+  <String Id="WelcomeUpdateDlgDescriptionUpdate"
+          Value="本安裝精靈將更新您電腦上的 [ProductName]。按「下一步」繼續，或按「取消」結束安裝精靈。" />
+
+  <!-- VerifyReadyDlg -->
+  <String Id="VerifyReadyDlg_Title"       Value="[ProductName] [DisplayVersion] 安裝" />
+  <String Id="VerifyReadyDlgBannerBitmap" Value="WixUI_Bmp_Banner" />
+  <String Id="VerifyReadyDlgInstall"      Value="安裝(&amp;I)" />
+  <String Id="VerifyReadyDlgInstallText"
+          Value="按「安裝」開始安裝。按「上一步」可檢視或變更安裝設定，或按「取消」結束安裝精靈。" />
+  <String Id="VerifyReadyDlgInstallTitle" Value="{\WixUI_Font_Title}準備好安裝 [ProductName]" />
+  <String Id="VerifyReadyDlgChange"       Value="變更(&amp;C)" />
+  <String Id="VerifyReadyDlgChangeText"
+          Value="按「變更」開始變更安裝。按「上一步」可檢視或變更安裝設定，或按「取消」結束安裝精靈。" />
+  <String Id="VerifyReadyDlgChangeTitle"  Value="{\WixUI_Font_Title}準備好變更 [ProductName]" />
+  <String Id="VerifyReadyDlgRepair"       Value="修復(&amp;R)" />
+  <String Id="VerifyReadyDlgRepairText"
+          Value="按「修復」修復 [ProductName] 的安裝。按「上一步」或按「取消」結束安裝精靈。" />
+  <String Id="VerifyReadyDlgRepairTitle"  Value="{\WixUI_Font_Title}準備好修復 [ProductName]" />
+  <String Id="VerifyReadyDlgRemove"       Value="移除(&amp;R)" />
+  <String Id="VerifyReadyDlgRemoveText"
+          Value="按「移除」從電腦移除 [ProductName]。按「上一步」或按「取消」結束安裝精靈。" />
+  <String Id="VerifyReadyDlgRemoveTitle"  Value="{\WixUI_Font_Title}準備好移除 [ProductName]" />
+  <String Id="VerifyReadyDlgUpdate"       Value="更新(&amp;U)" />
+  <String Id="VerifyReadyDlgUpdateText"
+          Value="按「更新」更新 [ProductName]。按「上一步」或按「取消」結束安裝精靈。" />
+  <String Id="VerifyReadyDlgUpdateTitle"  Value="{\WixUI_Font_Title}準備好更新 [ProductName]" />
+
+  <!-- ExitDialog -->
+  <String Id="ExitDialog_Title"      Value="[ProductName] [DisplayVersion] 安裝" />
+  <String Id="ExitDialogBitmap"      Value="WixUI_Bmp_Dialog" />
+  <String Id="ExitDialogTitle"       Value="{\WixUI_Font_Bigger}[ProductName] 安裝精靈已完成" />
+  <String Id="ExitDialogDescription" Value="按「完成」結束安裝精靈。" />
+
+  <!-- ProgressDlg -->
+  <String Id="ProgressDlg_Title"          Value="[ProductName] [DisplayVersion] 安裝" />
+  <String Id="ProgressDlgBannerBitmap"    Value="WixUI_Bmp_Banner" />
+  <String Id="ProgressDlgTextInstalling"  Value="請稍候，安裝精靈正在安裝 [ProductName]。" />
+  <String Id="ProgressDlgTitleInstalling" Value="{\WixUI_Font_Title}正在安裝 [ProductName]" />
+  <String Id="ProgressDlgTextChanging"    Value="請稍候，安裝精靈正在變更 [ProductName]。" />
+  <String Id="ProgressDlgTitleChanging"   Value="{\WixUI_Font_Title}正在變更 [ProductName]" />
+  <String Id="ProgressDlgTextRepairing"   Value="請稍候，安裝精靈正在修復 [ProductName]。" />
+  <String Id="ProgressDlgTitleRepairing"  Value="{\WixUI_Font_Title}正在修復 [ProductName]" />
+  <String Id="ProgressDlgTextRemoving"    Value="請稍候，安裝精靈正在移除 [ProductName]。" />
+  <String Id="ProgressDlgTitleRemoving"   Value="{\WixUI_Font_Title}正在移除 [ProductName]" />
+  <String Id="ProgressDlgTextUpdating"    Value="請稍候，安裝精靈正在更新 [ProductName]。" />
+  <String Id="ProgressDlgTitleUpdating"   Value="{\WixUI_Font_Title}正在更新 [ProductName]" />
+  <String Id="ProgressDlgProgressBar"     Value="安裝進度" />
+  <String Id="ProgressDlgStatusLabel"     Value="狀態：" />
+
+  <!-- MaintenanceWelcomeDlg -->
+  <String Id="MaintenanceWelcomeDlg_Title"       Value="[ProductName] [DisplayVersion] 安裝" />
+  <String Id="MaintenanceWelcomeDlgBitmap"       Value="WixUI_Bmp_Dialog" />
+  <String Id="MaintenanceWelcomeDlgTitle"        Value="{\WixUI_Font_Bigger}歡迎使用 [ProductName] [DisplayVersion] 安裝精靈" />
+  <String Id="MaintenanceWelcomeDlgDescription"
+          Value="安裝精靈允許您變更 [ProductName] 的安裝方式或從電腦移除它。按「下一步」繼續，或按「取消」結束安裝精靈。" />
+
+  <!-- MaintenanceTypeDlg -->
+  <String Id="MaintenanceTypeDlg_Title"             Value="[ProductName] [DisplayVersion] 安裝" />
+  <String Id="MaintenanceTypeDlgBannerBitmap"       Value="WixUI_Bmp_Banner" />
+  <String Id="MaintenanceTypeDlgTitle"              Value="{\WixUI_Font_Title}變更、修復或移除安裝" />
+  <String Id="MaintenanceTypeDlgDescription"        Value="請選擇您要執行的作業。" />
+  <String Id="MaintenanceTypeDlgRepairButton"       Value="修復(&amp;P)" />
+  <String Id="MaintenanceTypeDlgRepairButtonTooltip" Value="修復安裝" />
+  <String Id="MaintenanceTypeDlgRepairText"
+          Value="修復最近一次安裝中遺失或損毀的檔案、捷徑及登錄項目。" />
+  <String Id="MaintenanceTypeDlgRepairDisabledText" Value="[ProductName] 無法修復。" />
+  <String Id="MaintenanceTypeDlgRemoveButton"       Value="移除(&amp;M)" />
+  <String Id="MaintenanceTypeDlgRemoveButtonTooltip" Value="移除安裝" />
+  <String Id="MaintenanceTypeDlgRemoveText"         Value="從您的電腦移除 [ProductName]。" />
+  <String Id="MaintenanceTypeDlgRemoveDisabledText" Value="[ProductName] 無法移除。" />
+  <String Id="MaintenanceTypeDlgChangeButton"       Value="變更(&amp;C)" />
+  <String Id="MaintenanceTypeDlgChangeButtonTooltip" Value="變更安裝" />
+  <String Id="MaintenanceTypeDlgChangeText"         Value="讓您變更功能的安裝方式。" />
+  <String Id="MaintenanceTypeDlgChangeDisabledText" Value="" />
+
+  <!-- CancelDlg -->
+  <String Id="CancelDlg_Title"        Value="[ProductName] [DisplayVersion] 安裝" />
+  <String Id="CancelDlgText"          Value="確定要取消 [ProductName] 的安裝嗎？" />
+  <String Id="CancelDlgIcon"          Value="WixUI_Ico_Info" />
+  <String Id="CancelDlgIconTooltip"   Value="資訊圖示" />
+
+  <!-- PrepareDlg -->
+  <String Id="PrepareDlg_Title"       Value="[ProductName] [DisplayVersion] 安裝" />
+  <String Id="PrepareDlgBitmap"       Value="WixUI_Bmp_Dialog" />
+  <String Id="PrepareDlgTitle"        Value="{\WixUI_Font_Bigger}歡迎使用 [ProductName] 安裝精靈" />
+  <String Id="PrepareDlgDescription" Value="請稍候，安裝精靈正在準備引導您完成安裝。" />
+
+  <!-- UserExit / FatalError -->
+  <String Id="UserExit_Title"        Value="[ProductName] [DisplayVersion] 安裝" />
+  <String Id="UserExitBitmap"        Value="WixUI_Bmp_Dialog" />
+  <String Id="UserExitTitle"         Value="{\WixUI_Font_Bigger}[ProductName] 安裝精靈已中斷" />
+  <String Id="UserExitDescription1"
+          Value="[ProductName] 安裝已中斷。您的系統未被修改。若要在稍後安裝此程式，請再次執行安裝程式。" />
+  <String Id="UserExitDescription2"  Value="按「完成」結束安裝精靈。" />
+  <String Id="FatalError_Title"      Value="[ProductName] [DisplayVersion] 安裝" />
+  <String Id="FatalErrorBitmap"      Value="WixUI_Bmp_Dialog" />
+  <String Id="FatalErrorTitle"
+          Value="{\WixUI_Font_Bigger}[ProductName] 安裝精靈提早結束" />
+  <String Id="FatalErrorDescription1"
+          Value="[ProductName] 安裝精靈因發生錯誤而提早結束。您的系統未被修改。若要稍後安裝，請再次執行安裝精靈。" />
+  <String Id="FatalErrorDescription2" Value="按「完成」結束安裝精靈。" />
+
+  <!-- ErrorDlg -->
+  <String Id="ErrorDlg_Title"        Value="[ProductName] [DisplayVersion] 安裝" />
+  <String Id="ErrorDlgErrorText"     Value="資訊文字" />
+  <String Id="ErrorDlgErrorIcon"     Value="WixUI_Ico_Info" />
+  <String Id="ErrorDlgErrorIconTooltip" Value="資訊圖示" />
+
+  <!-- ResumeDlg -->
+  <String Id="ResumeDlg_Title"       Value="[ProductName] [DisplayVersion] 安裝" />
+  <String Id="ResumeDlgInstall"      Value="安裝(&amp;I)" />
+  <String Id="ResumeDlgBitmap"       Value="WixUI_Bmp_Dialog" />
+  <String Id="ResumeDlgTitle"        Value="{\WixUI_Font_Bigger}正在繼續 [ProductName] 安裝精靈" />
+  <String Id="ResumeDlgDescription"
+          Value="安裝精靈將完成 [ProductName] 的安裝。按「安裝」繼續，或按「取消」結束安裝精靈。" />
+</WixLocalization>

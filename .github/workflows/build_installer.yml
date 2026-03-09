@@ -13,7 +13,7 @@ on:
       - 'src/**/*.sln'
       - 'src/**/*.vcxproj'
       - 'src/**/*.vcxproj.filters'
-      - 'installer/*.nsi'
+      - 'installer/wix/**'
       - 'installer/*.ps1'
   pull_request:
     branches: [master]
@@ -25,7 +25,7 @@ on:
       - 'src/**/*.sln'
       - 'src/**/*.vcxproj'
       - 'src/**/*.vcxproj.filters'
-      - 'installer/*.nsi'
+      - 'installer/wix/**'
       - 'installer/*.ps1'
 
 concurrency:
@@ -52,13 +52,16 @@ jobs:
           msbuild DIME.sln /p:Configuration=Release /p:Platform=ARM64 /p:PlatformToolset=v143 /t:DIME
           msbuild DIME.sln /p:Configuration=Release /p:Platform=Win32 /p:PlatformToolset=v143 /t:DIMESettings
       
-      - name: Install NSIS
-        run: choco install nsis -y
-      
+      - name: Install WiX Toolset v4
+        run: |
+          dotnet tool install --global wix
+          wix extension add WixToolset.Util.wixext --global
+          wix extension add WixToolset.Bal.wixext --global
+
       - name: Build Installer with PowerShell Script
         run: |
           cd installer
-          ./deploy-installer.ps1
+          ./deploy-wix-installer.ps1
         shell: pwsh
       
       
@@ -68,6 +71,8 @@ jobs:
           git config --local user.name "github-actions[bot]"
           git add README.md
           git add installer/DIME-Universal.zip
+          git add installer/DIME-64bit.msi
+          git add installer/DIME-32bit.msi
           git diff --staged --quiet || git commit -m "Update DIME installer and checksums [bot]"
           git pull --rebase
           git push
