@@ -52,11 +52,12 @@ jobs:
           msbuild DIME.sln /p:Configuration=Release /p:Platform=ARM64 /p:PlatformToolset=v143 /t:DIME
           msbuild DIME.sln /p:Configuration=Release /p:Platform=Win32 /p:PlatformToolset=v143 /t:DIMESettings
       
-      - name: Install WiX Toolset v4
+      - name: Install WiX Toolset v6
         run: |
           dotnet tool install --global wix
-          wix extension add WixToolset.Util.wixext --global
-          wix extension add WixToolset.Bal.wixext --global
+          wix extension add WixToolset.Util.wixext/6.0.2 --global
+          wix extension add WixToolset.UI.wixext/6.0.2 --global
+          wix extension add WixToolset.BootstrapperApplications.wixext/6.0.2 --global
 
       - name: Build Installer with PowerShell Script
         run: |
