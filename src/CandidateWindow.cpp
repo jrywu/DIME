@@ -208,6 +208,10 @@ Exit:
     return ret;
 }
 
+const int PageCountPosition = 1;
+const int StringPosition = 2;
+
+
 void CCandidateWindow::_ResizeWindow()
 {
 
@@ -215,8 +219,10 @@ void CCandidateWindow::_ResizeWindow()
 	if(_pIndexRange == nullptr) return;
     int candidateListPageCnt = _pIndexRange->Count();
 	int VScrollWidth = GetSystemMetrics(SM_CXVSCROLL) * 3/2;
-	CBaseWindow::_Resize(_x, _y, _cxTitle + VScrollWidth +  CANDWND_BORDER_WIDTH*2, 
-		_cyRow * candidateListPageCnt + _cyRow /2  + CANDWND_BORDER_WIDTH *2);
+	BOOL isMultiPage = (_pVScrollBarWnd && _pVScrollBarWnd->_IsEnabled());
+	int bottomPadding = isMultiPage ? _cyRow : _cyRow / 2;
+	CBaseWindow::_Resize(_x, _y, _cxTitle + VScrollWidth +  CANDWND_BORDER_WIDTH*2,
+		_cyRow * candidateListPageCnt + bottomPadding  + CANDWND_BORDER_WIDTH *2);
 
     RECT rcCandRect = {0, 0, 0, 0};
     _GetClientRect(&rcCandRect);
@@ -348,9 +354,6 @@ VOID CCandidateWindow::_SetFillColor(_In_ COLORREF fiColor)
 //
 // Cand window proc.
 //----------------------------------------------------------------------------
-
-const int PageCountPosition = 1;
-const int StringPosition = 2;
 
 LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam)
 {
@@ -580,6 +583,7 @@ void CCandidateWindow::_OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pPaintStruc
     _AdjustPageIndex(currentPage, currentPageIndex);
 
     _DrawList(dcHandle, currentPageIndex, &pPaintStruct->rcPaint);
+    _DrawPageIndicator(dcHandle, currentPage, &pPaintStruct->rcPaint);
 
 
 cleanup:
@@ -897,6 +901,40 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
 
 //+---------------------------------------------------------------------------
 //
+// _DrawPageIndicator
+//
+//----------------------------------------------------------------------------
+void CCandidateWindow::_DrawPageIndicator(_In_ HDC dcHandle, _In_ UINT currentPage, _In_ RECT *prc)
+{
+	if (_pIndexRange == nullptr || _PageIndex.Count() <= 1 || prc == nullptr) return;
+
+	int candidateListPageCnt = _pIndexRange->Count();
+	int cyLine = _cyRow;
+
+	// Use absolute client coordinates — do not rely on prc (the paint dirty rect),
+	// which may reflect a stale window size when _ResizeWindow() was called mid-paint.
+	RECT rcClient = { 0, 0, 0, 0 };
+	_GetClientRect(&rcClient);
+
+	RECT rcIndicator;
+	rcIndicator.left   = rcClient.left;
+	rcIndicator.right  = rcClient.right;
+	rcIndicator.top    = candidateListPageCnt * cyLine;
+	rcIndicator.bottom = rcIndicator.top + cyLine;
+
+	if (_brshBkColor) FillRect(dcHandle, &rcIndicator, _brshBkColor);
+
+	WCHAR wszPageInfo[16] = { L'\0' };
+	StringCchPrintf(wszPageInfo, ARRAYSIZE(wszPageInfo), L"%u/%u",
+		currentPage + 1, (UINT)_PageIndex.Count());
+
+	SetTextColor(dcHandle, _crNumberColor);
+	SetBkColor(dcHandle, _crNumberBkColor);
+	DrawText(dcHandle, wszPageInfo, -1, &rcIndicator, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+}
+
+//+---------------------------------------------------------------------------
+//
 // _DrawBorder
 //
 //----------------------------------------------------------------------------
@@ -1037,6 +1075,7 @@ void CCandidateWindow::_SetScrollInfo(_In_ int nMax, _In_ int nPage)
     if (_pVScrollBarWnd)
     {
         _pVScrollBarWnd->_SetScrollInfo(&si);
+        _ResizeWindow();  // resize height for page indicator before first paint
     }
 }
 
@@ -1254,16 +1293,11 @@ BOOL CCandidateWindow::_MovePage(_In_ int offSet, _In_ BOOL isNotify)
     newPage = currentPage + offSet;
     if (newPage < 0)
 	{
-		_currentSelection = 0;
-		_InvalidateRect();
-		return FALSE;
+		newPage = static_cast<int>(_PageIndex.Count()) - 1;  // wrap to last page
 	}
 	else if(newPage >= static_cast<int>(_PageIndex.Count()))
     {
-		newPage = currentPage;
-		//_currentSelection = 0;
-		_InvalidateRect();
-        return FALSE;
+		newPage = 0;  // wrap to first page
     }
 	if(_currentSelection <0 ) _currentSelection = 0;//reset the selection position for phrase cand (_currentselection is -1);
 
