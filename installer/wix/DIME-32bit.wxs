@@ -234,11 +234,16 @@
       <Custom Action="MoveLockedDimeDllInstall" Before="InstallFiles"
               Condition="NOT Installed OR UPGRADINGPRODUCTCODE" />
 
-      <!-- Register DLL after InstallFiles -->
+      <!-- Register DLL after InstallFiles.
+           Skip on upgrade/downgrade (WIX_UPGRADE_DETECTED set for both directions):
+           CLSID, profile GUIDs, categories, and install path never change between
+           DIME versions, so re-registering is pointless redundant work.
+           Repair (same-version reinstall) is NOT an upgrade so WIX_UPGRADE_DETECTED
+           is not set and register CAs run, self-healing any broken registry state. -->
       <Custom Action="RollbackRegisterX86Dll" After="InstallFiles"
-              Condition="NOT REMOVE" />
+              Condition="NOT REMOVE AND NOT WIX_UPGRADE_DETECTED" />
       <Custom Action="RegisterX86Dll" After="RollbackRegisterX86Dll"
-              Condition="NOT REMOVE" />
+              Condition="NOT REMOVE AND NOT WIX_UPGRADE_DETECTED" />
 
       <!-- Commit: clean up baks after successful install -->
       <Custom Action="CleanupDimeDllBakInstall" Before="InstallFinalize"

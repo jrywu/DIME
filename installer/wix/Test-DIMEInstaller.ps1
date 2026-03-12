@@ -1,4 +1,4 @@
-#Requires -RunAsAdministrator
+﻿#Requires -RunAsAdministrator
 # ==============================================================================
 # DIME MSI Zero-Reboot Installer Test Suite
 # ==============================================================================
@@ -47,17 +47,21 @@ New-Item -ItemType Directory -Force $LogDir | Out-Null
 $Script:Results   = [System.Collections.Generic.List[psobject]]::new()
 $Script:Scenario  = ''
 
+function Write-Log($msg, $color = 'White') {
+    $ts = Get-Date -Format 'HH:mm:ss'
+    Write-Host "[$ts] $msg" -ForegroundColor $color
+}
 function Write-Pass($name) {
-    Write-Host "  [PASS] $name" -ForegroundColor Green
+    Write-Log "  [PASS] $name" Green
 }
 function Write-Fail($name, $msg) {
-    Write-Host "  [FAIL] $name -- $msg" -ForegroundColor Red
+    Write-Log "  [FAIL] $name -- $msg" Red
 }
 function Write-Skip($name, $reason) {
-    Write-Host "  [SKIP] $name -- $reason" -ForegroundColor Yellow
+    Write-Log "  [SKIP] $name -- $reason" Yellow
 }
 function Write-Warn($name, $msg) {
-    Write-Host "  [WARN] $name -- $msg" -ForegroundColor Yellow
+    Write-Log "  [WARN] $name -- $msg" Yellow
 }
 
 function Assert-True($condition, $name, $failMsg) {
@@ -285,6 +289,21 @@ function Assert-InstalledClean($expectedVer, $ctx = 'Assert-InstalledClean', [sw
 
     # 14. DIMESettings.exe present
     Assert-FileExists "$base\DIMESettings.exe" $ctx
+
+    # 15. Start Menu shortcut present and points to DIMESettings.exe
+    #     The file name contains Chinese characters (DIME設定.lnk); verifying
+    #     the target via WScript.Shell also confirms the .lnk is internally
+    #     valid and the Unicode filename was not garbled during install.
+    $shortcut = "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\DIME\DIME設定.lnk"
+    Assert-FileExists $shortcut $ctx
+    if (Test-Path $shortcut) {
+        $shell  = New-Object -ComObject WScript.Shell
+        $lnk    = $shell.CreateShortcut($shortcut)
+        $target = $lnk.TargetPath
+        Assert-True ($target -like '*\DIMESettings.exe') `
+            "$ctx -- shortcut target is DIMESettings.exe" `
+            "shortcut target is '$target' (expected *\DIMESettings.exe)"
+    }
 }
 
 function Assert-UninstalledClean($ctx = 'Assert-UninstalledClean') {
@@ -339,6 +358,11 @@ function Assert-UninstalledClean($ctx = 'Assert-UninstalledClean') {
     # CleanupDimeDllBak removes arch subdirs (amd64/arm64/x86) and the parent DIME dir
     Assert-True (-not (Test-Path $base)) `
         "$ctx -- ProgramFiles\DIME directory absent" "directory still exists: $base"
+
+    # Start Menu shortcut absent
+    $shortcut = "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\DIME\DIME設定.lnk"
+    Assert-True (-not (Test-Path $shortcut)) `
+        "$ctx -- Start Menu shortcut absent" "shortcut still exists: $shortcut"
 }
 
 # ==============================================================================
@@ -398,10 +422,28 @@ function Build-TestInstallers {
 # Phase 4 — Installer helpers
 # ==============================================================================
 
+# Maximum allowed wall-clock time (seconds) for any single install/uninstall operation.
+# Exceeding this limit is a regression — it indicates TSF/COM stall or a blocking CA.
+$Script:MaxInstallSecs = 120
+
 function Invoke-WithLog($exePath, [string[]]$argList, $logPath) {
     New-Item -ItemType Directory -Force (Split-Path $logPath) | Out-Null
-    $p = Start-Process -FilePath $exePath -ArgumentList $argList -Wait -PassThru -NoNewWindow
+    $sw = [System.Diagnostics.Stopwatch]::StartNew()
+    $p  = Start-Process -FilePath $exePath -ArgumentList $argList -Wait -PassThru -NoNewWindow
+    $sw.Stop()
+    $Script:LastElapsedSeconds = [int]$sw.Elapsed.TotalSeconds
+    $elapsed = $sw.Elapsed.ToString('mm\:ss')
+    $leaf    = Split-Path $exePath -Leaf
+    Write-Log "  [TIME] $leaf exited $($p.ExitCode) in ${elapsed}" DarkGray
     return $p.ExitCode
+}
+
+# Assert that the most recent Invoke-WithLog call completed within the allowed time.
+function Assert-Duration($ctx) {
+    $secs = $Script:LastElapsedSeconds
+    $max  = $Script:MaxInstallSecs
+    $msg  = "operation took ${secs}s -- exceeded ${max}s limit (TSF/COM stall or blocking CA?)"
+    Assert-True ($secs -le $max) "$ctx -- completed in ${secs}s (limit ${max}s)" $msg
 }
 
 function Show-LastLogLines($logPath, $lines = 20) {
@@ -419,36 +461,46 @@ function Show-CaLogs {
 
 function Install-ViaBurn($exePath, [string[]]$extraArgs = @()) {
     $log  = "$LogDir\$(Split-Path $exePath -Leaf)-install-$(Get-Date -f yyyyMMdd-HHmmss).log"
+    Write-Log "  [RUN] Burn install: $(Split-Path $exePath -Leaf)" DarkGray
     $code = Invoke-WithLog $exePath (@('/install', '/quiet', '/norestart', "/log $log") + $extraArgs) $log
     if ($code -ne 0) { Show-LastLogLines $log; Show-CaLogs }
+    Assert-Duration "Burn-install:$(Split-Path $exePath -Leaf)"
     return $code
 }
 
 function Install-ViaMsi($msiPath, [string[]]$extraArgs = @()) {
     $log  = "$LogDir\$(Split-Path $msiPath -Leaf)-install-$(Get-Date -f yyyyMMdd-HHmmss).log"
+    Write-Log "  [RUN] MSI install: $(Split-Path $msiPath -Leaf)" DarkGray
     $code = Invoke-WithLog 'msiexec.exe' (@('/i', $msiPath, '/qn', '/norestart', "/l*v `"$log`"") + $extraArgs) $log
     if ($code -ne 0 -and $code -ne 1603 -and $code -ne 1602) { Show-LastLogLines $log; Show-CaLogs }
+    Assert-Duration "MSI-install:$(Split-Path $msiPath -Leaf)"
     return $code
 }
 
 function Uninstall-ViaBurn($exePath, [string[]]$extraArgs = @()) {
     $log  = "$LogDir\$(Split-Path $exePath -Leaf)-uninstall-$(Get-Date -f yyyyMMdd-HHmmss).log"
+    Write-Log "  [RUN] Burn uninstall: $(Split-Path $exePath -Leaf)" DarkGray
     $code = Invoke-WithLog $exePath (@('/uninstall', '/quiet', '/norestart', "/log $log") + $extraArgs) $log
     if ($code -ne 0) { Show-LastLogLines $log; Show-CaLogs }
+    Assert-Duration "Burn-uninstall:$(Split-Path $exePath -Leaf)"
     return $code
 }
 
 function Uninstall-ViaMsiProductCode($productCode) {
     $log  = "$LogDir\uninstall-$productCode-$(Get-Date -f yyyyMMdd-HHmmss).log"
+    Write-Log "  [RUN] MSI uninstall: $productCode" DarkGray
     $code = Invoke-WithLog 'msiexec.exe' @('/x', $productCode, '/qn', '/norestart', "/l*v `"$log`"") $log
     if ($code -ne 0) { Show-LastLogLines $log; Show-CaLogs }
+    Assert-Duration "MSI-uninstall:$productCode"
     return $code
 }
 
 function Repair-ViaMsi($productCode) {
     $log  = "$LogDir\repair-$productCode-$(Get-Date -f yyyyMMdd-HHmmss).log"
+    Write-Log "  [RUN] MSI repair: $productCode" DarkGray
     $code = Invoke-WithLog 'msiexec.exe' @('/fvecmus', $productCode, '/qn', '/norestart', "/l*v `"$log`"") $log
     if ($code -ne 0) { Show-LastLogLines $log; Show-CaLogs }
+    Assert-Duration "MSI-repair:$productCode"
     return $code
 }
 
@@ -1124,8 +1176,8 @@ if (-not $admin.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
     exit 1
 }
 
-Write-Host "DIME MSI Zero-Reboot Installer Test Suite" -ForegroundColor White
-Write-Host "========================================" -ForegroundColor White
+Write-Log "DIME MSI Zero-Reboot Installer Test Suite" White
+Write-Log "========================================" White
 
 # Detect true native OS architecture (not WOW64-remapped $env:PROCESSOR_ARCHITECTURE)
 $NativeArch = (Get-ItemProperty `
