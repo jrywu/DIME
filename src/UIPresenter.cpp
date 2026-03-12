@@ -660,7 +660,7 @@ void CUIPresenter::SetPageIndexWithScrollInfo(_In_ CDIMEArray<CCandidateListItem
     _pCandidateWnd->_SetCandIndexRange(_pIndexRange);
 
     UINT candCntInPage = _pIndexRange->Count();
-    UINT bufferSize = pCandidateList->Count() / candCntInPage + 1;
+    UINT bufferSize = (pCandidateList->Count() + candCntInPage - 1) / candCntInPage;
     std::vector<UINT> pageIndex(bufferSize);
 
     for (UINT i = 0; i < bufferSize; i++)
