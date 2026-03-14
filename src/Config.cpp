@@ -30,7 +30,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-//#define DEBUG_PRINT
+//efine DEBUG_PRINT
 #include <windowsx.h>
 #include <Shlobj.h>
 #include <Shlwapi.h>
@@ -93,6 +93,7 @@ BOOL CConfig::_showNotifyDesktop = TRUE;
 BOOL CConfig::_dayiArticleMode = FALSE;  // Article mode: input full-shaped symbols with address keys
 BOOL CConfig::_customTableChanged = FALSE;
 BOOL CConfig::_arraySingleQuoteCustomPhrase = FALSE;
+BOOL CConfig::_big5Filter = FALSE;
 
 UINT CConfig::_dpiY = 0;
 _T_GetDpiForMonitor CConfig::_GetDpiForMonitor = nullptr;
@@ -822,7 +823,22 @@ static LRESULT CALLBACK CustomTable_SubclassWndProc(HWND hwnd, UINT uMsg, WPARAM
 {
 	WNDPROC oldProc = (WNDPROC)GetProp(hwnd, L"RE_OLDPROC");
 
-	if (uMsg == WM_SETFOCUS)
+	if (uMsg == WM_SETFONT)
+	{
+		// Log whenever the property sheet framework sends WM_SETFONT to the RichEdit.
+		HFONT hF = (HFONT)wParam;
+		if (hF)
+		{
+			LOGFONT lf = {};
+			if (GetObject(hF, sizeof(lf), &lf) && lf.lfHeight != 0)
+				debugPrint(L"RichEdit WM_SETFONT: %s lfHeight=%d redraw=%d", lf.lfFaceName, lf.lfHeight, (int)lParam);
+			else
+				debugPrint(L"RichEdit WM_SETFONT: hFont=%p GetObject failed or lfHeight=0", (void*)hF);
+		}
+		else
+			debugPrint(L"RichEdit WM_SETFONT: hFont=NULL");
+	}
+	else if (uMsg == WM_SETFOCUS)
 	{
 		// Collapse any selection immediately when control receives focus.
 		CHARRANGE cr = { 0, 0 };
@@ -860,6 +876,16 @@ static LRESULT CALLBACK CustomTable_SubclassWndProc(HWND hwnd, UINT uMsg, WPARAM
 		HWND hDlg = GetParent(hwnd);
 		PostMessageW(hDlg, WM_USER + 1, 0, 0);
 		debugPrint(L"Paste detected, validation scheduled");
+	}
+	else if (uMsg == WM_CHAR)
+	{
+		// Log the char format at cursor position after each typed character
+		LRESULT r = CallWindowProc(oldProc, hwnd, uMsg, wParam, lParam);
+		CHARFORMAT2W cfNew = {};
+		cfNew.cbSize = sizeof(cfNew);
+		SendMessageW(hwnd, EM_GETCHARFORMAT, SCF_SELECTION, (LPARAM)&cfNew);
+		debugPrint(L"WM_CHAR 0x%x: face=%s charset=%d yHeight=%d", (UINT)wParam, cfNew.szFaceName, cfNew.bCharSet, cfNew.yHeight);
+		return r;
 	}
 	else if (uMsg == WM_NCDESTROY)
 	{
@@ -1529,7 +1555,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 				PropSheet_Changed(GetParent(hDlg), hDlg);
 				ret = TRUE;
 				hwnd = GetDlgItem(hDlg, IDC_COMBO_ARRAY_SCOPE);
-				_arrayScope = (ARRAY_SCOPE)SendMessage(hwnd, CB_GETCURSEL, 0, 0);
+				_arrayScope = (ARRAY_SCOPE)SendMessage(hwnd, CB_GETITEMDATA, SendMessage(hwnd, CB_GETCURSEL, 0, 0), 0);
 				//reset autocompose mode if ARRAY_SCOPE::ARRAY40 is selected.
 				if (_arrayScope == ARRAY_SCOPE::ARRAY40_BIG5)
 				{
@@ -1554,6 +1580,13 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 				break;
 			default:
 				break;
+			}
+			break;
+		case IDC_COMBO_CHARSET_SCOPE:
+			if (HIWORD(wParam) == CBN_SELCHANGE)
+			{
+				PropSheet_Changed(GetParent(hDlg), hDlg);
+				ret = TRUE;
 			}
 			break;
 		case IDC_COMBO_NUMERIC_PAD:
@@ -1745,7 +1778,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			if (imeMode == IME_MODE::IME_MODE_ARRAY)
 			{
 				hwnd = GetDlgItem(hDlg, IDC_COMBO_ARRAY_SCOPE);
-				_arrayScope = (ARRAY_SCOPE)SendMessage(hwnd, CB_GETCURSEL, 0, 0);
+				_arrayScope = (ARRAY_SCOPE)SendMessage(hwnd, CB_GETITEMDATA, SendMessage(hwnd, CB_GETCURSEL, 0, 0), 0);
 				if (_arrayScope != ARRAY_SCOPE::ARRAY40_BIG5)
 					_autoCompose = TRUE;
 				
@@ -1759,6 +1792,12 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 					(_arrayScope != ARRAY_SCOPE::ARRAY40_BIG5) ? SW_HIDE : SW_SHOW);
 				
 				debugPrint(L"selected array scope item is %d", _arrayScope);
+			}
+
+			if (imeMode != IME_MODE::IME_MODE_ARRAY)
+			{
+				hwnd = GetDlgItem(hDlg, IDC_COMBO_CHARSET_SCOPE);
+				_big5Filter = (SendMessage(hwnd, CB_GETCURSEL, 0, 0) == 1) ? TRUE : FALSE;
 			}
 
 			if (imeMode == IME_MODE::IME_MODE_PHONETIC)
@@ -2228,6 +2267,70 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 		}
 		break;
 
+	case WM_APP + 1: // Deferred font sync for IDC_EDIT_CUSTOM_TABLE
+		// Runs after WM_SETFONT has been delivered to all controls.
+		// GetObject return value is checked; SPI_GETNONCLIENTMETRICS used as fallback
+		// so the block always runs and loaded text / typed text share the same font.
+		{
+			HWND hEditSync = GetDlgItem(hDlg, IDC_EDIT_CUSTOM_TABLE);
+			if (hEditSync)
+			{
+				LOGFONT lf = {};
+				bool gotLF = false;
+				HFONT hF = (HFONT)SendMessageW(hEditSync, WM_GETFONT, 0, 0);
+				if (!hF) hF = (HFONT)SendMessageW(hDlg, WM_GETFONT, 0, 0);
+				if (hF) gotLF = (GetObject(hF, sizeof(lf), &lf) != 0 && lf.lfHeight != 0);
+				if (!gotLF) {
+					NONCLIENTMETRICSW ncm = {};
+					ncm.cbSize = sizeof(ncm);
+					if (SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(ncm), &ncm, 0)) {
+						lf = ncm.lfMessageFont;
+						gotLF = true;
+					}
+				}
+				debugPrint(L"WM_APP+1 font sync: gotLF=%d face=%s lfHeight=%d",
+					(int)gotLF, lf.lfFaceName, (int)lf.lfHeight);
+				if (gotLF)
+				{
+					HDC hdc = GetDC(hEditSync);
+					int dpi = GetDeviceCaps(hdc, LOGPIXELSY);
+					ReleaseDC(hEditSync, hdc);
+					CHARFORMAT2W cf = {};
+					cf.cbSize = sizeof(cf);
+					cf.dwMask = CFM_FACE | CFM_SIZE | CFM_WEIGHT | CFM_ITALIC | CFM_CHARSET;
+					StringCchCopyW(cf.szFaceName, LF_FACESIZE, lf.lfFaceName);
+					cf.yHeight = MulDiv(abs(lf.lfHeight), 72 * 20, dpi);
+					cf.wWeight = (WORD)lf.lfWeight;
+					if (lf.lfItalic) cf.dwEffects |= CFE_ITALIC;
+					cf.bCharSet = lf.lfCharSet; // match loaded text charset so SCF_DEFAULT and loaded runs agree
+					debugPrint(L"WM_APP+1 applying: %s %d twips charset=%d at %d dpi", cf.szFaceName, cf.yHeight, cf.bCharSet, dpi);
+					// Set default format for newly typed characters
+					SendMessageW(hEditSync, EM_SETCHARFORMAT, SCF_DEFAULT, (LPARAM)&cf);
+					// Apply to all existing text (select-all covers final paragraph mark)
+					CHARRANGE crOld;
+					SendMessageW(hEditSync, EM_EXGETSEL, 0, (LPARAM)&crOld);
+					SendMessageW(hEditSync, EM_SETSEL, 0, -1);
+					SendMessageW(hEditSync, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)&cf);
+					SendMessageW(hEditSync, EM_EXSETSEL, 0, (LPARAM)&crOld);
+					// Disable automatic font changes when user types Latin characters
+					LRESULT langOpts = SendMessageW(hEditSync, EM_GETLANGOPTIONS, 0, 0);
+					debugPrint(L"WM_APP+1 EM_GETLANGOPTIONS=0x%x", (int)langOpts);
+					langOpts &= ~IMF_AUTOFONT;
+					SendMessageW(hEditSync, EM_SETLANGOPTIONS, 0, langOpts);
+					// Readback: verify what format position 0 actually has now
+					CHARFORMAT2W cfRead = {};
+					cfRead.cbSize = sizeof(cfRead);
+					CHARRANGE crRead = {0, 1};
+					SendMessageW(hEditSync, EM_EXSETSEL, 0, (LPARAM)&crRead);
+					SendMessageW(hEditSync, EM_GETCHARFORMAT, SCF_SELECTION, (LPARAM)&cfRead);
+					SendMessageW(hEditSync, EM_EXSETSEL, 0, (LPARAM)&crOld);
+					debugPrint(L"WM_APP+1 readback pos0: face=%s yHeight=%d charset=%d", cfRead.szFaceName, cfRead.yHeight, cfRead.bCharSet);
+				}
+			}
+			ret = TRUE;
+		}
+		break;
+
 	case WM_NOTIFY:
 		switch (((LPNMHDR)lParam)->code)
 		{
@@ -2506,6 +2609,17 @@ void CConfig::ParseConfig(HWND hDlg, IME_MODE imeMode, BOOL initDiag)
 		ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_FORCESP), SW_HIDE);
 		ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_NOTIFYSP), SW_HIDE);
 		ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_SINGLEQUOTE_CUSTOM_PHRASE), SW_HIDE);
+
+		// charset scope combo (Big5 filter) for non-Array modes
+		hwnd = GetDlgItem(hDlg, IDC_COMBO_CHARSET_SCOPE);
+		if (initDiag)
+		{
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"完整字集");
+			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"繁體中文");
+		}
+		SendMessage(hwnd, CB_SETCURSEL, (WPARAM)(_big5Filter ? 1 : 0), 0);
+		ShowWindow(GetDlgItem(hDlg, IDC_STATIC_CHARSET_SCOPE), SW_SHOW);
+		ShowWindow(hwnd, SW_SHOW);
 	}
 	
 	if (imeMode == IME_MODE::IME_MODE_PHONETIC)
@@ -2526,6 +2640,8 @@ void CConfig::ParseConfig(HWND hDlg, IME_MODE imeMode, BOOL initDiag)
 	{
 		ShowWindow(GetDlgItem(hDlg, IDC_EDIT_MAXWIDTH), SW_HIDE);
 		ShowWindow(GetDlgItem(hDlg, IDC_STATIC_EDIT_MAXWIDTH), SW_HIDE);
+		ShowWindow(GetDlgItem(hDlg, IDC_STATIC_CHARSET_SCOPE), SW_HIDE);
+		ShowWindow(GetDlgItem(hDlg, IDC_COMBO_CHARSET_SCOPE), SW_HIDE);
 		if (_arrayScope == ARRAY_SCOPE::ARRAY40_BIG5)
 		{
 			ShowWindow(GetDlgItem(hDlg, IDC_CHECKBOX_ARRAY_SINGLEQUOTE_CUSTOM_PHRASE), SW_HIDE);
@@ -2538,13 +2654,31 @@ void CConfig::ParseConfig(HWND hDlg, IME_MODE imeMode, BOOL initDiag)
 		hwnd = GetDlgItem(hDlg, IDC_COMBO_ARRAY_SCOPE);
 		if (initDiag)
 		{
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-A");
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-AB");
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-A~D");
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-A~G");
-			SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列40 Big5");
+			LRESULT idx;
+			idx = SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Big5 (繁體中文)");
+			SendMessage(hwnd, CB_SETITEMDATA, idx, (LPARAM)ARRAY_SCOPE::ARRAY30_BIG5);
+			idx = SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-A");
+			SendMessage(hwnd, CB_SETITEMDATA, idx, (LPARAM)ARRAY_SCOPE::ARRAY30_UNICODE_EXT_A);
+			idx = SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-AB");
+			SendMessage(hwnd, CB_SETITEMDATA, idx, (LPARAM)ARRAY_SCOPE::ARRAY30_UNICODE_EXT_AB);
+			idx = SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-A~D");
+			SendMessage(hwnd, CB_SETITEMDATA, idx, (LPARAM)ARRAY_SCOPE::ARRAY30_UNICODE_EXT_ABCD);
+			idx = SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-A~G");
+			SendMessage(hwnd, CB_SETITEMDATA, idx, (LPARAM)ARRAY_SCOPE::ARRAY30_UNICODE_EXT_ABCDE);
+			idx = SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列40 Big5");
+			SendMessage(hwnd, CB_SETITEMDATA, idx, (LPARAM)ARRAY_SCOPE::ARRAY40_BIG5);
 		}
-		SendMessage(hwnd, CB_SETCURSEL, (WPARAM)_arrayScope, 0);
+		{
+			LRESULT count = SendMessage(hwnd, CB_GETCOUNT, 0, 0);
+			for (LRESULT j = 0; j < count; j++)
+			{
+				if ((ARRAY_SCOPE)SendMessage(hwnd, CB_GETITEMDATA, j, 0) == _arrayScope)
+				{
+					SendMessage(hwnd, CB_SETCURSEL, j, 0);
+					break;
+				}
+			}
+		}
 
 	}
 }
@@ -2652,6 +2786,10 @@ VOID CConfig::WriteConfig(IME_MODE imeMode, BOOL confirmUpdated)
 			{
 				fwprintf_s(fp, L"PhoneticKeyboardLayout = %d\n", _phoneticKeyboardLayout);
 			}
+			if (imeMode != IME_MODE::IME_MODE_ARRAY)
+			{
+				fwprintf_s(fp, L"Big5Filter = %d\n", _big5Filter ? 1 : 0);
+			}
 			fwprintf_s(fp, L"NumericPad = %d\n", _numericPad);
 			if (_loadTableMode) fwprintf_s(fp, L"LoadTableMode = 1\n");
 			fclose(fp);
@@ -2747,6 +2885,7 @@ void CConfig::SetIMEModeDefaults(IME_MODE imeMode)
 		_maxCodes = 4;
 		_spaceAsPageDown = 1;
 		_spaceAsFirstCandSelkey = 0;
+		_big5Filter = FALSE;
 	}
 	else if (imeMode == IME_MODE::IME_MODE_DAYI)
 	{
@@ -2754,6 +2893,7 @@ void CConfig::SetIMEModeDefaults(IME_MODE imeMode)
 		_maxCodes = 4;
 		_spaceAsPageDown = 0;
 		_spaceAsFirstCandSelkey = 1;
+		_big5Filter = FALSE;
 	}
 	else
 	{
@@ -2761,6 +2901,7 @@ void CConfig::SetIMEModeDefaults(IME_MODE imeMode)
 		_maxCodes = 4;
 		_spaceAsPageDown = 0;
 		_spaceAsFirstCandSelkey = 0;
+		_big5Filter = FALSE;
 	}
 }
 
@@ -3022,6 +3163,43 @@ BOOL CConfig::importCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToLoad)
 			goto Cleanup;
 		}
 
+		// Set SCF_DEFAULT before SetDlgItemTextW so loaded text uses the dialog font.
+		// GetObject return value is checked; SPI_GETNONCLIENTMETRICS used as fallback
+		// so the block always runs even if WM_GETFONT returns a stale handle.
+		{
+			HWND hEditPre = GetDlgItem(hDlg, IDC_EDIT_CUSTOM_TABLE);
+			if (hEditPre)
+			{
+				LOGFONT lfPre = {};
+				bool gotLFPre = false;
+				HFONT hFP = (HFONT)SendMessageW(hEditPre, WM_GETFONT, 0, 0);
+				if (!hFP) hFP = (HFONT)SendMessageW(hDlg, WM_GETFONT, 0, 0);
+				if (hFP) gotLFPre = (GetObject(hFP, sizeof(lfPre), &lfPre) != 0 && lfPre.lfHeight != 0);
+				if (!gotLFPre) {
+					NONCLIENTMETRICSW ncm = {};
+					ncm.cbSize = sizeof(ncm);
+					if (SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(ncm), &ncm, 0)) {
+						lfPre = ncm.lfMessageFont;
+						gotLFPre = true;
+					}
+				}
+				if (gotLFPre) {
+					HDC hdcPre = GetDC(hEditPre);
+					int dpiPre = GetDeviceCaps(hdcPre, LOGPIXELSY);
+					ReleaseDC(hEditPre, hdcPre);
+					CHARFORMAT2W cfPre = {};
+					cfPre.cbSize = sizeof(cfPre);
+					cfPre.dwMask = CFM_FACE | CFM_SIZE | CFM_WEIGHT | CFM_ITALIC | CFM_CHARSET;
+					StringCchCopyW(cfPre.szFaceName, LF_FACESIZE, lfPre.lfFaceName);
+					cfPre.yHeight = MulDiv(abs(lfPre.lfHeight), 72 * 20, dpiPre);
+					cfPre.wWeight = (WORD)lfPre.lfWeight;
+					if (lfPre.lfItalic) cfPre.dwEffects |= CFE_ITALIC;
+					cfPre.bCharSet = lfPre.lfCharSet; // match loaded text charset
+					debugPrint(L"importCustomTable pre-load SCF_DEFAULT: %s %d twips", cfPre.szFaceName, cfPre.yHeight);
+					SendMessageW(hEditPre, EM_SETCHARFORMAT, SCF_DEFAULT, (LPARAM)&cfPre);
+				}
+			}
+		}
 		if (!IsTextUnicode(customText, dwDataLen, NULL))
 		{
 			WCHAR* outWStr = nullptr;
@@ -3087,30 +3265,9 @@ BOOL CConfig::importCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToLoad)
                 SetDlgItemTextW(hDlg, IDC_EDIT_CUSTOM_TABLE, customText);
         }
 
-		// Normalize the font of loaded text to match the dialog font.
-		// WM_SETTEXT on a RichEdit uses the control's internal default char format,
-		// which may differ from the font set via WM_SETFONT, causing a visual
-		// mismatch between loaded text and newly typed text.
-		{
-			HWND hEdit = GetDlgItem(hDlg, IDC_EDIT_CUSTOM_TABLE);
-			HFONT hDlgFont = hEdit ? (HFONT)SendMessageW(hEdit, WM_GETFONT, 0, 0) : nullptr;
-			if (hEdit && hDlgFont)
-			{
-				LOGFONT lf = {};
-				GetObject(hDlgFont, sizeof(lf), &lf);
-				HDC hdc = GetDC(hEdit);
-				int dpi = GetDeviceCaps(hdc, LOGPIXELSY);
-				ReleaseDC(hEdit, hdc);
-				CHARFORMAT2W cf = {};
-				cf.cbSize = sizeof(cf);
-				cf.dwMask = CFM_FACE | CFM_SIZE | CFM_WEIGHT | CFM_ITALIC;
-				StringCchCopyW(cf.szFaceName, LF_FACESIZE, lf.lfFaceName);
-				cf.yHeight = MulDiv(abs(lf.lfHeight), 72 * 20, dpi);
-				cf.wWeight = (WORD)lf.lfWeight;
-				if (lf.lfItalic) cf.dwEffects |= CFE_ITALIC;
-				SendMessageW(hEdit, EM_SETCHARFORMAT, SCF_ALL, (LPARAM)&cf);
-			}
-		}
+		// Post a deferred font sync (WM_APP+1) that fires after WM_SETFONT has been
+		// delivered to all controls, giving the most reliable font handle.
+		PostMessageW(hDlg, WM_APP + 1, 0, 0);
 
 	Cleanup:
 		if (hCustomTable) CloseHandle(hCustomTable);

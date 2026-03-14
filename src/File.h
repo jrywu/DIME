@@ -47,7 +47,7 @@ public:
         DWORD sharedMode = 0, _Inout_opt_ LPSECURITY_ATTRIBUTES lpSecurityAttributes = nullptr, DWORD flagsAndAttributes = 0, _Inout_opt_ HANDLE templateFileHandle = nullptr);
 
 	_Ret_maybenull_
-	const WCHAR *GetReadBufferPointer(_Inout_opt_ BOOL *fileReloaded = nullptr);
+	virtual const WCHAR *GetReadBufferPointer(_Inout_opt_ BOOL *fileReloaded = nullptr);
 	DWORD_PTR GetFileSize() { return _fileSize;}
 
 	LPCWSTR GetFileName() { return _pFileName;}
@@ -91,4 +91,37 @@ private:
 
 	struct _stat _timeStamp;
 };
+
+// CMemoryFile: CFile subclass that builds its buffer by filtering lines from a
+// source CFile* through a CP950 (Big5) encodability predicate.  The caller
+// keeps the source CFile alive for the lifetime of CMemoryFile.
+// Change detection is delegated to the source: whenever the source reports that
+// its underlying disk file has been reloaded, CMemoryFile discards its own
+// buffer and rebuilds from the updated source.
+class CMemoryFile : public CFile
+{
+public:
+    // Constructs from a source CFile*. Does not own pSrcFile - caller must
+    // keep it alive.  Buffer is built lazily on first GetReadBufferPointer()
+    // call and rebuilt automatically whenever the source reports a reload.
+    CMemoryFile(CFile* pSrcFile);
+
+    _Ret_maybenull_
+    const WCHAR* GetReadBufferPointer(BOOL* fileReloaded = nullptr) override;
+
+protected:
+    BOOL SetupReadBuffer() override;
+
+private:
+    BOOL FilterLine(const WCHAR* lineStart, DWORD_PTR lineLen);  // CP950 predicate
+
+#ifdef _DEBUG
+    // Writes the filtered buffer as UTF-16LE to %APPDATA%\DIME\dbg_<source-filename>.
+    // Called automatically by SetupReadBuffer() in Debug builds only.
+    void DebugDumpBuffer() const;
+#endif
+
+    CFile* _pSrcFile;  // non-owning pointer to source CFile
+};
+
 #endif

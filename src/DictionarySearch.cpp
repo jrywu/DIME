@@ -435,6 +435,9 @@ ReadValue:
 					CConfig::SetArrayScope((ARRAY_SCOPE)_wtoi(valueStrings.GetAt(0)->Get()));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ArrayScope", 10)) == CSTR_EQUAL)
 					CConfig::SetArrayScope((ARRAY_SCOPE)_wtoi(valueStrings.GetAt(0)->Get()));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"Big5Filter", 10)) == CSTR_EQUAL)
+					CConfig::SetBig5Filter(
+						CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL);
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"NumericPad", 10)) == CSTR_EQUAL)
 					CConfig::SetNumericPad((NUMERIC_PAD)_wtoi(valueStrings.GetAt(0)->Get()));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ReloadReverseConversion", 23)) == CSTR_EQUAL)

@@ -166,6 +166,8 @@ private:
     CFile* _pTCSCTableDictionaryFile;
     CFile* _pTCFreqTableDictionaryFile;
 
+    CFile* _pBig5TableDictionaryFile[IM_SLOTS];
+
 
     IME_MODE _imeMode;
 
@@ -181,7 +183,10 @@ private:
     CTableDictionaryEngine* _pTCSCTableDictionaryEngine;
     CTableDictionaryEngine* _pTCFreqTableDictionaryEngine;
 
+    CTableDictionaryEngine* _pBig5TableDictionaryEngine[IM_SLOTS];
+
     CFile* GetDictionaryFile() const;
+    void SetupBig5Engine(IME_MODE imeMode, LCID locale);
 
     BOOL _isKeystrokeSort;
     BOOL _isWildCardWordFreqSort;

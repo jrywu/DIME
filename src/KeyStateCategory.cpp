@@ -414,7 +414,7 @@ HRESULT CKeyStateComposing::HandleKeyAddressChar(KeyHandlerEditSessionDTO dto)
 HRESULT CKeyStateComposing::HandleKeyShiftEnglishInput(KeyHandlerEditSessionDTO dto)
 {
 	if(_pTextService == nullptr) return E_FAIL;
-	return _pTextService->_HandleCompositionShiftEnglishInput(dto.ec, dto.pContext, dto.wch);
+	return _pTextService->_HandleCompositionShiftEnglishInput(dto.ec, dto.pContext, dto.code, dto.wch);
 }
 
 

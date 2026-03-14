@@ -224,6 +224,12 @@
     <ClCompile Include="DictionaryTest.cpp">
       <Filter>Source Files\Unit Tests</Filter>
     </ClCompile>
+    <ClCompile Include="CMemoryFileTest.cpp">
+      <Filter>Source Files\Unit Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="CMemoryFileIntegrationTest.cpp">
+      <Filter>Source Files\Integration Tests</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\docs\TEST_REPORT.md">

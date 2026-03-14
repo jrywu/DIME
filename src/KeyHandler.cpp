@@ -1,4 +1,4 @@
-/* DIME IME for Windows 7/8/10/11
+﻿/* DIME IME for Windows 7/8/10/11
 
 BSD 3-Clause License
 
@@ -519,7 +519,7 @@ HRESULT CDIME::_HandleCompositionDoubleSingleByte(TfEditCookie ec, _In_ ITfConte
 // - CapsLock ON: produce shifted characters (A, !, _)
 //----------------------------------------------------------------------------
 
-HRESULT CDIME::_HandleCompositionShiftEnglishInput(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch)
+HRESULT CDIME::_HandleCompositionShiftEnglishInput(TfEditCookie ec, _In_ ITfContext *pContext, UINT code, WCHAR wch)
 {
     HRESULT hr = S_OK;
 
@@ -531,44 +531,58 @@ HRESULT CDIME::_HandleCompositionShiftEnglishInput(TfEditCookie ec, _In_ ITfCont
 
     WCHAR outputChar = wch; // Default fallback
     BOOL isCapsLockOn = (GetKeyState(VK_CAPITAL) & 0x0001) != 0;
-    
+
     // For alphabetic characters, simply apply case conversion based on CapsLock
     if (iswalpha(wch))
     {
         outputChar = isCapsLockOn ? towupper(wch) : towlower(wch);
     }
+    else if (code >= '0' && code <= '9')
+    {
+        // Digit keys (1~0): CapsLock OFF → shifted symbol (!@#$%^&*())
+        //                   CapsLock ON  → base digit (1234567890)
+        // wch is already the shifted char ('!' etc.). Use code directly with
+        // ToUnicodeEx to avoid VkKeyScanExW back-computation for the ON case.
+        if (!isCapsLockOn)
+        {
+            outputChar = wch;  // already '!', '@', etc.
+        }
+        else
+        {
+            BYTE scanCode = (BYTE)MapVirtualKey(code, MAPVK_VK_TO_VSC);
+            BYTE keyState[256] = {0};
+            WCHAR result[2] = {0};
+            if (ToUnicodeEx(code, scanCode, keyState, result, 2, 0, GetKeyboardLayout(0)) == 1)
+                outputChar = result[0];
+        }
+    }
     else
     {
-        // For non-alphabetic characters (numbers, symbols, space), use keyboard state
-        // Note: Space character is unaffected by CapsLock/Shift - ToUnicodeEx always returns space
+        // Other symbol keys: CapsLock OFF → base char, CapsLock ON → shifted char
+        // Note: Space is unaffected by CapsLock/Shift - ToUnicodeEx always returns space
         UINT vKey = VkKeyScanExW(wch, GetKeyboardLayout(0));
-        
+
         if (vKey != 0xFFFF)  // Valid key found
         {
             BYTE scanCode = (BYTE)MapVirtualKey(LOBYTE(vKey), MAPVK_VK_TO_VSC);
             BYTE keyState[256] = {0};
             WCHAR result[2] = {0};
-            
-            // Set up keyboard state based on CapsLock
-            // CapsLock OFF: clear shift (get base character - numbers, lowercase, base symbols)
-            // CapsLock ON: keep shift (get shifted character - special chars, uppercase)
+
             if (!isCapsLockOn)
             {
                 // Clear shift to get base character
                 keyState[VK_SHIFT] = 0x00;
                 keyState[VK_LSHIFT] = 0x00;
                 keyState[VK_RSHIFT] = 0x00;
-                keyState[VK_CAPITAL] = 0x00; // CapsLock OFF
+                keyState[VK_CAPITAL] = 0x00;
             }
             else
             {
                 // Keep shift pressed to get shifted character
                 keyState[VK_SHIFT] = 0x80;
-                keyState[VK_CAPITAL] = 0x01; // CapsLock ON
+                keyState[VK_CAPITAL] = 0x01;
             }
-            
-            // Get the character with the modified keyboard state
-            // This automatically handles all keyboard layouts
+
             if (ToUnicodeEx(LOBYTE(vKey), scanCode, keyState, result, 2, 0, GetKeyboardLayout(0)) == 1)
             {
                 outputChar = result[0];

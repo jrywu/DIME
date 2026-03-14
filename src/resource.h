@@ -99,6 +99,8 @@
 #define IDC_LABEL_COL_PHRASE    1167
 #define IDC_LABEL_COL_NU        1168
 #define IDC_LABEL_COL_SEBG      1169
+#define IDC_COMBO_CHARSET_SCOPE   1170   // NEW: non-Array charset filter combo (narrower)
+#define IDC_STATIC_CHARSET_SCOPE  1171   // NEW: label for IDC_COMBO_CHARSET_SCOPE
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED

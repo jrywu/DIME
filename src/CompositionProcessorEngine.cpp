@@ -66,6 +66,8 @@ CCompositionProcessorEngine::CCompositionProcessorEngine(_In_ CDIME *pTextServic
 		_pTableDictionaryFile[i] = nullptr;
 		_pCustomTableDictionaryEngine[i] = nullptr;
 		_pCustomTableDictionaryFile[i] = nullptr;
+		_pBig5TableDictionaryEngine[i] = nullptr;
+		_pBig5TableDictionaryFile[i] = nullptr;
 	}
 
 #ifndef DIMESettings
@@ -250,6 +252,19 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 	{
 		return;
 	}
+
+	// Select between the Big5-filtered engine and the normal engine.
+	bool needBig5 =
+		(Global::imeMode == IME_MODE::IME_MODE_ARRAY &&
+		 CConfig::GetArrayScope() == ARRAY_SCOPE::ARRAY30_BIG5) ||
+		(Global::imeMode != IME_MODE::IME_MODE_ARRAY &&
+		 CConfig::GetBig5Filter());
+
+	CTableDictionaryEngine* pMainEngine =
+		(needBig5 && _pBig5TableDictionaryEngine[(UINT)Global::imeMode])
+		? _pBig5TableDictionaryEngine[(UINT)Global::imeMode]
+		: _pTableDictionaryEngine[(UINT)Global::imeMode];
+
 	//Check if only *, ? in _keystrokebuffer
 	UINT virtualKeyLen = (UINT)GetVirtualKeyLength();
 
@@ -304,8 +319,8 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 	{
 		if (_pArrayShortCodeTableDictionaryEngine == nullptr)
 		{
-			_pTableDictionaryEngine[(UINT)Global::imeMode]->SetSearchSection(SEARCH_SECTION::SEARCH_SECTION_PRHASE_FROM_KEYSTROKE);
-			_pTableDictionaryEngine[(UINT)Global::imeMode]->CollectWord(&_keystrokeBuffer, pCandidateList);
+			pMainEngine->SetSearchSection(SEARCH_SECTION::SEARCH_SECTION_PRHASE_FROM_KEYSTROKE);
+			pMainEngine->CollectWord(&_keystrokeBuffer, pCandidateList);
 		}
 		else
 		{
@@ -342,8 +357,8 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 		//search custom table with priority
 		if (_pCustomTableDictionaryEngine[(UINT)Global::imeMode] && customTablePriority)
 			_pCustomTableDictionaryEngine[(UINT)Global::imeMode]->CollectWordForWildcard(&wildcardSearch, pCandidateList);
-		_pTableDictionaryEngine[(UINT)Global::imeMode]->SetSearchSection(SEARCH_SECTION::SEARCH_SECTION_TEXT);
-		_pTableDictionaryEngine[(UINT)Global::imeMode]->CollectWordForWildcard(&wildcardSearch, pCandidateList);
+		pMainEngine->SetSearchSection(SEARCH_SECTION::SEARCH_SECTION_TEXT);
+		pMainEngine->CollectWordForWildcard(&wildcardSearch, pCandidateList);
 		//search custom table without priority
 		if (_pCustomTableDictionaryEngine[(UINT)Global::imeMode] && !customTablePriority)
 			_pCustomTableDictionaryEngine[(UINT)Global::imeMode]->CollectWordForWildcard(&wildcardSearch, pCandidateList);
@@ -357,7 +372,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 
 		if (IsKeystrokeSort())
 		{
-			_pTableDictionaryEngine[(UINT)Global::imeMode]->SortListItemByFindKeyCode(pCandidateList);
+			pMainEngine->SortListItemByFindKeyCode(pCandidateList);
 		}
 
 		// Incremental search would show keystroke data from all candidate list items
@@ -382,9 +397,9 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 	}
 	else if (IsEscapeInput() && (Global::imeMode == IME_MODE::IME_MODE_DAYI || Global::imeMode == IME_MODE::IME_MODE_ARRAY))
 	{
-		if (_pTableDictionaryEngine[(UINT)Global::imeMode]->GetDictionaryType() == DICTIONARY_TYPE::TTS_DICTIONARY)
-			_pTableDictionaryEngine[(UINT)Global::imeMode]->SetSearchSection(SEARCH_SECTION::SEARCH_SECTION_SYMBOL);
-		_pTableDictionaryEngine[(UINT)Global::imeMode]->CollectWord(&_keystrokeBuffer, pCandidateList);
+		if (pMainEngine->GetDictionaryType() == DICTIONARY_TYPE::TTS_DICTIONARY)
+			pMainEngine->SetSearchSection(SEARCH_SECTION::SEARCH_SECTION_SYMBOL);
+		pMainEngine->CollectWord(&_keystrokeBuffer, pCandidateList);
 	}
 	else if (IsEscapeInput() && Global::imeMode == IME_MODE::IME_MODE_PHONETIC)
 	{
@@ -431,21 +446,21 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 		}
 
 		//Search IM table
-		if (_pTableDictionaryEngine[(UINT)Global::imeMode] && phoneticAnyTone)
-			_pTableDictionaryEngine[(UINT)Global::imeMode]->CollectWordForWildcard(&noToneKeyStroke, pCandidateList, _pTCFreqTableDictionaryEngine);
+		if (pMainEngine && phoneticAnyTone)
+			pMainEngine->CollectWordForWildcard(&noToneKeyStroke, pCandidateList, _pTCFreqTableDictionaryEngine);
 
 		//Search Main table
-		_pTableDictionaryEngine[(UINT)Global::imeMode]->SetSearchSection(SEARCH_SECTION::SEARCH_SECTION_TEXT);
+		pMainEngine->SetSearchSection(SEARCH_SECTION::SEARCH_SECTION_TEXT);
 		if (Global::imeMode != IME_MODE::IME_MODE_ARRAY || (Global::imeMode == IME_MODE::IME_MODE_ARRAY && !isArrayPhraseEnding))
-			_pTableDictionaryEngine[(UINT)Global::imeMode]->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList, _pTCFreqTableDictionaryEngine);
+			pMainEngine->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList, _pTCFreqTableDictionaryEngine);
 		else if (Global::imeMode == IME_MODE::IME_MODE_ARRAY && CConfig::GetArrayScope() != ARRAY_SCOPE::ARRAY40_BIG5
 				&& _pArrayPhraseTableDictionaryEngine && isArrayPhraseEnding)
 			_pArrayPhraseTableDictionaryEngine->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList);
 
 		//Sort candidate list with TC frequency table
-		if (_pTableDictionaryEngine[(UINT)Global::imeMode] &&
+		if (pMainEngine &&
 			_isWildCardWordFreqSort && _pTCFreqTableDictionaryEngine && !isArrayPhraseEnding)
-			_pTableDictionaryEngine[(UINT)Global::imeMode]->SortListItemByWordFrequency(pCandidateList);
+			pMainEngine->SortListItemByWordFrequency(pCandidateList);
 		
 
 
@@ -504,11 +519,11 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 					(CConfig::GetArraySingleQuoteCustomPhrase() == isArrayPhraseEnding))) )
 			_pCustomTableDictionaryEngine[(UINT)Global::imeMode]->CollectWord(&_keystrokeBuffer, pCandidateList);
 
-		_pTableDictionaryEngine[(UINT)Global::imeMode]->SetSearchSection(SEARCH_SECTION::SEARCH_SECTION_TEXT);
-		
-		if (_pTableDictionaryEngine[(UINT)Global::imeMode] &&
+		pMainEngine->SetSearchSection(SEARCH_SECTION::SEARCH_SECTION_TEXT);
+
+		if (pMainEngine &&
 			(Global::imeMode != IME_MODE::IME_MODE_ARRAY || (Global::imeMode == IME_MODE::IME_MODE_ARRAY && !isArrayPhraseEnding)) )
-			_pTableDictionaryEngine[(UINT)Global::imeMode]->CollectWord(&_keystrokeBuffer, pCandidateList);
+			pMainEngine->CollectWord(&_keystrokeBuffer, pCandidateList);
 		else if (Global::imeMode == IME_MODE::IME_MODE_ARRAY && CConfig::GetArrayScope() != ARRAY_SCOPE::ARRAY40_BIG5 &&
 					_pArrayPhraseTableDictionaryEngine && isArrayPhraseEnding)  // Array Phrase 
 			_pArrayPhraseTableDictionaryEngine->CollectWord(&_keystrokeBuffer, pCandidateList);

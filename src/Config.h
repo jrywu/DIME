@@ -233,6 +233,10 @@ public:
 	static BOOL GetArraySingleQuoteCustomPhrase() { return _arraySingleQuoteCustomPhrase; }
 	static void SetArraySingleQuoteCustomPhrase(BOOL singleQuoteQueryCustomPhrase) { _arraySingleQuoteCustomPhrase = singleQuoteQueryCustomPhrase; }
 
+	// Big5/CP950 filter (non-Array modes)
+	static BOOL GetBig5Filter() { return _big5Filter; }
+	static void SetBig5Filter(BOOL v) { _big5Filter = v; }
+
 	//numeric pad 
 	static NUMERIC_PAD GetNumericPad() { return _numericPad; }
 	static void SetNumericPad(NUMERIC_PAD numericPad) { _numericPad = numericPad; }
@@ -343,6 +347,8 @@ private:
 	static BOOL _customTableChanged;
 	
 	static BOOL _arraySingleQuoteCustomPhrase;
+
+	static BOOL _big5Filter;   // NEW: CP950 candidate filter for non-Array modes
 
 	static struct _stat _initTimeStamp;
 

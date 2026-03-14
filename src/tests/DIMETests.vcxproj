@@ -352,6 +352,8 @@
     <ClCompile Include="MemoryTest.cpp" />
     <ClCompile Include="StringTest.cpp" />
     <ClCompile Include="TableDictionaryEngineTest.cpp" />
+    <ClCompile Include="CMemoryFileTest.cpp" />
+    <ClCompile Include="CMemoryFileIntegrationTest.cpp" />
     <ClCompile Include="TSFIntegrationTest.cpp" />
     <ClCompile Include="TSFIntegrationTest_Simple.cpp" />
     <ClCompile Include="TSFCoreLogicIntegrationTest.cpp" />

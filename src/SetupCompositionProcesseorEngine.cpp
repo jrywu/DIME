@@ -1,4 +1,4 @@
-/* DIME IME for Windows 7/8/10/11
+﻿/* DIME IME for Windows 7/8/10/11
 
 BSD 3-Clause License
 
@@ -77,6 +77,54 @@ void CCompositionProcessorEngine::SetupConfiguration(IME_MODE imeMode)
 
 //+---------------------------------------------------------------------------
 //
+// SetupBig5Engine
+//
+// Creates (or recreates) a Big5-filtered CMemoryFile + CTableDictionaryEngine
+// for the given imeMode slot, wrapping the already-loaded main dictionary
+// file/engine for that slot.  Any previous Big5 engine/file is deleted first.
+//
+//----------------------------------------------------------------------------
+
+void CCompositionProcessorEngine::SetupBig5Engine(IME_MODE imeMode, LCID locale)
+{
+	UINT slot = (UINT)imeMode;
+
+	// Big5 engines are only needed for the currently active IME mode.
+	// SetupDictionaryFile is also called for secondary modes by the reverse-conversion
+	// provider; those loads must not trigger a Big5 engine build or debug dump.
+	if (imeMode != Global::imeMode) return;
+
+	if (_pBig5TableDictionaryEngine[slot])
+	{
+		delete _pBig5TableDictionaryEngine[slot];
+		_pBig5TableDictionaryEngine[slot] = nullptr;
+	}
+	if (_pBig5TableDictionaryFile[slot])
+	{
+		delete _pBig5TableDictionaryFile[slot];
+		_pBig5TableDictionaryFile[slot] = nullptr;
+	}
+
+	// Skip building when Big5 filtering is not active for this mode
+	bool needsBig5 = (imeMode == IME_MODE::IME_MODE_ARRAY)
+		? (CConfig::GetArrayScope() == ARRAY_SCOPE::ARRAY30_BIG5)
+		: CConfig::GetBig5Filter();
+	if (!needsBig5) return;
+
+	if (!_pTableDictionaryEngine[slot] || !_pTableDictionaryFile[slot] ||
+		!_pTableDictionaryFile[slot]->GetReadBufferPointer()) return;
+
+	_pBig5TableDictionaryFile[slot] = new (std::nothrow) CMemoryFile(_pTableDictionaryFile[slot]);
+	if (!_pBig5TableDictionaryFile[slot]) return;
+
+	_pBig5TableDictionaryEngine[slot] = new (std::nothrow) CTableDictionaryEngine(
+		locale, _pBig5TableDictionaryFile[slot], _pTableDictionaryEngine[slot]->GetDictionaryType());
+	if (_pBig5TableDictionaryEngine[slot])
+		_pBig5TableDictionaryEngine[slot]->ParseConfig(imeMode);
+}
+
+//+---------------------------------------------------------------------------
+//
 // SetupDictionaryFile
 //
 //----------------------------------------------------------------------------
@@ -88,6 +136,8 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode, LCID loc
 
 	WCHAR pwszProgramFiles[MAX_PATH] = { 0 }; // Initialize the array to zero.;
 	WCHAR pwszAppData[MAX_PATH] = { 0 }; // Initialize the array to zero.;
+	bool big5EngineRebuilt = false;
+
 
 	if (GetEnvironmentVariable(L"ProgramW6432", pwszProgramFiles, MAX_PATH) == 0)
 	{//on 64-bit vista only 32bit app has this environment variable.  Which means the call failed when the apps running in 64-bit.
@@ -219,6 +269,10 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode, LCID loc
 		// we don't provide preload Generic.cin in program files
 	}
 
+	// Tracks whether SetupBig5Engine was called inside one of the loading branches
+	// below.  If not (config-only change, dictionary already loaded), it is called
+	// unconditionally after both blocks so that toggling Big5Filter takes effect.
+
 	if (PathFileExists(pwszCINFileName))  //create cin CFile object
 	{
 		if (_pTableDictionaryFile[(UINT)imeMode] == nullptr)
@@ -232,7 +286,9 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode, LCID loc
 					delete _pTableDictionaryEngine[(UINT)imeMode];
 				_pTableDictionaryEngine[(UINT)imeMode] = //cin files use tab as delimiter
 					new (std::nothrow) CTableDictionaryEngine(locale, _pTableDictionaryFile[(UINT)imeMode], DICTIONARY_TYPE::CIN_DICTIONARY);
-				_pTableDictionaryEngine[(UINT)imeMode]->ParseConfig(imeMode); //parse config first.		
+				_pTableDictionaryEngine[(UINT)imeMode]->ParseConfig(imeMode); //parse config first.
+			SetupBig5Engine(imeMode, locale);
+			big5EngineRebuilt = true;
 
 			}
 			else
@@ -245,6 +301,8 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode, LCID loc
 		else if (_pTableDictionaryEngine[(UINT)imeMode] && _pTableDictionaryFile[(UINT)imeMode]->IsFileUpdated())
 		{
 			_pTableDictionaryEngine[(UINT)imeMode]->ParseConfig(imeMode); //parse config to reload updated dictionary
+			SetupBig5Engine(imeMode, locale);
+			big5EngineRebuilt = true;
 			// Reload Keystroke and CandidateListRage when table is updated
 			SetupKeystroke(Global::imeMode);
 			CConfig::LoadConfig(Global::imeMode);
@@ -284,10 +342,19 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode, LCID loc
 				if (_pTableDictionaryEngine[(UINT)imeMode] == nullptr)  goto ErrorExit;
 
 				_pTableDictionaryEngine[(UINT)imeMode]->ParseConfig(imeMode); //parse config first.
+				SetupBig5Engine(imeMode, locale);
+				big5EngineRebuilt = true;
 
 			}
 		}
 	}
+
+	// Config-change path: if neither of the loading branches above called
+	// SetupBig5Engine (dictionary file was already loaded and unchanged on disk,
+	// only the Big5Filter setting was toggled), rebuild the Big5 engine now so
+	// the new setting takes effect immediately.  Works for both CIN and TTS modes.
+	if (!big5EngineRebuilt && _pTableDictionaryEngine[(UINT)imeMode])
+		SetupBig5Engine(imeMode, locale);
 
 	// now load phrase table
 	*pwszCINFileName = L'\0';
@@ -669,20 +736,30 @@ void CCompositionProcessorEngine::ReleaseDictionaryFiles()
             delete _pCustomTableDictionaryFile[i];  
             _pCustomTableDictionaryFile[i] = nullptr;  
         }  
-        _pTableDictionaryEngine[i] = nullptr;  
-        _pCustomTableDictionaryEngine[i] = nullptr;  
-    }  
+        _pTableDictionaryEngine[i] = nullptr;
+        _pCustomTableDictionaryEngine[i] = nullptr;
+        if (_pBig5TableDictionaryEngine[i])
+        {
+            delete _pBig5TableDictionaryEngine[i];
+            _pBig5TableDictionaryEngine[i] = nullptr;
+        }
+        if (_pBig5TableDictionaryFile[i])
+        {
+            delete _pBig5TableDictionaryFile[i];
+            _pBig5TableDictionaryFile[i] = nullptr;
+        }
+    }
 
     if (_pArrayShortCodeDictionaryFile)  
     {  
         delete _pArrayShortCodeDictionaryFile;  
         _pArrayShortCodeDictionaryFile = nullptr;  
     }  
-    if (_pArrayShortCodeTableDictionaryEngine)  
-    {  
-        delete _pArrayShortCodeTableDictionaryEngine;  
-        _pArrayShortCodeTableDictionaryEngine = nullptr;  
-    }  
+    if (_pArrayShortCodeTableDictionaryEngine)
+    {
+        delete _pArrayShortCodeTableDictionaryEngine;
+        _pArrayShortCodeTableDictionaryEngine = nullptr;
+    }
     if (_pArraySpecialCodeDictionaryFile)  
     {  
         delete _pArraySpecialCodeDictionaryFile;  

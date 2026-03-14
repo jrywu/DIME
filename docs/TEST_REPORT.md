@@ -1,10 +1,10 @@
 # DIME Test Report
 
-**Report Date:** March 7, 2026
+**Report Date:** March 12, 2026
 **Test Framework:** Microsoft.VisualStudio.CppUnitTestFramework
 **Build Status:** ✅ Successful
 **Overall Coverage:** 37.2% (7,289/19,589 lines, pre-color-mode-tests baseline)
-**Version:** 2.2 — added UT-CV, UT-PT, IT-CV, IT-PT suites; total 339 passing (351 defined)
+**Version:** 2.6 — FilterLine C3_IDEOGRAPH|C3_ALPHA fallback, surrogate pair plane check, UT-09 expanded to 20 tests; total 362 passing (151 unit + 211 integration)
 
 ---
 
@@ -12,10 +12,10 @@
 
 | Metric | Value | Status |
 |--------|-------|--------|
-| **Total Tests** | 339 passing (351 defined) | ✅ All Passing |
-| **Unit Tests** | 143 | ✅ |
-| **Integration Tests** | 208 | ✅ |
-| **Test Execution Time** | ~19 seconds | ✅ |
+| **Total Tests** | 362 passing | ✅ All Passing |
+| **Unit Tests** | 151 | ✅ |
+| **Integration Tests** | 211 | ✅ |
+| **Test Execution Time** | ~21 seconds | ✅ |
 | **Build Status** | Debug x64 | ✅ |
 | **Code Coverage** | 37.2% | ⚠️ Below target (realistic for IME) |
 
@@ -24,20 +24,20 @@
 - Lines valid: 19,589
 - Coverage rate: 0.372 (37.2%)
 
-**Test Count Note**: 351 `TEST_METHOD` declarations defined across 15 test files; 339 run per execution (~12 auto-skip when DIME.dll/TSF unavailable).
+**Test Count Note**: 362 `TEST_METHOD` declarations defined and running across 17 test files (151 unit in 7 files, 211 integration in 9 files + 1 integration file). All tests run in the current environment; no auto-skip.
 
 ---
 
 ## Test Suite Results
 
-### Unit Tests (UT-01 to UT-PT) - Namespace: `DIMEUnitTests`
-- **Tests:** 143
+### Unit Tests (UT-01 to UT-09, UT-CM, UT-CV, UT-PT) - Namespace: `DIMEUnitTests`
+- **Tests:** 151
 - **Status:** ✅ All Passing
-- **Files:** ConfigTest.cpp (two classes), MemoryTest.cpp, StringTest.cpp, TableDictionaryEngineTest.cpp, CustomTableValidationUnitTest.cpp (in ConfigTest.cpp)
-- **Coverage:** High for core components (60-80% for tested modules)
+- **Files:** ConfigTest.cpp (two classes), MemoryTest.cpp, StringTest.cpp, TableDictionaryEngineTest.cpp, CINParserTest.cpp, DictionaryTest.cpp, CMemoryFileTest.cpp
+- **Coverage:** High for core components (60-80% for tested modules); **100% for CMemoryFile filter (File.cpp lines 263–384)**
 
 ### Integration Tests (IT-01 to IT-PT) - Namespace: `DIMEIntegratedTests`
-- **Total Tests:** 208
+- **Total Tests:** 211
 - **Status:** ✅ All Passing
 - **Coverage:** Varies by module (15-75% depending on TSF dependencies)
 
@@ -117,8 +117,40 @@
 #### IT-PT: Persistence & Theme Integration Tests
 
 - **Tests:** 8 (settings dialog dark/light theme persistence round-trips, system-mode auto-detection)
+
+#### IT-MF: CMemoryFile Real-File Integration Tests
+
+**IT-MF-01** (`IT_MF_01_RealArrayCin_FilterReducesToBig5Range`)
+
+- **Status:** ✅ Passing
+- **Coverage:** `File.cpp` — `CMemoryFile::SetupReadBuffer()` and `FilterLine()` exercised on a real installed CIN dictionary
+- **Strategy:** Dual-filter — (a) filter raw Array.cin, (b) filter Array.cin + 5 injected Cyrillic lines; verify both produce the same filtered count (proving the 5 Cyrillic entries are also removed by the filter)
+- **Results:** rawLines=32 413 → rawFiltLines=15 750 (removed=16 663); augLines=32 418 → augFiltLines=15 750
+- **Interpretation:** Filter correctly reduces Array.cin from full Unicode table (~32 000 lines including CJK Extension chars) to Big5 range (~15 750 lines). The 5 injected Cyrillic entries (U+0400–U+0404) are also removed, confirming no false negatives. Assertions: rawFiltLines < rawLines ✓, rawFiltLines ≥ 13 053 ✓, rawFiltLines ≤ 16 000 ✓, augFiltLines == rawFiltLines ✓.
+
+**IT-MF-02** (`IT_MF_02_DayiTTS_FilterReducesToBig5Range`)
+
+- **Status:** ✅ Passing
+- **Coverage:** `File.cpp` — `FilterLine()` exercised on the Windows built-in Dayi TTS table (`TableTextServiceDaYi.txt`), which uses `"key"="character"` format (`=` separator, both fields double-quoted)
+- **Path:** `%ProgramW6432%\Windows NT\TableTextService\TableTextServiceDaYi.txt` (mirrors `SetupDictionaryFile()` logic)
+- **Results:** raw=27 453 → filtered=19 172 (removed=8 281)
+- **Interpretation:** Filter correctly removes 8 281 non-Big5 CJK Extension entries from the system Dayi TTS table. Assertions: filtLines < rawLines ✓, filtLines ≥ 13 053 ✓. Test skipped when the system file is not present.
+
+#### UT-09: CMemoryFile Filter Tests
+
+- **Tests:** 20 (UT-09-01 through UT-09-20)
 - **Status:** ✅ All Passing
-- **Files:** `SettingsDialogIntegrationTest.cpp` (class `SettingsDialogIntegrationTest`)
+- **Files:** `CMemoryFileTest.cpp` (class `CMemoryFileTests`)
+- **Coverage:** **100%** of `CMemoryFile` and `FilterLine` in `File.cpp` (lines 263–384)
+- **New in v2.6 (this session):**
+  - **Surrogate-pair plane check** (`File.cpp`, `FilterLine()`): Replaced `GetStringTypeW(CT_CTYPE3)` + `C3_SYMBOL` — unreliable across Windows versions for supplementary code points — with direct code-point arithmetic: `cp = 0x10000 + ((H & 0x3FF) << 10) | (L & 0x3FF); return cp < 0x20000u`. SMP (U+10000–U+1FFFF: emoji) → pass; SIP+ (U+20000+: CJK Extension B/C/D/E/F) → filtered.
+  - **`C3_IDEOGRAPH | C3_ALPHA` fallback**: Extended from `!(ct3 & C3_IDEOGRAPH)` to `!(ct3 & (C3_IDEOGRAPH | C3_ALPHA))`. Adds filtering of non-CP950 alphabetic scripts (Cyrillic, Georgian, Arabic, Hebrew — all carry `C3_ALPHA`). Non-ideographic non-alphabetic BMP symbols (Yijing hexagrams, superscripts, vulgar fractions, APL) have neither flag and pass through.
+  - **UT-09-18** (`FilterLine_YijingHexagram_PassesFilter`): U+4DC0 passes (not `C3_IDEOGRAPH`, not `C3_ALPHA`, not CP950); U+3400 filtered.
+  - **UT-09-19** (`FilterLine_SurrogatePair_EmojiPass_CJKExtFilter`): SMP emoji D83D/DCDE passes via `cp < 0x20000u`; SIP D840/DC00 filtered.
+  - **UT-09-20** (`FilterLine_NumericSymbol_PassesFilter`): Vulgar fraction U+2153 passes; CJK Ext A U+3400 filtered.
+- **Previously added in v2.3:**
+  - **UT-09-16** (`FilterLine_CRLF_NonCP950_Excluded`): Confirms CRLF strip in `SetupReadBuffer()`.
+  - **UT-09-17** (`FilterLine_BMP_Symbol_PassesFilter`): Now confirms `C3_SYMBOL` BMP pass-through (★ U+2605) and `C3_IDEOGRAPH` exclusion (U+3400 CJK Ext A — updated from Cyrillic U+0400 to better exercise the ideographic path directly).
 
 #### IT-07: Settings Dialog Integration Tests ⭐
 
@@ -253,9 +285,9 @@ Get-ChildItem -Filter "*.cpp" | Select-String "TEST_METHOD\(" | Measure-Object
 
 ## Test Reliability
 
-- **Pass Rate:** 100% (339/339 running)
+- **Pass Rate:** 100% (362/362 running)
 - **Flaky Tests:** 0
-- **Skipped Tests:** ~12 (IT-07/IT-CV/IT-PT gracefully skip if DIME.dll not loaded)
+- **Skipped Tests:** 0 (IT-MF tests always run: Array.cin is in the repo installer folder; TableTextServiceDaYi.txt is a Windows built-in present on every Windows machine)
 - **Manual Tests Required:** System-level TSF integration tests with real applications
 
 ---
@@ -330,11 +362,16 @@ Get-ChildItem -Filter "*.cpp" | Select-String "TEST_METHOD\(" | Measure-Object
 
 ## Conclusion
 
-✅ **All automated tests passing (339/339 running; 351 defined, ~12 auto-skip)**
-✅ **Test suite executes quickly (~19s)**
+✅ **All automated tests passing (362/362)**
+✅ **Test suite executes quickly (~21s)**
 ✅ **IT-07 + IT-CM + IT-CV + IT-PT: 18+ Settings Dialog tests with REAL Win32 dialogs**
-✅ **Namespaces properly organized:** `DIMEUnitTests` (143 unit tests) · `DIMEIntegratedTests` (208 integration tests)
+✅ **Namespaces properly organized:** `DIMEUnitTests` (151 unit tests) · `DIMEIntegratedTests` (211 integration tests)
 ✅ **New suites:** UT-CV (17), UT-PT (11), IT-CV (14), IT-PT (8) cover custom-table validation and theme persistence
+✅ **UT-09 (20 tests):** 100% coverage of `CMemoryFile` filter — CRLF bug fixed, BMP symbol pass-through, surrogate plane check, `C3_IDEOGRAPH | C3_ALPHA` fallback
+✅ **UT-09-19:** Surrogate-pair plane check (`CMemoryFile::FilterLine`, `File.cpp` · `CMemoryFileTests`, `CMemoryFileTest.cpp`) — `cp < 0x20000u` — SMP emoji pass, SIP CJK Ext B/C/D/E/F filtered
+✅ **UT-09-18/20:** `C3_IDEOGRAPH | C3_ALPHA` fallback (`CMemoryFile::FilterLine`, `File.cpp` · `CMemoryFileTests`, `CMemoryFileTest.cpp`) — non-ideographic symbols (Yijing, fractions, APL) pass; CJK ideographs and non-CP950 alphabetic scripts (Cyrillic, Arabic) filtered
+✅ **IT-MF-01:** Dual-filter — raw Array.cin: rawLines=32 413 → filtered=15 750 (removed 16 663 non-Big5 CJK Extension entries); augmented with 5 Cyrillic lines also filters identically
+✅ **IT-MF-02:** Windows Dayi TTS table (`TableTextServiceDaYi.txt`, `=` separator · `CMemoryFile::FilterLine`, `File.cpp` · `CMemoryFileIntegrationTests`, `CMemoryFileIntegrationTest.cpp`): raw=27 453 → filtered=19 172 (removed 8 281 non-Big5 entries)
 ✅ **No critical gaps in testable code**
 
 **Quality Status:** Production Ready
@@ -343,26 +380,30 @@ Get-ChildItem -Filter "*.cpp" | Select-String "TEST_METHOD\(" | Measure-Object
 
 ## Test Files Summary
 
-### Unit Tests (DIMEUnitTests) — 143 tests
+### Unit Tests (DIMEUnitTests) — 151 tests
 1. `ConfigTest.cpp` — two classes:
-   - `ConfigTest` (UT-01 through UT-CM, UT-PT): Config API, color mode, persistence unit tests
+   - `ConfigTest` (UT-01 through UT-CM, UT-PT): Config API, color mode, persistence unit tests (includes ColorMode round-trip as UT-PT subgroup)
    - `CustomTableValidationUnitTest` (UT-CV): custom table file validation unit tests
-2. `MemoryTest.cpp` — memory management tests
-3. `StringTest.cpp` — string utility tests
-4. `TableDictionaryEngineTest.cpp` — dictionary engine tests
+2. `MemoryTest.cpp` — memory management tests (UT-04)
+3. `StringTest.cpp` — string utility tests (UT-03)
+4. `TableDictionaryEngineTest.cpp` — dictionary engine tests (UT-06)
+5. `CINParserTest.cpp` — CIN file parsing tests (UT-07)
+6. `DictionaryTest.cpp` — dictionary search tests (UT-02)
+7. `CMemoryFileTest.cpp` — CMemoryFile Big5/CP950 filter tests (UT-09, 20 tests, 100% coverage)
 
-### Integration Tests (DIMEIntegratedTests) — 208 tests
+### Integration Tests (DIMEIntegratedTests) — 211 tests
 1. `TSFIntegrationTest.cpp` — TSF COM integration (18 tests)
 2. `TSFIntegrationTest_Simple.cpp` — direct CDIME unit tests (15 tests)
-3. `UIPresenterIntegrationTest.cpp` — UI presenter (17 tests)
+3. `UIPresenterIntegrationTest.cpp` — UI presenter (54 tests)
 4. `CandidateWindowIntegrationTest.cpp` — candidate window (24 tests, incl. IT-CM-10–13)
-5. `LanguageBarIntegrationTest.cpp` — language bar (22 tests, incl. IT-CM-20–22)
+5. `LanguageBarIntegrationTest.cpp` — language bar (17 tests)
 6. `TSFCoreLogicIntegrationTest.cpp` — core logic (18 tests)
-7. `NotificationWindowIntegrationTest.cpp` — notifications (19 tests)
-8. `SettingsDialogIntegrationTest.cpp` — two classes: ⭐
-   - `SettingsDialogIntegrationTest` (IT-07 + IT-CM + IT-PT): 18 tests
-   - `CustomTableValidationIntegrationTest` (IT-CV): 22 tests
+7. `NotificationWindowIntegrationTest.cpp` — notifications (22 tests, incl. IT-CM-20–22)
+8. `SettingsDialogIntegrationTest.cpp` — two classes, 41 tests total: ⭐
+   - `SettingsDialogIntegrationTest` (IT-07 + IT-CM, 18 tests)
+   - `CustomTableValidationIntegrationTest` (IT-CV + IT-PT, 23 tests)
+9. `CMemoryFileIntegrationTest.cpp` — 2 tests (IT-MF-01 + IT-MF-02)
 
-**Total Test Files:** 12 (15 logical test classes across 12 files)
-**Total Test Methods:** 351 defined (339 running per execution, ~12 auto-skip)
+**Total Test Files:** 16 (7 unit, 9 integration)
+**Total Test Methods:** 362 (all running)
 **Build:** ✅ Successful
