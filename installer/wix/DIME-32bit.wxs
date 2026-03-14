@@ -38,7 +38,7 @@
     <MediaTemplate EmbedCab="yes" />
 
     <!-- Suppress file-in-use dialogs (same reason as DIME-64bit.wxs) -->
-    <Property Id="MSIRESTARTMANAGERCONTROL" Value="Disable" />
+    <Property Id="MsiRestartManagerControl" Value="Disable" />
 
     <!-- Disable Change button in maintenance dialog: DIME has no selectable features. -->
     <Property Id="ARPNOMODIFY" Value="1" />
@@ -91,9 +91,13 @@
                   Return="ignore"
                   Impersonate="no" />
 
+    <!-- SetMoveLockedDimeDllUninstall is scheduled Before="EarlyRenameForValidate"
+         (i.e. before InstallValidate) so EarlyRenameForValidate can read
+         the DLL path list. Also serves as CustomActionData for the deferred
+         MoveLockedDimeDllUninstall (captured at GenerateScript time). -->
     <SetProperty Id="MoveLockedDimeDllUninstall"
                  Value="[ProductVersion]|[INSTALLDIR]x86\DIME.dll"
-                 Before="MoveLockedDimeDllUninstall"
+                 Before="EarlyRenameForValidate"
                  Sequence="execute" />
     <CustomAction Id="MoveLockedDimeDllUninstall"
                   BinaryRef="BinDIMEInstallerCA"
@@ -151,6 +155,15 @@
                   Execute="immediate"
                   Return="ignore" />
 
+    <!-- EarlyRenameForValidate: immediate CA, Before="InstallValidate".
+         Renames DIME.dll → bak + fresh inode to bypass the ~60 s
+         InstallValidate file-in-use hang from sandboxed processes. -->
+    <CustomAction Id="EarlyRenameForValidate"
+                  BinaryRef="BinDIMEInstallerCA"
+                  DllEntry="EarlyRenameForValidate"
+                  Impersonate="no"
+                  Return="ignore" />
+
     <!-- Kill DIMESettings.exe before install/uninstall -->
     <util:CloseApplication Id="CloseDIMESettings"
                            Target="DIMESettings.exe"
@@ -189,8 +202,8 @@
                  Before="UnregisterX86Dll"
                  Sequence="execute" />
     <CustomAction Id="UnregisterX86Dll"
-                  BinaryRef="Wix4UtilCA_X86"
-                  DllEntry="WixQuietExec"
+                  BinaryRef="BinDIMEInstallerCA"
+                  DllEntry="UnregisterDimeDll"
                   Execute="deferred"
                   Return="ignore"
                   Impersonate="no" />
@@ -224,6 +237,12 @@
            120-second hang if any NSIS residual registry entry is still present. -->
       <Custom Action="ConfirmAndRemoveNsisInstall" Before="InstallInitialize"
               Condition="NOT Installed AND NOT UPGRADINGPRODUCTCODE AND NOT WIX_UPGRADE_DETECTED" />
+
+      <!-- EarlyRenameForValidate: rename DIME.dll → bak + copy back fresh inode
+           BEFORE InstallValidate's file-in-use detection runs.  Eliminates the
+           ~60 s hang from sandboxed processes holding DIME.dll. -->
+      <Custom Action="EarlyRenameForValidate" Before="InstallValidate"
+              Condition="REMOVE AND NOT UPGRADINGPRODUCTCODE" />
 
       <!-- Install/upgrade/downgrade: rename old DLL away before InstallFiles.
            REINSTALLMODE=amus (set in ConfirmDowngrade CA on downgrade) forces

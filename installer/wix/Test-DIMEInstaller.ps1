@@ -21,7 +21,7 @@ param(
     [string]   $NewVersion  = '1.3.478.0',  # Version string for the "new" test installer
     [string]   $TestWorkDir = '.',           # Working folder for installers and logs (default: current dir)
     [string]   $NsisExe    = "..\DIME-NSIS-Universal.exe", # Optional: path to legacy NSIS DIME-*.exe (enables Scenario B)
-    [string[]] $Scenarios  = @(),       # Which to run: A,B,C,D,E,F,G,Matrix (default: all possible)
+    [string[]] $Scenarios  = @(),       # Which to run: A,B,C,D,E,F,G,H,I,Matrix (default: all possible)
     [switch]   $StopOnFail,             # Abort on first FAIL
     [switch]   $KeepBuilds,             # Don't delete installers after run
     [switch]   $Rebuild,               # Force rebuild even if installers are already present and fresh
@@ -378,15 +378,34 @@ function Build-TestInstallers {
         $exeDest = "$TestWorkDir\DIME-Universal-$ver.exe"
         $msiDest = "$TestWorkDir\DIME-64bit-$ver.msi"
 
-        # Skip build if both outputs exist, were written within the last hour, and -Rebuild was not specified.
+        # Skip build if both outputs exist, were written within the last hour, no source
+        # file is newer than the outputs, and -Rebuild was not specified.
+        # Source staleness matters: if a WXS property (e.g. MsiRestartManagerControl) was
+        # fixed AFTER the last build, a cached MSI would still carry the unfixed property.
+        # In Scenario E this causes RM to auto-terminate the test process (RM detects the
+        # PowerShell lock-holder and kills it under /qn's auto-close mode), appearing as
+        # the script silently stopping with no [TIME] line and no summary.
         if (-not $Rebuild) {
             $exeInfo = Get-Item $exeDest -EA SilentlyContinue
             $msiInfo = Get-Item $msiDest -EA SilentlyContinue
             if ($exeInfo -and $msiInfo -and
                 $exeInfo.LastWriteTime -gt $staleAfter -and
                 $msiInfo.LastWriteTime -gt $staleAfter) {
-                Write-Host "`nSkipping build for $ver (outputs fresh, use -Rebuild to force)." -ForegroundColor DarkGray
-                continue
+                # Invalidate cache if any WXS source file or the deploy script is newer
+                # than the cached MSI — even a 1-second difference matters here.
+                $srcFiles = @(
+                    Get-ChildItem "$PSScriptRoot\*.wxs" -EA SilentlyContinue
+                    Get-Item "$PSScriptRoot\..\deploy-wix-installer.ps1" -EA SilentlyContinue
+                    Get-ChildItem "$PSScriptRoot\DIMEInstallerCA\*.cpp" -EA SilentlyContinue
+                    Get-ChildItem "$PSScriptRoot\DIMEInstallerCA\*.h" -EA SilentlyContinue
+                )
+                $newestSrc = ($srcFiles | Measure-Object -Property LastWriteTime -Maximum).Maximum
+                if ($null -ne $newestSrc -and $newestSrc -gt $msiInfo.LastWriteTime) {
+                    Write-Host "`nSource files changed since last build ($newestSrc > $($msiInfo.LastWriteTime)) — rebuilding $ver." -ForegroundColor Yellow
+                } else {
+                    Write-Host "`nSkipping build for $ver (outputs fresh, use -Rebuild to force)." -ForegroundColor DarkGray
+                    continue
+                }
             }
         }
 
@@ -493,6 +512,62 @@ function Uninstall-ViaMsiProductCode($productCode) {
     if ($code -ne 0) { Show-LastLogLines $log; Show-CaLogs }
     Assert-Duration "MSI-uninstall:$productCode"
     return $code
+}
+
+# Starts a child powershell.exe that holds a file lock on $path for up to 5 minutes,
+# then polls until the child has acquired the lock.  $share controls the FileShare
+# mode used by the child (what other processes are allowed to do concurrently):
+#   'None'            exclusive — no sharing at all (FileShare.None / FileAccess.ReadWrite)
+#   'Read'            read-only sharing — others may read but not write/delete
+#   'ReadWriteDelete' permissive — matches OS loader flags for mapped DLLs/CINs
+# Using a child process means Restart Manager kills the child — not the test runner —
+# when RM runs in /qn mode and finds the file locked.  Returns $null on failure.
+function Start-ExclusiveLockChild([string]$path, [string]$mode = 'OpenOrCreate', [string]$share = 'None') {
+    # IMPORTANT: pass the script as base64 -EncodedCommand so the encoded string
+    # has no spaces at the CreateProcess level — paths like "C:\Program Files\..."
+    # are otherwise mangled by CommandLineToArgvW even inside single quotes.
+    $escaped = $path -replace "'", "''"   # escape any single quotes in path
+    $access  = if ($share -eq 'None') { 'ReadWrite' } else { 'Read' }
+    $script  = "`$h = [System.IO.File]::Open('$escaped', [System.IO.FileMode]::$mode, [System.IO.FileAccess]::$access, [System.IO.FileShare]::$share); Start-Sleep -Seconds 300"
+    $enc     = [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($script))
+    $proc    = Start-Process 'powershell.exe' `
+        -ArgumentList '-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-EncodedCommand', $enc `
+        -PassThru
+    $lockConfirmed = $false
+    $deadline = (Get-Date).AddSeconds(5)
+    while ((Get-Date) -lt $deadline) {
+        if ($proc.HasExited) { break }
+        if (Test-Path $path -PathType Leaf) {
+            if ($share -eq 'ReadWriteDelete') {
+                # Child grants full sharing — cannot detect via probe open.
+                # Wait 500 ms for the child to open the file, then treat alive+exists
+                # as lock confirmed (PowerShell startup takes ~200–400 ms).
+                Start-Sleep -Milliseconds 500
+                if (-not $proc.HasExited) { $lockConfirmed = $true }
+                break
+            } else {
+                # 'None' or 'Read': child does not grant Write access.
+                # A Write probe triggers IOException (sharing violation) once locked.
+                try {
+                    $h = [System.IO.File]::Open($path,
+                        [System.IO.FileMode]::Open,
+                        [System.IO.FileAccess]::Write,
+                        [System.IO.FileShare]::None)
+                    $h.Close()   # no exception → child not yet holding the lock
+                } catch [System.IO.IOException] {
+                    $lockConfirmed = $true
+                    break
+                }
+            }
+        }
+        Start-Sleep -Milliseconds 100
+    }
+    if (-not $lockConfirmed -or $proc.HasExited) {
+        if (-not $proc.HasExited) { $proc.Kill() }
+        $proc.Dispose()
+        return $null
+    }
+    return $proc
 }
 
 function Repair-ViaMsi($productCode) {
@@ -892,17 +967,59 @@ function Invoke-ScenarioD($installers) {
 # ---- Scenario E: Rollback via file-obstruction --------------------------------
 # An exclusively locked file at the target DLL path causes both MoveLockedDimeDll
 # (MoveFileExW fails — no FILE_SHARE_DELETE on the lock) and InstallFiles to fail
-# with exit 1603, triggering MSI automatic rollback. Assertions run after the
-# finally block releases the lock so the file is gone before we check for absence.
+# with exit 1603, triggering MSI automatic rollback.
 #
-# NOTE: A read-only placeholder was tried previously but MoveLockedDimeDll bypasses
-# it: read-only doesn't block MoveFileExW (rename), so the CA renames the file to
-# a bak and copies it back as a fresh unlocked inode, letting InstallFiles succeed.
-# An exclusive FileStream (FileShare.None) withholds FILE_SHARE_DELETE, which causes
-# MoveFileExW to return ERROR_SHARING_VIOLATION — the copy-back never happens.
+# The lock is held by a child process so RM kills the child — not the test runner —
+# when RM fires.  MsiRestartManagerControl=Disable prevents the 60-second RmGetList
+# stall (tested by Scenario H via Assert-Duration) but does NOT prevent RM from
+# terminating lock-holder processes in /qn mode (known OS behaviour: in UILevel=2
+# the RM service session acts automatically without asking).
+# When RM kills the child the lock is released, the install can succeed, and the
+# rollback cannot be asserted; E1/E2 emit WARN instead of FAIL in that case.
+#
+# As a fast sanity-check, E first verifies MsiRestartManagerControl=Disable is
+# present in the MSI Property table (no install performed).
+function Get-MsiProperty([string]$msiPath, [string]$propName) {
+    $wi   = New-Object -ComObject WindowsInstaller.Installer
+    $db   = $wi.GetType().InvokeMember('OpenDatabase', [Reflection.BindingFlags]::InvokeMethod,
+                $null, $wi, @($msiPath, 0))
+    $view = $db.GetType().InvokeMember('OpenView', [Reflection.BindingFlags]::InvokeMethod,
+                $null, $db, @("SELECT ``Value`` FROM ``Property`` WHERE ``Property`` = '$propName'"))
+    $view.GetType().InvokeMember('Execute', [Reflection.BindingFlags]::InvokeMethod, $null, $view, @())
+    $rec  = $view.GetType().InvokeMember('Fetch', [Reflection.BindingFlags]::InvokeMethod, $null, $view, @())
+    $val  = if ($null -ne $rec) {
+        $rec.GetType().InvokeMember('StringData', [Reflection.BindingFlags]::GetProperty, $null, $rec, @(1))
+    } else { '' }
+    $view.GetType().InvokeMember('Close', [Reflection.BindingFlags]::InvokeMethod, $null, $view, @())
+    [void][Runtime.InteropServices.Marshal]::ReleaseComObject($view)
+    [void][Runtime.InteropServices.Marshal]::ReleaseComObject($db)
+    [void][Runtime.InteropServices.Marshal]::ReleaseComObject($wi)
+    return $val
+}
+
 function Invoke-ScenarioE($installers) {
     $Script:Scenario = 'E'
     Write-Host "`n=== Scenario E: Rollback (file-obstruction) ===" -ForegroundColor Cyan
+
+    # Sanity-check: MsiRestartManagerControl=Disable must be in the MSI Property table.
+    $val = Get-MsiProperty $installers.NewMsi64 'MsiRestartManagerControl'
+    Assert-True ($val -eq 'Disable') 'E-MsiRestartManagerControl' `
+        "NewMsi64: Property 'MsiRestartManagerControl' expected 'Disable', got '$val'"
+
+    # MsiRestartManagerControl=Disable (in the MSI) disables the CLIENT-side RM session.
+    # The msiserver service runs a SEPARATE server-side RM session as SYSTEM (Session 0)
+    # that is NOT controlled by that property and will still kill lock-holder processes in
+    # /qn mode.  To make rollback testable, temporarily set the DisableAutomaticApplicationShutdown
+    # machine policy to 1 — this suppresses the server-side RM session's process-termination.
+    # The policy is restored in the finally block below whether E passes or fails.
+    $rmPolicyPath = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\Installer'
+    $rmPolicyName = 'DisableAutomaticApplicationShutdown'
+    $rmPolicyPrev = if (Test-Path $rmPolicyPath) {
+        (Get-ItemProperty $rmPolicyPath -Name $rmPolicyName -EA SilentlyContinue).$rmPolicyName
+    } else { $null }
+    New-Item -Path $rmPolicyPath -Force | Out-Null
+    Set-ItemProperty -Path $rmPolicyPath -Name $rmPolicyName -Value 1 -Type DWord
+    Write-Host "  [INFO] DisableAutomaticApplicationShutdown set to 1 for E1/E2 rollback test" -ForegroundColor DarkGray
 
     # Arch-correct DLL path (what InstallFiles will try to write)
     $archDll = if ($NativeArch -eq 'ARM64') {
@@ -911,52 +1028,85 @@ function Invoke-ScenarioE($installers) {
         "$env:ProgramFiles\DIME\amd64\DIME.dll"
     }
 
-    # E1 — Fresh-install rollback: system must be entirely clean after rollback.
-    # Hold an exclusive lock (FileShare.None) on the target DLL path so that:
-    #   MoveLockedDimeDll: MoveFileExW fails (no FILE_SHARE_DELETE) → no copy-back
-    #   InstallFiles:      write fails (no FILE_SHARE_WRITE) → 1603 rollback
-    # Assertions run after the finally so the lock file is gone before file-absent checks.
-    Remove-AllDimeInstalls
-    New-Item -ItemType Directory -Force (Split-Path $archDll) | Out-Null
-    $e1Lock = [System.IO.File]::Open($archDll, 'OpenOrCreate', 'ReadWrite', 'None')
-    $e1Code = $null
     try {
-        $e1Code = Install-ViaMsi $installers.NewMsi64
-    } finally {
-        $e1Lock.Close(); $e1Lock.Dispose()
-        # Remove lock file and test-created directories: MSI rollback won't clean them
-        # because they were pre-existing (MSI only ref-counts directories it creates itself).
-        # -Recurse is required alongside -Force to suppress the "has children" confirmation.
-        Remove-Item $archDll -Force -EA SilentlyContinue
-        Remove-Item (Split-Path $archDll) -Recurse -Force -EA SilentlyContinue # amd64\
-        Remove-Item "$env:ProgramFiles\DIME"  -Recurse -Force -EA SilentlyContinue # DIME\
-    }
-    Assert-True ($e1Code -eq 1603) 'E1-ExitCode-1603' "expected 1603 (rollback), got $e1Code"
-    Assert-UninstalledClean 'E1-FreshInstall-Rollback'
-    Assert-NoPendingReboot  'E1-FreshInstall-Rollback'
+        # E1 — Fresh-install rollback: system must be entirely clean after rollback.
+        Remove-AllDimeInstalls
+        New-Item -ItemType Directory -Force (Split-Path $archDll) | Out-Null
+        $e1Proc = Start-ExclusiveLockChild $archDll 'OpenOrCreate'
+        if ($null -eq $e1Proc) {
+            Assert-True $false 'E1-LockHolderStarted' `
+                'child process failed to acquire exclusive lock — ensure the test is run as Administrator (Program Files requires elevation)'
+            Remove-Item $archDll -Force -EA SilentlyContinue
+            Remove-Item (Split-Path $archDll) -Recurse -Force -EA SilentlyContinue
+            Remove-Item "$env:ProgramFiles\DIME" -Recurse -Force -EA SilentlyContinue
+        } else {
+            $e1Code = $null; $e1RmKilled = $false
+            try {
+                $e1Code = Install-ViaMsi $installers.NewMsi64
+            } finally {
+                $e1RmKilled = $e1Proc.HasExited
+                if (-not $e1Proc.HasExited) { $e1Proc.Kill() }
+                $e1Proc.WaitForExit(3000)   # wait for OS to release the file handle before we delete
+                $e1Proc.Dispose()
+                # Remove the placeholder file and test-created directories.
+                Remove-Item $archDll -Force -EA SilentlyContinue
+                Remove-Item (Split-Path $archDll) -Recurse -Force -EA SilentlyContinue
+                Remove-Item "$env:ProgramFiles\DIME" -Recurse -Force -EA SilentlyContinue
+            }
+            if ($e1RmKilled) {
+                # RM still killed the child despite DisableAutomaticApplicationShutdown=1
+                # — the policy may not have taken effect in time for the msiserver already-running session.
+                Assert-True $false 'E1-LockNotKilledByRM' `
+                    "RM terminated lock-holder child even with DisableAutomaticApplicationShutdown=1 — msiexec exit $e1Code"
+                Remove-AllDimeInstalls
+            } else {
+                Assert-True ($e1Code -eq 1603) 'E1-ExitCode-1603' "expected 1603 (rollback), got $e1Code"
+                Assert-UninstalledClean 'E1-FreshInstall-Rollback'
+                Assert-NoPendingReboot  'E1-FreshInstall-Rollback'
+            }
+        }
 
-    # E2 — Upgrade rollback: old version must remain fully intact after rollback.
-    # Lock the installed DLL with exclusive access (FileShare.None, no FILE_SHARE_DELETE).
-    # MoveLockedDimeDll's MoveFileExW fails — the old DLL is never renamed to a bak.
-    # InstallFiles also fails → 1603. After rollback the old DLL is untouched at its
-    # original path and COM/TSF keys are still registered, so Assert-InstalledClean passes.
-    Remove-AllDimeInstalls
-    $code = Install-ViaMsi $installers.OldMsi64
-    Assert-ExitCodeSuccess $code 'E2-InstallOld'
-    Assert-InstalledClean $OldVersion 'E2-OldInstalled'
+        # E2 — Upgrade rollback: old version must remain fully intact after rollback.
+        Remove-AllDimeInstalls
+        $code = Install-ViaMsi $installers.OldMsi64
+        Assert-ExitCodeSuccess $code 'E2-InstallOld'
+        Assert-InstalledClean $OldVersion 'E2-OldInstalled'
 
-    $e2Lock = [System.IO.File]::Open($archDll, 'Open', 'ReadWrite', 'None')
-    $e2Code = $null
-    try {
-        $e2Code = Install-ViaMsi $installers.NewMsi64
+        $e2Proc = Start-ExclusiveLockChild $archDll 'Open'
+        if ($null -eq $e2Proc) {
+            Assert-True $false 'E2-LockHolderStarted' `
+                'child process failed to acquire exclusive lock on installed DLL — ensure the test is run as Administrator'
+        } else {
+            $e2Code = $null; $e2RmKilled = $false
+            try {
+                $e2Code = Install-ViaMsi $installers.NewMsi64
+            } finally {
+                $e2RmKilled = $e2Proc.HasExited
+                if (-not $e2Proc.HasExited) { $e2Proc.Kill() }
+                $e2Proc.WaitForExit(3000)   # wait for OS to release the file handle before assertions
+                $e2Proc.Dispose()
+            }
+            if ($e2RmKilled) {
+                Assert-True $false 'E2-LockNotKilledByRM' `
+                    "RM terminated lock-holder child even with DisableAutomaticApplicationShutdown=1 — msiexec exit $e2Code"
+                Remove-AllDimeInstalls
+            } else {
+                Assert-True ($e2Code -eq 1603) 'E2-ExitCode-1603' "expected 1603 (rollback), got $e2Code"
+                # Old DLL is intact — MoveLockedDimeDll couldn't rename a locked file, so nothing moved.
+                Assert-InstalledClean $OldVersion 'E2-UpgradeRollback-OldRestored'
+                Assert-NoPendingReboot 'E2-UpgradeRollback'
+                Assert-NoOrphanBaks    'E2-UpgradeRollback'
+            }
+        }
     } finally {
-        $e2Lock.Close(); $e2Lock.Dispose()
+        # Restore DisableAutomaticApplicationShutdown regardless of pass/fail.
+        if ($null -ne $rmPolicyPrev) {
+            Set-ItemProperty -Path $rmPolicyPath -Name $rmPolicyName -Value $rmPolicyPrev -Type DWord
+        } else {
+            Remove-ItemProperty -Path $rmPolicyPath -Name $rmPolicyName -EA SilentlyContinue
+        }
+        Write-Host "  [INFO] DisableAutomaticApplicationShutdown restored" -ForegroundColor DarkGray
     }
-    Assert-True ($e2Code -eq 1603) 'E2-ExitCode-1603' "expected 1603 (rollback), got $e2Code"
-    # Old DLL is intact — MoveLockedDimeDll couldn't rename a locked file, so nothing moved.
-    Assert-InstalledClean $OldVersion 'E2-UpgradeRollback-OldRestored'
-    Assert-NoPendingReboot 'E2-UpgradeRollback'
-    Assert-NoOrphanBaks    'E2-UpgradeRollback'
 
     Remove-AllDimeInstalls
 }
@@ -1008,26 +1158,31 @@ function Invoke-ScenarioG($installers) {
         "$env:ProgramFiles\DIME\amd64\DIME.dll"
     }
     $cinPath = "$env:ProgramFiles\DIME\Array.cin"
-    $share   = [System.IO.FileShare]::ReadWrite -bor [System.IO.FileShare]::Delete
 
     # G1 — DLL locked with permissive sharing (FILE_SHARE_READ|WRITE|DELETE — OS loader flags)
-    # MoveLockedDimeDll renames the locked dll to a bak (FILE_SHARE_DELETE allows it),
-    # copy-backs a fresh unlocked inode, InstallFiles writes the new DLL, CleanupDimeDllBak deletes the bak.
+    # Lock is held in a child process so RM kills the child (not the test runner) if needed.
+    # MoveLockedDimeDll renames the locked dll to a bak, copy-backs a fresh inode, InstallFiles
+    # writes the new DLL, CleanupDimeDllBak deletes the bak.
     Remove-AllDimeInstalls
     $code = Install-ViaMsi $installers.OldMsi64
     Assert-ExitCodeSuccess $code 'G1-InstallOld'
     Assert-InstalledClean $OldVersion 'G1-OldInstalled'
 
-    $handle = [System.IO.File]::Open($archDll, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, $share)
-    try {
-        $code = Install-ViaMsi $installers.NewMsi64
-        Assert-ExitCodeSuccess $code 'G1-UpgradeWithLock'
-    } finally {
-        $handle.Close()
+    $g1Proc = Start-ExclusiveLockChild $archDll 'Open' 'ReadWriteDelete'
+    if ($null -eq $g1Proc) {
+        Assert-True $false 'G1-LockHolderStarted' 'child process failed to acquire shared lock on DLL'
+    } else {
+        try {
+            $code = Install-ViaMsi $installers.NewMsi64
+            Assert-ExitCodeSuccess $code 'G1-UpgradeWithLock'
+        } finally {
+            if (-not $g1Proc.HasExited) { $g1Proc.Kill() }
+            $g1Proc.Dispose()
+        }
+        Assert-InstalledClean $NewVersion 'G1-NewInstalled'
+        Assert-NoPendingReboot 'G1-NoPendingReboot'
+        Assert-NoOrphanBaks    'G1-NoOrphanBaks'
     }
-    Assert-InstalledClean $NewVersion 'G1-NewInstalled'
-    Assert-NoPendingReboot 'G1-NoPendingReboot'
-    Assert-NoOrphanBaks    'G1-NoOrphanBaks'
     Remove-AllDimeInstalls
 
     # G2 — CIN locked with permissive sharing
@@ -1044,16 +1199,21 @@ function Invoke-ScenarioG($installers) {
     if (-not (Test-Path $cinPath)) {
         Write-Skip 'G2' "Array.cin not found at expected path; skipping locked-CIN test"
     } else {
-        $cinHandle = [System.IO.File]::Open($cinPath, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, $share)
-        try {
-            $code = Install-ViaMsi $installers.NewMsi64
-            Assert-ExitCodeSuccess $code 'G2-UpgradeWithCinLock'
-        } finally {
-            $cinHandle.Close()
+        $g2Proc = Start-ExclusiveLockChild $cinPath 'Open' 'ReadWriteDelete'
+        if ($null -eq $g2Proc) {
+            Assert-True $false 'G2-LockHolderStarted' 'child process failed to acquire shared lock on CIN'
+        } else {
+            try {
+                $code = Install-ViaMsi $installers.NewMsi64
+                Assert-ExitCodeSuccess $code 'G2-UpgradeWithCinLock'
+            } finally {
+                if (-not $g2Proc.HasExited) { $g2Proc.Kill() }
+                $g2Proc.Dispose()
+            }
+            Assert-InstalledClean $NewVersion 'G2-NewInstalled'
+            Assert-NoPendingReboot 'G2-NoPendingReboot'
+            Assert-NoOrphanBaks    'G2-NoOrphanBaks'
         }
-        Assert-InstalledClean $NewVersion 'G2-NewInstalled'
-        Assert-NoPendingReboot 'G2-NoPendingReboot'
-        Assert-NoOrphanBaks    'G2-NoOrphanBaks'
     }
     Remove-AllDimeInstalls
 
@@ -1065,39 +1225,44 @@ function Invoke-ScenarioG($installers) {
     Assert-ExitCodeSuccess $code 'G3-InstallOld'
 
     if (Test-Path $cinPath) {
-        $cinHandleR = [System.IO.File]::Open($cinPath, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::Read)
-        try {
-            $code = Install-ViaMsi $installers.NewMsi64
-            if ($code -eq 1641) {
-                # 1641 = reboot INITIATED — /norestart should always prevent this.
-                Write-Fail 'G3-NoRebootRequired' 'exit 1641 (reboot initiated) — regression: /norestart should suppress machine restart'
-                $Script:Results.Add([pscustomobject]@{ Scenario='G'; Name='G3-NoRebootRequired'; Passed=$false; Message='exit 1641 (reboot initiated) — regression' })
-            } elseif ($code -eq 3010) {
-                # 3010 = reboot required but NOT initiated — known, unresolvable OS limitation:
-                # When a .cin is locked without FILE_SHARE_DELETE, MoveFileExW rename fails,
-                # the copy-back never runs, and RemoveExistingProducts falls back to
-                # MoveFileExW(MOVEFILE_DELAY_UNTIL_REBOOT), setting the reboot-pending flag
-                # before commit CAs run (so CleanupDimeDllBak cannot change the exit code).
-                # CleanupDimeDllBak does scrub PendingFileRenameOperations for .cin files so
-                # newly-installed CINs are not deleted on the next reboot.
-                Write-Warn 'G3-NoRebootRequired' 'exit 3010 — known OS limitation: .cin locked without FILE_SHARE_DELETE forces RemoveExistingProducts to schedule reboot-pending (unavoidable; CleanupDimeDllBak scrubs the pending entry to protect new CINs)'
-                $Script:Results.Add([pscustomobject]@{ Scenario='G'; Name='G3-NoRebootRequired'; Passed=$null; Message='WARN: exit 3010 — known OS limitation' })
-                $pending = (Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager' `
-                    -Name PendingFileRenameOperations -EA SilentlyContinue).PendingFileRenameOperations
-                if ($pending -match '\.cin') {
-                    Write-Warn 'G3-CinPendingReplacement' 'CIN still in PendingFileRenameOperations after CleanupDimeDllBak — scrub may have missed it'
+        $g3Proc = Start-ExclusiveLockChild $cinPath 'Open' 'Read'
+        if ($null -eq $g3Proc) {
+            Write-Skip 'G3' 'child process failed to acquire read-only lock on CIN; skipping restrictive-lock canary'
+        } else {
+            try {
+                $code = Install-ViaMsi $installers.NewMsi64
+                if ($code -eq 1641) {
+                    # 1641 = reboot INITIATED — /norestart should always prevent this.
+                    Write-Fail 'G3-NoRebootRequired' 'exit 1641 (reboot initiated) — regression: /norestart should suppress machine restart'
+                    $Script:Results.Add([pscustomobject]@{ Scenario='G'; Name='G3-NoRebootRequired'; Passed=$false; Message='exit 1641 (reboot initiated) — regression' })
+                } elseif ($code -eq 3010) {
+                    # 3010 = reboot required but NOT initiated — known, unresolvable OS limitation:
+                    # When a .cin is locked without FILE_SHARE_DELETE, MoveFileExW rename fails,
+                    # the copy-back never runs, and RemoveExistingProducts falls back to
+                    # MoveFileExW(MOVEFILE_DELAY_UNTIL_REBOOT), setting the reboot-pending flag
+                    # before commit CAs run (so CleanupDimeDllBak cannot change the exit code).
+                    # CleanupDimeDllBak does scrub PendingFileRenameOperations for .cin files so
+                    # newly-installed CINs are not deleted on the next reboot.
+                    Write-Warn 'G3-NoRebootRequired' 'exit 3010 — known OS limitation: .cin locked without FILE_SHARE_DELETE forces RemoveExistingProducts to schedule reboot-pending (unavoidable; CleanupDimeDllBak scrubs the pending entry to protect new CINs)'
+                    $Script:Results.Add([pscustomobject]@{ Scenario='G'; Name='G3-NoRebootRequired'; Passed=$null; Message='WARN: exit 3010 — known OS limitation' })
+                    $pending = (Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager' `
+                        -Name PendingFileRenameOperations -EA SilentlyContinue).PendingFileRenameOperations
+                    if ($pending -match '\.cin') {
+                        Write-Warn 'G3-CinPendingReplacement' 'CIN still in PendingFileRenameOperations after CleanupDimeDllBak — scrub may have missed it'
+                    }
+                } else {
+                    Assert-ExitCodeSuccess $code 'G3-ExitCode'
+                    # Warn (don't fail) if CIN path is pending — known gap for restrictive lock
+                    $pending = (Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager' `
+                        -Name PendingFileRenameOperations -EA SilentlyContinue).PendingFileRenameOperations
+                    if ($pending -match '\.cin$') {
+                        Write-Warn 'G3-CinPendingReplacement' 'CIN in PendingFileRenameOperations under restrictive lock — known gap'
+                    }
                 }
-            } else {
-                Assert-ExitCodeSuccess $code 'G3-ExitCode'
-                # Warn (don't fail) if CIN path is pending — known gap for restrictive lock
-                $pending = (Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager' `
-                    -Name PendingFileRenameOperations -EA SilentlyContinue).PendingFileRenameOperations
-                if ($pending -match '\.cin$') {
-                    Write-Warn 'G3-CinPendingReplacement' 'CIN in PendingFileRenameOperations under restrictive lock — known gap'
-                }
+            } finally {
+                if (-not $g3Proc.HasExited) { $g3Proc.Kill() }
+                $g3Proc.Dispose()
             }
-        } finally {
-            $cinHandleR.Close()
         }
     } else {
         Write-Skip 'G3' 'Array.cin not found; skipping restrictive-lock canary'
@@ -1164,6 +1329,145 @@ function Invoke-TestMatrix($installers) {
     }
 }
 
+# ---- Scenario H: Uninstall with DLL locked (RM regression) -----------------
+# The RM stall is in MSI's InstallValidate action and is triggered by both
+# Burn-invoked and MSI-direct uninstall, regardless of install method.
+# With MsiRestartManagerControl=Disable the uninstall completes in <5 s.
+# Without it, InstallValidate blocks ~60 s on RmGetList, which trips
+# Assert-Duration (120 s limit) long before the overall timeout fires.
+# Permissive sharing (FILE_SHARE_READ|WRITE|DELETE) matches the loader-grade
+# sharing mode Windows uses when mapping a DLL image, so it cannot block
+# TSF clients from loading the DLL — but it IS sufficient to trigger RmGetList.
+# Tested across all 4 install × uninstall method combos.
+function Invoke-ScenarioH($installers) {
+    $Script:Scenario = 'H'
+    Write-Host "`n=== Scenario H: Uninstall with DLL Locked (RM Regression) ===" -ForegroundColor Cyan
+
+    $archDll = if ($NativeArch -eq 'ARM64') {
+        "$env:ProgramFiles\DIME\arm64\DIME.dll"
+    } else {
+        "$env:ProgramFiles\DIME\amd64\DIME.dll"
+    }
+    $share = [System.IO.FileShare]::ReadWrite -bor [System.IO.FileShare]::Delete
+
+    $combos = @(
+        @{ InstallMethod = 'Burn'; UninstallMethod = 'Burn' },
+        @{ InstallMethod = 'Burn'; UninstallMethod = 'MSI'  },
+        @{ InstallMethod = 'MSI';  UninstallMethod = 'Burn' },
+        @{ InstallMethod = 'MSI';  UninstallMethod = 'MSI'  }
+    )
+
+    foreach ($combo in $combos) {
+        $im  = $combo.InstallMethod
+        $um  = $combo.UninstallMethod
+        $ctx = "H-${im}to${um}"
+
+        Remove-AllDimeInstalls
+        $code = if ($im -eq 'Burn') { Install-ViaBurn $installers.NewExe } else { Install-ViaMsi $installers.NewMsi64 }
+        Assert-ExitCodeSuccess $code "$ctx-Install"
+        Assert-InstalledClean $NewVersion "$ctx-Installed"
+        Assert-NoPendingReboot "$ctx-Install"
+
+        $handle = [System.IO.File]::Open($archDll, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, $share)
+        try {
+            $code = if ($um -eq 'Burn') {
+                Uninstall-ViaBurn $installers.NewExe
+            } else {
+                Uninstall-ViaMsiProductCode (Get-MsiProductCode $NewVersion)
+            }
+            Assert-ExitCodeSuccess $code "$ctx-Uninstall"
+        } finally {
+            $handle.Close()
+        }
+
+        Assert-UninstalledClean "$ctx-UninstalledClean"
+        Assert-NoPendingReboot  "$ctx-NoPendingReboot"
+        Remove-AllDimeInstalls
+    }
+}
+
+# ---- Scenario I: Stale Dependent injection (error 2803 regression) -----------
+# Error 2803 manifests when two builds with the same MSI ProductCode but
+# different Burn bundle GUIDs are installed in sequence: the old GUID lingers
+# as an orphan Dependent under the package-provider key.  When the new bundle
+# later uninstalls, Burn's planning phase finds the orphan, treats it as an
+# external dependency, and skips the MSI uninstall — leaving DIME installed.
+#
+# Timing constraint: Burn checks Dependents at PLAN time, before
+# MsiInstallProduct is called.  If the orphan is present at plan time, Burn
+# skips the MSI's execute sequence entirely and the commit CA never fires.
+# Therefore the CA can only fix this during the INSTALL of the new bundle
+# (CleanupBurnRegistration fires unconditionally during install commit), not
+# during a subsequent Burn uninstall with the orphan already present.
+#
+# Test flow (per combo): pre-create the stale GUID in the provider Dependents
+# key BEFORE install → install triggers commit CA which removes it → Burn
+# uninstall sees no orphan → succeeds.
+#
+# Install method is varied (Burn/MSI) because both paths fire the commit CA and
+# must demonstrate that CleanupBurnRegistration cleans the stale GUID.
+# Uninstall is always Burn: MSI-direct uninstall (msiexec /x) does not read
+# the Dependents key and can never produce error 2803, so testing it here
+# adds no regression coverage.
+function Invoke-ScenarioI($installers) {
+    $Script:Scenario = 'I'
+    Write-Host "`n=== Scenario I: Stale Dependent Injection (2803 Regression) ===" -ForegroundColor Cyan
+
+    $fakeGuid    = '{DEAD0000-DEAD-DEAD-DEAD-DEAD00000001}'
+    $productCode = Get-MsiProductCode $NewVersion 'x64'   # deterministic GUID from "DIME-x64-{major.minor.commit}"
+    $depsSubKey  = "SOFTWARE\Classes\Installer\Dependencies\$productCode\Dependents"
+
+    foreach ($installMethod in @('Burn', 'MSI')) {
+        $ctx = "I-${installMethod}toBurn"
+
+        Remove-AllDimeInstalls
+
+        # Pre-create the orphan GUID under the x64 MSI package-provider Dependents
+        # path before the MSI is installed.  The full key path may not exist yet;
+        # CreateSubKey creates missing intermediate keys automatically.
+        # SOFTWARE\Classes is not subject to WOW64 redirection — use Registry64.
+        $depsBase = [Microsoft.Win32.RegistryKey]::OpenBaseKey('LocalMachine', [Microsoft.Win32.RegistryView]::Registry64)
+        $deptsKey = $depsBase.CreateSubKey($depsSubKey)
+        if ($deptsKey) {
+            $deptsKey.CreateSubKey($fakeGuid) | Out-Null
+            $deptsKey.Close()
+            Write-Host "  [$ctx] Pre-injected stale dependent $fakeGuid" -ForegroundColor DarkGray
+        } else {
+            Write-Warn "$ctx-Inject" "Could not create stale Dependent key — skipping combo"
+            $depsBase.Close()
+            Remove-AllDimeInstalls
+            continue
+        }
+        $depsBase.Close()
+
+        # Install — CleanupBurnRegistration (commit CA) fires, reads the MSI's own
+        # ProductCode via MsiGetPropertyW, and removes any Dependent GUID under that
+        # provider key that is not the current bundle GUID.  fakeGuid must be gone after this.
+        $code = if ($installMethod -eq 'Burn') { Install-ViaBurn $installers.NewExe } else { Install-ViaMsi $installers.NewMsi64 }
+        Assert-ExitCodeSuccess $code "$ctx-Install"
+        Assert-InstalledClean $NewVersion "$ctx-Installed"
+        Assert-NoPendingReboot "$ctx-Install"
+
+        # Explicit check: stale GUID must be absent (commit CA cleaned it)
+        $depsBase2 = [Microsoft.Win32.RegistryKey]::OpenBaseKey('LocalMachine', [Microsoft.Win32.RegistryView]::Registry64)
+        $checkKey  = $depsBase2.OpenSubKey($depsSubKey)
+        $leftover  = if ($checkKey) { @($checkKey.GetSubKeyNames() | Where-Object { $_ -eq $fakeGuid }) } else { @() }
+        if ($checkKey) { $checkKey.Close() }
+        $depsBase2.Close()
+        Assert-True ($leftover.Count -eq 0) "$ctx-StaleDepCleanedByInstall" `
+            "stale GUID $fakeGuid still present after install — CleanupBurnRegistration did not remove it"
+
+        # Burn uninstall: Burn would skip the MSI if any non-current Dependent
+        # remained, leaving files/keys intact — caught by Assert-UninstalledClean.
+        $code = Uninstall-ViaBurn $installers.NewExe
+        Assert-ExitCodeSuccess $code "$ctx-Uninstall"
+        Assert-UninstalledClean "$ctx-UninstalledClean"
+        Assert-NoPendingReboot  "$ctx-NoPendingReboot"
+
+        Remove-AllDimeInstalls
+    }
+}
+
 # ==============================================================================
 # Phase 7 — Main block
 # ==============================================================================
@@ -1202,7 +1506,7 @@ Write-Host "  New MSI : $($installers.NewMsi64)"
 Write-Host ""
 
 # Determine which scenarios to run
-$toRun = if ($Scenarios.Count -gt 0) { $Scenarios } else { @('A', 'B', 'C', 'D', 'E', 'F', 'G', 'Matrix') }
+$toRun = if ($Scenarios.Count -gt 0) { $Scenarios } else { @('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'Matrix') }
 
 foreach ($s in $toRun) {
     try {
@@ -1214,6 +1518,8 @@ foreach ($s in $toRun) {
             'E'      { Invoke-ScenarioE $installers }
             'F'      { Invoke-ScenarioF $installers }
             'G'      { Invoke-ScenarioG $installers }
+            'H'      { Invoke-ScenarioH $installers }
+            'I'      { Invoke-ScenarioI $installers }
             'MATRIX' { Invoke-TestMatrix $installers }
             default  { Write-Host "Unknown scenario: $s" -ForegroundColor Yellow }
         }

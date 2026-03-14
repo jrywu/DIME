@@ -15,5 +15,7 @@ EXPORTS
     CleanupDimeDllBak
     ConfirmAndRemoveNsisInstall
     ConfirmDowngrade
+    EarlyRenameForValidate
     MoveLockedDimeDll
     RollbackMoveLockedDimeDll
+    UnregisterDimeDll

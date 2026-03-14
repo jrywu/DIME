@@ -49,11 +49,16 @@
     </Property>
 
     <!-- Suppress file-in-use dialogs: DIME.dll is an IME loaded by every app.
-         MSIRESTARTMANAGERCONTROL=Disable: disables Restart Manager (suppresses
-         MsiRMFilesInUse dialog). InstallUISequence suppresses both dialog actions
-         so neither the RM dialog nor the legacy FilesInUse dialog can appear.
+         MsiRestartManagerControl=Disable: disables all Restart Manager API calls,
+         preventing InstallValidate's 60-second RmGetList block. Without this,
+         the MSI engine calls RmGetList even when DIME.dll is renamed before
+         InstallValidate, and the 60-second silence causes Burn's "not responding"
+         dialog. NOTE: property name MUST be mixed-case; all-caps MSIRESTARTMANAGERCONTROL
+         creates a public property the MSI engine ignores for RM control.
+         MsiRMFilesInUse and FilesInUse dialogs are suppressed in UISequence so
+         the legacy file-in-use check (which still runs) produces no visible dialog.
          MoveLockedDimeDll CA (deferred/SYSTEM) handles the actual rename. -->
-    <Property Id="MSIRESTARTMANAGERCONTROL" Value="Disable" />
+    <Property Id="MsiRestartManagerControl" Value="Disable" />
 
     <!-- Disable Change button in maintenance dialog: DIME has no selectable features. -->
     <Property Id="ARPNOMODIFY" Value="1" />
@@ -122,9 +127,13 @@
                   Return="ignore"
                   Impersonate="no" />
 
+    <!-- SetMoveLockedDimeDllUninstall is scheduled Before="EarlyRenameForValidate"
+         (i.e. before InstallValidate) so that EarlyRenameForValidate can read
+         the DLL path list. The property also serves as CustomActionData for
+         the deferred MoveLockedDimeDllUninstall (captured at GenerateScript time). -->
     <SetProperty Id="MoveLockedDimeDllUninstall"
                  Value="[ProductVersion]|[INSTALLDIR]amd64\DIME.dll|[INSTALLDIR]arm64\DIME.dll|[INSTALLDIR]x86\DIME.dll"
-                 Before="MoveLockedDimeDllUninstall"
+                 Before="EarlyRenameForValidate"
                  Sequence="execute" />
     <CustomAction Id="MoveLockedDimeDllUninstall"
                   BinaryRef="BinDIMEInstallerCA"
@@ -132,6 +141,17 @@
                   Execute="deferred"
                   Return="ignore"
                   Impersonate="no" />
+
+    <!-- EarlyRenameForValidate: immediate CA, Before="InstallValidate".
+         Renames DIME.dll files to unique bak names and copies them back
+         (fresh unlocked inodes) so InstallValidate's file-in-use scan
+         finds nothing locked, eliminating the ~60 s hang caused by
+         sandboxed processes (e.g. msedgewebview2) holding DIME.dll. -->
+    <CustomAction Id="EarlyRenameForValidate"
+                  BinaryRef="BinDIMEInstallerCA"
+                  DllEntry="EarlyRenameForValidate"
+                  Impersonate="no"
+                  Return="ignore" />
 
     <!-- Rollback: reads bak paths from InstallerState (no CustomActionData needed) -->
     <CustomAction Id="RollbackMoveLockedDimeDllInstall"
@@ -174,6 +194,13 @@
                   Execute="commit"
                   Return="ignore"
                   Impersonate="no" />
+
+    <!-- Passes ProductCode to CleanupBurnRegistration via CustomActionData.
+         Commit CAs cannot read arbitrary session properties via MsiGetPropertyW —
+         only CustomActionData is reliably available in that context. -->
+    <CustomAction Id="SetCleanupBurnRegistrationData"
+                  Property="CleanupBurnRegistration"
+                  Value="[ProductCode]" />
 
     <!-- Burn writes its ARP entry at Apply-start, before the MSI runs.
          If the user cancels (or closes the maintenance dialog without acting),
@@ -225,8 +252,8 @@
                  Before="UnregisterAmd64Dll"
                  Sequence="execute" />
     <CustomAction Id="UnregisterAmd64Dll"
-                  BinaryRef="Wix4UtilCA_X64"
-                  DllEntry="WixQuietExec64"
+                  BinaryRef="BinDIMEInstallerCA"
+                  DllEntry="UnregisterDimeDll"
                   Execute="deferred"
                   Return="ignore"
                   Impersonate="no" />
@@ -262,8 +289,8 @@
                  Before="UnregisterArm64Dll"
                  Sequence="execute" />
     <CustomAction Id="UnregisterArm64Dll"
-                  BinaryRef="Wix4UtilCA_X64"
-                  DllEntry="WixQuietExec64"
+                  BinaryRef="BinDIMEInstallerCA"
+                  DllEntry="UnregisterDimeDll"
                   Execute="deferred"
                   Return="ignore"
                   Impersonate="no" />
@@ -300,8 +327,8 @@
                  Before="UnregisterX86Dll"
                  Sequence="execute" />
     <CustomAction Id="UnregisterX86Dll"
-                  BinaryRef="Wix4UtilCA_X64"
-                  DllEntry="WixQuietExec64"
+                  BinaryRef="BinDIMEInstallerCA"
+                  DllEntry="UnregisterDimeDll"
                   Execute="deferred"
                   Return="ignore"
                   Impersonate="no" />
@@ -350,6 +377,16 @@
       <Custom Action="ConfirmAndRemoveNsisInstall" Before="InstallInitialize"
               Condition="NOT Installed AND NOT UPGRADINGPRODUCTCODE AND NOT WIX_UPGRADE_DETECTED" />
 
+      <!-- EarlyRenameForValidate: rename DIME.dll → bak + copy back fresh inode
+           BEFORE InstallValidate's file-in-use detection runs.
+           Without this, the built-in file-in-use scan blocks ~60 s when a
+           sandboxed process (e.g. msedgewebview2) holds DIME.dll, causing
+           Burn to show "Installer 不再有回應" (package not responding).
+           MoveLockedDimeDllUninstall (deferred, later) detects the early bak
+           entries in InstallerState and skips re-renaming those DLLs. -->
+      <Custom Action="EarlyRenameForValidate" Before="InstallValidate"
+              Condition="REMOVE AND NOT UPGRADINGPRODUCTCODE" />
+
       <!-- Install/upgrade/downgrade: rename old DLLs away BEFORE RemoveExistingProducts
            so Windows Installer's file version costing sees them as absent and
            installs the new version unconditionally (fixes downgrade DLL skip).
@@ -390,10 +427,14 @@
            Guard: skip when UPGRADINGPRODUCTCODE is set — the old product is being
            removed as part of a major upgrade. The new product has already registered
            its DLLs; unregistering here would break the freshly installed IME. -->
+      <!-- Architecture conditions removed: NATIVE_PROCESSOR_ARCHITECTURE is not
+           reliably promoted to the execute-sequence context during Burn-invoked
+           uninstall. UnregisterDimeDll / regsvr32 /u /s fails silently if the
+           DLL is absent or the wrong PE format for this arch — no hang risk. -->
       <Custom Action="UnregisterAmd64Dll" Before="RemoveFiles"
-              Condition="REMOVE AND NOT UPGRADINGPRODUCTCODE AND NATIVE_PROCESSOR_ARCHITECTURE = &quot;AMD64&quot;" />
+              Condition="REMOVE AND NOT UPGRADINGPRODUCTCODE" />
       <Custom Action="UnregisterArm64Dll" Before="RemoveFiles"
-              Condition="REMOVE AND NOT UPGRADINGPRODUCTCODE AND NATIVE_PROCESSOR_ARCHITECTURE = &quot;ARM64&quot;" />
+              Condition="REMOVE AND NOT UPGRADINGPRODUCTCODE" />
       <Custom Action="UnregisterX86Dll" Before="RemoveFiles"
               Condition="REMOVE AND NOT UPGRADINGPRODUCTCODE" />
 
@@ -409,6 +450,8 @@
       <!-- Commit: delete all DIME Burn ARP registry entries.
            Condition NOT UPGRADINGPRODUCTCODE skips the old-product remove phase
            of a MajorUpgrade (the new product's install pass handles cleanup). -->
+      <Custom Action="SetCleanupBurnRegistrationData" Before="CleanupBurnRegistration"
+              Condition="NOT UPGRADINGPRODUCTCODE" />
       <Custom Action="CleanupBurnRegistration" Before="InstallFinalize"
               Condition="NOT UPGRADINGPRODUCTCODE" />
     </InstallExecuteSequence>

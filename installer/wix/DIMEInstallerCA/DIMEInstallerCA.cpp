@@ -165,6 +165,16 @@ static void DeleteInstallerState()
     RegDeleteKeyW(HKEY_LOCAL_MACHINE, kStateKey);
 }
 
+static void DeleteInstallerStateValue(const wchar_t* valueName)
+{
+    HKEY hk = nullptr;
+    if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, kStateKey, 0, KEY_SET_VALUE, &hk) == ERROR_SUCCESS)
+    {
+        RegDeleteValueW(hk, valueName);
+        RegCloseKey(hk);
+    }
+}
+
 // ============================================================================
 // Shared helpers
 // ============================================================================
@@ -292,6 +302,78 @@ BOOL APIENTRY DllMain(HMODULE, DWORD, LPVOID) { return TRUE; }
 // Forward declarations of helpers defined later in this compile unit.
 static void CaBurnLog(const wchar_t* line);
 static void ScrubPendingFileRenameOperation(const wchar_t* targetPath);
+
+// ============================================================================
+// UnregisterDimeDll  Execute="deferred"  Impersonate="no" (SYSTEM)
+//
+// Replacement for WixQuietExec64 on the Unregister CAs.  Runs
+// `regsvr32 /u /s <dll>` and sends INSTALLMESSAGE_PROGRESS heartbeats every
+// second so the MSI progress dialog keeps receiving messages and Windows never
+// flags the installer window as "not responding".
+//
+// WixQuietExec64 already waits INFINITE, but it sends no progress messages.
+// During the ~2-minute TSF SendMessage broadcast that DllUnregisterServer()
+// performs, the installer window appears frozen.  After ~2 minutes Windows
+// shows a "not responding" Retry/Cancel dialog.  Sending heartbeats here
+// prevents that detection entirely, letting regsvr32 finish however long it
+// takes.
+//
+// CustomActionData: full quoted command line set by the preceding SetProperty,
+//   e.g. "C:\Windows\system32\regsvr32.exe" /u /s "C:\Program Files\DIME\amd64\DIME.dll"
+// Returns ERROR_SUCCESS always (best-effort, never aborts).
+// ============================================================================
+extern "C" __declspec(dllexport)
+UINT __stdcall UnregisterDimeDll(MSIHANDLE hInstall)
+{
+    wchar_t cmd[MAX_PATH * 2 + 64] = {};
+    DWORD cch = ARRAYSIZE(cmd);
+    if (MsiGetPropertyW(hInstall, L"CustomActionData", cmd, &cch) != ERROR_SUCCESS
+        || !cmd[0])
+    {
+        CaBurnLog(L"[UnregisterDimeDll] no CustomActionData — skipping");
+        return ERROR_SUCCESS;
+    }
+
+    wchar_t logBuf[MAX_PATH * 2 + 80] = {};
+    lstrcpyW(logBuf, L"[UnregisterDimeDll] ");
+    lstrcatW(logBuf, cmd);
+    CaBurnLog(logBuf);
+
+    STARTUPINFOW si = {};
+    si.cb = sizeof(si);
+    PROCESS_INFORMATION pi = {};
+    if (!CreateProcessW(nullptr, cmd, nullptr, nullptr,
+                        FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi))
+    {
+        CaBurnLog(L"[UnregisterDimeDll] CreateProcessW failed — skipping");
+        return ERROR_SUCCESS;
+    }
+    CloseHandle(pi.hThread);
+
+    // Wait with 1-second ticks.  Send an INSTALLMESSAGE_PROGRESS heartbeat
+    // each tick so the MSI engine and UI thread keep receiving messages,
+    // preventing the Windows "not responding" detection regardless of how long
+    // the TSF broadcast inside DllUnregisterServer() takes.
+    for (;;)
+    {
+        DWORD dw = WaitForSingleObject(pi.hProcess, 1000);
+        if (dw != WAIT_TIMEOUT)
+            break;
+        // field[1]=2 (progress tick), field[2]=0 (add 0 ticks to meter)
+        MSIHANDLE hRec = MsiCreateRecord(2);
+        if (hRec)
+        {
+            MsiRecordSetInteger(hRec, 1, 2);
+            MsiRecordSetInteger(hRec, 2, 0);
+            MsiProcessMessage(hInstall, INSTALLMESSAGE_PROGRESS, hRec);
+            MsiCloseHandle(hRec);
+        }
+    }
+
+    CloseHandle(pi.hProcess);
+    CaBurnLog(L"[UnregisterDimeDll] regsvr32 finished");
+    return ERROR_SUCCESS;
+}
 
 // ============================================================================
 // ConfirmAndRemoveNsisInstall  Execute="immediate"  Impersonate="yes" (user)
@@ -570,6 +652,37 @@ UINT __stdcall MoveLockedDimeDll(MSIHANDLE hInstall)
     int wixIdx = 0;
     int cinIdx = 0;
 
+    // Promote "early_bak_N" InstallerState entries written by EarlyRenameForValidate
+    // (immediate CA, Before="InstallValidate") to "wix_bak_K" so that
+    // RollbackMoveLockedDimeDll and CleanupDimeDllBak see them.
+    // Mark the corresponding token as nullptr so the DLL loop skips it.
+    {
+        BakEntry stateEntries[16] = {};
+        int stateCount = ReadAllInstallerState(stateEntries, 16);
+        for (int si = 0; si < stateCount; ++si)
+        {
+            if (wcsncmp(stateEntries[si].name, L"early_bak_", 10) != 0) continue;
+            wchar_t eDll[MAX_PATH] = {}, eBak[MAX_PATH] = {};
+            SplitStatePair(stateEntries[si].path, eDll, eBak, MAX_PATH);
+            if (!eDll[0] || !eBak[0]) continue;
+            for (int ti = 1; ti < n; ++ti)
+            {
+                if (!tokens[ti] || !tokens[ti][0]) continue;
+                if (lstrcmpiW(tokens[ti], eDll) != 0) continue;
+                wchar_t newName[16] = L"wix_bak_";
+                newName[8] = L'0' + (wchar_t)wixIdx++;
+                newName[9] = L'\0';
+                WriteInstallerStateEntry(newName, eDll, eBak);
+                DeleteInstallerStateValue(stateEntries[si].name);
+                wsprintfW(logBuf, L"[MoveLockedDimeDll] promoted %s -> %s: %s",
+                          stateEntries[si].name, newName, eDll);
+                CaBurnLog(logBuf);
+                tokens[ti] = nullptr;
+                break;
+            }
+        }
+    }
+
     for (int i = 1; i < n; ++i)
     {
         const wchar_t* dll = tokens[i];
@@ -777,6 +890,259 @@ UINT __stdcall RollbackMoveLockedDimeDll(MSIHANDLE /*hInstall*/)
     }
 
     DeleteInstallerState();
+    return ERROR_SUCCESS;
+}
+
+// ============================================================================
+// HeartbeatThread — background thread spawned by EarlyRenameForValidate.
+//
+// Sends INSTALLMESSAGE_PROGRESS every 500 ms for up to `durationMs`
+// milliseconds.  This keeps the Burn bootstrapper's "not responding" timer
+// from firing while InstallValidate blocks on the Restart Manager's 60-second
+// WM_QUERYENDSESSION timeout (caused by sandboxed processes such as
+// msedgewebview2 that hold DIME.dll open).  After `durationMs`, the thread
+// exits on its own; no explicit cancellation is needed.
+//
+// NOTE: hInstall is the MSI session handle, which remains valid until
+// InstallFinalize ends — well past the 90 s window we use here.
+// ============================================================================
+struct HeartbeatCtx { MSIHANDLE hInstall; DWORD durationMs; };
+
+static DWORD WINAPI HeartbeatThread(LPVOID param)
+{
+    HeartbeatCtx* ctx = reinterpret_cast<HeartbeatCtx*>(param);
+    MSIHANDLE     h   = ctx->hInstall;
+    DWORD         end = GetTickCount() + ctx->durationMs;
+    delete ctx;
+
+    while (static_cast<long>(end - GetTickCount()) > 0)
+    {
+        Sleep(500);
+        MSIHANDLE hRec = MsiCreateRecord(2);
+        if (hRec)
+        {
+            MsiRecordSetInteger(hRec, 1, 2);  // field[1]=2: progress tick
+            MsiRecordSetInteger(hRec, 2, 0);  // field[2]=0: add 0 ticks
+            MsiProcessMessage(h, INSTALLMESSAGE_PROGRESS, hRec);
+            MsiCloseHandle(hRec);
+        }
+    }
+    return 0;
+}
+
+// ============================================================================
+// EarlyRenameForValidate  Execute="immediate" (server-side, elevated)
+//
+// Scheduled Before="InstallValidate" in InstallExecuteSequence.
+//
+// Problem: InstallValidate's built-in file-in-use detection blocks for ~60 s
+// when a sandboxed process (e.g. msedgewebview2) holds a handle to DIME.dll.
+// This 60-second silence triggers Burn's "Installer 不再有回應" (package not
+// responding) dialog.
+//
+// Fix: rename each DIME.dll to a unique bak name and copy it back at the
+// original path (fresh unlocked inode).  InstallValidate then finds nothing
+// locked, completing in milliseconds.  Subsequent Unregister CAs still run
+// regsvr32 /u against the fresh (unlocked) dll path.
+//
+// Rnamed bak paths are recorded in HKLM\SOFTWARE\DIME\InstallerState as
+// "early_bak_N" entries.  MoveLockedDimeDll (deferred, runs later) detects
+// them, promotes each to "wix_bak_K", and skips re-renaming.
+// RollbackMoveLockedDimeDll and CleanupDimeDllBak handle all InstallerState
+// entries regardless of key prefix.
+//
+// Returns ERROR_SUCCESS always (never aborts).
+// ============================================================================
+extern "C" __declspec(dllexport)
+UINT __stdcall EarlyRenameForValidate(MSIHANDLE hInstall)
+{
+    wchar_t remove[64] = {};
+    DWORD cch = 64;
+    MsiGetPropertyW(hInstall, L"REMOVE", remove, &cch);
+    if (!remove[0])
+    {
+        CaBurnLog(L"[EarlyRenameForValidate] REMOVE not set — skipping");
+        return ERROR_SUCCESS;
+    }
+
+    wchar_t upgradingCode[MAX_PATH] = {};
+    cch = MAX_PATH;
+    MsiGetPropertyW(hInstall, L"UPGRADINGPRODUCTCODE", upgradingCode, &cch);
+    if (upgradingCode[0])
+    {
+        CaBurnLog(L"[EarlyRenameForValidate] UPGRADINGPRODUCTCODE set — skipping");
+        return ERROR_SUCCESS;
+    }
+
+    // SetMoveLockedDimeDllUninstall (immediate SetProperty, Before="EarlyRenameForValidate")
+    // populates this property.  Format: "{ProductVersion}|{dll1}|{dll2}|..."
+    wchar_t data[4096] = {};
+    cch = 4096;
+    if (MsiGetPropertyW(hInstall, L"MoveLockedDimeDllUninstall", data, &cch) != ERROR_SUCCESS
+        || !data[0])
+    {
+        CaBurnLog(L"[EarlyRenameForValidate] MoveLockedDimeDllUninstall property empty — skipping");
+        return ERROR_SUCCESS;
+    }
+
+    wchar_t* tokens[17] = {};
+    int n = SplitPipe(data, tokens, 17);
+    if (n < 2)
+    {
+        CaBurnLog(L"[EarlyRenameForValidate] too few tokens — skipping");
+        return ERROR_SUCCESS;
+    }
+
+    const wchar_t* ver = tokens[0];
+    wchar_t logBuf[512] = {};
+    wsprintfW(logBuf, L"[EarlyRenameForValidate] REMOVE=%s ver=%s dlls=%d",
+              remove, ver, n - 1);
+    CaBurnLog(logBuf);
+
+    int earlyIdx = 0;
+    for (int i = 1; i < n; ++i)
+    {
+        const wchar_t* dll = tokens[i];
+        if (!dll || !dll[0]) continue;
+
+        if (GetFileAttributesW(dll) == INVALID_FILE_ATTRIBUTES)
+        {
+            wsprintfW(logBuf, L"[EarlyRenameForValidate] not found (ok): %s", dll);
+            CaBurnLog(logBuf);
+            continue;
+        }
+
+        wchar_t bak[MAX_PATH + 64] = {};
+        BuildUniqueBakName(dll, ver, bak, MAX_PATH + 64);
+
+        ScrubPendingFileRenameOperation(dll);
+
+        if (MoveFileExW(dll, bak, 0))
+        {
+            // Fresh unlocked inode at original path so:
+            //   InstallValidate → no lock found → fast
+            //   Unregister CAs → regsvr32 /u still succeeds on the fresh dll
+            CopyFileW(bak, dll, FALSE);
+
+            wchar_t valName[16] = L"early_bak_";
+            valName[10] = L'0' + (wchar_t)earlyIdx++;
+            valName[11] = L'\0';
+            WriteInstallerStateEntry(valName, dll, bak);
+
+            wsprintfW(logBuf, L"[EarlyRenameForValidate] renamed: %s -> %s", dll, bak);
+            CaBurnLog(logBuf);
+        }
+        else
+        {
+            DWORD err = GetLastError();
+            wsprintfW(logBuf, L"[EarlyRenameForValidate] MoveFileExW err=%u: %s", err, dll);
+            CaBurnLog(logBuf);
+            if (err == ERROR_SHARING_VIOLATION)
+            {
+                // POSIX copy-replace: atomically replaces the dir entry with a
+                // fresh inode (Win10 1809+).  No InstallerState entry needed
+                // because the fresh inode at the original path is unlocked.
+                if (CopyAndPosixReplace(dll, bak))
+                {
+                    wsprintfW(logBuf, L"[EarlyRenameForValidate] POSIX fallback OK: %s", dll);
+                    CaBurnLog(logBuf);
+                }
+                else
+                {
+                    wsprintfW(logBuf, L"[EarlyRenameForValidate] POSIX fallback failed: %s", dll);
+                    CaBurnLog(logBuf);
+                }
+            }
+        }
+    }
+
+    // Scrub stale PFRO entries for .cin files and .dll bak files.
+    // These can be left by earlier failed install cycles and cause
+    // InstallInitialize to set MsiSystemRebootPending=1 even after the DLL
+    // rename+copy-back above gives us fresh unlocked inodes.
+    // EarlyRenameForValidate runs Before="InstallValidate" i.e. before
+    // InstallInitialize, so scrubbing here prevents the reboot-pending flag
+    // from being set in the first place.
+    if (n >= 2 && tokens[1] && tokens[1][0])
+    {
+        // Derive installDir: strip filename (DIME.dll) and arch subdir
+        wchar_t installDir[MAX_PATH] = {};
+        lstrcpynW(installDir, tokens[1], MAX_PATH);
+        wchar_t* p = installDir + lstrlenW(installDir);
+        while (p > installDir && *p != L'\\') --p;
+        if (*p == L'\\') *p = L'\0';
+        p = installDir + lstrlenW(installDir);
+        while (p > installDir && *p != L'\\') --p;
+        if (*p == L'\\') *p = L'\0';
+
+        if (installDir[0])
+        {
+            // Scrub PFRO for all *.cin files in installDir
+            wchar_t cinPattern[MAX_PATH + 8] = {};
+            lstrcpynW(cinPattern, installDir, MAX_PATH);
+            lstrcatW(cinPattern, L"\\*.cin");
+            WIN32_FIND_DATAW fd = {};
+            HANDLE hFind = FindFirstFileW(cinPattern, &fd);
+            if (hFind != INVALID_HANDLE_VALUE)
+            {
+                do {
+                    if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
+                    wchar_t cinPath[MAX_PATH] = {};
+                    lstrcpynW(cinPath, installDir, MAX_PATH);
+                    lstrcatW(cinPath, L"\\");
+                    lstrcatW(cinPath, fd.cFileName);
+                    ScrubPendingFileRenameOperation(cinPath);
+                } while (FindNextFileW(hFind, &fd));
+                FindClose(hFind);
+            }
+
+            // Scrub PFRO for DLL bak files in each arch subdir
+            const wchar_t* archDirs[] = { L"amd64", L"arm64", L"x86" };
+            for (int ai = 0; ai < 3; ++ai)
+            {
+                wchar_t bakPattern[MAX_PATH + 16] = {};
+                lstrcpynW(bakPattern, installDir, MAX_PATH);
+                lstrcatW(bakPattern, L"\\");
+                lstrcatW(bakPattern, archDirs[ai]);
+                lstrcatW(bakPattern, L"\\DIME.dll.*");
+                hFind = FindFirstFileW(bakPattern, &fd);
+                if (hFind == INVALID_HANDLE_VALUE) continue;
+                do {
+                    if (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
+                    if (lstrcmpiW(fd.cFileName, L"DIME.dll") == 0) continue;
+                    wchar_t bakPath[MAX_PATH] = {};
+                    lstrcpynW(bakPath, installDir, MAX_PATH);
+                    lstrcatW(bakPath, L"\\");
+                    lstrcatW(bakPath, archDirs[ai]);
+                    lstrcatW(bakPath, L"\\");
+                    lstrcatW(bakPath, fd.cFileName);
+                    ScrubPendingFileRenameOperation(bakPath);
+                } while (FindNextFileW(hFind, &fd));
+                FindClose(hFind);
+            }
+
+            wsprintfW(logBuf, L"[EarlyRenameForValidate] PFRO scrub done for %s", installDir);
+            CaBurnLog(logBuf);
+        }
+    }
+
+    // Spawn a background heartbeat thread so Burn's "not responding" timer does
+    // not fire during InstallValidate's Restart Manager wait.  The RM API can
+    // block up to ~60 s per file set while waiting for WM_QUERYENDSESSION
+    // responses from sandboxed processes (msedgewebview2).  Our thread sends
+    // INSTALLMESSAGE_PROGRESS every 500 ms for 90 s, which is longer than the
+    // worst-case RM timeout and harmlessly overlaps with UnregisterDimeDll
+    // (which also heartbeats).  The thread exits automatically — no join needed.
+    {
+        HeartbeatCtx* ctx = new HeartbeatCtx{ hInstall, 90000u };
+        HANDLE hThread = CreateThread(nullptr, 0, HeartbeatThread, ctx, 0, nullptr);
+        if (hThread) { CloseHandle(hThread); }
+        else         { delete ctx; }  // CreateThread failed; proceed without heartbeat
+        CaBurnLog(L"[EarlyRenameForValidate] heartbeat thread spawned for 90 s");
+    }
+
+    wsprintfW(logBuf, L"[EarlyRenameForValidate] done, early baks written: %d", earlyIdx);
+    CaBurnLog(logBuf);
     return ERROR_SUCCESS;
 }
 
@@ -1109,9 +1475,9 @@ static void CleanupBurnARPImpl(MSIHANDLE hInstall, bool deleteFolder)
             }
         }
 
-        // UISequence call (deleteFolder=false): save the cache path to a side-channel
-        // key so the commit-phase call can delete the folder even though this call
-        // already deleted the ARP registry key (Bug 1 fix).
+        // UISequence call (deleteFolder=false): save the cache path to the side-channel
+        // key so the commit-phase call can delete the Package Cache folder even though
+        // this call already deleted the ARP registry key.
         if (!deleteFolder && cachePath[0])
         {
             HKEY hSave = nullptr;
@@ -1137,14 +1503,142 @@ static void CleanupBurnARPImpl(MSIHANDLE hInstall, bool deleteFolder)
         }
     }
 
+    // --- Reverse scan: remove stale orphan Dependents from this MSI's provider key ---
+    // Problem: when a bundle is reinstalled/upgraded, the old bundle's GUID remains
+    // registered as a Dependent under the DIME package provider.  Burn will refuse
+    // to uninstall the MSI if it sees any external Dependent GUID besides its own,
+    // resulting in error 2803.  We cannot rely on the ARP check because at commit
+    // time the old bundle's ARP entry is still present (the old Burn session hasn't
+    // ended yet).  Instead, we use the current bundle GUID saved by CleanupBurnARPEarly
+    // (UISequence, before commit) in the side-channel key.  Any Dependent GUID that
+    // is not the current bundle GUID is stale and is removed unconditionally.
+    //
+    // The provider key name is exactly the MSI ProductCode, passed in via
+    // CustomActionData (commit CAs cannot read arbitrary session properties —
+    // only CustomActionData is reliably available in that context).  We target that
+    // single key directly — no prefix-guessing needed (prefix patterns change with
+    // every version build and become stale).
+    if (deleteFolder)
+    {
+        // Read the current bundle GUID from the side-channel key written by
+        // CleanupBurnARPEarly (UISequence path, where BURN_BUNDLE_ID is accessible).
+        wchar_t currentBundleId[64] = {};
+        {
+            DWORD cbId = sizeof(currentBundleId);
+            RegGetValueW(HKEY_LOCAL_MACHINE,
+                         L"SOFTWARE\\DIME\\BurnCacheCleanup", L"CurrentBundleId",
+                         RRF_RT_REG_SZ, nullptr, currentBundleId, &cbId);
+        }
+        // Also check burnBundleId (readable in commit context on some MSI versions).
+        // When neither is known (MSI-direct install, no live Burn session), there is
+        // no current bundle to protect — remove all Dependents (they are all orphans).
+        bool haveCurrentId = currentBundleId[0] || burnBundleId[0];
+
+        // Read this MSI's ProductCode from CustomActionData — commit CAs cannot read
+        // arbitrary session properties via MsiGetPropertyW; only CustomActionData
+        // is reliably available.  The setter CA SetCleanupBurnRegistrationData
+        // (an immediate CA in InstallExecuteSequence) passes [ProductCode] here.
+        wchar_t productCode[64] = {};
+        {
+            DWORD cch = ARRAYSIZE(productCode);
+            MsiGetPropertyW(hInstall, L"CustomActionData", productCode, &cch);
+        }
+
+        {
+            wchar_t dbg[256] = {};
+            wsprintfW(dbg, L"DepsKeyScan: productCode=%s currentBundleId=%s haveCurrentId=%d",
+                      productCode[0] ? productCode : L"(empty)",
+                      currentBundleId[0] ? currentBundleId : L"(empty)",
+                      (int)haveCurrentId);
+            CaBurnLog(dbg);
+        }
+
+        if (productCode[0])
+        {
+            // Build path: SOFTWARE\Classes\Installer\Dependencies\{ProductCode}\Dependents
+            wchar_t deptsFullPath[320] = {};
+            lstrcpynW(deptsFullPath,
+                      L"SOFTWARE\\Classes\\Installer\\Dependencies\\",
+                      ARRAYSIZE(deptsFullPath));
+            lstrcatW(deptsFullPath, productCode);
+            lstrcatW(deptsFullPath, L"\\Dependents");
+
+            HKEY hDepts = nullptr;
+            LONG openErr = RegOpenKeyExW(HKEY_LOCAL_MACHINE, deptsFullPath, 0,
+                                         KEY_READ | KEY_WRITE, &hDepts);
+            if (openErr != ERROR_SUCCESS)
+            {
+                wchar_t dbg[320] = {};
+                wsprintfW(dbg, L"DepsKeyScan: RegOpenKeyEx failed err=%ld path=%s",
+                          openErr, deptsFullPath);
+                CaBurnLog(dbg);
+            }
+            else
+            {
+                for (DWORD didx = 0; ; )
+                {
+                    wchar_t depGuid[64] = {};
+                    DWORD cchDep = 64;
+                    if (RegEnumKeyExW(hDepts, didx, depGuid, &cchDep,
+                                      nullptr, nullptr, nullptr, nullptr) != ERROR_SUCCESS)
+                        break;
+
+                    // Keep the current bundle's own registration.
+                    // When haveCurrentId is false (MSI-direct install, no live bundle),
+                    // treat every entry as an orphan — there is nothing to protect.
+                    bool isCurrent = haveCurrentId &&
+                        ((currentBundleId[0] && _wcsicmp(depGuid, currentBundleId) == 0) ||
+                         (burnBundleId[0]    && _wcsicmp(depGuid, burnBundleId)    == 0));
+                    if (isCurrent) { ++didx; continue; }
+
+                    // This GUID is not the current bundle — it's a stale orphan.
+                    // Remove it regardless of ARP presence: at commit time the old
+                    // bundle's ARP entry still exists (old Burn session not yet ended),
+                    // so an ARP check would incorrectly skip still-live-looking orphans.
+                    if (RegDeleteKeyW(hDepts, depGuid) == ERROR_SUCCESS)
+                    {
+                        wchar_t logMsg[320] = {};
+                        wsprintfW(logMsg,
+                            L"removed stale orphan dependent %s from provider %s",
+                            depGuid, productCode);
+                        CaBurnLog(logMsg);
+                        // Do NOT increment didx — deletion shifts enumeration index.
+                    }
+                    else
+                    {
+                        ++didx;
+                    }
+                }
+                RegCloseKey(hDepts);
+            }
+        }
+    }
+
+    // Always save the current bundle GUID for the commit CA's reverse scan.
+    // This runs unconditionally (not just when a matching ARP entry was found)
+    // so the commit CA knows which GUID is live even on fresh installs with no
+    // orphan ARP entries to delete.  Written to HKLM only in UISequence context
+    // (deleteFolder=false) where BURN_BUNDLE_ID is accessible via MsiGetPropertyW.
+    if (!deleteFolder && burnBundleId[0])
+    {
+        HKEY hSave = nullptr;
+        if (RegCreateKeyExW(HKEY_LOCAL_MACHINE,
+                            L"SOFTWARE\\DIME\\BurnCacheCleanup",
+                            0, nullptr, REG_OPTION_NON_VOLATILE, KEY_SET_VALUE,
+                            nullptr, &hSave, nullptr) == ERROR_SUCCESS)
+        {
+            RegSetValueExW(hSave, L"CurrentBundleId", 0, REG_SZ,
+                           reinterpret_cast<const BYTE*>(burnBundleId),
+                           (lstrlenW(burnBundleId) + 1) * sizeof(wchar_t));
+            RegCloseKey(hSave);
+        }
+    }
+
     RegCloseKey(hUninstall);
 
     if (!anyDeleted)
         CaBurnLog(L"no matching entries found (already clean)");
 }
-
-// ============================================================================
-// CleanupBurnARPEarly  Execute="immediate"  (runs in UISequence, user/Burn context)
 //
 // Fires unconditionally at the very start of every MSI invocation — even if
 // the user immediately cancels the maintenance dialog — because InstallUISequence
@@ -1201,9 +1695,8 @@ UINT __stdcall CleanupBurnRegistration(MSIHANDLE hInstall)
     // execute phase (before commit CAs run), so the value is absent by now.
     // On install, InstalledVersion is still present here.
     // We distinguish the two by peeking at InstalledVersion rather than reading
-    // REMOVE: commit CAs cannot read arbitrary session properties (only
-    // CustomActionData, ProductCode, and UserSID are accessible via
-    // MsiGetPropertyW in deferred/commit context).
+    // REMOVE: commit CAs cannot read arbitrary session properties via
+    // MsiGetPropertyW — only CustomActionData is reliably available.
     {
         wchar_t ver[64] = {};
         DWORD cb = sizeof(ver);

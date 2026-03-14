@@ -165,7 +165,7 @@ No CRT dependency — uses only `kernel32`, `user32`, `advapi32`, `msi.lib`.
 | `MoveLockedDimeDll` | deferred | no (SYSTEM) | Rename DLLs away; write bak paths to registry |
 | `RollbackMoveLockedDimeDll` | rollback | no (SYSTEM) | Restore baks to original paths on failure |
 | `CleanupDimeDllBak` | commit | no (SYSTEM) | Mark baks delete-pending; glob-scan orphan baks; remove empty dirs |
-| `CleanupBurnRegistration` | commit | no (SYSTEM) | Detect orphaned Burn ARP after MSI-only uninstall or MajorUpgrade; launch Burn `/uninstall /quiet` detached to self-clean |
+| `CleanupBurnRegistration` | commit | no (SYSTEM) | Remove orphaned Burn ARP entries and Package Cache after uninstall or upgrade; remove stale bundle GUIDs from `SOFTWARE\Classes\Installer\Dependencies\{ProductCode}\Dependents` (stale GUIDs cause Burn error 2803 on future uninstall). `ProductCode` is supplied via `CustomActionData` by the setter CA `SetCleanupBurnRegistrationData` — commit CAs cannot read arbitrary session properties via `MsiGetPropertyW`; only `CustomActionData` is reliably available |
 
 Deferred/rollback/commit CAs use `Impersonate="no"` (SYSTEM token) — a UAC-filtered user token cannot write to `%ProgramFiles%`. `ConfirmAndRemoveNsisInstall` uses `Execute="immediate"` to run in the user session (for UI access) before elevation. For the full CA-by-CA execution order see the [Scenario Comparison table](#scenario-comparison--execution-chain).
 
@@ -191,6 +191,11 @@ Deferred/rollback/commit CAs use `Impersonate="no"` (SYSTEM token) — a UAC-fil
 For `DIME-32bit.msi` (32-bit Windows only, single DLL):
 ```
 {ProductVersion}|{PF}\DIME\x86\DIME.dll
+```
+
+For `CleanupBurnRegistration` (set by `SetCleanupBurnRegistrationData`):
+```
+{ProductCode}
 ```
 
 ---
@@ -226,7 +231,7 @@ Standard WiX/MSI engine actions are **bold**; Custom Actions are unformatted.
 
 | # | Action | Condition | Fresh install | NSIS migration | Uninstall | Upgrade | Downgrade (Yes) |
 |---|---|---|---|---|---|---|---|
-| 1 | CA: `CleanupBurnARPEarly` | unconditional | no Burn ARP — exits | no Burn ARP — exits | finds Burn ARP (if installed via Burn); deletes registry entry only | finds old-ver Burn ARP; deletes registry only | finds newer-ver Burn ARP; deletes registry only |
+| 1 | CA: `CleanupBurnARPEarly` | unconditional | no Burn ARP — exits¹⁰ | no Burn ARP — exits¹⁰ | finds Burn ARP (if installed via Burn); deletes registry entry only¹⁰ | finds old-ver Burn ARP; deletes registry only¹⁰ | finds newer-ver Burn ARP; deletes registry only¹⁰ |
 | 2 | **FindRelatedProducts** | — | `WIX_UPGRADE_DETECTED` = *(empty)* | *(empty)* | *(empty)* | set to old ProductCode | set to newer ProductCode |
 | 3 | CA: `ConfirmDowngrade` | unconditional¹ | returns immediately (no `WIX_UPGRADE_DETECTED`) | returns immediately (no `WIX_UPGRADE_DETECTED`) | returns immediately (no `WIX_UPGRADE_DETECTED`) | returns immediately (upgrade direction²) | sets `REINSTALLMODE=amus`; messagebox → user clicks Yes |
 
@@ -254,7 +259,8 @@ Rows marked **(sub-pass)** belong to the old product's own execute sequence, tri
 | 11 | deferred | CA: `RegisterXxxDll` *(After=**InstallFiles**)* | `NOT REMOVE` | `regsvr32` | `regsvr32` | skip | `regsvr32` | `regsvr32` |
 | 12 | standard | **InstallFinalize** | — | ✓ | ✓ | ✓ | ✓ | ✓ |
 | 13 | commit | CA: `CleanupDimeDllBakInstall` / CA: `CleanupDimeDllBakUninstall` | `NOT REMOVE` / `REMOVE AND NOT UPGRADINGPRODUCTCODE` | no-op⁶ | marks NSIS baks delete-pending⁷ | marks WiX bak delete-pending⁷ | marks old-ver bak delete-pending⁷ (if step 9 renamed one) | marks newer-ver bak delete-pending⁷ (if step 9 renamed one) |
-| 14 | commit | CA: `CleanupBurnRegistration` | `NOT UPGRADINGPRODUCTCODE` | no match — exits | no match — exits | deletes Burn ARP registry + Package Cache⁸ | deletes old-ver Burn ARP + cache⁸ | deletes newer-ver Burn ARP + cache⁸ |
+| 13.5 | immediate | CA: `SetCleanupBurnRegistrationData` *(Before=CA:`CleanupBurnRegistration`)* | `NOT UPGRADINGPRODUCTCODE` | sets `CustomActionData` = `[ProductCode]` | same | same | same | same |
+| 14 | commit | CA: `CleanupBurnRegistration` | `NOT UPGRADINGPRODUCTCODE` | no match — exits; no stale Dependents | no match — exits; no stale Dependents | deletes Burn ARP registry + Package Cache⁸; removes stale bundle GUIDs from `{ProductCode}\Dependents`⁹ | deletes old-ver Burn ARP + cache⁸; removes stale bundle GUIDs from `{ProductCode}\Dependents`⁹ | deletes newer-ver Burn ARP + cache⁸; removes stale bundle GUIDs from `{ProductCode}\Dependents`⁹ |
 
 **On failure** at any step after a `MoveLockedDimeDll` rename: the armed rollback CA (`RollbackMoveLockedDimeDllInstall` or `RollbackMoveLockedDimeDllUninstall`) renames every bak back to the original path and deletes `InstallerState`. The commit CA never runs (commit phase not reached), so baks are left as plain files.
 
@@ -265,7 +271,9 @@ Rows marked **(sub-pass)** belong to the old product's own execute sequence, tri
 ⁵ `ConfirmAndRemoveNsisInstall` already cleared the sys32/syswow64 DLLs via NSIS; the `%ProgramFiles%\DIME\` paths do not yet exist on first WiX install.  
 ⁶ `InstallerState` is empty; glob-scan of known DLL directories finds no orphan baks.  
 ⁷ 4-step cascade per bak: `DeleteFileW` (immediate if no process holds it) → `FileDispositionInfoEx + POSIX_SEMANTICS` (Win10 1709+: removes directory entry instantly while inode stays alive until last handle closes) → `FileDispositionInfo` delete-pending (older OS: auto-deletes on last handle close) → `MOVEFILE_DELAY_UNTIL_REBOOT` (last resort). Also glob-scans for orphan baks from prior interrupted cycles.  
-⁸ `CleanupBurnARPEarly` (UISequence, step 1) deleted the registry entry; `CleanupBurnRegistration` (commit) reads the `BundleCachePath` registry value and deletes the cache folder **in the same scan** — so `CleanupBurnRegistration` must find the registry entry intact to clean the cache. For scenarios where the Early CA ran first on the same entry, the cache folder cleanup falls to `CleanupBurnRegistration`'s glob-scan of the Package Cache directory.
+⁸ `CleanupBurnARPEarly` (UISequence, step 1) deleted the registry entry; `CleanupBurnRegistration` (commit) reads the `BundleCachePath` registry value and deletes the cache folder **in the same scan** — so `CleanupBurnRegistration` must find the registry entry intact to clean the cache. For scenarios where the Early CA ran first on the same entry, the cache folder cleanup falls to `CleanupBurnRegistration`'s glob-scan of the Package Cache directory.  
+⁹ `CleanupBurnRegistration` reads `ProductCode` from `CustomActionData` (supplied by `SetCleanupBurnRegistrationData`; commit CAs cannot read arbitrary session properties via `MsiGetPropertyW` — only `CustomActionData` is reliably available in that context). It opens `SOFTWARE\Classes\Installer\Dependencies\{ProductCode}\Dependents` and removes every sub-key whose GUID is not the current bundle GUID (`CurrentBundleId` from `SOFTWARE\DIME\BurnCacheCleanup`, written by `CleanupBurnARPEarly`¹⁰). This prevents Burn error 2803 when a stale bundle GUID remains in the Dependents key after a reinstall or upgrade.  
+¹⁰ `CleanupBurnARPEarly` also saves `BURN_BUNDLE_ID` (readable in UISequence immediate context) to `HKLM\SOFTWARE\DIME\BurnCacheCleanup\CurrentBundleId`. This GUID identifies the active (new) bundle and is used by `CleanupBurnRegistration`'s stale-Dependent scan (footnote ⁹) to determine which entry to preserve.
 
 ---
 
@@ -382,81 +390,84 @@ Full installer build (requires DIME binaries in `src\Release\`):
 
 ---
 
-## TODO
+## Tests
 
-### High priority — implement now
+All installer scenarios are covered by an automated PowerShell test suite:
+`installer\wix\Test-DIMEInstaller.ps1`
 
-- [x] **Rewrite `DIMEInstallerCA.cpp`**
-  - Removed `#ifdef BUILDING_EXE` / `wWinMain` block (EXE target eliminated)
-  - Removed `NotifyDimeDllInUseImpl`, `NotifyDimeDllInUseInstall`, `NotifyDimeDllInUseUninstall`
-  - Removed `IsFileLocked`, `IsDimeDllStillPresent`, `CheckDimeDllPendingRemoval`
-  - Removed `BuildBakName` (replaced)
-  - Added `BuildUniqueBakName(dll, ver, out, cch)` — suffix `{ver}.{GetTickCount64() as 16-char hex}`
-  - Added `WriteInstallerState(valueName, path)` / `ReadAllInstallerState()` / `DeleteInstallerState()`
-    targeting `HKLM\SOFTWARE\DIME\InstallerState`
-  - Rewrote `ConfirmAndRemoveNsisInstall` — silent: rename + copy-back + launch `/S` + write InstallerState
-  - Rewrote `MoveLockedDimeDll` — rename only; write bak paths to InstallerState; no mark-delete
-  - Rewrote `RollbackMoveLockedDimeDll` — read InstallerState; rename bak → dll; delete key
-  - Added `CleanupDimeDllBak` — commit CA; read InstallerState; 4-step delete-pending per bak:
-    `DeleteFileW` → `FileDispositionInfoEx` + `POSIX_SEMANTICS` (Win10 1709+, removes dir entry
-    immediately) → `FileDispositionInfo` fallback (older OS, auto-deletes on last handle close)
-    → `MOVEFILE_DELAY_UNTIL_REBOOT` (last resort); glob-scan stale baks in System32, SysWOW64,
-    and ProgramFiles\DIME subdirs; delete key
-  - `ConfirmDowngrade`: reads `WIX_UPGRADE_DETECTED`; compares versions via `ParseVersionStr`;
-    sets `REINSTALLMODE=amus` and shows Chinese messagebox for downgrades; returns immediately
-    for upgrades and fresh installs
+### Test Script Overview
 
-- [x] **Update `DIME-64bit.wxs`** — DLL relocation to ProgramFiles
-  - Removed System64Folder and SystemFolder DIME.dll components
-  - Added `%ProgramFiles%\DIME\amd64\DIME.dll`, `arm64\DIME.dll`, `x86\DIME.dll` components
-  - Updated regsvr32 / unregsvr32 CA paths
-  - Removed `NotifyDimeDllInUseInstall` / `NotifyDimeDllInUseUninstall` SetProperty + CA + sequence entries
-  - Removed `CheckDimeDllPendingRemoval` SetProperty + CA + sequence entries
-  - Added `CleanupDimeDllBakInstall` and `CleanupDimeDllBakUninstall` commit CAs
-  - Add `MediaTemplate EmbedCab="yes"` (already done)
-  - `MoveLockedDimeDllInstall` scheduled `Before="InstallFiles"` (not before `RemoveExistingProducts` —
-    that caused MSI error 2613)
+The script requires Administrator rights and accepts these key parameters:
 
-- [x] **Update `DIME-32bit.wxs`** — same changes as DIME-64bit.wxs (single x86 DLL only)
-  - Added `<Launch Condition="NOT VersionNT64" .../>` to block wrong-platform installs
-  - `MoveLockedDimeDllInstall` scheduled `Before="InstallFiles"`
+| Parameter | Default | Purpose |
+|---|---|---|
+| `-OldVersion` | `1.3.477.0` | Version string for the "old" installer |
+| `-NewVersion` | `1.3.478.0` | Version string for the "new" installer |
+| `-TestWorkDir` | `.` | Working folder for built installers and logs |
+| `-NsisExe` | `..\DIME-NSIS-Universal.exe` | Optional: path to legacy NSIS installer (enables Scenario B) |
+| `-Scenarios` | all | Subset to run: `A,B,C,D,E,F,G,H,I,Matrix` |
+| `-StopOnFail` | off | Abort on first FAIL |
+| `-Rebuild` | off | Force rebuild even if cached installers are fresh |
+| `-Cleanup` | off | Remove all DIME installs and exit |
 
-- [x] **Update `Bundle.wxs`**
-  - Removed `<ExePackage>` for DIMEConfirm
-  - Removed 1602 exit-code cancel mapping
-  - Removed VC++ Redistributable `<ExePackage>` (not needed — DIME uses static CRT)
-  - `ARPSYSTEMCOMPONENT` suppresses MSI ARP entry when installed via Burn
+**Build phase:** the script calls `deploy-wix-installer.ps1` with `-ProductVersionOverride` to build both the old and new installer pairs (`DIME-Universal-{ver}.exe` + `DIME-64bit-{ver}.msi`) using the real production build pipeline. A source-staleness check (comparing `.wxs`, `deploy-wix-installer.ps1`, `DIMEInstallerCA.cpp`, and `.h` file timestamps against the cached MSI) forces a rebuild when any source is newer than the cached output.
 
-- [x] **Update `deploy-wix-installer.ps1`**
-  - Staging copies DLLs to `Staging\amd64\`, `Staging\arm64\`, `Staging\x86\`
-  - DIMEConfirm build step removed
-  - `Start-Service msiserver` added before WiX build commands
+**Framework:** each test calls `Assert-True`, `Assert-FileExists`, `Assert-FileAbsent`, `Assert-RegKeyAbsent`, etc. Results are accumulated in `$Script:Results` and printed as a `PASS/FAIL/WARN` summary at the end. `-StopOnFail` aborts on the first failure.
 
-- [x] **Switch DIME.dll and DIMESettings.exe to static CRT (`/MT`)**
-  - Set **C/C++ → Code Generation → Runtime Library** to `Multi-threaded (/MT)` in
-    `DIME.vcxproj` for all Release configurations (x64, ARM64, Win32)
-  - Safe for a COM in-process server: no CRT objects cross the DLL boundary
-  - Eliminates the VC++ Redistributable as an install prerequisite
-  - Verify with `dumpbin /dependents DIME.dll` — `VCRUNTIME140.dll` must not appear
+**Install methods tested:** every scenario that involves installing or uninstalling exercises both `Install-ViaBurn` (Burn bundle, `/install /quiet /norestart`) and `Install-ViaMsi` (msiexec, `/qn /norestart`) unless noted.
 
-- [x] **Build and test both CA DLLs** (x64 and Win32)
+**Cleanup:** `Remove-AllDimeInstalls` runs before and after each scenario. It uninstalls all DIME MSI products by deterministic `ProductCode`, sweeps orphan MSI ARP entries, sweeps Burn bundle ARP entries and Package Cache, removes COM/TSF registry keys from both 64-bit and 32-bit hives, and removes any orphan `Dependents` GUIDs whose bundle is no longer in the ARP hive.
 
-### Medium priority — verify after implementation
+**Timing regression detection:** `Assert-Duration` (120 s limit) catches any operation that stalls — e.g. a missing `MsiRestartManagerControl=Disable` causes a ~60 s RmGetList stall inside InstallValidate.
 
-- [x] **Test Scenario B** — fresh WiX install over old NSIS installation
-  (requires machine with NSIS DIME installed; verify NSIS removes cleanly and
-  silently, WiX DLLs land in ProgramFiles)
-- [x] **Test Scenario C** — WiX upgrade (install v2 over v1 WiX)
-- [x] **Test Scenario D** — uninstall + reinstall same version
-- [x] **Test Scenario E** — install failure rollback (kill installer after
-  `MoveLockedDimeDll` but before `InstallFiles`; verify DLL is restored)
-- [x] **Test Scenario F** — downgrade (install older over newer — rebuild required after `REINSTALLMODE=amus` fix):
-  - Click No — verify nothing changes on disk ✅ (confirmed via log)
-  - Click Yes — verify messagebox fires ✅; verify DLLs present + correct version ⏳
-  - Verify ARP and package cache after downgrade ⏳
-- [x] **Test rapid cycling** — uninstall/install three times without rebooting;
-  verify no bak naming collision and no orphan files in System32 or ProgramFiles
+### Assertions — Installed State
 
-### Low priority — future
+After every successful install, `Assert-InstalledClean` verifies:
 
-*(none)*
+1. Arch-correct DLL files present under `%ProgramFiles%\DIME\amd64\` (AMD64) or `arm64\` (ARM64), plus `x86\` always
+2. 64-bit COM `InProcServer32` points to the arch-correct DLL (`Registry64` view)
+3. 32-bit COM `InProcServer32` points to `x86\DIME.dll` (`Registry32`/WOW6432Node view)
+4. Four 64-bit TSF TIP language profiles present (Dayi, Array, Phonetic, Generic)
+5. Four 32-bit TSF TIP language profiles present (WOW6432Node view)
+6. MSI ARP entry — exactly one, no `BundleVersion` (Burn ARP absent)
+7. Burn ARP absent (skipped for Burn-to-Burn upgrade — Burn re-registers post-CA by design)
+8. Package Cache absent (skipped for Burn-to-Burn upgrade)
+9. Side-channel key `HKLM\SOFTWARE\DIME\BurnCacheCleanup` absent
+10. `InstalledVersion` value present under `HKLM\SOFTWARE\DIME`
+11. `InstallerState` scratch key absent
+12. No orphan `.bak` files in `%ProgramFiles%\DIME\` subdirectories
+13. All eleven `.cin` table files present
+14. `DIMESettings.exe` present
+15. Start Menu shortcut `DIME設定.lnk` present with correct target
+
+### Assertions — Uninstalled State
+
+`Assert-UninstalledClean` verifies all DLL files, COM keys (both hives), TSF TIP keys (both hives), MSI ARP, Burn ARP, Package Cache, side-channel key, `HKLM\SOFTWARE\DIME` (entire key), `InstallerState`, orphan baks, the `%ProgramFiles%\DIME` directory, and the Start Menu shortcut are all absent.
+
+### Scenarios
+
+| Scenario | Description | Sub-cases |
+|---|---|---|
+| **A** | **Fresh install** — no prior DIME present | A1: via Burn bundle; A2: via MSI directly |
+| **B** | **NSIS migration** — WiX install over legacy NSIS | B1: Burn bundle triggers `ConfirmAndRemoveNsisInstall`; verifies NSIS ARP key and `System32\DIME.dll` removed |
+| **C** | **Major upgrade** — all 4 install-method combos (old→new) | BurnToBurn, BurnToMSI, MSIToBurn, MSIToMSI; Burn-to-Burn skips Burn ARP / Package Cache assertions (Burn re-registers post-CA by design) |
+| **D** | **Uninstall + reinstall + rapid cycling** | Single cycle (Burn and MSI); reinstall after uninstall; 3× rapid install/uninstall loop to stress-test `BuildUniqueBakName` tick suffix |
+| **E** | **Install failure rollback** — exclusive DLL lock forces MSI exit 1603 | E-MsiRestartManagerControl: Property table sanity check (no install); E1: fresh-install rollback with `DisableAutomaticApplicationShutdown=1` policy; E2: upgrade rollback; verifies rollback leaves no files/keys |
+| **F** | **Downgrade** | F1: `/quiet` blocks downgrade (exit 1602); F2×2: downgrade via MSI with `DIME_DOWNGRADE_APPROVED=1`, for both Burn and MSI original install |
+| **G** | **Locked DLL and CIN during upgrade** | G1: DLL held with `FILE_SHARE_READ\|WRITE\|DELETE` (loader flags) — rename+copy-back succeeds; G2: CIN held similarly — same mechanism; G3: CIN held without `FILE_SHARE_DELETE` — canary; warns if exit 3010 (known OS limitation) |
+| **H** | **Uninstall with DLL locked (RM regression)** | All 4 install×uninstall combos with DLL open in permissive sharing; `Assert-Duration` (120 s limit) catches `MsiRestartManagerControl` missing, which causes ~60 s RmGetList stall |
+| **I** | **Stale Dependent injection (error 2803 regression)** | Pre-injects fake GUID `{DEAD0000-...}` into `{ProductCode}\Dependents`; install must clean it via `CleanupBurnRegistration`; Burn uninstall then succeeds; 2 combos: Burn install and MSI install |
+| **Matrix** | **Same-version repair + cross-method uninstall** | All 4 install×maintenance combos; MSI-to-Burn cross-repair warns on expected 1603 (SecureRepair filename mismatch — known limitation); cross-method uninstall fully asserted |
+
+### Test Results
+
+Final run (v1.3.478.0 vs v1.3.477.0, Windows 11 x64): **118/118 PASS**
+
+Notable issues encountered and resolved during development:
+
+| Issue | Root cause | Fix |
+|---|---|---|
+| E1/E2 rollback: child lock-holder killed by RM | Server-side RM session (msiserver, Session 0) ignores `MsiRestartManagerControl=Disable` in /qn | Set `DisableAutomaticApplicationShutdown=1` machine policy around E1/E2; restore in `finally` |
+| E1/E2 rollback: `Remove-Item` fails — file still present | OS needs time to release kernel handle after `Kill()` | Add `WaitForExit(3000)` after `Kill()` before `Remove-Item` |
+| G1/G2/G3: test script silently killed by RM | Lock held in test runner process itself — RM killed it | Move lock to child `powershell.exe` process via `Start-ExclusiveLockChild` |
+| I: stale GUID still present after install | `CleanupBurnRegistration` called `MsiGetPropertyW("ProductCode")` which returns empty in commit CA context | Pass `[ProductCode]` via `CustomActionData` using a setter CA `SetCleanupBurnRegistrationData`; read `CustomActionData` in the C++ |
