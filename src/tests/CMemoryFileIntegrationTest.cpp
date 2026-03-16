@@ -51,7 +51,29 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *   ("key"="char") and contains non-Big5 CJK Extension entries that must be
 *   filtered out when running in Big5 scope.
 *
-* Tests are SKIPPED when the required files are not present.
+* IT-MF-03: Disk cache — Array-Big5.cin on disk matches in-memory line count.
+*   After CMemoryFile filters Array.cin, the cache file Array-Big5.cin is written
+*   to %APPDATA%\DIME\. This test reads the cache file back from disk as a plain
+*   CFile and asserts the data line count matches the in-memory filtered buffer.
+*   Then it creates a second CMemoryFile from the same source — which loads from
+*   cache — and asserts the line count also matches.
+*
+* IT-MF-04: Cache invalidation — touching Array.cin triggers cache rebuild.
+*   Uses _wutime to advance the source Array.cin mtime by 2 seconds, then
+*   creates a new CMemoryFile. The cache must be rebuilt with the new %src_mtime
+*   value matching the touched source timestamp.  The original mtime is restored
+*   after the test.
+*
+* IT-MF-05: Disk cache — TableTextServiceDaYi-Big5.txt on disk matches
+*   in-memory line count.  Same as IT-MF-03 but with the DAYI TTS table
+*   (%APPDATA%\DIME\TableTextServiceDaYi.txt) as the source.
+*
+* IT-MF-06: Cache invalidation — touching TableTextServiceDaYi.txt triggers
+*   cache rebuild.  Same as IT-MF-04 but with the DAYI TTS table.
+*
+* IT-MF-01/02 are SKIPPED when the required files are not present.
+* IT-MF-03 through IT-MF-06 FAIL when the source table is missing from
+* %APPDATA%\DIME\ — these tables are expected to be installed.
 *
 * Reference: docs/BIG5_FILTER.md
 ********************************************************************************/
@@ -59,6 +81,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "pch.h"
 #include "CppUnitTest.h"
 #include "../File.h"
+#include <sys/utime.h>   // _wutime, _utimbuf — used by IT-MF-04 to touch source timestamp
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
@@ -67,8 +90,11 @@ namespace DIMEIntegratedTests
     TEST_CLASS(CMemoryFileIntegrationTests)
     {
     private:
-        // Count tab-containing lines in a WCHAR buffer.
-        // Each such line is one keycode->character mapping entry in CIN format.
+        // Count data lines in a WCHAR buffer.
+        // A data line is one keycode->character mapping entry:
+        //   CIN format: key<TAB>char  (tab separator)
+        //   TTS format: "key"="char"  (= separator)
+        // Lines containing a tab or '=' are counted as data lines.
         static size_t CountDataLines(const WCHAR* buf, DWORD_PTR byteLen)
         {
             if (!buf || byteLen == 0) return 0;
@@ -77,13 +103,13 @@ namespace DIMEIntegratedTests
             size_t count = 0;
             while (rp < end)
             {
-                bool hasTab = false;
+                bool isData = false;
                 while (rp < end && *rp != L'\n')
                 {
-                    if (*rp == L'\t') hasTab = true;
+                    if (*rp == L'\t' || *rp == L'=') isData = true;
                     ++rp;
                 }
-                if (hasTab) ++count;
+                if (isData) ++count;
                 if (rp < end) ++rp;
             }
             return count;
@@ -405,6 +431,434 @@ namespace DIMEIntegratedTests
                 L"At least 13 053 Big5 entries must survive filtering");
             Assert::IsTrue(filtLines <= 16000,
                 L"Filtered [Text] CJK entry count must be in Big5 range (<= 16 000)");
+        }
+
+        // IT-MF-03: Disk cache — Array-Big5.cin on disk matches in-memory line count.
+        //
+        // (a) Filter Array.cin via CMemoryFile and count data lines in the in-memory buffer.
+        // (b) Read the resulting Array-Big5.cin cache file from disk as a plain CFile,
+        //     skip the %src_mtime header line, and count data lines — must match (a).
+        // (c) Create a second CMemoryFile from the same source (loads from cache).
+        //     Count data lines — must also match (a).
+        //
+        // Fails when %APPDATA%\DIME\Array.cin is not installed.
+        TEST_METHOD(IT_MF_03_CacheFile_LineCountMatchesMemory)
+        {
+            // ── locate Array.cin ────────────────────────────────────────────────
+            WCHAR appData[MAX_PATH] = {};
+            SHGetSpecialFolderPathW(nullptr, appData, CSIDL_APPDATA, FALSE);
+
+            WCHAR cinPath[MAX_PATH] = {};
+            StringCchPrintfW(cinPath, MAX_PATH, L"%s\\DIME\\Array.cin", appData);
+
+            Assert::IsTrue(GetFileAttributesW(cinPath) != INVALID_FILE_ATTRIBUTES,
+                L"Array.cin must exist at %APPDATA%\\DIME\\Array.cin");
+
+            WCHAR cachePath[MAX_PATH] = {};
+            StringCchPrintfW(cachePath, MAX_PATH, L"%s\\DIME\\Array-Big5.cin", appData);
+
+            // ── (a) filter Array.cin → in-memory buffer ─────────────────────────
+            CFile* pSrc = new (std::nothrow) CFile();
+            Assert::IsNotNull(pSrc);
+            Assert::IsTrue(
+                pSrc->CreateFile(cinPath, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ),
+                L"Array.cin must open");
+
+            CMemoryFile mem1(pSrc);
+            const WCHAR* memBuf = mem1.GetReadBufferPointer();
+            Assert::IsNotNull(memBuf, L"Filtered buffer must be non-null");
+            size_t memLines = CountDataLines(memBuf, mem1.GetFileSize());
+
+            // ── (b) read cache file from disk and count lines ───────────────────
+            Assert::IsTrue(GetFileAttributesW(cachePath) != INVALID_FILE_ATTRIBUTES,
+                L"Array-Big5.cin cache file must exist after filtering");
+
+            CFile* pCache = new (std::nothrow) CFile();
+            Assert::IsNotNull(pCache);
+            Assert::IsTrue(
+                pCache->CreateFile(cachePath, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ),
+                L"Array-Big5.cin must open for reading");
+
+            const WCHAR* cacheBuf = pCache->GetReadBufferPointer();
+            Assert::IsNotNull(cacheBuf, L"Cache buffer must load");
+            DWORD_PTR cacheBytes = pCache->GetFileSize();
+
+            // Skip the %src_mtime header line before counting
+            const WCHAR* cacheEnd = cacheBuf + cacheBytes / sizeof(WCHAR);
+            const WCHAR* dataStart = cacheBuf;
+            while (dataStart < cacheEnd && *dataStart != L'\n') ++dataStart;
+            if (dataStart < cacheEnd) ++dataStart;  // step past '\n'
+            DWORD_PTR dataBytes = (DWORD_PTR)(cacheEnd - dataStart) * sizeof(WCHAR);
+
+            size_t cacheLines = CountDataLines(dataStart, dataBytes);
+            delete pCache;
+
+            // ── (c) create second CMemoryFile (loads from cache) ────────────────
+            CMemoryFile mem2(pSrc);
+            const WCHAR* mem2Buf = mem2.GetReadBufferPointer();
+            Assert::IsNotNull(mem2Buf, L"Second CMemoryFile buffer must be non-null");
+            size_t mem2Lines = CountDataLines(mem2Buf, mem2.GetFileSize());
+
+            delete pSrc;
+
+            // ── log ─────────────────────────────────────────────────────────────
+            WCHAR msg[256] = {};
+            StringCchPrintfW(msg, 256,
+                L"IT-MF-03: memLines=%llu  cacheLines=%llu  mem2Lines=%llu",
+                (unsigned long long)memLines,
+                (unsigned long long)cacheLines,
+                (unsigned long long)mem2Lines);
+            Logger::WriteMessage(msg);
+
+            // ── assertions ──────────────────────────────────────────────────────
+            Assert::IsTrue(memLines > 0,
+                L"Filtered buffer must have data lines");
+            Assert::AreEqual(memLines, cacheLines,
+                L"Cache file on disk must have same data line count as in-memory buffer");
+            Assert::AreEqual(memLines, mem2Lines,
+                L"Second CMemoryFile (from cache) must have same data line count");
+        }
+
+        // IT-MF-04: Cache invalidation — touching Array.cin triggers cache rebuild
+        //           with updated %src_mtime.
+        //
+        // (a) Filter Array.cin to ensure cache exists with current mtime.
+        // (b) Read %src_mtime from the cache file.
+        // (c) Touch Array.cin: advance mtime by 2 seconds via _wutime.
+        // (d) Create new CMemoryFile — cache is stale, must re-filter and rewrite.
+        // (e) Read %src_mtime from the rebuilt cache — must match the new source mtime.
+        // (f) Restore Array.cin's original mtime so the test is non-destructive.
+        //
+        // Fails when %APPDATA%\DIME\Array.cin is not installed.
+        TEST_METHOD(IT_MF_04_CacheInvalidated_OnSourceMtimeChange)
+        {
+            // ── locate Array.cin ────────────────────────────────────────────────
+            WCHAR appData[MAX_PATH] = {};
+            SHGetSpecialFolderPathW(nullptr, appData, CSIDL_APPDATA, FALSE);
+
+            WCHAR cinPath[MAX_PATH] = {};
+            StringCchPrintfW(cinPath, MAX_PATH, L"%s\\DIME\\Array.cin", appData);
+
+            Assert::IsTrue(GetFileAttributesW(cinPath) != INVALID_FILE_ATTRIBUTES,
+                L"Array.cin must exist at %APPDATA%\\DIME\\Array.cin");
+
+            WCHAR cachePath[MAX_PATH] = {};
+            StringCchPrintfW(cachePath, MAX_PATH, L"%s\\DIME\\Array-Big5.cin", appData);
+
+            // ── (a) ensure cache exists ─────────────────────────────────────────
+            {
+                CFile* pSrc = new (std::nothrow) CFile();
+                Assert::IsNotNull(pSrc);
+                Assert::IsTrue(
+                    pSrc->CreateFile(cinPath, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ));
+                CMemoryFile mem(pSrc);
+                Assert::IsNotNull(mem.GetReadBufferPointer(),
+                    L"Initial filter must succeed");
+                delete pSrc;
+            }
+            Assert::IsTrue(GetFileAttributesW(cachePath) != INVALID_FILE_ATTRIBUTES,
+                L"Cache file must exist after initial filter");
+
+            // ── helper lambda: read %src_mtime from cache file ──────────────────
+            auto readCacheMtime = [&]() -> __time64_t
+            {
+                HANDLE hf = ::CreateFileW(cachePath, GENERIC_READ, FILE_SHARE_READ,
+                    nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+                if (hf == INVALID_HANDLE_VALUE) return 0;
+                // Read header (BOM + up to 128 WCHARs)
+                BYTE headerBuf[260] = {};
+                DWORD br = 0;
+                ReadFile(hf, headerBuf, sizeof(headerBuf), &br, NULL);
+                CloseHandle(hf);
+                if (br < 4) return 0;
+                // Skip BOM, parse "%src_mtime <decimal64>"
+                const WCHAR* w = (const WCHAR*)(headerBuf + 2);
+                DWORD_PTR wLen = (br - 2) / sizeof(WCHAR);
+                const WCHAR prefix[] = L"%src_mtime ";
+                size_t pLen = wcslen(prefix);
+                if (wLen < pLen || wcsncmp(w, prefix, pLen) != 0) return 0;
+                const WCHAR* numStart = w + pLen;
+                WCHAR numStr[32] = {};
+                const WCHAR* numEnd = numStart;
+                while (numEnd < w + wLen && *numEnd != L'\n' && *numEnd != L'\r') ++numEnd;
+                size_t nLen = (size_t)(numEnd - numStart);
+                if (nLen == 0 || nLen >= _countof(numStr)) return 0;
+                wcsncpy_s(numStr, _countof(numStr), numStart, nLen);
+                return _wcstoi64(numStr, nullptr, 10);
+            };
+
+            // ── (b) read original %src_mtime from cache ─────────────────────────
+            __time64_t origCacheMtime = readCacheMtime();
+            Assert::IsTrue(origCacheMtime != 0,
+                L"Original cache must have a valid %src_mtime");
+
+            // ── save original source mtime for restoration ──────────────────────
+            struct _stat origStat;
+            Assert::IsTrue(_wstat(cinPath, &origStat) == 0,
+                L"Must be able to stat Array.cin");
+
+            // ── (c) touch Array.cin: advance mtime by 2 seconds ─────────────────
+            struct _utimbuf newTimes;
+            newTimes.actime  = origStat.st_atime;
+            newTimes.modtime = origStat.st_mtime + 2;
+            Assert::IsTrue(_wutime(cinPath, &newTimes) == 0,
+                L"_wutime must succeed to advance source mtime");
+
+            // ── (d) create new CMemoryFile — cache should be invalidated ────────
+            {
+                CFile* pSrc = new (std::nothrow) CFile();
+                Assert::IsNotNull(pSrc);
+                Assert::IsTrue(
+                    pSrc->CreateFile(cinPath, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ));
+                CMemoryFile mem(pSrc);
+                Assert::IsNotNull(mem.GetReadBufferPointer(),
+                    L"Re-filter after touch must succeed");
+                delete pSrc;
+            }
+
+            // ── (e) read new %src_mtime from rebuilt cache ──────────────────────
+            __time64_t newCacheMtime = readCacheMtime();
+
+            // ── (f) restore original source mtime ───────────────────────────────
+            struct _utimbuf restoreTimes;
+            restoreTimes.actime  = origStat.st_atime;
+            restoreTimes.modtime = origStat.st_mtime;
+            _wutime(cinPath, &restoreTimes);
+
+            // Also rebuild cache with restored mtime so we leave it consistent
+            {
+                CFile* pSrc = new (std::nothrow) CFile();
+                if (pSrc && pSrc->CreateFile(cinPath, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
+                {
+                    CMemoryFile mem(pSrc);
+                    mem.GetReadBufferPointer();
+                }
+                delete pSrc;
+            }
+
+            // ── log ─────────────────────────────────────────────────────────────
+            WCHAR msg[256] = {};
+            StringCchPrintfW(msg, 256,
+                L"IT-MF-04: origCacheMtime=%lld  newCacheMtime=%lld  expectedNew=%lld",
+                (__int64)origCacheMtime,
+                (__int64)newCacheMtime,
+                (__int64)(origStat.st_mtime + 2));
+            Logger::WriteMessage(msg);
+
+            // ── assertions ──────────────────────────────────────────────────────
+            Assert::IsTrue(newCacheMtime != origCacheMtime,
+                L"Cache %src_mtime must change after source mtime was advanced");
+            Assert::AreEqual((__int64)(origStat.st_mtime + 2), (__int64)newCacheMtime,
+                L"New cache %src_mtime must match touched source mtime (original + 2)");
+        }
+
+        // IT-MF-05: Disk cache — TableTextServiceDaYi-Big5.txt on disk matches
+        //           in-memory line count.  Same structure as IT-MF-03 but uses
+        //           the DAYI TTS table (%APPDATA%\DIME\TableTextServiceDaYi.txt).
+        //
+        // Fails when %APPDATA%\DIME\TableTextServiceDaYi.txt is not installed.
+        TEST_METHOD(IT_MF_05_DayiTTS_CacheFile_LineCountMatchesMemory)
+        {
+            // ── locate TableTextServiceDaYi.txt ─────────────────────────────────
+            WCHAR appData[MAX_PATH] = {};
+            SHGetSpecialFolderPathW(nullptr, appData, CSIDL_APPDATA, FALSE);
+
+            WCHAR ttsPath[MAX_PATH] = {};
+            StringCchPrintfW(ttsPath, MAX_PATH, L"%s\\DIME\\TableTextServiceDaYi.txt", appData);
+
+            Assert::IsTrue(GetFileAttributesW(ttsPath) != INVALID_FILE_ATTRIBUTES,
+                L"TableTextServiceDaYi.txt must exist at %APPDATA%\\DIME\\TableTextServiceDaYi.txt");
+
+            WCHAR cachePath[MAX_PATH] = {};
+            StringCchPrintfW(cachePath, MAX_PATH, L"%s\\DIME\\TableTextServiceDaYi-Big5.txt", appData);
+
+            // ── (a) filter TTS → in-memory buffer ───────────────────────────────
+            CFile* pSrc = new (std::nothrow) CFile();
+            Assert::IsNotNull(pSrc);
+            Assert::IsTrue(
+                pSrc->CreateFile(ttsPath, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ),
+                L"TableTextServiceDaYi.txt must open");
+
+            CMemoryFile mem1(pSrc);
+            const WCHAR* memBuf = mem1.GetReadBufferPointer();
+            Assert::IsNotNull(memBuf, L"Filtered buffer must be non-null");
+            size_t memLines = CountDataLines(memBuf, mem1.GetFileSize());
+
+            // ── (b) read cache file from disk and count lines ───────────────────
+            Assert::IsTrue(GetFileAttributesW(cachePath) != INVALID_FILE_ATTRIBUTES,
+                L"TableTextServiceDaYi-Big5.txt cache file must exist after filtering");
+
+            CFile* pCache = new (std::nothrow) CFile();
+            Assert::IsNotNull(pCache);
+            Assert::IsTrue(
+                pCache->CreateFile(cachePath, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ),
+                L"TableTextServiceDaYi-Big5.txt must open for reading");
+
+            const WCHAR* cacheBuf = pCache->GetReadBufferPointer();
+            Assert::IsNotNull(cacheBuf, L"Cache buffer must load");
+            DWORD_PTR cacheBytes = pCache->GetFileSize();
+
+            // Skip the %src_mtime header line before counting
+            const WCHAR* cacheEnd = cacheBuf + cacheBytes / sizeof(WCHAR);
+            const WCHAR* dataStart = cacheBuf;
+            while (dataStart < cacheEnd && *dataStart != L'\n') ++dataStart;
+            if (dataStart < cacheEnd) ++dataStart;  // step past '\n'
+            DWORD_PTR dataBytes = (DWORD_PTR)(cacheEnd - dataStart) * sizeof(WCHAR);
+
+            size_t cacheLines = CountDataLines(dataStart, dataBytes);
+            delete pCache;
+
+            // ── (c) create second CMemoryFile (loads from cache) ────────────────
+            CMemoryFile mem2(pSrc);
+            const WCHAR* mem2Buf = mem2.GetReadBufferPointer();
+            Assert::IsNotNull(mem2Buf, L"Second CMemoryFile buffer must be non-null");
+            size_t mem2Lines = CountDataLines(mem2Buf, mem2.GetFileSize());
+
+            delete pSrc;
+
+            // ── log ─────────────────────────────────────────────────────────────
+            WCHAR msg[256] = {};
+            StringCchPrintfW(msg, 256,
+                L"IT-MF-05: memLines=%llu  cacheLines=%llu  mem2Lines=%llu",
+                (unsigned long long)memLines,
+                (unsigned long long)cacheLines,
+                (unsigned long long)mem2Lines);
+            Logger::WriteMessage(msg);
+
+            // ── assertions ──────────────────────────────────────────────────────
+            Assert::IsTrue(memLines > 0,
+                L"Filtered buffer must have data lines");
+            Assert::AreEqual(memLines, cacheLines,
+                L"Cache file on disk must have same data line count as in-memory buffer");
+            Assert::AreEqual(memLines, mem2Lines,
+                L"Second CMemoryFile (from cache) must have same data line count");
+        }
+
+        // IT-MF-06: Cache invalidation — touching TableTextServiceDaYi.txt triggers
+        //           cache rebuild with updated %src_mtime.
+        //           Same structure as IT-MF-04 but uses the DAYI TTS table.
+        //
+        // Fails when %APPDATA%\DIME\TableTextServiceDaYi.txt is not installed.
+        TEST_METHOD(IT_MF_06_DayiTTS_CacheInvalidated_OnSourceMtimeChange)
+        {
+            // ── locate TableTextServiceDaYi.txt ─────────────────────────────────
+            WCHAR appData[MAX_PATH] = {};
+            SHGetSpecialFolderPathW(nullptr, appData, CSIDL_APPDATA, FALSE);
+
+            WCHAR ttsPath[MAX_PATH] = {};
+            StringCchPrintfW(ttsPath, MAX_PATH, L"%s\\DIME\\TableTextServiceDaYi.txt", appData);
+
+            Assert::IsTrue(GetFileAttributesW(ttsPath) != INVALID_FILE_ATTRIBUTES,
+                L"TableTextServiceDaYi.txt must exist at %APPDATA%\\DIME\\TableTextServiceDaYi.txt");
+
+            WCHAR cachePath[MAX_PATH] = {};
+            StringCchPrintfW(cachePath, MAX_PATH, L"%s\\DIME\\TableTextServiceDaYi-Big5.txt", appData);
+
+            // ── (a) ensure cache exists ─────────────────────────────────────────
+            {
+                CFile* pSrc = new (std::nothrow) CFile();
+                Assert::IsNotNull(pSrc);
+                Assert::IsTrue(
+                    pSrc->CreateFile(ttsPath, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ));
+                CMemoryFile mem(pSrc);
+                Assert::IsNotNull(mem.GetReadBufferPointer(),
+                    L"Initial filter must succeed");
+                delete pSrc;
+            }
+            Assert::IsTrue(GetFileAttributesW(cachePath) != INVALID_FILE_ATTRIBUTES,
+                L"Cache file must exist after initial filter");
+
+            // ── helper lambda: read %src_mtime from cache file ──────────────────
+            auto readCacheMtime = [&]() -> __time64_t
+            {
+                HANDLE hf = ::CreateFileW(cachePath, GENERIC_READ, FILE_SHARE_READ,
+                    nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+                if (hf == INVALID_HANDLE_VALUE) return 0;
+                // Read header (BOM + up to 128 WCHARs)
+                BYTE headerBuf[260] = {};
+                DWORD br = 0;
+                ReadFile(hf, headerBuf, sizeof(headerBuf), &br, NULL);
+                CloseHandle(hf);
+                if (br < 4) return 0;
+                // Skip BOM, parse "%src_mtime <decimal64>"
+                const WCHAR* w = (const WCHAR*)(headerBuf + 2);
+                DWORD_PTR wLen = (br - 2) / sizeof(WCHAR);
+                const WCHAR prefix[] = L"%src_mtime ";
+                size_t pLen = wcslen(prefix);
+                if (wLen < pLen || wcsncmp(w, prefix, pLen) != 0) return 0;
+                const WCHAR* numStart = w + pLen;
+                WCHAR numStr[32] = {};
+                const WCHAR* numEnd = numStart;
+                while (numEnd < w + wLen && *numEnd != L'\n' && *numEnd != L'\r') ++numEnd;
+                size_t nLen = (size_t)(numEnd - numStart);
+                if (nLen == 0 || nLen >= _countof(numStr)) return 0;
+                wcsncpy_s(numStr, _countof(numStr), numStart, nLen);
+                return _wcstoi64(numStr, nullptr, 10);
+            };
+
+            // ── (b) read original %src_mtime from cache ─────────────────────────
+            __time64_t origCacheMtime = readCacheMtime();
+            Assert::IsTrue(origCacheMtime != 0,
+                L"Original cache must have a valid %src_mtime");
+
+            // ── save original source mtime for restoration ──────────────────────
+            struct _stat origStat;
+            Assert::IsTrue(_wstat(ttsPath, &origStat) == 0,
+                L"Must be able to stat TableTextServiceDaYi.txt");
+
+            // ── (c) touch source: advance mtime by 2 seconds ────────────────────
+            struct _utimbuf newTimes;
+            newTimes.actime  = origStat.st_atime;
+            newTimes.modtime = origStat.st_mtime + 2;
+            Assert::IsTrue(_wutime(ttsPath, &newTimes) == 0,
+                L"_wutime must succeed to advance source mtime");
+
+            // ── (d) create new CMemoryFile — cache should be invalidated ────────
+            {
+                CFile* pSrc = new (std::nothrow) CFile();
+                Assert::IsNotNull(pSrc);
+                Assert::IsTrue(
+                    pSrc->CreateFile(ttsPath, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ));
+                CMemoryFile mem(pSrc);
+                Assert::IsNotNull(mem.GetReadBufferPointer(),
+                    L"Re-filter after touch must succeed");
+                delete pSrc;
+            }
+
+            // ── (e) read new %src_mtime from rebuilt cache ──────────────────────
+            __time64_t newCacheMtime = readCacheMtime();
+
+            // ── (f) restore original source mtime ───────────────────────────────
+            struct _utimbuf restoreTimes;
+            restoreTimes.actime  = origStat.st_atime;
+            restoreTimes.modtime = origStat.st_mtime;
+            _wutime(ttsPath, &restoreTimes);
+
+            // Also rebuild cache with restored mtime so we leave it consistent
+            {
+                CFile* pSrc = new (std::nothrow) CFile();
+                if (pSrc && pSrc->CreateFile(ttsPath, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
+                {
+                    CMemoryFile mem(pSrc);
+                    mem.GetReadBufferPointer();
+                }
+                delete pSrc;
+            }
+
+            // ── log ─────────────────────────────────────────────────────────────
+            WCHAR msg[256] = {};
+            StringCchPrintfW(msg, 256,
+                L"IT-MF-06: origCacheMtime=%lld  newCacheMtime=%lld  expectedNew=%lld",
+                (__int64)origCacheMtime,
+                (__int64)newCacheMtime,
+                (__int64)(origStat.st_mtime + 2));
+            Logger::WriteMessage(msg);
+
+            // ── assertions ──────────────────────────────────────────────────────
+            Assert::IsTrue(newCacheMtime != origCacheMtime,
+                L"Cache %src_mtime must change after source mtime was advanced");
+            Assert::AreEqual((__int64)(origStat.st_mtime + 2), (__int64)newCacheMtime,
+                L"New cache %src_mtime must match touched source mtime (original + 2)");
         }
     };
 }

@@ -115,11 +115,13 @@ protected:
 private:
     BOOL FilterLine(const WCHAR* lineStart, DWORD_PTR lineLen);  // CP950 predicate
 
-#ifdef _DEBUG
-    // Writes the filtered buffer as UTF-16LE to %APPDATA%\DIME\dbg_<source-filename>.
-    // Called automatically by SetupReadBuffer() in Debug builds only.
-    void DebugDumpBuffer() const;
-#endif
+    // Disk cache: avoids re-filtering in every process that loads DIME.dll.
+    // Cache file is named <basename>-Big5.<ext> alongside the source in %APPDATA%\DIME\.
+    // First line of cache is %src_mtime <decimal64> storing the source file's st_mtime.
+    BOOL BuildCachePath(WCHAR* outPath, size_t maxLen) const;
+    BOOL IsCacheValid() const;
+    BOOL TryLoadCache();
+    void WriteCacheToDisk();
 
     CFile* _pSrcFile;  // non-owning pointer to source CFile
 };

@@ -306,7 +306,43 @@ namespace DIMEUnitTests
             Assert::IsTrue(output.empty(), L"Empty input should produce empty output");
         }
 
-        // UT-07-11: Escape mode toggling - doEscape resets after %chardef end
+        // UT-07-11: Already-quoted entries should not be double-escaped
+        TEST_METHOD(ParseCIN_AlreadyEscaped_NoDoubleEscape)
+        {
+            std::wstring inputFile = testDir + L"already_escaped.cin";
+            std::wstring outputFile = testDir + L"already_escaped_out.cin";
+            // Ensure no stale output from a prior run (can happen under coverage tools)
+            DeleteFileW(outputFile.c_str());
+            createdFiles.push_back(outputFile);
+
+            // Input CIN file where %chardef entries are already quoted and escaped
+            // UTF-8 bytes: ﹨=U+FE68=\xef\xb9\xa8, 中=U+4E2D=\xe4\xb8\xad, 文=U+6587=\xe6\x96\x87
+            std::string content =
+                "%chardef begin\n"
+                "\"=\\\\\"\t\"\xef\xb9\xa8\"\n"    // "=\\"	"﹨" (already quoted, backslash escaped)
+                "\"a\"\t\"\xe4\xb8\xad\"\n"         // "a"	"中" (already quoted, no special chars)
+                "b\t\xe6\x96\x87\n"                  // b	文 (unquoted — should still be escaped)
+                "%chardef end\n";
+
+            CreateUTF8CINFile(inputFile, content);
+
+            BOOL result = CConfig::parseCINFile(inputFile.c_str(), outputFile.c_str(), FALSE);
+            Assert::IsTrue(result, L"parseCINFile should return TRUE");
+
+            std::wstring output = ReadOutputFile(outputFile);
+
+            // Already-quoted entries should pass through unchanged (no double-escaping)
+            Assert::IsTrue(output.find(L"\"=\\\\\"") != std::wstring::npos,
+                L"Already-escaped key =\\\\ should not be double-escaped");
+            Assert::IsTrue(output.find(L"\"a\"\t\"\x4E2D\"") != std::wstring::npos,
+                L"Already-quoted simple entry should pass through unchanged");
+
+            // Unquoted entry should still be escaped normally
+            Assert::IsTrue(output.find(L"\"b\"\t\"\x6587\"") != std::wstring::npos,
+                L"Unquoted entry 'b' should still be escaped and quoted");
+        }
+
+        // UT-07-12: Escape mode toggling - doEscape resets after %chardef end
         TEST_METHOD(ParseCIN_EscapeModeToggles_Correctly)
         {
             std::wstring inputFile = testDir + L"toggle.cin";

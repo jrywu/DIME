@@ -48,6 +48,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *   UT-09-15: Integration — CTableDictionaryEngine over CMemoryFile
 *   UT-09-16: CRLF endings
 *   UT-09-17: BMP symbol pass-through
+*   UT-09-21 through UT-09-25: Disk cache (BuildCachePath, TryLoadCache, WriteCacheToDisk)
 *
 * Real-file integration tests are in CMemoryFileIntegrationTest.cpp (IT-MF).
 *
@@ -135,8 +136,18 @@ namespace DIMEUnitTests
 
         TEST_METHOD_CLEANUP(Teardown)
         {
-            for (const auto& f : createdFiles)
-                DeleteFileW(f.c_str());
+            // Delete all files in test directory (including cache files and .tmp)
+            WIN32_FIND_DATAW fd;
+            std::wstring pattern = testDir + L"*";
+            HANDLE hFind = FindFirstFileW(pattern.c_str(), &fd);
+            if (hFind != INVALID_HANDLE_VALUE)
+            {
+                do {
+                    if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+                        DeleteFileW((testDir + fd.cFileName).c_str());
+                } while (FindNextFileW(hFind, &fd));
+                FindClose(hFind);
+            }
             RemoveDirectoryW(testDir.c_str());
         }
 
@@ -565,6 +576,372 @@ namespace DIMEUnitTests
             CMemoryFile mem(pSrc);
             Assert::IsTrue(BufferContains(mem,  L"\u2153"), L"Vulgar fraction must pass filter");
             Assert::IsFalse(BufferContains(mem, L"\u3400"), L"Non-CP950 CJK ideograph (C3_IDEOGRAPH) must be filtered");
+            delete pSrc;
+        }
+
+        // ────────────────────────────────────────────────────────────────
+        //  Disk cache tests (UT-09-21 through UT-09-25)
+        // ────────────────────────────────────────────────────────────────
+
+        // UT-09-21: After the first filter, a cache file (<name>-Big5.cin) is created on disk.
+        TEST_METHOD(UT_09_21_Cache_FileCreated)
+        {
+            CFile* pSrc = MakeSourceFile(
+                L"%gen_inp\n%chardef begin\na \u4E2D\n%chardef end\n");
+            Assert::IsNotNull(pSrc);
+            std::wstring srcPath = createdFiles.back();
+
+            CMemoryFile mem(pSrc);
+            const WCHAR* buf = mem.GetReadBufferPointer();
+            Assert::IsNotNull(buf, L"Buffer must be valid after filtering");
+
+            // Cache file should be src_N-Big5.cin alongside the source
+            std::wstring cachePath = srcPath;
+            size_t dot = cachePath.rfind(L'.');
+            Assert::IsTrue(dot != std::wstring::npos, L"Source must have extension");
+            cachePath.insert(dot, L"-Big5");
+
+            Assert::IsTrue(GetFileAttributesW(cachePath.c_str()) != INVALID_FILE_ATTRIBUTES,
+                L"Cache file must exist after first filter");
+
+            delete pSrc;
+        }
+
+        // UT-09-22: Cache file's first line contains %src_mtime with the source file's st_mtime.
+        TEST_METHOD(UT_09_22_Cache_HeaderMatchesSourceMtime)
+        {
+            CFile* pSrc = MakeSourceFile(
+                L"%gen_inp\n%chardef begin\na \u4E2D\n%chardef end\n");
+            Assert::IsNotNull(pSrc);
+            std::wstring srcPath = createdFiles.back();
+
+            CMemoryFile mem(pSrc);
+            mem.GetReadBufferPointer();
+
+            // Get source mtime
+            struct _stat srcStat;
+            Assert::IsTrue(_wstat(srcPath.c_str(), &srcStat) == 0, L"Source stat must succeed");
+
+            // Read cache file header
+            std::wstring cachePath = srcPath;
+            cachePath.insert(cachePath.rfind(L'.'), L"-Big5");
+
+            HANDLE hFile = CreateFileW(cachePath.c_str(), GENERIC_READ, FILE_SHARE_READ,
+                nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+            Assert::IsTrue(hFile != INVALID_HANDLE_VALUE, L"Cache file must be openable");
+
+            DWORD fileSize = ::GetFileSize(hFile, NULL);
+            BYTE* raw = new BYTE[fileSize];
+            DWORD bytesRead;
+            ReadFile(hFile, raw, fileSize, &bytesRead, NULL);
+            CloseHandle(hFile);
+
+            // Skip BOM (2 bytes), parse first line
+            const WCHAR* wBuf = (const WCHAR*)(raw + sizeof(WCHAR));
+            std::wstring header(wBuf, (bytesRead - sizeof(WCHAR)) / sizeof(WCHAR));
+            delete[] raw;
+
+            // Parse: "%src_mtime <decimal64>\n..."
+            WCHAR expected[64];
+            StringCchPrintfW(expected, _countof(expected), L"%%src_mtime %lld\n",
+                (__int64)srcStat.st_mtime);
+            Assert::IsTrue(header.substr(0, wcslen(expected)) == expected,
+                L"Cache header must contain %src_mtime matching source file's st_mtime");
+
+            delete pSrc;
+        }
+
+        // UT-09-23: Second CMemoryFile on the same source loads from cache; buffer content matches.
+        TEST_METHOD(UT_09_23_Cache_Reused_ContentMatches)
+        {
+            std::wstring content =
+                L"%gen_inp\n%chardef begin\na \u4E2D\nb \u5927\n%chardef end\n";
+            CFile* pSrc = MakeSourceFile(content);
+            Assert::IsNotNull(pSrc);
+
+            // First CMemoryFile: filters and writes cache
+            CMemoryFile mem1(pSrc);
+            const WCHAR* buf1 = mem1.GetReadBufferPointer();
+            Assert::IsNotNull(buf1);
+            DWORD_PTR size1 = mem1.GetFileSize();
+            std::wstring bufStr1(buf1, size1 / sizeof(WCHAR));
+
+            // Second CMemoryFile: should load from cache
+            CMemoryFile mem2(pSrc);
+            const WCHAR* buf2 = mem2.GetReadBufferPointer();
+            Assert::IsNotNull(buf2);
+            DWORD_PTR size2 = mem2.GetFileSize();
+            std::wstring bufStr2(buf2, size2 / sizeof(WCHAR));
+
+            Assert::AreEqual(bufStr1, bufStr2,
+                L"Buffer from cache must match buffer from filtering");
+
+            delete pSrc;
+        }
+
+        // UT-09-24: When source file changes, cache is invalidated and rebuilt.
+        TEST_METHOD(UT_09_24_Cache_Invalidated_OnSourceChange)
+        {
+            std::wstring contentA =
+                L"%gen_inp\n%chardef begin\na \u4E2D\n%chardef end\n";
+            CFile* pSrc = MakeSourceFile(contentA);
+            Assert::IsNotNull(pSrc);
+            std::wstring srcPath = createdFiles.back();
+
+            // First CMemoryFile: filters and writes cache
+            {
+                CMemoryFile mem(pSrc);
+                mem.GetReadBufferPointer();
+            }
+
+            // Sleep to ensure filesystem timestamps differ
+            Sleep(1100);
+
+            // Rewrite source with different content (U+5927 = 大, also CP950)
+            std::wstring contentB =
+                L"%gen_inp\n%chardef begin\nb \u5927\n%chardef end\n";
+            RewriteFile(srcPath, contentB);
+
+            // New CMemoryFile on the same source CFile — cache should be invalid
+            CMemoryFile mem2(pSrc);
+            const WCHAR* buf = mem2.GetReadBufferPointer();
+            Assert::IsNotNull(buf);
+
+            DWORD_PTR charLen = mem2.GetFileSize() / sizeof(WCHAR);
+            std::wstring bufStr(buf, charLen);
+            Assert::IsTrue(bufStr.find(L"\u5927") != std::wstring::npos,
+                L"After source change, rebuilt buffer must contain new content (大)");
+            Assert::IsTrue(bufStr.find(L"\u4E2D") == std::wstring::npos,
+                L"After source change, old content (中) must not be present");
+
+            delete pSrc;
+        }
+
+        // UT-09-25: Corrupt cache file (invalid header) is ignored; falls back to filtering.
+        TEST_METHOD(UT_09_25_Cache_Corrupt_FallsBackToFiltering)
+        {
+            CFile* pSrc = MakeSourceFile(
+                L"%gen_inp\n%chardef begin\na \u4E2D\n%chardef end\n");
+            Assert::IsNotNull(pSrc);
+            std::wstring srcPath = createdFiles.back();
+
+            // First CMemoryFile: filters and writes cache
+            {
+                CMemoryFile mem(pSrc);
+                mem.GetReadBufferPointer();
+            }
+
+            // Corrupt the cache file with garbage
+            std::wstring cachePath = srcPath;
+            cachePath.insert(cachePath.rfind(L'.'), L"-Big5");
+            HANDLE hFile = CreateFileW(cachePath.c_str(), GENERIC_WRITE, 0, nullptr,
+                CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+            Assert::IsTrue(hFile != INVALID_HANDLE_VALUE);
+            const char garbage[] = "THIS IS NOT A VALID CACHE FILE";
+            DWORD bw;
+            WriteFile(hFile, garbage, sizeof(garbage), &bw, nullptr);
+            CloseHandle(hFile);
+
+            // New CMemoryFile — corrupt cache should be rejected, falls back to filtering
+            CMemoryFile mem2(pSrc);
+            const WCHAR* buf = mem2.GetReadBufferPointer();
+            Assert::IsNotNull(buf, L"Must still produce a valid buffer despite corrupt cache");
+            Assert::IsTrue(BufferContains(mem2, L"\u4E2D"),
+                L"Fallback filtering must produce correct results");
+
+            delete pSrc;
+        }
+
+        // UT-09-26: Source file without extension — BuildCachePath no-extension branch.
+        TEST_METHOD(UT_09_26_Cache_NoExtension_CacheCreated)
+        {
+            // Create source file without extension
+            std::wstring filename = testDir + L"src_noext";
+            std::wstring content = L"%gen_inp\n%chardef begin\na \u4E2D\n%chardef end\n";
+
+            HANDLE hf = CreateFileW(filename.c_str(), GENERIC_WRITE, 0, nullptr,
+                CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+            Assert::IsTrue(hf != INVALID_HANDLE_VALUE);
+            DWORD bw;
+            BYTE bom[2] = { 0xFF, 0xFE };
+            WriteFile(hf, bom, 2, &bw, nullptr);
+            WriteFile(hf, content.c_str(), (DWORD)(content.size() * sizeof(WCHAR)), &bw, nullptr);
+            CloseHandle(hf);
+
+            CFile* pSrc = new (std::nothrow) CFile();
+            Assert::IsNotNull(pSrc);
+            Assert::IsTrue(pSrc->CreateFile(filename.c_str(), GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ));
+
+            CMemoryFile mem(pSrc);
+            Assert::IsNotNull(mem.GetReadBufferPointer());
+
+            // Cache should be named "src_noext-Big5" (no extension)
+            std::wstring cachePath = filename + L"-Big5";
+            Assert::IsTrue(GetFileAttributesW(cachePath.c_str()) != INVALID_FILE_ATTRIBUTES,
+                L"Cache file must exist for extensionless source");
+
+            delete pSrc;
+        }
+
+        // UT-09-27: Cache file with only 1 byte — IsCacheValid rejects (fileSize < sizeof(WCHAR)).
+        TEST_METHOD(UT_09_27_Cache_TinyFile_Rejected)
+        {
+            CFile* pSrc = MakeSourceFile(
+                L"%gen_inp\n%chardef begin\na \u4E2D\n%chardef end\n");
+            Assert::IsNotNull(pSrc);
+            std::wstring srcPath = createdFiles.back();
+
+            // First filter to create cache
+            { CMemoryFile mem(pSrc); mem.GetReadBufferPointer(); }
+
+            // Replace cache with 1-byte file
+            std::wstring cachePath = srcPath;
+            cachePath.insert(cachePath.rfind(L'.'), L"-Big5");
+            HANDLE hf = CreateFileW(cachePath.c_str(), GENERIC_WRITE, 0, nullptr,
+                CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+            Assert::IsTrue(hf != INVALID_HANDLE_VALUE);
+            BYTE oneByte = 0x42;
+            DWORD bw;
+            WriteFile(hf, &oneByte, 1, &bw, nullptr);
+            CloseHandle(hf);
+
+            // Must reject and fall back to filtering
+            CMemoryFile mem2(pSrc);
+            Assert::IsNotNull(mem2.GetReadBufferPointer());
+            Assert::IsTrue(BufferContains(mem2, L"\u4E2D"));
+
+            delete pSrc;
+        }
+
+        // UT-09-28: Cache file with only BOM (2 bytes) — IsCacheValid rejects (bytesRead < 4).
+        TEST_METHOD(UT_09_28_Cache_BOMOnly_Rejected)
+        {
+            CFile* pSrc = MakeSourceFile(
+                L"%gen_inp\n%chardef begin\na \u4E2D\n%chardef end\n");
+            Assert::IsNotNull(pSrc);
+            std::wstring srcPath = createdFiles.back();
+
+            { CMemoryFile mem(pSrc); mem.GetReadBufferPointer(); }
+
+            // Replace cache with BOM-only file (2 bytes)
+            std::wstring cachePath = srcPath;
+            cachePath.insert(cachePath.rfind(L'.'), L"-Big5");
+            HANDLE hf = CreateFileW(cachePath.c_str(), GENERIC_WRITE, 0, nullptr,
+                CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+            Assert::IsTrue(hf != INVALID_HANDLE_VALUE);
+            BYTE bom[2] = { 0xFF, 0xFE };
+            DWORD bw;
+            WriteFile(hf, bom, sizeof(bom), &bw, nullptr);
+            CloseHandle(hf);
+
+            CMemoryFile mem2(pSrc);
+            Assert::IsNotNull(mem2.GetReadBufferPointer());
+            Assert::IsTrue(BufferContains(mem2, L"\u4E2D"));
+
+            delete pSrc;
+        }
+
+        // UT-09-29: Cache file with %src_mtime but no number — IsCacheValid rejects (numLen == 0).
+        TEST_METHOD(UT_09_29_Cache_EmptyMtimeValue_Rejected)
+        {
+            CFile* pSrc = MakeSourceFile(
+                L"%gen_inp\n%chardef begin\na \u4E2D\n%chardef end\n");
+            Assert::IsNotNull(pSrc);
+            std::wstring srcPath = createdFiles.back();
+
+            { CMemoryFile mem(pSrc); mem.GetReadBufferPointer(); }
+
+            // Replace cache with valid BOM + "%src_mtime \n" (no number)
+            std::wstring cachePath = srcPath;
+            cachePath.insert(cachePath.rfind(L'.'), L"-Big5");
+            std::wstring badHeader = L"%src_mtime \nsome data\n";
+            HANDLE hf = CreateFileW(cachePath.c_str(), GENERIC_WRITE, 0, nullptr,
+                CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+            Assert::IsTrue(hf != INVALID_HANDLE_VALUE);
+            DWORD bw;
+            BYTE bom[2] = { 0xFF, 0xFE };
+            WriteFile(hf, bom, sizeof(bom), &bw, nullptr);
+            WriteFile(hf, badHeader.c_str(), (DWORD)(badHeader.size() * sizeof(WCHAR)), &bw, nullptr);
+            CloseHandle(hf);
+
+            CMemoryFile mem2(pSrc);
+            Assert::IsNotNull(mem2.GetReadBufferPointer());
+            Assert::IsTrue(BufferContains(mem2, L"\u4E2D"));
+
+            delete pSrc;
+        }
+
+        // UT-09-30: Cache file with header only, no data after newline — TryLoadCache rejects (dataLen == 0).
+        TEST_METHOD(UT_09_30_Cache_HeaderOnly_NoData_Rejected)
+        {
+            CFile* pSrc = MakeSourceFile(
+                L"%gen_inp\n%chardef begin\na \u4E2D\n%chardef end\n");
+            Assert::IsNotNull(pSrc);
+            std::wstring srcPath = createdFiles.back();
+
+            { CMemoryFile mem(pSrc); mem.GetReadBufferPointer(); }
+
+            // Get source mtime to build a valid header
+            struct _stat srcStat;
+            _wstat(srcPath.c_str(), &srcStat);
+
+            // Replace cache with valid header but no data
+            std::wstring cachePath = srcPath;
+            cachePath.insert(cachePath.rfind(L'.'), L"-Big5");
+            WCHAR header[64];
+            StringCchPrintfW(header, _countof(header), L"%%src_mtime %lld\n", (__int64)srcStat.st_mtime);
+
+            HANDLE hf = CreateFileW(cachePath.c_str(), GENERIC_WRITE, 0, nullptr,
+                CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+            Assert::IsTrue(hf != INVALID_HANDLE_VALUE);
+            DWORD bw;
+            BYTE bom[2] = { 0xFF, 0xFE };
+            WriteFile(hf, bom, sizeof(bom), &bw, nullptr);
+            WriteFile(hf, header, (DWORD)(wcslen(header) * sizeof(WCHAR)), &bw, nullptr);
+            CloseHandle(hf);
+
+            CMemoryFile mem2(pSrc);
+            Assert::IsNotNull(mem2.GetReadBufferPointer());
+            Assert::IsTrue(BufferContains(mem2, L"\u4E2D"));
+
+            delete pSrc;
+        }
+
+        // UT-09-31: Cache file locked during WriteCacheToDisk — MoveFileExW fails, temp deleted.
+        TEST_METHOD(UT_09_31_Cache_LockedDuringWrite_TempDeleted)
+        {
+            CFile* pSrc = MakeSourceFile(
+                L"%gen_inp\n%chardef begin\na \u4E2D\n%chardef end\n");
+            Assert::IsNotNull(pSrc);
+            std::wstring srcPath = createdFiles.back();
+
+            // First filter — creates cache
+            { CMemoryFile mem(pSrc); mem.GetReadBufferPointer(); }
+
+            // Lock the cache file exclusively
+            std::wstring cachePath = srcPath;
+            cachePath.insert(cachePath.rfind(L'.'), L"-Big5");
+            HANDLE hLock = CreateFileW(cachePath.c_str(), GENERIC_READ | GENERIC_WRITE,
+                0 /* no sharing */, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+            Assert::IsTrue(hLock != INVALID_HANDLE_VALUE, L"Must be able to lock cache file");
+
+            // Sleep to ensure different mtime
+            Sleep(1100);
+
+            // Rewrite source to force re-filter + WriteCacheToDisk
+            RewriteFile(srcPath, L"%gen_inp\n%chardef begin\nb \u5927\n%chardef end\n");
+
+            // This should filter successfully but MoveFileExW should fail (cache locked)
+            CMemoryFile mem2(pSrc);
+            const WCHAR* buf = mem2.GetReadBufferPointer();
+            Assert::IsNotNull(buf, L"Filtering must succeed even when cache is locked");
+
+            // Verify temp file was cleaned up
+            std::wstring tmpPath = cachePath + L".tmp";
+            Assert::IsTrue(GetFileAttributesW(tmpPath.c_str()) == INVALID_FILE_ATTRIBUTES,
+                L"Temp file must be deleted after failed rename");
+
+            CloseHandle(hLock);
             delete pSrc;
         }
     };

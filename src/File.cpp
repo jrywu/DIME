@@ -35,9 +35,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Private.h"
 #include "File.h"
 #include "BaseStructure.h"
-#ifdef _DEBUG
-#include <ShlObj.h>   // SHGetSpecialFolderPathW — not pulled in without DEBUG_PRINT
-#endif
+#include <ShlObj.h>   // SHGetSpecialFolderPathW — used by CMemoryFile::BuildCachePath
 
 //---------------------------------------------------------------------
 //
@@ -331,6 +329,9 @@ const WCHAR* CMemoryFile::GetReadBufferPointer(BOOL* fileReloaded)
 
 BOOL CMemoryFile::SetupReadBuffer()
 {
+    // Fast path: load from disk cache if available and valid
+    if (TryLoadCache()) return TRUE;
+
     const WCHAR* src = _pSrcFile->GetReadBufferPointer();
     if (!src) return FALSE;
     DWORD_PTR charLen = _pSrcFile->GetFileSize() / sizeof(WCHAR);
@@ -440,9 +441,7 @@ BOOL CMemoryFile::SetupReadBuffer()
 
     _pReadBuffer = buf;
     _fileSize    = (DWORD_PTR)(wp - buf) * sizeof(WCHAR);
-#ifdef _DEBUG
-    DebugDumpBuffer();
-#endif
+    WriteCacheToDisk();
     return TRUE;
 }
 
@@ -572,57 +571,270 @@ BOOL CMemoryFile::FilterLine(const WCHAR* lineStart, DWORD_PTR lineLen)
 
 //---------------------------------------------------------------------
 //
-// CMemoryFile::DebugDumpBuffer  (DEBUG builds only)
+// CMemoryFile::BuildCachePath
 //
-// Writes the filtered in-memory buffer as a UTF-16LE file to
-// %APPDATA%\DIME\dbg_<source-filename> so that the result of the
-// CP950 filter can be inspected directly on disk.
-// Called automatically by SetupReadBuffer() each time the buffer is
-// (re)built.  The output file is silently overwritten on each reload.
+// Derives the cache file path from the source filename by inserting
+// "-Big5" before the extension.  e.g. Dayi.cin → Dayi-Big5.cin
+// Returns FALSE (and does not write to outPath) if the source file
+// is not inside %APPDATA%\DIME\ (skips test temp files).
 //
 //---------------------------------------------------------------------
 
-#ifdef _DEBUG
-void CMemoryFile::DebugDumpBuffer() const
+BOOL CMemoryFile::BuildCachePath(WCHAR* outPath, size_t maxLen) const
 {
-    if (!_pReadBuffer || _fileSize == 0) return;
+    const WCHAR* srcPath = _pSrcFile ? _pSrcFile->GetFileName() : nullptr;
+    if (!srcPath) return FALSE;
 
-    // Resolve %APPDATA%
+    // Guard: only cache files whose source is inside %APPDATA%\DIME\.
+    // Unit-test temp files live elsewhere and must not produce cache files
+    // in the user's DIME data folder.
     WCHAR appData[MAX_PATH] = {};
     if (!SHGetSpecialFolderPathW(nullptr, appData, CSIDL_APPDATA, FALSE))
-        return;
-
-    // Only dump production DIME dictionary files (in %APPDATA%\DIME\).
-    // Unit-test temp files live in %TEMP%\..., not in %APPDATA%\DIME\, and
-    // must not produce noise dumps in the user's DIME data folder.
-    const WCHAR* srcPath = _pSrcFile ? _pSrcFile->GetFileName() : nullptr;
-    if (!srcPath) return;
+        return FALSE;
 
     WCHAR dimeDir[MAX_PATH];
     if (FAILED(StringCchPrintfW(dimeDir, MAX_PATH, L"%s\\DIME\\", appData)))
-        return;
+        return FALSE;
     size_t dimeDirLen = wcslen(dimeDir);
-    if (wcsncmp(srcPath, dimeDir, dimeDirLen) != 0)
-        return;   // not a file inside %APPDATA%\DIME\ — skip dump
 
-    // Extract just the filename part of the source path  (e.g. "Array.cin")
-    const WCHAR* lastSep  = wcsrchr(srcPath, L'\\');
+#ifndef DIME_UNIT_TESTING
+    if (_wcsnicmp(srcPath, dimeDir, dimeDirLen) != 0)
+        return FALSE;   // not inside %APPDATA%\DIME\ — skip
+#endif
+
+    // Find directory separator and extension dot in the source path
+    const WCHAR* lastSep = wcsrchr(srcPath, L'\\');
     const WCHAR* baseName = lastSep ? lastSep + 1 : srcPath;
+    const WCHAR* dot = wcsrchr(baseName, L'.');
 
-    // Build output path: %APPDATA%\DIME\dbg_<basename>
-    WCHAR outPath[MAX_PATH];
-    if (FAILED(StringCchPrintfW(outPath, MAX_PATH, L"%s\\DIME\\dbg_%s", appData, baseName)))
+    // Build: <dir><name>-Big5.<ext>  or  <dir><name>-Big5  (no extension)
+    if (dot)
+    {
+        // Prefix length up to (not including) the dot
+        size_t prefixLen = (size_t)(dot - srcPath);
+        WCHAR prefix[MAX_PATH] = {};
+        if (prefixLen >= MAX_PATH) return FALSE;
+        wcsncpy_s(prefix, MAX_PATH, srcPath, prefixLen);
+        if (FAILED(StringCchPrintfW(outPath, maxLen, L"%s-Big5%s", prefix, dot)))
+            return FALSE;
+    }
+    else
+    {
+        if (FAILED(StringCchPrintfW(outPath, maxLen, L"%s-Big5", srcPath)))
+            return FALSE;
+    }
+    return TRUE;
+}
+
+//---------------------------------------------------------------------
+//
+// CMemoryFile::IsCacheValid
+//
+// Opens the cache file and reads the first line which must be
+// "%src_mtime <decimal64>".  Compares the stored value with the
+// current source file's st_mtime.  Returns TRUE only if both parse
+// correctly and the values match.
+//
+//---------------------------------------------------------------------
+
+BOOL CMemoryFile::IsCacheValid() const
+{
+    WCHAR cachePath[MAX_PATH];
+    if (!BuildCachePath(cachePath, MAX_PATH)) return FALSE;
+
+    // Get current source mtime
+    const WCHAR* srcPath = _pSrcFile->GetFileName();
+    if (!srcPath) return FALSE;
+    struct _stat srcStat;
+    if (_wstat(srcPath, &srcStat)) return FALSE;
+
+    // Open cache file for reading
+    HANDLE hFile = ::CreateFileW(cachePath, GENERIC_READ, FILE_SHARE_READ, nullptr,
+                                 OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (hFile == INVALID_HANDLE_VALUE) return FALSE;
+
+    DWORD fileSize = ::GetFileSize(hFile, NULL);
+    if (fileSize == INVALID_FILE_SIZE || fileSize < sizeof(WCHAR))
+    {
+        CloseHandle(hFile);
+        return FALSE;
+    }
+
+    // Read enough to get the header line (BOM + first line).
+    // %src_mtime + space + up to 20 digits + newline ≈ 34 WCHARs max.
+    // Read 128 WCHARs to be safe (256 bytes + 2 BOM = 258 bytes).
+    const DWORD headerReadSize = min(fileSize, (DWORD)(128 * sizeof(WCHAR) + sizeof(WCHAR)));
+    BYTE* headerBuf = new (std::nothrow) BYTE[headerReadSize];
+    if (!headerBuf) { CloseHandle(hFile); return FALSE; }
+
+    DWORD bytesRead = 0;
+    BOOL readOk = ReadFile(hFile, headerBuf, headerReadSize, &bytesRead, NULL);
+    CloseHandle(hFile);
+
+    if (!readOk || bytesRead < 2 * sizeof(WCHAR))
+    {
+        delete[] headerBuf;
+        return FALSE;
+    }
+
+    // Skip BOM (first 2 bytes)
+    const WCHAR* wBuf = (const WCHAR*)(headerBuf + sizeof(WCHAR));
+    DWORD_PTR wLen = (bytesRead - sizeof(WCHAR)) / sizeof(WCHAR);
+
+    // Parse first line: expect "%src_mtime <decimal64>"
+    const WCHAR prefix[] = L"%src_mtime ";
+    size_t prefixLen = wcslen(prefix);
+    if (wLen < prefixLen || wcsncmp(wBuf, prefix, prefixLen) != 0)
+    {
+        delete[] headerBuf;
+        return FALSE;
+    }
+
+    // Extract the decimal64 value (up to end of line)
+    const WCHAR* numStart = wBuf + prefixLen;
+    const WCHAR* numEnd = numStart;
+    while (numEnd < wBuf + wLen && *numEnd != L'\n' && *numEnd != L'\r') ++numEnd;
+
+    WCHAR numStr[32] = {};
+    size_t numLen = (size_t)(numEnd - numStart);
+    if (numLen == 0 || numLen >= _countof(numStr))
+    {
+        delete[] headerBuf;
+        return FALSE;
+    }
+    wcsncpy_s(numStr, _countof(numStr), numStart, numLen);
+
+    WCHAR* endPtr = nullptr;
+    __time64_t storedMtime = _wcstoi64(numStr, &endPtr, 10);
+    delete[] headerBuf;
+
+    if (endPtr == numStr) return FALSE;  // parse failed
+
+    return (storedMtime == srcStat.st_mtime) ? TRUE : FALSE;
+}
+
+//---------------------------------------------------------------------
+//
+// CMemoryFile::TryLoadCache
+//
+// If a valid cache file exists (IsCacheValid), reads it into
+// _pReadBuffer, skipping the BOM and %src_mtime header line.
+// Returns TRUE on success (buffer is ready), FALSE on any failure
+// (caller falls through to line-by-line filtering).
+//
+//---------------------------------------------------------------------
+
+BOOL CMemoryFile::TryLoadCache()
+{
+    WCHAR cachePath[MAX_PATH];
+    if (!BuildCachePath(cachePath, MAX_PATH)) return FALSE;
+    if (!IsCacheValid()) return FALSE;
+
+    // Open cache file
+    HANDLE hFile = ::CreateFileW(cachePath, GENERIC_READ, FILE_SHARE_READ, nullptr,
+                                 OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (hFile == INVALID_HANDLE_VALUE) return FALSE;
+
+    DWORD fileSize = ::GetFileSize(hFile, NULL);
+    if (fileSize == INVALID_FILE_SIZE || fileSize < sizeof(WCHAR))
+    {
+        CloseHandle(hFile);
+        return FALSE;
+    }
+
+    // Read entire file
+    BYTE* rawBuf = new (std::nothrow) BYTE[fileSize];
+    if (!rawBuf) { CloseHandle(hFile); return FALSE; }
+
+    DWORD bytesRead = 0;
+    if (!ReadFile(hFile, rawBuf, fileSize, &bytesRead, NULL) || bytesRead != fileSize)
+    {
+        delete[] rawBuf;
+        CloseHandle(hFile);
+        return FALSE;
+    }
+    CloseHandle(hFile);
+
+    // Skip BOM (2 bytes)
+    const WCHAR* wBuf = (const WCHAR*)(rawBuf + sizeof(WCHAR));
+    DWORD_PTR wLen = (bytesRead - sizeof(WCHAR)) / sizeof(WCHAR);
+
+    // Skip the first line (%src_mtime ...\n)
+    const WCHAR* dataStart = wBuf;
+    while (dataStart < wBuf + wLen && *dataStart != L'\n') ++dataStart;
+    if (dataStart < wBuf + wLen) ++dataStart;  // step past '\n'
+
+    DWORD_PTR dataLen = (DWORD_PTR)((wBuf + wLen) - dataStart);
+    if (dataLen == 0)
+    {
+        delete[] rawBuf;
+        return FALSE;
+    }
+
+    // Copy data portion into _pReadBuffer
+    WCHAR* buf = new (std::nothrow) WCHAR[dataLen];
+    if (!buf) { delete[] rawBuf; return FALSE; }
+
+    wmemcpy(buf, dataStart, dataLen);
+    delete[] rawBuf;
+
+    _pReadBuffer = buf;
+    _fileSize = dataLen * sizeof(WCHAR);
+    return TRUE;
+}
+
+//---------------------------------------------------------------------
+//
+// CMemoryFile::WriteCacheToDisk
+//
+// Writes the filtered buffer to a .tmp file alongside the source,
+// prepended with a %src_mtime header line, then atomically renames
+// to the final cache path.  If the rename fails (cache locked by
+// another process), the temp file is deleted silently.
+//
+//---------------------------------------------------------------------
+
+void CMemoryFile::WriteCacheToDisk()
+{
+    if (!_pReadBuffer || _fileSize == 0) return;
+
+    WCHAR cachePath[MAX_PATH];
+    if (!BuildCachePath(cachePath, MAX_PATH)) return;
+
+    // Get source mtime
+    const WCHAR* srcPath = _pSrcFile ? _pSrcFile->GetFileName() : nullptr;
+    if (!srcPath) return;
+    struct _stat srcStat;
+    if (_wstat(srcPath, &srcStat)) return;
+
+    // Build temp path
+    WCHAR tmpPath[MAX_PATH];
+    if (FAILED(StringCchPrintfW(tmpPath, MAX_PATH, L"%s.tmp", cachePath)))
         return;
 
-    HANDLE hFile = ::CreateFileW(outPath, GENERIC_WRITE, 0, nullptr,
+    // Open temp file for writing (exclusive — no sharing)
+    HANDLE hFile = ::CreateFileW(tmpPath, GENERIC_WRITE, 0, nullptr,
                                  CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
     if (hFile == INVALID_HANDLE_VALUE) return;
 
-    // UTF-16LE BOM then the filtered character data
     DWORD written;
-    BYTE  bom[2] = { 0xFF, 0xFE };
+
+    // UTF-16LE BOM
+    BYTE bom[2] = { 0xFF, 0xFE };
     WriteFile(hFile, bom, sizeof(bom), &written, nullptr);
+
+    // Header line: %src_mtime <decimal64>\n
+    WCHAR header[64];
+    StringCchPrintfW(header, _countof(header), L"%%src_mtime %lld\n", (__int64)srcStat.st_mtime);
+    DWORD headerBytes = (DWORD)(wcslen(header) * sizeof(WCHAR));
+    WriteFile(hFile, header, headerBytes, &written, nullptr);
+
+    // Filtered buffer data
     WriteFile(hFile, _pReadBuffer, static_cast<DWORD>(_fileSize), &written, nullptr);
+
     CloseHandle(hFile);
+
+    // Atomic rename; if it fails (file locked), delete temp and continue
+    if (!MoveFileExW(tmpPath, cachePath, MOVEFILE_REPLACE_EXISTING))
+        DeleteFileW(tmpPath);
 }
-#endif // _DEBUG

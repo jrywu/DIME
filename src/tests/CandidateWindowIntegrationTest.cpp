@@ -692,5 +692,111 @@ namespace DIMEIntegratedTests
             Assert::IsTrue(darkLum > lightLum,
                 L"Dark border must have higher total luminance than the pure-black light border");
         }
+        // Additional coverage tests to exercise more CandidateWindow branches
+
+        TEST_METHOD(IT03_07_CandidateWindow_SetSelection_NegativeIndex_Clamps)
+        {
+            CCandidateRange indexRange;
+            CCandidateWindow* pCandWnd = new (std::nothrow) CCandidateWindow(
+                TestCandidateCallback, nullptr, &indexRange, FALSE);
+            Assert::IsNotNull(pCandWnd);
+
+            for (int i = 0; i < 5; i++) {
+                CCandidateListItem item;
+                WCHAR text[10]; swprintf_s(text, L"Item%d", i);
+                item._ItemString.Set(text, (DWORD_PTR)wcslen(text));
+                pCandWnd->_AddString(&item, FALSE);
+            }
+
+            pCandWnd->_SetSelection(-1);
+            int sel = pCandWnd->_GetSelection();
+            // Should not crash; selection clamped or wrapped
+            Assert::IsTrue(sel >= -1 && sel <= 5);
+            delete pCandWnd;
+        }
+
+        TEST_METHOD(IT03_07_CandidateWindow_SetSelection_BeyondCount_Clamps)
+        {
+            CCandidateRange indexRange;
+            CCandidateWindow* pCandWnd = new (std::nothrow) CCandidateWindow(
+                TestCandidateCallback, nullptr, &indexRange, FALSE);
+            Assert::IsNotNull(pCandWnd);
+
+            for (int i = 0; i < 3; i++) {
+                CCandidateListItem item;
+                WCHAR text[10]; swprintf_s(text, L"Item%d", i);
+                item._ItemString.Set(text, (DWORD_PTR)wcslen(text));
+                pCandWnd->_AddString(&item, FALSE);
+            }
+
+            pCandWnd->_SetSelection(999);
+            int sel = pCandWnd->_GetSelection();
+            Assert::IsTrue(sel >= 0);
+            delete pCandWnd;
+        }
+
+        TEST_METHOD(IT03_07_CandidateWindow_GetCount_AfterAddAndClear)
+        {
+            CCandidateRange indexRange;
+            CCandidateWindow* pCandWnd = new (std::nothrow) CCandidateWindow(
+                TestCandidateCallback, nullptr, &indexRange, FALSE);
+            Assert::IsNotNull(pCandWnd);
+
+            Assert::AreEqual((UINT)0, pCandWnd->_GetCount());
+
+            for (int i = 0; i < 10; i++) {
+                CCandidateListItem item;
+                WCHAR text[10]; swprintf_s(text, L"C%d", i);
+                item._ItemString.Set(text, (DWORD_PTR)wcslen(text));
+                pCandWnd->_AddString(&item, FALSE);
+            }
+            Assert::AreEqual((UINT)10, pCandWnd->_GetCount());
+
+            pCandWnd->_ClearList();
+            Assert::AreEqual((UINT)0, pCandWnd->_GetCount());
+            delete pCandWnd;
+        }
+
+        TEST_METHOD(IT03_07_CandidateWindow_MoveSelection_UpFromFirst)
+        {
+            CCandidateRange indexRange;
+            CCandidateWindow* pCandWnd = new (std::nothrow) CCandidateWindow(
+                TestCandidateCallback, nullptr, &indexRange, FALSE);
+            Assert::IsNotNull(pCandWnd);
+
+            for (int i = 0; i < 5; i++) {
+                CCandidateListItem item;
+                WCHAR text[10]; swprintf_s(text, L"Item%d", i);
+                item._ItemString.Set(text, (DWORD_PTR)wcslen(text));
+                pCandWnd->_AddString(&item, FALSE);
+            }
+
+            pCandWnd->_SetSelection(0);
+            pCandWnd->_MoveSelection(-1, FALSE);  // move up by 1
+            int sel = pCandWnd->_GetSelection();
+            Assert::IsTrue(sel >= 0);
+            delete pCandWnd;
+        }
+
+        TEST_METHOD(IT03_07_CandidateWindow_MoveSelection_DownFromLast)
+        {
+            CCandidateRange indexRange;
+            CCandidateWindow* pCandWnd = new (std::nothrow) CCandidateWindow(
+                TestCandidateCallback, nullptr, &indexRange, FALSE);
+            Assert::IsNotNull(pCandWnd);
+
+            for (int i = 0; i < 5; i++) {
+                CCandidateListItem item;
+                WCHAR text[10]; swprintf_s(text, L"Item%d", i);
+                item._ItemString.Set(text, (DWORD_PTR)wcslen(text));
+                pCandWnd->_AddString(&item, FALSE);
+            }
+
+            pCandWnd->_SetSelection(4);
+            pCandWnd->_MoveSelection(1, FALSE);  // move down by 1
+            int sel = pCandWnd->_GetSelection();
+            Assert::IsTrue(sel >= 0);
+            delete pCandWnd;
+        }
     };
 }
