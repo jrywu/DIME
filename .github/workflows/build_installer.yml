@@ -1,4 +1,4 @@
-name: Build Installer
+name: Build
 
 
 on:
@@ -71,6 +71,7 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add README.md
+          git add src/BuildInfo.h
           git add installer/DIME-Universal.zip
           git add installer/DIME-64bit.msi
           git add installer/DIME-32bit.msi

@@ -1,0 +1,71 @@
+name: New Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version from BuildInfo.h
+        id: version
+        run: |
+          ver=$(grep 'BUILD_VERSION_STR_SHORT' src/BuildInfo.h | sed 's/.*"\(.*\)".*/\1/')
+          echo "version=$ver" >> "$GITHUB_OUTPUT"
+          echo "tag=v$ver" >> "$GITHUB_OUTPUT"
+
+      - name: Read release notes from DRAFT_RELEASE.md
+        id: notes
+        run: |
+          {
+            echo 'body<<RELEASE_EOF'
+            cat docs/DRAFT_RELEASE.md
+            echo 'RELEASE_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Update release checksums in README.md
+        run: |
+          ver="${{ steps.version.outputs.version }}"
+          today=$(date +%Y-%m-%d)
+
+          # Extract checksum table from CHECKSUM_START/END (skip the first header line)
+          # Use exact markers to avoid matching RELEASE_CHECKSUM_START/END
+          checksum_table=$(sed -n '/^[[:space:]]*<!-- CHECKSUM_START -->$/,/^[[:space:]]*<!-- CHECKSUM_END -->$/p' README.md \
+            | grep -v '^[[:space:]]*<!-- CHECKSUM_\(START\|END\) -->$\|最新開發版本')
+
+          # Replace RELEASE_CHECKSUM_START/END block with the latest checksum table
+          sed -i '/<!-- RELEASE_CHECKSUM_START -->/,/<!-- RELEASE_CHECKSUM_END -->/{
+            /<!-- RELEASE_CHECKSUM_START -->/!{/<!-- RELEASE_CHECKSUM_END -->/!d}
+            /<!-- RELEASE_CHECKSUM_START -->/r /dev/stdin
+          }' README.md <<< "$checksum_table"
+
+          # Update the release version header line
+          sed -i "s|最新穩定發行版本 DIME v\.[^ ]*（更新日期: [^)]*）|最新穩定發行版本 DIME v.${ver}（更新日期: ${today}）|" README.md
+
+          # Update the release checksum header line
+          sed -i "s|最新穩定發行版本 DIME v\.[^ ]* SHA-256 CHECKSUM (更新日期: [^)]*)|最新穩定發行版本 DIME v.${ver} SHA-256 CHECKSUM (更新日期: ${today})|" README.md
+
+
+      - name: Commit README.md updates
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add README.md
+          git diff --staged --quiet || git commit -m "Update release checksums for v${{ steps.version.outputs.version }} [bot]"
+          git push
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: DIME ${{ steps.version.outputs.tag }}
+          body: ${{ steps.notes.outputs.body }}
+          files: |
+            installer/DIME-64bit.msi
+            installer/DIME-32bit.msi
+            installer/DIME-Universal.zip

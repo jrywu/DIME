@@ -1,4 +1,4 @@
-name: DIME Tests
+name: Test
 
 on:
   workflow_dispatch:
