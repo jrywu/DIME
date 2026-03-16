@@ -896,7 +896,14 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
         if(_brshBkColor) FillRect(dcHandle, &rc, _brshBkColor);
     }
 
-	if(_cxTitle != prc->right - prc->left - VScrollWidth) _ResizeWindow();
+	BOOL isMultiPage = (_pVScrollBarWnd && _pVScrollBarWnd->_IsEnabled());
+	int expectedBottomPadding = isMultiPage ? _cyRow : _cyRow / 2;
+	int expectedHeight = _cyRow * candidateListPageCnt + expectedBottomPadding + CANDWND_BORDER_WIDTH * 2;
+	RECT rcWnd = {0, 0, 0, 0};
+	GetWindowRect(_GetWnd(), &rcWnd);
+	if(_cxTitle != prc->right - prc->left - VScrollWidth
+		|| expectedHeight != rcWnd.bottom - rcWnd.top)
+		_ResizeWindow();
 }
 
 //+---------------------------------------------------------------------------
@@ -1075,7 +1082,6 @@ void CCandidateWindow::_SetScrollInfo(_In_ int nMax, _In_ int nPage)
     if (_pVScrollBarWnd)
     {
         _pVScrollBarWnd->_SetScrollInfo(&si);
-        _ResizeWindow();  // resize height for page indicator before first paint
     }
 }
 
