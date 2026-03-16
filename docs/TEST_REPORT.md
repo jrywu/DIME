@@ -359,7 +359,7 @@ This split reveals that the previously reported "Config.cpp 24%" was misleading 
 
 - **Pass Rate:** 100% (550/550 running)
 - **Flaky Tests:** 0
-- **Skipped Tests:** 0 (IT-MF-01/02 skip when system files absent; IT-MF-03–06 fail when `%APPDATA%\DIME\` tables missing)
+- **Skipped Tests:** 0 (IT-MF-01–06 skip when system files absent, e.g. CI runners without DIME installed)
 - **Manual Tests Required:** System-level TSF integration tests with real applications
 
 ---

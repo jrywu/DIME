@@ -300,9 +300,18 @@ function Assert-InstalledClean($expectedVer, $ctx = 'Assert-InstalledClean', [sw
         $shell  = New-Object -ComObject WScript.Shell
         $lnk    = $shell.CreateShortcut($shortcut)
         $target = $lnk.TargetPath
-        Assert-True ($target -like '*\DIMESettings.exe') `
-            "$ctx -- shortcut target is DIMESettings.exe" `
-            "shortcut target is '$target' (expected *\DIMESettings.exe)"
+        if ($target) {
+            # Non-advertised shortcut: verify target points to DIMESettings.exe
+            Assert-True ($target -like '*\DIMESettings.exe') `
+                "$ctx -- shortcut target is DIMESettings.exe" `
+                "shortcut target is '$target' (expected *\DIMESettings.exe)"
+        } else {
+            # MSI advertised shortcut: WScript.Shell returns empty TargetPath.
+            # This is expected when the shortcut component's KeyPath is a registry
+            # value rather than the target file.  The shortcut still works correctly
+            # — Windows resolves it through MSI at launch time.
+            Write-Host "  [INFO] shortcut is MSI-advertised (empty TargetPath via WScript.Shell) -- OK" -ForegroundColor DarkGray
+        }
     }
 }
 
@@ -997,6 +1006,24 @@ function Get-MsiProperty([string]$msiPath, [string]$propName) {
     return $val
 }
 
+# Asserts that $dialogName exists in the MSI's Dialog table.
+# Without CancelDlg, clicking Cancel on ProgressDlg raises error 2803 in interactive mode.
+function Assert-MsiDialogExists([string]$msiPath, [string]$dialogName, [string]$ctx) {
+    $wi   = New-Object -ComObject WindowsInstaller.Installer
+    $db   = $wi.GetType().InvokeMember('OpenDatabase', [Reflection.BindingFlags]::InvokeMethod,
+                $null, $wi, @($msiPath, 0))
+    $view = $db.GetType().InvokeMember('OpenView', [Reflection.BindingFlags]::InvokeMethod,
+                $null, $db, @("SELECT ``Dialog`` FROM ``Dialog`` WHERE ``Dialog`` = '$dialogName'"))
+    $view.GetType().InvokeMember('Execute', [Reflection.BindingFlags]::InvokeMethod, $null, $view, @())
+    $rec  = $view.GetType().InvokeMember('Fetch', [Reflection.BindingFlags]::InvokeMethod, $null, $view, @())
+    $view.GetType().InvokeMember('Close', [Reflection.BindingFlags]::InvokeMethod, $null, $view, @())
+    [void][Runtime.InteropServices.Marshal]::ReleaseComObject($view)
+    [void][Runtime.InteropServices.Marshal]::ReleaseComObject($db)
+    [void][Runtime.InteropServices.Marshal]::ReleaseComObject($wi)
+    Assert-True ($null -ne $rec) "$ctx -- Dialog '$dialogName' in Dialog table" `
+        "$ctx -- Dialog '$dialogName' MISSING from Dialog table — ProgressDlg Cancel raises error 2803 in interactive mode"
+}
+
 function Invoke-ScenarioE($installers) {
     $Script:Scenario = 'E'
     Write-Host "`n=== Scenario E: Rollback (file-obstruction) ===" -ForegroundColor Cyan
@@ -1091,11 +1118,14 @@ function Invoke-ScenarioE($installers) {
                     "RM terminated lock-holder child even with DisableAutomaticApplicationShutdown=1 — msiexec exit $e2Code"
                 Remove-AllDimeInstalls
             } else {
+                # FileShare.None blocks both MoveFileExW and CopyAndPosixReplace in
+                # EarlyRenameForValidate → DLL still locked at InstallValidate → RM raises
+                # FilesInUse → silent-mode MSI rolls back with exit 1603.
                 Assert-True ($e2Code -eq 1603) 'E2-ExitCode-1603' "expected 1603 (rollback), got $e2Code"
-                # Old DLL is intact — MoveLockedDimeDll couldn't rename a locked file, so nothing moved.
                 Assert-InstalledClean $OldVersion 'E2-UpgradeRollback-OldRestored'
                 Assert-NoPendingReboot 'E2-UpgradeRollback'
                 Assert-NoOrphanBaks    'E2-UpgradeRollback'
+                Remove-AllDimeInstalls
             }
         }
     } finally {
@@ -1504,6 +1534,15 @@ Write-Host "  New EXE : $($installers.NewExe)"
 Write-Host "  Old MSI : $($installers.OldMsi64)"
 Write-Host "  New MSI : $($installers.NewMsi64)"
 Write-Host ""
+
+# Static MSI sanity checks — run before any scenario so a broken MSI fails fast.
+# CancelDlg must be in the Dialog table: ProgressDlg's Cancel button fires
+# NewDialog("CancelDlg"); if it is absent, interactive installs raise error 2803.
+$Script:Scenario = 'Sanity'
+foreach ($dlg in @('CancelDlg', 'ExitDlg', 'UserExitDlg', 'FatalErrorDlg')) {
+    Assert-MsiDialogExists $installers.OldMsi64 $dlg "Sanity-$dlg-64bit-old"
+    Assert-MsiDialogExists $installers.NewMsi64 $dlg "Sanity-$dlg-64bit-new"
+}
 
 # Determine which scenarios to run
 $toRun = if ($Scenarios.Count -gt 0) { $Scenarios } else { @('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'Matrix') }

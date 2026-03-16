@@ -68,6 +68,13 @@
                   Execute="immediate"
                   Return="check" />
 
+    <!-- SelfElevate: re-launches msiexec elevated when run non-elevated. -->
+    <CustomAction Id="SelfElevate"
+                  BinaryRef="BinDIMEInstallerCA"
+                  DllEntry="SelfElevate"
+                  Execute="immediate"
+                  Return="check" />
+
     <!-- Downgrade confirmation (same logic as DIME-64bit.wxs — see comments there) -->
     <CustomAction Id="ConfirmDowngrade"
                   BinaryRef="BinDIMEInstallerCA"
@@ -155,6 +162,13 @@
                   Execute="immediate"
                   Return="ignore" />
 
+    <!-- Passes ProductCode to CleanupBurnRegistration via CustomActionData.
+         Commit CAs cannot read arbitrary session properties via MsiGetPropertyW —
+         only CustomActionData is reliably available in that context. -->
+    <CustomAction Id="SetCleanupBurnRegistrationData"
+                  Property="CleanupBurnRegistration"
+                  Value="[ProductCode]" />
+
     <!-- EarlyRenameForValidate: immediate CA, Before="InstallValidate".
          Renames DIME.dll → bak + fresh inode to bypass the ~60 s
          InstallValidate file-in-use hang from sandboxed processes. -->
@@ -213,6 +227,7 @@
          ================================================================ -->
     <!-- Suppress file-in-use dialogs in UI sequence (user process, pre-elevation) -->
     <InstallUISequence>
+      <Custom Action="SelfElevate" Before="AppSearch" />
       <MsiRMFilesInUse Suppress="yes" />
       <FilesInUse Suppress="yes" />
       <!-- Cleans orphaned Burn ARP entries before FindRelatedProducts. -->
@@ -239,10 +254,19 @@
               Condition="NOT Installed AND NOT UPGRADINGPRODUCTCODE AND NOT WIX_UPGRADE_DETECTED" />
 
       <!-- EarlyRenameForValidate: rename DIME.dll → bak + copy back fresh inode
-           BEFORE InstallValidate's file-in-use detection runs.  Eliminates the
-           ~60 s hang from sandboxed processes holding DIME.dll. -->
+           BEFORE InstallValidate's file-in-use detection runs.
+           Without this, InstallValidate detects locked DIME.dll and sends
+           INSTALLMESSAGE_FILESINUSE; the MSI engine then looks up the
+           "FilesInUse" dialog, which (if absent) raises error 2803.
+           Runs for:
+             clean uninstall  (REMOVE set, no UPGRADINGPRODUCTCODE)
+             upgrade install  (UPGRADINGPRODUCTCODE set, no REMOVE)
+           Skipped for fresh install/repair (neither set) and for the
+           old-product removal leg of an upgrade (both set).
+           MoveLockedDimeDll (deferred) detects the early_bak_N InstallerState
+           entries and promotes them to wix_bak_K, skipping re-rename. -->
       <Custom Action="EarlyRenameForValidate" Before="InstallValidate"
-              Condition="REMOVE AND NOT UPGRADINGPRODUCTCODE" />
+              Condition="REMOVE OR UPGRADINGPRODUCTCODE" />
 
       <!-- Install/upgrade/downgrade: rename old DLL away before InstallFiles.
            REINSTALLMODE=amus (set in ConfirmDowngrade CA on downgrade) forces
@@ -284,6 +308,8 @@
       <!-- Commit: delete all DIME Burn ARP registry entries.
            Condition NOT UPGRADINGPRODUCTCODE skips the old-product remove phase
            of a MajorUpgrade (the new product's install pass handles cleanup). -->
+      <Custom Action="SetCleanupBurnRegistrationData" Before="CleanupBurnRegistration"
+              Condition="NOT UPGRADINGPRODUCTCODE" />
       <Custom Action="CleanupBurnRegistration" Before="InstallFinalize"
               Condition="NOT UPGRADINGPRODUCTCODE" />
     </InstallExecuteSequence>
@@ -417,6 +443,19 @@
       <DialogRef Id="VerifyReadyDlg" />
       <DialogRef Id="WaitForCostingDlg" />
       <DialogRef Id="CancelDlg" />
+      <!-- ExitDlg, UserExitDlg, FatalErrorDlg: ProgressDlg navigates to
+           these on successful completion, user-cancel, and fatal failure
+           respectively. Without them, EndDialog/NewDialog raises error 2803. -->
+      <DialogRef Id="ExitDlg" />
+      <DialogRef Id="UserExitDlg" />
+      <DialogRef Id="FatalErrorDlg" />
+      <!-- FilesInUse: shown when InstallValidate (execute sequence, seq 1400)
+           detects locked files and sends INSTALLMESSAGE_FILESINUSE.  The engine
+           looks up this dialog by name; if absent, it raises error 2803.
+           EarlyRenameForValidate normally prevents locked-DIME.dll from
+           reaching InstallValidate, but this dialog is kept as defense-in-depth
+           for any other locked files (e.g. DIMESettings.exe still running). -->
+      <DialogRef Id="FilesInUse" />
 
       <!-- WelcomeDlg: first install → VerifyReadyDlg.
            (Patch path and Cancel are already in WelcomeDlg.wxs via WixUI_Common.) -->

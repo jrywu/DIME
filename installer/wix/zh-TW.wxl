@@ -124,6 +124,16 @@
   <String Id="PrepareDlgTitle"        Value="{\WixUI_Font_Bigger}歡迎使用 [ProductName] 安裝精靈" />
   <String Id="PrepareDlgDescription" Value="請稍候，安裝精靈正在準備引導您完成安裝。" />
 
+  <!-- FilesInUse (WixUI_Common dialog — strings must match WixToolset.UI.wixext IDs) -->
+  <String Id="FilesInUse_Title"        Value="[ProductName] [DisplayVersion] 安裝" />
+  <String Id="FilesInUseBannerBitmap"  Value="WixUI_Bmp_Banner" />
+  <String Id="FilesInUseTitle"         Value="{\WixUI_Font_Title}正在使用的檔案" />
+  <String Id="FilesInUseText"
+          Value="以下程式正在使用需要更新的檔案，請關閉這些程式，然後按「重試」繼續安裝。" />
+  <String Id="FilesInUseDescription"
+          Value="下列應用程式正在使用需要更新的檔案，請關閉這些應用程式後按「重試」，或按「略過」跳過，或按「取消」結束安裝精靈。" />
+  <String Id="FilesInUseExit"          Value="結束(&amp;X)" />
+
   <!-- UserExit / FatalError -->
   <String Id="UserExit_Title"        Value="[ProductName] [DisplayVersion] 安裝" />
   <String Id="UserExitBitmap"        Value="WixUI_Bmp_Dialog" />

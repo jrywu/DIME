@@ -220,7 +220,7 @@ Start-Service msiserver -ErrorAction SilentlyContinue
 
 # Build x64 MSI (covers AMD64 + ARM64 Windows)
 Write-Host "  Building DIME-64bit.msi (AMD64 + ARM64)..." -ForegroundColor Yellow
-wix build "$wixDir\DIME-64bit.wxs" `
+wix build "$wixDir\DIME-64bit.wxs" "$wixDir\TerminalDialogs.wxs" `
     -arch x64 `
     -d "ProductVersion=$fullVersion" `
     -d "DisplayVersion=$displayVersion" `
@@ -242,7 +242,7 @@ Write-Host "  DIME-64bit.msi built successfully!" -ForegroundColor Green
 
 # Build x86 MSI (32-bit Windows only)
 Write-Host "  Building DIME-32bit.msi (32-bit Windows only)..." -ForegroundColor Yellow
-wix build "$wixDir\DIME-32bit.wxs" `
+wix build "$wixDir\DIME-32bit.wxs" "$wixDir\TerminalDialogs.wxs" `
     -arch x86 `
     -d "ProductVersion=$fullVersion" `
     -d "DisplayVersion=$displayVersion" `

@@ -111,6 +111,16 @@
                   Execute="immediate"
                   Return="check" />
 
+    <!-- SelfElevate: re-launches msiexec elevated when run from non-elevated
+         context (double-click, non-elevated cmd).  Immediate CAs run in the
+         client process; without elevation they cannot rename image-mapped DLLs.
+         No-op when already elevated (Burn, elevated cmd, /qn tests). -->
+    <CustomAction Id="SelfElevate"
+                  BinaryRef="BinDIMEInstallerCA"
+                  DllEntry="SelfElevate"
+                  Execute="immediate"
+                  Return="check" />
+
     <!-- ================================================================
          Rename-away locked DIME.dll (deferred, SYSTEM)
          CustomActionData: "{ProductVersion}|{amd64 dll}|{arm64 dll}|{x86 dll}"
@@ -339,6 +349,9 @@
          Suppressing here prevents the dialog regardless of elevation state.
          ================================================================ -->
     <InstallUISequence>
+      <!-- Self-elevate: re-launch msiexec elevated when run non-elevated.
+           Must be the first action so all subsequent CAs run elevated. -->
+      <Custom Action="SelfElevate" Before="AppSearch" />
       <MsiRMFilesInUse Suppress="yes" />
       <FilesInUse Suppress="yes" />
       <!-- Cleans orphaned Burn ARP entries. Runs unconditionally, even on cancel.
@@ -379,13 +392,18 @@
 
       <!-- EarlyRenameForValidate: rename DIME.dll → bak + copy back fresh inode
            BEFORE InstallValidate's file-in-use detection runs.
-           Without this, the built-in file-in-use scan blocks ~60 s when a
-           sandboxed process (e.g. msedgewebview2) holds DIME.dll, causing
-           Burn to show "Installer 不再有回應" (package not responding).
-           MoveLockedDimeDllUninstall (deferred, later) detects the early bak
-           entries in InstallerState and skips re-renaming those DLLs. -->
+           Without this, InstallValidate detects locked DIME.dll and sends
+           INSTALLMESSAGE_FILESINUSE; the MSI engine then looks up the
+           "FilesInUse" dialog, which (if absent) raises error 2803.
+           Runs for:
+             clean uninstall  (REMOVE set, no UPGRADINGPRODUCTCODE)
+             upgrade install  (UPGRADINGPRODUCTCODE set, no REMOVE)
+           Skipped for fresh install/repair (neither set) and for the
+           old-product removal leg of an upgrade (both set).
+           MoveLockedDimeDll (deferred) detects the early_bak_N InstallerState
+           entries and promotes them to wix_bak_K, skipping re-rename. -->
       <Custom Action="EarlyRenameForValidate" Before="InstallValidate"
-              Condition="REMOVE AND NOT UPGRADINGPRODUCTCODE" />
+              Condition="REMOVE OR UPGRADINGPRODUCTCODE" />
 
       <!-- Install/upgrade/downgrade: rename old DLLs away BEFORE RemoveExistingProducts
            so Windows Installer's file version costing sees them as absent and
@@ -615,6 +633,19 @@
            error 2803 because ProgressDlg tries to navigate to an undefined
            dialog. -->
       <DialogRef Id="CancelDlg" />
+      <!-- ExitDlg, UserExitDlg, FatalErrorDlg: ProgressDlg navigates to
+           these on successful completion, user-cancel, and fatal failure
+           respectively. Without them, EndDialog/NewDialog raises error 2803. -->
+      <DialogRef Id="ExitDlg" />
+      <DialogRef Id="UserExitDlg" />
+      <DialogRef Id="FatalErrorDlg" />
+      <!-- FilesInUse: shown when InstallValidate (execute sequence, seq 1400)
+           detects locked files and sends INSTALLMESSAGE_FILESINUSE.  The engine
+           looks up this dialog by name; if absent, it raises error 2803.
+           EarlyRenameForValidate normally prevents locked-DIME.dll from
+           reaching InstallValidate, but this dialog is kept as defense-in-depth
+           for any other locked files (e.g. DIMESettings.exe still running). -->
+      <DialogRef Id="FilesInUse" />
 
       <!-- WelcomeDlg: first install → VerifyReadyDlg.
            (Patch path and Cancel are already in WelcomeDlg.wxs via WixUI_Common.) -->

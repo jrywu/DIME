@@ -25,7 +25,10 @@
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <shellapi.h>
+#include <shlobj.h>
 #pragma comment(lib, "advapi32.lib")
+#pragma comment(lib, "shell32.lib")
 
 #include <msi.h>
 #include <msiquery.h>
@@ -298,6 +301,53 @@ static bool GetNsisUninstallString(wchar_t* out, DWORD cchOut)
 
 #ifndef BUILDING_DOWNGRADE_CHECK
 BOOL APIENTRY DllMain(HMODULE, DWORD, LPVOID) { return TRUE; }
+
+// ============================================================================
+// SelfElevate  Execute="immediate"  (InstallUISequence, before AppSearch)
+//
+// Per-machine MSI launched via double-click or non-elevated cmd runs with a
+// non-elevated client process.  Immediate CAs (including EarlyRenameForValidate)
+// run in this non-elevated context and cannot rename image-mapped DLLs (err=5).
+//
+// This CA detects non-elevated context and re-launches msiexec elevated via
+// ShellExecuteEx "runas", then aborts the current non-elevated session.
+// The re-launched msiexec runs elevated from the start — all CAs run elevated.
+//
+// When already elevated (Burn, elevated cmd, /qn from elevated PS), this is a
+// no-op and returns ERROR_SUCCESS immediately.
+// ============================================================================
+extern "C" __declspec(dllexport)
+UINT __stdcall SelfElevate(MSIHANDLE hInstall)
+{
+    if (IsUserAnAdmin())
+        return ERROR_SUCCESS;
+
+    wchar_t msiPath[MAX_PATH] = {};
+    DWORD cch = MAX_PATH;
+    MsiGetPropertyW(hInstall, L"OriginalDatabase", msiPath, &cch);
+    if (!msiPath[0])
+        return ERROR_SUCCESS;  // can't determine path — proceed non-elevated
+
+    wchar_t params[MAX_PATH + 64] = {};
+    wsprintfW(params, L"/i \"%s\"", msiPath);
+
+    SHELLEXECUTEINFOW sei = {};
+    sei.cbSize       = sizeof(sei);
+    sei.fMask        = SEE_MASK_NOCLOSEPROCESS;
+    sei.lpVerb       = L"runas";
+    sei.lpFile       = L"msiexec.exe";
+    sei.lpParameters = params;
+    sei.nShow        = SW_SHOWNORMAL;
+
+    if (!ShellExecuteExW(&sei))
+        return ERROR_SUCCESS;  // UAC declined or ShellExecute failed — proceed
+
+    // Don't wait for the elevated instance — just abort this non-elevated session.
+    if (sei.hProcess)
+        CloseHandle(sei.hProcess);
+
+    return ERROR_INSTALL_USEREXIT;
+}
 
 // Forward declarations of helpers defined later in this compile unit.
 static void CaBurnLog(const wchar_t* line);
