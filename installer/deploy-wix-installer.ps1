@@ -365,21 +365,23 @@ if (-not (Test-Path $readmePath)) {
     # Note: This script file should be saved as UTF-8 with BOM for proper encoding
     $checksumSection = @"
 
-   **最新開發版本 DIME v$buildVersionStrShort SHA-256 CHECKSUM (更新日期: $date):**
-
-   | 檔案 | SHA-256 CHECKSUM |
-   |------|----------------|
-   | DIME-Universal.exe | ``$exeHash`` |
-   | DIME-Universal.zip | ``$zipHash`` |
-   | DIME-64bit.msi | ``$msi64Hash`` |
-   | DIME-32bit.msi | ``$msi32Hash`` |
+     <details>     
+     <summary><b>最新開發版本 DIME v$buildVersionStrShort SHA-256 CHECKSUM (更新日期: $date)</b></summary>
+   
+    | 檔案 | SHA-256 CHECKSUM |
+    |------|----------------|
+    | DIME-Universal.exe | ``$exeHash`` |
+    | DIME-Universal.zip | ``$zipHash`` |
+    | DIME-64bit.msi | ``$msi64Hash`` |
+    | DIME-32bit.msi | ``$msi32Hash`` |
 
 "@
 
     # Replace content between DOWNLOAD_START and DOWNLOAD_END markers
     $downloadSection = @"
-
-   **最新開發版本 DIME v$buildVersionStrShort (更新日期: $date)**
+     
+     <details>
+     <summary><b>最新開發版本 DIME v$buildVersionStrShort (更新日期: $date)</b></summary>
 
 "@
     $downloadPattern = '(?s)(   <!-- DOWNLOAD_START -->).*?(   <!-- DOWNLOAD_END -->)'
