@@ -33,10 +33,11 @@ jobs:
           ver="${{ steps.version.outputs.version }}"
           today=$(date +%Y-%m-%d)
 
-          # Extract checksum table from CHECKSUM_START/END (skip the first header line)
+          # Extract checksum table from CHECKSUM_START/END (keep only table rows)
           # Use exact markers to avoid matching RELEASE_CHECKSUM_START/END
+          # Filter out: markers, <details>/<summary> tags, 最新開發版本 header, blank lines
           checksum_table=$(sed -n '/^[[:space:]]*<!-- CHECKSUM_START -->$/,/^[[:space:]]*<!-- CHECKSUM_END -->$/p' README.md \
-            | grep -v '^[[:space:]]*<!-- CHECKSUM_\(START\|END\) -->$\|最新開發版本')
+            | grep -v '^[[:space:]]*<!-- CHECKSUM_\(START\|END\) -->$\|最新開發版本\|<details\|</details\|<summary\|</summary\|^[[:space:]]*$')
 
           # Replace RELEASE_CHECKSUM_START/END block with the latest checksum table
           sed -i '/<!-- RELEASE_CHECKSUM_START -->/,/<!-- RELEASE_CHECKSUM_END -->/{
