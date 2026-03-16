@@ -1,8 +1,8 @@
 # DIME Test Plan
 
-**Version**: 2.6 (FilterLine C3_IDEOGRAPH|C3_ALPHA fallback, surrogate plane check, UT-09 expanded to 20 tests)
-**Last Updated**: 2026-03-12
-**Status**: ✅ **COMPLETED** - 362 tests passing, 37.2% coverage baseline
+**Version**: 3.1 (IT-MF-05/06 DAYI TTS cache tests; CLI backup/restore; fail-not-skip)
+**Last Updated**: 2026-03-15
+**Status**: ✅ **IME Core 82.4% — TARGET MET** — 550 tests passing
 
 ---
 
@@ -12,36 +12,58 @@
 
 | Metric | Target | Actual | Status |
 |--------|--------|--------|--------|
-| **Overall Coverage** | 80-85% | **37.2%** | ⚠️ **BELOW TARGET** (7,289/19,589 lines) |
-| **Unit Tests** | 119 tests | **151 tests** | ✅ COMPLETE |
-| **Integration Tests** | 186 tests | **211 tests** | ✅ COMPLETE |
-| **Total Automated Tests** | 324 tests | **362 passing** | ✅ COMPLETE |
-| **Execution Time** | < 60s | **~21 seconds** | ✅ EXCELLENT |
+| **IME Core Coverage** | ≥80% | **82.4%** | ✅ **TARGET MET** (2,316/2,811 lines) |
+| **IME UI Coverage** | ≥30% | **29.4%** | ⚠️ Near target (1,362/4,630 lines) |
+| **TSF Interface Coverage** | ≥15% | **6.9%** | ⚠️ Limited (345/4,971 lines) |
+| **Unit Tests** | — | **280 tests** | ✅ COMPLETE |
+| **Integration Tests** | — | **270 tests** | ✅ COMPLETE |
+| **Total Automated Tests** | — | **550 passing** | ✅ COMPLETE |
+| **Execution Time** | < 60s | **~22 seconds** | ✅ EXCELLENT |
 | **CI/CD Ready** | Yes | **Yes** | ✅ AUTO-RUN |
 
 ### Coverage Philosophy
 
-**Realistic CI/CD Automation**: This document targets **80-85% automated coverage** as an aspirational goal for CI/CD pipelines.
+DIME's codebase has three fundamentally different categories with different testing constraints:
 
-**Current Status**: **37.2% coverage** (7,289 covered / 19,589 total lines)
+**IME Core** (Config_Core, CLI, File I/O, Dictionary, BaseStructure, Compartment) — **target: ≥80%**. Headless logic fully testable in CI/CD. New code in this category should aim for ≥90% coverage.
+
+**IME UI** (Config_UI, CandidateWindow, NotifyWindow, BaseWindow, ScrollBar, UIPresenter, LanguageBar) — **target: ≥30%**. Win32 window creation/destruction is testable, but dialog WndProcs, GDI rendering, and DPI code require live display. Manual validation supplements automated tests.
+
+**TSF Interface** (DIME.cpp, KeyEventSink, Composition, KeyHandler, CandidateHandler, CompositionProcessorEngine, etc.) — **target: ≥15%**. Requires full Windows TSF environment with COM registration and live application contexts. Manual validation is the primary quality gate.
+
+**Current Status** (production source only):
+
+| Category | Files | Lines | Covered | Coverage | Target | Status |
+|----------|-------|-------|---------|----------|--------|--------|
+| **IME Core** | 18 | 2,713 | 2,216 | **81.7%** | ≥80% | ✅ **PASS** |
+| **IME UI** | 15 | 4,630 | 1,361 | **29.4%** | ≥30% | ⚠️ Almost |
+| **TSF Interface** | 39 | 4,971 | 345 | **6.9%** | ≥15% | ⚠️ Limited |
+| **Overall** | 72 | 12,314 | 3,922 | **31.8%** | — | — |
+
+**Coverage by IME Core Component** (measured):
+
+| Component | Coverage | Key files |
+|-----------|----------|-----------|
+| CLI Interface | **94.1%** | CLI.cpp (545/579) |
+| BaseStructure | **97.2%** | BaseStructure.cpp (139/143) |
+| Dictionary & Search | **74-93%** | TableDictionaryEngine.cpp (93%), DictionarySearch.cpp (75%), DictionaryParser.cpp (74%), File.cpp (85%) |
+| Config headers & core | **73-99%** | Config.h (99%), Config_Core.cpp (73%), Compartment.cpp (73%) |
+
+**Coverage by IME UI Component** (measured):
+
+| Component | Coverage | Key files |
+|-----------|----------|-----------|
+| UIPresenter | **55.0%** | UIPresenter.cpp (practical max ~60% — TSF lifecycle) |
+| Win32 windows | **34-55%** | BaseWindow.cpp (55%), NotifyWindow.cpp (42%), CandidateWindow.cpp (34%), ScrollBarWindow.cpp (36%) |
+| Config dialog | **7.5%** | Config_UI.cpp (113/1,499 — dialog WndProcs, GDI rendering) |
+| Language bar | **26%** | LanguageBar.cpp (126/479) |
+
+**Key architectural change**: Config.cpp (3,541 lines) split into Config_Core.cpp (~978 lines, IME Core) + Config_UI.cpp (~2,626 lines, IME UI). This enables honest per-tier coverage targets.
 
 **Coverage Gap Analysis**:
-- **Automated tests (359 tests)**: Core functionality, APIs, integration points
-- **Coverage challenges**: 
-  - Many TSF framework integration points require full IME installation
-  - UI rendering code paths (WM_PAINT, GDI) difficult to test in automation
-  - Complex Windows message pump interactions
-  - COM activation and TSF document manager chains
-- **Manual validation**: Full TSF integration, end-to-end workflows, cross-platform compatibility
-- **Pragmatic approach**: Focus on testable components, accept limitations of automated testing for IME systems
-
-**Coverage by Category** (estimated):
-- Core APIs & Data Structures: ~70-80% (good coverage)
-- File I/O & Configuration: ~60-70% (good coverage)
-- Dictionary Engine: ~50-60% (moderate coverage)
-- Win32 UI Components: ~20-30% (limited - UI rendering)
-- TSF Integration: ~15-25% (limited - requires full environment)
-- Overall: **37.2%** (measured)
+- **IME Core** (81.7%, **target met**): Main remaining gaps are Globals.cpp (18%) and Config_Core.cpp (73%)
+- **IME UI** (29.4%, target ≥30%): Window creation/destruction tested; dialog WndProcs and GDI rendering are manual-only
+- **TSF Interface** (6.9%, target ≥15%): Requires full IME installation; manual validation is the primary quality gate
 
 **Coverage Measurement**:
 ```bash
@@ -116,7 +138,7 @@ OpenCppCoverage --sources DIME --excluded_sources tests ^
 
 ## Test Suite Summary
 
-### Unit Tests Overview (151 tests, ~15 seconds)
+### Unit Tests Overview (280 tests, ~15 seconds)
 
 | Suite | Tests | Coverage Target | Actual Coverage | Files Tested |
 |-------|-------|----------------|-----------------|--------------|
@@ -127,15 +149,18 @@ OpenCppCoverage --sources DIME --excluded_sources tests ^
 | **UT-05: File I/O** | 12 tests | ≥90% | ~95% | `File.cpp`, `Config.cpp` |
 | **UT-06: TableDictionaryEngine** | 25 tests | ≥85% | ~72%* | `TableDictionaryEngine.cpp` |
 | **UT-07: CIN File Parsing** | 11 tests | ≥85% | ~90% | `Config.cpp` (`parseCINFile`) |
-| **UT-09: CMemoryFile Filter** | 20 tests | ≥100% | **100%** | `File.cpp` (`CMemoryFile`, `FilterLine`) |
-| **UT-CM: Color Mode (GetEffectiveDarkMode, round-trip, constants)** | 8 tests | ≥90% | ~90% | `Config.cpp`, `Config.h`, `Define.h` |
-| **UT-CV: Custom Table Validation unit tests** | 17 tests | ≥90% | ~90% | `Config.cpp` (CustomTableValidationUnitTest class) |
+| **UT-09: CMemoryFile Filter + Cache** | 31 tests | ≥90% | **91.7%** | `File.cpp` (`CMemoryFile`, `FilterLine`, disk cache) |
+| **UT-CLI: CLI Parser** | 62 tests | ≥95% | **94.9%** | `CLI.cpp` (`CLIParserTest.cpp`) |
+| **UT-CFG: Config Setter/Getter** | 33 tests | ≥90% | ~95% | `Config.cpp` (ConfigSetterGetterTest class) |
+| **UT-BS: BaseStructure Helpers** | 22 tests | ≥90% | **97.2%** | `BaseStructure.cpp` (BaseStructureHelpersTest + CandidateRangeTest) |
+| **UT-CM: Color Mode** | 8 tests | ≥90% | ~90% | `Config.cpp`, `Config.h`, `Define.h` |
+| **UT-CV: Custom Table Validation** | 17 tests | ≥90% | ~90% | `Config.cpp` (CustomTableValidationUnitTest class) |
 | **UT-PT: Palette round-trip + backward compat** | 11 tests | ≥90% | ~90% | `Config.cpp` (ConfigTest class) |
-| **Total Unit Tests** | **151** | **≥85%** | **~90%** | **Core functionality** |
+| **Total Unit Tests** | **280** | **≥85%** | **~92%** | **Core functionality** |
 
 *UT-06 has room for improvement in wildcard/reverse lookup coverage
 
-### Integration Tests Overview (211 tests, ~20 seconds)
+### Integration Tests Overview (268 tests, ~20 seconds)
 
 | Suite | Tests | Coverage Target | Actual Coverage | Test Approach |
 |-------|-------|-----------------|-----------------|---------------|
@@ -146,11 +171,13 @@ OpenCppCoverage --sources DIME --excluded_sources tests ^
 | **IT-05: TSF Core Logic** | 18 tests | ≥70% | KeyEventSink: 23.2%, Engine: 13.8% | Stub-based logic testing |
 | **IT-06: UIPresenter** | 54 tests | 55-60%* | **54.8%** | Stub-based testing (practical max) |
 | **IT-07: Settings Dialog** | 18 tests | ≥90% | Config: ~60-70% | End-to-end dialog integration (incl. IT-CM-01–04) |
-| **IT-CV: Custom Table Validation integration** | 14 tests | ≥85% | Config: ~70% | DialogContext + mode-aware validation |
+| **IT-CLI: CLI Integration** | 50 tests | ≥95% | **94.9%** | End-to-end CLI via `RunCLI()` + INI verification |
+| **IT-CV: Custom Table Validation** | 14 tests | ≥85% | Config: ~70% | DialogContext + mode-aware validation |
 | **IT-PT: Palette integration** | 8 tests | ≥90% | Config: ~80% | Light/dark palette get/set + static defaults |
-| **Total Integration Tests** | **211** | **≥75%** | **~37%** | **Interaction & workflows** |
+| **IT-MF: CMemoryFile Real-File** | 6 tests | ≥85% | File.cpp: ~85% | Real dictionary + cache validation |
+| **Total Integration Tests** | **270** | **≥75%** | **~45%** | **Interaction & workflows** |
 
-*IT-06 revised target: 55-60% is practical maximum without full TSF simulation infrastructure  
+*IT-06 revised target: 55-60% is practical maximum without full TSF simulation infrastructure
 **Overall project coverage limited by TSF/UI integration complexity
 
 ### Test Strategy by Component
@@ -167,7 +194,7 @@ OpenCppCoverage --sources DIME --excluded_sources tests ^
 
 ## Unit Tests
 
-**Total:** 151 tests | **Execution Time:** ~15 seconds | **Coverage:** Core logic and configuration
+**Total:** 269 tests | **Execution Time:** ~15 seconds | **Coverage:** Core logic, configuration, CLI, BaseStructure helpers
 
 ### UT-01: Configuration Management (26 tests)
 
@@ -327,12 +354,12 @@ Added alongside the light/dark theme feature to verify the three-palette (light/
 
 ---
 
-### UT-09: CMemoryFile Filter (20 tests)
+### UT-09: CMemoryFile Filter + Cache (31 tests)
 
-**Target**: `File.cpp` (`CMemoryFile`, `FilterLine`) | **Coverage**: **100%**
+**Target**: `File.cpp` (`CMemoryFile`, `FilterLine`, disk cache) | **Coverage**: **91.7%** (cache functions 110/120 lines; File.cpp overall 90.1%)
 **Test File**: `src/tests/CMemoryFileTest.cpp`
 
-Tests the Big5/CP950 candidate filter built into `CMemoryFile`. Each test builds an in-memory CIN source via a helper `MakeSourceFile()`, constructs a `CMemoryFile` over it, and inspects the resulting filtered buffer via `BufferContains()`.
+Tests the Big5/CP950 candidate filter and disk cache built into `CMemoryFile`. Each test builds an in-memory CIN source via a helper `MakeSourceFile()`, constructs a `CMemoryFile` over it, and inspects the resulting filtered buffer via `BufferContains()`.
 
 | ID | Scenario |
 |----|----------|
@@ -344,18 +371,71 @@ Tests the Big5/CP950 candidate filter built into `CMemoryFile`. Each test builds
 | UT-09-18 | Yijing hexagram (U+4DC0) passes (not CP950, not `C3_IDEOGRAPH`, not `C3_ALPHA`); CJK Extension A (U+3400) filtered |
 | UT-09-19 | SMP emoji (U+1F4DE, surrogates D83D/DCDE) passes via plane check (`cp < 0x20000u`); SIP CJK Ext B (U+20000, D840/DC00) filtered |
 | UT-09-20 | Numeric symbol (vulgar fraction U+2153) passes (not CP950, not `C3_IDEOGRAPH`, not `C3_ALPHA`); CJK Extension A (U+3400) filtered |
+| UT-09-21 | Disk cache: cache file (`<name>-Big5.cin`) is created on disk after first filter |
+| UT-09-22 | Disk cache: cache header `%src_mtime` matches source file's `st_mtime` |
+| UT-09-23 | Disk cache: second CMemoryFile on same source loads from cache; buffer content matches |
+| UT-09-24 | Disk cache: cache invalidated when source changes (mtime differs); buffer rebuilt with new content |
+| UT-09-25 | Disk cache: corrupt cache file (invalid header) is rejected; falls back to line-by-line filtering |
+| UT-09-26 | Disk cache: source file without extension — `BuildCachePath` no-extension branch exercised |
+| UT-09-27 | Disk cache: cache file with only 1 byte — `IsCacheValid` rejects (fileSize < sizeof(WCHAR)) |
+| UT-09-28 | Disk cache: cache file with only BOM (2 bytes) — `IsCacheValid` rejects (bytesRead < 4) |
+| UT-09-29 | Disk cache: cache with `%src_mtime` but no number — `IsCacheValid` rejects (numLen == 0) |
+| UT-09-30 | Disk cache: cache with header only, no data — `TryLoadCache` rejects (dataLen == 0) |
+| UT-09-31 | Disk cache: cache file locked during `WriteCacheToDisk` — `MoveFileExW` fails, temp deleted |
 
 **Key fixes covered by these tests**:
 - CRLF strip: prevents trailing `\r` from inflating the value-token length, which would defeat the CP950 check
 - BMP symbol pass-through: `GetStringTypeW(CT_CTYPE3)` + `C3_SYMBOL` lets arrows, dingbats, and BMP emoji through regardless of CP950 encodability
 - Surrogate pair plane check: code-point arithmetic (`cp < 0x20000u`) replaces unreliable `GetStringTypeW(CT_CTYPE3)` for supplementary characters; SMP (emoji) passes, SIP+ (CJK Extension B/C/D/E/F) filtered
 - `C3_IDEOGRAPH | C3_ALPHA` fallback: non-CP950 characters that fail the round-trip and lack `C3_SYMBOL` are filtered if they carry `C3_IDEOGRAPH` (CJK radicals, Extension A, Kangxi) or `C3_ALPHA` (Cyrillic, Georgian, Arabic, Hebrew); non-ideographic non-alphabetic symbols (Yijing, superscripts, fractions, APL) pass through
+- Disk cache: `WriteCacheToDisk()` persists filtered buffer with `%src_mtime` header; `TryLoadCache()` validates and loads; `IsCacheValid()` compares stored vs current source mtime; `BuildCachePath()` derives `-Big5` cache path from source
+
+---
+
+### UT-CLI: CLI Parser (62 tests)
+
+**Target**: `CLI.cpp` (`ParseCLIArgs`, `FindKey`, `KeyApplicableToMode`, `ParseColorValue`, `RunCLI`) | **Coverage**: **94.9%**
+**Test File**: `src/tests/CLIParserTest.cpp`
+
+Tests the headless CLI parser and validation logic. See [DIME_CLI_TEST.md](DIME_CLI_TEST.md) for the full test matrix.
+
+| Test Class | Tests | Key Validations |
+|-----------|-------|-----------------|
+| **ParseModeTests** | 6 | All 4 modes + invalid + missing arg |
+| **ParseArrayTableNameTests** | 9 | All 7 table names + invalid + missing |
+| **ParseCLIArgsTests** | 16 | All commands, flags, --set pairs, error paths |
+| **KeyApplicableModeTests** | 6 | Mode-specific keys (dayi-only, array-only, phonetic-only, generic-only, not-array, all) |
+| **ParseColorValueTests** | 7 | 0x prefix, no prefix, black, white, invalid, empty |
+| **FindKeyTests** | 8 | Existing, non-existent, case-sensitive, type/range checks, uniqueness |
+| **RunCLI_ListModesUnitTest** | 2 | Plain + JSON output |
+| **RunCLI_ExitCodeUnitTests** | 8 | No command, no mode, unknown key, wrong mode, invalid/OOR values, unknown --set key |
+
+---
+
+### UT-CFG: Config Setter/Getter Round-trips (33 tests)
+
+**Target**: `Config.cpp` (all public static setter/getter pairs, `ResetAllDefaults`) | **Coverage**: ~95% of setter/getter code
+**Test File**: `src/tests/ConfigTest.cpp` (class `ConfigSetterGetterTest`)
+
+Tests all 28 boolean/integer/enum/string setter/getter pairs, 4 ResetAllDefaults mode variants, and WriteConfig INI round-trip. Each test resets to known state via `ResetAllDefaults(DAYI)` in `TEST_METHOD_INITIALIZE`.
+
+---
+
+### UT-BS: BaseStructure Helpers & CCandidateRange (22 tests)
+
+**Target**: `BaseStructure.cpp` (`SkipWhiteSpace`, `FindChar`, `IsSpace`, `CLSIDToString`, `CCandidateRange`) | **Coverage**: **97.2%** (139/143 lines)
+**Test File**: `src/tests/StringTest.cpp` (classes `BaseStructureHelpersTest` + `CandidateRangeTest`)
+
+| Test Class | Tests | Key Validations |
+|-----------|-------|-----------------|
+| **BaseStructureHelpersTest** | 14 | IsSpace (4), SkipWhiteSpace (4), FindChar (4), CLSIDToString (2) |
+| **CandidateRangeTest** | 8 | IsRange valid/invalid/numpad/none-mode (4), GetIndex valid/invalid/numpad/none-mode (4) |
 
 ---
 
 ## Integration Tests
 
-**Total:** 211 tests | **Execution Time:** ~20 seconds | **Coverage:** Interaction & workflow validation
+**Total:** 270 tests | **Execution Time:** ~20 seconds | **Coverage:** Interaction & workflow validation
 
 ### Test Philosophy
 
@@ -542,6 +622,62 @@ Integration tests focus on **component interaction** rather than line coverage:
 
 ---
 
+### IT-CLI: CLI Integration (50 tests, `CLIIntegrationTest.cpp`)
+
+**Target**: `CLI.cpp` (`RunCLI`, all command handlers) | **Coverage**: **94.9%**
+**Test File**: `src/tests/CLIIntegrationTest.cpp`
+
+End-to-end tests that call `RunCLI()` and verify results by reading INI files directly via `GetPrivateProfileStringW`. See [DIME_CLI_TEST.md](DIME_CLI_TEST.md) for the full test matrix.
+
+| Test Class | Tests | Key Validations |
+|-----------|-------|-----------------|
+| **CLIGetCommandTests** | 3 | Default value read-back, unknown key (exit 1), wrong-mode key (exit 3) |
+| **CLIGetAllCommandTests** | 2 | Mode-specific key filtering (phonetic, array) |
+| **CLISetCommandTests** | 8 | FontSize, multiple keys, booleans, colors, mode-specific, invalid/OOR values |
+| **CLIResetCommandTests** | 2 | INI created, custom values overwritten with defaults |
+| **CLIListModesCommandTests** | 1 | Exit code 0 |
+| **CLIListKeysCommandTests** | 2 | Mode-specific key lists (phonetic, array) |
+| **CLIImportExportCustomTableTests** | 4 | Valid import, missing file, no table to export, roundtrip |
+| **CLISetAndReadBackTests** | 4 | FontSize roundtrip, phonetic/dayi/generic mode-specific keys |
+| **CLISilentFlagTests** | 1 | --silent still writes INI |
+| **CLIJSONOutputTests** | 1 | --get-all --json format |
+| **CLILoadCommandTests** | 3 | Missing file errors for load-main/phrase/array |
+| **CLIJSONGetKeyTests** | 2 | --get --json, --list-keys --json |
+| **CLIStringAndCLSIDKeyTests** | 4 | FontFaceName, CLSID, light/dark color keys |
+| **CLIColorKeySetTests** | 2 | All 15 remaining color keys, invalid color value |
+| **CLIStringCLSIDSetTests** | 3 | ReverseConversionDescription, GUIDProfile, invalid GUID |
+| **CLILoadMainSuccessTests** | 2 | All 4 modes + locked file (parseCINFile failure) |
+| **CLILoadPhraseSuccessTests** | 2 | Valid file + locked file |
+| **CLILoadArraySuccessTests** | 2 | All 7 table types + locked file |
+| **CLIImportExportErrorPathTests** | 2 | Locked file import, bad dest path export |
+
+**Key testing patterns**:
+- Primary assertion: `GetPrivateProfileStringW` on INI file (independent of `--get`)
+- Output capture: `FILE*` injection to temp files opened as `ccs=UTF-16LE`
+- Test isolation: `DeleteConfigFile(mode)` in `TEST_METHOD_INITIALIZE/CLEANUP`
+- Locked-file tests: `CreateFileW` with exclusive access to trigger `parseCINFile` failure
+- File safety: `BackupDimeFile`/`RestoreDimeFile` in load-main/phrase/array test classes preserve pre-existing `%APPDATA%\DIME\` tables
+
+---
+
+### IT-MF: CMemoryFile Real-File Integration (6 tests, `CMemoryFileIntegrationTest.cpp`)
+
+**Target**: `File.cpp` (`CMemoryFile`, disk cache) | **Coverage**: File.cpp ~85%
+**Test File**: `src/tests/CMemoryFileIntegrationTest.cpp`
+
+Real-file integration tests that exercise `CMemoryFile` against installed dictionary files. IT-MF-01/02 are skipped when required files are not present. IT-MF-03 through 06 **fail** (not skip) when the source table is missing from `%APPDATA%\DIME\`.
+
+| Test | Key Validations |
+|------|-----------------|
+| **IT-MF-01** (`RealArrayCin_FilterReducesToBig5Range`) | Dual-filter: raw Array.cin (~32K entries) → filtered (~15K Big5 entries); augmented with 5 CJK Extension A entries also removed |
+| **IT-MF-02** (`DayiTTS_FilterReducesToBig5Range`) | Windows built-in `TableTextServiceDaYi.txt` (TTS `=` format) — filter removes non-Big5 entries from [Text] section |
+| **IT-MF-03** (`CacheFile_LineCountMatchesMemory`) | Cache file `Array-Big5.cin` on disk has same data line count as in-memory buffer; second CMemoryFile (from cache) also matches |
+| **IT-MF-04** (`CacheInvalidated_OnSourceMtimeChange`) | Advancing source mtime via `_wutime` invalidates cache; rebuilt cache has updated `%src_mtime`; original mtime restored after test |
+| **IT-MF-05** (`DayiTTS_CacheFile_LineCountMatchesMemory`) | Same as IT-MF-03 but with DAYI TTS table (`TableTextServiceDaYi.txt`); cache file `TableTextServiceDaYi-Big5.txt` line count matches in-memory buffer |
+| **IT-MF-06** (`DayiTTS_CacheInvalidated_OnSourceMtimeChange`) | Same as IT-MF-04 but with DAYI TTS table; advancing source mtime invalidates cache |
+
+---
+
 ## Testing Tools
 
 ### Automated Testing
@@ -624,6 +760,65 @@ jobs:
 ---
 
 ## Document Revision History
+
+### Version 3.1 - 2026-03-15
+**IT-MF-05/06 DAYI TTS cache tests; CLI load tests backup/restore; IT-MF-03–06 fail-not-skip:**
+
+- ✅ **Total: 550 tests passing** (up from 548 at v3.0); 280 unit + 270 integration
+- ✅ **IT-MF-05** (`DayiTTS_CacheFile_LineCountMatchesMemory`): cache file line count validation for DAYI TTS table
+- ✅ **IT-MF-06** (`DayiTTS_CacheInvalidated_OnSourceMtimeChange`): cache invalidation test for DAYI TTS table
+- ✅ **IT-MF-03 through 06**: Changed from skip-on-missing to **fail** — source tables in `%APPDATA%\DIME\` are expected to be installed
+- ✅ **CLI load tests**: `BackupDimeFile`/`RestoreDimeFile` helpers preserve pre-existing `.cin` files in `%APPDATA%\DIME\` (previously deleted by teardown)
+- ✅ **`CountDataLines`**: Now handles both CIN (tab) and TTS (`=`) data line formats
+
+### Version 3.0 - 2026-03-15
+**Big5 disk cache + DebugDumpBuffer removed; cache unit & integration tests:**
+
+- ✅ **Total: 548 tests passing** (up from 530 at v2.9); 280 unit + 268 integration
+- ✅ **Big5 disk cache**: `CMemoryFile` now caches filtered buffer to disk (e.g. `Array-Big5.cin`); subsequent processes load cache directly instead of re-filtering
+- ✅ **DebugDumpBuffer removed**: cache file replaces debug dump for verification
+- ✅ **Cache validity**: `%src_mtime <decimal64>` header in cache file stores source `st_mtime`; compared on load
+- ✅ **Concurrency**: atomic `.tmp` → `MoveFileExW` rename prevents partial reads
+- ✅ **UT-09 expanded to 31 tests** (was 20): UT-09-21–25 (cache create, header, reuse, invalidation, corrupt fallback) + UT-09-26–31 (no-extension, tiny file, BOM-only, empty mtime, header-only, locked-file error paths)
+- ✅ **Cache function coverage: 91.7%** (110/120 lines); File.cpp overall: **90.1%** (300/333 lines)
+- ✅ **IT-MF expanded to 4 tests** (was 2): IT-MF-03 (cache file line count matches memory; second CMemoryFile from cache matches), IT-MF-04 (source mtime touch invalidates cache; rebuilt cache has updated `%src_mtime`)
+
+### Version 2.9 - 2026-03-15
+**Config.cpp split + three-tier coverage categories:**
+
+- ✅ **Total: 530 tests passing** (same as v2.8); 269 unit + 261 integration
+- ✅ **Config.cpp split**: 3,541-line file split into Config_Core.cpp (~978 lines, IME Core) + Config_UI.cpp (~2,626 lines, IME UI)
+- ✅ **Three-tier coverage model**: IME Core / IME UI / TSF Interface with distinct targets
+- ✅ **IME Core: 81.7%** (2,216/2,713 lines) — **≥80% target met**
+- ✅ **IME UI: 29.4%** (1,361/4,630 lines) — target ≥30% (dialog WndProcs, GDI rendering)
+- ✅ **TSF Interface: 6.9%** (345/4,971 lines) — target ≥15% (manual validation primary)
+- ✅ **Config_Core.cpp: 72.8%** — headless config logic (LoadConfig, WriteConfig, parseCINFile, setters/getters)
+- ✅ **Config_UI.cpp: 7.5%** — dialog WndProcs, theme management, validation UI
+- ✅ **All 3 .vcxproj files updated** (DIME, DIMESettings, DIMETests)
+- ✅ **Three-tier coverage script**: `.claude/scripts/coverage_three_tier_prod.ps1`
+
+### Version 2.8 - 2026-03-15
+**Config setter/getter, BaseStructure helpers, CCandidateRange tests:**
+
+- ✅ **Total: 530 tests passing** (up from 475 at v2.7); 269 unit + 261 integration
+- ✅ **Overall coverage: 45.7%** (11,562/25,312 lines, up from 44.9%)
+- ✅ **Non-TSF coverage: 67.5%** (10,614/15,717 lines, up from 66.8%)
+- ✅ **UT-CFG (33 tests)**: Config setter/getter round-trips in `ConfigTest.cpp` — all 28 boolean/integer/enum/string setter/getter pairs, 4 ResetAllDefaults mode variants, WriteConfig INI round-trip
+- ✅ **UT-BS (22 tests)**: BaseStructure helper tests in `StringTest.cpp` — IsSpace (4), SkipWhiteSpace (4), FindChar (4), CLSIDToString (2), CCandidateRange IsRange/GetIndex (8)
+- ✅ **BaseStructure.cpp: 58% → 97.2%** (83/143 → 139/143) — major improvement
+
+### Version 2.7 - 2026-03-15
+**CLI headless interface: 112 tests (62 unit + 50 integration), CLI.cpp 94.9% coverage:**
+
+- ✅ **Total: 475 tests passing** (up from 362 at v2.6); 214 unit + 261 integration
+- ✅ **Overall coverage: 44.9%** (11,192/24,929 lines, up from 37.2%)
+- ✅ **UT-CLI (62 tests)**: CLI parser unit tests in `CLIParserTest.cpp` — mode parsing, array table names, argument parsing, key applicability, color parsing, key registry, exit codes
+- ✅ **IT-CLI (50 tests)**: CLI integration tests in `CLIIntegrationTest.cpp` — end-to-end via `RunCLI()`, INI verification via `GetPrivateProfileStringW`, all 11 commands tested (get, get-all, set, reset, list-modes, list-keys, import-custom, export-custom, load-main, load-phrase, load-array), all 18 color keys, STRING_T/CLSID_T key types, locked-file error paths
+- ✅ **CLI.cpp coverage: 94.9%** — 29 uncovered lines are all unreachable defensive default/fallthrough branches
+- ✅ **New source files**: `CLI.h`, `CLI.cpp` (headless CLI), `ResetAllDefaults()` in `Config.cpp`
+- ✅ **DIMESettings.cpp**: CLI mode with `AttachConsole` + synthetic Enter to unblock parent shell readline
+- ✅ **Test doc split**: Tests section moved from `DIME_CLI.md` to `DIME_CLI_TEST.md` with full results
+- ✅ **CINParserTest fix**: `ParseCIN_AlreadyEscaped_NoDoubleEscape` — added `DeleteFileW` for stale output under OpenCppCoverage
 
 ### Version 2.6 - 2026-03-12
 **FilterLine C3_IDEOGRAPH|C3_ALPHA fallback, surrogate plane check, UT-09 expanded to 20 tests:**

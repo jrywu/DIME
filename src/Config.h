@@ -266,6 +266,9 @@ public:
 	static VOID WriteConfig(IME_MODE imeMode, BOOL silent = FALSE);
 	static BOOL LoadConfig(IME_MODE imeMode);
 	static struct _stat GetInitTimeStamp() { return _initTimeStamp; }
+	static BOOL parseCINFile(_In_ LPCWSTR pathToLoad, _In_ LPCWSTR pathToWrite, _In_ BOOL customTableMode = FALSE, _In_ BOOL suppressUI = FALSE);
+	static void SetIMEModeDefaults(IME_MODE imeMode);
+	static void ResetAllDefaults(IME_MODE imeMode);
 	
 	static void SetDefaultTextFont(HWND hWnd = nullptr);
 	static BOOL ValidateCustomTableLines(HWND hDlg, IME_MODE imeMode, CCompositionProcessorEngine* pEngine, UINT maxCodes, bool showAlert = true);
@@ -363,8 +366,6 @@ private:
 
 	static void clearReverseConvervsionInfoList();
 
-	static void SetIMEModeDefaults(IME_MODE imeMode);
-
 	static ColorInfo colors[6];
 
 	static UINT _dpiY;
@@ -379,7 +380,6 @@ private:
 
 	static BOOL importCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToLoad);
 	static BOOL exportCustomTableFile(_In_ HWND hDlg, IME_MODE imeMode, _In_ LPCWSTR pathToWrite);
-	static BOOL parseCINFile(_In_ LPCWSTR pathToLoad, _In_ LPCWSTR pathToWrite, _In_ BOOL customTableMode = FALSE);
 };
 
 

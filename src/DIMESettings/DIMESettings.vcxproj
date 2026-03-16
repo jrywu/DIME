@@ -95,6 +95,7 @@
     <ClInclude Include="..\Config.h" />
     <ClInclude Include="..\Globals.h" />
     <ClInclude Include="..\resource.h" />
+    <ClInclude Include="CLI.h" />
     <ClInclude Include="DIMESettings.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="DIMESettingsResource.h" />
@@ -104,6 +105,7 @@
     <ClCompile Include="..\BaseStructure.cpp" />
     <ClCompile Include="..\CompositionProcessorEngine.cpp" />
     <ClCompile Include="..\Config.cpp" />
+    <ClCompile Include="..\ConfigDialog.cpp" />
     <ClCompile Include="..\DictionaryParser.cpp" />
     <ClCompile Include="..\DictionarySearch.cpp" />
     <ClCompile Include="..\File.cpp" />
@@ -111,6 +113,7 @@
     <ClCompile Include="..\SetupCompositionProcesseorEngine.cpp" />
     <ClCompile Include="..\TableDictionaryEngine.cpp" />
     <ClCompile Include="..\TfInputProcessorProfile.cpp" />
+    <ClCompile Include="CLI.cpp" />
     <ClCompile Include="DIMESettings.cpp" />
   </ItemGroup>
   <ItemGroup>

@@ -1761,4 +1761,299 @@ namespace DIMEUnitTests
         }
 
     };
+
+    // =========================================================================
+    // UT-CFG: Config.cpp Setter/Getter Round-trip & Pure Logic Tests
+    // Tests all public static setter/getter pairs and ResetAllDefaults.
+    // No HWND/dialog required — pure in-memory logic only.
+    // =========================================================================
+    TEST_CLASS(ConfigSetterGetterTest)
+    {
+    public:
+        TEST_METHOD_INITIALIZE(Setup)
+        {
+            // Reset to known state before each test
+            CConfig::ResetAllDefaults(IME_MODE::IME_MODE_DAYI);
+        }
+
+        // --- Boolean setter/getter round-trips ---
+
+        TEST_METHOD(SetGet_AutoCompose)
+        {
+            CConfig::SetAutoCompose(TRUE);
+            Assert::IsTrue(CConfig::GetAutoCompose() == TRUE);
+            CConfig::SetAutoCompose(FALSE);
+            Assert::IsTrue(CConfig::GetAutoCompose() == FALSE);
+        }
+
+        TEST_METHOD(SetGet_ClearOnBeep)
+        {
+            CConfig::SetClearOnBeep(FALSE);
+            Assert::IsTrue(CConfig::GetClearOnBeep() == FALSE);
+            CConfig::SetClearOnBeep(TRUE);
+            Assert::IsTrue(CConfig::GetClearOnBeep() == TRUE);
+        }
+
+        TEST_METHOD(SetGet_DoBeep)
+        {
+            CConfig::SetDoBeep(FALSE);
+            Assert::IsTrue(CConfig::GetDoBeep() == FALSE);
+        }
+
+        TEST_METHOD(SetGet_DoBeepNotify)
+        {
+            CConfig::SetDoBeepNotify(FALSE);
+            Assert::IsTrue(CConfig::GetDoBeepNotify() == FALSE);
+        }
+
+        TEST_METHOD(SetGet_DoBeepOnCandi)
+        {
+            CConfig::SetDoBeepOnCandi(TRUE);
+            Assert::IsTrue(CConfig::GetDoBeepOnCandi() == TRUE);
+        }
+
+        TEST_METHOD(SetGet_ActivatedKeyboardMode)
+        {
+            CConfig::SetActivatedKeyboardMode(FALSE);
+            Assert::IsTrue(CConfig::GetActivatedKeyboardMode() == FALSE);
+        }
+
+        TEST_METHOD(SetGet_MakePhrase)
+        {
+            CConfig::SetMakePhrase(FALSE);
+            Assert::IsTrue(CConfig::GetMakePhrase() == FALSE);
+        }
+
+        TEST_METHOD(SetGet_ShowNotifyDesktop)
+        {
+            CConfig::SetShowNotifyDesktop(FALSE);
+            Assert::IsTrue(CConfig::GetShowNotifyDesktop() == FALSE);
+        }
+
+        TEST_METHOD(SetGet_DoHanConvert)
+        {
+            CConfig::SetDoHanConvert(TRUE);
+            Assert::IsTrue(CConfig::GetDoHanConvert() == TRUE);
+        }
+
+        TEST_METHOD(SetGet_FontItalic)
+        {
+            CConfig::SetFontItalic(TRUE);
+            Assert::IsTrue(CConfig::GetFontItalic() == TRUE);
+        }
+
+        TEST_METHOD(SetGet_CustomTablePriority)
+        {
+            CConfig::setCustomTablePriority(TRUE);
+            Assert::IsTrue(CConfig::getCustomTablePriority() == TRUE);
+        }
+
+        TEST_METHOD(SetGet_DayiArticleMode)
+        {
+            CConfig::setDayiArticleMode(TRUE);
+            Assert::IsTrue(CConfig::getDayiArticleMode() == TRUE);
+        }
+
+        TEST_METHOD(SetGet_ArrayForceSP)
+        {
+            CConfig::SetArrayForceSP(TRUE);
+            Assert::IsTrue(CConfig::GetArrayForceSP() == TRUE);
+        }
+
+        TEST_METHOD(SetGet_ArrayNotifySP)
+        {
+            CConfig::SetArrayNotifySP(FALSE);
+            Assert::IsTrue(CConfig::GetArrayNotifySP() == FALSE);
+        }
+
+        TEST_METHOD(SetGet_ArraySingleQuoteCustomPhrase)
+        {
+            CConfig::SetArraySingleQuoteCustomPhrase(TRUE);
+            Assert::IsTrue(CConfig::GetArraySingleQuoteCustomPhrase() == TRUE);
+        }
+
+        TEST_METHOD(SetGet_Big5Filter)
+        {
+            CConfig::SetBig5Filter(TRUE);
+            Assert::IsTrue(CConfig::GetBig5Filter() == TRUE);
+        }
+
+        TEST_METHOD(SetGet_SpaceAsPageDown)
+        {
+            CConfig::SetSpaceAsPageDown(TRUE);
+            Assert::IsTrue(CConfig::GetSpaceAsPageDown() == TRUE);
+        }
+
+        TEST_METHOD(SetGet_SpaceAsFirstCandSelkey)
+        {
+            CConfig::SetSpaceAsFirstCaniSelkey(TRUE);
+            Assert::IsTrue(CConfig::GetSpaceAsFirstCaniSelkey() == TRUE);
+        }
+
+        TEST_METHOD(SetGet_ArrowKeySWPages)
+        {
+            CConfig::SetArrowKeySWPages(FALSE);
+            Assert::IsTrue(CConfig::GetArrowKeySWPages() == FALSE);
+        }
+
+        // --- Integer/Enum setter/getter round-trips ---
+
+        TEST_METHOD(SetGet_FontSize)
+        {
+            CConfig::SetFontSize(24);
+            Assert::AreEqual((UINT)24, CConfig::GetFontSize());
+        }
+
+        TEST_METHOD(SetGet_FontWeight)
+        {
+            CConfig::SetFontWeight(700);
+            Assert::AreEqual((UINT)700, CConfig::GetFontWeight());
+        }
+
+        TEST_METHOD(SetGet_MaxCodes)
+        {
+            CConfig::SetMaxCodes(8);
+            Assert::AreEqual((UINT)8, CConfig::GetMaxCodes());
+        }
+
+        TEST_METHOD(SetGet_IMEShiftMode)
+        {
+            CConfig::SetIMEShiftMode(IME_SHIFT_MODE::IME_RIGHT_SHIFT_ONLY);
+            Assert::IsTrue(CConfig::GetIMEShiftMode() == IME_SHIFT_MODE::IME_RIGHT_SHIFT_ONLY);
+        }
+
+        TEST_METHOD(SetGet_DoubleSingleByteMode)
+        {
+            CConfig::SetDoubleSingleByteMode(DOUBLE_SINGLE_BYTE_MODE::DOUBLE_SINGLE_BYTE_ALWAYS_DOUBLE);
+            Assert::IsTrue(CConfig::GetDoubleSingleByteMode() == DOUBLE_SINGLE_BYTE_MODE::DOUBLE_SINGLE_BYTE_ALWAYS_DOUBLE);
+        }
+
+        TEST_METHOD(SetGet_NumericPad)
+        {
+            CConfig::SetNumericPad(NUMERIC_PAD::NUMERIC_PAD_MUMERIC_COMPOSITION);
+            Assert::IsTrue(CConfig::GetNumericPad() == NUMERIC_PAD::NUMERIC_PAD_MUMERIC_COMPOSITION);
+        }
+
+        TEST_METHOD(SetGet_ArrayScope)
+        {
+            CConfig::SetArrayScope(ARRAY_SCOPE::ARRAY30_UNICODE_EXT_AB);
+            Assert::IsTrue(CConfig::GetArrayScope() == ARRAY_SCOPE::ARRAY30_UNICODE_EXT_AB);
+        }
+
+        TEST_METHOD(SetGet_PhoneticKeyboardLayout)
+        {
+            CConfig::setPhoneticKeyboardLayout(PHONETIC_KEYBOARD_LAYOUT::PHONETIC_ETEN_KEYBOARD_LAYOUT);
+            Assert::IsTrue(CConfig::getPhoneticKeyboardLayout() == PHONETIC_KEYBOARD_LAYOUT::PHONETIC_ETEN_KEYBOARD_LAYOUT);
+        }
+
+        // --- String setter/getter ---
+
+        TEST_METHOD(SetGet_FontFaceName)
+        {
+            WCHAR name[] = L"Arial";
+            CConfig::SetFontFaceName(name);
+            Assert::AreEqual(0, wcscmp(CConfig::GetFontFaceName(), L"Arial"));
+        }
+
+        // --- ResetAllDefaults comprehensive test ---
+
+        TEST_METHOD(ResetAllDefaults_Dayi_RestoresGlobalAndModeDefaults)
+        {
+            // Mutate several settings
+            CConfig::SetFontSize(48);
+            CConfig::SetFontWeight(900);
+            CConfig::SetAutoCompose(TRUE);
+            CConfig::SetDoBeep(FALSE);
+            CConfig::SetArrayScope(ARRAY_SCOPE::ARRAY40_BIG5);
+            CConfig::setPhoneticKeyboardLayout(PHONETIC_KEYBOARD_LAYOUT::PHONETIC_ETEN_KEYBOARD_LAYOUT);
+
+            // Reset for Dayi mode
+            CConfig::ResetAllDefaults(IME_MODE::IME_MODE_DAYI);
+
+            // Global defaults restored
+            Assert::AreEqual((UINT)12, CConfig::GetFontSize());
+            Assert::AreEqual((UINT)FW_NORMAL, CConfig::GetFontWeight());
+            Assert::IsTrue(CConfig::GetDoBeep() == TRUE);
+            Assert::IsTrue(CConfig::GetClearOnBeep() == TRUE);
+            Assert::IsTrue(CConfig::GetDoBeepNotify() == TRUE);
+            Assert::IsTrue(CConfig::GetMakePhrase() == TRUE);
+            Assert::IsTrue(CConfig::GetShowNotifyDesktop() == TRUE);
+            Assert::IsTrue(CConfig::GetFontItalic() == FALSE);
+
+            // Dayi-specific defaults
+            Assert::IsTrue(CConfig::GetAutoCompose() == FALSE);
+            Assert::AreEqual((UINT)4, CConfig::GetMaxCodes());
+            Assert::IsTrue(CConfig::GetSpaceAsPageDown() == FALSE);
+            Assert::IsTrue(CConfig::GetSpaceAsFirstCaniSelkey() == TRUE);
+            Assert::IsTrue(CConfig::GetBig5Filter() == FALSE);
+        }
+
+        TEST_METHOD(ResetAllDefaults_Array_RestoresModeSpecificDefaults)
+        {
+            CConfig::ResetAllDefaults(IME_MODE::IME_MODE_ARRAY);
+
+            Assert::IsTrue(CConfig::GetAutoCompose() == TRUE);
+            Assert::AreEqual((UINT)5, CConfig::GetMaxCodes());
+            Assert::IsTrue(CConfig::GetSpaceAsPageDown() == FALSE);
+            Assert::IsTrue(CConfig::GetSpaceAsFirstCaniSelkey() == FALSE);
+            Assert::IsTrue(CConfig::GetArrayScope() == ARRAY_SCOPE::ARRAY30_UNICODE_EXT_A);
+        }
+
+        TEST_METHOD(ResetAllDefaults_Phonetic_RestoresModeSpecificDefaults)
+        {
+            CConfig::ResetAllDefaults(IME_MODE::IME_MODE_PHONETIC);
+
+            Assert::IsTrue(CConfig::GetAutoCompose() == FALSE);
+            Assert::AreEqual((UINT)4, CConfig::GetMaxCodes());
+            Assert::IsTrue(CConfig::GetSpaceAsPageDown() == TRUE);
+            Assert::IsTrue(CConfig::GetBig5Filter() == FALSE);
+            Assert::IsTrue(CConfig::getPhoneticKeyboardLayout() == PHONETIC_KEYBOARD_LAYOUT::PHONETIC_STANDARD_KEYBOARD_LAYOUT);
+        }
+
+        TEST_METHOD(ResetAllDefaults_Generic_RestoresModeSpecificDefaults)
+        {
+            CConfig::ResetAllDefaults(IME_MODE::IME_MODE_GENERIC);
+
+            Assert::IsTrue(CConfig::GetAutoCompose() == FALSE);
+            Assert::AreEqual((UINT)4, CConfig::GetMaxCodes());
+            Assert::IsTrue(CConfig::GetSpaceAsPageDown() == FALSE);
+            Assert::IsTrue(CConfig::GetSpaceAsFirstCaniSelkey() == FALSE);
+            Assert::IsTrue(CConfig::GetBig5Filter() == FALSE);
+        }
+
+        // --- WriteConfig round-trip (write then read-back via INI) ---
+
+        TEST_METHOD(WriteConfig_AllKeys_PresentInINI)
+        {
+            // Load config to set up INI path
+            CConfig::LoadConfig(IME_MODE::IME_MODE_DAYI);
+            CConfig::ResetAllDefaults(IME_MODE::IME_MODE_DAYI);
+            CConfig::SetFontSize(20);
+            CConfig::SetFontWeight(700);
+            CConfig::SetDoHanConvert(TRUE);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_DAYI, FALSE);
+
+            // Read back directly from INI
+            WCHAR appData[MAX_PATH] = {};
+            SHGetSpecialFolderPath(NULL, appData, CSIDL_APPDATA, FALSE);
+            WCHAR iniPath[MAX_PATH];
+            StringCchPrintfW(iniPath, MAX_PATH, L"%s\\DIME\\DayiConfig.ini", appData);
+
+            WCHAR buf[64];
+            GetPrivateProfileStringW(L"Config", L"FontSize", L"?", buf, 64, iniPath);
+            Assert::AreEqual(0, wcscmp(buf, L"20"));
+
+            GetPrivateProfileStringW(L"Config", L"FontWeight", L"?", buf, 64, iniPath);
+            Assert::AreEqual(0, wcscmp(buf, L"700"));
+
+            GetPrivateProfileStringW(L"Config", L"DoHanConvert", L"?", buf, 64, iniPath);
+            Assert::AreEqual(0, wcscmp(buf, L"1"));
+
+            GetPrivateProfileStringW(L"Config", L"DayiArticleMode", L"?", buf, 64, iniPath);
+            Assert::AreNotEqual(0, wcscmp(buf, L"?"), L"DayiArticleMode must be present");
+
+            // Cleanup
+            DeleteFileW(iniPath);
+        }
+    };
 }

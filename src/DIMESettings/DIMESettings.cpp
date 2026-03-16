@@ -109,7 +109,49 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_ int       nCmdShow)
 {
     UNREFERENCED_PARAMETER(hPrevInstance);
-    UNREFERENCED_PARAMETER(lpCmdLine);
+
+    // CLI mode: if any arguments are present, run headless and return immediately.
+    if (lpCmdLine && lpCmdLine[0] != L'\0')
+    {
+        // Attach to the parent console (e.g. cmd.exe) so output reaches the terminal.
+        // If there is no parent console (e.g. launched from a shortcut), allocate one.
+        // Remember whether we attached to an existing console: we only need to inject
+        // a synthetic Enter into an existing parent console, not one we just created.
+        bool attachedExisting = AttachConsole(ATTACH_PARENT_PROCESS) != FALSE;
+        if (!attachedExisting)
+            AllocConsole();
+        FILE* fp = nullptr;
+        freopen_s(&fp, "CONOUT$", "w", stdout);
+        freopen_s(&fp, "CONOUT$", "w", stderr);
+        int rc = RunCLI(lpCmdLine);
+        fflush(stdout);
+        fflush(stderr);
+        // GUI-subsystem apps launched from a console shell run asynchronously: the
+        // shell prints its next prompt and re-enters ReadConsole before our process
+        // exits.  Injecting a silent Enter into the console input buffer unblocks
+        // the shell's ReadConsole call so the prompt reappears without the user
+        // having to press Enter manually.
+        if (attachedExisting)
+        {
+            HANDLE hStdIn = GetStdHandle(STD_INPUT_HANDLE);
+            DWORD  savedMode = 0;
+            GetConsoleMode(hStdIn, &savedMode);
+            SetConsoleMode(hStdIn, savedMode & ~ENABLE_ECHO_INPUT);
+            INPUT_RECORD ir[2] = {};
+            ir[0].EventType                        = KEY_EVENT;
+            ir[0].Event.KeyEvent.bKeyDown          = TRUE;
+            ir[0].Event.KeyEvent.wRepeatCount      = 1;
+            ir[0].Event.KeyEvent.wVirtualKeyCode   = VK_RETURN;
+            ir[0].Event.KeyEvent.uChar.UnicodeChar = L'\r';
+            ir[1]                                  = ir[0];
+            ir[1].Event.KeyEvent.bKeyDown          = FALSE;
+            DWORD written = 0;
+            WriteConsoleInputW(hStdIn, ir, 2, &written);
+            SetConsoleMode(hStdIn, savedMode);
+        }
+        FreeConsole();
+        return rc;
+    }
 
     //Check single instance!
     //Make sure at most one instance of the tool is running

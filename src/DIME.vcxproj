@@ -37,7 +37,6 @@
   <ItemGroup>
     <None Include="..\LICENSE.md" />
     <None Include="..\README.md" />
-    <None Include="docs\CUSTOM_TABLE_VALIDATION.md" />
     <None Include="docs\TEST_PLAN.md" />
     <None Include="docs\TEST_REPORT.md" />
     <None Include="image\DoubleSingleByteOff.ico" />
@@ -98,6 +97,7 @@
     <ClCompile Include="CandidateHandler.cpp" />
     <ClCompile Include="CandidateWindow.cpp" />
     <ClCompile Include="Config.cpp" />
+    <ClCompile Include="ConfigDialog.cpp" />
     <ClCompile Include="Compartment.cpp" />
     <ClCompile Include="Composition.cpp" />
     <ClCompile Include="CompositionProcessorEngine.cpp" />

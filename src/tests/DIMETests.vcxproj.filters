@@ -27,6 +27,9 @@
     <ClInclude Include="pch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\DIMESettings\CLI.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -37,9 +40,6 @@
     </ClCompile>
     <ClCompile Include="CINParserTest.cpp">
       <Filter>Source Files\Unit Tests</Filter>
-    </ClCompile>
-    <ClCompile Include="TestStubs.cpp">
-      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\\BaseStructure.cpp">
       <Filter>Source Files\DIME Source</Filter>
@@ -228,6 +228,21 @@
       <Filter>Source Files\Unit Tests</Filter>
     </ClCompile>
     <ClCompile Include="CMemoryFileIntegrationTest.cpp">
+      <Filter>Source Files\Integration Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="CLIIntegrationTest.cpp">
+      <Filter>Source Files\Unit Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="CLIParserTest.cpp">
+      <Filter>Source Files\Unit Tests</Filter>
+    </ClCompile>
+    <ClCompile Include="..\DIMESettings\CLI.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\\ConfigDialog.cpp">
+      <Filter>Source Files\DIME Source</Filter>
+    </ClCompile>
+    <ClCompile Include="TestStubs.cpp">
       <Filter>Source Files\Integration Tests</Filter>
     </ClCompile>
   </ItemGroup>

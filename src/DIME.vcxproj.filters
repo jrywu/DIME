@@ -81,7 +81,6 @@
     <None Include="tests\DIMETests.vcxproj" />
     <None Include="docs\TEST_PLAN.md" />
     <None Include="docs\TEST_REPORT.md" />
-    <None Include="docs\CUSTOM_TABLE_VALIDATION.md" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BaseWindow.h">
@@ -364,6 +363,9 @@
     </ClCompile>
     <ClCompile Include="KeyProcesser.cpp">
       <Filter>Source Files\TextService\IMInterface\CompositionProcesserEngine</Filter>
+    </ClCompile>
+    <ClCompile Include="ConfigDialog.cpp">
+      <Filter>Source Files\UI</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

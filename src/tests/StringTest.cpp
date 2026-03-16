@@ -314,4 +314,210 @@ namespace DIMEUnitTests
             Assert::AreEqual((DWORD_PTR)0, str.GetLength());
         }
     };
+
+    // =========================================================================
+    // UT-BS: BaseStructure.cpp helper function tests
+    // Tests SkipWhiteSpace, FindChar, IsSpace
+    // =========================================================================
+    TEST_CLASS(BaseStructureHelpersTest)
+    {
+    public:
+        TEST_METHOD(IsSpace_Space_ReturnsTrue)
+        {
+            Assert::IsTrue(IsSpace(MAKELCID(1033, SORT_DEFAULT), L' ') != FALSE);
+        }
+
+        TEST_METHOD(IsSpace_Tab_ReturnsTrue)
+        {
+            Assert::IsTrue(IsSpace(MAKELCID(1033, SORT_DEFAULT), L'\t') != FALSE);
+        }
+
+        TEST_METHOD(IsSpace_Letter_ReturnsFalse)
+        {
+            Assert::IsTrue(IsSpace(MAKELCID(1033, SORT_DEFAULT), L'A') == FALSE);
+        }
+
+        TEST_METHOD(IsSpace_Digit_ReturnsFalse)
+        {
+            Assert::IsTrue(IsSpace(MAKELCID(1033, SORT_DEFAULT), L'5') == FALSE);
+        }
+
+        TEST_METHOD(SkipWhiteSpace_LeadingSpaces)
+        {
+            LPCWSTR buf = L"   hello";
+            DWORD_PTR idx = 0;
+            HRESULT hr = SkipWhiteSpace(MAKELCID(1033, SORT_DEFAULT), buf, (DWORD_PTR)wcslen(buf), &idx);
+            Assert::AreEqual(S_OK, hr);
+            Assert::AreEqual((DWORD_PTR)3, idx);
+        }
+
+        TEST_METHOD(SkipWhiteSpace_NoWhitespace)
+        {
+            LPCWSTR buf = L"hello";
+            DWORD_PTR idx = 0;
+            HRESULT hr = SkipWhiteSpace(MAKELCID(1033, SORT_DEFAULT), buf, (DWORD_PTR)wcslen(buf), &idx);
+            Assert::AreEqual(S_OK, hr);
+            Assert::AreEqual((DWORD_PTR)0, idx);
+        }
+
+        TEST_METHOD(SkipWhiteSpace_AllWhitespace_ReturnsFail)
+        {
+            LPCWSTR buf = L"   ";
+            DWORD_PTR idx = 0;
+            HRESULT hr = SkipWhiteSpace(MAKELCID(1033, SORT_DEFAULT), buf, (DWORD_PTR)wcslen(buf), &idx);
+            Assert::AreEqual(E_FAIL, hr);
+        }
+
+        TEST_METHOD(SkipWhiteSpace_MixedTabsSpaces)
+        {
+            LPCWSTR buf = L"\t \t X";
+            DWORD_PTR idx = 0;
+            HRESULT hr = SkipWhiteSpace(MAKELCID(1033, SORT_DEFAULT), buf, (DWORD_PTR)wcslen(buf), &idx);
+            Assert::AreEqual(S_OK, hr);
+            Assert::AreEqual((DWORD_PTR)4, idx);
+        }
+
+        TEST_METHOD(FindChar_Found)
+        {
+            LPCWSTR buf = L"hello=world";
+            DWORD_PTR idx = 0;
+            HRESULT hr = FindChar(L'=', buf, (DWORD_PTR)wcslen(buf), &idx);
+            Assert::AreEqual(S_OK, hr);
+            Assert::AreEqual((DWORD_PTR)5, idx);
+        }
+
+        TEST_METHOD(FindChar_NotFound)
+        {
+            LPCWSTR buf = L"hello world";
+            DWORD_PTR idx = 0;
+            HRESULT hr = FindChar(L'=', buf, (DWORD_PTR)wcslen(buf), &idx);
+            Assert::AreEqual(E_FAIL, hr);
+        }
+
+        TEST_METHOD(FindChar_AtStart)
+        {
+            LPCWSTR buf = L"=value";
+            DWORD_PTR idx = 0;
+            HRESULT hr = FindChar(L'=', buf, (DWORD_PTR)wcslen(buf), &idx);
+            Assert::AreEqual(S_OK, hr);
+            Assert::AreEqual((DWORD_PTR)0, idx);
+        }
+
+        TEST_METHOD(FindChar_NullBuffer_ReturnsFail)
+        {
+            DWORD_PTR idx = 0;
+            HRESULT hr = FindChar(L'=', NULL, 10, &idx);
+            Assert::AreEqual(E_FAIL, hr);
+        }
+
+        // --- CLSIDToString ---
+
+        TEST_METHOD(CLSIDToString_NullGUID_ProducesValidFormat)
+        {
+            WCHAR buf[39] = {};
+            BOOL ok = CLSIDToString(CLSID_NULL, buf);
+            Assert::IsTrue(ok);
+            Assert::AreEqual(L'{', buf[0]);
+            Assert::AreEqual(L'}', buf[37]);
+            Assert::IsNotNull(wcsstr(buf, L"00000000-0000-0000-0000-000000000000"));
+        }
+
+        TEST_METHOD(CLSIDToString_KnownGUID_CorrectOutput)
+        {
+            // Use a well-known GUID {12345678-1234-1234-1234-123456789ABC}
+            CLSID clsid;
+            CLSIDFromString(L"{12345678-1234-1234-1234-123456789ABC}", &clsid);
+            WCHAR buf[39] = {};
+            BOOL ok = CLSIDToString(clsid, buf);
+            Assert::IsTrue(ok);
+            Assert::IsNotNull(wcsstr(buf, L"12345678"));
+        }
+    };
+
+    // =========================================================================
+    // CCandidateRange tests — IsRange() and GetIndex()
+    // =========================================================================
+    TEST_CLASS(CandidateRangeTest)
+    {
+    private:
+        void SetupRange(CCandidateRange& range, const WCHAR* keys, int count)
+        {
+            range.Clear();
+            for (int i = 0; i < count; i++)
+            {
+                _KEYSTROKE* pks = range.Append();
+                if (pks)
+                {
+                    pks->Printable = keys[i];
+                    pks->Index = i;
+                    pks->VirtualKey = 0;
+                    pks->Modifiers = 0;
+                    pks->Function = KEYSTROKE_FUNCTION::FUNCTION_NONE;
+                }
+            }
+        }
+
+    public:
+        TEST_METHOD(IsRange_ValidKey_ReturnsTrue)
+        {
+            CCandidateRange range;
+            SetupRange(range, L"1234567890", 10);
+            Assert::IsTrue(range.IsRange('1', L'1', 0, CANDIDATE_MODE::CANDIDATE_ORIGINAL) == TRUE);
+        }
+
+        TEST_METHOD(IsRange_InvalidKey_ReturnsFalse)
+        {
+            CCandidateRange range;
+            SetupRange(range, L"1234567890", 10);
+            Assert::IsTrue(range.IsRange('z', L'z', 0, CANDIDATE_MODE::CANDIDATE_ORIGINAL) == FALSE);
+        }
+
+        TEST_METHOD(IsRange_NoneMode_ReturnsFalse)
+        {
+            CCandidateRange range;
+            SetupRange(range, L"1234567890", 10);
+            Assert::IsTrue(range.IsRange('1', L'1', 0, CANDIDATE_MODE::CANDIDATE_NONE) == FALSE);
+        }
+
+        TEST_METHOD(IsRange_NumpadKey_ReturnsTrue)
+        {
+            CCandidateRange range;
+            SetupRange(range, L"1234567890", 10);
+            // VK_NUMPAD1 should match index 1 (Printable='2', Index=1)
+            // Index 0 has Printable='1', so NUMPAD0 matches index 0
+            Assert::IsTrue(range.IsRange(VK_NUMPAD0, 0, 0, CANDIDATE_MODE::CANDIDATE_ORIGINAL) == TRUE);
+        }
+
+        TEST_METHOD(GetIndex_ValidKey_ReturnsCorrectIndex)
+        {
+            CCandidateRange range;
+            SetupRange(range, L"1234567890", 10);
+            int idx = range.GetIndex('3', L'3', CANDIDATE_MODE::CANDIDATE_ORIGINAL);
+            Assert::AreEqual(2, idx);
+        }
+
+        TEST_METHOD(GetIndex_InvalidKey_ReturnsNeg1)
+        {
+            CCandidateRange range;
+            SetupRange(range, L"1234567890", 10);
+            int idx = range.GetIndex('z', L'z', CANDIDATE_MODE::CANDIDATE_ORIGINAL);
+            Assert::AreEqual(-1, idx);
+        }
+
+        TEST_METHOD(GetIndex_NoneMode_ReturnsNeg1)
+        {
+            CCandidateRange range;
+            SetupRange(range, L"1234567890", 10);
+            int idx = range.GetIndex('1', L'1', CANDIDATE_MODE::CANDIDATE_NONE);
+            Assert::AreEqual(-1, idx);
+        }
+
+        TEST_METHOD(GetIndex_NumpadKey_ReturnsCorrectIndex)
+        {
+            CCandidateRange range;
+            SetupRange(range, L"1234567890", 10);
+            int idx = range.GetIndex(VK_NUMPAD2, 0, CANDIDATE_MODE::CANDIDATE_ORIGINAL);
+            Assert::AreEqual(2, idx);
+        }
+    };
 }
