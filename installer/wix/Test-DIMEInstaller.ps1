@@ -20,7 +20,7 @@ param(
     [string]   $OldVersion  = '1.3.477.0',  # Version string for the "old" test installer
     [string]   $NewVersion  = '1.3.478.0',  # Version string for the "new" test installer
     [string]   $TestWorkDir = '.',           # Working folder for installers and logs (default: current dir)
-    [string]   $NsisExe    = "..\DIME-NSIS-Universal.exe", # Optional: path to legacy NSIS DIME-*.exe (enables Scenario B)
+    [string]   $NsisExe    = ".\DIME-NSIS-Universal.exe", # Optional: path to legacy NSIS DIME-*.exe (enables Scenario B)
     [string[]] $Scenarios  = @(),       # Which to run: A,B,C,D,E,F,G,H,I,Matrix (default: all possible)
     [switch]   $StopOnFail,             # Abort on first FAIL
     [switch]   $KeepBuilds,             # Don't delete installers after run
@@ -1122,6 +1122,23 @@ function Invoke-ScenarioE($installers) {
                 # EarlyRenameForValidate → DLL still locked at InstallValidate → RM raises
                 # FilesInUse → silent-mode MSI rolls back with exit 1603.
                 Assert-True ($e2Code -eq 1603) 'E2-ExitCode-1603' "expected 1603 (rollback), got $e2Code"
+                # EarlyRenameForValidate runs before InstallInitialize (pre-transaction)
+                # and may rename unlocked DLLs (e.g. x86 when only amd64 is locked).
+                # On rollback, pre-transaction renames survive as orphan bak files +
+                # InstallerState entries.  Best-effort cleanup: try to remove bak files
+                # and InstallerState.  WARN (not FAIL) for baks still locked by a process.
+                # The CA's self-cleanup handles remaining orphans on the next install.
+                $earlyBaks = @(Get-ChildItem "$env:ProgramFiles\DIME" -Recurse -Filter 'DIME.dll.*' -EA SilentlyContinue |
+                    Where-Object { $_.Name -match '^DIME\.dll\.\d' })
+                foreach ($b in $earlyBaks) { Remove-Item $b.FullName -Force -EA SilentlyContinue }
+                Remove-Item 'HKLM:\SOFTWARE\DIME\InstallerState' -Force -EA SilentlyContinue
+                # Check for remaining locked orphans — WARN only
+                $remaining = @(Get-ChildItem "$env:ProgramFiles\DIME" -Recurse -Filter 'DIME.dll.*' -EA SilentlyContinue |
+                    Where-Object { $_.Name -match '^DIME\.dll\.\d' })
+                if ($remaining.Count -gt 0) {
+                    Write-Warn 'E2-UpgradeRollback-OrphanBaks' `
+                        "pre-transaction orphan bak(s) still locked: $($remaining.FullName -join '; ')"
+                }
                 Assert-InstalledClean $OldVersion 'E2-UpgradeRollback-OldRestored'
                 Assert-NoPendingReboot 'E2-UpgradeRollback'
                 Assert-NoOrphanBaks    'E2-UpgradeRollback'

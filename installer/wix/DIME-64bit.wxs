@@ -351,7 +351,7 @@
     <InstallUISequence>
       <!-- Self-elevate: re-launch msiexec elevated when run non-elevated.
            Must be the first action so all subsequent CAs run elevated. -->
-      <Custom Action="SelfElevate" Before="AppSearch" />
+      <Custom Action="SelfElevate" Sequence="1" />
       <MsiRMFilesInUse Suppress="yes" />
       <FilesInUse Suppress="yes" />
       <!-- Cleans orphaned Burn ARP entries. Runs unconditionally, even on cancel.
@@ -403,7 +403,7 @@
            MoveLockedDimeDll (deferred) detects the early_bak_N InstallerState
            entries and promotes them to wix_bak_K, skipping re-rename. -->
       <Custom Action="EarlyRenameForValidate" Before="InstallValidate"
-              Condition="REMOVE OR UPGRADINGPRODUCTCODE" />
+              Condition="REMOVE OR UPGRADINGPRODUCTCODE OR WIX_UPGRADE_DETECTED" />
 
       <!-- Install/upgrade/downgrade: rename old DLLs away BEFORE RemoveExistingProducts
            so Windows Installer's file version costing sees them as absent and
@@ -412,9 +412,9 @@
            because InstallFiles won't re-lay unchanged files and CleanupDimeDllBak
            would then permanently delete the renamed DLLs. -->
       <Custom Action="RollbackMoveLockedDimeDllInstall" Before="MoveLockedDimeDllInstall"
-              Condition="NOT Installed OR UPGRADINGPRODUCTCODE" />
+              Condition="NOT Installed OR UPGRADINGPRODUCTCODE OR WIX_UPGRADE_DETECTED" />
       <Custom Action="MoveLockedDimeDllInstall" Before="InstallFiles"
-              Condition="NOT Installed OR UPGRADINGPRODUCTCODE" />
+              Condition="NOT Installed OR UPGRADINGPRODUCTCODE OR WIX_UPGRADE_DETECTED" />
 
       <!-- Register DLLs after InstallFiles.
            Skip on upgrade/downgrade (WIX_UPGRADE_DETECTED set for both directions):

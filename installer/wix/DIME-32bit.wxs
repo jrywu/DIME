@@ -227,7 +227,7 @@
          ================================================================ -->
     <!-- Suppress file-in-use dialogs in UI sequence (user process, pre-elevation) -->
     <InstallUISequence>
-      <Custom Action="SelfElevate" Before="AppSearch" />
+      <Custom Action="SelfElevate" After="LaunchConditions" />
       <MsiRMFilesInUse Suppress="yes" />
       <FilesInUse Suppress="yes" />
       <!-- Cleans orphaned Burn ARP entries before FindRelatedProducts. -->
@@ -266,16 +266,16 @@
            MoveLockedDimeDll (deferred) detects the early_bak_N InstallerState
            entries and promotes them to wix_bak_K, skipping re-rename. -->
       <Custom Action="EarlyRenameForValidate" Before="InstallValidate"
-              Condition="REMOVE OR UPGRADINGPRODUCTCODE" />
+              Condition="REMOVE OR UPGRADINGPRODUCTCODE OR WIX_UPGRADE_DETECTED" />
 
       <!-- Install/upgrade/downgrade: rename old DLL away before InstallFiles.
            REINSTALLMODE=amus (set in ConfirmDowngrade CA on downgrade) forces
            CostFinalize to overwrite higher-versioned files for the downgrade case.
            Skip in maintenance-mode reinstall (same ProductCode already installed). -->
       <Custom Action="RollbackMoveLockedDimeDllInstall" Before="MoveLockedDimeDllInstall"
-              Condition="NOT Installed OR UPGRADINGPRODUCTCODE" />
+              Condition="NOT Installed OR UPGRADINGPRODUCTCODE OR WIX_UPGRADE_DETECTED" />
       <Custom Action="MoveLockedDimeDllInstall" Before="InstallFiles"
-              Condition="NOT Installed OR UPGRADINGPRODUCTCODE" />
+              Condition="NOT Installed OR UPGRADINGPRODUCTCODE OR WIX_UPGRADE_DETECTED" />
 
       <!-- Register DLL after InstallFiles.
            Skip on upgrade/downgrade (WIX_UPGRADE_DETECTED set for both directions):

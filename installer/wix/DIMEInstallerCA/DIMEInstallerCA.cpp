@@ -342,7 +342,10 @@ UINT __stdcall SelfElevate(MSIHANDLE hInstall)
     if (!ShellExecuteExW(&sei))
         return ERROR_SUCCESS;  // UAC declined or ShellExecute failed — proceed
 
-    // Don't wait for the elevated instance — just abort this non-elevated session.
+    // Best-effort: grant foreground focus to the elevated process.
+    // On first install, Windows may still give focus to the shell after
+    // the non-elevated session exits — known minor cosmetic limitation.
+    AllowSetForegroundWindow(ASFW_ANY);
     if (sei.hProcess)
         CloseHandle(sei.hProcess);
 
@@ -1009,19 +1012,59 @@ UINT __stdcall EarlyRenameForValidate(MSIHANDLE hInstall)
     wchar_t remove[64] = {};
     DWORD cch = 64;
     MsiGetPropertyW(hInstall, L"REMOVE", remove, &cch);
-    if (!remove[0])
-    {
-        CaBurnLog(L"[EarlyRenameForValidate] REMOVE not set — skipping");
-        return ERROR_SUCCESS;
-    }
 
     wchar_t upgradingCode[MAX_PATH] = {};
     cch = MAX_PATH;
     MsiGetPropertyW(hInstall, L"UPGRADINGPRODUCTCODE", upgradingCode, &cch);
+
+    wchar_t wixUpgradeDetected[MAX_PATH] = {};
+    cch = MAX_PATH;
+    MsiGetPropertyW(hInstall, L"WIX_UPGRADE_DETECTED", wixUpgradeDetected, &cch);
+
+    // Run when:
+    //   REMOVE set, no UPGRADINGPRODUCTCODE  → clean uninstall
+    //   WIX_UPGRADE_DETECTED set             → upgrade/downgrade (new product install)
+    // Skip when:
+    //   UPGRADINGPRODUCTCODE set             → old product removal leg (new product handles it)
+    //   Neither REMOVE nor WIX_UPGRADE_DETECTED → fresh install / repair
     if (upgradingCode[0])
     {
         CaBurnLog(L"[EarlyRenameForValidate] UPGRADINGPRODUCTCODE set — skipping");
         return ERROR_SUCCESS;
+    }
+    if (!remove[0] && !wixUpgradeDetected[0])
+    {
+        CaBurnLog(L"[EarlyRenameForValidate] fresh install/repair — skipping");
+        return ERROR_SUCCESS;
+    }
+
+    // Best-effort cleanup of orphaned early_bak_N entries from a previous
+    // failed install.  EarlyRenameForValidate runs before InstallInitialize
+    // (outside the MSI transaction), so its renames survive rollback.
+    // Try to move bak back to original — succeeds only if the bak is no longer
+    // locked (process exited).  If still locked, leave it alone.
+    {
+        BakEntry leftover[16] = {};
+        int nLeft = ReadAllInstallerState(leftover, 16);
+        for (int li = 0; li < nLeft; ++li)
+        {
+            if (wcsncmp(leftover[li].name, L"early_bak_", 10) != 0) continue;
+            wchar_t eSrc[MAX_PATH] = {}, eBak[MAX_PATH] = {};
+            SplitStatePair(leftover[li].path, eSrc, eBak, MAX_PATH);
+            if (!eBak[0] || GetFileAttributesW(eBak) == INVALID_FILE_ATTRIBUTES)
+            {
+                // Bak already gone (process exited, file cleaned up elsewhere)
+                DeleteInstallerStateValue(leftover[li].name);
+                continue;
+            }
+            if (MoveFileExW(eBak, eSrc, MOVEFILE_REPLACE_EXISTING))
+            {
+                // Bak restored — remove entry
+                DeleteInstallerStateValue(leftover[li].name);
+                CaBurnLog(L"[EarlyRenameForValidate] cleaned orphan early_bak");
+            }
+            // else: bak still locked by a process — leave it for next time
+        }
     }
 
     // SetMoveLockedDimeDllUninstall (immediate SetProperty, Before="EarlyRenameForValidate")

@@ -18,4 +18,5 @@ EXPORTS
     EarlyRenameForValidate
     MoveLockedDimeDll
     RollbackMoveLockedDimeDll
+    SelfElevate
     UnregisterDimeDll
