@@ -123,6 +123,22 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         FILE* fp = nullptr;
         freopen_s(&fp, "CONOUT$", "w", stdout);
         freopen_s(&fp, "CONOUT$", "w", stderr);
+        // When attaching to an existing console the parent shell (PowerShell /
+        // cmd) has already printed its next prompt because GUI-subsystem apps
+        // are launched asynchronously.  Overwrite that prompt line: move the
+        // cursor to column 0, blank out the line, so our output starts clean.
+        if (attachedExisting)
+        {
+            HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+            CONSOLE_SCREEN_BUFFER_INFO csbi;
+            if (GetConsoleScreenBufferInfo(hOut, &csbi))
+            {
+                COORD lineStart = { 0, csbi.dwCursorPosition.Y };
+                DWORD filled = 0;
+                FillConsoleOutputCharacterW(hOut, L' ', csbi.dwSize.X, lineStart, &filled);
+                SetConsoleCursorPosition(hOut, lineStart);
+            }
+        }
         int rc = RunCLI(lpCmdLine);
         fflush(stdout);
         fflush(stderr);
