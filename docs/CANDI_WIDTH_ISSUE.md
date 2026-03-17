@@ -1,82 +1,82 @@
-# Fix: Candidate window text clipping
+﻿# Fix: Candidate window text clipping + font settings not applied
 
-## Root Cause
+## Issue 1 — Width clipping with certain fonts
 
-After adding the page indicator (commit `4374fe7`), `_SetScrollInfo` now calls `_ResizeWindow()` (line 1078). `_ResizeWindow()` calls `CBaseWindow::_Resize` → `MoveWindow(hWnd, ..., TRUE)`. Per the Windows API, **`MoveWindow` with `bRepaint=TRUE` internally calls `UpdateWindow`**, which sends `WM_PAINT` **synchronously**.
+### Symptom
 
-This synchronous `WM_PAINT` fires in the middle of `_SetCandidateText()` — specifically between `SetPageIndexWithScrollInfo()` (line 622) and `_SetCandStringLength(candWidth)` (line 625). So `_DrawList` runs with the **old `_wndWidth`**, recalculates `_cxTitle` from the old test string, finds it matches the current window width → **no resize at line 899** → items are drawn with old-width dimensions, clipping wider new candidates.
+After the page indicator commit (`4374fe7`), candidate text is clipped with 新細明體 (PMingLiU) but not with 微軟正黑體 (JhengHei).
 
-Before the commit, `_SetScrollInfo` did NOT call `_ResizeWindow()`, so no synchronous paint fired before `_SetCandStringLength`. The only paint came from `_InvalidateRect()` (line 630), which runs after `_wndWidth` is already correct.
+### Root Cause: Corrupted test character in source file
 
-### Call sequence (after the commit)
+Both `WM_CREATE` and `_DrawList` measure a test string of `_wndWidth` repeated characters to compute `_cxTitle` (the content column width). The test character in the source was **U+FFFD (REPLACEMENT CHARACTER `�`)** — a corrupted byte, not a real CJK character.
+
+U+FFFD renders at different widths depending on the font:
+
+| Font | U+FFFD width | Actual CJK width (e.g. '美') |
+| --- | --- | --- |
+| PMingLiU/新細明體 | 12px (narrow) | 28px |
+| JhengHei/微軟正黑體 | 28px (full-width) | 28px |
+
+Debug log proof (`_wndWidth=8`, PMingLiU font):
 
 ```
-_SetCandidateText():
-  AddCandidateToUI()              ← new items added
-  SetPageIndexWithScrollInfo()    ← line 622
-    └─ _SetScrollInfo()
-         └─ _ResizeWindow()       ← NEW in page indicator commit
-              └─ MoveWindow(TRUE)
-                   └─ UpdateWindow → synchronous WM_PAINT
-                        └─ _DrawList with OLD _wndWidth  ← BUG: text clipped
-  _SetCandStringLength(candWidth) ← line 625, _wndWidth updated HERE (too late)
-  _InvalidateRect()               ← line 630, triggers second paint (correct)
+WM_CREATE: candSize.cx=96, perChar=12              ← U+FFFD = 12px/char
+_DrawList item0: text=[美國太空總署] itemSize.cx=168  ← actual = 28px/char
+textArea=96                                          ← 96 < 168 → CLIPPED
 ```
 
-## Why removing `_ResizeWindow()` from `_SetScrollInfo` alone is insufficient
+The window is sized for 12px characters but the actual content renders at 28px — text clipped.
 
-Removing the synchronous paint fixes one trigger, but a deeper issue remains in `_DrawList`:
+This bug was latent before the page indicator commit. The commit exposed it by adding `_ResizeWindow()` to `_SetScrollInfo()`, which triggered premature paints that made the sizing error more visible.
 
-1. `_DrawList` recalculates `_cxTitle` at line 817 (correct for new `_wndWidth`)
-2. Draws all items using `prc` — which reflects the **old** window size → **clipped**
-3. Detects mismatch at line 899 → `_ResizeWindow()` → `MoveWindow(TRUE)` → recursive repaint draws correctly
-4. **But then** `_DrawPageIndicator` (new in the page indicator commit) runs on the **outer DC** (still clipped to old size) — its `FillRect` overwrites part of the recursive paint's correct content
+### Fix
 
-Before the page indicator commit, step 4 didn't exist — `_DrawList` was the last drawing call in `_OnPaint`, so the recursive repaint's correct output was preserved. Now `_DrawPageIndicator` on the stale outer DC corrupts it.
+**`src/CandidateWindow.cpp`**: Replace the corrupted test character `L"�e"` with `L"國"` in both test string loops (WM_CREATE and `_DrawList`).
 
-## Plan — Minimal changes to `_DrawList`
+Also remove `_ResizeWindow()` from `_SetScrollInfo()` (was added by the page indicator commit; causes premature `WM_PAINT` with stale `_wndWidth`).
 
-### Change 1: Remove `_ResizeWindow()` from `_SetScrollInfo` — DONE
+No other changes to `_OnPaint`, `_DrawList`, or `_DrawPageIndicator` needed — the page indicator commit's structure is correct once the test character is fixed.
 
-### Change 2: Move resize check from after drawing to before drawing in `_DrawList`
+## Issue 2 — Font change not applied immediately
 
-**File:** `src/CandidateWindow.cpp`, `_DrawList()`
+### Symptom
 
-Same conditional check that was at line 899, moved to after `_cxTitle`/`_cyRow` recalculation (after line 818), with height check added for page indicator. If mismatch → resize and `return` before any drawing.
+After changing the font in settings (Ctrl+\) and closing the dialog, the new font is not applied until the user switches to another IME and back.
 
-After line 818 (`_cyRow = cyLine;`), insert:
+### Root Cause: `WriteConfig` stomps `_initTimeStamp`
+
+`WriteConfig()` updates `_initTimeStamp` after writing the INI file:
 
 ```cpp
-	// Resize before drawing if dimensions changed — avoids drawing with stale prc
-	RECT rcWnd = {0, 0, 0, 0};
-	GetWindowRect(_GetWnd(), &rcWnd);
-	BOOL isMultiPage = (_pVScrollBarWnd && _pVScrollBarWnd->_IsEnabled());
-	int expectedBottomPadding = isMultiPage ? _cyRow : _cyRow / 2;
-	int expectedHeight = _cyRow * candidateListPageCnt + expectedBottomPadding + CANDWND_BORDER_WIDTH * 2;
-	if(_cxTitle != prc->right - prc->left - VScrollWidth
-		|| expectedHeight != rcWnd.bottom - rcWnd.top)
-	{
-		_ResizeWindow();
-		return;  // MoveWindow(TRUE) triggers fresh WM_PAINT with correct dimensions
-	}
+fclose(fp);
+_wstat(_pwszINIFileName, &initTimeStamp);        // reads post-write mtime
+_initTimeStamp.st_mtime = initTimeStamp.st_mtime; // stomps the cache
 ```
 
-Remove the post-draw resize check (current lines 899-906).
+When `_LoadConfig()` runs after the dialog closes, `LoadConfig` compares the file's mtime against `_initTimeStamp` — but they already match (WriteConfig set them equal). So `LoadConfig` sees `updated = 0`, skips the reload, and `SetDefaultTextFont()` is never called. The old font handle persists.
 
-This is the same mismatch check, just positioned before the drawing loop. When dimensions match (the common case), no resize — drawing proceeds normally. When they don't match (first paint after switching candidate width), it resizes and returns without drawing anything wrong.
+### Fix
 
-## Files to modify
+1. **`src/Config.cpp`** — `WriteConfig()`: Remove the `_wstat`/`_initTimeStamp` update (lines 442-443). Only `LoadConfig` should update the timestamp cache.
 
-1. `src/CandidateWindow.cpp`:
-   - `_SetScrollInfo()`: remove `_ResizeWindow()` — DONE
-   - `_DrawList()`: move resize+height check from post-draw to pre-draw with early return
+2. **`src/ShowConfig.cpp`** — `CDIME::Show()`: Add `_LoadConfig()` call after the PropertySheet dialog closes, so config (including font) is reloaded immediately.
 
-## Verification
+## Files modified
 
-1. Build DIME (Debug, x64)
-2. Install and activate the IME
-3. Type phrase input that produces 4+ character candidates (e.g. 詞庫 lookup for "中華民國")
-4. Verify the candidate window is wide enough — no text clipping on first display
-5. Switch between narrow candidates (single chars) and wide candidates (phrases) — verify window resizes correctly each time
-6. Verify page indicator still displays correctly for multi-page results
-7. Verify single-page results do NOT show page indicator area (correct height)
+1. **`src/CandidateWindow.cpp`**:
+   - Test character: `L"�e"` → `L"國"` (2 occurrences)
+   - `_SetScrollInfo()`: `_ResizeWindow()` removed
+2. **`src/Config.cpp`**: `WriteConfig()` — removed `_initTimeStamp` update
+3. **`src/ShowConfig.cpp`**: Added `_LoadConfig()` + `ClearNotify()` after dialog close
+4. **`src/tests/UIPresenterIntegrationTest.cpp`**: Fixed 4 corrupted U+FFFD test strings
+5. **`src/tests/CandidateWindowIntegrationTest.cpp`**: Added regression test
+
+## Regression test
+
+**`IT03_06_CandidateWindow_TestCharWidth_MatchesRealCJK`** in `CandidateWindowIntegrationTest.cpp`:
+
+Creates a candidate window, selects `Global::defaultlFontHandle` into a DC, then compares `GetTextExtentPoint32` for the test character '國' (used in `_DrawList`) against a real CJK candidate character '美'. Asserts that per-character widths are equal — catches the exact bug where a corrupted test character (U+FFFD) measured 12px while real CJK characters measured 28px.
+
+**`UT_01_06_WriteConfig_DoesNot_StompTimestamp`** in `ConfigTest.cpp`:
+
+Calls `WriteConfig()` twice with different font settings, then `LoadConfig()`. Asserts that `LoadConfig` returns TRUE (detected the second write). Before the fix, `WriteConfig` updated `_initTimeStamp` to match the file's mtime, making `LoadConfig` see `updated = 0` and skip the reload.

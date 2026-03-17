@@ -1,10 +1,10 @@
 # DIME Test Report
 
-**Report Date:** March 15, 2026
+**Report Date:** March 17, 2026
 **Test Framework:** Microsoft.VisualStudio.CppUnitTestFramework
 **Build Status:** ✅ Successful
 **Overall Coverage:** **IME Core: 82.4%** | IME UI: 29.4% | TSF Interface: 6.9%
-**Version:** 3.1 — IT-MF-05/06 DAYI TTS cache; CLI backup/restore; 550 passing (280 unit + 270 integration)
+**Version:** 3.2 — Candidate width + font settings regression tests; 552 passing (281 unit + 271 integration)
 
 ---
 
@@ -12,9 +12,9 @@
 
 | Metric | Value | Status |
 |--------|-------|--------|
-| **Total Tests** | 550 passing | ✅ All Passing |
-| **Unit Tests** | 280 | ✅ |
-| **Integration Tests** | 270 | ✅ |
+| **Total Tests** | 552 passing | ✅ All Passing |
+| **Unit Tests** | 281 | ✅ |
+| **Integration Tests** | 271 | ✅ |
 | **Test Execution Time** | ~23 seconds | ✅ |
 | **Build Status** | Debug x64 | ✅ |
 | **IME Core Coverage** | **82.4%** | ✅ Target ≥80% **MET** |
@@ -27,20 +27,20 @@
 - TSF Interface: 345 / 4,971 lines (6.9%) — 39 files
 - Overall production: 4,023 / 12,412 lines (32.4%)
 
-**Test Count Note**: 550 `TEST_METHOD` declarations defined and running across 19 test files (280 unit in 8 files, 270 integration in 10 files + 1 integration file). All tests run in the current environment; IT-MF-03 through 06 fail (not skip) when source tables are missing.
+**Test Count Note**: 552 `TEST_METHOD` declarations defined and running across 19 test files (281 unit in 8 files, 271 integration in 10 files + 1 integration file). All tests run in the current environment; IT-MF-03 through 06 fail (not skip) when source tables are missing.
 
 ---
 
 ## Test Suite Results
 
 ### Unit Tests (UT-01 to UT-BS) - Namespace: `DIMEUnitTests`
-- **Tests:** 280
+- **Tests:** 281
 - **Status:** ✅ All Passing
 - **Files:** ConfigTest.cpp (three classes), MemoryTest.cpp, StringTest.cpp (three classes), TableDictionaryEngineTest.cpp, CINParserTest.cpp, DictionaryTest.cpp, CMemoryFileTest.cpp, CLIParserTest.cpp
 - **Coverage:** High for core components (60-97% for tested modules); **97.2% for BaseStructure.cpp**; **94.9% for CLI.cpp**; **91.7% for CMemoryFile cache functions**; File.cpp overall **90.1%**
 
 ### Integration Tests (IT-01 to IT-CLI) - Namespace: `DIMEIntegratedTests`
-- **Total Tests:** 270
+- **Total Tests:** 271
 - **Status:** ✅ All Passing
 - **Coverage:** Varies by module (15-95% depending on TSF dependencies)
 
@@ -57,10 +57,10 @@
 - **Progress:** +37 tests, +25.4% improvement from initial 29.4%
 
 #### IT-03: Candidate Window Integration Tests
-- **Tests:** 24 (20 original + IT-CM-10–13 color-mode tests)
+- **Tests:** 25 (20 original + IT-CM-10–13 color-mode tests + IT03_06 test char regression)
 - **Status:** ✅ All Passing
 - **Coverage:** CandidateWindow.cpp 29.84%, ShadowWindow.cpp 4.58%
-- **Tested:** Window creation, display, keyboard navigation, shadow positioning, dark/light theme colors
+- **Tested:** Window creation, display, keyboard navigation, shadow positioning, dark/light theme colors, test char width regression
 
 #### IT-04: Language Bar Integration Tests
 - **Tests:** 22 (16 original + IT-CM-20–22 notify-window color-mode tests + 3 additional)
@@ -357,7 +357,7 @@ This split reveals that the previously reported "Config.cpp 24%" was misleading 
 
 ## Test Reliability
 
-- **Pass Rate:** 100% (550/550 running)
+- **Pass Rate:** 100% (552/552 running)
 - **Flaky Tests:** 0
 - **Skipped Tests:** 0 (IT-MF-01–06 skip when system files absent, e.g. CI runners without DIME installed)
 - **Manual Tests Required:** System-level TSF integration tests with real applications
@@ -430,7 +430,7 @@ All **new non-TSF code** should target ≥90% coverage (as demonstrated by CLI.c
 ## Conclusion
 
 ✅ **IME Core coverage: 82.4% — TARGET MET (≥80%)**
-✅ **All automated tests passing (550/550)**
+✅ **All automated tests passing (552/552)**
 ✅ **Test suite executes quickly (~22s)**
 ✅ **Config.cpp split**: Config_Core.cpp (IME Core, 73%) + Config_UI.cpp (IME UI, 7.5%)
 ✅ **IT-07 + IT-CM + IT-CV + IT-PT: 18+ Settings Dialog tests with REAL Win32 dialogs**
@@ -483,5 +483,5 @@ All **new non-TSF code** should target ≥90% coverage (as demonstrated by CLI.c
 10. `CLIIntegrationTest.cpp` — CLI end-to-end tests (IT-CLI, 50 tests, 19 test classes)
 
 **Total Test Files:** 18 (8 unit, 10 integration)
-**Total Test Methods:** 550 (all running)
+**Total Test Methods:** 552 (all running)
 **Build:** ✅ Successful

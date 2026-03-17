@@ -305,7 +305,7 @@ namespace DIMEUnitTests
 
             // Try to write with timestamp check
             CConfig::SetMaxCodes(7);
-            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, TRUE); // checkTime = TRUE, returns void
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE); // Don't use confirmUpdated=TRUE in tests (triggers MessageBox)
             
             // Assert: Write should detect the external change
             // Implementation may either reject write or reload first
@@ -386,7 +386,7 @@ namespace DIMEUnitTests
             SimulateExternalProcessConfigWrite(IME_MODE::IME_MODE_ARRAY, 8, TRUE);
             
             // Process A attempts to write its old settings (timestamp T1)
-            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, TRUE); // checkTime=TRUE should detect conflict
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE); // Don't use confirmUpdated=TRUE in tests (triggers MessageBox)
             
             // Process A should reload to get latest settings
             CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
@@ -424,7 +424,7 @@ namespace DIMEUnitTests
             SimulateExternalProcessConfigWrite(IME_MODE::IME_MODE_ARRAY, 10, TRUE);
             
             // Process A attempts to write with timestamp check enabled
-            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, TRUE); // Returns void
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE); // Don't use confirmUpdated=TRUE in tests (triggers MessageBox)
             
             // After write attempt, verify current file state
             CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
@@ -489,8 +489,8 @@ namespace DIMEUnitTests
                     // Modify with unique value
                     CConfig::SetMaxCodes(i);
                     
-                    // Write with timestamp check
-                    CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, TRUE); // Returns void
+                    // Write config
+                    CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE); // Don't use confirmUpdated=TRUE in tests (triggers MessageBox)
                     // Assume write succeeded
                     successfulWrites++;
                 });
@@ -556,7 +556,7 @@ namespace DIMEUnitTests
             // Process A also increments and attempts to write
             CConfig::SetMaxCodes(valueA + 1); // Also 6, but based on old read
             Sleep(1100);
-            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, TRUE); // Should detect conflict
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE); // Don't use confirmUpdated=TRUE in tests (triggers MessageBox)
             
             // Assert: Final value should not have lost Process B's update
             CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
@@ -789,32 +789,27 @@ namespace DIMEUnitTests
             Assert::IsTrue(true, L"Font configuration loaded successfully");
         }
 
-        TEST_METHOD(WriteConfig_DetectExternalModification_ShowsMessageBox)
+        TEST_METHOD(WriteConfig_DetectExternalModification)
         {
-            // Arrange: Create initial config
+            // Arrange: Create initial config and load to set _initTimeStamp
             CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
             CConfig::SetMaxCodes(5);
             CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
             CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
 
-            // Modify a setting
-            CConfig::SetMaxCodes(7);
-
             // Act: Externally modify config to simulate race condition
             Sleep(1100); // Ensure timestamp difference
             SimulateExternalProcessConfigWrite(IME_MODE::IME_MODE_ARRAY, 10, TRUE);
 
-            // Write with timestamp check - this should trigger lines 1027-1029
-            // Note: MessageBox will NOT show in automated tests (no UI), but the code path executes
-            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, TRUE);
+            // Verify: LoadConfig detects the external modification
+            BOOL detected = CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
+            Assert::IsTrue(detected,
+                L"LoadConfig should detect external modification");
+            Assert::AreEqual(10, (int)CConfig::GetMaxCodes(),
+                L"LoadConfig should reload the externally written value");
 
-            // Assert: Verify that LoadConfig was called (config should be reloaded)
-            CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
-            int currentValue = CConfig::GetMaxCodes();
-
-            // The value should reflect the external modification was detected
-            Assert::IsTrue(currentValue == 10 || currentValue == 7,
-                L"External modification should be detected (MessageBox path executed)");
+            // Note: WriteConfig(confirmUpdated=TRUE) shows a MessageBox on detection,
+            // which blocks automated tests. Use LoadConfig to verify detection instead.
         }
 
         TEST_METHOD(WriteConfig_WithoutTimestampCheck_AlwaysWrites)
@@ -832,6 +827,34 @@ namespace DIMEUnitTests
             CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
             Assert::AreEqual(8, (int)CConfig::GetMaxCodes(),
                 L"WriteConfig with checkTime=FALSE should always write");
+        }
+
+        // Regression test: WriteConfig must NOT update _initTimeStamp.
+        // Before the fix, WriteConfig stomped _initTimeStamp after writing,
+        // so a subsequent LoadConfig saw updated=0 and skipped the reload.
+        // This caused font/color changes via settings dialog to not take effect.
+        TEST_METHOD(WriteConfig_DoesNot_StompTimestamp)
+        {
+            // Arrange: Write config and load to establish _initTimeStamp
+            CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
+            CConfig::SetFontSize(12);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
+            CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
+
+            // Record _initTimeStamp BEFORE WriteConfig
+            struct _stat tsBefore = CConfig::GetInitTimeStamp();
+
+            // Act: WriteConfig again
+            CConfig::SetFontSize(20);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
+
+            // Record _initTimeStamp AFTER WriteConfig
+            struct _stat tsAfter = CConfig::GetInitTimeStamp();
+
+            // Assert: WriteConfig must NOT have changed _initTimeStamp
+            // (only LoadConfig should update the timestamp cache)
+            Assert::AreEqual(tsBefore.st_mtime, tsAfter.st_mtime,
+                L"WriteConfig must not update _initTimeStamp");
         }
 
         TEST_METHOD(LoadConfig_CorruptedSpecificKeys_UsesDefaults)

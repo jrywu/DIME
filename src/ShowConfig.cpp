@@ -32,6 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "Globals.h"
 #include "DIME.h"
+#include "UIPresenter.h"
 #include "TfInputProcessorProfile.h"
 #include "BuildInfo.h"
 
@@ -176,6 +177,12 @@ HRESULT CDIME::Show(_In_opt_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID
 	//PropertySheet(&psh);
 	if (_PropertySheet)
 		(*_PropertySheet)(&psh);
+
+	// Reload config after settings dialog closes — picks up font/color changes immediately
+	_LoadConfig(FALSE, CConfig::GetIMEMode());
+	// Dispose notify window so it's recreated with the new font/color settings.
+	// The dialog close may have already triggered a "中文/英數" notify with the old font.
+	if (_pUIPresenter) _pUIPresenter->ClearNotify();
 
 	if(dllCtlHandle)
 		FreeLibrary(dllCtlHandle);

@@ -429,7 +429,7 @@ namespace DIMEIntegratedTests
             CDIMEArray<CCandidateListItem> candidates;
             CCandidateListItem item1;
             item1._ItemString.Set(L"測試", 2);
-            CCandidateListItem* pItem = candidates.Append(); if (pItem) { pItem->_ItemString.Set(L"����", 2); }
+            CCandidateListItem* pItem = candidates.Append(); if (pItem) { pItem->_ItemString.Set(L"測試", 2); }
 
             // Act: Add candidates
             pUIPresenter->AddCandidateToUI(&candidates, TRUE);
@@ -473,7 +473,7 @@ namespace DIMEIntegratedTests
             StubCDIME* pStubDIME = new StubCDIME();
                         CUIPresenter* pUIPresenter = new CUIPresenter(pStubDIME, nullptr);
             CStringRange notifyText;
-            notifyText.Set(L"中�?", 2);
+            notifyText.Set(L"中文", 2);
 
             // Act: Create notify window
             HRESULT hr = pUIPresenter->MakeNotifyWindow(nullptr, &notifyText, NOTIFY_TYPE::NOTIFY_CHN_ENG);
@@ -495,12 +495,12 @@ namespace DIMEIntegratedTests
             StubCDIME* pStubDIME = new StubCDIME();
                         CUIPresenter* pUIPresenter = new CUIPresenter(pStubDIME, nullptr);
             CStringRange initialText;
-            initialText.Set(L"?��?", 2);
+            initialText.Set(L"中文", 2);
             pUIPresenter->MakeNotifyWindow(nullptr, &initialText, NOTIFY_TYPE::NOTIFY_CHN_ENG);
 
             // Act: Update text
             CStringRange newText;
-            newText.Set(L"?�新", 2);
+            newText.Set(L"更新", 2);
             pUIPresenter->SetNotifyText(&newText);
 
             // Assert: Text updated (no crash means success)

@@ -30,7 +30,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-//efine DEBUG_PRINT
+//#define DEBUG_PRINT
 #include <windowsx.h>
 #include <Shlobj.h>
 #include <Shlwapi.h>
@@ -439,8 +439,6 @@ VOID CConfig::WriteConfig(IME_MODE imeMode, BOOL confirmUpdated)
 			fwprintf_s(fp, L"NumericPad = %d\n", _numericPad);
 			if (_loadTableMode) fwprintf_s(fp, L"LoadTableMode = 1\n");
 			fclose(fp);
-			_wstat(_pwszINIFileName, &initTimeStamp);
-			_initTimeStamp.st_mtime = initTimeStamp.st_mtime;
 		}
 	}
 

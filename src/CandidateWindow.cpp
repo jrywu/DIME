@@ -374,13 +374,11 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
 				if (pwszTestString == NULL) return 0;
 
 				pwszTestString[0] = L'\0';
-				for (UINT i = 0; i < _wndWidth; i++) StringCchCatN(pwszTestString, static_cast<size_t>(_wndWidth) + 1, L"�e", 1);
+				for (UINT i = 0; i < _wndWidth; i++) StringCchCatN(pwszTestString, static_cast<size_t>(_wndWidth) + 1, L"國", 1);
 
 				SIZE candSize;
 				GetTextExtentPoint32(dcHandle, pwszTestString, _wndWidth, &candSize); //don't trust the TextMetrics. Measurement the font height and width directly.
 				delete[]pwszTestString;
-
-
 
 				_cxTitle = candSize.cx + StringPosition * (candSize.cx / _wndWidth);
 				_cyRow = candSize.cy * 5 / 4;
@@ -579,7 +577,7 @@ void CCandidateWindow::_OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pPaintStruc
     {
         goto cleanup;
     }
-    
+
     _AdjustPageIndex(currentPage, currentPageIndex);
 
     _DrawList(dcHandle, currentPageIndex, &pPaintStruct->rcPaint);
@@ -802,7 +800,7 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
 	if (pwszTestString)
 	{
 		pwszTestString[0] = L'\0';
-		for (UINT i = 0; i < _wndWidth; i++) StringCchCatN(pwszTestString, static_cast<size_t>(_wndWidth) + 1, L"�e", 1);
+		for (UINT i = 0; i < _wndWidth; i++) StringCchCatN(pwszTestString, static_cast<size_t>(_wndWidth) + 1, L"國", 1);
 		GetTextExtentPoint32(dcHandle, pwszTestString, _wndWidth, &candSize); //don't trust the TextMetrics. Measurement the font height and width directly.
 		delete[]pwszTestString;
 
@@ -816,19 +814,6 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
 
 	_cxTitle = candSize.cx + StringPosition * cxLine;
 	_cyRow = cyLine;
-
-	// Resize before drawing if dimensions changed — avoids drawing with stale prc
-	RECT rcWnd = {0, 0, 0, 0};
-	GetWindowRect(_GetWnd(), &rcWnd);
-	BOOL isMultiPage = (_pVScrollBarWnd && _pVScrollBarWnd->_IsEnabled());
-	int expectedBottomPadding = isMultiPage ? _cyRow : _cyRow / 2;
-	int expectedHeight = _cyRow * candidateListPageCnt + expectedBottomPadding + CANDWND_BORDER_WIDTH * 2;
-	if(_cxTitle != prc->right - prc->left - VScrollWidth
-		|| expectedHeight != rcWnd.bottom - rcWnd.top)
-	{
-		_ResizeWindow();
-		return;  // MoveWindow(TRUE) triggers fresh WM_PAINT with correct dimensions
-	}
 
 	int cyOffset = candSize.cy / 8 + fistLineOffset; //offset in line + blank before 1st line.
 	

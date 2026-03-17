@@ -1,8 +1,8 @@
 # DIME Test Plan
 
-**Version**: 3.1 (IT-MF-05/06 DAYI TTS cache tests; CLI backup/restore; fail-not-skip)
-**Last Updated**: 2026-03-15
-**Status**: ✅ **IME Core 82.4% — TARGET MET** — 550 tests passing
+**Version**: 3.2 (Candidate width clipping + font settings regression tests; corrupted U+FFFD test strings fixed)
+**Last Updated**: 2026-03-17
+**Status**: ✅ **IME Core 82.4% — TARGET MET** — 552 tests passing
 
 ---
 
@@ -15,9 +15,9 @@
 | **IME Core Coverage** | ≥80% | **82.4%** | ✅ **TARGET MET** (2,316/2,811 lines) |
 | **IME UI Coverage** | ≥30% | **29.4%** | ⚠️ Near target (1,362/4,630 lines) |
 | **TSF Interface Coverage** | ≥15% | **6.9%** | ⚠️ Limited (345/4,971 lines) |
-| **Unit Tests** | — | **280 tests** | ✅ COMPLETE |
-| **Integration Tests** | — | **270 tests** | ✅ COMPLETE |
-| **Total Automated Tests** | — | **550 passing** | ✅ COMPLETE |
+| **Unit Tests** | — | **281 tests** | ✅ COMPLETE |
+| **Integration Tests** | — | **271 tests** | ✅ COMPLETE |
+| **Total Automated Tests** | — | **552 passing** | ✅ COMPLETE |
 | **Execution Time** | < 60s | **~22 seconds** | ✅ EXCELLENT |
 | **CI/CD Ready** | Yes | **Yes** | ✅ AUTO-RUN |
 
@@ -138,11 +138,11 @@ OpenCppCoverage --sources DIME --excluded_sources tests ^
 
 ## Test Suite Summary
 
-### Unit Tests Overview (280 tests, ~15 seconds)
+### Unit Tests Overview (281 tests, ~15 seconds)
 
 | Suite | Tests | Coverage Target | Actual Coverage | Files Tested |
 |-------|-------|----------------|-----------------|--------------|
-| **UT-01: Configuration** | 26 tests | ≥90% | ~95% | `Config.cpp`, `Config.h` (ConfigTest class) |
+| **UT-01: Configuration** | 27 tests | ≥90% | ~95% | `Config.cpp`, `Config.h` (ConfigTest class) |
 | **UT-02: Dictionary** | 8 tests | ≥85% | ~90% | `TableDictionaryEngine.cpp`, `DictionarySearch.cpp` |
 | **UT-03: String Processing** | 11 tests | ≥90% | ~100% | `BaseStructure.cpp` (CStringRange) |
 | **UT-04: Memory Management** | 14 tests | ≥85% | ~95% | `BaseStructure.h` (CDIMEArray), `File.cpp` |
@@ -156,17 +156,17 @@ OpenCppCoverage --sources DIME --excluded_sources tests ^
 | **UT-CM: Color Mode** | 8 tests | ≥90% | ~90% | `Config.cpp`, `Config.h`, `Define.h` |
 | **UT-CV: Custom Table Validation** | 17 tests | ≥90% | ~90% | `Config.cpp` (CustomTableValidationUnitTest class) |
 | **UT-PT: Palette round-trip + backward compat** | 11 tests | ≥90% | ~90% | `Config.cpp` (ConfigTest class) |
-| **Total Unit Tests** | **280** | **≥85%** | **~92%** | **Core functionality** |
+| **Total Unit Tests** | **281** | **≥85%** | **~92%** | **Core functionality** |
 
 *UT-06 has room for improvement in wildcard/reverse lookup coverage
 
-### Integration Tests Overview (268 tests, ~20 seconds)
+### Integration Tests Overview (271 tests, ~20 seconds)
 
 | Suite | Tests | Coverage Target | Actual Coverage | Test Approach |
 |-------|-------|-----------------|-----------------|---------------|
 | **IT-01: TSF Integration** | 33 tests | 55-80% | Server: 54.5%, DIME: 30.4% | DLL exports + Direct instantiation + System-level |
 | **IT-02: Language Bar** | 17 tests | ≥85% | LanguageBar: 26.3%, Compartment: 72.9% | Button management, mode switching |
-| **IT-03: Candidate Window** | 24 tests | ≥80% | CandidateWindow: 29.8%, ShadowWindow: 4.6% | Win32 window testing (incl. IT-CM-10–13) |
+| **IT-03: Candidate Window** | 25 tests | ≥80% | CandidateWindow: 29.8%, ShadowWindow: 4.6% | Win32 window testing (incl. IT-CM-10–13, IT03_06 test char regression) |
 | **IT-04: Notification Window** | 22 tests | ≥30% | NotifyWindow: ~30%, BaseWindow: ~35% | Win32 window testing (incl. IT-CM-20–22) |
 | **IT-05: TSF Core Logic** | 18 tests | ≥70% | KeyEventSink: 23.2%, Engine: 13.8% | Stub-based logic testing |
 | **IT-06: UIPresenter** | 54 tests | 55-60%* | **54.8%** | Stub-based testing (practical max) |
@@ -175,7 +175,7 @@ OpenCppCoverage --sources DIME --excluded_sources tests ^
 | **IT-CV: Custom Table Validation** | 14 tests | ≥85% | Config: ~70% | DialogContext + mode-aware validation |
 | **IT-PT: Palette integration** | 8 tests | ≥90% | Config: ~80% | Light/dark palette get/set + static defaults |
 | **IT-MF: CMemoryFile Real-File** | 6 tests | ≥85% | File.cpp: ~85% | Real dictionary + cache validation |
-| **Total Integration Tests** | **270** | **≥75%** | **~45%** | **Interaction & workflows** |
+| **Total Integration Tests** | **271** | **≥75%** | **~45%** | **Interaction & workflows** |
 
 *IT-06 revised target: 55-60% is practical maximum without full TSF simulation infrastructure
 **Overall project coverage limited by TSF/UI integration complexity
@@ -760,6 +760,16 @@ jobs:
 ---
 
 ## Document Revision History
+
+### Version 3.2 - 2026-03-17
+**Candidate width clipping + font settings regression tests; corrupted U+FFFD test strings fixed:**
+
+- ✅ **Total: 552 tests passing** (up from 550 at v3.1); 281 unit + 271 integration
+- ✅ **IT03_06** (`CandidateWindow_TestCharWidth_MatchesRealCJK`): Regression test verifying that the test character used for `_cxTitle` measurement ('國') has the same full-width as real CJK candidate characters ('美', '中', '署'). Catches the U+FFFD corruption bug where the test char measured 12px but real chars measured 28px in PMingLiU.
+- ✅ **WriteConfig_DoesNot_StompTimestamp**: Regression test verifying that `WriteConfig()` does not update `_initTimeStamp` — only `LoadConfig` should manage the timestamp cache. Before the fix, `WriteConfig` stomped the cache, preventing `_LoadConfig` from detecting changes after the settings dialog closed.
+- ✅ **WriteConfig_DetectExternalModification**: Refactored to avoid `confirmUpdated=TRUE` (triggers blocking MessageBox in automated tests). Uses `LoadConfig` to verify external modification detection instead.
+- ✅ **All `WriteConfig(TRUE)` calls in tests changed to `WriteConfig(FALSE)`**: Prevents MessageBox popups during automated test runs.
+- ✅ **4 corrupted U+FFFD strings fixed** in `UIPresenterIntegrationTest.cpp` (lines 432, 476, 498, 503)
 
 ### Version 3.1 - 2026-03-15
 **IT-MF-05/06 DAYI TTS cache tests; CLI load tests backup/restore; IT-MF-03–06 fail-not-skip:**

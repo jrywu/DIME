@@ -798,5 +798,65 @@ namespace DIMEIntegratedTests
             Assert::IsTrue(sel >= 0);
             delete pCandWnd;
         }
+
+        // Regression test for corrupted test character (U+FFFD) bug.
+        // The test character used in _DrawList/WM_CREATE to measure _cxTitle
+        // must have the same full-width as real CJK candidate characters.
+        // A corrupted char (U+FFFD) measured 12px in PMingLiU while real
+        // CJK chars measured 28px, causing candidate text to be clipped.
+        TEST_METHOD(IT03_06_CandidateWindow_TestCharWidth_MatchesRealCJK)
+        {
+            Logger::WriteMessage("Test: IT03_06_CandidateWindow_TestCharWidth_MatchesRealCJK\n");
+
+            // Use the system default font (same as candidate window)
+            HDC hDC = GetDC(nullptr);
+            Assert::IsNotNull(hDC, L"GetDC should succeed");
+
+            HFONT hFont = Global::defaultlFontHandle;
+            if (!hFont)
+            {
+                // Font not initialized — create a temporary one for testing
+                hFont = CreateFont(-28, 0, 0, 0, FW_NORMAL, FALSE, 0, 0,
+                    DEFAULT_CHARSET, 0, 0, 0, 0, L"PMingLiU");
+            }
+            Assert::IsNotNull(hFont, L"Font handle should be valid");
+
+            HFONT hOldFont = (HFONT)SelectObject(hDC, hFont);
+
+            // Measure the test character used in _DrawList (L"國")
+            SIZE sizeTest = { 0, 0 };
+            GetTextExtentPoint32(hDC, L"國", 1, &sizeTest);
+
+            // Measure real CJK candidate characters
+            SIZE sizeReal1 = { 0, 0 }, sizeReal2 = { 0, 0 }, sizeReal3 = { 0, 0 };
+            GetTextExtentPoint32(hDC, L"美", 1, &sizeReal1);
+            GetTextExtentPoint32(hDC, L"中", 1, &sizeReal2);
+            GetTextExtentPoint32(hDC, L"署", 1, &sizeReal3);
+
+            WCHAR msg[256];
+            swprintf_s(msg, L"Test char '國' width=%d, '美'=%d, '中'=%d, '署'=%d",
+                sizeTest.cx, sizeReal1.cx, sizeReal2.cx, sizeReal3.cx);
+            Logger::WriteMessage(msg);
+
+            // Assert: test character width must equal real CJK character widths
+            // This catches the U+FFFD bug where test char was 12px but real chars were 28px
+            Assert::AreEqual(sizeTest.cx, sizeReal1.cx,
+                L"Test char '國' must have same width as '美'");
+            Assert::AreEqual(sizeTest.cx, sizeReal2.cx,
+                L"Test char '國' must have same width as '中'");
+            Assert::AreEqual(sizeTest.cx, sizeReal3.cx,
+                L"Test char '國' must have same width as '署'");
+
+            // Bonus: verify test char is NOT narrow (catches future corruption)
+            TEXTMETRIC tm;
+            GetTextMetrics(hDC, &tm);
+            Assert::IsTrue(sizeTest.cx >= tm.tmAveCharWidth,
+                L"Test char width must be >= tmAveCharWidth (full-width, not narrow)");
+
+            SelectObject(hDC, hOldFont);
+            if (hFont != Global::defaultlFontHandle)
+                DeleteObject(hFont);
+            ReleaseDC(nullptr, hDC);
+        }
     };
 }
