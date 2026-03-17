@@ -23,59 +23,53 @@ _SetCandidateText():
   _InvalidateRect()               ← line 630, triggers second paint (correct)
 ```
 
-## Plan — Restore original order
+## Why removing `_ResizeWindow()` from `_SetScrollInfo` alone is insufficient
 
-Remove `_ResizeWindow()` from `_SetScrollInfo` (restoring pre-commit behavior), and expand the existing resize check in `_DrawList` to also cover height changes needed for the page indicator.
+Removing the synchronous paint fixes one trigger, but a deeper issue remains in `_DrawList`:
 
-### Change 1: Remove `_ResizeWindow()` from `_SetScrollInfo`
+1. `_DrawList` recalculates `_cxTitle` at line 817 (correct for new `_wndWidth`)
+2. Draws all items using `prc` — which reflects the **old** window size → **clipped**
+3. Detects mismatch at line 899 → `_ResizeWindow()` → `MoveWindow(TRUE)` → recursive repaint draws correctly
+4. **But then** `_DrawPageIndicator` (new in the page indicator commit) runs on the **outer DC** (still clipped to old size) — its `FillRect` overwrites part of the recursive paint's correct content
 
-**File:** `src/CandidateWindow.cpp`, line 1078
+Before the page indicator commit, step 4 didn't exist — `_DrawList` was the last drawing call in `_OnPaint`, so the recursive repaint's correct output was preserved. Now `_DrawPageIndicator` on the stale outer DC corrupts it.
 
-```cpp
-// Before:
-    if (_pVScrollBarWnd)
-    {
-        _pVScrollBarWnd->_SetScrollInfo(&si);
-        _ResizeWindow();  // resize height for page indicator before first paint
-    }
+## Plan — Minimal changes to `_DrawList`
 
-// After:
-    if (_pVScrollBarWnd)
-    {
-        _pVScrollBarWnd->_SetScrollInfo(&si);
-    }
-```
+### Change 1: Remove `_ResizeWindow()` from `_SetScrollInfo` — DONE
 
-This eliminates the synchronous `WM_PAINT` that fires before `_SetCandStringLength`.
+### Change 2: Move resize check from after drawing to before drawing in `_DrawList`
 
-### Change 2: Expand resize check in `_DrawList` to also cover height
+**File:** `src/CandidateWindow.cpp`, `_DrawList()`
 
-**File:** `src/CandidateWindow.cpp`, line 899
+Same conditional check that was at line 899, moved to after `_cxTitle`/`_cyRow` recalculation (after line 818), with height check added for page indicator. If mismatch → resize and `return` before any drawing.
 
-The existing check only detects width mismatches. Add a height check so the page indicator area is allocated on the first paint:
+After line 818 (`_cyRow = cyLine;`), insert:
 
 ```cpp
-// Before (line 899):
-if(_cxTitle != prc->right - prc->left - VScrollWidth) _ResizeWindow();
-
-// After:
-BOOL isMultiPage = (_pVScrollBarWnd && _pVScrollBarWnd->_IsEnabled());
-int expectedBottomPadding = isMultiPage ? _cyRow : _cyRow / 2;
-int expectedHeight = _cyRow * candidateListPageCnt + expectedBottomPadding + CANDWND_BORDER_WIDTH * 2;
-RECT rcWnd = {0, 0, 0, 0};
-GetWindowRect(_GetWnd(), &rcWnd);
-if(_cxTitle != prc->right - prc->left - VScrollWidth
-    || expectedHeight != rcWnd.bottom - rcWnd.top)
-    _ResizeWindow();
+	// Resize before drawing if dimensions changed — avoids drawing with stale prc
+	RECT rcWnd = {0, 0, 0, 0};
+	GetWindowRect(_GetWnd(), &rcWnd);
+	BOOL isMultiPage = (_pVScrollBarWnd && _pVScrollBarWnd->_IsEnabled());
+	int expectedBottomPadding = isMultiPage ? _cyRow : _cyRow / 2;
+	int expectedHeight = _cyRow * candidateListPageCnt + expectedBottomPadding + CANDWND_BORDER_WIDTH * 2;
+	if(_cxTitle != prc->right - prc->left - VScrollWidth
+		|| expectedHeight != rcWnd.bottom - rcWnd.top)
+	{
+		_ResizeWindow();
+		return;  // MoveWindow(TRUE) triggers fresh WM_PAINT with correct dimensions
+	}
 ```
 
-This way `_DrawList` triggers `_ResizeWindow()` when the window height doesn't match (e.g. switching between single-page and multi-page), just as it already does for width.
+Remove the post-draw resize check (current lines 899-906).
+
+This is the same mismatch check, just positioned before the drawing loop. When dimensions match (the common case), no resize — drawing proceeds normally. When they don't match (first paint after switching candidate width), it resizes and returns without drawing anything wrong.
 
 ## Files to modify
 
 1. `src/CandidateWindow.cpp`:
-   - `_SetScrollInfo()` (line 1078): remove `_ResizeWindow()` call
-   - `_DrawList()` (line 899): expand resize condition to include height check
+   - `_SetScrollInfo()`: remove `_ResizeWindow()` — DONE
+   - `_DrawList()`: move resize+height check from post-draw to pre-draw with early return
 
 ## Verification
 

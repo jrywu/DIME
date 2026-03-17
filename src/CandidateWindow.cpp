@@ -817,6 +817,19 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
 	_cxTitle = candSize.cx + StringPosition * cxLine;
 	_cyRow = cyLine;
 
+	// Resize before drawing if dimensions changed — avoids drawing with stale prc
+	RECT rcWnd = {0, 0, 0, 0};
+	GetWindowRect(_GetWnd(), &rcWnd);
+	BOOL isMultiPage = (_pVScrollBarWnd && _pVScrollBarWnd->_IsEnabled());
+	int expectedBottomPadding = isMultiPage ? _cyRow : _cyRow / 2;
+	int expectedHeight = _cyRow * candidateListPageCnt + expectedBottomPadding + CANDWND_BORDER_WIDTH * 2;
+	if(_cxTitle != prc->right - prc->left - VScrollWidth
+		|| expectedHeight != rcWnd.bottom - rcWnd.top)
+	{
+		_ResizeWindow();
+		return;  // MoveWindow(TRUE) triggers fresh WM_PAINT with correct dimensions
+	}
+
 	int cyOffset = candSize.cy / 8 + fistLineOffset; //offset in line + blank before 1st line.
 	
 
@@ -896,14 +909,7 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
         if(_brshBkColor) FillRect(dcHandle, &rc, _brshBkColor);
     }
 
-	BOOL isMultiPage = (_pVScrollBarWnd && _pVScrollBarWnd->_IsEnabled());
-	int expectedBottomPadding = isMultiPage ? _cyRow : _cyRow / 2;
-	int expectedHeight = _cyRow * candidateListPageCnt + expectedBottomPadding + CANDWND_BORDER_WIDTH * 2;
-	RECT rcWnd = {0, 0, 0, 0};
-	GetWindowRect(_GetWnd(), &rcWnd);
-	if(_cxTitle != prc->right - prc->left - VScrollWidth
-		|| expectedHeight != rcWnd.bottom - rcWnd.top)
-		_ResizeWindow();
+	if(_cxTitle != prc->right - prc->left - VScrollWidth) _ResizeWindow();
 }
 
 //+---------------------------------------------------------------------------
