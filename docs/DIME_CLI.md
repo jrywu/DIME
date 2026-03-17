@@ -10,6 +10,7 @@
 
 - **Additive, not breaking.** When invoked with no arguments, `DIMESettings.exe` behaves exactly as today (shows the GUI launcher).
 - **Headless.** When CLI arguments are detected, the process runs without any window, then exits with a status code.
+- **Case-insensitive.** All command switches (`--mode`, `--get`, `--set`, etc.), mode values (`dayi`, `ARRAY`, etc.), setting key names (`FontSize`, `fontsize`, etc.), and array table names (`ext-b`, `EXT-B`, etc.) are case-insensitive.
 - **Machine-readable output.** Every read/query command outputs plain `key=value` lines (or JSON with `--json`) to stdout for easy AI consumption.
 - **One INI file per IME mode.** The `--mode` flag is required for all read/write operations because each mode has its own config file (`DayiConfig.ini`, `ArrayConfig.ini`, `PhoneConfig.ini`, `GenericConfig.ini`).
 

@@ -495,10 +495,11 @@ public:
         Assert::IsNull(ki);
     }
 
-    TEST_METHOD(FindKey_CaseSensitive_WrongCase_ReturnsNull)
+    TEST_METHOD(FindKey_CaseInsensitive_ReturnsMatch)
     {
         const KeyInfo* ki = CLI_FindKey(L"autocompose");
-        Assert::IsNull(ki);
+        Assert::IsNotNull(ki);
+        Assert::AreEqual(L"AutoCompose", ki->name);
     }
 
     TEST_METHOD(FindKey_IntKey_HasCorrectRange)

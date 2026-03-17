@@ -83,11 +83,11 @@ static const int g_keyCount = (int)(sizeof(g_keyRegistry) / sizeof(g_keyRegistry
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-// Find a key entry by name (exact, case-sensitive).
+// Find a key entry by name (case-insensitive).
 static const KeyInfo* FindKey(const wchar_t* name)
 {
     for (int i = 0; i < g_keyCount; i++)
-        if (wcscmp(g_keyRegistry[i].name, name) == 0)
+        if (_wcsicmp(g_keyRegistry[i].name, name) == 0)
             return &g_keyRegistry[i];
     return nullptr;
 }
@@ -170,73 +170,73 @@ static bool GetKeyValue(const KeyInfo* ki, WCHAR* outBuf, int bufLen)
     const wchar_t* n = ki->name;
 
     // --- Boolean ---
-    if (wcscmp(n, L"AutoCompose") == 0)
+    if (_wcsicmp(n, L"AutoCompose") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%d", CConfig::GetAutoCompose() ? 1 : 0);
-    else if (wcscmp(n, L"SpaceAsPageDown") == 0)
+    else if (_wcsicmp(n, L"SpaceAsPageDown") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%d", CConfig::GetSpaceAsPageDown() ? 1 : 0);
-    else if (wcscmp(n, L"SpaceAsFirstCandSelkey") == 0)
+    else if (_wcsicmp(n, L"SpaceAsFirstCandSelkey") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%d", CConfig::GetSpaceAsFirstCaniSelkey() ? 1 : 0);
-    else if (wcscmp(n, L"ArrowKeySWPages") == 0)
+    else if (_wcsicmp(n, L"ArrowKeySWPages") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%d", CConfig::GetArrowKeySWPages() ? 1 : 0);
-    else if (wcscmp(n, L"ClearOnBeep") == 0)
+    else if (_wcsicmp(n, L"ClearOnBeep") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%d", CConfig::GetClearOnBeep() ? 1 : 0);
-    else if (wcscmp(n, L"DoBeep") == 0)
+    else if (_wcsicmp(n, L"DoBeep") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%d", CConfig::GetDoBeep() ? 1 : 0);
-    else if (wcscmp(n, L"DoBeepNotify") == 0)
+    else if (_wcsicmp(n, L"DoBeepNotify") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%d", CConfig::GetDoBeepNotify() ? 1 : 0);
-    else if (wcscmp(n, L"DoBeepOnCandi") == 0)
+    else if (_wcsicmp(n, L"DoBeepOnCandi") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%d", CConfig::GetDoBeepOnCandi() ? 1 : 0);
-    else if (wcscmp(n, L"ActivatedKeyboardMode") == 0)
+    else if (_wcsicmp(n, L"ActivatedKeyboardMode") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%d", CConfig::GetActivatedKeyboardMode() ? 1 : 0);
-    else if (wcscmp(n, L"MakePhrase") == 0)
+    else if (_wcsicmp(n, L"MakePhrase") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%d", CConfig::GetMakePhrase() ? 1 : 0);
-    else if (wcscmp(n, L"ShowNotifyDesktop") == 0)
+    else if (_wcsicmp(n, L"ShowNotifyDesktop") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%d", CConfig::GetShowNotifyDesktop() ? 1 : 0);
-    else if (wcscmp(n, L"DoHanConvert") == 0)
+    else if (_wcsicmp(n, L"DoHanConvert") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%d", CConfig::GetDoHanConvert() ? 1 : 0);
-    else if (wcscmp(n, L"FontItalic") == 0)
+    else if (_wcsicmp(n, L"FontItalic") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%d", CConfig::GetFontItalic() ? 1 : 0);
-    else if (wcscmp(n, L"CustomTablePriority") == 0)
+    else if (_wcsicmp(n, L"CustomTablePriority") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%d", CConfig::getCustomTablePriority() ? 1 : 0);
-    else if (wcscmp(n, L"DayiArticleMode") == 0)
+    else if (_wcsicmp(n, L"DayiArticleMode") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%d", CConfig::getDayiArticleMode() ? 1 : 0);
-    else if (wcscmp(n, L"ArrayForceSP") == 0)
+    else if (_wcsicmp(n, L"ArrayForceSP") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%d", CConfig::GetArrayForceSP() ? 1 : 0);
-    else if (wcscmp(n, L"ArrayNotifySP") == 0)
+    else if (_wcsicmp(n, L"ArrayNotifySP") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%d", CConfig::GetArrayNotifySP() ? 1 : 0);
-    else if (wcscmp(n, L"ArraySingleQuoteCustomPhrase") == 0)
+    else if (_wcsicmp(n, L"ArraySingleQuoteCustomPhrase") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%d", CConfig::GetArraySingleQuoteCustomPhrase() ? 1 : 0);
-    else if (wcscmp(n, L"Big5Filter") == 0)
+    else if (_wcsicmp(n, L"Big5Filter") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%d", CConfig::GetBig5Filter() ? 1 : 0);
     // --- Integer / enum ---
-    else if (wcscmp(n, L"MaxCodes") == 0)
+    else if (_wcsicmp(n, L"MaxCodes") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%u", CConfig::GetMaxCodes());
-    else if (wcscmp(n, L"FontSize") == 0)
+    else if (_wcsicmp(n, L"FontSize") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%u", CConfig::GetFontSize());
-    else if (wcscmp(n, L"FontWeight") == 0)
+    else if (_wcsicmp(n, L"FontWeight") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%u", CConfig::GetFontWeight());
-    else if (wcscmp(n, L"IMEShiftMode") == 0)
+    else if (_wcsicmp(n, L"IMEShiftMode") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%d", (int)CConfig::GetIMEShiftMode());
-    else if (wcscmp(n, L"DoubleSingleByteMode") == 0)
+    else if (_wcsicmp(n, L"DoubleSingleByteMode") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%d", (int)CConfig::GetDoubleSingleByteMode());
-    else if (wcscmp(n, L"ColorMode") == 0)
+    else if (_wcsicmp(n, L"ColorMode") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%d", (int)CConfig::GetColorMode());
-    else if (wcscmp(n, L"NumericPad") == 0)
+    else if (_wcsicmp(n, L"NumericPad") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%d", (int)CConfig::GetNumericPad());
-    else if (wcscmp(n, L"ArrayScope") == 0)
+    else if (_wcsicmp(n, L"ArrayScope") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%d", (int)CConfig::GetArrayScope());
-    else if (wcscmp(n, L"PhoneticKeyboardLayout") == 0)
+    else if (_wcsicmp(n, L"PhoneticKeyboardLayout") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%d", (int)CConfig::getPhoneticKeyboardLayout());
     // --- String ---
-    else if (wcscmp(n, L"FontFaceName") == 0)
+    else if (_wcsicmp(n, L"FontFaceName") == 0)
         StringCchCopyW(outBuf, bufLen, CConfig::GetFontFaceName());
-    else if (wcscmp(n, L"ReverseConversionDescription") == 0)
+    else if (_wcsicmp(n, L"ReverseConversionDescription") == 0)
     {
         WCHAR* desc = CConfig::GetReverseConversionDescription();
         StringCchCopyW(outBuf, bufLen, desc ? desc : L"");
     }
     // --- CLSID / GUID ---
-    else if (wcscmp(n, L"ReverseConversionCLSID") == 0)
+    else if (_wcsicmp(n, L"ReverseConversionCLSID") == 0)
     {
         BSTR bstr = nullptr;
         if (SUCCEEDED(StringFromCLSID(CConfig::GetReverseConverstionCLSID(), &bstr)) && bstr)
@@ -247,7 +247,7 @@ static bool GetKeyValue(const KeyInfo* ki, WCHAR* outBuf, int bufLen)
         else
             StringCchCopyW(outBuf, bufLen, L"");
     }
-    else if (wcscmp(n, L"ReverseConversionGUIDProfile") == 0)
+    else if (_wcsicmp(n, L"ReverseConversionGUIDProfile") == 0)
     {
         BSTR bstr = nullptr;
         if (SUCCEEDED(StringFromCLSID(CConfig::GetReverseConversionGUIDProfile(), &bstr)) && bstr)
@@ -259,41 +259,41 @@ static bool GetKeyValue(const KeyInfo* ki, WCHAR* outBuf, int bufLen)
             StringCchCopyW(outBuf, bufLen, L"");
     }
     // --- Colour keys ---
-    else if (wcscmp(n, L"ItemColor") == 0)
+    else if (_wcsicmp(n, L"ItemColor") == 0)
         StringCchPrintfW(outBuf, bufLen, L"0x%06X", CConfig::GetItemColor());
-    else if (wcscmp(n, L"PhraseColor") == 0)
+    else if (_wcsicmp(n, L"PhraseColor") == 0)
         StringCchPrintfW(outBuf, bufLen, L"0x%06X", CConfig::GetPhraseColor());
-    else if (wcscmp(n, L"NumberColor") == 0)
+    else if (_wcsicmp(n, L"NumberColor") == 0)
         StringCchPrintfW(outBuf, bufLen, L"0x%06X", CConfig::GetNumberColor());
-    else if (wcscmp(n, L"ItemBGColor") == 0)
+    else if (_wcsicmp(n, L"ItemBGColor") == 0)
         StringCchPrintfW(outBuf, bufLen, L"0x%06X", CConfig::GetItemBGColor());
-    else if (wcscmp(n, L"SelectedItemColor") == 0)
+    else if (_wcsicmp(n, L"SelectedItemColor") == 0)
         StringCchPrintfW(outBuf, bufLen, L"0x%06X", CConfig::GetSelectedColor());
-    else if (wcscmp(n, L"SelectedBGItemColor") == 0)
+    else if (_wcsicmp(n, L"SelectedBGItemColor") == 0)
         StringCchPrintfW(outBuf, bufLen, L"0x%06X", CConfig::GetSelectedBGColor());
-    else if (wcscmp(n, L"LightItemColor") == 0)
+    else if (_wcsicmp(n, L"LightItemColor") == 0)
         StringCchPrintfW(outBuf, bufLen, L"0x%06X", CConfig::GetLightItemColor());
-    else if (wcscmp(n, L"LightPhraseColor") == 0)
+    else if (_wcsicmp(n, L"LightPhraseColor") == 0)
         StringCchPrintfW(outBuf, bufLen, L"0x%06X", CConfig::GetLightPhraseColor());
-    else if (wcscmp(n, L"LightNumberColor") == 0)
+    else if (_wcsicmp(n, L"LightNumberColor") == 0)
         StringCchPrintfW(outBuf, bufLen, L"0x%06X", CConfig::GetLightNumberColor());
-    else if (wcscmp(n, L"LightItemBGColor") == 0)
+    else if (_wcsicmp(n, L"LightItemBGColor") == 0)
         StringCchPrintfW(outBuf, bufLen, L"0x%06X", CConfig::GetLightItemBGColor());
-    else if (wcscmp(n, L"LightSelectedItemColor") == 0)
+    else if (_wcsicmp(n, L"LightSelectedItemColor") == 0)
         StringCchPrintfW(outBuf, bufLen, L"0x%06X", CConfig::GetLightSelectedColor());
-    else if (wcscmp(n, L"LightSelectedBGItemColor") == 0)
+    else if (_wcsicmp(n, L"LightSelectedBGItemColor") == 0)
         StringCchPrintfW(outBuf, bufLen, L"0x%06X", CConfig::GetLightSelectedBGColor());
-    else if (wcscmp(n, L"DarkItemColor") == 0)
+    else if (_wcsicmp(n, L"DarkItemColor") == 0)
         StringCchPrintfW(outBuf, bufLen, L"0x%06X", CConfig::GetDarkItemColor());
-    else if (wcscmp(n, L"DarkPhraseColor") == 0)
+    else if (_wcsicmp(n, L"DarkPhraseColor") == 0)
         StringCchPrintfW(outBuf, bufLen, L"0x%06X", CConfig::GetDarkPhraseColor());
-    else if (wcscmp(n, L"DarkNumberColor") == 0)
+    else if (_wcsicmp(n, L"DarkNumberColor") == 0)
         StringCchPrintfW(outBuf, bufLen, L"0x%06X", CConfig::GetDarkNumberColor());
-    else if (wcscmp(n, L"DarkItemBGColor") == 0)
+    else if (_wcsicmp(n, L"DarkItemBGColor") == 0)
         StringCchPrintfW(outBuf, bufLen, L"0x%06X", CConfig::GetDarkItemBGColor());
-    else if (wcscmp(n, L"DarkSelectedItemColor") == 0)
+    else if (_wcsicmp(n, L"DarkSelectedItemColor") == 0)
         StringCchPrintfW(outBuf, bufLen, L"0x%06X", CConfig::GetDarkSelectedColor());
-    else if (wcscmp(n, L"DarkSelectedBGItemColor") == 0)
+    else if (_wcsicmp(n, L"DarkSelectedBGItemColor") == 0)
         StringCchPrintfW(outBuf, bufLen, L"0x%06X", CConfig::GetDarkSelectedBGColor());
     else
         return false;
@@ -326,34 +326,34 @@ static int ApplyKeyValue(const KeyInfo* ki, const wchar_t* valueStr, FILE* err)
             return 1;
         }
         // Apply to in-memory config
-        if      (wcscmp(n, L"AutoCompose") == 0)              CConfig::SetAutoCompose((BOOL)v);
-        else if (wcscmp(n, L"SpaceAsPageDown") == 0)          CConfig::SetSpaceAsPageDown((BOOL)v);
-        else if (wcscmp(n, L"SpaceAsFirstCandSelkey") == 0)   CConfig::SetSpaceAsFirstCaniSelkey((BOOL)v);
-        else if (wcscmp(n, L"ArrowKeySWPages") == 0)          CConfig::SetArrowKeySWPages((BOOL)v);
-        else if (wcscmp(n, L"ClearOnBeep") == 0)              CConfig::SetClearOnBeep((BOOL)v);
-        else if (wcscmp(n, L"DoBeep") == 0)                   CConfig::SetDoBeep((BOOL)v);
-        else if (wcscmp(n, L"DoBeepNotify") == 0)             CConfig::SetDoBeepNotify((BOOL)v);
-        else if (wcscmp(n, L"DoBeepOnCandi") == 0)            CConfig::SetDoBeepOnCandi((BOOL)v);
-        else if (wcscmp(n, L"ActivatedKeyboardMode") == 0)    CConfig::SetActivatedKeyboardMode((BOOL)v);
-        else if (wcscmp(n, L"MakePhrase") == 0)               CConfig::SetMakePhrase((BOOL)v);
-        else if (wcscmp(n, L"ShowNotifyDesktop") == 0)        CConfig::SetShowNotifyDesktop((BOOL)v);
-        else if (wcscmp(n, L"DoHanConvert") == 0)             CConfig::SetDoHanConvert((BOOL)v);
-        else if (wcscmp(n, L"FontItalic") == 0)               CConfig::SetFontItalic((BOOL)v);
-        else if (wcscmp(n, L"CustomTablePriority") == 0)      CConfig::setCustomTablePriority((BOOL)v);
-        else if (wcscmp(n, L"DayiArticleMode") == 0)          CConfig::setDayiArticleMode((BOOL)v);
-        else if (wcscmp(n, L"ArrayForceSP") == 0)             CConfig::SetArrayForceSP((BOOL)v);
-        else if (wcscmp(n, L"ArrayNotifySP") == 0)            CConfig::SetArrayNotifySP((BOOL)v);
-        else if (wcscmp(n, L"ArraySingleQuoteCustomPhrase") == 0) CConfig::SetArraySingleQuoteCustomPhrase((BOOL)v);
-        else if (wcscmp(n, L"Big5Filter") == 0)               CConfig::SetBig5Filter((BOOL)v);
-        else if (wcscmp(n, L"MaxCodes") == 0)                 CConfig::SetMaxCodes((UINT)v);
-        else if (wcscmp(n, L"FontSize") == 0)                 CConfig::SetFontSize((UINT)v);
-        else if (wcscmp(n, L"FontWeight") == 0)               CConfig::SetFontWeight((UINT)v);
-        else if (wcscmp(n, L"IMEShiftMode") == 0)             CConfig::SetIMEShiftMode((IME_SHIFT_MODE)v);
-        else if (wcscmp(n, L"DoubleSingleByteMode") == 0)     CConfig::SetDoubleSingleByteMode((DOUBLE_SINGLE_BYTE_MODE)v);
-        else if (wcscmp(n, L"ColorMode") == 0)                CConfig::SetColorMode((IME_COLOR_MODE)v);
-        else if (wcscmp(n, L"NumericPad") == 0)               CConfig::SetNumericPad((NUMERIC_PAD)v);
-        else if (wcscmp(n, L"ArrayScope") == 0)               CConfig::SetArrayScope((ARRAY_SCOPE)v);
-        else if (wcscmp(n, L"PhoneticKeyboardLayout") == 0)   CConfig::setPhoneticKeyboardLayout((PHONETIC_KEYBOARD_LAYOUT)v);
+        if      (_wcsicmp(n, L"AutoCompose") == 0)              CConfig::SetAutoCompose((BOOL)v);
+        else if (_wcsicmp(n, L"SpaceAsPageDown") == 0)          CConfig::SetSpaceAsPageDown((BOOL)v);
+        else if (_wcsicmp(n, L"SpaceAsFirstCandSelkey") == 0)   CConfig::SetSpaceAsFirstCaniSelkey((BOOL)v);
+        else if (_wcsicmp(n, L"ArrowKeySWPages") == 0)          CConfig::SetArrowKeySWPages((BOOL)v);
+        else if (_wcsicmp(n, L"ClearOnBeep") == 0)              CConfig::SetClearOnBeep((BOOL)v);
+        else if (_wcsicmp(n, L"DoBeep") == 0)                   CConfig::SetDoBeep((BOOL)v);
+        else if (_wcsicmp(n, L"DoBeepNotify") == 0)             CConfig::SetDoBeepNotify((BOOL)v);
+        else if (_wcsicmp(n, L"DoBeepOnCandi") == 0)            CConfig::SetDoBeepOnCandi((BOOL)v);
+        else if (_wcsicmp(n, L"ActivatedKeyboardMode") == 0)    CConfig::SetActivatedKeyboardMode((BOOL)v);
+        else if (_wcsicmp(n, L"MakePhrase") == 0)               CConfig::SetMakePhrase((BOOL)v);
+        else if (_wcsicmp(n, L"ShowNotifyDesktop") == 0)        CConfig::SetShowNotifyDesktop((BOOL)v);
+        else if (_wcsicmp(n, L"DoHanConvert") == 0)             CConfig::SetDoHanConvert((BOOL)v);
+        else if (_wcsicmp(n, L"FontItalic") == 0)               CConfig::SetFontItalic((BOOL)v);
+        else if (_wcsicmp(n, L"CustomTablePriority") == 0)      CConfig::setCustomTablePriority((BOOL)v);
+        else if (_wcsicmp(n, L"DayiArticleMode") == 0)          CConfig::setDayiArticleMode((BOOL)v);
+        else if (_wcsicmp(n, L"ArrayForceSP") == 0)             CConfig::SetArrayForceSP((BOOL)v);
+        else if (_wcsicmp(n, L"ArrayNotifySP") == 0)            CConfig::SetArrayNotifySP((BOOL)v);
+        else if (_wcsicmp(n, L"ArraySingleQuoteCustomPhrase") == 0) CConfig::SetArraySingleQuoteCustomPhrase((BOOL)v);
+        else if (_wcsicmp(n, L"Big5Filter") == 0)               CConfig::SetBig5Filter((BOOL)v);
+        else if (_wcsicmp(n, L"MaxCodes") == 0)                 CConfig::SetMaxCodes((UINT)v);
+        else if (_wcsicmp(n, L"FontSize") == 0)                 CConfig::SetFontSize((UINT)v);
+        else if (_wcsicmp(n, L"FontWeight") == 0)               CConfig::SetFontWeight((UINT)v);
+        else if (_wcsicmp(n, L"IMEShiftMode") == 0)             CConfig::SetIMEShiftMode((IME_SHIFT_MODE)v);
+        else if (_wcsicmp(n, L"DoubleSingleByteMode") == 0)     CConfig::SetDoubleSingleByteMode((DOUBLE_SINGLE_BYTE_MODE)v);
+        else if (_wcsicmp(n, L"ColorMode") == 0)                CConfig::SetColorMode((IME_COLOR_MODE)v);
+        else if (_wcsicmp(n, L"NumericPad") == 0)               CConfig::SetNumericPad((NUMERIC_PAD)v);
+        else if (_wcsicmp(n, L"ArrayScope") == 0)               CConfig::SetArrayScope((ARRAY_SCOPE)v);
+        else if (_wcsicmp(n, L"PhoneticKeyboardLayout") == 0)   CConfig::setPhoneticKeyboardLayout((PHONETIC_KEYBOARD_LAYOUT)v);
         else return 1; // should not reach here
     }
     else if (ki->type == COLOR_T)
@@ -364,35 +364,35 @@ static int ApplyKeyValue(const KeyInfo* ki, const wchar_t* valueStr, FILE* err)
             fwprintf_s(err, L"Error: '%s' is not a valid hex colour (e.g. 0xRRGGBB).\n", valueStr);
             return 1;
         }
-        if      (wcscmp(n, L"ItemColor") == 0)               CConfig::SetItemColor(c);
-        else if (wcscmp(n, L"PhraseColor") == 0)             CConfig::SetPhraseColor(c);
-        else if (wcscmp(n, L"NumberColor") == 0)             CConfig::SetNumberColor(c);
-        else if (wcscmp(n, L"ItemBGColor") == 0)             CConfig::SetItemBGColor(c);
-        else if (wcscmp(n, L"SelectedItemColor") == 0)       CConfig::SetSelectedColor(c);
-        else if (wcscmp(n, L"SelectedBGItemColor") == 0)     CConfig::SetSelectedBGColor(c);
-        else if (wcscmp(n, L"LightItemColor") == 0)          CConfig::SetLightItemColor(c);
-        else if (wcscmp(n, L"LightPhraseColor") == 0)        CConfig::SetLightPhraseColor(c);
-        else if (wcscmp(n, L"LightNumberColor") == 0)        CConfig::SetLightNumberColor(c);
-        else if (wcscmp(n, L"LightItemBGColor") == 0)        CConfig::SetLightItemBGColor(c);
-        else if (wcscmp(n, L"LightSelectedItemColor") == 0)  CConfig::SetLightSelectedColor(c);
-        else if (wcscmp(n, L"LightSelectedBGItemColor") == 0)CConfig::SetLightSelectedBGColor(c);
-        else if (wcscmp(n, L"DarkItemColor") == 0)           CConfig::SetDarkItemColor(c);
-        else if (wcscmp(n, L"DarkPhraseColor") == 0)         CConfig::SetDarkPhraseColor(c);
-        else if (wcscmp(n, L"DarkNumberColor") == 0)         CConfig::SetDarkNumberColor(c);
-        else if (wcscmp(n, L"DarkItemBGColor") == 0)         CConfig::SetDarkItemBGColor(c);
-        else if (wcscmp(n, L"DarkSelectedItemColor") == 0)   CConfig::SetDarkSelectedColor(c);
-        else if (wcscmp(n, L"DarkSelectedBGItemColor") == 0) CConfig::SetDarkSelectedBGColor(c);
+        if      (_wcsicmp(n, L"ItemColor") == 0)               CConfig::SetItemColor(c);
+        else if (_wcsicmp(n, L"PhraseColor") == 0)             CConfig::SetPhraseColor(c);
+        else if (_wcsicmp(n, L"NumberColor") == 0)             CConfig::SetNumberColor(c);
+        else if (_wcsicmp(n, L"ItemBGColor") == 0)             CConfig::SetItemBGColor(c);
+        else if (_wcsicmp(n, L"SelectedItemColor") == 0)       CConfig::SetSelectedColor(c);
+        else if (_wcsicmp(n, L"SelectedBGItemColor") == 0)     CConfig::SetSelectedBGColor(c);
+        else if (_wcsicmp(n, L"LightItemColor") == 0)          CConfig::SetLightItemColor(c);
+        else if (_wcsicmp(n, L"LightPhraseColor") == 0)        CConfig::SetLightPhraseColor(c);
+        else if (_wcsicmp(n, L"LightNumberColor") == 0)        CConfig::SetLightNumberColor(c);
+        else if (_wcsicmp(n, L"LightItemBGColor") == 0)        CConfig::SetLightItemBGColor(c);
+        else if (_wcsicmp(n, L"LightSelectedItemColor") == 0)  CConfig::SetLightSelectedColor(c);
+        else if (_wcsicmp(n, L"LightSelectedBGItemColor") == 0)CConfig::SetLightSelectedBGColor(c);
+        else if (_wcsicmp(n, L"DarkItemColor") == 0)           CConfig::SetDarkItemColor(c);
+        else if (_wcsicmp(n, L"DarkPhraseColor") == 0)         CConfig::SetDarkPhraseColor(c);
+        else if (_wcsicmp(n, L"DarkNumberColor") == 0)         CConfig::SetDarkNumberColor(c);
+        else if (_wcsicmp(n, L"DarkItemBGColor") == 0)         CConfig::SetDarkItemBGColor(c);
+        else if (_wcsicmp(n, L"DarkSelectedItemColor") == 0)   CConfig::SetDarkSelectedColor(c);
+        else if (_wcsicmp(n, L"DarkSelectedBGItemColor") == 0) CConfig::SetDarkSelectedBGColor(c);
         else return 1;
     }
     else if (ki->type == STRING_T)
     {
-        if (wcscmp(n, L"FontFaceName") == 0)
+        if (_wcsicmp(n, L"FontFaceName") == 0)
         {
             WCHAR buf[LF_FACESIZE] = {};
             StringCchCopyW(buf, LF_FACESIZE, valueStr);
             CConfig::SetFontFaceName(buf);
         }
-        else if (wcscmp(n, L"ReverseConversionDescription") == 0)
+        else if (_wcsicmp(n, L"ReverseConversionDescription") == 0)
         {
             size_t len = wcslen(valueStr) + 1;
             WCHAR* p = new (std::nothrow) WCHAR[len];
@@ -414,9 +414,9 @@ static int ApplyKeyValue(const KeyInfo* ki, const wchar_t* valueStr, FILE* err)
                 return 1;
             }
         }
-        if (wcscmp(n, L"ReverseConversionCLSID") == 0)
+        if (_wcsicmp(n, L"ReverseConversionCLSID") == 0)
             CConfig::SetReverseConverstionCLSID(clsid);
-        else if (wcscmp(n, L"ReverseConversionGUIDProfile") == 0)
+        else if (_wcsicmp(n, L"ReverseConversionGUIDProfile") == 0)
             CConfig::SetReverseConversionGUIDProfile(clsid);
         else return 1;
     }
@@ -830,33 +830,33 @@ bool ParseCLIArgs(_In_ const wchar_t* cmdLine, _Out_ CLIArgs& args, _In_ FILE* e
     {
         const wchar_t* arg = argv[i];
 
-        if (wcscmp(arg, L"--mode") == 0)
+        if (_wcsicmp(arg, L"--mode") == 0)
         {
             if (i + 1 >= argc) { fwprintf_s(err, L"Error: --mode requires an argument.\n"); ok = false; break; }
             i++;
             const wchar_t* m = argv[i];
-            if      (wcscmp(m, L"dayi")     == 0) args.mode = IME_MODE::IME_MODE_DAYI;
-            else if (wcscmp(m, L"array")    == 0) args.mode = IME_MODE::IME_MODE_ARRAY;
-            else if (wcscmp(m, L"phonetic") == 0) args.mode = IME_MODE::IME_MODE_PHONETIC;
-            else if (wcscmp(m, L"generic")  == 0) args.mode = IME_MODE::IME_MODE_GENERIC;
+            if      (_wcsicmp(m, L"dayi")     == 0) args.mode = IME_MODE::IME_MODE_DAYI;
+            else if (_wcsicmp(m, L"array")    == 0) args.mode = IME_MODE::IME_MODE_ARRAY;
+            else if (_wcsicmp(m, L"phonetic") == 0) args.mode = IME_MODE::IME_MODE_PHONETIC;
+            else if (_wcsicmp(m, L"generic")  == 0) args.mode = IME_MODE::IME_MODE_GENERIC;
             else { fwprintf_s(err, L"Error: unknown mode '%s'.\n", m); ok = false; break; }
             args.hasMode = TRUE;
         }
-        else if (wcscmp(arg, L"--json")        == 0) args.jsonOutput = TRUE;
-        else if (wcscmp(arg, L"--silent")      == 0) args.silent     = TRUE;
-        else if (wcscmp(arg, L"--list-modes")  == 0) args.command    = CLI_LIST_MODES;
-        else if (wcscmp(arg, L"--list-keys")   == 0) args.command    = CLI_LIST_KEYS;
-        else if (wcscmp(arg, L"--help") == 0 || wcscmp(arg, L"-h") == 0) args.command = CLI_HELP;
-        else if (wcscmp(arg, L"--get-all")     == 0) args.command    = CLI_GET_ALL;
-        else if (wcscmp(arg, L"--reset")       == 0) args.command    = CLI_RESET;
-        else if (wcscmp(arg, L"--get") == 0)
+        else if (_wcsicmp(arg, L"--json")        == 0) args.jsonOutput = TRUE;
+        else if (_wcsicmp(arg, L"--silent")      == 0) args.silent     = TRUE;
+        else if (_wcsicmp(arg, L"--list-modes")  == 0) args.command    = CLI_LIST_MODES;
+        else if (_wcsicmp(arg, L"--list-keys")   == 0) args.command    = CLI_LIST_KEYS;
+        else if (_wcsicmp(arg, L"--help") == 0 || _wcsicmp(arg, L"-h") == 0) args.command = CLI_HELP;
+        else if (_wcsicmp(arg, L"--get-all")     == 0) args.command    = CLI_GET_ALL;
+        else if (_wcsicmp(arg, L"--reset")       == 0) args.command    = CLI_RESET;
+        else if (_wcsicmp(arg, L"--get") == 0)
         {
             if (i + 1 >= argc) { fwprintf_s(err, L"Error: --get requires a key name.\n"); ok = false; break; }
             i++;
             args.command = CLI_GET;
             StringCchCopyW(args.getKey, _countof(args.getKey), argv[i]);
         }
-        else if (wcscmp(arg, L"--set") == 0)
+        else if (_wcsicmp(arg, L"--set") == 0)
         {
             if (i + 2 >= argc)
             { fwprintf_s(err, L"Error: --set requires a key and a value.\n"); ok = false; break; }
@@ -869,47 +869,47 @@ bool ParseCLIArgs(_In_ const wchar_t* cmdLine, _Out_ CLIArgs& args, _In_ FILE* e
             args.setCount++;
             args.command = CLI_SET;
         }
-        else if (wcscmp(arg, L"--import-custom") == 0)
+        else if (_wcsicmp(arg, L"--import-custom") == 0)
         {
             if (i + 1 >= argc) { fwprintf_s(err, L"Error: --import-custom requires a file path.\n"); ok = false; break; }
             i++;
             args.command = CLI_IMPORT_CUSTOM;
             StringCchCopyW(args.filePath, MAX_PATH, argv[i]);
         }
-        else if (wcscmp(arg, L"--export-custom") == 0)
+        else if (_wcsicmp(arg, L"--export-custom") == 0)
         {
             if (i + 1 >= argc) { fwprintf_s(err, L"Error: --export-custom requires a file path.\n"); ok = false; break; }
             i++;
             args.command = CLI_EXPORT_CUSTOM;
             StringCchCopyW(args.filePath, MAX_PATH, argv[i]);
         }
-        else if (wcscmp(arg, L"--load-main") == 0)
+        else if (_wcsicmp(arg, L"--load-main") == 0)
         {
             if (i + 1 >= argc) { fwprintf_s(err, L"Error: --load-main requires a file path.\n"); ok = false; break; }
             i++;
             args.command = CLI_LOAD_MAIN;
             StringCchCopyW(args.filePath, MAX_PATH, argv[i]);
         }
-        else if (wcscmp(arg, L"--load-phrase") == 0)
+        else if (_wcsicmp(arg, L"--load-phrase") == 0)
         {
             if (i + 1 >= argc) { fwprintf_s(err, L"Error: --load-phrase requires a file path.\n"); ok = false; break; }
             i++;
             args.command = CLI_LOAD_PHRASE;
             StringCchCopyW(args.filePath, MAX_PATH, argv[i]);
         }
-        else if (wcscmp(arg, L"--load-array") == 0)
+        else if (_wcsicmp(arg, L"--load-array") == 0)
         {
             if (i + 2 >= argc)
             { fwprintf_s(err, L"Error: --load-array requires a table name and a file path.\n"); ok = false; break; }
             i++;
             const wchar_t* tbl = argv[i];
-            if      (wcscmp(tbl, L"sp")      == 0) args.arrayTable = CLI_TABLE_SP;
-            else if (wcscmp(tbl, L"sc")      == 0) args.arrayTable = CLI_TABLE_SC;
-            else if (wcscmp(tbl, L"ext-b")   == 0) args.arrayTable = CLI_TABLE_EXT_B;
-            else if (wcscmp(tbl, L"ext-cd")  == 0) args.arrayTable = CLI_TABLE_EXT_CD;
-            else if (wcscmp(tbl, L"ext-efg") == 0) args.arrayTable = CLI_TABLE_EXT_EFG;
-            else if (wcscmp(tbl, L"array40") == 0) args.arrayTable = CLI_TABLE_ARRAY40;
-            else if (wcscmp(tbl, L"phrase")  == 0) args.arrayTable = CLI_TABLE_PHRASE;
+            if      (_wcsicmp(tbl, L"sp")      == 0) args.arrayTable = CLI_TABLE_SP;
+            else if (_wcsicmp(tbl, L"sc")      == 0) args.arrayTable = CLI_TABLE_SC;
+            else if (_wcsicmp(tbl, L"ext-b")   == 0) args.arrayTable = CLI_TABLE_EXT_B;
+            else if (_wcsicmp(tbl, L"ext-cd")  == 0) args.arrayTable = CLI_TABLE_EXT_CD;
+            else if (_wcsicmp(tbl, L"ext-efg") == 0) args.arrayTable = CLI_TABLE_EXT_EFG;
+            else if (_wcsicmp(tbl, L"array40") == 0) args.arrayTable = CLI_TABLE_ARRAY40;
+            else if (_wcsicmp(tbl, L"phrase")  == 0) args.arrayTable = CLI_TABLE_PHRASE;
             else { fwprintf_s(err, L"Error: unknown array table '%s'.\n", tbl); ok = false; break; }
             i++;
             args.command = CLI_LOAD_ARRAY;
