@@ -405,10 +405,11 @@ BOOL CMemoryFile::SetupReadBuffer()
         }
         else if (fileType == FileType::TTS && rem > 0 && *p == L'[')
         {
-            // Any [Section] header: enter filter region only for [Text]
+            // Any [Section] header: enter filter region for [Text] and [Symbol]
             const WCHAR* s  = p + 1;           // skip '['
             DWORD_PTR    sr = rem - 1;
-            inFilterSection = (sr >= 5 && _wcsnicmp(s, L"Text]", 5) == 0);
+            inFilterSection = (sr >= 5 && _wcsnicmp(s, L"Text]", 5) == 0)
+                           || (sr >= 7 && _wcsnicmp(s, L"Symbol]", 7) == 0);
         }
 
         // ── Selective copy ────────────────────────────────────────────────
