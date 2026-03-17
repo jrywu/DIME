@@ -621,6 +621,12 @@
     <WixVariable Id="WixUIBannerBmp" Value="$(sys.SOURCEFILEDIR)banner.bmp" />
     <UIRef Id="WixUI_Common" />
     <UI>
+      <!-- Override default WixUI fonts with Microsoft JhengHei UI for proper CJK rendering -->
+      <TextStyle Id="WixUI_Font_Normal" FaceName="Microsoft JhengHei UI" Size="10" />
+      <TextStyle Id="WixUI_Font_Bigger" FaceName="Microsoft JhengHei UI" Size="12" Bold="yes" />
+      <TextStyle Id="WixUI_Font_Title"  FaceName="Microsoft JhengHei UI" Size="11" Bold="yes" />
+      <Property Id="DefaultUIFont" Value="WixUI_Font_Normal" />
+
       <!-- Pull in dialogs not included by WixUI_Common -->
       <DialogRef Id="WelcomeDlg" />
       <DialogRef Id="MaintenanceWelcomeDlg" />
