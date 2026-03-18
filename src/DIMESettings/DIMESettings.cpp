@@ -11,6 +11,8 @@
 #include "..\BuildInfo.h"
 #include "..\TfInputProcessorProfile.h"
 
+#include <io.h>      // _open_osfhandle, _dup2, _fileno
+#include <fcntl.h>   // _O_WRONLY, _O_TEXT
 #include <dwmapi.h>
 #include <uxtheme.h>
 #pragma comment(lib, "dwmapi.lib")
@@ -113,10 +115,35 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     // CLI mode: if any arguments are present, run headless and return immediately.
     if (lpCmdLine && lpCmdLine[0] != L'\0')
     {
-        // Attach to the parent console (e.g. cmd.exe) so output reaches the terminal.
-        // If there is no parent console (e.g. launched from a shortcut), allocate one.
-        // Remember whether we attached to an existing console: we only need to inject
-        // a synthetic Enter into an existing parent console, not one we just created.
+        // Check if the parent already redirected our stdout (pipe from
+        // FOR /F, | pipe, or > file).  GUI-subsystem apps receive inherited
+        // handles when the parent sets STARTF_USESTDHANDLES.
+        HANDLE hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
+        bool outputRedirected = (hStdOut != NULL && hStdOut != INVALID_HANDLE_VALUE);
+
+        if (outputRedirected)
+        {
+            // Stdout is a pipe or file — wire up C runtime streams to the
+            // inherited handles so fwprintf(stdout, ...) writes to the pipe.
+            int fd = _open_osfhandle((intptr_t)hStdOut, _O_WRONLY | _O_TEXT);
+            if (fd >= 0)
+                _dup2(fd, _fileno(stdout));
+            HANDLE hStdErr = GetStdHandle(STD_ERROR_HANDLE);
+            if (hStdErr && hStdErr != INVALID_HANDLE_VALUE)
+            {
+                int efd = _open_osfhandle((intptr_t)hStdErr, _O_WRONLY | _O_TEXT);
+                if (efd >= 0)
+                    _dup2(efd, _fileno(stderr));
+            }
+            int rc = RunCLI(lpCmdLine);
+            fflush(stdout);
+            fflush(stderr);
+            return rc;
+        }
+
+        // Interactive case: attach to the parent console (e.g. cmd.exe) so
+        // output reaches the terminal.  If there is no parent console (e.g.
+        // launched from a shortcut), allocate one.
         bool attachedExisting = AttachConsole(ATTACH_PARENT_PROCESS) != FALSE;
         if (!attachedExisting)
             AllocConsole();
@@ -142,11 +169,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         int rc = RunCLI(lpCmdLine);
         fflush(stdout);
         fflush(stderr);
-        // GUI-subsystem apps launched from a console shell run asynchronously: the
-        // shell prints its next prompt and re-enters ReadConsole before our process
-        // exits.  Injecting a silent Enter into the console input buffer unblocks
-        // the shell's ReadConsole call so the prompt reappears without the user
-        // having to press Enter manually.
+        // GUI-subsystem apps launched from a console shell run asynchronously:
+        // the shell prints its next prompt and re-enters ReadConsole before our
+        // process exits.  Injecting a silent Enter into the console input buffer
+        // unblocks the shell's ReadConsole call so the prompt reappears without
+        // the user having to press Enter manually.
         if (attachedExisting)
         {
             HANDLE hStdIn = GetStdHandle(STD_INPUT_HANDLE);
