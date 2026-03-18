@@ -19,12 +19,18 @@ DIME v1.3 是自 v1.2.441 以來的首個主要版本更新，包含全新安裝
 - **候選字頁面指示與循環翻頁**：候選字視窗顯示頁面指示，翻頁時首頁與末頁循環切換
 - **AI Agent 友善的 CLI 命令列介面**：`DIMESettings.exe` 新增 headless CLI 模式，AI Agent 及自動化腳本可以命令列方式查詢、設定及管理輸入法，無需 GUI 互動（詳見 [DIME_CLI.md](https://github.com/jrywu/DIME/blob/master/docs/DIME_CLI.md) 及 [README — For AI Agents](https://github.com/jrywu/DIME/blob/master/README.md#for-ai-agents)）
 
-## 修正 (v.1.3.512 onwards)
+## 修正
 
-- **安裝程式版面改善**：調整安裝程式字型（使用 Microsoft JhengHei UI）及中文訊息文字，改善 CJK 字型顯示效果 (#111)
-- **候選字視窗寬度裁切**：修正特定字型（如新細明體）下候選字文字被裁切的問題 (#108)
-- **候選字字型設定未套用**：修正更換字型後候選字視窗未重新載入字型的問題
-- **Big5 過濾遺漏符號區段**：修正 TTS 碼表 Big5 過濾時遺漏 `[Symbol]` 區段，導致部分符號候選字消失的問題 (#114)
-- **CLI 主控台提示符重疊**：修正 CLI 輸出與 PowerShell/cmd 提示符重疊的問題，附掛主控台後清除已印出的提示符 (#113)
-- **CLI 命令不區分大小寫**：CLI 命令及參數名稱不再區分大小寫 (#113)
-- **CLI 支援管道及重導向**：支援管道（pipe）及重導向（`>`, `FOR /F`），可在 cmd 及 PowerShell 腳本中解析輸出 (#113)
+- **萬用字元與注音自建詞組**：修正萬用字元搜尋及注音自建詞組無法同時運作的問題 (#101, #99)（詳見 [README — 萬用字元](https://github.com/jrywu/DIME/blob/master/README.md#萬用字元)）
+- **長候選字文字亂碼**：修正候選字文字過長時出現亂碼的問題
+- **CIN 碼表空白支援**：改善 CIN 碼表解析，支援值中包含空白字元 (#102)
+- **頁面緩衝區計算**：修正候選字頁面緩衝區大小計算錯誤
+- **組字緩衝區溢位**：使用 escape-mode 最大長度計算按鍵緩衝區大小，避免潛在的緩衝區溢位問題
+- **版本資訊一致性**：修正 DIME.dll FileVersion/ProductVersion 不一致問題，安裝程式正確顯示完整版本號
+
+## 安全強化
+
+- **啟用 Spectre、CFG 及 SDL 安全緩解措施**：編譯時啟用 Spectre Mitigation、Control Flow Guard 及 Security Development Lifecycle 檢查
+
+
+
