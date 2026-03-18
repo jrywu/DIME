@@ -1375,6 +1375,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			break;
 		case IDOK:
 			WriteConfig(imeMode, TRUE);
+			LoadConfig(imeMode); // refresh _initTimeStamp after our own write
 			ret = TRUE;
 			break;
 		default:
@@ -1541,6 +1542,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 
 
 			WriteConfig(imeMode, TRUE);
+			LoadConfig(imeMode); // refresh _initTimeStamp after our own write
 			ParseConfig(hDlg, imeMode, FALSE);
 			ret = TRUE;
 			break;
