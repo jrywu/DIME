@@ -609,13 +609,13 @@ c	3v
 
 **系統檔案：**
 
-| 平台 | 檔案 | 安裝位置 | 說明 |
-|------|------|----------|------|
-| x64 | `DIME.dll` (x64) | System32 | 64 位元輸入法核心 |
-| x64 | `DIME.dll` (x86) | SysWOW64 | 32 位元輸入法核心，供 x86 程式使用 |
-| ARM64 | `DIME.dll` (ARM64EC) | System32 | ARM64EC 輸入法核心，支援 ARM64 原生程式與 x64 程式（模擬環境） |
-| ARM64 | `DIME.dll` (x86) | SysWOW64 | 32 位元輸入法核心，供 x86 程式使用（模擬環境） |
-| x86 | `DIME.dll` (x86) | System32 | 32 位元輸入法核心 |
+| 平台 | 檔案 | v1.2 安裝位置 | v1.3+ 安裝位置 | 說明 |
+|------|------|---------------|----------------|------|
+| x64 | `DIME.dll` (x64) | System32 | `%ProgramFiles%\DIME\amd64\` | 64 位元輸入法核心 |
+| x64 | `DIME.dll` (x86) | SysWOW64 | `%ProgramFiles%\DIME\x86\` | 32 位元輸入法核心，供 x86 程式使用 |
+| ARM64 | `DIME.dll` (ARM64EC) | System32 | `%ProgramFiles%\DIME\arm64\` | ARM64EC 輸入法核心，支援 ARM64 原生程式與 x64 程式（模擬環境） |
+| ARM64 | `DIME.dll` (x86) | SysWOW64 | `%ProgramFiles%\DIME\x86\` | 32 位元輸入法核心，供 x86 程式使用（模擬環境） |
+| x86 | `DIME.dll` (x86) | System32 | `%ProgramFiles%\DIME\x86\` | 32 位元輸入法核心 |
 
 **程式檔案（`%ProgramFiles%\DIME\`）：**
 

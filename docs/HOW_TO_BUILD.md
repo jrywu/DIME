@@ -154,7 +154,20 @@ DIME/
 
 ## 編譯安裝程式 / Build Installer
 
-### 1. 準備安裝程式檔案 / Prepare Installer Files
+DIME 有兩套安裝程式系統：
+
+DIME has two installer systems:
+
+| 安裝程式 Installer | 版本 Version | 技術 Technology | 自動化腳本 Script |
+| --- | --- | --- | --- |
+| WiX 4 MSI (建議 / Recommended) | v1.3+ | WiX 4 / Burn bundle | `installer\deploy-wix-installer.ps1` |
+| NSIS (舊版 / Legacy) | v1.2 及更早 | NSIS | `installer\deploy-installer.ps1` |
+
+**v1.3 起建議使用 WiX MSI 安裝程式。** NSIS 安裝程式仍可編譯，但不再用於正式發布。
+
+**WiX MSI installer is recommended starting from v1.3.** The NSIS installer can still be built but is no longer used for official releases.
+
+### 準備安裝程式檔案 / Prepare Installer Files
 
 確保所有必要的字典檔案已放置在 `installer/` 目錄：
 
@@ -179,32 +192,99 @@ installer/
 
 **Important:** All `.cin` dictionary files must use **UTF-16 LE (Little Endian)** encoding.
 
-### 2. 複製建置檔案到安裝程式目錄 / Copy Build Files to Installer Directory
+---
 
-將編譯好的 DLL 和 EXE 檔案複製到 `installer/` 目錄：
+### WiX MSI 安裝程式 (v1.3+) / WiX MSI Installer (v1.3+)
 
-Copy the built DLL and EXE files to the `installer/` directory:
+WiX 安裝程式產生一個 Burn bundle (`DIME-Universal.exe`)，內含兩個 MSI 套件：
+
+The WiX installer produces a Burn bundle (`DIME-Universal.exe`) containing two MSI packages:
+
+- `DIME-64bit.msi` — 64 位元 Windows (AMD64 + ARM64)
+- `DIME-32bit.msi` — 32 位元 Windows
+
+#### 額外需求 / Additional Requirements
+
+- **WiX 4 CLI** — 透過 .NET tool 安裝 / Install via .NET tool:
+
+  ```powershell
+  dotnet tool install --global wix
+  ```
+
+- **WiX Extensions** — 需要以下擴充套件 / Required extensions:
+
+  ```powershell
+  wix extension add WixToolset.UI.wixext
+  wix extension add WixToolset.Util.wixext
+  wix extension add WixToolset.BootstrapperApplications.wixext
+  ```
+- **Custom Action DLL** — `installer\wix\DIMEInstallerCA\DIMEInstallerCA.vcxproj` 須先編譯（腳本會自動處理）/ Must be built first (the script handles this automatically)
+
+#### 自動建置 / Automated Build
+
+```powershell
+cd installer
+.\deploy-wix-installer.ps1
+```
+
+此腳本會自動執行以下步驟：
+
+This script automatically performs the following steps:
+
+1. 複製建置產出物（DLL、EXE）到安裝程式目錄 / Copies build artifacts (DLLs, EXE) to the installer directory
+2. 編譯 Custom Action DLL (`DIMEInstallerCA.dll`) 的 x64 與 Win32 版本 / Builds Custom Action DLL (`DIMEInstallerCA.dll`) for x64 and Win32
+3. 編譯 WiX MSI (`DIME-64bit.msi`、`DIME-32bit.msi`) 與 Burn bundle (`DIME-Universal.exe`) / Builds WiX MSIs and Burn bundle
+4. 建立 `DIME-Universal.zip` 壓縮檔 / Creates ZIP archive
+5. 計算 SHA-256 校驗和並更新 `README.md` / Calculates SHA-256 checksums and updates `README.md`
+
+**可選參數 / Optional Parameters:**
+
+| 參數 Parameter | 說明 Description |
+| --- | --- |
+| `-ProductVersionOverride "1.3.500.0"` | 覆蓋版號（跳過 BuildInfo.h 解析）/ Override version (skip BuildInfo.h parsing) |
+| `-OutputDir "path"` | 指定輸出目錄 / Specify output directory |
+| `-NonInteractive` | 無人值守模式（CI/CD 用）/ Unattended mode (for CI/CD) |
+| `-SkipChecksumUpdate` | 跳過 ZIP 與校驗和步驟 / Skip ZIP and checksum steps |
+
+**輸出檔案 / Output Files:**
+
+```
+installer/
+├── DIME-Universal.exe    # Burn bundle 安裝程式 (自動偵測 OS 架構)
+├── DIME-64bit.msi        # 64 位元 MSI (可獨立安裝)
+├── DIME-32bit.msi        # 32 位元 MSI (可獨立安裝)
+└── DIME-Universal.zip    # 安裝程式壓縮檔
+```
+
+詳細的 MSI 安裝程式架構與機制，請參閱 `docs/MSI_INSTALLER.md`。
+
+For detailed MSI installer architecture and mechanism, see `docs/MSI_INSTALLER.md`.
+
+---
+
+### NSIS 安裝程式 (舊版) / NSIS Installer (Legacy)
+
+NSIS 安裝程式用於 v1.2 及更早版本。v1.3 的 WiX 安裝程式包含自動 NSIS 遷移功能，可偵測並移除舊版 NSIS 安裝。
+
+The NSIS installer was used for v1.2 and earlier. The v1.3 WiX installer includes automatic NSIS migration that detects and removes legacy NSIS installations.
+
+#### NSIS 需求 / NSIS Requirements
+
+- **NSIS (Nullsoft Scriptable Install System)** — 必須加入系統 PATH / Must be added to system PATH
+  - 下載位置 / Download: [https://nsis.sourceforge.io/](https://nsis.sourceforge.io/)
+- **NSIS Registry Plugin** — 用於安裝程式的註冊表操作 / For registry operations in the installer
+  - 下載位置 / Download: [https://nsis.sourceforge.io/Registry_plug-in](https://nsis.sourceforge.io/Registry_plug-in)
+
+#### 手動複製建置檔案 / Manual Copy of Build Files
 
 ```bash
-# 從 src/Release/ 目錄複製到 installer/
-# DIME.dll 需要三個平台版本 / DIME.dll requires three platform versions
 copy src\Release\Win32\DIME.dll installer\system32.x86\
 copy src\Release\x64\DIME.dll installer\system32.x64\
 copy src\Release\ARM64EC\DIME.dll installer\system32.arm64\
-
-# DIMESettings.exe 使用 Win32 版本 / DIMESettings.exe uses Win32 build
 copy src\Release\Win32\DIMESettings.exe installer\
 ```
 
-**注意：** 安裝程式需要來自 **Win32 Release** 建置的 `DIMESettings.exe`，以確保相容性。
-
-**Note:** The installer requires `DIMESettings.exe` from the **Win32 Release** build for compatibility.
-
-### 3. 自動建置安裝程式與校驗和 / Automated Installer Build and Checksums
-
-使用 PowerShell 腳本自動完成安裝程式編譯、ZIP 封裝、校驗和計算與 README 更新：
-
-Use the PowerShell script to automate installer compilation, ZIP packaging, checksum calculation, and README updates:
+#### NSIS 自動建置 / NSIS Automated Build
 
 ```powershell
 cd installer
@@ -215,25 +295,19 @@ cd installer
 
 This script automatically performs the following steps:
 
-1. 使用 NSIS 編譯 `DIME-Universal.exe` 安裝程式
-2. 建立 `DIME-Universal.zip` 壓縮檔
-3. 計算 `.exe` 和 `.zip` 的 SHA-256 校驗和
-4. 自動更新 `README.md` 中的校驗和表格（`CHECKSUM_START` ~ `CHECKSUM_END` 區段）
-
-**前置需求 / Prerequisites:**
-
-- NSIS 必須已安裝並加入系統 PATH / NSIS must be installed and added to system PATH
-- 所有必要的建置檔案（DIME.dll 與 DIMESettings.exe）已複製到 `installer/` 目錄
-- 所有字典檔案（`.cin`）已放置在 `installer/` 目錄
+1. 複製建置產出物到安裝程式目錄 / Copies build artifacts to installer directory
+2. 使用 NSIS 編譯 `DIME-Universal.exe` 安裝程式 / Builds `DIME-Universal.exe` using NSIS
+3. 建立 `DIME-Universal.zip` 壓縮檔 / Creates ZIP archive
+4. 計算 SHA-256 校驗和並更新 `README.md` / Calculates SHA-256 checksums and updates `README.md`
 
 **輸出檔案 / Output Files:**
 
 ```
 installer/
-├── DIME-Universal.exe    # 通用安裝程式
+├── DIME-Universal.exe    # NSIS 通用安裝程式
 └── DIME-Universal.zip    # 安裝程式壓縮檔
 ```
 
 ---
 
-**最後更新 / Last Updated:** 2025-02-11
+**最後更新 / Last Updated:** 2026-03-18
