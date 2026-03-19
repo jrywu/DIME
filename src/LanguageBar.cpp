@@ -1168,3 +1168,9 @@ void CDIME::showFullHalfShapeNotify(BOOL isFullShape, UINT delayShow)
     if (CConfig::GetShowNotifyDesktop() && _pUIPresenter)
         _pUIPresenter->ShowNotifyText(&notify.Set(isFullShape ? L"全形" : L"半形", 2), delayShow, CHN_ENG_NOTIFY_DELAY, NOTIFY_TYPE::NOTIFY_CHN_ENG);
 }
+void CDIME::showHanConvertNotify(BOOL isSimplified, UINT delayShow)
+{
+	CStringRange notify;
+    if (CConfig::GetShowNotifyDesktop() && _pUIPresenter)
+        _pUIPresenter->ShowNotifyText(&notify.Set(isSimplified ? L"簡" : L"繁", 1), delayShow, CHN_ENG_NOTIFY_DELAY, NOTIFY_TYPE::NOTIFY_CHN_ENG);
+}

@@ -1097,9 +1097,15 @@ void CCompositionProcessorEngine::SetupPreserved(_In_ ITfThreadMgr* pThreadMgr, 
 	SetPreservedKey(Global::DIMEGuidConfigPreserveKey, preservedKeyConfig, L"Show Config Pages", &_PreservedKey_Config);
 
 
+	TF_PRESERVEDKEY preservedKeyHanConvert = { 0 };
+	preservedKeyHanConvert.uVKey = 'H';
+	preservedKeyHanConvert.uModifiers = TF_MOD_CONTROL | TF_MOD_SHIFT;
+	SetPreservedKey(Global::DIMEGuidHanConvertPreserveKey, preservedKeyHanConvert, L"Toggle Simplified/Traditional", &_PreservedKey_HanConvert);
+
 	InitPreservedKey(&_PreservedKey_IMEMode, pThreadMgr, tfClientId);
 	InitPreservedKey(&_PreservedKey_DoubleSingleByte, pThreadMgr, tfClientId);
 	InitPreservedKey(&_PreservedKey_Config, pThreadMgr, tfClientId);
+	InitPreservedKey(&_PreservedKey_HanConvert, pThreadMgr, tfClientId);
 
 	return;
 }
@@ -1295,6 +1301,38 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL* pIsE
 	{
 		// call config dialog
 		_pTextService->Show(GetForegroundWindow(), 0, GUID_NULL);
+	}
+	else if (IsEqualGUID(rguid, _PreservedKey_HanConvert.Guid))
+	{
+		// Bypass when in English mode — let the app handle the key
+		BOOL isOpen = FALSE;
+		if (Global::isWindows8) {
+			CCompartment CompartmentKeyboardOpen(pThreadMgr, tfClientId, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
+			CompartmentKeyboardOpen._GetCompartmentBOOL(isOpen);
+		}
+		else {
+			CCompartment CompartmentIMEMode(pThreadMgr, tfClientId, Global::DIMEGuidCompartmentIMEMode);
+			CompartmentIMEMode._GetCompartmentBOOL(isOpen);
+		}
+		if (!isOpen)
+		{
+			*pIsEaten = FALSE;
+			return;
+		}
+
+		BOOL currentState = CConfig::GetDoHanConvert();
+		CConfig::SetDoHanConvert(currentState ? FALSE : TRUE);
+		CConfig::WriteConfig(Global::imeMode);
+
+		// Lazy-load TCSC table if enabling for the first time
+		if (!currentState)
+			SetupHanCovertTable();
+
+		// Show notification: 繁 or 簡
+		if (_pTextService)
+			_pTextService->showHanConvertNotify(currentState ? FALSE : TRUE);
+
+		*pIsEaten = TRUE;
 	}
 
 	else

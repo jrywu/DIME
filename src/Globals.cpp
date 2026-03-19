@@ -118,8 +118,12 @@ extern const GUID DIMEGuidDoubleSingleBytePreserveKey =
 { 0xb9f1b6ba, 0xcccf, 0x478f, { 0xb7, 0xc2, 0x89, 0xb0, 0xd9, 0x44, 0x2a, 0x38 } };
 
 // {6EA68D83-9FC2-40A6-BB30-52E77FABDEC7}
-extern const GUID DIMEGuidConfigPreserveKey = 
+extern const GUID DIMEGuidConfigPreserveKey =
 { 0x6ea68d83, 0x9fc2, 0x40a6, { 0xbb, 0x30, 0x52, 0xe7, 0x7f, 0xab, 0xde, 0xc7 } };
+
+// {B3AD8984-3BA3-47D5-BC47-5442AFC1B9D2}
+extern const GUID DIMEGuidHanConvertPreserveKey =
+{ 0xb3ad8984, 0x3ba3, 0x47d5, { 0xbc, 0x47, 0x54, 0x42, 0xaf, 0xc1, 0xb9, 0xd2 } };
 
 //---------------------------------------------------------------------
 // Compartments

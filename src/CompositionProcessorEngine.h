@@ -243,6 +243,7 @@ private:
     XPreservedKey _PreservedKey_IMEMode;
     XPreservedKey _PreservedKey_DoubleSingleByte;
 	XPreservedKey _PreservedKey_Config;
+	XPreservedKey _PreservedKey_HanConvert;
  
 
 	CCandidateRange* _pActiveCandidateListIndexRange;

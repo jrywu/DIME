@@ -75,6 +75,7 @@ extern const GUID DIMEGenericGuidProfile;
 extern const GUID DIMEGuidImeModePreserveKey;
 extern const GUID DIMEGuidDoubleSingleBytePreserveKey;
 extern const GUID DIMEGuidConfigPreserveKey;
+extern const GUID DIMEGuidHanConvertPreserveKey;
 
 //---------------------------------------------------------------------
 // File Security Constraints
@@ -197,6 +198,7 @@ extern const GUID DIMEGenericGuidProfile;
 extern const GUID DIMEGuidImeModePreserveKey;
 extern const GUID DIMEGuidDoubleSingleBytePreserveKey;
 extern const GUID DIMEGuidConfigPreserveKey;
+extern const GUID DIMEGuidHanConvertPreserveKey;
 
 //LRESULT CALLBACK ThreadKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam);
 BOOL CheckModifiers(UINT uModCurrent, UINT uMod);

@@ -203,6 +203,7 @@ public:
 	void OnSwitchedToHalfShape();
 	void showChnEngNotify(BOOL isChinese, UINT delayShow = 0);
 	void showFullHalfShapeNotify(BOOL isFullShape, UINT delayShow = 0);
+	void showHanConvertNotify(BOOL isSimplified, UINT delayShow = 0);
 
 	
 	// function for probe caret position when showing notify 
