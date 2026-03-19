@@ -635,6 +635,30 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 		if (iswprint(c) && c != L' ' &&
 			!(IsWildcardChar(c) && !(Global::imeMode == IME_MODE::IME_MODE_PHONETIC && c == L'*')))  // Exclude space as it's handled by preserved key
 		{
+			// Check if key is in the radical map (or Dayi address char table) for the active IME mode
+			// If not, bypass to system without processing
+			// Use base (unshifted) char from virtual key code, not the shifted char in c
+			// e.g. Shift+, sends '<' but ',' is the radical key to check
+			WCHAR baseChar = (WCHAR)MapVirtualKey(uCode, MAPVK_VK_TO_CHAR);
+			if (Global::imeMode == IME_MODE::IME_MODE_DAYI && IsDayiAddressChar(baseChar))
+			{
+				// Dayi address char (`, ', [, ], -, \) — skip radical map check
+			}
+			else
+			{
+				WCHAR upper = towupper(baseChar);
+				if (upper >= 32 && upper < 32 + MAX_RADICAL && (UINT)(upper - 32) < _KeystrokeComposition.Count())
+				{
+					const _KEYSTROKE& ks = *_KeystrokeComposition.GetAt(upper - 32);
+					if (ks.Function == KEYSTROKE_FUNCTION::FUNCTION_NONE)
+						return FALSE;  // Not a radical key — bypass to system
+				}
+				else
+				{
+					return FALSE;  // Out of range — bypass to system
+				}
+			}
+
 			if (pKeyState)
 			{
 				pKeyState->Category = KEYSTROKE_CATEGORY::CATEGORY_COMPOSING;
