@@ -182,10 +182,23 @@ BOOL CDIME::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pCod
 			return TRUE;
 		}
 
+		// If pending wildcard composition and Shift still held:
+		// Only allow wildcard chars through to composition; block everything else.
+		// Shifted keys are not radicals — user must release Shift to type radicals.
+		// Flag is cleared only when Shift is released (in OnKeyDown).
+		if (_pendingWildcardInput &&
+			(Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_RSHIFT | TF_MOD_SHIFT)) != 0)
+		{
+			BOOL isValidWildcard = pwch && pCompositionProcessorEngine->IsWildcardChar(*pwch) &&
+				!(Global::imeMode == IME_MODE::IME_MODE_PHONETIC && *pwch == L'*');
+			if (!isValidWildcard)
+				return TRUE;  // eat and ignore non-wildcard keys
+		}
+
 		if (pCompositionProcessorEngine->IsVirtualKeyNeed(*pCodeOut, pwch, _IsComposing(), _candidateMode, _isCandidateWithWildcard, candiCount, candiSelection, pKeyState))
         {
             return TRUE;
-        }
+		}
     }
 
     
@@ -407,7 +420,26 @@ STDAPI CDIME::OnKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL
     }
 
     // Track shifted english mode for wildcard key handling
-    _isShiftedEnglish = (KeystrokeState.Function == KEYSTROKE_FUNCTION::FUNCTION_SHIFT_ENGLISH_INPUT);
+    // §5 fix: preserve _isShiftedEnglish across Shift+Backspace (VK_BACK with Shift held)
+    // so that Shift+A, Shift+Backspace, Shift+* still treats * as Shift English.
+    // VK_SHIFT key-down (Shift re-press after release) correctly clears the flag
+    // because code == VK_SHIFT != VK_BACK.
+    if (KeystrokeState.Function == KEYSTROKE_FUNCTION::FUNCTION_SHIFT_ENGLISH_INPUT)
+        _isShiftedEnglish = TRUE;
+    else if (code != VK_BACK ||
+             !(Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_RSHIFT | TF_MOD_SHIFT)))
+        _isShiftedEnglish = FALSE;
+
+    // Track pending wildcard: set when wildcard FUNCTION_INPUT queued with Shift held,
+    // persist while Shift is held (non-radical keys are ignored, not Shift English),
+    // clear when Shift is released or composition actually starts (_IsKeyEaten clears it)
+    if (KeystrokeState.Function == KEYSTROKE_FUNCTION::FUNCTION_INPUT &&
+        !_isShiftedEnglish &&
+        (Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_RSHIFT | TF_MOD_SHIFT)) != 0 &&
+        wch && (wch == L'*' || wch == L'?'))
+        _pendingWildcardInput = TRUE;
+    else if (!(Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_RSHIFT | TF_MOD_SHIFT)))
+        _pendingWildcardInput = FALSE;
 
     return S_OK;
 }

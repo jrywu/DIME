@@ -397,6 +397,7 @@ private:
 	BOOL _isChinese;
 	BOOL _isFullShape;
 	BOOL _isShiftedEnglish;
+	BOOL _pendingWildcardInput;
 	BOOL _lastKeyboardMode;
 	
 	CStringRange lastReadingString;
