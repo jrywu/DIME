@@ -523,10 +523,11 @@ HRESULT CDIME::_HandleCompositionShiftEnglishInput(TfEditCookie ec, _In_ ITfCont
 {
     HRESULT hr = S_OK;
 
-    // Cancel any existing composition first
-    if (_IsComposing())
+    // If candidate list is present, finalize it (selects highlighted/default candidate;
+    // for associated phrase with no selection, this dismisses it).
+    if (_candidateMode != CANDIDATE_MODE::CANDIDATE_NONE)
     {
-        _HandleCancel(ec, pContext);
+        _HandleCandidateFinalize(ec, pContext);
     }
 
     WCHAR outputChar = wch; // Default fallback

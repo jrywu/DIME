@@ -195,6 +195,22 @@ BOOL CDIME::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pCod
 				return TRUE;  // eat and ignore non-wildcard keys
 		}
 
+		// Associated phrase showing + Shift held with non-digit printable char:
+		// Dismiss phrase and handle as Shift English (with CapsLock conversion).
+		// Must be before IsVirtualKeyNeed, which would misroute radical keys as composition input.
+		if (_candidateMode == CANDIDATE_MODE::CANDIDATE_PHRASE &&
+			(Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_RSHIFT | TF_MOD_SHIFT)) != 0 &&
+			pwch && *pwch && iswprint(*pwch) && *pwch != L' ' &&
+			!(*pCodeOut >= '0' && *pCodeOut <= '9'))  // digits are selkeys
+		{
+			if (pKeyState)
+			{
+				pKeyState->Category = KEYSTROKE_CATEGORY::CATEGORY_COMPOSING;
+				pKeyState->Function = KEYSTROKE_FUNCTION::FUNCTION_SHIFT_ENGLISH_INPUT;
+			}
+			return TRUE;
+		}
+
 		if (pCompositionProcessorEngine->IsVirtualKeyNeed(*pCodeOut, pwch, _IsComposing(), _candidateMode, _isCandidateWithWildcard, candiCount, candiSelection, pKeyState))
         {
             return TRUE;

@@ -1098,7 +1098,7 @@ void CCompositionProcessorEngine::SetupPreserved(_In_ ITfThreadMgr* pThreadMgr, 
 
 
 	TF_PRESERVEDKEY preservedKeyHanConvert = { 0 };
-	preservedKeyHanConvert.uVKey = 'H';
+	preservedKeyHanConvert.uVKey = VK_OEM_5;  // backslash '\' key
 	preservedKeyHanConvert.uModifiers = TF_MOD_CONTROL | TF_MOD_SHIFT;
 	SetPreservedKey(Global::DIMEGuidHanConvertPreserveKey, preservedKeyHanConvert, L"Toggle Simplified/Traditional", &_PreservedKey_HanConvert);
 

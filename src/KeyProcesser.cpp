@@ -806,11 +806,22 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 			}
 			return TRUE;
 		}
-		//End composition if the key is not a valid keystroke
+		// Key is not a valid radical, selkey, or wildcard for the current IME mode.
+		// During active composition (buffer non-empty): eat silently — ignore invalid keys.
+		// During pending commit (buffer empty): finalize textstore and pass key to app.
 		if (*pwch && !IsVirtualKeyKeystrokeComposition(uCode, pwch, pKeyState, KEYSTROKE_FUNCTION::FUNCTION_NONE))
 		{
+			if (fComposing && _keystrokeBuffer.GetLength() > 0)
+			{
+				if (pKeyState)
+				{
+					pKeyState->Category = KEYSTROKE_CATEGORY::CATEGORY_COMPOSING;
+					pKeyState->Function = KEYSTROKE_FUNCTION::FUNCTION_NONE;
+				}
+				return TRUE;
+			}
 			if (pKeyState)
-			{				
+			{
 				pKeyState->Category = KEYSTROKE_CATEGORY::CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION;
 				pKeyState->Function = KEYSTROKE_FUNCTION::FUNCTION_FINALIZE_TEXTSTORE;
 			}

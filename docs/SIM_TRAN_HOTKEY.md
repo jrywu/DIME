@@ -6,11 +6,11 @@ Users who frequently switch between traditional and simplified Chinese output cu
 
 ## Hotkey Choice
 
-**`Ctrl+Shift+H`** — H for HanConvert (漢字轉換).
+**`Ctrl+Shift+\`** — backslash mirrors the existing Ctrl+\ (config) with Shift added.
 
-- Rare conflict with application hotkeys (Ctrl+Shift+H is seldom used).
+- Consistent with the existing modifier pattern (Ctrl+\ for config, now Ctrl+Shift+\ for Han convert).
 - TSF preserved keys are intercepted at the IME level before apps see them when the IME is **active (Chinese mode)**.
-- Follows the existing modifier pattern (Shift+Space for full/half-width, Ctrl+\ for config).
+- Uses `VK_OEM_5` (backslash key).
 
 ## Design
 
@@ -102,7 +102,7 @@ else if (IsEqualGUID(rguid, _PreservedKey_HanConvert.Guid))
 ### Step 7: Update README
 
 **File: `README.md`**
-- Add a row in the hotkey/feature section documenting the new Ctrl+Shift+H toggle.
+- Add a row in the hotkey/feature section documenting the new Ctrl+Shift+\ toggle.
 
 ## Files to Modify (Summary)
 
@@ -119,9 +119,9 @@ else if (IsEqualGUID(rguid, _PreservedKey_HanConvert.Guid))
 1. **Build**: Compile all platforms (Win32, x64, ARM64) — no new dependencies
 2. **Manual test**:
    - Enable DIME, switch to Chinese mode
-   - Press Ctrl+Shift+H → verify notification popup shows 「簡」
+   - Press Ctrl+Shift+\ → verify notification popup shows 「簡」
    - Type a character → verify simplified output (e.g. 「国」instead of「國」)
-   - Press Ctrl+Shift+H again → verify popup shows 「繁」, output reverts to traditional
+   - Press Ctrl+Shift+\ again → verify popup shows 「繁」, output reverts to traditional
    - Restart app → verify the setting persisted (still in the last-selected mode)
 3. **Existing tests**: Run `DIMETests` — no regressions expected since this is additive
 4. **Edge case**: Toggle while composing — the `DoHanConvert` flag is checked at commit time (`CandidateHandler.cpp:184`), so toggling mid-composition should affect the next committed character
