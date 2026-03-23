@@ -1,4 +1,4 @@
-// CLIIntegrationTest.cpp
+﻿// CLIIntegrationTest.cpp
 // End-to-end integration tests for the CLI interface.
 // Each test calls RunCLI() and then asserts the result by reading the
 // INI config file directly via GetPrivateProfileStringW, ensuring the

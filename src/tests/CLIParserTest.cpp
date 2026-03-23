@@ -1,4 +1,4 @@
-// CLIParserTest.cpp
+﻿// CLIParserTest.cpp
 // Unit tests for the CLI parser logic in CLI.cpp.
 // These tests are pure in-process logic tests; they do NOT read or write any
 // files or INI entries.

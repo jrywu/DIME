@@ -1,4 +1,4 @@
-// CLI.cpp — Headless CLI implementation for DIMESettings.exe
+﻿// CLI.cpp — Headless CLI implementation for DIMESettings.exe
 //
 // See CLI.h for public API documentation.
 

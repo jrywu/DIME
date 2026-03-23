@@ -1,4 +1,4 @@
-// CLI.h — Headless CLI interface for DIMESettings.exe
+﻿// CLI.h — Headless CLI interface for DIMESettings.exe
 //
 // RunCLI(cmdLine, out) parses cmdLine and executes the command, writing output
 // to 'out' (defaults to stdout).

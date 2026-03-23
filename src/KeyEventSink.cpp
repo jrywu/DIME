@@ -1,4 +1,4 @@
-/* DIME IME for Windows 7/8/10/11
+﻿/* DIME IME for Windows 7/8/10/11
 
 BSD 3-Clause License
 
@@ -174,6 +174,7 @@ BOOL CDIME::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pCod
 		if (_isShiftedEnglish && !_IsComposing() && pwch && (*pwch == L'*' || *pwch == L'?') &&
 			(Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_RSHIFT | TF_MOD_SHIFT)) != 0)
 		{
+			debugPrint(L"_IsKeyEaten: wildcard 0x%04X blocked by _isShiftedEnglish=TRUE -> ShiftEnglish output", (UINT)*pwch);
 			if (pKeyState)
 			{
 				pKeyState->Category = KEYSTROKE_CATEGORY::CATEGORY_COMPOSING;
@@ -345,8 +346,20 @@ STDAPI CDIME::OnSetFocus(BOOL fForeground)
 
 STDAPI CDIME::OnTestKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL *pIsEaten)
  {
-	debugPrint(L" CDIME::OnTestKeyDown()");
+	debugPrint(L"OnTestKeyDown: vk=0x%02X _isShiftedEnglish=%d _pendingWildcard=%d", (UINT)wParam, _isShiftedEnglish, _pendingWildcardInput);
     Global::UpdateModifiers(wParam, lParam);
+
+    // Windows 10: OnKeyDown and OnKeyUp are NEVER called for VK_SHIFT when the IME did not
+    // eat the key — only OnTestKeyDown fires.  Detect a *fresh* Shift press by checking
+    // lParam bit 30 (previous key-state: 0 = key was up, 1 = was already down / auto-repeat).
+    // A fresh press means the user released and re-pressed Shift, ending the Shift gesture;
+    // clear _isShiftedEnglish so that the subsequent Shift+wildcard enters composition.
+    if (wParam == VK_SHIFT && _isShiftedEnglish && !(lParam & 0x40000000))
+    {
+        debugPrint(L"OnTestKeyDown: fresh VK_SHIFT press detected, clearing _isShiftedEnglish and _pendingWildcardInput");
+        _isShiftedEnglish = FALSE;
+        _pendingWildcardInput = FALSE;
+    }
 
 	_KEYSTROKE_STATE KeystrokeState = { KEYSTROKE_CATEGORY::CATEGORY_NONE, KEYSTROKE_FUNCTION::FUNCTION_NONE };
     WCHAR wch = '\0';
@@ -388,7 +401,7 @@ STDAPI CDIME::OnTestKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, 
 
 STDAPI CDIME::OnKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL *pIsEaten)
 {
-	debugPrint(L" CDIME::OnKeyDown()");
+	debugPrint(L"OnKeyDown: vk=0x%02X _isShiftedEnglish=%d _pendingWildcard=%d", (UINT)wParam, _isShiftedEnglish, _pendingWildcardInput);
     Global::UpdateModifiers(wParam, lParam);
    
 	_KEYSTROKE_STATE KeystrokeState = { KEYSTROKE_CATEGORY::CATEGORY_NONE, KEYSTROKE_FUNCTION::FUNCTION_NONE };
@@ -445,6 +458,7 @@ STDAPI CDIME::OnKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL
     else if (code != VK_BACK ||
              !(Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_RSHIFT | TF_MOD_SHIFT)))
         _isShiftedEnglish = FALSE;
+    debugPrint(L"OnKeyDown end: vk=0x%02X eaten=%d func=%d _isShiftedEnglish=%d _pendingWildcard=%d", (UINT)wParam, *pIsEaten, (int)KeystrokeState.Function, _isShiftedEnglish, _pendingWildcardInput);
 
     // Track pending wildcard: set when wildcard FUNCTION_INPUT queued with Shift held,
     // persist while Shift is held (non-radical keys are ignored, not Shift English),
@@ -495,8 +509,20 @@ STDAPI CDIME::OnTestKeyUp(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BO
 
 STDAPI CDIME::OnKeyUp(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL *pIsEaten)
 {
-	debugPrint(L" CDIME::OnKeyUp()");
+	debugPrint(L"OnKeyUp: vk=0x%02X _isShiftedEnglish=%d _pendingWildcard=%d", (UINT)wParam, _isShiftedEnglish, _pendingWildcardInput);
     Global::UpdateModifiers(wParam, lParam);
+
+    // Defense in depth: clear flags when Shift key-up is received.
+    // NOTE: On Windows 10, OnKeyUp(VK_SHIFT) is also never called (TSF drops both
+    // OnKeyDown and OnKeyUp for non-eaten keys).  The primary fix is in OnTestKeyDown
+    // via the lParam bit-30 fresh-press detection.  This block handles any platform
+    // where OnKeyUp(VK_SHIFT) does fire (e.g., future TSF changes or other edge cases).
+    if (wParam == VK_SHIFT && _isShiftedEnglish)
+    {
+        debugPrint(L"OnKeyUp: VK_SHIFT released, clearing _isShiftedEnglish and _pendingWildcardInput");
+        _isShiftedEnglish = FALSE;
+        _pendingWildcardInput = FALSE;
+    }
 
     WCHAR wch = '\0';
     UINT code = 0;

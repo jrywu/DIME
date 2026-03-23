@@ -1,4 +1,4 @@
-// TSFIntegrationTest.cpp - IT-01: TSF Integration Tests
+﻿// TSFIntegrationTest.cpp - IT-01: TSF Integration Tests
 // Tests Server.cpp DLL exports and basic TSF COM functionality
 // Target Coverage: ?80% for Server.cpp exports and TSF integration
 
