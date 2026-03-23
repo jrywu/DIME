@@ -278,7 +278,23 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 
 			pLI = pCandidateList->Append();
 			pLI->_FindKeyCode = _keystrokeBuffer;
-			pLI->_ItemString = readingString;
+			// Convert wildcard to full-width if in full-shape mode
+			if (_pTextService && _pTextService->_GetFullShape())
+			{
+				PWCHAR pwch = new (std::nothrow) WCHAR[2];
+				if (pwch)
+				{
+					pwch[0] = IsWildcardAllChar(*_keystrokeBuffer.Get())
+						? L'＊'   // fullwidth asterisk U+FF0A
+						: L'？';  // fullwidth question mark U+FF1F
+					pwch[1] = L'\0';
+					pLI->_ItemString.Set(pwch, 1);
+				}
+				else
+					pLI->_ItemString = readingString;
+			}
+			else
+				pLI->_ItemString = readingString;
 			_hasWildcardIncludedInKeystrokeBuffer = FALSE;
 			return;
 		}

@@ -591,6 +591,10 @@ HRESULT CDIME::_HandleCompositionShiftEnglishInput(TfEditCookie ec, _In_ ITfCont
         }
     }
 
+    // Convert to full-width if in full-shape mode
+    if (_isFullShape && outputChar >= 0x20 && outputChar <= 0x7E)
+        outputChar = Global::FullWidthCharTable[outputChar - 0x20];
+
     CStringRange charString;
     charString.Set(&outputChar, 1);
 

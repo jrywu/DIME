@@ -152,6 +152,7 @@ public:
     // utility function for thread manager.
     ITfThreadMgr* _GetThreadMgr() { return _pThreadMgr; }
     TfClientId _GetClientId() { return _tfClientId; }
+    BOOL _GetFullShape() { return _isFullShape; }
 
     // functions for the composition object.
     void _SetComposition(_In_ ITfComposition *pComposition);
