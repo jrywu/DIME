@@ -1276,26 +1276,38 @@ void CUIPresenter::AdviseUIChangedByArrowKey(_In_ KEYSTROKE_FUNCTION arrowKey)
     {
     case KEYSTROKE_FUNCTION::FUNCTION_MOVE_UP:
         {
-            if(!isUILessMode())_MoveCandidateSelection(MOVEUP_ONE);
-			else if(CConfig::GetArrowKeySWPages())  _MoveCandidatePage(MOVEUP_ONE);
+            if (CConfig::GetCandidateHorizontal() && !isUILessMode())
+            {
+                if (CConfig::GetArrowKeySWPages()) _MoveCandidatePage(MOVEUP_ONE);
+            }
+            else if (!isUILessMode()) _MoveCandidateSelection(MOVEUP_ONE);
+            else if (CConfig::GetArrowKeySWPages()) _MoveCandidatePage(MOVEUP_ONE);
             break;
         }
     case KEYSTROKE_FUNCTION::FUNCTION_MOVE_DOWN:
         {
-            if(!isUILessMode()) _MoveCandidateSelection(MOVEDOWN_ONE);
-			else if(CConfig::GetArrowKeySWPages())  _MoveCandidatePage(MOVEDOWN_ONE);
+            if (CConfig::GetCandidateHorizontal() && !isUILessMode())
+            {
+                if (CConfig::GetArrowKeySWPages()) _MoveCandidatePage(MOVEDOWN_ONE);
+            }
+            else if (!isUILessMode()) _MoveCandidateSelection(MOVEDOWN_ONE);
+            else if (CConfig::GetArrowKeySWPages()) _MoveCandidatePage(MOVEDOWN_ONE);
             break;
         }
 	case KEYSTROKE_FUNCTION::FUNCTION_MOVE_LEFT:
         {
-            if(isUILessMode()) _MoveCandidateSelection(MOVEUP_ONE);
-			else if(CConfig::GetArrowKeySWPages())  _MoveCandidatePage(MOVEUP_ONE);
+            if (CConfig::GetCandidateHorizontal() && !isUILessMode())
+                _MoveCandidateSelection(MOVEUP_ONE);
+            else if (isUILessMode()) _MoveCandidateSelection(MOVEUP_ONE);
+            else if (CConfig::GetArrowKeySWPages()) _MoveCandidatePage(MOVEUP_ONE);
             break;
         }
     case KEYSTROKE_FUNCTION::FUNCTION_MOVE_RIGHT:
         {
-			if(isUILessMode()) _MoveCandidateSelection(MOVEDOWN_ONE);  //UI less mode is horizontal layout
-			else if(CConfig::GetArrowKeySWPages())  _MoveCandidatePage(MOVEDOWN_ONE);
+            if (CConfig::GetCandidateHorizontal() && !isUILessMode())
+                _MoveCandidateSelection(MOVEDOWN_ONE);
+            else if (isUILessMode()) _MoveCandidateSelection(MOVEDOWN_ONE);
+            else if (CConfig::GetArrowKeySWPages()) _MoveCandidatePage(MOVEDOWN_ONE);
             break;
         }
     case KEYSTROKE_FUNCTION::FUNCTION_MOVE_PAGE_UP:
@@ -1601,7 +1613,8 @@ HRESULT CUIPresenter::MakeCandidateWindow(_In_ ITfContext *pContextDocument, _In
         pView->GetWnd(&parentWndHandle);
     }
 
-	if (_pCandidateWnd && !_pCandidateWnd->_Create(wndWidth, CConfig::GetFontSize(), parentWndHandle))
+	if (_pCandidateWnd && !_pCandidateWnd->_Create(wndWidth, CConfig::GetFontSize(), parentWndHandle,
+		CConfig::GetCandidateHorizontal(), CConfig::GetCandidateMaxCharsPerLine()))
     {
         hr = E_OUTOFMEMORY;
         goto Exit;

@@ -142,6 +142,8 @@ public:
     virtual void _GetScrollArea(_Out_ RECT *prc);
     virtual void _SetCurPos(int nPos, int dwSB);
 
+    bool _IsHorizontal() { return (_GetWnd() && (GetWindowLong(_GetWnd(), GWL_STYLE) & WS_HSCROLL)); }
+
 private:
     void _AdjustWindowPos();
 

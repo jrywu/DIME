@@ -76,6 +76,9 @@ CCandidateWindow::CCandidateWindow(_In_ CANDWNDCALLBACK pfnCallback, _In_ void *
     _dontAdjustOnEmptyItemPage = FALSE;
 
     _isStoreAppMode = isStoreAppMode;
+    _isHorizontal = FALSE;
+    _maxCharsPerLine = 0;
+    _currentPageRows = 1;
 
 	_fontSize = _TextMetric.tmHeight;
 
@@ -101,16 +104,82 @@ CCandidateWindow::~CCandidateWindow()
 
 //+---------------------------------------------------------------------------
 //
+// _BuildHorizontalLayout
+//
+// Computes per-item rects for horizontal layout.
+// Items flow left-to-right; a new row starts when cumulative character count
+// would exceed _maxCharsPerLine (0 = no wrapping).
+//----------------------------------------------------------------------------
+
+void CCandidateWindow::_BuildHorizontalLayout(
+    _In_ HDC dc, _In_ UINT startIndex, _In_ int itemCount,
+    _In_ int cxLine, _In_ int cyLine,
+    _Out_ std::vector<_CandItemRect>& out,
+    _Out_ int& totalWidth, _Out_ int& totalRows)
+{
+    out.clear();
+
+    // Fixed column width from _wndWidth (configured max chars), NOT from actual items.
+    // Symmetric with vertical: vertical height = candidateListPageCnt * _cyRow (fixed),
+    // horizontal width = itemsPerRow * columnWidth (fixed).
+    // This prevents any resize during paint — eliminates gray area entirely.
+    SIZE candSizeRef = {0, 0};
+    PWCHAR pwszRef = new (std::nothrow) WCHAR[_wndWidth + 1];
+    if (pwszRef)
+    {
+        pwszRef[0] = L'\0';
+        for (UINT i = 0; i < _wndWidth; i++) StringCchCatN(pwszRef, static_cast<size_t>(_wndWidth) + 1, L"國", 1);
+        GetTextExtentPoint32(dc, pwszRef, _wndWidth, &candSizeRef);
+        delete[] pwszRef;
+    }
+    int columnWidth = candSizeRef.cx + cxLine / 2;
+
+    // Items per row — constant (from config + page size)
+    int itemsPerRow = itemCount;
+    if (_maxCharsPerLine > 0)
+        itemsPerRow = max(1, min((int)_maxCharsPerLine, itemCount));
+
+    // Fixed total rows — based on page capacity, not actual items on this page
+    int totalItemRows = (itemCount - 1) / itemsPerRow + 1;
+    totalRows = totalItemRows * 2;  // 2 cyLine per item-row
+
+    // Fixed total width
+    int leftMargin = 1 * cxLine;  // matches PageCountPosition (=1) in vertical
+    totalWidth = leftMargin + itemsPerRow * columnWidth;
+
+    // Lay out actual items in the fixed grid
+    int actualItems = 0;
+    for (int i = 0; i < itemCount && (startIndex + i) < _candidateList.Count(); i++)
+    {
+        int col = actualItems % itemsPerRow;
+        int itemRow = actualItems / itemsPerRow;
+
+        _CandItemRect cir;
+        cir.listIndex = startIndex + i;
+        cir.rc.left = leftMargin + col * columnWidth;
+        cir.rc.top = itemRow * 2 * cyLine;
+        cir.rc.right = leftMargin + (col + 1) * columnWidth;
+        cir.rc.bottom = (itemRow + 1) * 2 * cyLine;
+        out.push_back(cir);
+        actualItems++;
+    }
+}
+
+//+---------------------------------------------------------------------------
+//
 // _Create
 //
 // CandidateWindow is the top window
 //----------------------------------------------------------------------------
 
-BOOL CCandidateWindow::_Create(_In_ UINT wndWidth, _In_ UINT fontSize, _In_opt_ HWND parentWndHandle)
+BOOL CCandidateWindow::_Create(_In_ UINT wndWidth, _In_ UINT fontSize, _In_opt_ HWND parentWndHandle,
+                               _In_ BOOL isHorizontal, _In_ UINT maxCharsPerLine)
 {
     BOOL ret = FALSE;
     _wndWidth = wndWidth;
 	_fontSize = fontSize;
+    _isHorizontal = isHorizontal;
+    _maxCharsPerLine = maxCharsPerLine;
 
     ret = _CreateMainWindow(parentWndHandle);
     if (FALSE == ret)
@@ -193,8 +262,9 @@ BOOL CCandidateWindow::_CreateVScrollWindow()
 
     _pVScrollBarWnd->_SetUIWnd(this);
 
-    if (!_pVScrollBarWnd->_Create(Global::AtomCandidateScrollBarWindow, 
-		WS_EX_TOPMOST | WS_EX_TOOLWINDOW , WS_CHILD , this))
+    DWORD scrollStyle = WS_CHILD | (_isHorizontal ? WS_HSCROLL : 0);
+    if (!_pVScrollBarWnd->_Create(Global::AtomCandidateScrollBarWindow,
+		WS_EX_TOPMOST | WS_EX_TOOLWINDOW , scrollStyle , this))
     {
         _DeleteVScrollBarWnd();
         _DeleteShadowWnd();
@@ -220,21 +290,54 @@ void CCandidateWindow::_ResizeWindow()
     int candidateListPageCnt = _pIndexRange->Count();
 	int VScrollWidth = GetSystemMetrics(SM_CXVSCROLL) * 3/2;
 	BOOL isMultiPage = (_pVScrollBarWnd && _pVScrollBarWnd->_IsEnabled());
-	int bottomPadding = isMultiPage ? _cyRow : _cyRow / 2;
-	CBaseWindow::_Resize(_x, _y, _cxTitle + VScrollWidth +  CANDWND_BORDER_WIDTH*2,
-		_cyRow * candidateListPageCnt + bottomPadding  + CANDWND_BORDER_WIDTH *2);
 
-    RECT rcCandRect = {0, 0, 0, 0};
-    _GetClientRect(&rcCandRect);
+    if (_isHorizontal)
+    {
+        // Symmetric with vertical: vertical adds VScrollWidth to Width,
+        // horizontal adds VScrollWidth to Height.
+        // Vertical:   W = contentW + VScrollWidth + border*2
+        //             H = N*cyRow + bottomPadding + border*2
+        // Horizontal: W = contentW + border*2           (mirrors H)
+        //             H = contentH + VScrollWidth + border*2  (mirrors W)
+        // Mirror vertical exactly:
+        // Vertical:   W = _cxTitle + VScrollWidth + border*2  (VScrollWidth always present)
+        // Horizontal: H = contentH + VScrollWidth + border*2  (VScrollWidth always present)
+        // The scrollbar area is always allocated — when single-page it's just bottom padding,
+        // when multi-page the scrollbar fills it. Same as vertical right-side padding.
+        int wndWidth = _cxTitle + CANDWND_BORDER_WIDTH * 2;
+        int wndHeight = _cyRow * _currentPageRows + VScrollWidth + CANDWND_BORDER_WIDTH * 2;
+        CBaseWindow::_Resize(_x, _y, wndWidth, wndHeight);
 
+        RECT rcCandRect = {0, 0, 0, 0};
+        _GetClientRect(&rcCandRect);
 
-    int left = rcCandRect.right - VScrollWidth;
-    int top = rcCandRect.top;
-    int width = VScrollWidth;
-    int height = rcCandRect.bottom - rcCandRect.top;
+        // Anchor scrollbar to content bottom, fill to client bottom.
+        // This guarantees no gap between content and scrollbar, and no gap below.
+        int left = rcCandRect.left;
+        int top = _cyRow * _currentPageRows;
+        int width = rcCandRect.right - rcCandRect.left;
+        int height = rcCandRect.bottom - top;
 
-	if(_pVScrollBarWnd)
-		_pVScrollBarWnd->_Resize(left, top, width, height);
+        if (_pVScrollBarWnd)
+            _pVScrollBarWnd->_Resize(left, top, width, height);
+    }
+    else
+    {
+        int bottomPadding = isMultiPage ? _cyRow : _cyRow / 2;
+        CBaseWindow::_Resize(_x, _y, _cxTitle + VScrollWidth +  CANDWND_BORDER_WIDTH*2,
+            _cyRow * candidateListPageCnt + bottomPadding  + CANDWND_BORDER_WIDTH *2);
+
+        RECT rcCandRect = {0, 0, 0, 0};
+        _GetClientRect(&rcCandRect);
+
+        int left = rcCandRect.right - VScrollWidth;
+        int top = rcCandRect.top;
+        int width = VScrollWidth;
+        int height = rcCandRect.bottom - rcCandRect.top;
+
+        if(_pVScrollBarWnd)
+            _pVScrollBarWnd->_Resize(left, top, width, height);
+    }
 }
 
 //+---------------------------------------------------------------------------
@@ -621,33 +724,79 @@ void CCandidateWindow::_OnLButtonDown(POINT pt)
     // Hit test on list items
     index = *_PageIndex.GetAt(currentPage);
 
-
-	RECT rc = {0, 0, 0, 0};
-	rc.left = rcWindow.left + PageCountPosition* _TextMetric.tmAveCharWidth;
-    rc.right = rcWindow.right  - GetSystemMetrics(SM_CXVSCROLL) * 3/2 - CANDWND_BORDER_WIDTH;
-
-    for (UINT pageCount = 0; (index < _candidateList.Count()) && (pageCount < candidateListPageCnt); index++, pageCount++)
-    {	
-        rc.top = rcWindow.top + (pageCount * cyLine);
-        rc.bottom = rcWindow.top + ((pageCount + 1) * cyLine);
-
-        if (PtInRect(&rc, pt) && _pfnCallback)
+    if (_isHorizontal)
+    {
+        // Horizontal hit-test: use layout rects
+        HDC dc = GetDC(_GetWnd());
+        if (dc)
         {
-            SetCursor(LoadCursor(NULL, IDC_HAND));
-            _currentSelection = index;
-            // Store callback pointer before calling to prevent use-after-free
-            CANDWNDCALLBACK pfnCallback = _pfnCallback;
-            void* pObj = _pObj;
-            pfnCallback(pObj, CANDWND_ACTION::CAND_ITEM_SELECT);
-            return;
+            HFONT hFont = (HFONT)SendMessage(_GetWnd(), WM_GETFONT, 0, 0);
+            HFONT hOldFont = hFont ? (HFONT)SelectObject(dc, hFont) : nullptr;
+
+            GetTextMetrics(dc, &_TextMetric);
+            SIZE candSize = {0,0};
+            int cxLine = _TextMetric.tmAveCharWidth;
+            PWCHAR pwszTestString = new (std::nothrow) WCHAR[_wndWidth + 1];
+            if (pwszTestString)
+            {
+                pwszTestString[0] = L'\0';
+                for (UINT i = 0; i < _wndWidth; i++) StringCchCatN(pwszTestString, static_cast<size_t>(_wndWidth) + 1, L"國", 1);
+                GetTextExtentPoint32(dc, pwszTestString, _wndWidth, &candSize);
+                delete[] pwszTestString;
+                cxLine = max((int)_TextMetric.tmAveCharWidth, (int)candSize.cx / (int)_wndWidth);
+            }
+
+            std::vector<_CandItemRect> layout;
+            int layoutWidth = 0, layoutRows = 0;
+            _BuildHorizontalLayout(dc, index, candidateListPageCnt,
+                                   cxLine, cyLine, layout, layoutWidth, layoutRows);
+
+            if (hOldFont) SelectObject(dc, hOldFont);
+            ReleaseDC(_GetWnd(), dc);
+
+            for (size_t i = 0; i < layout.size(); i++)
+            {
+                RECT rcItem = layout[i].rc;
+                if (PtInRect(&rcItem, pt) && _pfnCallback)
+                {
+                    SetCursor(LoadCursor(NULL, IDC_HAND));
+                    _currentSelection = layout[i].listIndex;
+                    CANDWNDCALLBACK pfnCallback = _pfnCallback;
+                    void* pObj = _pObj;
+                    pfnCallback(pObj, CANDWND_ACTION::CAND_ITEM_SELECT);
+                    return;
+                }
+            }
+        }
+    }
+    else
+    {
+        RECT rc = {0, 0, 0, 0};
+        rc.left = rcWindow.left + PageCountPosition* _TextMetric.tmAveCharWidth;
+        rc.right = rcWindow.right  - GetSystemMetrics(SM_CXVSCROLL) * 3/2 - CANDWND_BORDER_WIDTH;
+
+        for (UINT pageCount = 0; (index < _candidateList.Count()) && (pageCount < candidateListPageCnt); index++, pageCount++)
+        {
+            rc.top = rcWindow.top + (pageCount * cyLine);
+            rc.bottom = rcWindow.top + ((pageCount + 1) * cyLine);
+
+            if (PtInRect(&rc, pt) && _pfnCallback)
+            {
+                SetCursor(LoadCursor(NULL, IDC_HAND));
+                _currentSelection = index;
+                CANDWNDCALLBACK pfnCallback = _pfnCallback;
+                void* pObj = _pObj;
+                pfnCallback(pObj, CANDWND_ACTION::CAND_ITEM_SELECT);
+                return;
+            }
         }
     }
 
     SetCursor(LoadCursor(NULL, IDC_ARROW));
 
+    RECT rc = {0, 0, 0, 0};
     if (_pVScrollBarWnd && _pVScrollBarWnd->_IsEnabled())
     {
-        rc = {0, 0, 0, 0};
 
         _pVScrollBarWnd->_GetClientRect(&rc);
         MapWindowPoints(_GetWnd(), _pVScrollBarWnd->_GetWnd(), &pt, 1);
@@ -716,7 +865,10 @@ void CCandidateWindow::_OnMouseMove(POINT pt)
 #endif
 
 	rc.left = rcWindow.left;
-	rc.right = rcWindow.right - GetSystemMetrics(SM_CXVSCROLL) * 3 / 2 - CANDWND_BORDER_WIDTH;
+	if (_isHorizontal)
+		rc.right = rcWindow.right;  // no side scrollbar in horizontal mode
+	else
+		rc.right = rcWindow.right - GetSystemMetrics(SM_CXVSCROLL) * 3 / 2 - CANDWND_BORDER_WIDTH;
 
 	rc.top = rcWindow.top;
 	rc.bottom = rcWindow.bottom;
@@ -786,14 +938,14 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
 	debugPrint(L"CCandidateWindow::_DrawList(), _wndWidth = %d", _wndWidth);
 
 	if(_pIndexRange == nullptr || prc == nullptr) return;
-	
+
     int indexInPage = 0;
     int candidateListPageCnt = _pIndexRange->Count();
 	int VScrollWidth = GetSystemMetrics(SM_CXVSCROLL) *3/2;
 
     RECT rc = { 0,0,0,0 };
 	const size_t numStringLen = 2;
-	
+
 	GetTextMetrics(dcHandle, &_TextMetric);
 	SIZE candSize = { 0,0 };
 	PWCHAR pwszTestString = new (std::nothrow) WCHAR[_wndWidth + 1];
@@ -801,100 +953,183 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
 	{
 		pwszTestString[0] = L'\0';
 		for (UINT i = 0; i < _wndWidth; i++) StringCchCatN(pwszTestString, static_cast<size_t>(_wndWidth) + 1, L"國", 1);
-		GetTextExtentPoint32(dcHandle, pwszTestString, _wndWidth, &candSize); //don't trust the TextMetrics. Measurement the font height and width directly.
+		GetTextExtentPoint32(dcHandle, pwszTestString, _wndWidth, &candSize);
 		delete[]pwszTestString;
 
 	}
 
-	
+
 	int cxLine = max((int)_TextMetric.tmAveCharWidth, (int)candSize.cx / (int)_wndWidth);
-	int cyLine = candSize.cy * 5 / 4; 
+	int cyLine = candSize.cy * 5 / 4;
 
 	int fistLineOffset = cyLine / 4;
 
-	_cxTitle = candSize.cx + StringPosition * cxLine;
 	_cyRow = cyLine;
 
-	int cyOffset = candSize.cy / 8 + fistLineOffset; //offset in line + blank before 1st line.
-	
-
-    for (;
-		(currentPageIndex < _candidateList.Count()) && (indexInPage < candidateListPageCnt);
-		currentPageIndex++, indexInPage++)
+    if (_isHorizontal)
     {
-        WCHAR wszNumString[numStringLen] = {'\0'};
-        CCandidateListItem* pItemList = nullptr;
+        // Horizontal layout: 2-row items (selkey top, candidate text bottom)
+        std::vector<_CandItemRect> layout;
+        int layoutWidth = 0;
+        int pageRows = 2;
+        _BuildHorizontalLayout(dcHandle, currentPageIndex, candidateListPageCnt,
+                               cxLine, cyLine, layout, layoutWidth, pageRows);
+        // Width and height are fixed (computed from constants in _BuildHorizontalLayout).
+        // Only trigger resize if they changed from previous values (first paint only).
+        int prevCxTitle = _cxTitle;
+        int prevPageRows = _currentPageRows;
+        _cxTitle = layoutWidth;
+        _currentPageRows = pageRows;
 
-		rc.top = prc->top + indexInPage * cyLine + fistLineOffset;
-        rc.bottom = rc.top + cyLine;
+        int cyOffset = candSize.cy / 8;
 
-
-        rc.left = prc->left + PageCountPosition * cxLine;
-        rc.right = prc->left + StringPosition * cxLine;
-
-        // Number Font Color And BK
-        SetTextColor(dcHandle, _crNumberColor);
-        SetBkColor(dcHandle, _crNumberBkColor);
-
-        // Print cand list index 
-		StringCchPrintf(wszNumString, ARRAYSIZE(wszNumString), L"%c", _pIndexRange->GetAt(indexInPage)->CandIndex);
-		ExtTextOut(dcHandle, PageCountPosition * cxLine, indexInPage * cyLine + cyOffset, ETO_OPAQUE, &rc, wszNumString, numStringLen, NULL);
-
-        rc.left = prc->left + StringPosition * cxLine;
-        rc.right = prc->right - VScrollWidth;
-
-        // Candidate Font Color And BK
-        if (_currentSelection != (INT)currentPageIndex)
+        for (size_t i = 0; i < layout.size(); i++)
         {
-            SetTextColor(dcHandle, _crTextColor);
-            SetBkColor(dcHandle, _crBkColor); 
+            const _CandItemRect& cir = layout[i];
+            int pageIdx = (int)(cir.listIndex - currentPageIndex);
+            CCandidateListItem* pItem = _candidateList.GetAt(cir.listIndex);
+            if (!pItem) continue;
+
+            // Selected/unselected colors for the whole item
+            COLORREF crText, crBk;
+            if (_currentSelection != (INT)cir.listIndex)
+            {
+                crText = _crTextColor;
+                crBk = _crBkColor;
+            }
+            else
+            {
+                crText = _crSelectedTextColor;
+                crBk = _crSelectedBkColor;
+            }
+
+            // Top row: selkey number (centered in column)
+            WCHAR wszNumString[numStringLen] = {'\0'};
+            if (pageIdx < candidateListPageCnt && _pIndexRange->GetAt(pageIdx))
+                StringCchPrintf(wszNumString, ARRAYSIZE(wszNumString), L"%c", _pIndexRange->GetAt(pageIdx)->CandIndex);
+
+            RECT rcTopRow;
+            rcTopRow.left = cir.rc.left;
+            rcTopRow.top = cir.rc.top;
+            rcTopRow.right = cir.rc.right;
+            rcTopRow.bottom = cir.rc.top + cyLine;
+
+            SetTextColor(dcHandle, _crNumberColor);
+            SetBkColor(dcHandle, _crNumberBkColor);
+            ExtTextOut(dcHandle, rcTopRow.left, rcTopRow.top + cyOffset,
+                       ETO_OPAQUE, &rcTopRow, wszNumString, numStringLen, NULL);
+
+            // Bottom row: candidate text
+            RECT rcBotRow;
+            rcBotRow.left = cir.rc.left;
+            rcBotRow.top = cir.rc.top + cyLine;
+            rcBotRow.right = cir.rc.right;
+            rcBotRow.bottom = cir.rc.bottom;
+
+            SetTextColor(dcHandle, crText);
+            SetBkColor(dcHandle, crBk);
+
+            WCHAR itemText[MAX_CAND_ITEM_LENGTH + 3] = { '\0' };
+            int itemLength = (int)pItem->_ItemString.GetLength();
+            if (itemLength > MAX_CAND_ITEM_LENGTH)
+            {
+                StringCchCatN(itemText, MAX_CAND_ITEM_LENGTH + 3, pItem->_ItemString.Get(), 6);
+                StringCchCatN(itemText, MAX_CAND_ITEM_LENGTH + 3, L"…", 1);
+                StringCchCatN(itemText, MAX_CAND_ITEM_LENGTH + 3, (pItem->_ItemString.Get() + itemLength - 6), 6);
+                itemLength = MAX_CAND_ITEM_LENGTH;
+            }
+            else
+                StringCchCopyN(itemText, MAX_CAND_ITEM_LENGTH + 3, pItem->_ItemString.Get(), itemLength);
+
+            ExtTextOut(dcHandle, rcBotRow.left, rcBotRow.top + cyOffset,
+                       ETO_OPAQUE, &rcBotRow, itemText, (DWORD)itemLength, NULL);
         }
-        else
-        {
-            SetTextColor(dcHandle, _crSelectedTextColor);
-            SetBkColor(dcHandle, _crSelectedBkColor);
-        }
 
-		pItemList = _candidateList.GetAt(currentPageIndex);
-		if(pItemList == nullptr) continue;
-		SIZE size;
-		WCHAR itemText[MAX_CAND_ITEM_LENGTH + 3] = { '\0' };
-		int itemLength = (int)pItemList->_ItemString.GetLength();
-		if (itemLength > MAX_CAND_ITEM_LENGTH) // if the length of item text > MAX_CAND_ITEM_LENGTH (13) , truncate the item text as "First 6 chars of itemtext"+"..."+"last 6 chars of itemtext"
-		{
-			StringCchCatN(itemText, MAX_CAND_ITEM_LENGTH + 3, pItemList->_ItemString.Get(), 6);
-            StringCchCatN(itemText, MAX_CAND_ITEM_LENGTH + 3, L"…", 1);
-			StringCchCatN(itemText, MAX_CAND_ITEM_LENGTH + 3, (pItemList->_ItemString.Get() + itemLength - 6), 6);
-			itemLength = MAX_CAND_ITEM_LENGTH;
-		}
-		else
-			StringCchCopyN(itemText, MAX_CAND_ITEM_LENGTH + 3, pItemList->_ItemString.Get(), itemLength);
-
-		if (itemLength > (int)_wndWidth)
-		{
-			GetTextExtentPoint32(dcHandle, pItemList->_ItemString.Get(), (int)pItemList->_ItemString.GetLength(), &size);
-			if (_cxTitle < (int)size.cx + StringPosition * cxLine)
-			{
-				_cxTitle = size.cx + StringPosition * cxLine;
-				_wndWidth = itemLength;
-			}
-		}
-
-		ExtTextOut(dcHandle, StringPosition * cxLine, indexInPage * cyLine + cyOffset, ETO_OPAQUE, &rc, itemText, (DWORD)itemLength, NULL);
-	
+        // Guard: resize only when dimensions actually changed (first paint only —
+        // _cxTitle and _currentPageRows are now fixed constants after first computation)
+        if (_cxTitle != prevCxTitle || _currentPageRows != prevPageRows)
+            _ResizeWindow();
     }
-	for (; (indexInPage < candidateListPageCnt); indexInPage++)
+    else
     {
-		rc.top = prc->top + indexInPage * cyLine + fistLineOffset;
-        rc.bottom = rc.top + cyLine;
+        // Vertical layout (original)
+        _cxTitle = candSize.cx + StringPosition * cxLine;
 
-        rc.left   = prc->left + PageCountPosition * cxLine;
-        rc.right  = prc->left + (PageCountPosition+1) * cxLine;
+        int cyOffset = candSize.cy / 8 + fistLineOffset;
 
-        if(_brshBkColor) FillRect(dcHandle, &rc, _brshBkColor);
+        for (;
+            (currentPageIndex < _candidateList.Count()) && (indexInPage < candidateListPageCnt);
+            currentPageIndex++, indexInPage++)
+        {
+            WCHAR wszNumString[numStringLen] = {'\0'};
+            CCandidateListItem* pItemList = nullptr;
+
+            rc.top = prc->top + indexInPage * cyLine + fistLineOffset;
+            rc.bottom = rc.top + cyLine;
+
+            rc.left = prc->left + PageCountPosition * cxLine;
+            rc.right = prc->left + StringPosition * cxLine;
+
+            SetTextColor(dcHandle, _crNumberColor);
+            SetBkColor(dcHandle, _crNumberBkColor);
+
+            StringCchPrintf(wszNumString, ARRAYSIZE(wszNumString), L"%c", _pIndexRange->GetAt(indexInPage)->CandIndex);
+            ExtTextOut(dcHandle, PageCountPosition * cxLine, indexInPage * cyLine + cyOffset, ETO_OPAQUE, &rc, wszNumString, numStringLen, NULL);
+
+            rc.left = prc->left + StringPosition * cxLine;
+            rc.right = prc->right - VScrollWidth;
+
+            if (_currentSelection != (INT)currentPageIndex)
+            {
+                SetTextColor(dcHandle, _crTextColor);
+                SetBkColor(dcHandle, _crBkColor);
+            }
+            else
+            {
+                SetTextColor(dcHandle, _crSelectedTextColor);
+                SetBkColor(dcHandle, _crSelectedBkColor);
+            }
+
+            pItemList = _candidateList.GetAt(currentPageIndex);
+            if(pItemList == nullptr) continue;
+            SIZE size;
+            WCHAR itemText[MAX_CAND_ITEM_LENGTH + 3] = { '\0' };
+            int itemLength = (int)pItemList->_ItemString.GetLength();
+            if (itemLength > MAX_CAND_ITEM_LENGTH)
+            {
+                StringCchCatN(itemText, MAX_CAND_ITEM_LENGTH + 3, pItemList->_ItemString.Get(), 6);
+                StringCchCatN(itemText, MAX_CAND_ITEM_LENGTH + 3, L"…", 1);
+                StringCchCatN(itemText, MAX_CAND_ITEM_LENGTH + 3, (pItemList->_ItemString.Get() + itemLength - 6), 6);
+                itemLength = MAX_CAND_ITEM_LENGTH;
+            }
+            else
+                StringCchCopyN(itemText, MAX_CAND_ITEM_LENGTH + 3, pItemList->_ItemString.Get(), itemLength);
+
+            if (itemLength > (int)_wndWidth)
+            {
+                GetTextExtentPoint32(dcHandle, pItemList->_ItemString.Get(), (int)pItemList->_ItemString.GetLength(), &size);
+                if (_cxTitle < (int)size.cx + StringPosition * cxLine)
+                {
+                    _cxTitle = size.cx + StringPosition * cxLine;
+                    _wndWidth = itemLength;
+                }
+            }
+
+            ExtTextOut(dcHandle, StringPosition * cxLine, indexInPage * cyLine + cyOffset, ETO_OPAQUE, &rc, itemText, (DWORD)itemLength, NULL);
+        }
+        for (; (indexInPage < candidateListPageCnt); indexInPage++)
+        {
+            rc.top = prc->top + indexInPage * cyLine + fistLineOffset;
+            rc.bottom = rc.top + cyLine;
+
+            rc.left   = prc->left + PageCountPosition * cxLine;
+            rc.right  = prc->left + (PageCountPosition+1) * cxLine;
+
+            if(_brshBkColor) FillRect(dcHandle, &rc, _brshBkColor);
+        }
+
+        if(_cxTitle != prc->right - prc->left - VScrollWidth) _ResizeWindow();
     }
-
-	if(_cxTitle != prc->right - prc->left - VScrollWidth) _ResizeWindow();
 }
 
 //+---------------------------------------------------------------------------
@@ -914,21 +1149,40 @@ void CCandidateWindow::_DrawPageIndicator(_In_ HDC dcHandle, _In_ UINT currentPa
 	RECT rcClient = { 0, 0, 0, 0 };
 	_GetClientRect(&rcClient);
 
-	RECT rcIndicator;
-	rcIndicator.left   = rcClient.left;
-	rcIndicator.right  = rcClient.right;
-	rcIndicator.top    = candidateListPageCnt * cyLine;
-	rcIndicator.bottom = rcIndicator.top + cyLine;
-
-	if (_brshBkColor) FillRect(dcHandle, &rcIndicator, _brshBkColor);
-
 	WCHAR wszPageInfo[16] = { L'\0' };
 	StringCchPrintf(wszPageInfo, ARRAYSIZE(wszPageInfo), L"%u/%u",
 		currentPage + 1, (UINT)_PageIndex.Count());
 
-	SetTextColor(dcHandle, _crNumberColor);
-	SetBkColor(dcHandle, _crNumberBkColor);
-	DrawText(dcHandle, wszPageInfo, -1, &rcIndicator, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+	if (_isHorizontal)
+	{
+		// Draw page indicator inside the scrollbar's track area (between ◄ ► buttons)
+		if (_pVScrollBarWnd)
+		{
+			RECT rcScroll = { 0, 0, 0, 0 };
+			_pVScrollBarWnd->_GetScrollArea(&rcScroll);
+			// Convert scrollbar client coords to candidate window client coords
+			MapWindowPoints(_pVScrollBarWnd->_GetWnd(), _GetWnd(), (LPPOINT)&rcScroll, 2);
+
+			SetTextColor(dcHandle, _crNumberColor);
+			SetBkColor(dcHandle, TRANSPARENT);
+			SetBkMode(dcHandle, TRANSPARENT);
+			DrawText(dcHandle, wszPageInfo, -1, &rcScroll, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+		}
+	}
+	else
+	{
+		RECT rcIndicator;
+		rcIndicator.left   = rcClient.left;
+		rcIndicator.right  = rcClient.right;
+		rcIndicator.top    = candidateListPageCnt * cyLine;
+		rcIndicator.bottom = rcIndicator.top + cyLine;
+
+		if (_brshBkColor) FillRect(dcHandle, &rcIndicator, _brshBkColor);
+
+		SetTextColor(dcHandle, _crNumberColor);
+		SetBkColor(dcHandle, _crNumberBkColor);
+		DrawText(dcHandle, wszPageInfo, -1, &rcIndicator, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+	}
 }
 
 //+---------------------------------------------------------------------------
@@ -1055,6 +1309,8 @@ void CCandidateWindow::_ClearList()
     _currentSelection = 0;
     _candidateList.Clear();
     _PageIndex.Clear();
+    _cxTitle = 0;
+    _currentPageRows = 1;
 }
 
 //+---------------------------------------------------------------------------

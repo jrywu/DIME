@@ -101,6 +101,10 @@
 #define IDC_LABEL_COL_SEBG      1169
 #define IDC_COMBO_CHARSET_SCOPE   1170   // NEW: non-Array charset filter combo (narrower)
 #define IDC_STATIC_CHARSET_SCOPE  1171   // NEW: label for IDC_COMBO_CHARSET_SCOPE
+#define IDC_COMBO_CANDIDATE_LAYOUT           1172
+#define IDC_STATIC_CANDIDATE_LAYOUT          1173
+#define IDC_EDIT_CANDIDATE_MAXCHARSPERLINE   1174
+#define IDC_STATIC_CANDIDATE_MAXCHARSPERLINE 1175
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED

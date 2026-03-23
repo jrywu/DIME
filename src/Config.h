@@ -237,7 +237,13 @@ public:
 	static BOOL GetBig5Filter() { return _big5Filter; }
 	static void SetBig5Filter(BOOL v) { _big5Filter = v; }
 
-	//numeric pad 
+	// Horizontal candidate layout
+	static BOOL GetCandidateHorizontal() { return _candidateHorizontal; }
+	static void SetCandidateHorizontal(BOOL v) { _candidateHorizontal = v; }
+	static UINT GetCandidateMaxCharsPerLine() { return _candidateMaxCharsPerLine; }
+	static void SetCandidateMaxCharsPerLine(UINT v) { _candidateMaxCharsPerLine = v; }
+
+	//numeric pad
 	static NUMERIC_PAD GetNumericPad() { return _numericPad; }
 	static void SetNumericPad(NUMERIC_PAD numericPad) { _numericPad = numericPad; }
 
@@ -352,6 +358,8 @@ private:
 	static BOOL _arraySingleQuoteCustomPhrase;
 
 	static BOOL _big5Filter;   // NEW: CP950 candidate filter for non-Array modes
+	static BOOL _candidateHorizontal;
+	static UINT _candidateMaxCharsPerLine;
 
 	static struct _stat _initTimeStamp;
 

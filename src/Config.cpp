@@ -89,6 +89,8 @@ BOOL CConfig::_dayiArticleMode = FALSE;  // Article mode: input full-shaped symb
 BOOL CConfig::_customTableChanged = FALSE;
 BOOL CConfig::_arraySingleQuoteCustomPhrase = FALSE;
 BOOL CConfig::_big5Filter = FALSE;
+BOOL CConfig::_candidateHorizontal = FALSE;
+UINT CConfig::_candidateMaxCharsPerLine = 20;
 
 UINT CConfig::_dpiY = 0;
 _T_GetDpiForMonitor CConfig::_GetDpiForMonitor = nullptr;
@@ -437,6 +439,8 @@ VOID CConfig::WriteConfig(IME_MODE imeMode, BOOL confirmUpdated)
 				fwprintf_s(fp, L"Big5Filter = %d\n", _big5Filter ? 1 : 0);
 			}
 			fwprintf_s(fp, L"NumericPad = %d\n", _numericPad);
+			fwprintf_s(fp, L"CandidateHorizontal = %d\n", _candidateHorizontal ? 1 : 0);
+			fwprintf_s(fp, L"CandidateMaxCharsPerLine = %d\n", _candidateMaxCharsPerLine);
 			if (_loadTableMode) fwprintf_s(fp, L"LoadTableMode = 1\n");
 			fclose(fp);
 		}
@@ -584,6 +588,8 @@ void CConfig::ResetAllDefaults(IME_MODE imeMode)
 	_showNotifyDesktop            = TRUE;
 	_dayiArticleMode              = FALSE;
 	_big5Filter                   = FALSE;
+	_candidateHorizontal          = FALSE;
+	_candidateMaxCharsPerLine     = 20;
 	_numericPad                   = NUMERIC_PAD::NUMERIC_PAD_MUMERIC;
 	_phoneticKeyboardLayout       = PHONETIC_KEYBOARD_LAYOUT::PHONETIC_STANDARD_KEYBOARD_LAYOUT;
 	_imeShiftMode                 = IME_SHIFT_MODE::IME_BOTH_SHIFT;

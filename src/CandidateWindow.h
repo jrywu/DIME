@@ -41,6 +41,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ScrollBarWindow.h"
 #include "BaseStructure.h"
 #include "Define.h"
+#include <vector>
 
 enum class CANDWND_ACTION
 {
@@ -56,12 +57,13 @@ public:
     CCandidateWindow(_In_ CANDWNDCALLBACK pfnCallback, _In_ void *pv, _In_ CCandidateRange *pIndexRange, _In_ BOOL isStoreAppMode);
     virtual ~CCandidateWindow();
 
-    BOOL _Create(_In_ UINT wndWidth, _In_ UINT fontSize, _In_opt_ HWND parentWndHandle);
+    BOOL _Create(_In_ UINT wndWidth, _In_ UINT fontSize, _In_opt_ HWND parentWndHandle,
+                 _In_ BOOL isHorizontal = FALSE, _In_ UINT maxCharsPerLine = 0);
 
 	void _SetCandIndexRange(CCandidateRange* pIndexRange){ _pIndexRange = pIndexRange; }
 
 	void _SetCandStringLength(_In_ UINT wndWidth) { _wndWidth = wndWidth; } // in chararacters
-	UINT _GetWidth() { return _cxTitle + GetSystemMetrics(SM_CXVSCROLL) * 3/2  + CANDWND_BORDER_WIDTH *2;}
+	UINT _GetWidth() { return _isHorizontal ? (_cxTitle + CANDWND_BORDER_WIDTH * 2) : (_cxTitle + GetSystemMetrics(SM_CXVSCROLL) * 3/2 + CANDWND_BORDER_WIDTH * 2); }
 
 
     void _Move(int x, int y);
@@ -119,6 +121,15 @@ private:
 
     HRESULT _AdjustPageIndex(_Inout_ UINT & currentPage, _Inout_ UINT & currentPageIndex);
 
+    struct _CandItemRect {
+        UINT listIndex;
+        RECT rc;
+    };
+    void _BuildHorizontalLayout(_In_ HDC dc, _In_ UINT startIndex, _In_ int itemCount,
+                                _In_ int cxLine, _In_ int cyLine,
+                                _Out_ std::vector<_CandItemRect>& out,
+                                _Out_ int& totalWidth, _Out_ int& totalRows);
+
     void _ResizeWindow();
     void _DeleteShadowWnd();
     void _DeleteVScrollBarWnd();
@@ -154,6 +165,9 @@ private:
 
     BOOL _dontAdjustOnEmptyItemPage;
     BOOL _isStoreAppMode;
+    BOOL _isHorizontal;
+    UINT _maxCharsPerLine;
+    int  _currentPageRows;
 
 	BYTE _animationStage;
 

@@ -456,14 +456,24 @@ void CScrollBarWindow::_AdjustWindowPos()
         return;
     }
 
+    if (_IsHorizontal())
+    {
+        // Horizontal scrollbar position is set by CCandidateWindow::_ResizeWindow()
+        // via _Resize() using parent-client coordinates. As a WS_CHILD window,
+        // it moves with the parent automatically. Skip _AdjustWindowPos to avoid
+        // overriding with a different formula that causes misalignment.
+        return;
+    }
+
     GetWindowRect(pParent->_GetWnd(), &rc);
-	SetWindowPos(_GetWnd(), pParent->_GetWnd(),
-		rc.left + (rc.right - rc.left) - GetSystemMetrics(SM_CXVSCROLL) * 3/2 - CANDWND_BORDER_WIDTH,
-        rc.top + CANDWND_BORDER_WIDTH,
-        
-		GetSystemMetrics(SM_CXVSCROLL) *3/ 2,
-		rc.bottom - rc.top - CANDWND_BORDER_WIDTH * 2,
-        SWP_NOOWNERZORDER | SWP_NOACTIVATE);
+    {
+        SetWindowPos(_GetWnd(), pParent->_GetWnd(),
+            rc.left + (rc.right - rc.left) - GetSystemMetrics(SM_CXVSCROLL) * 3/2 - CANDWND_BORDER_WIDTH,
+            rc.top + CANDWND_BORDER_WIDTH,
+            GetSystemMetrics(SM_CXVSCROLL) *3/ 2,
+            rc.bottom - rc.top - CANDWND_BORDER_WIDTH * 2,
+            SWP_NOOWNERZORDER | SWP_NOACTIVATE);
+    }
 }
 
 //+---------------------------------------------------------------------------
@@ -514,10 +524,20 @@ BOOL CScrollBarWindow::_GetBtnUpRect(_Out_ RECT *prc)
         return FALSE;
     }
 
-    prc->left = rc.left;
-    prc->top = rc.top;
-    prc->right = rc.right;
-    prc->bottom = rc.top + min(_sizeOfScrollBtn.cy, (rc.bottom - rc.top)/2);
+    if (_IsHorizontal())
+    {
+        prc->left = rc.left;
+        prc->top = rc.top;
+        prc->right = rc.left + min(_sizeOfScrollBtn.cx, (rc.right - rc.left)/2);
+        prc->bottom = rc.bottom;
+    }
+    else
+    {
+        prc->left = rc.left;
+        prc->top = rc.top;
+        prc->right = rc.right;
+        prc->bottom = rc.top + min(_sizeOfScrollBtn.cy, (rc.bottom - rc.top)/2);
+    }
 
     return TRUE;
 }
@@ -539,10 +559,20 @@ BOOL CScrollBarWindow::_GetBtnDnRect(_Out_ RECT *prc)
         return FALSE;
     }
 
-    prc->left = rc.left; 
-    prc->top = rc.bottom - min(_sizeOfScrollBtn.cy, (rc.bottom - rc.top)/2);
-    prc->right = rc.right;
-    prc->bottom = rc.bottom;
+    if (_IsHorizontal())
+    {
+        prc->left = rc.right - min(_sizeOfScrollBtn.cx, (rc.right - rc.left)/2);
+        prc->top = rc.top;
+        prc->right = rc.right;
+        prc->bottom = rc.bottom;
+    }
+    else
+    {
+        prc->left = rc.left;
+        prc->top = rc.bottom - min(_sizeOfScrollBtn.cy, (rc.bottom - rc.top)/2);
+        prc->right = rc.right;
+        prc->bottom = rc.bottom;
+    }
 
     return TRUE;
 }
@@ -570,10 +600,20 @@ void CScrollBarWindow::_GetScrollArea(_Out_ RECT *prc)
         return;
     }
 
-    prc->left = rc.left;
-    prc->top = rc.top + (rcBtnUp.bottom - rcBtnUp.top);
-    prc->right = rc.right;
-    prc->bottom = rc.bottom - (rcBtnDn.bottom - rcBtnDn.top);
+    if (_IsHorizontal())
+    {
+        prc->left = rc.left + (rcBtnUp.right - rcBtnUp.left);
+        prc->top = rc.top;
+        prc->right = rc.right - (rcBtnDn.right - rcBtnDn.left);
+        prc->bottom = rc.bottom;
+    }
+    else
+    {
+        prc->left = rc.left;
+        prc->top = rc.top + (rcBtnUp.bottom - rcBtnUp.top);
+        prc->right = rc.right;
+        prc->bottom = rc.bottom - (rcBtnDn.bottom - rcBtnDn.top);
+    }
 }
 
 //+---------------------------------------------------------------------------
@@ -649,10 +689,12 @@ void CScrollButtonWindow::_OnLButtonDown(POINT pt)
     switch (subTypeOfControl)
     {
     case DFCS_SCROLLDOWN:
+    case DFCS_SCROLLRIGHT:
         _NotifyCommand(WM_VSCROLL, SB_PAGEDOWN, 0);
         pParent->_ShiftPage(+1, FALSE);
         break;
     case DFCS_SCROLLUP:
+    case DFCS_SCROLLLEFT:
         _NotifyCommand(WM_VSCROLL, SB_PAGEUP, 0);
         pParent->_ShiftPage(-1, FALSE);
         break;
@@ -709,10 +751,12 @@ void CScrollButtonWindow::_OnTimer()
         switch (subTypeOfControl)
         {
         case DFCS_SCROLLDOWN:
+        case DFCS_SCROLLRIGHT:
             _NotifyCommand(WM_VSCROLL, SB_LINEDOWN, 0);
             pParent->_ShiftLine(+1, FALSE);
             break;
         case DFCS_SCROLLUP:
+        case DFCS_SCROLLLEFT:
             _NotifyCommand(WM_VSCROLL, SB_LINEUP, 0);
             pParent->_ShiftLine(-1, FALSE);
             break;

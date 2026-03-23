@@ -1320,6 +1320,23 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 				ret = TRUE;
 			}
 			break;
+		case IDC_COMBO_CANDIDATE_LAYOUT:
+			if (HIWORD(wParam) == CBN_SELCHANGE)
+			{
+				BOOL isHoriz = ((int)SendDlgItemMessage(hDlg, IDC_COMBO_CANDIDATE_LAYOUT,
+					CB_GETCURSEL, 0, 0) == 1);
+				EnableWindow(GetDlgItem(hDlg, IDC_EDIT_CANDIDATE_MAXCHARSPERLINE), isHoriz);
+				PropSheet_Changed(GetParent(hDlg), hDlg);
+				ret = TRUE;
+			}
+			break;
+		case IDC_EDIT_CANDIDATE_MAXCHARSPERLINE:
+			if (HIWORD(wParam) == EN_CHANGE)
+			{
+				PropSheet_Changed(GetParent(hDlg), hDlg);
+				ret = TRUE;
+			}
+			break;
 		case IDC_COMBO_NUMERIC_PAD:
 			switch (HIWORD(wParam))
 			{
@@ -1453,6 +1470,11 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 
 			GetDlgItemText(hDlg, IDC_EDIT_MAXWIDTH, num, _countof(num));
 			_maxCodes = _wtol(num);
+
+			_candidateHorizontal = ((int)SendDlgItemMessage(hDlg, IDC_COMBO_CANDIDATE_LAYOUT,
+				CB_GETCURSEL, 0, 0) == 1);
+			GetDlgItemText(hDlg, IDC_EDIT_CANDIDATE_MAXCHARSPERLINE, num, _countof(num));
+			_candidateMaxCharsPerLine = (UINT)_wtol(num);
 
 			GetDlgItemText(hDlg, IDC_EDIT_FONTPOINT, num, _countof(num));
 			_fontSize = _wtol(num);
@@ -2266,6 +2288,18 @@ void CConfig::ParseConfig(HWND hDlg, IME_MODE imeMode, BOOL initDiag)
 	_snwprintf_s(num, _TRUNCATE, L"%d", _maxCodes);
 	SetDlgItemTextW(hDlg, IDC_EDIT_MAXWIDTH, num);
 	CheckDlgButton(hDlg, IDC_CHECKBOX_SHOWNOTIFY, (_showNotifyDesktop) ? BST_CHECKED : BST_UNCHECKED);
+
+	// Horizontal candidate layout combo
+	if (initDiag)
+	{
+		SendDlgItemMessage(hDlg, IDC_COMBO_CANDIDATE_LAYOUT, CB_ADDSTRING, 0, (LPARAM)L"直排");
+		SendDlgItemMessage(hDlg, IDC_COMBO_CANDIDATE_LAYOUT, CB_ADDSTRING, 0, (LPARAM)L"橫排");
+	}
+	SendDlgItemMessage(hDlg, IDC_COMBO_CANDIDATE_LAYOUT, CB_SETCURSEL,
+		_candidateHorizontal ? 1 : 0, 0);
+	_snwprintf_s(num, _TRUNCATE, L"%d", _candidateMaxCharsPerLine);
+	SetDlgItemTextW(hDlg, IDC_EDIT_CANDIDATE_MAXCHARSPERLINE, num);
+	EnableWindow(GetDlgItem(hDlg, IDC_EDIT_CANDIDATE_MAXCHARSPERLINE), _candidateHorizontal);
 
 	CheckDlgButton(hDlg, IDC_CHECKBOX_AUTOCOMPOSE, (_autoCompose) ? BST_CHECKED : BST_UNCHECKED);
 	CheckDlgButton(hDlg, IDC_CHECKBOX_CLEAR_ONBEEP, (_clearOnBeep) ? BST_CHECKED : BST_UNCHECKED);

@@ -39,6 +39,7 @@ static const KeyInfo g_keyRegistry[] =
     { L"ArrayNotifySP",                BOOL_T,   0,   1,   CLI_MASK_ARRAY     },
     { L"ArraySingleQuoteCustomPhrase", BOOL_T,   0,   1,   CLI_MASK_ARRAY     },
     { L"Big5Filter",                   BOOL_T,   0,   1,   CLI_MASK_NOT_ARRAY },
+    { L"CandidateHorizontal",         BOOL_T,   0,   1,   CLI_MASK_ALL       },
     // Integer / enum keys
     { L"MaxCodes",                     INT_T,    1,  20,   CLI_MASK_ALL       },
     { L"FontSize",                     INT_T,    8,  72,   CLI_MASK_ALL       },
@@ -49,6 +50,7 @@ static const KeyInfo g_keyRegistry[] =
     { L"NumericPad",                   INT_T,    0,   2,   CLI_MASK_ALL       },
     { L"ArrayScope",                   INT_T,    0,   5,   CLI_MASK_ARRAY     },
     { L"PhoneticKeyboardLayout",       INT_T,    0,   1,   CLI_MASK_PHONETIC  },
+    { L"CandidateMaxCharsPerLine",    INT_T,    0, 100,   CLI_MASK_ALL       },
     // String keys
     { L"FontFaceName",                 STRING_T, 0,   0,   CLI_MASK_ALL       },
     { L"ReverseConversionDescription", STRING_T, 0,   0,   CLI_MASK_ALL       },
@@ -208,6 +210,8 @@ static bool GetKeyValue(const KeyInfo* ki, WCHAR* outBuf, int bufLen)
         StringCchPrintfW(outBuf, bufLen, L"%d", CConfig::GetArraySingleQuoteCustomPhrase() ? 1 : 0);
     else if (_wcsicmp(n, L"Big5Filter") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%d", CConfig::GetBig5Filter() ? 1 : 0);
+    else if (_wcsicmp(n, L"CandidateHorizontal") == 0)
+        StringCchPrintfW(outBuf, bufLen, L"%d", CConfig::GetCandidateHorizontal() ? 1 : 0);
     // --- Integer / enum ---
     else if (_wcsicmp(n, L"MaxCodes") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%u", CConfig::GetMaxCodes());
@@ -227,6 +231,8 @@ static bool GetKeyValue(const KeyInfo* ki, WCHAR* outBuf, int bufLen)
         StringCchPrintfW(outBuf, bufLen, L"%d", (int)CConfig::GetArrayScope());
     else if (_wcsicmp(n, L"PhoneticKeyboardLayout") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%d", (int)CConfig::getPhoneticKeyboardLayout());
+    else if (_wcsicmp(n, L"CandidateMaxCharsPerLine") == 0)
+        StringCchPrintfW(outBuf, bufLen, L"%u", CConfig::GetCandidateMaxCharsPerLine());
     // --- String ---
     else if (_wcsicmp(n, L"FontFaceName") == 0)
         StringCchCopyW(outBuf, bufLen, CConfig::GetFontFaceName());
@@ -345,6 +351,7 @@ static int ApplyKeyValue(const KeyInfo* ki, const wchar_t* valueStr, FILE* err)
         else if (_wcsicmp(n, L"ArrayNotifySP") == 0)            CConfig::SetArrayNotifySP((BOOL)v);
         else if (_wcsicmp(n, L"ArraySingleQuoteCustomPhrase") == 0) CConfig::SetArraySingleQuoteCustomPhrase((BOOL)v);
         else if (_wcsicmp(n, L"Big5Filter") == 0)               CConfig::SetBig5Filter((BOOL)v);
+        else if (_wcsicmp(n, L"CandidateHorizontal") == 0)     CConfig::SetCandidateHorizontal((BOOL)v);
         else if (_wcsicmp(n, L"MaxCodes") == 0)                 CConfig::SetMaxCodes((UINT)v);
         else if (_wcsicmp(n, L"FontSize") == 0)                 CConfig::SetFontSize((UINT)v);
         else if (_wcsicmp(n, L"FontWeight") == 0)               CConfig::SetFontWeight((UINT)v);
@@ -354,6 +361,7 @@ static int ApplyKeyValue(const KeyInfo* ki, const wchar_t* valueStr, FILE* err)
         else if (_wcsicmp(n, L"NumericPad") == 0)               CConfig::SetNumericPad((NUMERIC_PAD)v);
         else if (_wcsicmp(n, L"ArrayScope") == 0)               CConfig::SetArrayScope((ARRAY_SCOPE)v);
         else if (_wcsicmp(n, L"PhoneticKeyboardLayout") == 0)   CConfig::setPhoneticKeyboardLayout((PHONETIC_KEYBOARD_LAYOUT)v);
+        else if (_wcsicmp(n, L"CandidateMaxCharsPerLine") == 0) CConfig::SetCandidateMaxCharsPerLine((UINT)v);
         else return 1; // should not reach here
     }
     else if (ki->type == COLOR_T)
