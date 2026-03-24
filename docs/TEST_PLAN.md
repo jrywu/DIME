@@ -1,8 +1,8 @@
 # DIME Test Plan
 
-**Version**: 3.2 (Candidate width clipping + font settings regression tests; corrupted U+FFFD test strings fixed)
-**Last Updated**: 2026-03-17
-**Status**: ✅ **IME Core 82.4% — TARGET MET** — 552 tests passing
+**Version**: 3.3 (DPI scaling unit tests; DIMESettings Per-Monitor V2 DPI awareness)
+**Last Updated**: 2026-03-24
+**Status**: ✅ **IME Core 82.4% — TARGET MET** — 568 tests passing
 
 ---
 
@@ -15,9 +15,9 @@
 | **IME Core Coverage** | ≥80% | **82.4%** | ✅ **TARGET MET** (2,316/2,811 lines) |
 | **IME UI Coverage** | ≥30% | **29.4%** | ⚠️ Near target (1,362/4,630 lines) |
 | **TSF Interface Coverage** | ≥15% | **6.9%** | ⚠️ Limited (345/4,971 lines) |
-| **Unit Tests** | — | **281 tests** | ✅ COMPLETE |
+| **Unit Tests** | — | **297 tests** | ✅ COMPLETE |
 | **Integration Tests** | — | **271 tests** | ✅ COMPLETE |
-| **Total Automated Tests** | — | **552 passing** | ✅ COMPLETE |
+| **Total Automated Tests** | — | **568 passing** | ✅ COMPLETE |
 | **Execution Time** | < 60s | **~22 seconds** | ✅ EXCELLENT |
 | **CI/CD Ready** | Yes | **Yes** | ✅ AUTO-RUN |
 
@@ -138,7 +138,7 @@ OpenCppCoverage --sources DIME --excluded_sources tests ^
 
 ## Test Suite Summary
 
-### Unit Tests Overview (281 tests, ~15 seconds)
+### Unit Tests Overview (297 tests, ~15 seconds)
 
 | Suite | Tests | Coverage Target | Actual Coverage | Files Tested |
 |-------|-------|----------------|-----------------|--------------|
@@ -156,7 +156,8 @@ OpenCppCoverage --sources DIME --excluded_sources tests ^
 | **UT-CM: Color Mode** | 8 tests | ≥90% | ~90% | `Config.cpp`, `Config.h`, `Define.h` |
 | **UT-CV: Custom Table Validation** | 17 tests | ≥90% | ~90% | `Config.cpp` (CustomTableValidationUnitTest class) |
 | **UT-PT: Palette round-trip + backward compat** | 11 tests | ≥90% | ~90% | `Config.cpp` (ConfigTest class) |
-| **Total Unit Tests** | **281** | **≥85%** | **~92%** | **Core functionality** |
+| **UT-DPI: DPI Scaling** | 16 tests | 100% | **100%** | `BaseStructure.h` (`ScaleForDpi`), MulDiv font math (`DpiScalingTest.cpp`) |
+| **Total Unit Tests** | **297** | **≥85%** | **~92%** | **Core functionality** |
 
 *UT-06 has room for improvement in wildcard/reverse lookup coverage
 
@@ -430,6 +431,22 @@ Tests all 28 boolean/integer/enum/string setter/getter pairs, 4 ResetAllDefaults
 |-----------|-------|-----------------|
 | **BaseStructureHelpersTest** | 14 | IsSpace (4), SkipWhiteSpace (4), FindChar (4), CLSIDToString (2) |
 | **CandidateRangeTest** | 8 | IsRange valid/invalid/numpad/none-mode (4), GetIndex valid/invalid/numpad/none-mode (4) |
+
+### UT-DPI: DPI Scaling (16 tests)
+
+**File:** `DpiScalingTest.cpp` | **Namespace:** `DIMEUnitTests` | **Pure math tests — no display required**
+
+These tests validate the `ScaleForDpi()` helper and the `MulDiv`-based font point-to-pixel conversion formulas used throughout DIME's DPI-aware rendering.
+
+| Test Class | Tests | Key Validations |
+|-----------|-------|-----------------|
+| **DpiHelperTests** | 8 | ScaleForDpi at 96/120/144/192 DPI (4), zero base (1), zero DPI (1), odd values match MulDiv (1), large value scaling (1) |
+| **FontDpiConversionTests** | 8 | Point-to-pixel 12pt at 96/120/144 DPI (3), 10pt at 96/120 DPI (2), RichEdit twips conversion at 96/120/144 DPI (3) |
+
+**Coverage scope:**
+- `ScaleForDpi()` inline helper in `BaseStructure.h` — identity at 96 DPI, standard scaling at 125%/150%/200%, edge cases (zero inputs), rounding parity with `MulDiv`
+- Font size formula `-MulDiv(fontSize, logPixelY, 72)` used in `Config.cpp:SetDefaultTextFont()` and `ConfigDialog.cpp`
+- RichEdit twips formula `MulDiv(abs(lfHeight), 72 * 20, dpi)` used in `ConfigDialog.cpp` for `EM_SETCHARFORMAT`
 
 ---
 
@@ -760,6 +777,15 @@ jobs:
 ---
 
 ## Document Revision History
+
+### Version 3.3 - 2026-03-24
+**DPI scaling unit tests; DIMESettings Per-Monitor V2 DPI awareness:**
+
+- ✅ **Total: 568 tests passing** (up from 552 at v3.2); 297 unit + 271 integration
+- ✅ **UT-DPI (16 tests):** New `DpiScalingTest.cpp` — `DpiHelperTests` (8 tests: ScaleForDpi at 96/120/144/192 DPI, zero edge cases, MulDiv parity) + `FontDpiConversionTests` (8 tests: point-to-pixel at multiple DPIs, RichEdit twips conversion)
+- ✅ **DIMESettings Per-Monitor V2:** Tiered DPI awareness — PMv2 (Win10 1703+) → PMv1 (Win8.1+) → System (Win8.1+) → no-op (Win7)
+- ✅ **ConfigDialog font chooser:** Per-monitor DPI override added to font chooser and restore-default paths (previously used system DPI only)
+- ✅ **UIConstants.h:** Comment updated to accurately describe DPI scaling status of each constant category
 
 ### Version 3.2 - 2026-03-17
 **Candidate width clipping + font settings regression tests; corrupted U+FFFD test strings fixed:**

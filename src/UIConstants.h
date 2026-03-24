@@ -36,12 +36,19 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //---------------------------------------------------------------------
 // UI Layout Constants for DIME Input Method Framework
 //
-// These are baseline values defined at 96 DPI. The actual rendered
-// sizes are scaled at runtime based on the system DPI setting to
-// provide proper high-DPI support on 2K/4K displays.
+// These are raw pixel values at 96 DPI baseline.
 //
-// Note: The DPI scaling is already implemented throughout the codebase.
-//       These constants are centralized here for maintainability only.
+// DPI scaling status:
+//   - Font sizes (DEFAULT_FONT_SIZE etc.) are scaled via MulDiv in
+//     CConfig::SetDefaultTextFont() and ConfigDialog — these work correctly.
+//   - CANDIDATE_ROW_WIDTH is an initial value overridden at runtime by
+//     text measurement (GetTextExtentPoint32), so it scales implicitly.
+//   - Border widths (1px) are intentionally unscaled — 1px borders are
+//     standard practice at all DPIs.
+//   - SHADOW_WIDTH, offsets, and padding values are NOT currently scaled.
+//     See docs/DPI_AWARE.md Phase 2 for the plan to add ScaleForDpi().
+//   - Scrollbar sizes here are reference values; actual scrollbar sizing
+//     uses GetSystemMetrics(SM_CXVSCROLL) at runtime.
 //---------------------------------------------------------------------
 
 namespace UI {

@@ -1115,10 +1115,19 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 		case IDC_BUTTON_CHOOSEFONT:
 
 			hdc = GetDC(hDlg);
+			{
+			int _logPixelY = GetDeviceCaps(hdc, LOGPIXELSY);
+			if (_GetDpiForMonitor)
+			{
+				HMONITOR _monitor = MonitorFromWindow(hDlg, MONITOR_DEFAULTTONEAREST);
+				UINT monDpiX, monDpiY;
+				_GetDpiForMonitor(_monitor, MDT_EFFECTIVE_DPI, &monDpiX, &monDpiY);
+				if (monDpiY > 0) _logPixelY = monDpiY;
+			}
 
 			hFont = (HFONT)SendMessage(GetDlgItem(hDlg, IDC_EDIT_FONTNAME), WM_GETFONT, 0, 0);
 			GetObject(hFont, sizeof(LOGFONT), &lf);
-			lf.lfHeight = -MulDiv(GetDlgItemInt(hDlg, IDC_EDIT_FONTPOINT, NULL, FALSE), GetDeviceCaps(hdc, LOGPIXELSY), 72);
+			lf.lfHeight = -MulDiv(GetDlgItemInt(hDlg, IDC_EDIT_FONTPOINT, NULL, FALSE), _logPixelY, 72);
 			lf.lfCharSet = DEFAULT_CHARSET;
 
 			ZeroMemory(&cf, sizeof(cf));
@@ -1132,7 +1141,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 				PropSheet_Changed(GetParent(hDlg), hDlg);
 
 				SetDlgItemText(hDlg, IDC_EDIT_FONTNAME, lf.lfFaceName);
-				lf.lfHeight = -MulDiv(10, GetDeviceCaps(hdc, LOGPIXELSY), 72);
+				lf.lfHeight = -MulDiv(10, _logPixelY, 72);
 				fontweight = lf.lfWeight;
 				fontitalic = lf.lfItalic;
 				hFont = CreateFontIndirect(&lf);
@@ -1140,6 +1149,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 				SetDlgItemInt(hDlg, IDC_EDIT_FONTPOINT, cf.iPointSize / 10, FALSE);
 			}
 
+			}
 			ReleaseDC(hDlg, hdc);
 			ret = TRUE;
 			break;
@@ -1151,10 +1161,20 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			fontitalic = FALSE;
 			SetDlgItemText(hDlg, IDC_EDIT_FONTNAME, fontname);
 			hdc = GetDC(hDlg);
-			hFont = CreateFont(-MulDiv(10, GetDeviceCaps(hdc, LOGPIXELSY), 72), 0, 0, 0,
+			{
+			int _logPixelY = GetDeviceCaps(hdc, LOGPIXELSY);
+			if (_GetDpiForMonitor)
+			{
+				HMONITOR _monitor = MonitorFromWindow(hDlg, MONITOR_DEFAULTTONEAREST);
+				UINT monDpiX, monDpiY;
+				_GetDpiForMonitor(_monitor, MDT_EFFECTIVE_DPI, &monDpiX, &monDpiY);
+				if (monDpiY > 0) _logPixelY = monDpiY;
+			}
+			hFont = CreateFont(-MulDiv(10, _logPixelY, 72), 0, 0, 0,
 				fontweight, fontitalic, FALSE, FALSE, DEFAULT_CHARSET,
 				OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH, fontname);
 			SendMessage(GetDlgItem(hDlg, IDC_EDIT_FONTNAME), WM_SETFONT, (WPARAM)hFont, 0);
+			}
 			ReleaseDC(hDlg, hdc);
 			SetDlgItemInt(hDlg, IDC_EDIT_FONTPOINT, fontpoint, FALSE);
 

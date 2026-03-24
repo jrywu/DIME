@@ -596,18 +596,19 @@ STDAPI CLangBarItemButton::GetIcon(_Out_ HICON *phIcon)
     GetStatus(&status);
 
 	
+    UINT _iconDpi = CConfig::GetDpiForHwnd(nullptr);
     if (isOn && !(status & TF_LBI_STATUS_DISABLED))
     {
         if (Global::dllInstanceHandle)
         {
-            *phIcon = reinterpret_cast<HICON>(LoadImage(Global::dllInstanceHandle, MAKEINTRESOURCE(_onIconIndex), IMAGE_ICON, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), 0));
+            *phIcon = reinterpret_cast<HICON>(LoadImage(Global::dllInstanceHandle, MAKEINTRESOURCE(_onIconIndex), IMAGE_ICON, CConfig::GetSystemMetricsDpi(SM_CXSMICON, _iconDpi), CConfig::GetSystemMetricsDpi(SM_CYSMICON, _iconDpi), 0));
         }
     }
     else
     {
         if (Global::dllInstanceHandle)
         {
-            *phIcon = reinterpret_cast<HICON>(LoadImage(Global::dllInstanceHandle, MAKEINTRESOURCE(_offIconIndex), IMAGE_ICON, GetSystemMetrics(SM_CXSMICON), GetSystemMetrics(SM_CYSMICON), 0));
+            *phIcon = reinterpret_cast<HICON>(LoadImage(Global::dllInstanceHandle, MAKEINTRESOURCE(_offIconIndex), IMAGE_ICON, CConfig::GetSystemMetricsDpi(SM_CXSMICON, _iconDpi), CConfig::GetSystemMetricsDpi(SM_CYSMICON, _iconDpi), 0));
         }
     }
 

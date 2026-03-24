@@ -48,6 +48,17 @@ using std::map;
 typedef  map <WCHAR, PWCH> _T_RadicalMap;
 typedef  map <WCHAR, DWORD_PTR> _T_RadicalIndexMap;
 typedef  HRESULT(__stdcall * _T_GetDpiForMonitor)(HMONITOR hmonitor, MONITOR_DPI_TYPE dpiType, UINT *dpiX, UINT *dpiY);
+typedef  int (WINAPI * _T_GetSystemMetricsForDpi)(int nIndex, UINT dpi);
+typedef  DPI_AWARENESS_CONTEXT (WINAPI * _T_SetThreadDpiAwarenessContext)(DPI_AWARENESS_CONTEXT dpiContext);
+
+//---------------------------------------------------------------------
+// DPI scaling helper — scales a 96-DPI baseline value to the given DPI.
+// Pure math, no Windows API dependency. Safe on all Windows versions.
+//---------------------------------------------------------------------
+inline int ScaleForDpi(int baseValue, UINT dpi)
+{
+    return MulDiv(baseValue, dpi, USER_DEFAULT_SCREEN_DPI);
+}
 
 
 //---------------------------------------------------------------------

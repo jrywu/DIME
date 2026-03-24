@@ -126,6 +126,13 @@ BOOL CBaseWindow::_Create(ATOM atom, DWORD dwExStyle, DWORD dwStyle, _In_opt_ CB
     if (atom != 0)
     {
         // create real window
+        // Set per-monitor DPI awareness for this window (Win10 1607+)
+        // so WM_DPICHANGED is delivered when moving between monitors.
+        // Restores the original context afterward to avoid affecting the host process.
+        DPI_AWARENESS_CONTEXT _prevDpiCtx = nullptr;
+        auto _setThreadDpiCtx = CConfig::GetSetThreadDpiAwarenessContext();
+        if (_setThreadDpiCtx)
+            _prevDpiCtx = _setThreadDpiCtx(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 
         _wndHandle = CreateWindowEx(dwExStyle,
             (LPCTSTR)atom,
@@ -137,6 +144,9 @@ BOOL CBaseWindow::_Create(ATOM atom, DWORD dwExStyle, DWORD dwStyle, _In_opt_ CB
             NULL,
             Global::dllInstanceHandle,
             this);   // lpParam
+
+        if (_prevDpiCtx && _setThreadDpiCtx)
+            _setThreadDpiCtx(_prevDpiCtx);
 
         if (!_wndHandle)
         {

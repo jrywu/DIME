@@ -282,8 +282,13 @@ public:
 	static INT_PTR CALLBACK DictionaryPropertyPageWndProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 	friend void DrawColor(HWND hwnd, HDC hdc, COLORREF col);
 	
-	//shcore.dll GetDpiForMonitor pointer;
+	//DPI function pointers (loaded dynamically for backward compatibility)
 	static void SetGetDpiForMonitor(_T_GetDpiForMonitor getDpiForMonitor) {	_GetDpiForMonitor = getDpiForMonitor; }
+	static void SetGetSystemMetricsForDpi(_T_GetSystemMetricsForDpi fn) { _GetSystemMetricsForDpi = fn; }
+	static void SetSetThreadDpiAwarenessContext(_T_SetThreadDpiAwarenessContext fn) { _SetThreadDpiAwarenessContext = fn; }
+	static int GetSystemMetricsDpi(int nIndex, UINT dpi) { return _GetSystemMetricsForDpi ? _GetSystemMetricsForDpi(nIndex, dpi) : GetSystemMetrics(nIndex); }
+	static _T_SetThreadDpiAwarenessContext GetSetThreadDpiAwarenessContext() { return _SetThreadDpiAwarenessContext; }
+	static UINT GetDpiForHwnd(HWND hWnd);  // returns effective DPI for a window's monitor, or system DPI as fallback
 	
 
 private:
@@ -370,6 +375,8 @@ private:
 
 	static UINT _dpiY;
 	static _T_GetDpiForMonitor _GetDpiForMonitor;
+	static _T_GetSystemMetricsForDpi _GetSystemMetricsForDpi;
+	static _T_SetThreadDpiAwarenessContext _SetThreadDpiAwarenessContext;
 	
 
 	static void LoadColorsForMode(IME_COLOR_MODE mode);

@@ -211,18 +211,44 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         return -1;
     }
 
-    if (IsWindowsVersionOrGreater(8,1)){
-        HMODULE hShcore = LoadLibrary(L"Shcore.dll");
-        if (hShcore != NULL) {
-            auto SetProcessDpiAwareness = reinterpret_cast<HRESULT(__stdcall*)(_PROCESS_DPI_AWARENESS)>(
-                GetProcAddress(hShcore, "SetProcessDpiAwareness"));
-            if (SetProcessDpiAwareness != nullptr) {
-                SetProcessDpiAwareness(Process_System_DPI_Aware);
-            } else {
-                debugPrint(L"Failed to cast function SetProcessDpiAwareness in Shcore.dll");
+    // DPI awareness: tiered approach with runtime fallback
+    // Tier 1: Per-Monitor V2 (Win10 1703+) — automatic non-client/dialog/control scaling
+    // Tier 2: Per-Monitor V1 (Win8.1+) — requires manual WM_DPICHANGED handling
+    // Tier 3: System DPI Aware (Win8.1+) — correct on primary monitor only
+    // Tier 4: Win7 — no DPI awareness API, no-op
+    {
+        BOOL dpiSet = FALSE;
+        // Tier 1: SetProcessDpiAwarenessContext from User32.dll (Win10 1607+)
+        HMODULE hUser32 = GetModuleHandle(L"User32.dll");
+        if (hUser32) {
+            typedef BOOL (WINAPI *_T_SetProcessDpiAwarenessContext)(DPI_AWARENESS_CONTEXT);
+            auto SetDpiCtx = reinterpret_cast<_T_SetProcessDpiAwarenessContext>(
+                GetProcAddress(hUser32, "SetProcessDpiAwarenessContext"));
+            if (SetDpiCtx && SetDpiCtx(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2)) {
+                debugPrint(L"DPI: Per-Monitor V2 awareness set");
+                dpiSet = TRUE;
             }
-            FreeLibrary(hShcore);
-        }    
+        }
+        // Tier 2/3: SetProcessDpiAwareness from Shcore.dll (Win8.1+)
+        if (!dpiSet && IsWindowsVersionOrGreater(8,1)) {
+            HMODULE hShcore = LoadLibrary(L"Shcore.dll");
+            if (hShcore != NULL) {
+                auto SetProcessDpiAwareness = reinterpret_cast<HRESULT(__stdcall*)(_PROCESS_DPI_AWARENESS)>(
+                    GetProcAddress(hShcore, "SetProcessDpiAwareness"));
+                if (SetProcessDpiAwareness != nullptr) {
+                    // Try Per-Monitor V1 first, fall back to System
+                    if (SUCCEEDED(SetProcessDpiAwareness(Process_Per_Monitor_DPI_Aware))) {
+                        debugPrint(L"DPI: Per-Monitor V1 awareness set");
+                    } else {
+                        SetProcessDpiAwareness(Process_System_DPI_Aware);
+                        debugPrint(L"DPI: System DPI awareness set");
+                    }
+                } else {
+                    debugPrint(L"Failed to cast function SetProcessDpiAwareness in Shcore.dll");
+                }
+                FreeLibrary(hShcore);
+            }
+        }
     }
 
     HWND hDlg;

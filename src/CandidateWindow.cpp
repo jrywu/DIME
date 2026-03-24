@@ -212,13 +212,19 @@ const int PageCountPosition = 1;
 const int StringPosition = 2;
 
 
+UINT CCandidateWindow::_GetWidth()
+{
+	return _cxTitle + CConfig::GetSystemMetricsDpi(SM_CXVSCROLL, CConfig::GetDpiForHwnd(_GetWnd())) * 3/2  + CANDWND_BORDER_WIDTH *2;
+}
+
 void CCandidateWindow::_ResizeWindow()
 {
 
 	debugPrint(L"CCandidateWindow::_ResizeWindow() _cxTitle = %d", _cxTitle);
 	if(_pIndexRange == nullptr) return;
     int candidateListPageCnt = _pIndexRange->Count();
-	int VScrollWidth = GetSystemMetrics(SM_CXVSCROLL) * 3/2;
+	UINT _candDpi = CConfig::GetDpiForHwnd(_GetWnd());
+	int VScrollWidth = CConfig::GetSystemMetricsDpi(SM_CXVSCROLL, _candDpi) * 3/2;
 	BOOL isMultiPage = (_pVScrollBarWnd && _pVScrollBarWnd->_IsEnabled());
 	int bottomPadding = isMultiPage ? _cyRow : _cyRow / 2;
 	CBaseWindow::_Resize(_x, _y, _cxTitle + VScrollWidth +  CANDWND_BORDER_WIDTH*2,
@@ -522,6 +528,23 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
     case WM_VSCROLL:
         _OnVScroll(LOWORD(wParam), HIWORD(wParam));
         return 0;
+
+    case WM_DPICHANGED:
+    {
+        // Recreate font at the new monitor DPI
+        CConfig::SetDefaultTextFont(wndHandle);
+        // Use the suggested new window rect from Windows
+        RECT* prcNew = reinterpret_cast<RECT*>(lParam);
+        if (prcNew)
+        {
+            SetWindowPos(wndHandle, NULL,
+                prcNew->left, prcNew->top,
+                prcNew->right - prcNew->left,
+                prcNew->bottom - prcNew->top,
+                SWP_NOZORDER | SWP_NOACTIVATE);
+        }
+        return 0;
+    }
     }
 
     return DefWindowProc(wndHandle, uMsg, wParam, lParam);
@@ -624,7 +647,7 @@ void CCandidateWindow::_OnLButtonDown(POINT pt)
 
 	RECT rc = {0, 0, 0, 0};
 	rc.left = rcWindow.left + PageCountPosition* _TextMetric.tmAveCharWidth;
-    rc.right = rcWindow.right  - GetSystemMetrics(SM_CXVSCROLL) * 3/2 - CANDWND_BORDER_WIDTH;
+    rc.right = rcWindow.right  - CConfig::GetSystemMetricsDpi(SM_CXVSCROLL, CConfig::GetDpiForHwnd(_GetWnd())) * 3/2 - CANDWND_BORDER_WIDTH;
 
     for (UINT pageCount = 0; (index < _candidateList.Count()) && (pageCount < candidateListPageCnt); index++, pageCount++)
     {	
@@ -716,7 +739,7 @@ void CCandidateWindow::_OnMouseMove(POINT pt)
 #endif
 
 	rc.left = rcWindow.left;
-	rc.right = rcWindow.right - GetSystemMetrics(SM_CXVSCROLL) * 3 / 2 - CANDWND_BORDER_WIDTH;
+	rc.right = rcWindow.right - CConfig::GetSystemMetricsDpi(SM_CXVSCROLL, CConfig::GetDpiForHwnd(_GetWnd())) * 3 / 2 - CANDWND_BORDER_WIDTH;
 
 	rc.top = rcWindow.top;
 	rc.bottom = rcWindow.bottom;
@@ -789,7 +812,7 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
 	
     int indexInPage = 0;
     int candidateListPageCnt = _pIndexRange->Count();
-	int VScrollWidth = GetSystemMetrics(SM_CXVSCROLL) *3/2;
+	int VScrollWidth = CConfig::GetSystemMetricsDpi(SM_CXVSCROLL, CConfig::GetDpiForHwnd(_GetWnd())) *3/2;
 
     RECT rc = { 0,0,0,0 };
 	const size_t numStringLen = 2;

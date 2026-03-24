@@ -1,10 +1,10 @@
 # DIME Test Report
 
-**Report Date:** March 17, 2026
+**Report Date:** March 24, 2026
 **Test Framework:** Microsoft.VisualStudio.CppUnitTestFramework
 **Build Status:** ✅ Successful
 **Overall Coverage:** **IME Core: 82.4%** | IME UI: 29.4% | TSF Interface: 6.9%
-**Version:** 3.2 — Candidate width + font settings regression tests; 552 passing (281 unit + 271 integration)
+**Version:** 3.3 — DPI scaling unit tests; 568 passing (297 unit + 271 integration)
 
 ---
 
@@ -12,8 +12,8 @@
 
 | Metric | Value | Status |
 |--------|-------|--------|
-| **Total Tests** | 552 passing | ✅ All Passing |
-| **Unit Tests** | 281 | ✅ |
+| **Total Tests** | 568 passing | ✅ All Passing |
+| **Unit Tests** | 297 | ✅ |
 | **Integration Tests** | 271 | ✅ |
 | **Test Execution Time** | ~23 seconds | ✅ |
 | **Build Status** | Debug x64 | ✅ |
@@ -27,16 +27,16 @@
 - TSF Interface: 345 / 4,971 lines (6.9%) — 39 files
 - Overall production: 4,023 / 12,412 lines (32.4%)
 
-**Test Count Note**: 552 `TEST_METHOD` declarations defined and running across 19 test files (281 unit in 8 files, 271 integration in 10 files + 1 integration file). All tests run in the current environment; IT-MF-03 through 06 fail (not skip) when source tables are missing.
+**Test Count Note**: 568 `TEST_METHOD` declarations defined and running across 19 test files (297 unit in 9 files, 271 integration in 10 files). All tests run in the current environment; IT-MF-03 through 06 fail (not skip) when source tables are missing.
 
 ---
 
 ## Test Suite Results
 
 ### Unit Tests (UT-01 to UT-BS) - Namespace: `DIMEUnitTests`
-- **Tests:** 281
+- **Tests:** 297
 - **Status:** ✅ All Passing
-- **Files:** ConfigTest.cpp (three classes), MemoryTest.cpp, StringTest.cpp (three classes), TableDictionaryEngineTest.cpp, CINParserTest.cpp, DictionaryTest.cpp, CMemoryFileTest.cpp, CLIParserTest.cpp
+- **Files:** ConfigTest.cpp (three classes), MemoryTest.cpp, StringTest.cpp (three classes), TableDictionaryEngineTest.cpp, CINParserTest.cpp, DictionaryTest.cpp, CMemoryFileTest.cpp, CLIParserTest.cpp, DpiScalingTest.cpp
 - **Coverage:** High for core components (60-97% for tested modules); **97.2% for BaseStructure.cpp**; **94.9% for CLI.cpp**; **91.7% for CMemoryFile cache functions**; File.cpp overall **90.1%**
 
 ### Integration Tests (IT-01 to IT-CLI) - Namespace: `DIMEIntegratedTests`
@@ -177,6 +177,14 @@
 - **Files:** `StringTest.cpp` (classes `BaseStructureHelpersTest` + `CandidateRangeTest`)
 - **Coverage:** **97.2%** of BaseStructure.cpp (139/143 lines, up from 58%)
 - **Key improvement:** CLSIDToString, SkipWhiteSpace, FindChar, IsSpace, CCandidateRange::IsRange/GetIndex all now directly tested
+
+#### UT-DPI: DPI Scaling Unit Tests
+
+- **Tests:** 16 (DpiHelperTests: 8, FontDpiConversionTests: 8)
+- **Status:** ✅ All Passing
+- **Files:** `DpiScalingTest.cpp` (class `DIMEUnitTests`)
+- **Coverage:** 100% of `ScaleForDpi()` inline helper; validates MulDiv font formulas used in `Config.cpp` and `ConfigDialog.cpp`
+- **Key validations:** ScaleForDpi identity at 96 DPI, standard scaling at 125%/150%/200%, zero edge cases, MulDiv rounding parity, point-to-pixel conversion at multiple DPIs, RichEdit twips round-trip (12pt renders identically at 96/120/144 DPI)
 
 #### UT-CLI: CLI Parser Unit Tests
 
@@ -430,14 +438,15 @@ All **new non-TSF code** should target ≥90% coverage (as demonstrated by CLI.c
 ## Conclusion
 
 ✅ **IME Core coverage: 82.4% — TARGET MET (≥80%)**
-✅ **All automated tests passing (552/552)**
+✅ **All automated tests passing (568/568)**
 ✅ **Test suite executes quickly (~22s)**
 ✅ **Config.cpp split**: Config_Core.cpp (IME Core, 73%) + Config_UI.cpp (IME UI, 7.5%)
 ✅ **IT-07 + IT-CM + IT-CV + IT-PT: 18+ Settings Dialog tests with REAL Win32 dialogs**
 ✅ **UT-CLI + IT-CLI (112 tests):** CLI headless interface — 94.9% coverage of CLI.cpp, all 11 commands, 50 keys, error paths
 ✅ **UT-CFG (33 tests):** Config setter/getter round-trips — all 28 pairs + ResetAllDefaults + WriteConfig INI
 ✅ **UT-BS (22 tests):** BaseStructure helpers + CCandidateRange — **97.2%** of BaseStructure.cpp (up from 58%)
-✅ **Namespaces properly organized:** `DIMEUnitTests` (280 unit tests) · `DIMEIntegratedTests` (268 integration tests)
+✅ **UT-DPI (16 tests):** DPI scaling helper + font conversion math — ScaleForDpi at 96/120/144/192 DPI, point-to-pixel, RichEdit twips round-trip
+✅ **Namespaces properly organized:** `DIMEUnitTests` (297 unit tests) · `DIMEIntegratedTests` (271 integration tests)
 ✅ **New suites:** UT-CV (17), UT-PT (11), IT-CV (14), IT-PT (8) cover custom-table validation and theme persistence
 ✅ **UT-09 (31 tests):** CMemoryFile filter + disk cache — cache functions 91.7%, File.cpp 90.1%. CRLF bug fixed, BMP symbol pass-through, surrogate plane check, `C3_IDEOGRAPH | C3_ALPHA` fallback, cache create/reuse/invalidate/corrupt/error paths
 ✅ **UT-09-19:** Surrogate-pair plane check (`CMemoryFile::FilterLine`, `File.cpp` · `CMemoryFileTests`, `CMemoryFileTest.cpp`) — `cp < 0x20000u` — SMP emoji pass, SIP CJK Ext B/C/D/E/F filtered
@@ -452,7 +461,7 @@ All **new non-TSF code** should target ≥90% coverage (as demonstrated by CLI.c
 
 ## Test Files Summary
 
-### Unit Tests (DIMEUnitTests) — 280 tests
+### Unit Tests (DIMEUnitTests) — 297 tests
 1. `ConfigTest.cpp` — three classes:
    - `ConfigTest` (UT-01 through UT-CM, UT-PT): Config API, color mode, persistence unit tests
    - `CustomTableValidationUnitTest` (UT-CV): custom table file validation unit tests
@@ -467,8 +476,9 @@ All **new non-TSF code** should target ≥90% coverage (as demonstrated by CLI.c
 6. `DictionaryTest.cpp` — dictionary search tests (UT-02)
 7. `CMemoryFileTest.cpp` — CMemoryFile Big5/CP950 filter + disk cache tests (UT-09, 31 tests, cache 91.7% / File.cpp 90.1%)
 8. `CLIParserTest.cpp` — CLI parser unit tests (UT-CLI, 62 tests, 94.9% coverage of CLI.cpp)
+9. `DpiScalingTest.cpp` — DPI scaling helper + font conversion math (UT-DPI, 16 tests, 100% of ScaleForDpi)
 
-### Integration Tests (DIMEIntegratedTests) — 268 tests
+### Integration Tests (DIMEIntegratedTests) — 271 tests
 1. `TSFIntegrationTest.cpp` — TSF COM integration (18 tests)
 2. `TSFIntegrationTest_Simple.cpp` — direct CDIME unit tests (15 tests)
 3. `UIPresenterIntegrationTest.cpp` — UI presenter (54 tests)
@@ -482,6 +492,6 @@ All **new non-TSF code** should target ≥90% coverage (as demonstrated by CLI.c
 9. `CMemoryFileIntegrationTest.cpp` — 6 tests (IT-MF-01 through IT-MF-06: filter, TTS, cache line count, cache invalidation, DAYI TTS cache)
 10. `CLIIntegrationTest.cpp` — CLI end-to-end tests (IT-CLI, 50 tests, 19 test classes)
 
-**Total Test Files:** 18 (8 unit, 10 integration)
-**Total Test Methods:** 552 (all running)
+**Total Test Files:** 19 (9 unit, 10 integration)
+**Total Test Methods:** 568 (all running)
 **Build:** ✅ Successful

@@ -108,8 +108,9 @@ CScrollBarWindow::CScrollBarWindow()
 
     _scrollDir = SCROLL_NONE_DIR;
 
-    _sizeOfScrollBtn.cx = GetSystemMetrics(SM_CXVSCROLL) * 3/ 2;
-    _sizeOfScrollBtn.cy = GetSystemMetrics(SM_CYVSCROLL) * 3/ 2;
+    UINT _sDpi = CConfig::GetDpiForHwnd(nullptr);
+    _sizeOfScrollBtn.cx = CConfig::GetSystemMetricsDpi(SM_CXVSCROLL, _sDpi) * 3/ 2;
+    _sizeOfScrollBtn.cy = CConfig::GetSystemMetricsDpi(SM_CYVSCROLL, _sDpi) * 3/ 2;
 }
 
 //+---------------------------------------------------------------------------
@@ -457,11 +458,13 @@ void CScrollBarWindow::_AdjustWindowPos()
     }
 
     GetWindowRect(pParent->_GetWnd(), &rc);
+	UINT _sbDpi = CConfig::GetDpiForHwnd(pParent->_GetWnd());
+	int _sbVScroll = CConfig::GetSystemMetricsDpi(SM_CXVSCROLL, _sbDpi) * 3/2;
 	SetWindowPos(_GetWnd(), pParent->_GetWnd(),
-		rc.left + (rc.right - rc.left) - GetSystemMetrics(SM_CXVSCROLL) * 3/2 - CANDWND_BORDER_WIDTH,
+		rc.left + (rc.right - rc.left) - _sbVScroll - CANDWND_BORDER_WIDTH,
         rc.top + CANDWND_BORDER_WIDTH,
-        
-		GetSystemMetrics(SM_CXVSCROLL) *3/ 2,
+
+		_sbVScroll,
 		rc.bottom - rc.top - CANDWND_BORDER_WIDTH * 2,
         SWP_NOOWNERZORDER | SWP_NOACTIVATE);
 }

@@ -245,6 +245,9 @@
     <ClCompile Include="TestStubs.cpp">
       <Filter>Source Files\Integration Tests</Filter>
     </ClCompile>
+    <ClCompile Include="DpiScalingTest.cpp">
+      <Filter>Source Files\Unit Tests</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\docs\TEST_REPORT.md">

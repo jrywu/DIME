@@ -129,6 +129,21 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID pvReserved)
                 else
                     debugPrint(L"DllMain() Failed to cast function GetDpiForMonitor in Shcore.dll");
             }
+            { // Win10 1607+: per-monitor DPI-aware system metrics and thread DPI context
+                HMODULE hUser32 = GetModuleHandle(L"User32.dll");
+                if (hUser32)
+                {
+                    auto getMetricsForDpi = reinterpret_cast<_T_GetSystemMetricsForDpi>(
+                        GetProcAddress(hUser32, "GetSystemMetricsForDpi"));
+                    if (getMetricsForDpi)
+                        CConfig::SetGetSystemMetricsForDpi(getMetricsForDpi);
+
+                    auto setThreadDpiCtx = reinterpret_cast<_T_SetThreadDpiAwarenessContext>(
+                        GetProcAddress(hUser32, "SetThreadDpiAwarenessContext"));
+                    if (setThreadDpiCtx)
+                        CConfig::SetSetThreadDpiAwarenessContext(setThreadDpiCtx);
+                }
+            }
 
             // Load global resource strings
             LoadString(Global::dllInstanceHandle, IDS_IME_MODE, Global::ImeModeDescription, 50);

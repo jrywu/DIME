@@ -461,7 +461,20 @@ LRESULT CALLBACK CNotifyWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT uM
     case WM_POINTERACTIVATE:
         return PA_NOACTIVATE;
 
-    
+    case WM_DPICHANGED:
+    {
+        CConfig::SetDefaultTextFont(wndHandle);
+        RECT* prcNew = reinterpret_cast<RECT*>(lParam);
+        if (prcNew)
+        {
+            SetWindowPos(wndHandle, NULL,
+                prcNew->left, prcNew->top,
+                prcNew->right - prcNew->left,
+                prcNew->bottom - prcNew->top,
+                SWP_NOZORDER | SWP_NOACTIVATE);
+        }
+        return 0;
+    }
     }
 
     return DefWindowProc(wndHandle, uMsg, wParam, lParam);

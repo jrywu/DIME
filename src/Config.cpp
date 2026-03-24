@@ -92,6 +92,23 @@ BOOL CConfig::_big5Filter = FALSE;
 
 UINT CConfig::_dpiY = 0;
 _T_GetDpiForMonitor CConfig::_GetDpiForMonitor = nullptr;
+_T_GetSystemMetricsForDpi CConfig::_GetSystemMetricsForDpi = nullptr;
+_T_SetThreadDpiAwarenessContext CConfig::_SetThreadDpiAwarenessContext = nullptr;
+
+UINT CConfig::GetDpiForHwnd(HWND hWnd)
+{
+	if (hWnd && _GetDpiForMonitor)
+	{
+		HMONITOR monitor = MonitorFromWindow(hWnd, MONITOR_DEFAULTTONEAREST);
+		UINT dpiX, dpiY;
+		if (SUCCEEDED(_GetDpiForMonitor(monitor, MDT_EFFECTIVE_DPI, &dpiX, &dpiY)) && dpiY > 0)
+			return dpiY;
+	}
+	HDC hDC = GetDC(nullptr);
+	UINT dpi = (UINT)GetDeviceCaps(hDC, LOGPIXELSY);
+	ReleaseDC(nullptr, hDC);
+	return dpi;
+}
 
 PHONETIC_KEYBOARD_LAYOUT CConfig::_phoneticKeyboardLayout = PHONETIC_KEYBOARD_LAYOUT::PHONETIC_STANDARD_KEYBOARD_LAYOUT;
 IME_SHIFT_MODE CConfig::_imeShiftMode = IME_SHIFT_MODE::IME_BOTH_SHIFT;

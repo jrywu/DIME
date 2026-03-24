@@ -61,7 +61,7 @@ public:
 	void _SetCandIndexRange(CCandidateRange* pIndexRange){ _pIndexRange = pIndexRange; }
 
 	void _SetCandStringLength(_In_ UINT wndWidth) { _wndWidth = wndWidth; } // in chararacters
-	UINT _GetWidth() { return _cxTitle + GetSystemMetrics(SM_CXVSCROLL) * 3/2  + CANDWND_BORDER_WIDTH *2;}
+	UINT _GetWidth();
 
 
     void _Move(int x, int y);
