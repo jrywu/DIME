@@ -25,7 +25,7 @@ DIME v1.3 是自 v1.2.441 以來的首個主要版本更新，包含全新安裝
 
 - **繁簡轉換快捷鍵**：新增 Ctrl+Shift+\ 快捷鍵進行繁簡轉換（[#92](https://github.com/jrywu/DIME/issues/92)）
 - **Shift 英數全形輸出**：全形模式下 Shift 英數輸入及萬用字元（`?`、`*`）皆可輸出全形字元（[#119](https://github.com/jrywu/DIME/issues/119)）
-- **重新設計候選字視窗捲軸**：新增完整捲軸及細線滑桿兩種樣式，支援 Windows 11 視覺風格 [README — 全新設計選字視窗與提示視窗](https://github.com/jrywu/DIME/blob/master/README.md#全新設計選字視窗與提示視窗-v1.3.553+)）
+- **重新設計候選字視窗捲軸**：新增完整捲軸及細線滑桿兩種樣式，支援 Windows 11 視覺風格 (詳見[README — 全新設計選字視窗與提示視窗](https://github.com/jrywu/DIME/blob/master/README.md#%E5%85%A8%E6%96%B0%E8%A8%AD%E8%A8%88%E9%81%B8%E5%AD%97%E8%A6%96%E7%AA%97%E8%88%87%E6%8F%90%E7%A4%BA%E8%A6%96%E7%AA%97-v13553))
 - **Per-Monitor DPI 支援**：候選字視窗支援多螢幕不同 DPI 縮放，確保跨螢幕顯示一致
 
 ### 修正

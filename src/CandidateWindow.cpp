@@ -1418,14 +1418,17 @@ BOOL CCandidateWindow::_MovePage(_In_ int offSet, _In_ BOOL isNotify)
         return FALSE;
     }
 
+    BOOL wrapped = FALSE;
     newPage = currentPage + offSet;
     if (newPage < 0)
 	{
 		newPage = static_cast<int>(_PageIndex.Count()) - 1;  // wrap to last page
+		wrapped = TRUE;
 	}
 	else if(newPage >= static_cast<int>(_PageIndex.Count()))
     {
 		newPage = 0;  // wrap to first page
+		wrapped = TRUE;
     }
 	if(_currentSelection <0 ) _currentSelection = 0;//reset the selection position for phrase cand (_currentselection is -1);
 
@@ -1447,7 +1450,10 @@ BOOL CCandidateWindow::_MovePage(_In_ int offSet, _In_ BOOL isNotify)
     // adjust scrollbar position
     if (_pVScrollBarWnd && isNotify)
     {
-        _pVScrollBarWnd->_ShiftPage(offSet, isNotify);
+        if (wrapped)
+            _pVScrollBarWnd->_ShiftPosition(_currentSelection, FALSE);
+        else
+            _pVScrollBarWnd->_ShiftPage(offSet, isNotify);
     }
 
     return TRUE;
