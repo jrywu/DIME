@@ -27,6 +27,9 @@ void DllRelease(void)
 namespace Global {
     // These are already declared in Globals.cpp, but we ensure they're initialized for tests
     // The actual definitions are in Globals.cpp which is linked
+
+    // g_WinBuildNumber is defined in DllMain.cpp which is not linked in tests
+    DWORD g_WinBuildNumber = 0;
 }
 
 // Stub for CBaseWindow::_InitWindowClass
