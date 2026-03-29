@@ -19,12 +19,19 @@ DIME v1.3 是自 v1.2.441 以來的首個主要版本更新，包含全新安裝
 - **候選字頁面指示與循環翻頁**：候選字視窗顯示頁面指示，翻頁時首頁與末頁循環切換
 - **AI Agent 友善的 CLI 命令列介面**：`DIMESettings.exe` 新增 headless CLI 模式，AI Agent 及自動化腳本可以命令列方式查詢、設定及管理輸入法，無需 GUI 互動（詳見 [DIME_CLI.md](https://github.com/jrywu/DIME/blob/master/docs/DIME_CLI.md) 及 [README — For AI Agents](https://github.com/jrywu/DIME/blob/master/README.md#for-ai-agents)）
 
-## 修正 (v.1.3.512 onwards)
+## 修正與改進 (v1.3.532 之後)
 
-- **安裝程式版面改善**：調整安裝程式字型（使用 Microsoft JhengHei UI）及中文訊息文字，改善 CJK 字型顯示效果 (#111)
-- **候選字視窗寬度裁切**：修正特定字型（如新細明體）下候選字文字被裁切的問題 (#108)
-- **候選字字型設定未套用**：修正更換字型後候選字視窗未重新載入字型的問題
-- **Big5 過濾遺漏符號區段**：修正 TTS 碼表 Big5 過濾時遺漏 `[Symbol]` 區段，導致部分符號候選字消失的問題 (#114)
-- **CLI 主控台提示符重疊**：修正 CLI 輸出與 PowerShell/cmd 提示符重疊的問題，附掛主控台後清除已印出的提示符 (#113)
-- **CLI 命令不區分大小寫**：CLI 命令及參數名稱不再區分大小寫 (#113)
-- **CLI 支援管道及重導向**：支援管道（pipe）及重導向（`>`, `FOR /F`），可在 cmd 及 PowerShell 腳本中解析輸出 (#113)
+### 新功能
+
+- **繁簡轉換快捷鍵**：新增 Ctrl+Shift+\ 快捷鍵進行繁簡轉換（[#92](https://github.com/jrywu/DIME/issues/92)）
+- **Shift 英數全形輸出**：全形模式下 Shift 英數輸入及萬用字元（`?`、`*`）皆可輸出全形字元（[#119](https://github.com/jrywu/DIME/issues/119)）
+- **重新設計候選字視窗捲軸**：新增完整捲軸及細線滑桿兩種樣式，支援 Windows 11 視覺風格 [README — 全新設計選字視窗與提示視窗](https://github.com/jrywu/DIME/blob/master/README.md#全新設計選字視窗與提示視窗-v1.3.553+)）
+- **Per-Monitor DPI 支援**：候選字視窗支援多螢幕不同 DPI 縮放，確保跨螢幕顯示一致
+
+### 修正
+
+- **修正 Windows 10 下 Shift 英數模式殘留問題**：切換視窗後 `_isShiftedEnglish` 狀態未正確重置（[#115](https://github.com/jrywu/DIME/issues/115)）
+- **修正 Shift 英數模式下萬用字元未正確處理**：組字中按 Shift+英文鍵時，待處理萬用字元未被消化（[#115](https://github.com/jrywu/DIME/issues/115)）
+- **修正非字根鍵在組字時未被攔截**：組字中按下非字根的 Shift 組合鍵時，按鍵事件有時會洩漏至應用程式（[#116](https://github.com/jrywu/DIME/issues/116)）
+- **修正聯想詞候選字與 Shift 英數模式衝突**：聯想詞候選字顯示時，Shift+字母未正確由 Shift 英數模式處理
+
