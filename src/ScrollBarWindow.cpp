@@ -265,7 +265,6 @@ void CScrollBarWindow::_OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps)
         RECT rcUp = {0,0,0,0};
         _GetBtnUpRect(&rcUp);
         int btnW = rcUp.right - rcUp.left;
-        int btnH = rcUp.bottom - rcUp.top;
         // Win11 Explorer style: triangle spans ~60% of button width, flat wedge aspect
         // Triangle fits within button width with 1px margin each side; equilateral proportions
         int aw = max(2, btnW / 3);

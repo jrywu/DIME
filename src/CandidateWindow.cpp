@@ -226,7 +226,6 @@ void CCandidateWindow::_ResizeWindow()
 	if(_pIndexRange == nullptr) return;
     int candidateListPageCnt = _pIndexRange->Count();
 	int VScrollWidth = _pVScrollBarWnd ? _pVScrollBarWnd->_GetHoverWidth() : MulDiv(SCROLLBAR_HOVER_WIDTH, CConfig::GetDpiForHwnd(_GetWnd()), USER_DEFAULT_SCREEN_DPI);
-	BOOL isMultiPage = (_pVScrollBarWnd && _pVScrollBarWnd->_IsEnabled());
 	int bottomPadding = _cyRow / 2;
 	CBaseWindow::_Resize(_x, _y, _cxTitle + VScrollWidth +  CANDWND_BORDER_WIDTH*2,
 		_cyRow * candidateListPageCnt + bottomPadding  + CANDWND_BORDER_WIDTH *2);

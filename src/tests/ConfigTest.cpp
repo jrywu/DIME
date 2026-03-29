@@ -768,8 +768,10 @@ namespace DIMEUnitTests
         TEST_METHOD(SetDefaultTextFont_ValidConfiguration)
         {
             // Arrange: Set IME mode and write initial config
+            // Use the default face name — do NOT write a non-default face (e.g. Consolas)
+            // to the real INI; if cleanup is skipped the production config is left corrupted.
             CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
-            CConfig::SetFontFaceName(L"Consolas");
+            CConfig::SetFontFaceName(L"微軟正黑體");
             CConfig::SetFontSize(12);
             CConfig::SetFontWeight(FW_NORMAL);
             CConfig::SetFontItalic(FALSE);
@@ -837,6 +839,7 @@ namespace DIMEUnitTests
         {
             // Arrange: Write config and load to establish _initTimeStamp
             CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
+            UINT savedSize = CConfig::GetFontSize();
             CConfig::SetFontSize(12);
             CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
             CConfig::LoadConfig(IME_MODE::IME_MODE_ARRAY);
@@ -844,8 +847,8 @@ namespace DIMEUnitTests
             // Record _initTimeStamp BEFORE WriteConfig
             struct _stat tsBefore = CConfig::GetInitTimeStamp();
 
-            // Act: WriteConfig again
-            CConfig::SetFontSize(20);
+            // Act: WriteConfig again with a different size to ensure a write occurs
+            CConfig::SetFontSize(14);
             CConfig::WriteConfig(IME_MODE::IME_MODE_ARRAY, FALSE);
 
             // Record _initTimeStamp AFTER WriteConfig
@@ -855,6 +858,9 @@ namespace DIMEUnitTests
             // (only LoadConfig should update the timestamp cache)
             Assert::AreEqual(tsBefore.st_mtime, tsAfter.st_mtime,
                 L"WriteConfig must not update _initTimeStamp");
+
+            // Restore font size so a crashed/incomplete cleanup doesn't leave size=14 in the INI
+            CConfig::SetFontSize(savedSize);
         }
 
         TEST_METHOD(LoadConfig_CorruptedSpecificKeys_UsesDefaults)
