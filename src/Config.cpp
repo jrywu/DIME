@@ -285,6 +285,17 @@ bool CConfig::IsSystemDarkTheme()
 	return lightTheme == 0;
 }
 
+BOOL CConfig::GetAlwaysShowScrollbars()
+{
+	DWORD dynamicSB = 1; // default: auto-hide (always show = FALSE)
+	DWORD cb = sizeof(dynamicSB);
+	RegGetValueW(HKEY_CURRENT_USER,
+		L"Control Panel\\Accessibility",
+		L"DynamicScrollbars",
+		RRF_RT_REG_DWORD, nullptr, &dynamicSB, &cb);
+	return (dynamicSB == 0); // 0 = always show; 1 or missing = auto-hide
+}
+
 bool CConfig::GetEffectiveDarkMode()
 {
 	switch (_colorMode)

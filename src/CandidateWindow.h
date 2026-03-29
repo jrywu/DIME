@@ -154,6 +154,7 @@ private:
 
     BOOL _dontAdjustOnEmptyItemPage;
     BOOL _isStoreAppMode;
+    BOOL _isTrackingCandMouse;   // TRUE while TrackMouseEvent(TME_LEAVE) is active
 
 	BYTE _animationStage;
 

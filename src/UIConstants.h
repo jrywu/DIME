@@ -108,6 +108,8 @@ namespace UI {
     constexpr UINT_PTR ANIMATION_TIMER_ID       = 39773; // Animation fade-in timer
     constexpr UINT_PTR DELAY_SHOW_TIMER_ID      = 39775; // Delayed window show timer
     constexpr UINT_PTR TIME_TO_HIDE_TIMER_ID    = 39776; // Auto-hide timer
+    constexpr UINT_PTR SCROLLBAR_COLLAPSE_TIMER_ID = 39777; // Delay before scrollbar collapses after mouse leaves scrollbar column
+    constexpr UINT    SCROLLBAR_COLLAPSE_DELAY_MS  = 2000;  // 2-second collapse delay
 
     //---------------------------------------------------------------------
     // Window Positioning

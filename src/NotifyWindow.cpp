@@ -38,8 +38,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "BaseWindow.h"
 #include "NotifyWindow.h"
 #include <memory> // Include for smart pointers
-#define NO_ANIMATION
-#define NO_WINDOW_SHADOW
+//#define NO_WINDOW_SHADOW
 //+---------------------------------------------------------------------------
 //
 // ctor
@@ -129,19 +128,13 @@ BOOL CNotifyWindow::_CreateMainWindow(_In_opt_ HWND parentWndHandle)
     _SetUIWnd(this);
 
 	if (!CBaseWindow::_Create(Global::AtomNotifyWindow,
-		WS_EX_TOPMOST | 
-#ifndef NO_ANIMATION
-		WS_EX_LAYERED |
-#endif
-		WS_EX_TOOLWINDOW,
-        WS_BORDER | WS_POPUP,
+		WS_EX_TOPMOST |
+		WS_EX_NOACTIVATE,
+        WS_POPUP,
         NULL, 0, 0, parentWndHandle))
     {
         return FALSE;
     }
-#ifndef NO_ANIMATION	
-	SetLayeredWindowAttributes(_GetWnd(), 0, (255 * UI::ANIMATION_ALPHA_START) / 100, LWA_ALPHA);
-#endif
     return TRUE;
 }
 
@@ -151,7 +144,7 @@ BOOL CNotifyWindow::_CreateBackGroundShadowWindow()
     if (!_pShadowWnd->_Create(Global::AtomNotifyShadowWindow,
         WS_EX_TOPMOST | 
         WS_EX_TOOLWINDOW | WS_EX_LAYERED,
-        WS_BORDER | WS_POPUP, this))
+        WS_POPUP, this))
     {
         _pShadowWnd.reset(); // Automatically deletes the object
         return FALSE;
@@ -183,37 +176,12 @@ void CNotifyWindow::_Move(int x, int y)
 	_x = x;
 	_y = y;
     CBaseWindow::_Move(_x, _y);
-#ifndef NO_ANIMATION	
-	SetLayeredWindowAttributes(_GetWnd(), 0, (255 * UI::ANIMATION_ALPHA_START) / 100, LWA_ALPHA); // Animation starts at 5% opaque, fades to 95%
-	_animationStage = 10;	
-	_EndTimer(UI::ANIMATION_TIMER_ID);
-	_StartTimer(UI::NOTIFY_ANIMATION_STEP_TIME_MS, UI::ANIMATION_TIMER_ID);
-#endif
 }
 void CNotifyWindow::_OnTimerID(UINT_PTR timerID)
 {   //animate the window faded out with layered transparency
 	debugPrint(L"CNotifyWindow::_OnTimer(): timerID = %d,  _animationStage = %d", timerID, _animationStage);
 	switch (timerID)
 	{
-#ifndef NO_ANIMATION
-	case UI::ANIMATION_TIMER_ID:
-		if(_animationStage)
-		{
-			BYTE transparentLevel = (255 * (UI::ANIMATION_ALPHA_START + 9 * (11 - (BYTE)_animationStage))) / 100; 
-			debugPrint(L"CNotifyWindow::_OnTimer() transparentLevel = %d", transparentLevel);
-
-			SetLayeredWindowAttributes(_GetWnd(), 0, transparentLevel , LWA_ALPHA); 
-			_StartTimer(UI::NOTIFY_ANIMATION_STEP_TIME_MS, UI::ANIMATION_TIMER_ID);
-			_animationStage --;
-
-		}
-		else
-		{
-			_EndTimer(UI::ANIMATION_TIMER_ID);
-			SetLayeredWindowAttributes(_GetWnd(), 0, (255 * UI::ANIMATION_ALPHA_END) / 100, LWA_ALPHA); 
-		}
-		break;
-#endif
 	case UI::DELAY_SHOW_TIMER_ID:
  		_EndTimer(UI::DELAY_SHOW_TIMER_ID);
 		_pfnCallback(_pObj, NOTIFY_WND::SHOW_NOTIFY, _timeToHide , (LPARAM) _notifyType);
@@ -248,8 +216,25 @@ void CNotifyWindow::_Show(BOOL isShowWnd, UINT delayShow, UINT timeToHide)
 		
 		if (_pShadowWnd)
 			_pShadowWnd->_Show(isShowWnd);
- 
+
 		CBaseWindow::_Show(isShowWnd);
+
+		// Re-apply rounded region AFTER window is visible.
+		// Win11 DWM silently discards SetWindowRgn on hidden windows.
+		if (isShowWnd)
+		{
+			RECT rc = { 0, 0, 0, 0 };
+			GetClientRect(_GetWnd(), &rc);
+			int cx = rc.right - rc.left;
+			int cy = rc.bottom - rc.top;
+			if (cx > 0 && cy > 0)
+			{
+				UINT dpi = CConfig::GetDpiForHwnd(_GetWnd());
+				int radius = MulDiv(_cornerRadiusBase, dpi, USER_DEFAULT_SCREEN_DPI);
+				HRGN hRgn = CreateRoundRectRgn(0, 0, cx + 1, cy + 1, radius, radius);
+				SetWindowRgn(_GetWnd(), hRgn, TRUE);
+			}
+		}
 	}
 	if(isShowWnd)
 	{
@@ -408,7 +393,8 @@ LRESULT CALLBACK CNotifyWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT uM
             dcHandle = BeginPaint(wndHandle, &ps);
 	
             _OnPaint(dcHandle, &ps);
-            _DrawBorder(wndHandle, NOTIFYWND_BORDER_WIDTH);
+            if (Global::g_WinBuildNumber < 22000)
+                _DrawBorder(wndHandle, NOTIFYWND_BORDER_WIDTH);
             EndPaint(wndHandle, &ps);
 
             ReleaseDC(wndHandle, dcHandle);
@@ -591,7 +577,11 @@ void CNotifyWindow::_DrawBorder(_In_ HWND wndHandle, _In_ int cx)
     HPEN hPenOld = (HPEN)SelectObject(dcHandle, hPen);
     HBRUSH hBorderBrushOld = (HBRUSH)SelectObject(dcHandle, hBorderBrush);
 
-    Rectangle(dcHandle, rcWnd.left, rcWnd.top, rcWnd.right, rcWnd.bottom);
+    // Use RoundRect to match the SetWindowRgn rounded region from _Resize,
+    // so the border follows the corners instead of being clipped at them.
+    UINT dpi = CConfig::GetDpiForHwnd(wndHandle);
+    int radius = MulDiv(_cornerRadiusBase, dpi, USER_DEFAULT_SCREEN_DPI);
+    RoundRect(dcHandle, rcWnd.left, rcWnd.top, rcWnd.right, rcWnd.bottom, radius, radius);
 
     SelectObject(dcHandle, hPenOld);
     SelectObject(dcHandle, hBorderBrushOld);

@@ -289,7 +289,7 @@ public:
 	static int GetSystemMetricsDpi(int nIndex, UINT dpi) { return _GetSystemMetricsForDpi ? _GetSystemMetricsForDpi(nIndex, dpi) : GetSystemMetrics(nIndex); }
 	static _T_SetThreadDpiAwarenessContext GetSetThreadDpiAwarenessContext() { return _SetThreadDpiAwarenessContext; }
 	static UINT GetDpiForHwnd(HWND hWnd);  // returns effective DPI for a window's monitor, or system DPI as fallback
-	
+	static BOOL GetAlwaysShowScrollbars();  // reads Win11 "Always show scrollbars" accessibility setting
 
 private:
 	//user setting variables

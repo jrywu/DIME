@@ -38,44 +38,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "BaseWindow.h"
 #include "ShadowWindow.h"
 
-// Use centralized shadow constant from UIConstants.h
-#define SHADOW_ALPHANUMBER UI::SHADOW_WIDTH
-#define ALPHA(x) (255 - (x))
-
-//// Gray scale values for the shadow grades
-#define GS01 255
-#define GS02 254
-#define GS03 253
-#define GS04 252
-#define GS05 250
-#define GS06 246
-#define GS07 245
-#define GS08 242
-#define GS09 241
-#define GS10 227
-#define GS11 217
-#define GS12 213
-#define GS13 212
-#define GS14 199
-#define GS15 180
-#define GS16 172
-#define GS17 171
-#define GS18 155
-#define GS19 144
-#define GS20 142
-
-// pre-computed alpha values for the shadow
-const BYTE AlphaTable[SHADOW_ALPHANUMBER] = {
-    ALPHA(GS04), ALPHA(GS09), ALPHA(GS13), ALPHA(GS17), ALPHA(GS20)
-};
-
-const BYTE CornerShadowAlphaMetric[SHADOW_ALPHANUMBER][SHADOW_ALPHANUMBER] = {
-    ALPHA(GS08), ALPHA(GS06), ALPHA(GS05), ALPHA(GS03), ALPHA(GS02),
-    ALPHA(GS11), ALPHA(GS10), ALPHA(GS09), ALPHA(GS05), ALPHA(GS02),
-    ALPHA(GS15), ALPHA(GS14), ALPHA(GS10), ALPHA(GS07), ALPHA(GS03),
-    ALPHA(GS18), ALPHA(GS15), ALPHA(GS11), ALPHA(GS08), ALPHA(GS03),
-    ALPHA(GS19), ALPHA(GS16), ALPHA(GS12), ALPHA(GS09), ALPHA(GS04),
-};
+// All-around soft shadow (VS Code style)
+// SHADOW_SPREAD defined in ShadowWindow.h
+#define SHADOW_MAX_ALPHA 35 // peak alpha (~14% opacity)
 
 
 //+---------------------------------------------------------------------------
@@ -179,8 +144,17 @@ void CShadowWindow::_OnOwnerWndMoved(BOOL isResized)
 
 void CShadowWindow::_Show(BOOL isShowWnd)
 {
-    _OnOwnerWndMoved(TRUE);
+    // Position shadow before it appears (or before hiding).
+    _AdjustWindowPos();
+    // Show/hide the window — on show, this enters the DWM composition tree.
     CBaseWindow::_Show(isShowWnd);
+    if (isShowWnd)
+    {
+        // Call UpdateLayeredWindow AFTER the window is visible so DWM applies the bitmap.
+        // Calling it on a hidden window is silently discarded by DWM (root cause #8).
+        // Both this call and CBaseWindow::_Show execute before the next DWM frame — no flash.
+        _InitShadow();
+    }
 }
 
 //+---------------------------------------------------------------------------
@@ -205,26 +179,14 @@ BOOL CShadowWindow::_Initialize()
 void CShadowWindow::_InitSettings()
 {
     HDC dcHandle = GetDC(nullptr);
-
-    // device caps
     int cBitsPixelScreen = GetDeviceCaps(dcHandle, BITSPIXEL);
-
     _isGradient = cBitsPixelScreen > 8;
-
     ReleaseDC(nullptr, dcHandle);
 
-    if (_isGradient)
-    {
-        _color = RGB(0, 0, 0);
-        _sizeShift.cx = SHADOW_ALPHANUMBER;
-        _sizeShift.cy = SHADOW_ALPHANUMBER;
-    }
-    else
-    {
-        _color = RGB(128, 128, 128);
-        _sizeShift.cx = 2;
-        _sizeShift.cy = 2;
-    }
+    _color = RGB(0, 0, 0);
+    // Shadow extends equally in all directions, centered behind the owner
+    _sizeShift.cx = -SHADOW_SPREAD;
+    _sizeShift.cy = -SHADOW_SPREAD;
 }
 
 //+---------------------------------------------------------------------------
@@ -244,11 +206,13 @@ void CShadowWindow::_AdjustWindowPos()
     RECT rc = {0, 0, 0, 0};
 
     GetWindowRect(hWndOwner, &rc);
+    int ownerW = rc.right - rc.left;
+    int ownerH = rc.bottom - rc.top;
     SetWindowPos(_GetWnd(), hWndOwner,
         rc.left + _sizeShift.cx,
         rc.top  + _sizeShift.cy,
-        rc.right - rc.left,
-        rc.bottom - rc.top,
+        ownerW + SHADOW_SPREAD * 2,
+        ownerH + SHADOW_SPREAD * 2,
         SWP_NOOWNERZORDER | SWP_NOACTIVATE);
 }
 
@@ -257,8 +221,6 @@ void CShadowWindow::_AdjustWindowPos()
 // _InitShadow
 //
 //----------------------------------------------------------------------------
-
-#define GETRGBALPHA(_x_, _y_) ((RGBALPHA *)pDIBits + (_y_) * size.cx + (_x_))
 
 void CShadowWindow::_InitShadow()
 {
@@ -269,134 +231,105 @@ void CShadowWindow::_InitShadow()
         BYTE rgbAlpha;
     } RGBALPHA;
 
-    HDC dcScreenHandle = nullptr;
-    HDC dcLayeredHandle = nullptr;
-    RECT rcWindow = {0, 0, 0, 0};
-    SIZE size = {0, 0};
-    BITMAPINFO bitmapInfo = {};
-    HBITMAP bitmapMemHandle = nullptr;
-    HBITMAP bitmapOldHandle = nullptr;
-    void* pDIBits = nullptr;
-    int i = 0;
-    int j = 0;
-    POINT ptSrc = {0, 0};
-    POINT ptDst = {0, 0};
-    BLENDFUNCTION Blend = {};
-
     if (!_isGradient)
-    {
         return;
-    }
 
     SetWindowLong(_GetWnd(), GWL_EXSTYLE, (GetWindowLong(_GetWnd(), GWL_EXSTYLE) | WS_EX_LAYERED));
 
+    RECT rcWindow = {0, 0, 0, 0};
     _GetWindowRect(&rcWindow);
+    SIZE size;
     size.cx = rcWindow.right - rcWindow.left;
     size.cy = rcWindow.bottom - rcWindow.top;
+    if (size.cx <= 0 || size.cy <= 0) return;
 
-    dcScreenHandle = GetDC(nullptr);
-    if (dcScreenHandle == nullptr) {
-        return;
-    }
+    HDC dcScreenHandle = GetDC(nullptr);
+    if (!dcScreenHandle) return;
 
-    dcLayeredHandle = CreateCompatibleDC(dcScreenHandle);
-    if (dcLayeredHandle == nullptr) {
-        ReleaseDC(nullptr, dcScreenHandle);
-        return;
-    }
+    HDC dcLayeredHandle = CreateCompatibleDC(dcScreenHandle);
+    if (!dcLayeredHandle) { ReleaseDC(nullptr, dcScreenHandle); return; }
 
-    // create bitmap
+    BITMAPINFO bitmapInfo = {};
     bitmapInfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
     bitmapInfo.bmiHeader.biWidth = size.cx;
     bitmapInfo.bmiHeader.biHeight = size.cy;
     bitmapInfo.bmiHeader.biPlanes = 1;
     bitmapInfo.bmiHeader.biBitCount = 32;
     bitmapInfo.bmiHeader.biCompression = BI_RGB;
-    bitmapInfo.bmiHeader.biSizeImage = 0;
-    bitmapInfo.bmiHeader.biXPelsPerMeter = 100;
-    bitmapInfo.bmiHeader.biYPelsPerMeter = 100;
-    bitmapInfo.bmiHeader.biClrUsed = 0;
-    bitmapInfo.bmiHeader.biClrImportant = 0;
 
-    bitmapMemHandle = CreateDIBSection(dcScreenHandle, &bitmapInfo, DIB_RGB_COLORS, &pDIBits, nullptr, 0);
-    if (pDIBits == nullptr || bitmapMemHandle == nullptr) {
+    void* pDIBits = nullptr;
+    HBITMAP bitmapMemHandle = CreateDIBSection(dcScreenHandle, &bitmapInfo, DIB_RGB_COLORS, &pDIBits, nullptr, 0);
+    if (!pDIBits || !bitmapMemHandle) {
         ReleaseDC(nullptr, dcScreenHandle);
         DeleteDC(dcLayeredHandle);
         return;
     }
 
-    memset(pDIBits, 0, (((((size_t)32 * size.cx) + 31) & ~31) / 8) * size.cy);
+    memset(pDIBits, 0, (size_t)size.cx * size.cy * 4);
 
-    // edges
-    for (i = 0; i < SHADOW_ALPHANUMBER; i++) {
-        RGBALPHA *ppxl;
-        BYTE bAlpha = AlphaTable[i];
+    // All-around soft shadow with proper rounded-corner masking.
+    int sp = SHADOW_SPREAD;
+    int iL = sp, iT = sp, iR = size.cx - sp, iB = size.cy - sp;
+    int ownerW = iR - iL;
+    int ownerH = iB - iT;
 
-        // bottom
-        if (i <= (size.cy + 1)/2) {
-            for (j = SHADOW_ALPHANUMBER; j < size.cx - SHADOW_ALPHANUMBER; j++) {
-                ppxl = GETRGBALPHA(j, i);
-                if(ppxl)
-					ppxl->rgbAlpha = bAlpha;
-            }
-        }
+    // Shadow color: black on light theme, light gray glow on dark theme.
+    // Pixels use pre-multiplied alpha (required by AC_SRC_ALPHA / UpdateLayeredWindow).
+    // For black (R=G=B=0) pre-multiplication is implicit; for non-black we compute it per pixel.
+    BOOL isDarkMode = CConfig::GetEffectiveDarkMode();
+    BYTE shadowR = isDarkMode ? 200 : 0;
+    BYTE shadowG = isDarkMode ? 200 : 0;
+    BYTE shadowB = isDarkMode ? 200 : 0;
 
-        // right
-        if (i <= (size.cx + 1)/2) {
-            for (j = SHADOW_ALPHANUMBER; j < size.cy - SHADOW_ALPHANUMBER; j++) {
-                ppxl = GETRGBALPHA(size.cx - 1 - i, j);
-                if(ppxl)
-					ppxl->rgbAlpha = bAlpha;
-            }
+    // Rounded-rect SDF: gives true distance from the owner's rounded boundary at every pixel,
+    // including corner cutout areas where the old PtInRegion+dx/dy code zeroed alpha.
+    UINT dpi = CConfig::GetDpiForHwnd(_GetWnd());
+    int ownerRadius = MulDiv(_pWndOwner->_GetCornerRadiusBase(), dpi, USER_DEFAULT_SCREEN_DPI);
+    double r      = ownerRadius * 0.5;   // arc radius (CreateRoundRectRgn takes ellipse size)
+    double half_w = ownerW * 0.5;
+    double half_h = ownerH * 0.5;
+    double inner_rx = half_w - r;
+    double inner_ry = half_h - r;
+
+    for (int y = 0; y < size.cy; y++) {
+        for (int x = 0; x < size.cx; x++) {
+            double ox = x - iL;
+            double oy = y - iT;
+
+            // Signed distance from rounded rect boundary: negative = inside, positive = outside
+            double qx = fabs(ox - half_w) - inner_rx;
+            double qy = fabs(oy - half_h) - inner_ry;
+            double len = sqrt(max(qx, 0.0) * max(qx, 0.0) + max(qy, 0.0) * max(qy, 0.0));
+            double sdf = len + min(max(qx, qy), 0.0) - r;
+
+            if (sdf <= 0.0) continue; // inside rounded rect — zero alpha
+
+            double dist = sdf / (double)sp;
+            if (dist > 1.0) dist = 1.0;
+
+            double f = 1.0 - dist;
+            BYTE alpha = (BYTE)(SHADOW_MAX_ALPHA * f * f);
+            if (alpha == 0) continue;
+
+            RGBALPHA* ppxl = (RGBALPHA*)pDIBits + ((size_t)y * size.cx + x);
+            // Pre-multiply RGB by alpha/255 as required by AC_SRC_ALPHA
+            ppxl->rgbRed   = (BYTE)((DWORD)shadowR * alpha / 255);
+            ppxl->rgbGreen = (BYTE)((DWORD)shadowG * alpha / 255);
+            ppxl->rgbBlue  = (BYTE)((DWORD)shadowB * alpha / 255);
+            ppxl->rgbAlpha = alpha;
         }
     }
 
-    // corners
-    for (i = 0; i < SHADOW_ALPHANUMBER; i++) {
-        for (j = 0; j < SHADOW_ALPHANUMBER; j++) {
-            RGBALPHA *ppxl;
-            BYTE bAlpha;
-            bAlpha = CornerShadowAlphaMetric[i][SHADOW_ALPHANUMBER - j - 1];
-
-            // top-right
-            if ((i <= (size.cy + 1)/2) && (j <= (size.cx + 1)/2)) {
-                ppxl = GETRGBALPHA(size.cx - 1 - j, size.cy - 1 - i);
-                if(ppxl)
-					 ppxl->rgbAlpha = bAlpha;
-            }
-
-            // bottom-left
-            if ((i <= (size.cy + 1)/2) && (j <= (size.cx + 1)/2)) {
-                ppxl = GETRGBALPHA(j, i + 1);
-                if(ppxl)
-					ppxl->rgbAlpha = bAlpha;
-            }
-
-            // bottom-right
-            if ((i <= (size.cy + 1)/2) && (j <= (size.cx + 1)/2)) {
-                ppxl = GETRGBALPHA(size.cx - 1 - j, i + 1);
-                if(ppxl)
-					ppxl->rgbAlpha = bAlpha;
-            }
-        }
-    }
-
-    ptSrc.x = 0;
-    ptSrc.y = 0;
-    ptDst.x = rcWindow.left;
-    ptDst.y = rcWindow.top;
+    POINT ptSrc = {0, 0};
+    BLENDFUNCTION Blend = {};
     Blend.BlendOp = AC_SRC_OVER;
-    Blend.BlendFlags = 0;
     Blend.SourceConstantAlpha = 255;
     Blend.AlphaFormat = AC_SRC_ALPHA;
 
-    bitmapOldHandle = (HBITMAP)SelectObject(dcLayeredHandle, bitmapMemHandle);
-
+    HBITMAP bitmapOldHandle = (HBITMAP)SelectObject(dcLayeredHandle, bitmapMemHandle);
     UpdateLayeredWindow(_GetWnd(), dcScreenHandle, nullptr, &size, dcLayeredHandle, &ptSrc, 0, &Blend, ULW_ALPHA);
-
     SelectObject(dcLayeredHandle, bitmapOldHandle);
 
-    // done
     ReleaseDC(nullptr, dcScreenHandle);
     DeleteDC(dcLayeredHandle);
     DeleteObject(bitmapMemHandle);

@@ -62,6 +62,7 @@ public:
     virtual ~CBaseWindow();
 
     static BOOL _InitWindowClass(_In_ LPCWSTR lpwszClassName, _Out_ ATOM *patom);
+    static BOOL _InitPopupWindowClass(_In_ LPCWSTR lpwszClassName, _Out_ ATOM *patom);
     static void _UninitWindowClass(ATOM atom);
 
     virtual BOOL _Create(ATOM atom, DWORD dwExStyle, DWORD dwStyle, _In_opt_ CBaseWindow *pParentWnd = nullptr, int wndWidth = 0, int wndHeight = 0, _In_opt_ HWND parentWndHandle = nullptr);
@@ -129,6 +130,16 @@ public:
         return (_GetScrollDelay() / 8);
     }
 
+    BOOL _UsesDwmCorners() const
+    {
+        return _useDwmCorners;
+    }
+
+    int _GetCornerRadiusBase() const
+    {
+        return _cornerRadiusBase;
+    }
+
 protected:
     LRESULT _NotifyCommand(UINT uMsg, DWORD dwSB, int nPos);
 
@@ -188,4 +199,9 @@ private:
     BOOL _enableVirtualWnd;
     BOOL _visibleVirtualWnd;
     RECT _RectOfVirtualWnd;
+
+protected:
+    BOOL _skipRoundedRegion;  // Set TRUE to skip SetWindowRgn
+    int  _cornerRadiusBase;   // Corner radius at 96 DPI (default 12); shadow uses larger value
+    BOOL _useDwmCorners;      // TRUE if DwmSetWindowAttribute WINDOW_CORNER_PREFERENCE succeeded (Win11+)
 };

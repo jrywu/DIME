@@ -87,6 +87,31 @@ private:
 //
 //////////////////////////////////////////////////////////////////////
 
+enum SCROLLBAR_HITTEST
+{
+    SB_HIT_NONE,
+    SB_HIT_BTN_UP,
+    SB_HIT_BTN_DOWN,
+    SB_HIT_TRACK_ABOVE,
+    SB_HIT_TRACK_BELOW,
+    SB_HIT_THUMB,
+};
+
+// Thin scrollbar width constants (DPI-scaled at runtime)
+constexpr int SCROLLBAR_THIN_WIDTH = 6;     // idle width in pixels at 96 DPI
+constexpr int SCROLLBAR_HOVER_WIDTH = 16;   // expanded width on hover at 96 DPI (even number for pixel-perfect centering)
+constexpr int SCROLLBAR_THUMB_MIN_H = 12;   // minimum thumb height in pixels at 96 DPI
+constexpr int SCROLLBAR_BTN_HEIGHT = 14;    // arrow button height in pixels at 96 DPI; also defines gap between triangle and thumb
+constexpr int SCROLLBAR_IDLE_THUMB_W = 2;   // idle thin-line thumb width at 96 DPI
+constexpr UINT BTNREPEAT_TIMER_ID = 39779;
+constexpr UINT BTNREPEAT_DELAY_MS = 400;    // initial delay before repeat starts
+constexpr UINT BTNREPEAT_SPEED_MS = 50;     // repeat interval after initial delay
+constexpr UINT FADE_TIMER_ID = 39780;
+constexpr UINT FADE_DELAY_MS = 1500;        // delay before fade starts
+constexpr UINT FADE_STEP_MS = 30;           // fade animation step interval
+constexpr BYTE FADE_ALPHA_VISIBLE = 200;    // full visibility alpha
+constexpr BYTE FADE_ALPHA_STEP = 20;        // alpha decrease per step
+
 class CScrollBarWindow : public CBaseWindow
 {
 public:
@@ -105,14 +130,18 @@ public:
     virtual void _OnLButtonUp(POINT pt);
     virtual void _OnMouseMove(POINT pt);
     virtual void _OnTimer() { };
+    virtual void _OnTimerID(UINT_PTR timerID);
 
     virtual void _OnOwnerWndMoved(BOOL isResized);
 
     virtual void _SetScrollInfo(_In_ CScrollInfo *lpsi);
     virtual void _GetScrollInfo(_Out_ CScrollInfo *lpsi);
 
-    virtual BOOL _GetBtnUpRect(_Out_ RECT *prc);
-    virtual BOOL _GetBtnDnRect(_Out_ RECT *prc);
+    BOOL _GetBtnUpRect(_Out_ RECT *prc);
+    BOOL _GetBtnDnRect(_Out_ RECT *prc);
+    BOOL _GetTrackRect(_Out_ RECT *prc);
+    BOOL _GetThumbRect(_Out_ RECT *prc);
+    SCROLLBAR_HITTEST _HitTest(POINT pt);
 
     virtual void _ShiftLine(int nLine, BOOL isNotify)
     {
@@ -142,15 +171,39 @@ public:
     virtual void _GetScrollArea(_Out_ RECT *prc);
     virtual void _SetCurPos(int nPos, int dwSB);
 
+    // Auto-hide: trigger visibility on scroll activity
+    void _OnScrollActivity();
+    int _GetIdleWidth();
+    int _GetHoverWidth();
+
+    // Called by candidate window when mouse enters/leaves the scrollbar column.
+    // TRUE  → show full scrollbar immediately; cancels any pending collapse timer.
+    // FALSE → schedule collapse to thin line after SCROLLBAR_COLLAPSE_DELAY_MS.
+    void _SetCandidateMouseIn(BOOL isIn);
+
 private:
     void _AdjustWindowPos();
 
-    CScrollButtonWindow* _pBtnUp;
-    CScrollButtonWindow* _pBtnDn;
-
     CScrollInfo _scrollInfo;
-    SIZE _sizeOfScrollBtn;
     SCROLLBAR_DIRECTION _scrollDir;
+
+    // Thumb dragging state
+    BOOL  _isDragging;
+    int   _dragStartY;
+    int   _dragStartPos;
+
+    // Auto-hide state
+    BYTE  _currentAlpha;      // current opacity (0-255)
+    BOOL  _isFading;          // TRUE when fade-out timer is running
+    DWORD _lastActivityTick;  // GetTickCount() of last scroll/hover
+
+    // Hover state
+    BOOL  _isHovered;         // mouse is over scrollbar
+    BOOL  _isTrackingMouse;   // TrackMouseEvent registered
+
+    // Button auto-repeat state
+    SCROLLBAR_HITTEST _heldButton;  // SB_HIT_BTN_UP or SB_HIT_BTN_DOWN while held, else SB_HIT_NONE
+    BOOL _repeatStarted;            // TRUE after initial delay, now in fast repeat
 };
 
 

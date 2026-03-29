@@ -40,7 +40,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <memory> // Include for smart pointers
 
 #define NO_ANIMATION
-#define NO_WINDOW_SHADOW
+//#define NO_WINDOW_SHADOW
 //+---------------------------------------------------------------------------
 //
 // ctor
@@ -76,11 +76,14 @@ CCandidateWindow::CCandidateWindow(_In_ CANDWNDCALLBACK pfnCallback, _In_ void *
     _dontAdjustOnEmptyItemPage = FALSE;
 
     _isStoreAppMode = isStoreAppMode;
+    _isTrackingCandMouse = FALSE;
 
 	_fontSize = _TextMetric.tmHeight;
 
 	_x = UI::DEFAULT_WINDOW_X;
 	_y = UI::DEFAULT_WINDOW_Y;
+
+	_cornerRadiusBase = 10;
 
 }
 
@@ -143,14 +146,12 @@ BOOL CCandidateWindow::_CreateMainWindow(_In_opt_ HWND parentWndHandle)
     _SetUIWnd(this);
 
     if (!CBaseWindow::_Create(Global::AtomCandidateWindow,
-        WS_EX_TOPMOST |  WS_EX_LAYERED |
-		WS_EX_TOOLWINDOW, 
-        WS_BORDER | WS_POPUP,
+        WS_EX_TOPMOST | WS_EX_NOACTIVATE,
+        WS_POPUP | WS_CLIPCHILDREN,
         NULL, 0, 0, parentWndHandle))
     {
         return FALSE;
     }
-	SetLayeredWindowAttributes(_GetWnd(), 0, (255 * UI::ANIMATION_ALPHA_START) / 100, LWA_ALPHA);  // animation started from UI::ANIMATION_ALPHA_START% alpha
 
     return TRUE;
 }
@@ -214,7 +215,8 @@ const int StringPosition = 2;
 
 UINT CCandidateWindow::_GetWidth()
 {
-	return _cxTitle + CConfig::GetSystemMetricsDpi(SM_CXVSCROLL, CConfig::GetDpiForHwnd(_GetWnd())) * 3/2  + CANDWND_BORDER_WIDTH *2;
+	int sbWidth = _pVScrollBarWnd ? _pVScrollBarWnd->_GetHoverWidth() : MulDiv(SCROLLBAR_HOVER_WIDTH, CConfig::GetDpiForHwnd(_GetWnd()), USER_DEFAULT_SCREEN_DPI);
+	return _cxTitle + sbWidth + CANDWND_BORDER_WIDTH *2;
 }
 
 void CCandidateWindow::_ResizeWindow()
@@ -223,24 +225,28 @@ void CCandidateWindow::_ResizeWindow()
 	debugPrint(L"CCandidateWindow::_ResizeWindow() _cxTitle = %d", _cxTitle);
 	if(_pIndexRange == nullptr) return;
     int candidateListPageCnt = _pIndexRange->Count();
-	UINT _candDpi = CConfig::GetDpiForHwnd(_GetWnd());
-	int VScrollWidth = CConfig::GetSystemMetricsDpi(SM_CXVSCROLL, _candDpi) * 3/2;
+	int VScrollWidth = _pVScrollBarWnd ? _pVScrollBarWnd->_GetHoverWidth() : MulDiv(SCROLLBAR_HOVER_WIDTH, CConfig::GetDpiForHwnd(_GetWnd()), USER_DEFAULT_SCREEN_DPI);
 	BOOL isMultiPage = (_pVScrollBarWnd && _pVScrollBarWnd->_IsEnabled());
-	int bottomPadding = isMultiPage ? _cyRow : _cyRow / 2;
+	int bottomPadding = _cyRow / 2;
 	CBaseWindow::_Resize(_x, _y, _cxTitle + VScrollWidth +  CANDWND_BORDER_WIDTH*2,
 		_cyRow * candidateListPageCnt + bottomPadding  + CANDWND_BORDER_WIDTH *2);
 
     RECT rcCandRect = {0, 0, 0, 0};
     _GetClientRect(&rcCandRect);
 
-
+    UINT dpi = CConfig::GetDpiForHwnd(_GetWnd());
+    int arcRadius = MulDiv(_cornerRadiusBase / 2, dpi, USER_DEFAULT_SCREEN_DPI);
     int left = rcCandRect.right - VScrollWidth;
-    int top = rcCandRect.top;
+    int top = rcCandRect.top + arcRadius;
     int width = VScrollWidth;
-    int height = rcCandRect.bottom - rcCandRect.top;
+    int height = rcCandRect.bottom - rcCandRect.top - arcRadius * 2;
 
 	if(_pVScrollBarWnd)
+	{
+		// Shorten scrollbar vertically by the corner arc radius at top and bottom so it
+		// never overlaps the rounded corner areas. No SetWindowRgn needed on the scrollbar.
 		_pVScrollBarWnd->_Resize(left, top, width, height);
+	}
 }
 
 //+---------------------------------------------------------------------------
@@ -258,14 +264,8 @@ void CCandidateWindow::_Move(int x, int y)
 	_x = x;
 	_y = y;
 	CBaseWindow::_Move(x, y);
-#ifdef NO_ANIMATION
-    SetLayeredWindowAttributes(_GetWnd(), 0, (255 * 95) / 100, LWA_ALPHA);
-#else
-    SetLayeredWindowAttributes(_GetWnd(), 0, 255 * (5 / 100), LWA_ALPHA); // staring from 30% transparent 
-	_animationStage = 10;	
-	_EndTimer(UI::ANIMATION_TIMER_ID);
-	_StartTimer(UI::ANIMATION_STEP_TIME_MS, UI::ANIMATION_TIMER_ID);
-#endif
+    // Animation removed: SetLayeredWindowAttributes auto-adds WS_EX_LAYERED on Win8+,
+    // which causes DWM to ignore SetWindowRgn (candidate corners become rectangular).
 }
 
 void CCandidateWindow::_OnTimerID(UINT_PTR timerID)
@@ -274,21 +274,7 @@ void CCandidateWindow::_OnTimerID(UINT_PTR timerID)
 	switch (timerID)
 	{
 	case UI::ANIMATION_TIMER_ID:
-		if(_animationStage)
-		{
-		BYTE transparentLevel = (255 * (5 + 9 * (11 - _animationStage))) / 100; 
-		debugPrint(L"CCandidateWindow::_OnTimer() transparentLevel = %d", transparentLevel);
-
-		SetLayeredWindowAttributes(_GetWnd(), 0, transparentLevel , LWA_ALPHA); 
-		_StartTimer(UI::ANIMATION_STEP_TIME_MS, UI::ANIMATION_TIMER_ID);
-		_animationStage --;
-
-		}
-		else
-		{
 		_EndTimer(UI::ANIMATION_TIMER_ID);
-			SetLayeredWindowAttributes(_GetWnd(), 0,  (255 * 95) / 100, LWA_ALPHA); 
-		}
 		break;
 	}
 }
@@ -304,12 +290,24 @@ void CCandidateWindow::_Show(BOOL isShowWnd)
     if (_pShadowWnd)
 		_pShadowWnd->_Show(isShowWnd);
 	if (_pVScrollBarWnd)
-#ifdef ALWAYS_SHOW_SCROLL
 		_pVScrollBarWnd->_Show(isShowWnd && _pVScrollBarWnd->_IsEnabled());
-#else
-		_pVScrollBarWnd->_Show(FALSE);
-#endif
     CBaseWindow::_Show(isShowWnd);
+    if (isShowWnd)
+    {
+        // Re-apply rounded region AFTER window is visible.
+        // Win11 DWM silently discards SetWindowRgn on hidden windows (same as Root Cause #8).
+        RECT rc = {0, 0, 0, 0};
+        GetClientRect(_GetWnd(), &rc);
+        int cx = rc.right - rc.left;
+        int cy = rc.bottom - rc.top;
+        if (cx > 0 && cy > 0)
+        {
+            UINT dpi = CConfig::GetDpiForHwnd(_GetWnd());
+            int radius = MulDiv(_cornerRadiusBase, dpi, USER_DEFAULT_SCREEN_DPI);
+            HRGN hRgn = CreateRoundRectRgn(0, 0, cx + 1, cy + 1, radius, radius);
+            SetWindowRgn(_GetWnd(), hRgn, TRUE);
+        }
+    }
 	if (isShowWnd && !_IsCapture())
 	{
 		SetCapture(_GetWnd());
@@ -462,19 +460,48 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
         }
 		if (_pVScrollBarWnd)
 		{
-			_pVScrollBarWnd->_Show((BOOL)wParam);
+			// Only show scrollbar if multi-page; always hide when candidate hides
+			_pVScrollBarWnd->_Show((BOOL)wParam && _pVScrollBarWnd->_IsEnabled());
 		}
+        break;
+
+    case WM_ERASEBKGND:
+        return 1;  // suppress background erase to prevent flicker during scrolling
+
+    case WM_CTLCOLORSCROLLBAR:
+        // Scrollbar child asks for background brush — return our background brush
+        // so its track area matches the candidate window background in all color modes.
+        if (_brshBkColor) return (LRESULT)_brshBkColor;
         break;
 
     case WM_PAINT:
         {
 			debugPrint(L"CCandidateWindow::_WindowProcCallback():WM_PAINT gdiObjects = %d", GetGuiResources(GetCurrentProcess(), GR_GDIOBJECTS));
-            HDC dcHandle = nullptr;
             PAINTSTRUCT ps;
+            HDC dcHandle = BeginPaint(wndHandle, &ps);
 
-            dcHandle = BeginPaint(wndHandle, &ps);
-			_DrawBorder(wndHandle, CANDWND_BORDER_WIDTH);
-            _OnPaint(dcHandle, &ps);
+            // Double-buffer: compose entire frame off-screen then blit once
+            RECT rcClient = {0,0,0,0};
+            GetClientRect(wndHandle, &rcClient);
+            int w = rcClient.right - rcClient.left;
+            int h = rcClient.bottom - rcClient.top;
+            HDC hdcMem = CreateCompatibleDC(dcHandle);
+            HBITMAP hBmp = CreateCompatibleBitmap(dcHandle, w, h);
+            HBITMAP hOldBmp = (HBITMAP)SelectObject(hdcMem, hBmp);
+
+            PAINTSTRUCT psMem = ps;
+            psMem.rcPaint = rcClient;
+            _OnPaint(hdcMem, &psMem);
+
+            BitBlt(dcHandle, 0, 0, w, h, hdcMem, 0, 0, SRCCOPY);
+
+            SelectObject(hdcMem, hOldBmp);
+            DeleteObject(hBmp);
+            DeleteDC(hdcMem);
+
+            // On Win11+ DWM handles rounded border; on older Windows draw custom border
+            if (Global::g_WinBuildNumber < 22000)
+                _DrawBorder(wndHandle, CANDWND_BORDER_WIDTH);
             EndPaint(wndHandle, &ps);
 			debugPrint(L"CCandidateWindow::_WindowProcCallback():WM_PAINT ended. gdiObjects = %d", GetGuiResources(GetCurrentProcess(), GR_GDIOBJECTS));
         }
@@ -492,6 +519,12 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
             _HandleMouseMsg(HIWORD(lParam), cursorPoint);
         }
         return 1;
+
+    case WM_MOUSELEAVE:
+        _isTrackingCandMouse = FALSE;
+        if (_pVScrollBarWnd)
+            _pVScrollBarWnd->_SetCandidateMouseIn(FALSE);
+        return 0;
 
     case WM_MOUSEMOVE:
     case WM_LBUTTONDOWN:
@@ -525,6 +558,27 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
 
     case WM_POINTERACTIVATE:
         return PA_NOACTIVATE;
+
+    case WM_MOUSEWHEEL:
+        {
+            short zDelta = GET_WHEEL_DELTA_WPARAM(wParam);
+            INT prevSelection = _currentSelection;
+            if (zDelta > 0)
+                _SetSelectionOffset(-1);
+            else if (zDelta < 0)
+                _SetSelectionOffset(+1);
+            if (_currentSelection != prevSelection)
+            {
+                if (_pVScrollBarWnd)
+                {
+                    _pVScrollBarWnd->_OnScrollActivity();
+                    _pVScrollBarWnd->_ShiftPosition(_currentSelection, FALSE);
+                }
+                _InvalidateRect();
+            }
+        }
+        return 0;
+
     case WM_VSCROLL:
         _OnVScroll(LOWORD(wParam), HIWORD(wParam));
         return 0;
@@ -604,7 +658,7 @@ void CCandidateWindow::_OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pPaintStruc
     _AdjustPageIndex(currentPage, currentPageIndex);
 
     _DrawList(dcHandle, currentPageIndex, &pPaintStruct->rcPaint);
-    _DrawPageIndicator(dcHandle, currentPage, &pPaintStruct->rcPaint);
+    //_DrawPageIndicator(dcHandle, currentPage, &pPaintStruct->rcPaint);
 
 
 cleanup:
@@ -647,7 +701,7 @@ void CCandidateWindow::_OnLButtonDown(POINT pt)
 
 	RECT rc = {0, 0, 0, 0};
 	rc.left = rcWindow.left + PageCountPosition* _TextMetric.tmAveCharWidth;
-    rc.right = rcWindow.right  - CConfig::GetSystemMetricsDpi(SM_CXVSCROLL, CConfig::GetDpiForHwnd(_GetWnd())) * 3/2 - CANDWND_BORDER_WIDTH;
+    rc.right = rcWindow.right  - (_pVScrollBarWnd ? _pVScrollBarWnd->_GetHoverWidth() : MulDiv(SCROLLBAR_HOVER_WIDTH, CConfig::GetDpiForHwnd(_GetWnd()), USER_DEFAULT_SCREEN_DPI)) - CANDWND_BORDER_WIDTH;
 
     for (UINT pageCount = 0; (index < _candidateList.Count()) && (pageCount < candidateListPageCnt); index++, pageCount++)
     {	
@@ -725,21 +779,24 @@ void CCandidateWindow::_OnMouseMove(POINT pt)
 	}
 	RECT rcWindow = { 0, 0, 0, 0 }, rc = { 0, 0, 0, 0 };
 	_GetClientRect(&rcWindow);
-#ifndef ALWAYS_SHOW_SCROLL
-	if (PtInRect(&rcWindow, pt))
-	{		
-		if(_pVScrollBarWnd)
-		 _pVScrollBarWnd->_Show(_pVScrollBarWnd->_IsEnabled());
-	}
-	else
+
+	int scrollWidth = (_pVScrollBarWnd ? _pVScrollBarWnd->_GetHoverWidth() : MulDiv(SCROLLBAR_HOVER_WIDTH, CConfig::GetDpiForHwnd(_GetWnd()), USER_DEFAULT_SCREEN_DPI));
+	// Mouse in scrollbar column → full scrollbar; outside → thin line after 2s delay (handled in scrollbar).
+	if (_pVScrollBarWnd)
 	{
-		if (_pVScrollBarWnd)
-	 		_pVScrollBarWnd->_Show(FALSE);
+		RECT rcScroll = { rcWindow.right - scrollWidth - CANDWND_BORDER_WIDTH, rcWindow.top, rcWindow.right, rcWindow.bottom };
+		_pVScrollBarWnd->_SetCandidateMouseIn(PtInRect(&rcScroll, pt));
 	}
-#endif
+
+	if (!_isTrackingCandMouse)
+	{
+		TRACKMOUSEEVENT tme = { sizeof(tme), TME_LEAVE, _GetWnd(), 0 };
+		TrackMouseEvent(&tme);
+		_isTrackingCandMouse = TRUE;
+	}
 
 	rc.left = rcWindow.left;
-	rc.right = rcWindow.right - CConfig::GetSystemMetricsDpi(SM_CXVSCROLL, CConfig::GetDpiForHwnd(_GetWnd())) * 3 / 2 - CANDWND_BORDER_WIDTH;
+	rc.right = rcWindow.right - scrollWidth - CANDWND_BORDER_WIDTH;
 
 	rc.top = rcWindow.top;
 	rc.bottom = rcWindow.bottom;
@@ -773,28 +830,45 @@ void CCandidateWindow::_OnMouseMove(POINT pt)
 
 void CCandidateWindow::_OnVScroll(DWORD dwSB, _In_ DWORD nPos)
 {
+    // _OnVScroll handles scrollbar-originated events only (not keyboard).
+    // Scrollbar navigation stops at boundaries (non-circular).
+    // Keyboard navigation (via _MovePage directly) wraps circularly.
+    INT prevSelection = _currentSelection;
     switch (dwSB)
     {
     case SB_LINEDOWN:
-        _SetSelectionOffset(+1);
-        _InvalidateRect();
+        _SetSelectionOffset(+1);  // stops at last item
         break;
     case SB_LINEUP:
-        _SetSelectionOffset(-1);
-        _InvalidateRect();
+        _SetSelectionOffset(-1);  // stops at first item
         break;
     case SB_PAGEDOWN:
-        _MovePage(+1, FALSE);
-        _InvalidateRect();
+        {
+            int currentPage = 0;
+            if (SUCCEEDED(_GetCurrentPage(&currentPage)) &&
+                currentPage < static_cast<int>(_PageIndex.Count()) - 1)
+                _MovePage(+1, FALSE);  // only if not on last page
+        }
         break;
     case SB_PAGEUP:
-        _MovePage(-1, FALSE);
-        _InvalidateRect();
+        {
+            int currentPage = 0;
+            if (SUCCEEDED(_GetCurrentPage(&currentPage)) && currentPage > 0)
+                _MovePage(-1, FALSE);  // only if not on first page
+        }
         break;
     case SB_THUMBPOSITION:
         _SetSelection(nPos, FALSE);
-        _InvalidateRect();
         break;
+    case SB_THUMBTRACK:
+        _SetSelection(nPos, FALSE);
+        break;
+    }
+    // Update scrollbar thumb and repaint only if selection actually changed
+    if (_currentSelection != prevSelection)
+    {
+        if (_pVScrollBarWnd) _pVScrollBarWnd->_ShiftPosition(_currentSelection, FALSE);
+        _InvalidateRect();
     }
 }
 
@@ -812,7 +886,7 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
 	
     int indexInPage = 0;
     int candidateListPageCnt = _pIndexRange->Count();
-	int VScrollWidth = CConfig::GetSystemMetricsDpi(SM_CXVSCROLL, CConfig::GetDpiForHwnd(_GetWnd())) *3/2;
+	int VScrollWidth = (_pVScrollBarWnd ? _pVScrollBarWnd->_GetHoverWidth() : MulDiv(SCROLLBAR_HOVER_WIDTH, CConfig::GetDpiForHwnd(_GetWnd()), USER_DEFAULT_SCREEN_DPI));
 
     RECT rc = { 0,0,0,0 };
 	const size_t numStringLen = 2;
@@ -851,31 +925,61 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
 		rc.top = prc->top + indexInPage * cyLine + fistLineOffset;
         rc.bottom = rc.top + cyLine;
 
+        BOOL isSelected = (_currentSelection == (INT)currentPageIndex);
 
-        rc.left = prc->left + PageCountPosition * cxLine;
-        rc.right = prc->left + StringPosition * cxLine;
-
-        // Number Font Color And BK
-        SetTextColor(dcHandle, _crNumberColor);
-        SetBkColor(dcHandle, _crNumberBkColor);
-
-        // Print cand list index 
-		StringCchPrintf(wszNumString, ARRAYSIZE(wszNumString), L"%c", _pIndexRange->GetAt(indexInPage)->CandIndex);
-		ExtTextOut(dcHandle, PageCountPosition * cxLine, indexInPage * cyLine + cyOffset, ETO_OPAQUE, &rc, wszNumString, numStringLen, NULL);
-
-        rc.left = prc->left + StringPosition * cxLine;
-        rc.right = prc->right - VScrollWidth;
-
-        // Candidate Font Color And BK
-        if (_currentSelection != (INT)currentPageIndex)
+        if (isSelected)
         {
-            SetTextColor(dcHandle, _crTextColor);
-            SetBkColor(dcHandle, _crBkColor); 
+            // Selected row: fill entire row with normal bg, then draw rounded highlight
+            // Symmetric margins: scrollbar width on both sides (same for single and multi-page)
+            int hMargin = VScrollWidth;
+            RECT rcFullRow = { prc->left, rc.top, prc->right - hMargin, rc.bottom };
+            if (_brshBkColor) FillRect(dcHandle, &rcFullRow, _brshBkColor);
+
+            UINT dpiSel = CConfig::GetDpiForHwnd(_GetWnd());
+            int vInset = MulDiv(1, dpiSel, USER_DEFAULT_SCREEN_DPI);
+            int cornerR = MulDiv(4, dpiSel, USER_DEFAULT_SCREEN_DPI);
+
+            // Rounded selection highlight with symmetric left/right margin
+            RECT rcHighlight = { prc->left + hMargin, rc.top + vInset,
+                                 prc->right - hMargin, rc.bottom - vInset };
+            HBRUSH hSelBrush = CreateSolidBrush(_crSelectedBkColor);
+            HPEN hSelPen = (HPEN)GetStockObject(NULL_PEN);
+            HBRUSH hOldBr = (HBRUSH)SelectObject(dcHandle, hSelBrush);
+            HPEN hOldPen = (HPEN)SelectObject(dcHandle, hSelPen);
+            RoundRect(dcHandle, rcHighlight.left, rcHighlight.top,
+                      rcHighlight.right, rcHighlight.bottom, cornerR, cornerR);
+            SelectObject(dcHandle, hOldBr);
+            SelectObject(dcHandle, hOldPen);
+            DeleteObject(hSelBrush);
+
+            // Draw number with transparent background
+            SetBkMode(dcHandle, TRANSPARENT);
+            SetTextColor(dcHandle, _crSelectedTextColor);
+            rc.left = prc->left + PageCountPosition * cxLine;
+            rc.right = prc->left + StringPosition * cxLine;
+            StringCchPrintf(wszNumString, ARRAYSIZE(wszNumString), L"%c", _pIndexRange->GetAt(indexInPage)->CandIndex);
+            ExtTextOut(dcHandle, PageCountPosition * cxLine, indexInPage * cyLine + cyOffset, 0, &rc, wszNumString, numStringLen, NULL);
+
+            // Set up for candidate text (transparent bg)
+            rc.left = prc->left + StringPosition * cxLine;
+            rc.right = prc->right - VScrollWidth;
+            SetTextColor(dcHandle, _crSelectedTextColor);
         }
         else
         {
-            SetTextColor(dcHandle, _crSelectedTextColor);
-            SetBkColor(dcHandle, _crSelectedBkColor);
+            // Non-selected row: standard opaque drawing
+            rc.left = prc->left + PageCountPosition * cxLine;
+            rc.right = prc->left + StringPosition * cxLine;
+            SetTextColor(dcHandle, _crNumberColor);
+            SetBkColor(dcHandle, _crNumberBkColor);
+            SetBkMode(dcHandle, OPAQUE);
+            StringCchPrintf(wszNumString, ARRAYSIZE(wszNumString), L"%c", _pIndexRange->GetAt(indexInPage)->CandIndex);
+            ExtTextOut(dcHandle, PageCountPosition * cxLine, indexInPage * cyLine + cyOffset, ETO_OPAQUE, &rc, wszNumString, numStringLen, NULL);
+
+            rc.left = prc->left + StringPosition * cxLine;
+            rc.right = prc->right - VScrollWidth;
+            SetTextColor(dcHandle, _crTextColor);
+            SetBkColor(dcHandle, _crBkColor);
         }
 
 		pItemList = _candidateList.GetAt(currentPageIndex);
@@ -903,7 +1007,8 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
 			}
 		}
 
-		ExtTextOut(dcHandle, StringPosition * cxLine, indexInPage * cyLine + cyOffset, ETO_OPAQUE, &rc, itemText, (DWORD)itemLength, NULL);
+		ExtTextOut(dcHandle, StringPosition * cxLine, indexInPage * cyLine + cyOffset, isSelected ? 0 : ETO_OPAQUE, &rc, itemText, (DWORD)itemLength, NULL);
+		if (isSelected) SetBkMode(dcHandle, OPAQUE); // restore for next row
 	
     }
 	for (; (indexInPage < candidateListPageCnt); indexInPage++)
@@ -937,11 +1042,12 @@ void CCandidateWindow::_DrawPageIndicator(_In_ HDC dcHandle, _In_ UINT currentPa
 	RECT rcClient = { 0, 0, 0, 0 };
 	_GetClientRect(&rcClient);
 
+	int indicatorH = cyLine / 2;
 	RECT rcIndicator;
 	rcIndicator.left   = rcClient.left;
 	rcIndicator.right  = rcClient.right;
 	rcIndicator.top    = candidateListPageCnt * cyLine;
-	rcIndicator.bottom = rcIndicator.top + cyLine;
+	rcIndicator.bottom = rcIndicator.top + indicatorH;
 
 	if (_brshBkColor) FillRect(dcHandle, &rcIndicator, _brshBkColor);
 
@@ -949,9 +1055,15 @@ void CCandidateWindow::_DrawPageIndicator(_In_ HDC dcHandle, _In_ UINT currentPa
 	StringCchPrintf(wszPageInfo, ARRAYSIZE(wszPageInfo), L"%u/%u",
 		currentPage + 1, (UINT)_PageIndex.Count());
 
+	// Right-aligned, compact, with padding from edges
+	int VScrollWidth = (_pVScrollBarWnd ? _pVScrollBarWnd->_GetHoverWidth() : MulDiv(SCROLLBAR_HOVER_WIDTH, CConfig::GetDpiForHwnd(_GetWnd()), USER_DEFAULT_SCREEN_DPI));
+	UINT dpiInd = CConfig::GetDpiForHwnd(_GetWnd());
+	int hPad = MulDiv(4, dpiInd, USER_DEFAULT_SCREEN_DPI);
+	rcIndicator.right -= (VScrollWidth + hPad);
 	SetTextColor(dcHandle, _crNumberColor);
-	SetBkColor(dcHandle, _crNumberBkColor);
-	DrawText(dcHandle, wszPageInfo, -1, &rcIndicator, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+	SetBkMode(dcHandle, TRANSPARENT);
+	DrawText(dcHandle, wszPageInfo, -1, &rcIndicator, DT_RIGHT | DT_VCENTER | DT_SINGLELINE);
+	SetBkMode(dcHandle, OPAQUE);
 }
 
 //+---------------------------------------------------------------------------
@@ -1041,9 +1153,6 @@ void CCandidateWindow::_AddString(_Inout_ CCandidateListItem *pCandidateItem, _I
     {
         pLI->_FindKeyCode.Set(pwchWildcard.release(), itemWildcard);
     }
-#ifndef ALWAYS_SHOW_SCROLL
-	if(_pVScrollBarWnd) _pVScrollBarWnd->_Show(FALSE); // hide the scrollbar in the beginning
-#endif
     return;
 }
 

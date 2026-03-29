@@ -204,7 +204,8 @@ ATOM AtomNotifyShadowWindow;
 
 BOOL RegisterWindowClass()
 {
-    if (!CBaseWindow::_InitWindowClass(CandidateClassName, &AtomCandidateWindow))
+    // Candidate and Notify use popup class (no CS_IME, with CS_DROPSHADOW) for DWM shadow
+    if (!CBaseWindow::_InitPopupWindowClass(CandidateClassName, &AtomCandidateWindow))
     {
         return FALSE;
     }
@@ -216,8 +217,8 @@ BOOL RegisterWindowClass()
     {
         return FALSE;
     }
-	
-    if (!CBaseWindow::_InitWindowClass(NotifyClassName, &AtomNotifyWindow))
+
+    if (!CBaseWindow::_InitPopupWindowClass(NotifyClassName, &AtomNotifyWindow))
     {
         return FALSE;
     }

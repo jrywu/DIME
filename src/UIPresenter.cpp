@@ -37,6 +37,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Private.h"
 #include "UIConstants.h"
 #include "CandidateWindow.h"
+#include "ShadowWindow.h"
 #include "UIPresenter.h"
 #include "CompositionProcessorEngine.h"
 #include "BaseStructure.h"
@@ -981,9 +982,9 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall)
 					_notifyLocation.y = candPt.y;
 
 				if (candPt.x < (int)_pNotifyWnd->_GetWidth())
-					_notifyLocation.x = candPt.x + _pCandidateWnd->_GetWidth();
+					_notifyLocation.x = candPt.x + _pCandidateWnd->_GetWidth() + SHADOW_SPREAD / 2;
 				else
-					_notifyLocation.x = candPt.x - _pNotifyWnd->_GetWidth();
+					_notifyLocation.x = candPt.x - _pNotifyWnd->_GetWidth() - SHADOW_SPREAD / 2;
 					
 				_pNotifyWnd->_Move(_notifyLocation.x, _notifyLocation.y);
 				debugPrint(L"move notify to x = %d, y = %d", _notifyLocation.x, _notifyLocation.y);
@@ -1539,9 +1540,9 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange* pNotifyText, _In_opt_ UINT 
 					if(_pCandidateWnd && _pNotifyWnd && _pCandidateWnd->_IsWindowVisible())
 					{
 						if( _notifyLocation.x  < (int) _pNotifyWnd->_GetWidth() )
-							_pNotifyWnd->_Move(_notifyLocation.x  + _pCandidateWnd->_GetWidth() , _notifyLocation.y);
+							_pNotifyWnd->_Move(_notifyLocation.x  + _pCandidateWnd->_GetWidth() + SHADOW_SPREAD / 2, _notifyLocation.y);
 						else		
-							_pNotifyWnd->_Move(_notifyLocation.x  - _pNotifyWnd->_GetWidth() , _notifyLocation.y);
+							_pNotifyWnd->_Move(_notifyLocation.x  - _pNotifyWnd->_GetWidth() - SHADOW_SPREAD / 2, _notifyLocation.y);
 					}
 					else
 						_pNotifyWnd->_Move(_notifyLocation.x, _notifyLocation.y);

@@ -35,6 +35,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Private.h"
 #include "Globals.h"
 #include "BaseWindow.h"
+#include <dwmapi.h>
+#pragma comment(lib, "dwmapi.lib")
+
+#ifndef DWMWA_WINDOW_CORNER_PREFERENCE
+#define DWMWA_WINDOW_CORNER_PREFERENCE 33
+#endif
+#ifndef DWMWCP_ROUNDSMALL
+#define DWMWCP_ROUNDSMALL 3
+#endif
 
 
 //+---------------------------------------------------------------------------
@@ -54,6 +63,9 @@ CBaseWindow::CBaseWindow()
 
     _enableVirtualWnd = TRUE;
     _visibleVirtualWnd = TRUE;
+    _skipRoundedRegion = FALSE;
+    _cornerRadiusBase = 10;
+    _useDwmCorners = FALSE;
     _RectOfVirtualWnd.left = 0;
     _RectOfVirtualWnd.top = 0;
     _RectOfVirtualWnd.right = 0;
@@ -83,6 +95,34 @@ BOOL CBaseWindow::_InitWindowClass(_In_ LPCWSTR lpwszClassName, _Out_ ATOM *pato
     WNDCLASS wc;
 
     wc.style         = CS_DBLCLKS | CS_HREDRAW | CS_VREDRAW | CS_IME;
+    wc.lpfnWndProc   = CBaseWindow::_WindowProc;
+    wc.cbClsExtra    = 0;
+    wc.cbWndExtra    = 0;
+    wc.hInstance     = Global::dllInstanceHandle;
+    wc.hIcon         = nullptr;
+    wc.hCursor       = LoadCursor(nullptr, IDC_ARROW);
+    wc.hbrBackground = (HBRUSH)GetStockObject(LTGRAY_BRUSH);
+    wc.lpszMenuName  = nullptr;
+    wc.lpszClassName = lpwszClassName;
+
+    *patom = RegisterClass(&wc);
+
+    return (*patom != 0);
+}
+
+/* static */
+BOOL CBaseWindow::_InitPopupWindowClass(_In_ LPCWSTR lpwszClassName, _Out_ ATOM *patom)
+{
+    // Popup window class used by CCandidateWindow, CNotifyWindow, and CShadowWindow.
+    // CScrollBarWindow is WS_CHILD of the candidate and uses _InitWindowClass instead.
+    //
+    // no CS_IME  — marks window as IME-owned; DWM applies restrictions that interfere
+    //              with shadow compositing on popup windows.
+    // no CS_DROPSHADOW — renders only on bottom-right, not suppressed by SetWindowRgn;
+    //              CShadowWindow provides all-around even shadow instead.
+    WNDCLASS wc;
+
+    wc.style         = CS_DBLCLKS | CS_HREDRAW | CS_VREDRAW;
     wc.lpfnWndProc   = CBaseWindow::_WindowProc;
     wc.cbClsExtra    = 0;
     wc.cbWndExtra    = 0;
@@ -152,6 +192,7 @@ BOOL CBaseWindow::_Create(ATOM atom, DWORD dwExStyle, DWORD dwStyle, _In_opt_ CB
         {
             return FALSE;
         }
+
     }
 
     return TRUE;
@@ -208,6 +249,16 @@ void CBaseWindow::_Resize(int x, int y, int cx, int cy)
     if (_wndHandle != nullptr)
     {
         MoveWindow(_wndHandle, x, y, cx, cy, TRUE);
+
+        // Rounded corners via SetWindowRgn — only on pre-Win11 (Win11 uses DWM native corners)
+        LONG style = GetWindowLong(_wndHandle, GWL_STYLE);
+        if ((style & WS_POPUP) && !_skipRoundedRegion && cx > 0 && cy > 0)
+        {
+            UINT dpi = CConfig::GetDpiForHwnd(_wndHandle);
+            int radius = MulDiv(_cornerRadiusBase, dpi, USER_DEFAULT_SCREEN_DPI);
+            HRGN hRgn = CreateRoundRectRgn(0, 0, cx + 1, cy + 1, radius, radius);
+            SetWindowRgn(_wndHandle, hRgn, TRUE);
+        }
     }
     else
     {
@@ -309,7 +360,7 @@ void CBaseWindow::_InvalidateRect()
 {
     if (_wndHandle != nullptr)
     {
-        InvalidateRect(_wndHandle, NULL, TRUE);
+        InvalidateRect(_wndHandle, NULL, FALSE);
     }
     else
     {
@@ -318,7 +369,7 @@ void CBaseWindow::_InvalidateRect()
         {
             if (pobj->_wndHandle)
             {
-                InvalidateRect(pobj->_wndHandle, &_RectOfVirtualWnd, TRUE);
+                InvalidateRect(pobj->_wndHandle, &_RectOfVirtualWnd, FALSE);
                 break;
             }
             pobj = pobj->_pParentWnd;
