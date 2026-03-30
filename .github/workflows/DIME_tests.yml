@@ -5,6 +5,9 @@ on:
   schedule:
     - cron: '0 18 * * *'  # 2:00 AM Asia/Taipei == 18:00 UTC previous day
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   check-changes:
     runs-on: windows-latest

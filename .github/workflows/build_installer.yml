@@ -28,6 +28,9 @@ on:
       - 'installer/wix/**'
       - 'installer/*.ps1'
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 concurrency:
   group: build-installer-${{ github.ref }}
   cancel-in-progress: true
