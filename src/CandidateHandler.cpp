@@ -220,7 +220,7 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 			_isCandidateWithWildcard = FALSE;	
 			
 			//StartCandidateList require a valid selection from a valid pComposition to determine the location to show the candidate window
-			//Moved after setCandidateText or candidatePhraseList can be corrupt after probe comosition.
+			//Moved after setCandidateText or candidatePhraseList can be corrupt after probe composition.
 			CStringRange emptyComposition;
 			if (!_IsComposing())
 				_StartComposition(pContext); 

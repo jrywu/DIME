@@ -88,6 +88,11 @@ LRESULT CALLBACK CShadowWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT uM
     case WM_SETTINGCHANGE:
         _OnSettingChange();
         break;
+
+    case WM_APP + 1:
+        // Deferred shadow init — lets candidate window paint first
+        _InitShadow();
+        return 0;
     }
 
     return DefWindowProc(wndHandle, uMsg, wParam, lParam);
@@ -153,7 +158,6 @@ void CShadowWindow::_Show(BOOL isShowWnd)
     {
         // Call UpdateLayeredWindow AFTER the window is visible so DWM applies the bitmap.
         // Calling it on a hidden window is silently discarded by DWM (root cause #8).
-        // Both this call and CBaseWindow::_Show execute before the next DWM frame — no flash.
         _InitShadow();
     }
 }
@@ -279,22 +283,12 @@ void CShadowWindow::_InitShadow()
     BYTE shadowB = isDarkMode ? 200 : 0;
     BYTE maxAlpha = SHADOW_MAX_ALPHA;
     {
-        COLORREF corners[4];
-        corners[0] = GetPixel(dcScreenHandle, rcWindow.left, rcWindow.top);
-        corners[1] = GetPixel(dcScreenHandle, rcWindow.right - 1, rcWindow.top);
-        corners[2] = GetPixel(dcScreenHandle, rcWindow.left, rcWindow.bottom - 1);
-        corners[3] = GetPixel(dcScreenHandle, rcWindow.right - 1, rcWindow.bottom - 1);
-        int totalLum = 0;
-        int validCount = 0;
-        for (int i = 0; i < 4; i++)
-        {
-            if (corners[i] != CLR_INVALID)
-            {
-                totalLum += (299 * GetRValue(corners[i]) + 587 * GetGValue(corners[i]) + 114 * GetBValue(corners[i])) / 1000;
-                validCount++;
-            }
-        }
-        BOOL bgIsLight = (validCount == 0) || (totalLum / validCount > 128);
+        // Detect background luminance from system window color (instant, no DWM flush).
+        // COLOR_WINDOW reflects the system theme. Legacy apps that don't support dark mode
+        // keep COLOR_WINDOW light even when system is dark — exactly the mismatch case.
+        COLORREF sysWndColor = GetSysColor(COLOR_WINDOW);
+        int lum = (299 * GetRValue(sysWndColor) + 587 * GetGValue(sysWndColor) + 114 * GetBValue(sysWndColor)) / 1000;
+        BOOL bgIsLight = (lum > 128);
         if (isDarkMode && bgIsLight)
         {
             // Dark IME on light bg: flip to dark shadow with boosted alpha
@@ -324,7 +318,59 @@ void CShadowWindow::_InitShadow()
     double inner_rx = half_w - r;
     double inner_ry = half_h - r;
 
+    // Border band bounds: shadow pixels only exist within SHADOW_SPREAD+1 of the owner edges.
+    // Skip the interior to avoid evaluating SDF for ~80% of pixels.
+    int bandT = iT + 2;  // first interior row (no shadow)
+    int bandB = iB - 2;  // last interior row (no shadow)
+    int bandL = iL + 2;  // first interior column
+    int bandR = iR - 2;  // last interior column
+
     for (int y = 0; y < size.cy; y++) {
+        // Skip interior rows (only left+right bands needed)
+        int xStart = 0, xEnd = size.cx;
+        if (y >= bandT && y <= bandB)
+        {
+            // Left band + right band only
+            for (int x = 0; x < bandL; x++) {
+                double ox = x - iL;
+                double oy = y - iT;
+                double qx = fabs(ox - half_w) - inner_rx;
+                double qy = fabs(oy - half_h) - inner_ry;
+                double len = sqrt(max(qx, 0.0) * max(qx, 0.0) + max(qy, 0.0) * max(qy, 0.0));
+                double sdf = len + min(max(qx, qy), 0.0) - r;
+                if (sdf <= -1.0) continue;
+                double dist = max(0.0, sdf) / (double)sp;
+                if (dist > 1.0) continue;
+                double f = 1.0 - dist;
+                BYTE alpha = (BYTE)(maxAlpha * f * f);
+                if (alpha == 0) continue;
+                RGBALPHA* ppxl = (RGBALPHA*)pDIBits + ((size_t)y * size.cx + x);
+                ppxl->rgbRed   = (BYTE)((DWORD)shadowR * alpha / 255);
+                ppxl->rgbGreen = (BYTE)((DWORD)shadowG * alpha / 255);
+                ppxl->rgbBlue  = (BYTE)((DWORD)shadowB * alpha / 255);
+                ppxl->rgbAlpha = alpha;
+            }
+            for (int x = max(bandR, bandL); x < size.cx; x++) {
+                double ox = x - iL;
+                double oy = y - iT;
+                double qx = fabs(ox - half_w) - inner_rx;
+                double qy = fabs(oy - half_h) - inner_ry;
+                double len = sqrt(max(qx, 0.0) * max(qx, 0.0) + max(qy, 0.0) * max(qy, 0.0));
+                double sdf = len + min(max(qx, qy), 0.0) - r;
+                if (sdf <= -1.0) continue;
+                double dist = max(0.0, sdf) / (double)sp;
+                if (dist > 1.0) continue;
+                double f = 1.0 - dist;
+                BYTE alpha = (BYTE)(maxAlpha * f * f);
+                if (alpha == 0) continue;
+                RGBALPHA* ppxl = (RGBALPHA*)pDIBits + ((size_t)y * size.cx + x);
+                ppxl->rgbRed   = (BYTE)((DWORD)shadowR * alpha / 255);
+                ppxl->rgbGreen = (BYTE)((DWORD)shadowG * alpha / 255);
+                ppxl->rgbBlue  = (BYTE)((DWORD)shadowB * alpha / 255);
+                ppxl->rgbAlpha = alpha;
+            }
+            continue;
+        }
         for (int x = 0; x < size.cx; x++) {
             double ox = x - iL;
             double oy = y - iT;
