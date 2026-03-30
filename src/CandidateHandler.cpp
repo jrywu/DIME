@@ -219,12 +219,9 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 			_candidateMode = CANDIDATE_MODE::CANDIDATE_PHRASE;
 			_isCandidateWithWildcard = FALSE;	
 			
-			//StartCandidateList require a valid selection from a valid pComposition to determine the location to show the candidate window
-			//Moved after setCandidateText or candidatePhraseList can be corrupt after probe composition.
-			CStringRange emptyComposition;
-			if (!_IsComposing())
-				_StartComposition(pContext); 
-			_AddComposingAndChar(ec, pContext, &emptyComposition.Set(L" ",1)); 
+			// Show candidate window — _CreateAndStartCandidate now works without a composition.
+			// GetCaretPos fallback positions the window at the caret when no composition range exists.
+			_CreateAndStartCandidate(_pCompositionProcessorEngine, ec, pContext);
 			
 		}
 		else
@@ -382,13 +379,12 @@ HRESULT CDIME::_CreateAndStartCandidate(_In_ CCompositionProcessorEngine *pCompo
 		ITfDocumentMgr* pDocumentMgr = nullptr;
 		if (SUCCEEDED(pContext->GetDocumentMgr(&pDocumentMgr)))
 		{
-			// get the composition range.
+			// get the composition range (may be null for phrase candidates without composition).
 			ITfRange* pRange = nullptr;
-			if (SUCCEEDED(_pComposition->GetRange(&pRange)))
-			{
-				hr = _pUIPresenter->_StartCandidateList(_tfClientId, pDocumentMgr, pContext, ec, pRange, pCompositionProcessorEngine->GetCandidateWindowWidth());
-				pRange->Release();
-			}
+			if (_pComposition)
+				_pComposition->GetRange(&pRange);
+			hr = _pUIPresenter->_StartCandidateList(_tfClientId, pDocumentMgr, pContext, ec, pRange, pCompositionProcessorEngine->GetCandidateWindowWidth());
+			if (pRange) pRange->Release();
 			pDocumentMgr->Release();
 		}
 	}

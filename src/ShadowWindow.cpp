@@ -327,7 +327,6 @@ void CShadowWindow::_InitShadow()
 
     for (int y = 0; y < size.cy; y++) {
         // Skip interior rows (only left+right bands needed)
-        int xStart = 0, xEnd = size.cx;
         if (y >= bandT && y <= bandB)
         {
             // Left band + right band only

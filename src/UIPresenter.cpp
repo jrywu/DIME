@@ -563,6 +563,12 @@ HRESULT CUIPresenter::_StartCandidateList(TfClientId tfClientId, _In_ ITfDocumen
     {
         _LayoutChangeNotification(&rcTextExt);
     }
+    else
+    {
+        // No composition range — use GetCaretPos fallback
+        RECT rcFallback = {0, 0, -1, -1};
+        _LayoutChangeNotification(&rcFallback, TRUE);
+    }
 
 Exit:
     if (FAILED(hr))
