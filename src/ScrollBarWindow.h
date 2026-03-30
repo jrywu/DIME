@@ -182,6 +182,12 @@ public:
     // FALSE → schedule collapse to thin line after SCROLLBAR_COLLAPSE_DELAY_MS.
     void _SetCandidateMouseIn(BOOL isIn);
 
+    // RC26: Called by candidate window to pass the full selection RoundRect
+    // (in scrollbar client coordinates — left extends past 0 to preserve shape).
+    // On non-layered windows, _OnPaint draws the same RoundRect so the
+    // highlight visually extends over the scrollbar with its original shape.
+    void _SetSelectionHighlight(RECT rc, int cornerRadius, COLORREF color);
+
 private:
     void _AdjustWindowPos();
 
@@ -205,6 +211,11 @@ private:
     // Button auto-repeat state
     SCROLLBAR_HITTEST _heldButton;  // SB_HIT_BTN_UP or SB_HIT_BTN_DOWN while held, else SB_HIT_NONE
     BOOL _repeatStarted;            // TRUE after initial delay, now in fast repeat
+
+    // RC26: Selection highlight pass-through for non-layered windows
+    RECT      _selHighlightRect;    // full RoundRect in scrollbar client coords (left < 0)
+    int       _selHighlightRadius;  // corner radius (-1 = no highlight)
+    COLORREF  _selHighlightColor;   // selection background color
 };
 
 

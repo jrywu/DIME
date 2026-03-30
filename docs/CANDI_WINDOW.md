@@ -619,10 +619,11 @@ All rendering uses standard Win32 GDI APIs. No external dependencies or runtime 
 
 ### Legacy (DPI-unaware) app compatibility (fixed 2026-03-30)
 
-Old Win32 apps (e.g. Windows XP-era Notepad) are DPI-unaware. Three bugs were fixed:
+Old Win32 apps (e.g. Windows XP-era Notepad) are DPI-unaware. Four bugs were fixed:
 
 - **0×0 window:** `_Show(TRUE)` now calls `_ResizeWindow()` if the window has zero size, since the removal of `WS_BORDER` means zero client area = zero physical size = no `WM_PAINT`.
 - **Wrong position:** Skip `DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2` override when the parent window is DPI-unaware, so the IME inherits the app's virtualized coordinate space.
 - **Scrollbar creation failure:** Retry `CreateWindowEx` without `WS_EX_LAYERED` on failure; removed `_DeleteShadowWnd()` from the scrollbar failure path so shadow and scrollbar are independent.
+- **Scrollbar magenta background:** On non-layered scrollbar windows (where `WS_EX_LAYERED` failed), the magenta color key painted as solid magenta. Fixed by using the parent's background brush via `WM_CTLCOLORSCROLLBAR` for non-layered windows. The selection highlight is drawn on top of all scrollbar elements via `_SetSelectionHighlight` so it visually extends over the scrollbar with its original `RoundRect` shape.
 
-See [CANDI_SCROLL_BAR.md](CANDI_SCROLL_BAR.md) RC22–RC25 for details.
+See [CANDI_SCROLL_BAR.md](CANDI_SCROLL_BAR.md) RC22–RC26 for details.

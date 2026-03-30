@@ -119,6 +119,10 @@ CScrollBarWindow::CScrollBarWindow()
 
     _heldButton = SB_HIT_NONE;
     _repeatStarted = FALSE;
+
+    SetRectEmpty(&_selHighlightRect);
+    _selHighlightRadius = -1;
+    _selHighlightColor = 0;
 }
 
 //+---------------------------------------------------------------------------
@@ -243,12 +247,24 @@ void CScrollBarWindow::_OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps)
 {
 	debugPrint(L"CScrollBarWindow::_OnPaint()\n");
 
-    // Fill background with the transparent color key — these pixels become fully transparent.
+    // RC26: Fill background — layered windows use magenta color key (becomes transparent);
+    // non-layered windows (legacy apps where WS_EX_LAYERED failed) ask the parent for its bg brush.
     if (pps)
     {
-        HBRUSH hBg = CreateSolidBrush(SCROLLBAR_COLORKEY);
-        FillRect(dcHandle, &pps->rcPaint, hBg);
-        DeleteObject(hBg);
+        if (GetWindowLong(_GetWnd(), GWL_EXSTYLE) & WS_EX_LAYERED)
+        {
+            HBRUSH hBg = CreateSolidBrush(SCROLLBAR_COLORKEY);
+            FillRect(dcHandle, &pps->rcPaint, hBg);
+            DeleteObject(hBg);
+        }
+        else
+        {
+            // Non-layered: fill with parent's background brush
+            HWND hParent = GetParent(_GetWnd());
+            HBRUSH hBg = hParent ? (HBRUSH)SendMessage(hParent, WM_CTLCOLORSCROLLBAR, (WPARAM)dcHandle, (LPARAM)_GetWnd()) : NULL;
+            if (!hBg) hBg = (HBRUSH)GetStockObject(BLACK_BRUSH);
+            FillRect(dcHandle, &pps->rcPaint, hBg);
+        }
     }
 
     if (_scrollInfo.nMax <= _scrollInfo.nPage) return;
@@ -353,6 +369,24 @@ void CScrollBarWindow::_OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps)
         SelectObject(dcHandle, hOldBr);
         SelectObject(dcHandle, hOldPen);
         DeleteObject(hThumb);
+    }
+
+    // RC26: Draw selection highlight on top of all scrollbar elements so the
+    // candidate's rounded highlight visually extends over the scrollbar.
+    // Only needed on non-layered windows (legacy apps); on layered windows
+    // the color key transparency handles the scrollbar background.
+    if (_selHighlightRadius >= 0 && !(GetWindowLong(_GetWnd(), GWL_EXSTYLE) & WS_EX_LAYERED))
+    {
+        HBRUSH hSel = CreateSolidBrush(_selHighlightColor);
+        HPEN hSelPen = (HPEN)GetStockObject(NULL_PEN);
+        HBRUSH hOldBr = (HBRUSH)SelectObject(dcHandle, hSel);
+        HPEN hOldPen = (HPEN)SelectObject(dcHandle, hSelPen);
+        RoundRect(dcHandle, _selHighlightRect.left, _selHighlightRect.top,
+                  _selHighlightRect.right, _selHighlightRect.bottom,
+                  _selHighlightRadius, _selHighlightRadius);
+        SelectObject(dcHandle, hOldBr);
+        SelectObject(dcHandle, hOldPen);
+        DeleteObject(hSel);
     }
 }
 
@@ -799,6 +833,19 @@ void CScrollBarWindow::_SetCandidateMouseIn(BOOL isIn)
         // Mouse left scrollbar column: schedule collapse after 2s delay.
         _StartTimer(UI::SCROLLBAR_COLLAPSE_DELAY_MS, UI::SCROLLBAR_COLLAPSE_TIMER_ID);
     }
+}
+
+//+---------------------------------------------------------------------------
+//
+// _SetSelectionHighlight — RC26: candidate passes selected row rect for non-layered bg
+//
+//----------------------------------------------------------------------------
+
+void CScrollBarWindow::_SetSelectionHighlight(RECT rc, int cornerRadius, COLORREF color)
+{
+    _selHighlightRect = rc;
+    _selHighlightRadius = cornerRadius;
+    _selHighlightColor = color;
 }
 
 //+---------------------------------------------------------------------------

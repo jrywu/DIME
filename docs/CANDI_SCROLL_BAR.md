@@ -405,6 +405,7 @@ All Phase 1 changes use standard Win32 APIs available since Windows 2000+. No ne
 | RC23 | Legacy DPI-unaware apps: candidate at wrong position (DPI coordinate mismatch) | Done | `BaseWindow.cpp` | Skip `DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2` override if parent window is `DPI_AWARENESS_CONTEXT_UNAWARE`; APIs loaded dynamically for Win7/8 safety |
 | RC24 | Legacy DPI-unaware apps: scrollbar `WS_EX_LAYERED` on child rejected (error 183) | Done | `ScrollBarWindow.cpp` | Retry `CreateWindowEx` without `WS_EX_LAYERED` on failure; scrollbar works fully opaque |
 | RC25 | Scrollbar creation failure deleted shadow window | Done | `CandidateWindow.cpp` | Removed `_DeleteShadowWnd()` from scrollbar failure path; shadow and scrollbar creation now independent |
+| RC26 | Scrollbar magenta background on non-layered (legacy) windows | Done | `ScrollBarWindow.cpp`, `ScrollBarWindow.h`, `CandidateWindow.cpp` | Non-layered bg via `WM_CTLCOLORSCROLLBAR`; selection highlight `RoundRect` drawn on top of all scrollbar elements via `_SetSelectionHighlight` |
 
 ### Bug fix details
 
@@ -453,6 +454,18 @@ Fix: retry without `WS_EX_LAYERED` on failure. Scrollbar works fully without it 
 `_CreateVScrollWindow` called `_DeleteShadowWnd()` on failure, destroying the already-created shadow window.
 
 Fix: removed `_DeleteShadowWnd()` from the scrollbar failure path. Shadow and scrollbar creation are now independent.
+
+#### RC26 — Scrollbar magenta background on non-layered windows (2026-03-30)
+
+On legacy Win32 apps where `WS_EX_LAYERED` fails on child windows (RC24), the scrollbar falls back to a non-layered window. Two problems resulted:
+
+**Magenta background:** `_OnPaint` unconditionally filled the background with `SCROLLBAR_COLORKEY` (`RGB(255, 0, 255)`). On layered windows this becomes transparent via `LWA_COLORKEY`; on non-layered windows it paints as solid magenta.
+
+Fix: check `WS_EX_LAYERED` in `_OnPaint`. Layered windows continue using the magenta color key. Non-layered windows send `WM_CTLCOLORSCROLLBAR` to the parent candidate window, which returns `_brshBkColor` (tracks current theme). The parent-owned brush is not deleted by the scrollbar.
+
+**Selection highlight hidden behind scrollbar:** The candidate's `WS_CLIPCHILDREN` prevents it from painting in the scrollbar's area. On layered windows the color key transparency reveals the parent content; on non-layered windows the scrollbar's opaque background covers the selection highlight.
+
+Fix: added `_SetSelectionHighlight(RECT, cornerRadius, color)` to `CScrollBarWindow`. The candidate calls this from `_DrawList` with the full `RoundRect` coordinates (in scrollbar client space — left extends past 0). The scrollbar draws the same `RoundRect` as the **last step** in `_OnPaint`, on top of all scrollbar elements (background, arrows, thumb), so the highlight visually extends over the scrollbar with its original shape.
 
 ### Files modified (visual design work)
 

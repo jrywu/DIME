@@ -935,6 +935,14 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
 	int cyOffset = candSize.cy / 8 + fistLineOffset; //offset in line + blank before 1st line.
 	
 
+    // RC26: Reset scrollbar selection highlight before drawing rows (non-layered only)
+    if (_pVScrollBarWnd && _pVScrollBarWnd->_GetWnd() &&
+        !(GetWindowLong(_pVScrollBarWnd->_GetWnd(), GWL_EXSTYLE) & WS_EX_LAYERED))
+    {
+        RECT rcEmpty = {0};
+        _pVScrollBarWnd->_SetSelectionHighlight(rcEmpty, -1, 0);
+    }
+
     for (;
 		(currentPageIndex < _candidateList.Count()) && (indexInPage < candidateListPageCnt);
 		currentPageIndex++, indexInPage++)
@@ -971,6 +979,21 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
             SelectObject(dcHandle, hOldBr);
             SelectObject(dcHandle, hOldPen);
             DeleteObject(hSelBrush);
+
+            // RC26: Pass full selection RoundRect to scrollbar (in scrollbar client coords)
+            // so the highlight visually extends over the scrollbar with its original shape.
+            // Only needed on non-layered windows (legacy apps).
+            if (_pVScrollBarWnd && _pVScrollBarWnd->_GetWnd() &&
+                !(GetWindowLong(_pVScrollBarWnd->_GetWnd(), GWL_EXSTYLE) & WS_EX_LAYERED))
+            {
+                RECT rcSB = {0};
+                _pVScrollBarWnd->_GetWindowRect(&rcSB);
+                POINT ptSB = { rcSB.left, rcSB.top };
+                ScreenToClient(_GetWnd(), &ptSB);
+                RECT rcSelSB = { rcHighlight.left - ptSB.x, rcHighlight.top - ptSB.y,
+                                 rcHighlight.right - ptSB.x, rcHighlight.bottom - ptSB.y };
+                _pVScrollBarWnd->_SetSelectionHighlight(rcSelSB, cornerR, _crSelectedBkColor);
+            }
 
             // Draw number with transparent background
             SetBkMode(dcHandle, TRANSPARENT);
