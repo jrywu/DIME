@@ -1,4 +1,4 @@
-// StringTest.cpp - String Processing Unit Tests (UT-03)
+﻿// StringTest.cpp - String Processing Unit Tests (UT-03)
 // Tests for BaseStructure.cpp (CStringRange class)
 // Coverage Target: >= 90% overall, 100% per operation
 

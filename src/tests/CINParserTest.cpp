@@ -1,4 +1,4 @@
-// CINParserTest.cpp - Unit Tests for CConfig::parseCINFile
+﻿// CINParserTest.cpp - Unit Tests for CConfig::parseCINFile
 // Tests CIN dictionary file parsing, encoding conversion, and escape handling
 
 #include "pch.h"
