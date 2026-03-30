@@ -40,7 +40,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // All-around soft shadow (VS Code style)
 // SHADOW_SPREAD defined in ShadowWindow.h
-#define SHADOW_MAX_ALPHA 35 // peak alpha (~14% opacity)
+#define SHADOW_MAX_ALPHA 35 // peak alpha for light shadow on dark bg (~14%)
+#define SHADOW_MAX_ALPHA_DARK 45 // peak alpha for dark shadow on light bg (~18%)
 
 
 //+---------------------------------------------------------------------------
@@ -267,19 +268,51 @@ void CShadowWindow::_InitShadow()
 
     memset(pDIBits, 0, (size_t)size.cx * size.cy * 4);
 
+    // Sample background at 4 corners of the shadow window to determine shadow color.
+    // The shadow window is visible but UpdateLayeredWindow hasn't been called yet,
+    // so the screen shows the true background.
+    // Shadow color adapts to background: dark shadow on light bg, light shadow on dark bg.
+    // Alpha is boosted only when IME theme mismatches background (e.g. dark IME on light bg).
+    BOOL isDarkMode = CConfig::GetEffectiveDarkMode();
+    BYTE shadowR = isDarkMode ? 200 : 0;
+    BYTE shadowG = isDarkMode ? 200 : 0;
+    BYTE shadowB = isDarkMode ? 200 : 0;
+    BYTE maxAlpha = SHADOW_MAX_ALPHA;
+    {
+        COLORREF corners[4];
+        corners[0] = GetPixel(dcScreenHandle, rcWindow.left, rcWindow.top);
+        corners[1] = GetPixel(dcScreenHandle, rcWindow.right - 1, rcWindow.top);
+        corners[2] = GetPixel(dcScreenHandle, rcWindow.left, rcWindow.bottom - 1);
+        corners[3] = GetPixel(dcScreenHandle, rcWindow.right - 1, rcWindow.bottom - 1);
+        int totalLum = 0;
+        int validCount = 0;
+        for (int i = 0; i < 4; i++)
+        {
+            if (corners[i] != CLR_INVALID)
+            {
+                totalLum += (299 * GetRValue(corners[i]) + 587 * GetGValue(corners[i]) + 114 * GetBValue(corners[i])) / 1000;
+                validCount++;
+            }
+        }
+        BOOL bgIsLight = (validCount == 0) || (totalLum / validCount > 128);
+        if (isDarkMode && bgIsLight)
+        {
+            // Dark IME on light bg: flip to dark shadow with boosted alpha
+            shadowR = 0; shadowG = 0; shadowB = 0;
+            maxAlpha = SHADOW_MAX_ALPHA_DARK;
+        }
+        else if (!isDarkMode && !bgIsLight)
+        {
+            // Light IME on dark bg: flip to light shadow (keep original alpha)
+            shadowR = 200; shadowG = 200; shadowB = 200;
+        }
+    }
+
     // All-around soft shadow with proper rounded-corner masking.
     int sp = SHADOW_SPREAD;
     int iL = sp, iT = sp, iR = size.cx - sp, iB = size.cy - sp;
     int ownerW = iR - iL;
     int ownerH = iB - iT;
-
-    // Shadow color: black on light theme, light gray glow on dark theme.
-    // Pixels use pre-multiplied alpha (required by AC_SRC_ALPHA / UpdateLayeredWindow).
-    // For black (R=G=B=0) pre-multiplication is implicit; for non-black we compute it per pixel.
-    BOOL isDarkMode = CConfig::GetEffectiveDarkMode();
-    BYTE shadowR = isDarkMode ? 200 : 0;
-    BYTE shadowG = isDarkMode ? 200 : 0;
-    BYTE shadowB = isDarkMode ? 200 : 0;
 
     // Rounded-rect SDF: gives true distance from the owner's rounded boundary at every pixel,
     // including corner cutout areas where the old PtInRegion+dx/dy code zeroed alpha.
@@ -302,13 +335,13 @@ void CShadowWindow::_InitShadow()
             double len = sqrt(max(qx, 0.0) * max(qx, 0.0) + max(qy, 0.0) * max(qy, 0.0));
             double sdf = len + min(max(qx, qy), 0.0) - r;
 
-            if (sdf <= 0.0) continue; // inside rounded rect — zero alpha
+            if (sdf <= -1.0) continue; // extend shadow 1px under candidate edge to close boundary gap
 
-            double dist = sdf / (double)sp;
+            double dist = max(0.0, sdf) / (double)sp;
             if (dist > 1.0) dist = 1.0;
 
             double f = 1.0 - dist;
-            BYTE alpha = (BYTE)(SHADOW_MAX_ALPHA * f * f);
+            BYTE alpha = (BYTE)(maxAlpha * f * f);
             if (alpha == 0) continue;
 
             RGBALPHA* ppxl = (RGBALPHA*)pDIBits + ((size_t)y * size.cx + x);
