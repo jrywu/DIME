@@ -131,19 +131,7 @@ When multi-page, the scrollbar appearance follows the Windows 11 "Always show sc
 
 ### 1.5 Border behavior
 
-`_DrawBorder` is called only on **Windows 7 and 8** (build < 10240). On Windows 10 and 11, `_DrawBorder` is skipped entirely:
-
-- **Windows 11 (build ≥ 22000):** DWM provides a subtle 1px frame that follows the `SetWindowRgn` rounded shape automatically.
-- **Windows 10 (build 10240–19045):** DWM compositing makes any custom border look jarring against the platform style. `CShadowWindow` already provides visual separation, so no explicit border is needed.
-- **Windows 7–8 (build < 10240):** `_DrawBorder` draws a 1px `RoundRect()` border on the window DC using the same DPI-scaled radius as `SetWindowRgn`. The border color is derived at paint time from `_crBkColor` (the actual window background) using a luminance-based formula, so it adapts automatically to light, dark, and custom background colors:
-
-```cpp
-int lum = (299*R + 587*G + 114*B) / 1000;   // perceived luminance
-if (lum > 128)   // light background: darken 30 %
-    borderColor = RGB(R*70/100, G*70/100, B*70/100);
-else             // dark background: lighten 30 %
-    borderColor = RGB(R + (255-R)*30/100, G + (255-G)*30/100, B + (255-B)*30/100);
-```
+`_DrawBorder` is **never called** on any supported Windows version. `CShadowWindow` is a top-level `WS_EX_LAYERED` popup, which works on Windows 7 and later, and its per-pixel alpha SDF gradient provides clear visual separation on all versions. No additional 1px border is needed or drawn.
 
 ### 1.5.1 Windows 10 border bugs (fixed 2026-03-30)
 
@@ -171,17 +159,11 @@ RoundRect(dcHandle, rcWnd.left, rcWnd.top, rcWnd.right, rcWnd.bottom, radius, ra
 
 ---
 
-#### Bug 2 — Custom border still ugly on Windows 10 even after Bug 1 fix
+#### Bug 2 — Custom border is unnecessary on all Windows versions
 
-After fixing Bug 1, the border remained visually jarring on Windows 10 regardless of color. Root cause: Windows 10 DWM compositing causes any 1px custom border drawn via `GetWindowDC` to conflict with the platform's composited window edge, producing a prominent outline that stands out from native Windows 10 popup windows. No color adjustment can fully resolve this because the artifact is a DWM compositing issue, not a color issue.
+After fixing Bug 1, the border remained visually jarring on Windows 10 regardless of color. Further analysis showed that `CShadowWindow` is a top-level `WS_EX_LAYERED` popup, which is supported from Windows 7 onwards (only child-window `WS_EX_LAYERED` was restricted on Win7). The shadow's per-pixel alpha SDF gradient provides clear visual separation on every supported version — there is no Windows version where a custom 1px border adds value.
 
-Additionally, hardcoded border color constants (`CANDWND_BORDER_COLOR`, `NOTIFYWND_BORDER_COLOR`) could not adapt to the user's custom background color or dark theme.
-
-Fix — two changes:
-
-1. **Skip `_DrawBorder` on Windows 10+.** Changed the build number guard from `< 22000` to `< 10240`. `CShadowWindow` already provides clear visual separation on all versions; the custom border adds nothing on Windows 10.
-
-2. **Dynamic border color for Win7/8.** Replaced the hardcoded constant with a luminance-based formula that derives the border color from `_crBkColor` — the actual window background at paint time. Light backgrounds receive a 30%-darkened border; dark backgrounds receive a 30%-lightened border. This makes the border adapt automatically to light, dark, and any user-customized background.
+Fix: removed the `_DrawBorder` call entirely from both WM_PAINT handlers. The `_DrawBorder` functions remain in the source but are no longer invoked.
 
 ---
 
@@ -191,7 +173,7 @@ Fix — two changes:
 |---------|-------------|
 | Window corners | Rounded 5px arc radius via `SetWindowRgn(CreateRoundRectRgn(..., 10, 10))` on all versions (Win7–Win11) |
 | Shadow | `CShadowWindow` per-pixel alpha SDF gradient; `CS_DROPSHADOW` removed from window class |
-| Border | None on Win10/11 — `CShadowWindow` provides separation; `_DrawBorder` 1px `RoundRect()` on Win7–8 only (color derived from `_crBkColor`) |
+| Border | None — `CShadowWindow` provides visual separation on all versions (Win7+); `_DrawBorder` is never called |
 | Selection highlight | `RoundRect` with 4px radius, symmetric scrollbar-width margin on both sides |
 | Page indicator | Removed — scroll position shown by thin idle scrollbar line |
 | Non-selected rows | Standard `ExtTextOut(ETO_OPAQUE)` stripes |

@@ -393,9 +393,8 @@ LRESULT CALLBACK CNotifyWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT uM
             dcHandle = BeginPaint(wndHandle, &ps);
 	
             _OnPaint(dcHandle, &ps);
-            // Border: Win7/8 only — Win10+ relies on CShadowWindow for visual separation.
-            if (Global::g_WinBuildNumber < 10240)
-                _DrawBorder(wndHandle, NOTIFYWND_BORDER_WIDTH);
+            // No custom border drawn on any version — CShadowWindow provides visual
+            // separation on all supported Windows versions (Win7+).
             EndPaint(wndHandle, &ps);
 
             ReleaseDC(wndHandle, dcHandle);

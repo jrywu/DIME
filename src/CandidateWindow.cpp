@@ -498,10 +498,8 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
             DeleteObject(hBmp);
             DeleteDC(hdcMem);
 
-            // Border: Win7/8 only — Win10+ DWM compositing makes any custom border look
-            // jarring; CShadowWindow already provides visual separation on all versions.
-            if (Global::g_WinBuildNumber < 10240)
-                _DrawBorder(wndHandle, CANDWND_BORDER_WIDTH);
+            // No custom border drawn on any version — CShadowWindow provides visual
+            // separation on all supported Windows versions (Win7+).
             EndPaint(wndHandle, &ps);
 			debugPrint(L"CCandidateWindow::_WindowProcCallback():WM_PAINT ended. gdiObjects = %d", GetGuiResources(GetCurrentProcess(), GR_GDIOBJECTS));
         }
