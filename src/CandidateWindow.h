@@ -101,6 +101,8 @@ public:
     HRESULT _GetCurrentPage(_Inout_ UINT *pCurrentPage);
     HRESULT _GetCurrentPage(_Inout_ int *pCurrentPage);
 
+    void _ResizeWindow();
+
 private:
     void _HandleMouseMsg(_In_ UINT mouseMsg, _In_ POINT point);
     void _DrawList(_In_ HDC dcHandle, _In_ UINT iIndex, _In_ RECT *prc);
@@ -118,8 +120,6 @@ private:
     BOOL _CreateVScrollWindow();
 
     HRESULT _AdjustPageIndex(_Inout_ UINT & currentPage, _Inout_ UINT & currentPageIndex);
-
-    void _ResizeWindow();
     void _DeleteShadowWnd();
     void _DeleteVScrollBarWnd();
 

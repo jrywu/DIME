@@ -166,13 +166,36 @@ BOOL CBaseWindow::_Create(ATOM atom, DWORD dwExStyle, DWORD dwStyle, _In_opt_ CB
     if (atom != 0)
     {
         // create real window
-        // Set per-monitor DPI awareness for this window (Win10 1607+)
-        // so WM_DPICHANGED is delivered when moving between monitors.
-        // Restores the original context afterward to avoid affecting the host process.
+        // Set per-monitor DPI awareness only for apps that are already DPI-aware.
+        // DPI-unaware apps use virtualized coordinates; overriding the context would
+        // put the IME window in physical-pixel space while caret positions remain
+        // virtualized, causing the candidate window to appear at the wrong location.
         DPI_AWARENESS_CONTEXT _prevDpiCtx = nullptr;
         auto _setThreadDpiCtx = CConfig::GetSetThreadDpiAwarenessContext();
         if (_setThreadDpiCtx)
-            _prevDpiCtx = _setThreadDpiCtx(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+        {
+            BOOL skipOverride = FALSE;
+            HWND hParent = _pParentWnd ? _pParentWnd->_GetWnd() : parentWndHandle;
+            if (hParent)
+            {
+                // These APIs are available on the same Win10 1607+ as SetThreadDpiAwarenessContext,
+                // but load dynamically to avoid link-time dependency on newer user32.
+                typedef DPI_AWARENESS_CONTEXT (WINAPI *_T_GetWindowDpiAwarenessContext)(HWND);
+                typedef BOOL (WINAPI *_T_AreDpiAwarenessContextsEqual)(DPI_AWARENESS_CONTEXT, DPI_AWARENESS_CONTEXT);
+                static _T_GetWindowDpiAwarenessContext s_getWndDpiCtx = reinterpret_cast<_T_GetWindowDpiAwarenessContext>(
+                    GetProcAddress(GetModuleHandle(L"user32.dll"), "GetWindowDpiAwarenessContext"));
+                static _T_AreDpiAwarenessContextsEqual s_areDpiCtxEqual = reinterpret_cast<_T_AreDpiAwarenessContextsEqual>(
+                    GetProcAddress(GetModuleHandle(L"user32.dll"), "AreDpiAwarenessContextsEqual"));
+                if (s_getWndDpiCtx && s_areDpiCtxEqual)
+                {
+                    DPI_AWARENESS_CONTEXT parentCtx = s_getWndDpiCtx(hParent);
+                    if (parentCtx && s_areDpiCtxEqual(parentCtx, DPI_AWARENESS_CONTEXT_UNAWARE))
+                        skipOverride = TRUE;
+                }
+            }
+            if (!skipOverride)
+                _prevDpiCtx = _setThreadDpiCtx(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+        }
 
         _wndHandle = CreateWindowEx(dwExStyle,
             (LPCTSTR)atom,

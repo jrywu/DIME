@@ -188,17 +188,18 @@ BOOL CCandidateWindow::_CreateVScrollWindow()
 
     if (!_pVScrollBarWnd)
     {
-        _DeleteShadowWnd();
         goto Exit;
     }
 
     _pVScrollBarWnd->_SetUIWnd(this);
 
-    if (!_pVScrollBarWnd->_Create(Global::AtomCandidateScrollBarWindow, 
+    debugPrint(L"CCandidateWindow::_CreateVScrollWindow() atom=%d parentHwnd=%p", Global::AtomCandidateScrollBarWindow, _GetWnd());
+    SetLastError(0);
+    if (!_pVScrollBarWnd->_Create(Global::AtomCandidateScrollBarWindow,
 		WS_EX_TOPMOST | WS_EX_TOOLWINDOW , WS_CHILD , this))
     {
+        debugPrint(L"CCandidateWindow::_CreateVScrollWindow() FAILED, GetLastError=%d", GetLastError());
         _DeleteVScrollBarWnd();
-        _DeleteShadowWnd();
         goto Exit;
     }
     
@@ -222,13 +223,14 @@ UINT CCandidateWindow::_GetWidth()
 void CCandidateWindow::_ResizeWindow()
 {
 
-	debugPrint(L"CCandidateWindow::_ResizeWindow() _cxTitle = %d", _cxTitle);
 	if(_pIndexRange == nullptr) return;
     int candidateListPageCnt = _pIndexRange->Count();
 	int VScrollWidth = _pVScrollBarWnd ? _pVScrollBarWnd->_GetHoverWidth() : MulDiv(SCROLLBAR_HOVER_WIDTH, CConfig::GetDpiForHwnd(_GetWnd()), USER_DEFAULT_SCREEN_DPI);
 	int bottomPadding = _cyRow / 2;
-	CBaseWindow::_Resize(_x, _y, _cxTitle + VScrollWidth +  CANDWND_BORDER_WIDTH*2,
-		_cyRow * candidateListPageCnt + bottomPadding  + CANDWND_BORDER_WIDTH *2);
+	int totalW = _cxTitle + VScrollWidth + CANDWND_BORDER_WIDTH*2;
+	int totalH = _cyRow * candidateListPageCnt + bottomPadding + CANDWND_BORDER_WIDTH*2;
+	debugPrint(L"CCandidateWindow::_ResizeWindow() _cxTitle=%d pageCnt=%d w=%d h=%d pos=(%d,%d)", _cxTitle, candidateListPageCnt, totalW, totalH, _x, _y);
+	CBaseWindow::_Resize(_x, _y, totalW, totalH);
 
     RECT rcCandRect = {0, 0, 0, 0};
     _GetClientRect(&rcCandRect);
@@ -286,6 +288,20 @@ void CCandidateWindow::_OnTimerID(UINT_PTR timerID)
 
 void CCandidateWindow::_Show(BOOL isShowWnd)
 {
+    debugPrint(L"CCandidateWindow::_Show(%d) hwnd=%p visible=%d pos=(%d,%d)", isShowWnd, _GetWnd(), _GetWnd() ? IsWindowVisible(_GetWnd()) : -1, _x, _y);
+    if (isShowWnd)
+    {
+        // Ensure window has a non-zero size before showing.
+        // Without WS_BORDER, a 0x0 popup gets no WM_PAINT, so _ResizeWindow
+        // inside _DrawList would never fire.
+        RECT rc0 = {0, 0, 0, 0};
+        GetClientRect(_GetWnd(), &rc0);
+        if (rc0.right - rc0.left == 0 || rc0.bottom - rc0.top == 0)
+        {
+            debugPrint(L"  _Show: window is 0x0, calling _ResizeWindow()");
+            _ResizeWindow();
+        }
+    }
     if (_pShadowWnd)
 		_pShadowWnd->_Show(isShowWnd);
 	if (_pVScrollBarWnd)
@@ -306,6 +322,8 @@ void CCandidateWindow::_Show(BOOL isShowWnd)
             HRGN hRgn = CreateRoundRectRgn(0, 0, cx + 1, cy + 1, radius, radius);
             SetWindowRgn(_GetWnd(), hRgn, TRUE);
         }
+        debugPrint(L"  _Show: after SetWindowRgn, visible=%d, rect=(%d,%d,%d,%d) cx=%d cy=%d",
+            IsWindowVisible(_GetWnd()), rc.left, rc.top, rc.right, rc.bottom, cx, cy);
     }
 	if (isShowWnd && !_IsCapture())
 	{

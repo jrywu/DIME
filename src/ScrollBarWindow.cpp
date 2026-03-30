@@ -139,15 +139,25 @@ CScrollBarWindow::~CScrollBarWindow()
 
 BOOL CScrollBarWindow::_Create(ATOM atom, DWORD dwExStyle, DWORD dwStyle, CBaseWindow *pParent, int wndWidth, int wndHeight)
 {
-	debugPrint(L"CScrollBarWindow::_Create(), gdiObjects = %d", GetGuiResources(GetCurrentProcess(), GR_GDIOBJECTS));
-    // Add WS_EX_LAYERED for alpha fade support; WS_EX_TRANSPARENT so mouse passes through when hidden
-    if (!CBaseWindow::_Create(atom, dwExStyle | WS_EX_LAYERED, dwStyle, pParent, wndWidth, wndHeight))
+	debugPrint(L"CScrollBarWindow::_Create() entered, atom=%d, pParent=%p", atom, pParent);
+    // Add WS_EX_LAYERED for alpha fade support.
+    // Some legacy apps reject WS_EX_LAYERED on child windows — fall back without it.
+    BOOL created = CBaseWindow::_Create(atom, dwExStyle | WS_EX_LAYERED, dwStyle, pParent, wndWidth, wndHeight);
+    if (!created)
     {
+        debugPrint(L"CScrollBarWindow::_Create() layered child failed (err=%d), retrying without WS_EX_LAYERED", GetLastError());
+        created = CBaseWindow::_Create(atom, dwExStyle, dwStyle, pParent, wndWidth, wndHeight);
+    }
+    if (!created)
+    {
+        debugPrint(L"CScrollBarWindow::_Create() CBaseWindow::_Create failed, hwnd=%p, GetLastError=%d", _GetWnd(), GetLastError());
         return FALSE;
     }
 
-    // Set initial alpha
-    SetLayeredWindowAttributes(_GetWnd(), 0, _currentAlpha, LWA_ALPHA);
+    // Set alpha only if the window has WS_EX_LAYERED
+    if (GetWindowLong(_GetWnd(), GWL_EXSTYLE) & WS_EX_LAYERED)
+        SetLayeredWindowAttributes(_GetWnd(), 0, _currentAlpha, LWA_ALPHA);
+    debugPrint(L"CScrollBarWindow::_Create() success, hwnd=%p", _GetWnd());
 
     return TRUE;
 }

@@ -382,7 +382,7 @@ All Phase 1 changes use standard Win32 APIs available since Windows 2000+. No ne
 
 ---
 
-## 8. Visual Design RC Log (RC11–RC19)
+## 8. Visual Design RC Log (RC11–RC25)
 
 ### Bug fixes and implementation history
 
@@ -399,6 +399,60 @@ All Phase 1 changes use standard Win32 APIs available since Windows 2000+. No ne
 | RC18 | Scrollbar arrow triangles too flat (isosceles); gap between triangle and thumb too small; triangle wider than scrollbar causing clipping/misalignment | Done | `ScrollBarWindow.cpp`, `ScrollBarWindow.h` | `ah = aw × 87/100` equilateral; `aw = (btnW - 2×inset) / 2` aligns triangle with thumb horizontally; `SCROLLBAR_BTN_HEIGHT` 10 → 22px for larger gap |
 | RC19 | Pill thumb horizontally misaligned with triangle apex; `RoundRect` two-pixel top artifact | Done | `ScrollBarWindow.cpp`, `ScrollBarWindow.h` | Thumb uses `pw = aw-1`; `left = acx-pw+1`, `right = acx+pw+1`, `radius = 2*pw`; GDI half-integer rule gives single topmost pixel at `acx`; `SCROLLBAR_BTN_HEIGHT` 22 → 14px; removed `SCROLLBAR_THUMB_INSET` constant |
 | RC19 | Page indicator removed | Done | `CandidateWindow.cpp` | Commented out `_DrawPageIndicator` call; bottom padding is always `cyLine/2` |
+| RC20 | Win10: `CandidateWindow::_DrawBorder` used `Rectangle()` — corners cut by `SetWindowRgn` | Done | `CandidateWindow.cpp` | Replaced `Rectangle()` with `RoundRect()` using DPI-scaled radius matching `SetWindowRgn` |
+| RC21 | Win10: custom 1px border unnecessary — `CShadowWindow` provides separation on all versions (Win7+) | Done | `CandidateWindow.cpp`, `NotifyWindow.cpp` | Removed `_DrawBorder` call entirely from both `WM_PAINT` handlers |
+| RC22 | Legacy DPI-unaware apps: candidate window invisible (0×0 size) | Done | `CandidateWindow.cpp`, `CandidateWindow.h` | `_Show(TRUE)` checks `GetClientRect`; calls `_ResizeWindow()` if 0×0 and `_pIndexRange` set; `_ResizeWindow()` moved to public |
+| RC23 | Legacy DPI-unaware apps: candidate at wrong position (DPI coordinate mismatch) | Done | `BaseWindow.cpp` | Skip `DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2` override if parent window is `DPI_AWARENESS_CONTEXT_UNAWARE`; APIs loaded dynamically for Win7/8 safety |
+| RC24 | Legacy DPI-unaware apps: scrollbar `WS_EX_LAYERED` on child rejected (error 183) | Done | `ScrollBarWindow.cpp` | Retry `CreateWindowEx` without `WS_EX_LAYERED` on failure; scrollbar works fully opaque |
+| RC25 | Scrollbar creation failure deleted shadow window | Done | `CandidateWindow.cpp` | Removed `_DeleteShadowWnd()` from scrollbar failure path; shadow and scrollbar creation now independent |
+
+### Bug fix details
+
+#### RC20–RC21 — Windows 10 border bugs (2026-03-30)
+
+Both the candidate and notify windows showed an ugly border on Windows 10 while looking correct on Windows 11.
+
+**RC20:** `CCandidateWindow::_DrawBorder` called `Rectangle()` to draw the 1px outline. Because `SetWindowRgn` clips the window to a rounded shape, the straight edges of `Rectangle()` are clipped at the corners, leaving visible notches. `CNotifyWindow::_DrawBorder` already used `RoundRect()` correctly — the candidate window was an oversight.
+
+Fix: replaced `Rectangle()` with `RoundRect()` using `MulDiv(_cornerRadiusBase, dpi, USER_DEFAULT_SCREEN_DPI)`:
+
+```cpp
+// was:
+Rectangle(dcHandle, rcWnd.left, rcWnd.top, rcWnd.right, rcWnd.bottom);
+
+// fixed:
+UINT dpi = CConfig::GetDpiForHwnd(wndHandle);
+int radius = MulDiv(_cornerRadiusBase, dpi, USER_DEFAULT_SCREEN_DPI);
+RoundRect(dcHandle, rcWnd.left, rcWnd.top, rcWnd.right, rcWnd.bottom, radius, radius);
+```
+
+**RC21:** After fixing RC20, the border remained visually jarring regardless of color. `CShadowWindow` is a top-level `WS_EX_LAYERED` popup supported from Windows 7 onwards — its per-pixel alpha SDF gradient provides clear visual separation on every supported version. No Windows version needs a custom 1px border.
+
+Fix: removed `_DrawBorder` call entirely from both WM_PAINT handlers. The functions remain in the source but are no longer invoked.
+
+#### RC22–RC25 — Legacy (DPI-unaware) app compatibility (2026-03-30)
+
+Old Win32 apps (e.g. Windows XP-era Notepad) are DPI-unaware. Three bugs caused the candidate window to malfunction in these apps.
+
+**RC22 — Candidate window invisible (0×0 size):**
+The new design removed `WS_BORDER` (replaced with `WS_POPUP | WS_CLIPCHILDREN`). Without `WS_BORDER`, a window with zero client area has truly zero physical size and receives no `WM_PAINT`. The only call to `_ResizeWindow()` was inside `_DrawList()` during `WM_PAINT`, so it never fired.
+
+Fix: `CCandidateWindow::_Show(TRUE)` checks `GetClientRect`. If 0×0 and `_pIndexRange` is set, calls `_ResizeWindow()` before showing. `_ResizeWindow()` moved from private to public.
+
+**RC23 — Candidate window at wrong screen position:**
+`CBaseWindow::_Create` temporarily switched the thread to `DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2` during `CreateWindowEx`. This placed the IME window in physical-pixel coordinate space, while caret positions from DPI-unaware apps are in virtualized (scaled) coordinates. At 175% scaling, the candidate appeared at roughly `(x/1.75, y/1.75)`.
+
+Fix: check parent window's DPI awareness via `GetWindowDpiAwarenessContext` + `AreDpiAwarenessContextsEqual` (loaded dynamically). If parent is `DPI_AWARENESS_CONTEXT_UNAWARE`, skip the DPI override. APIs loaded via `GetProcAddress` for Win7/8 safety.
+
+**RC24 — Scrollbar creation failed with `WS_EX_LAYERED` on child:**
+Some legacy apps reject `CreateWindowEx` with `WS_EX_LAYERED` on child windows (error 183 / `ERROR_ALREADY_EXISTS`).
+
+Fix: retry without `WS_EX_LAYERED` on failure. Scrollbar works fully without it — always opaque (no fade/auto-hide), same as Win7 fallback.
+
+**RC25 — Scrollbar failure deleted the shadow:**
+`_CreateVScrollWindow` called `_DeleteShadowWnd()` on failure, destroying the already-created shadow window.
+
+Fix: removed `_DeleteShadowWnd()` from the scrollbar failure path. Shadow and scrollbar creation are now independent.
 
 ### Files modified (visual design work)
 

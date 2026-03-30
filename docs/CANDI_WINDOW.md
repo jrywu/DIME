@@ -135,35 +135,7 @@ When multi-page, the scrollbar appearance follows the Windows 11 "Always show sc
 
 ### 1.5.1 Windows 10 border bugs (fixed 2026-03-30)
 
-Both the candidate and notify windows showed an ugly border on Windows 10 while looking correct on Windows 11. Investigation identified two root causes, leading to a third deeper fix.
-
----
-
-#### Bug 1 — CandidateWindow used `Rectangle()` instead of `RoundRect()`
-
-`CCandidateWindow::_DrawBorder` called `Rectangle(dcHandle, ...)` to draw the 1px outline. Because `SetWindowRgn` clips the window to a rounded shape, the straight edges of `Rectangle()` are clipped at the corners — the lines simply terminate where the rounded region ends, leaving a visible notch at each corner.
-
-`CNotifyWindow::_DrawBorder` already used `RoundRect()` correctly. The candidate window was an oversight.
-
-Fix: replaced `Rectangle()` with `RoundRect()` using the same DPI-scaled radius formula (`MulDiv(_cornerRadiusBase, dpi, USER_DEFAULT_SCREEN_DPI)`) that `SetWindowRgn` uses:
-
-```cpp
-// was:
-Rectangle(dcHandle, rcWnd.left, rcWnd.top, rcWnd.right, rcWnd.bottom);
-
-// fixed:
-UINT dpi = CConfig::GetDpiForHwnd(wndHandle);
-int radius = MulDiv(_cornerRadiusBase, dpi, USER_DEFAULT_SCREEN_DPI);
-RoundRect(dcHandle, rcWnd.left, rcWnd.top, rcWnd.right, rcWnd.bottom, radius, radius);
-```
-
----
-
-#### Bug 2 — Custom border is unnecessary on all Windows versions
-
-After fixing Bug 1, the border remained visually jarring on Windows 10 regardless of color. Further analysis showed that `CShadowWindow` is a top-level `WS_EX_LAYERED` popup, which is supported from Windows 7 onwards (only child-window `WS_EX_LAYERED` was restricted on Win7). The shadow's per-pixel alpha SDF gradient provides clear visual separation on every supported version — there is no Windows version where a custom 1px border adds value.
-
-Fix: removed the `_DrawBorder` call entirely from both WM_PAINT handlers. The `_DrawBorder` functions remain in the source but are no longer invoked.
+`_DrawBorder` used `Rectangle()` which was clipped by `SetWindowRgn` at corners; replaced with `RoundRect()`, then removed entirely since `CShadowWindow` provides sufficient visual separation on all versions. See [CANDI_SCROLL_BAR.md](CANDI_SCROLL_BAR.md) RC20–RC21 for details.
 
 ---
 
@@ -644,3 +616,13 @@ Scrollbar dimensions are scaled via `MulDiv(baseValue, monitorDpi, 96)`. The mon
 | Always-show setting | `DynamicScrollbars` registry key | Windows 11 | Key missing → default auto-hide (always visible on Win7 regardless) |
 
 All rendering uses standard Win32 GDI APIs. No external dependencies or runtime DLL loading required for the UI layer.
+
+### Legacy (DPI-unaware) app compatibility (fixed 2026-03-30)
+
+Old Win32 apps (e.g. Windows XP-era Notepad) are DPI-unaware. Three bugs were fixed:
+
+- **0×0 window:** `_Show(TRUE)` now calls `_ResizeWindow()` if the window has zero size, since the removal of `WS_BORDER` means zero client area = zero physical size = no `WM_PAINT`.
+- **Wrong position:** Skip `DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2` override when the parent window is DPI-unaware, so the IME inherits the app's virtualized coordinate space.
+- **Scrollbar creation failure:** Retry `CreateWindowEx` without `WS_EX_LAYERED` on failure; removed `_DeleteShadowWnd()` from the scrollbar failure path so shadow and scrollbar are independent.
+
+See [CANDI_SCROLL_BAR.md](CANDI_SCROLL_BAR.md) RC22–RC25 for details.
