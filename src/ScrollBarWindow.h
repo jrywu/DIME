@@ -109,8 +109,9 @@ constexpr UINT BTNREPEAT_SPEED_MS = 50;     // repeat interval after initial del
 constexpr UINT FADE_TIMER_ID = 39780;
 constexpr UINT FADE_DELAY_MS = 1500;        // delay before fade starts
 constexpr UINT FADE_STEP_MS = 30;           // fade animation step interval
-constexpr BYTE FADE_ALPHA_VISIBLE = 200;    // full visibility alpha
+constexpr BYTE FADE_ALPHA_VISIBLE = 255;    // full visibility alpha (fully opaque)
 constexpr BYTE FADE_ALPHA_STEP = 20;        // alpha decrease per step
+constexpr COLORREF SCROLLBAR_COLORKEY = RGB(255, 0, 255);  // magenta — transparent pixels
 
 class CScrollBarWindow : public CBaseWindow
 {

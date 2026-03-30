@@ -156,7 +156,7 @@ BOOL CScrollBarWindow::_Create(ATOM atom, DWORD dwExStyle, DWORD dwStyle, CBaseW
 
     // Set alpha only if the window has WS_EX_LAYERED
     if (GetWindowLong(_GetWnd(), GWL_EXSTYLE) & WS_EX_LAYERED)
-        SetLayeredWindowAttributes(_GetWnd(), 0, _currentAlpha, LWA_ALPHA);
+        SetLayeredWindowAttributes(_GetWnd(), SCROLLBAR_COLORKEY, _currentAlpha, LWA_COLORKEY | LWA_ALPHA);
     debugPrint(L"CScrollBarWindow::_Create() success, hwnd=%p", _GetWnd());
 
     return TRUE;
@@ -215,7 +215,7 @@ LRESULT CALLBACK CScrollBarWindow::_WindowProcCallback(_In_ HWND wndHandle, _In_
             if (_currentAlpha > FADE_ALPHA_STEP)
             {
                 _currentAlpha -= FADE_ALPHA_STEP;
-                SetLayeredWindowAttributes(wndHandle, 0, _currentAlpha, LWA_ALPHA);
+                SetLayeredWindowAttributes(wndHandle, SCROLLBAR_COLORKEY, _currentAlpha, LWA_COLORKEY | LWA_ALPHA);
             }
             else
             {
@@ -243,17 +243,12 @@ void CScrollBarWindow::_OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps)
 {
 	debugPrint(L"CScrollBarWindow::_OnPaint()\n");
 
-    // Fill background with candidate window's color (transparent feel, dark-mode-aware).
-    // Ask parent via WM_CTLCOLORSCROLLBAR — candidate window handles this and returns _brshBkColor.
+    // Fill background with the transparent color key — these pixels become fully transparent.
     if (pps)
     {
-        HWND hParent = GetParent(_GetWnd());
-        HBRUSH hBg = hParent
-            ? (HBRUSH)SendMessage(hParent, WM_CTLCOLORSCROLLBAR, (WPARAM)dcHandle, (LPARAM)_GetWnd())
-            : nullptr;
-        if (!hBg)
-            hBg = GetSysColorBrush(CConfig::GetEffectiveDarkMode() ? COLOR_BTNFACE : COLOR_WINDOW);
+        HBRUSH hBg = CreateSolidBrush(SCROLLBAR_COLORKEY);
         FillRect(dcHandle, &pps->rcPaint, hBg);
+        DeleteObject(hBg);
     }
 
     if (_scrollInfo.nMax <= _scrollInfo.nPage) return;
@@ -870,7 +865,7 @@ void CScrollBarWindow::_OnScrollActivity()
     {
         _currentAlpha = FADE_ALPHA_VISIBLE;
         if (_GetWnd())
-            SetLayeredWindowAttributes(_GetWnd(), 0, _currentAlpha, LWA_ALPHA);
+            SetLayeredWindowAttributes(_GetWnd(), SCROLLBAR_COLORKEY, _currentAlpha, LWA_COLORKEY | LWA_ALPHA);
     }
     // No fade timer — scrollbar stays visible as thin line until disabled
 }

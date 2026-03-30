@@ -140,6 +140,7 @@ private:
 
     TEXTMETRIC _TextMetric;
     int _cyRow;
+    int _padding;
     int _cxTitle;
     UINT _wndWidth;
 	UINT _fontSize;
