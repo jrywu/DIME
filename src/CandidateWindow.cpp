@@ -498,8 +498,9 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
             DeleteObject(hBmp);
             DeleteDC(hdcMem);
 
-            // On Win11+ DWM handles rounded border; on older Windows draw custom border
-            if (Global::g_WinBuildNumber < 22000)
+            // Border: Win7/8 only — Win10+ DWM compositing makes any custom border look
+            // jarring; CShadowWindow already provides visual separation on all versions.
+            if (Global::g_WinBuildNumber < 10240)
                 _DrawBorder(wndHandle, CANDWND_BORDER_WIDTH);
             EndPaint(wndHandle, &ps);
 			debugPrint(L"CCandidateWindow::_WindowProcCallback():WM_PAINT ended. gdiObjects = %d", GetGuiResources(GetCurrentProcess(), GR_GDIOBJECTS));
@@ -1084,7 +1085,17 @@ void CCandidateWindow::_DrawBorder(_In_ HWND wndHandle, _In_ int cx)
     // zero based
     OffsetRect(&rcWnd, -rcWnd.left, -rcWnd.top); 
 
-    COLORREF borderColor = CConfig::GetEffectiveDarkMode() ? CANDWND_DARK_BORDER_COLOR : CANDWND_BORDER_COLOR;
+    // Derive border color from actual window background so it adapts to dark/light/custom themes.
+    int lum = (299 * (int)GetRValue(_crBkColor) + 587 * (int)GetGValue(_crBkColor) + 114 * (int)GetBValue(_crBkColor)) / 1000;
+    COLORREF borderColor;
+    if (lum > 128)  // light background: darken 30%
+        borderColor = RGB((BYTE)(GetRValue(_crBkColor) * 70 / 100),
+                          (BYTE)(GetGValue(_crBkColor) * 70 / 100),
+                          (BYTE)(GetBValue(_crBkColor) * 70 / 100));
+    else            // dark background: lighten 30%
+        borderColor = RGB((BYTE)min(255, (int)GetRValue(_crBkColor) + (255 - (int)GetRValue(_crBkColor)) * 30 / 100),
+                          (BYTE)min(255, (int)GetGValue(_crBkColor) + (255 - (int)GetGValue(_crBkColor)) * 30 / 100),
+                          (BYTE)min(255, (int)GetBValue(_crBkColor) + (255 - (int)GetBValue(_crBkColor)) * 30 / 100));
     HPEN hPen = CreatePen(PS_SOLID, cx, borderColor);
     if (hPen)
     {
@@ -1092,7 +1103,9 @@ void CCandidateWindow::_DrawBorder(_In_ HWND wndHandle, _In_ int cx)
         HBRUSH hBorderBrush = (HBRUSH)GetStockObject(NULL_BRUSH);
         HBRUSH hBorderBrushOld = (HBRUSH)SelectObject(dcHandle, hBorderBrush);
 
-        Rectangle(dcHandle, rcWnd.left, rcWnd.top, rcWnd.right, rcWnd.bottom);
+        UINT dpi = CConfig::GetDpiForHwnd(wndHandle);
+        int radius = MulDiv(_cornerRadiusBase, dpi, USER_DEFAULT_SCREEN_DPI);
+        RoundRect(dcHandle, rcWnd.left, rcWnd.top, rcWnd.right, rcWnd.bottom, radius, radius);
 
         SelectObject(dcHandle, hPenOld);
         SelectObject(dcHandle, hBorderBrushOld);

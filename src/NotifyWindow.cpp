@@ -393,7 +393,8 @@ LRESULT CALLBACK CNotifyWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT uM
             dcHandle = BeginPaint(wndHandle, &ps);
 	
             _OnPaint(dcHandle, &ps);
-            if (Global::g_WinBuildNumber < 22000)
+            // Border: Win7/8 only — Win10+ relies on CShadowWindow for visual separation.
+            if (Global::g_WinBuildNumber < 10240)
                 _DrawBorder(wndHandle, NOTIFYWND_BORDER_WIDTH);
             EndPaint(wndHandle, &ps);
 
@@ -570,7 +571,17 @@ void CNotifyWindow::_DrawBorder(_In_ HWND wndHandle, _In_ int cx)
     OffsetRect(&rcWnd, -rcWnd.left, -rcWnd.top); // Zero-based
 
     // Use RAII for GDI objects
-    COLORREF borderColor = CConfig::GetEffectiveDarkMode() ? NOTIFYWND_DARK_BORDER_COLOR : NOTIFYWND_BORDER_COLOR;
+    // Derive border color from actual window background so it adapts to dark/light/custom themes.
+    int lum = (299 * (int)GetRValue(_crBkColor) + 587 * (int)GetGValue(_crBkColor) + 114 * (int)GetBValue(_crBkColor)) / 1000;
+    COLORREF borderColor;
+    if (lum > 128)  // light background: darken 30%
+        borderColor = RGB((BYTE)(GetRValue(_crBkColor) * 70 / 100),
+                          (BYTE)(GetGValue(_crBkColor) * 70 / 100),
+                          (BYTE)(GetBValue(_crBkColor) * 70 / 100));
+    else            // dark background: lighten 30%
+        borderColor = RGB((BYTE)min(255, (int)GetRValue(_crBkColor) + (255 - (int)GetRValue(_crBkColor)) * 30 / 100),
+                          (BYTE)min(255, (int)GetGValue(_crBkColor) + (255 - (int)GetGValue(_crBkColor)) * 30 / 100),
+                          (BYTE)min(255, (int)GetBValue(_crBkColor) + (255 - (int)GetBValue(_crBkColor)) * 30 / 100));
     HPEN hPen = CreatePen(PS_SOLID, cx, borderColor);
     HBRUSH hBorderBrush = (HBRUSH)GetStockObject(NULL_BRUSH);
 
