@@ -393,51 +393,51 @@ Key finding: **`OnSetFocus` fires on title bar click** — confirmed by debug tr
 
 | App | Framework | Notify position | Candidate position | Emoji (Win+.) | Notes |
 |-----|-----------|-----------------|-------------------|---------------|-------|
-| Notepad | Win32 edit control | | | | Baseline reference |
-| CMD | Console host | | | | hwndCaret guard (Issue D) |
-| Windows Terminal | XAML | | | | Modern console, different from CMD |
-| PowerShell ISE | WPF | Known limitation | | | No Win32 caret; see §10 |
-| Visual Studio 2022 | WPF editor | | | | Multi-caret / IntelliSense |
-| Firefox | Gecko | | | | Different IME handling from Chromium |
-| File Explorer rename (F2) | Win32 lightweight | | | | Minimal edit control |
+| Notepad | Win32 edit control | OK | OK | OK | Baseline reference |
+| CMD | Console host | OK | OK | OK | hwndCaret guard (Issue D) |
+| Windows Terminal | XAML | OK | OK | OK | Modern console, different from CMD |
+| PowerShell ISE | WPF | y OK, x=left edge | OK | OK | UIA fallback; see §1.1 |
+| Visual Studio 2022 | WPF editor | OK | OK | OK | Multi-caret / IntelliSense |
+| Firefox | Gecko | OK | OK | OK | New tab center: notify at URL bar (expected) |
+| File Explorer rename (F2) | Win32 lightweight | OK | OK | OK | Minimal edit control |
 
 ### Office apps
 
 | App | Input surface | Notify position | Candidate position | Emoji (Win+.) | Notes |
 |-----|---------------|-----------------|-------------------|---------------|-------|
-| Word | Win32/COM | | | | |
-| Excel | Cell + formula bar | | | | hwndCaret guard (Issue D) |
-| PowerPoint | Canvas text box | | | | |
-| Outlook | HTML compose | | | | Different editor from Word |
-| OneNote | Free-form canvas | | | | |
+| Word | Win32/COM | OK | OK | OK | |
+| Excel | Cell + formula bar | OK | OK | OK | Probe returns correct cell rect |
+| PowerPoint | Canvas text box | OK | OK | OK | |
+| Outlook | HTML compose | OK | OK | OK | Different editor from Word |
+| OneNote | Free-form canvas | OK | OK | OK | |
 
 ### System surfaces
 
 | App | Type | Notify position | Candidate position | Emoji (Win+.) | Notes |
 |-----|------|-----------------|-------------------|---------------|-------|
-| Win+R (Run dialog) | Minimal edit | | | | |
-| Start Menu / Search | UWP search box | | | | SearchHost.exe {0,0,1,1} rect |
-| Task Manager search | UWP | | | | |
-| Registry Editor (regedit) | Value edit dialog | | | | |
-| mstsc (Remote Desktop) | IME-over-RDP | | | | Cross-process, notoriously tricky |
+| Win+R (Run dialog) | Minimal edit | OK | OK | OK | |
+| Start Menu / Search | UWP search box | OK | OK | OK | SearchHost.exe {0,0,1,1} rect |
+| Task Manager search | UWP | OK | OK | OK | |
+| Registry Editor (regedit) | Value edit dialog | OK | OK | OK | |
+| mstsc (Remote Desktop) | RDP client | OK | OK | OK | IME runs on remote machine, not local |
 
 ### Third-party (different toolkits)
 
 | App | Framework | Notify position | Candidate position | Emoji (Win+.) | Notes |
 |-----|-----------|-----------------|-------------------|---------------|-------|
-| VS Code | Electron/Chromium | | | | |
-| Edge | Chromium | | | | |
-| LINE | Chromium | | | | Primary emoji fix target |
-| Teams | Electron | | | | |
-| Discord | Electron | | | | Unique composition handling |
-| IntelliJ / Android Studio | Java/Swing | | | | Completely different IME integration |
-| Sublime Text | Custom renderer | | | | |
-| LibreOffice Writer | Independent IME | | | | |
+| VS Code | Electron/Chromium | OK | OK | OK | |
+| Edge | Chromium | OK | OK | OK | |
+| LINE | Chromium | OK | OK | OK | Primary emoji fix target |
+| Teams | Electron | OK | OK | OK | |
+| Discord | Electron | OK | OK | OK | Unique composition handling |
+| IntelliJ / Android Studio | Java/Swing | OK | OK | OK | Completely different IME integration |
+| Sublime Text | Custom renderer | OK | OK | OK | |
+| LibreOffice Writer | Independent IME | OK | OK | OK | |
 
 ### Stress / edge cases
 
 | App | Scenario | Notify position | Candidate position | Emoji (Win+.) | Notes |
 |-----|----------|-----------------|-------------------|---------------|-------|
-| Elevated (Run as Admin) app | Privilege boundary | | | | IME injection across UIPI |
-| WSL terminal | Linux subsystem | | | | Input through WSL layer |
+| Elevated (Run as Admin) app | Privilege boundary | OK | OK | OK | IME injection across UIPI |
+| WSL terminal | Linux subsystem | OK | OK | OK | Input through WSL layer |
 | Game chat (e.g. Steam overlay) | DirectX overlay | | | | |

@@ -40,4 +40,8 @@ DIME v1.3 是自 v1.2.441 以來的首個主要版本更新，包含全新安裝
 - **移除聯想詞空白字元暫留**：聯想詞候選字視窗不再需要插入空白字元至組字緩衝區作為定位錨點，改用上次儲存的組字範圍 `_rectCompRange` 回退定位
 - **修正候選字視窗翻轉至上方時位置偏低**：`WM_CREATE` 未設定 `_padding`（底部留白），導致初始視窗高度比實際少 12px，翻轉定位後第一次繪製觸發重新調整大小，候選字底部越過組字範圍
 - **候選字視窗與組字範圍增加陰影間距**：候選字視窗與組字文字之間加入 `SHADOW_SPREAD / 2`（7px）間距，避免陰影與組字文字重疊
+- **修正 LINE 桌面版 Windows 表情符號面板無法輸入**：非破壞性探測組字取代原有的 `StartComposition`/`EndComposition` 探測，改用唯讀 `GetSelection` + `GetTextExt` 取得游標位置，避免空組字循環破壞 Chromium 文字儲存區（[#85](https://github.com/jrywu/DIME/issues/85)）
+- **修正 Excel 提示視窗顯示在公式列而非儲存格**：偵測系統游標視窗（`GetGUIThreadInfo.hwndCaret`）與 TSF 上下文視窗不同時，跳過探測結果，改用 `GetGUIThreadInfo` 提供的儲存格位置
+- **修正 CMD 提示視窗跳至螢幕邊緣**：同上 `hwndCaret` 檢查機制
+- **WPF 應用程式提示視窗定位改善（PowerShell ISE）**：新增 UIAutomation `TextPattern` 回退機制，在 `GetTextExt` 及 `GetGUIThreadInfo` 皆失效時，透過 UIA `ExpandToEnclosingUnit(TextUnit_Line)` 取得正確行高與垂直位置（水平位置為文字區域左緣，屬 PSI UIA 提供者限制）
 

@@ -1087,18 +1087,17 @@ HRESULT CUIPresenter::_NotifyChangeNotification(_In_ enum NOTIFY_WND action, _In
 							if(SUCCEEDED(pDocumentMgr->GetTop(&pContext)) && pContext)
 							{
 								_pTextService->_ProbeComposition(pContext);
-								// Apply cached position before showing — the probe may not have
-								// updated position (e.g. zero-height rect from PowerShell ISE).
-								if (_pNotifyWnd && _notifyLocation.x > UI::DEFAULT_WINDOW_X)
+
+								// Apply cached position for WPF/UWP (no Win32 caret).
+								// For apps with real carets, the probe already positioned correctly.
+								GUITHREADINFO gtiCheck = { sizeof(GUITHREADINFO) };
+								if (_pNotifyWnd && _notifyLocation.x > UI::DEFAULT_WINDOW_X
+									&& GetGUIThreadInfo(0, &gtiCheck)
+									&& gtiCheck.rcCaret.left == 0 && gtiCheck.rcCaret.top == 0
+									&& gtiCheck.rcCaret.right == 0 && gtiCheck.rcCaret.bottom == 0)
 								{
-									// UIA fallback: only when _notifyLocation is still at window
-									// origin (seeded from zero GetGUIThreadInfo, never updated by
-									// candidate positioning or probe).
-									GUITHREADINFO gtiCheck = { sizeof(GUITHREADINFO) };
-									if (GetGUIThreadInfo(0, &gtiCheck) && gtiCheck.rcCaret.left == 0
-										&& gtiCheck.rcCaret.top == 0 && gtiCheck.rcCaret.right == 0
-										&& gtiCheck.rcCaret.bottom == 0
-										&& !(_pCandidateWnd && _pCandidateWnd->_IsWindowVisible()))
+									// No Win32 caret (WPF/UWP) — try UIA, then apply position
+									if (!(_pCandidateWnd && _pCandidateWnd->_IsWindowVisible()))
 									{
 										RECT rcUIA = {0};
 										if (SUCCEEDED(_uiaCaretTracker.GetCaretRect(&rcUIA)) && (rcUIA.bottom - rcUIA.top > 0))
@@ -1600,6 +1599,9 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange* pNotifyText, _In_opt_ UINT 
 
 				// Probe before showing — position notify correctly before it becomes visible.
 				// Must run before ShowNotify when delayShow == 0 (immediate show).
+				// Save/restore _notifyLocation around probe: the probe's
+				// _LayoutChangeNotification may overwrite it with the wrong rect
+				// (e.g. Excel formula bar) when hwndCaret == hwndParent.
 				if(_pTextService && delayShow == 0 && _GetContextDocument() == nullptr && notifyType == NOTIFY_TYPE::NOTIFY_CHN_ENG )
 					_pTextService->_ProbeComposition(pContext);
 

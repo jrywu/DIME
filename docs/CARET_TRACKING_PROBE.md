@@ -130,23 +130,14 @@ composition + commit, `_rectCompRange` captures the correct line height.
 
 **Status: FIXED.**
 
-### Issue D — Probe rect from wrong UI element (Excel, CMD)
+### Issue D — Probe rect from wrong UI element (CMD) and Excel cell tracking
 
-**Symptom:** Excel's TSF text store is the **formula bar**, so `GetTextExt`
-returns the formula bar rect (`top=282`) regardless of which cell is selected.
-CMD returns screen-edge coordinates.  The probe overrides the correct
-`_notifyLocation` (from `GetGUIThreadInfo`) with the wrong rect.
+**CMD symptom:** `GetTextExt` on a selection range returns screen-edge
+coordinates while the actual caret is elsewhere.
 
-**First attempt (reverted):** Distance-based threshold comparing `GetTextExt`
-rect against `GetGUIThreadInfo` caret.  Failed for Excel because the formula
-bar is close to cells near the top — the threshold passed incorrectly, and
-when it passed, the formula bar's `left` coordinate also corrupted the
-x-position.
-
-**Fix:** Check whether the system caret window (`GetGUIThreadInfo.hwndCaret`)
-differs from the TSF context window (`pContextView->GetWnd()`).  In Excel,
-the caret is in the cell grid but the TSF context is the formula bar —
-different HWNDs.  In `_ProbeCompositionRangeNotification` (lines 622–642):
+**CMD fix:** Check whether the system caret window
+(`GetGUIThreadInfo.hwndCaret`) differs from the TSF context window
+(`pContextView->GetWnd()`).  In `_ProbeCompositionRangeNotification`:
 
 ```cpp
 GUITHREADINFO gti = { sizeof(GUITHREADINFO) };
@@ -160,41 +151,95 @@ if (GetGUIThreadInfo(0, &gti))
 ```
 
 When skipped, the notify keeps its position from `ShowNotifyText`'s
-`GetGUIThreadInfo`, which correctly tracks the cell position.
+`GetGUIThreadInfo`.
 
-**Status: FIXED.  Verified in Excel — notify follows cell selection.**
+**Status: FIXED for CMD.**
+
+**Excel investigation:** Excel's TSF text store is the **formula bar**.
+Initial testing showed `GetTextExt` returning the formula bar rect
+(`top=189 bottom=209 left=231 right=1409`) regardless of cell selection.
+However, the hwndCaret guard does NOT catch Excel — `hwndCaret == hwndParent`
+(both are the formula bar HWND `0x2F0B4C`).
+
+**What was tried and failed for Excel:**
+
+1. **Distance-based threshold** — compared `GetTextExt` rect against
+   `GetGUIThreadInfo` caret position.  Failed because the formula bar is
+   close to cells near the top; threshold passed incorrectly and the
+   formula bar's `left` coordinate corrupted the x-position.
+
+2. **Save/restore `_notifyLocation` around probe** — saved `_notifyLocation`
+   (seeded from `GetGUIThreadInfo`) before the probe, restored it after.
+   Failed because `_notifyLocation` is only seeded once (when `< 0`), so
+   the restored value was stale — always the first cell's position,
+   preventing tracking when the user moved to other cells.
+
+3. **Save/restore + `_Move`** — same as above but also called `_Move` to
+   reposition the window after restore.  Same stale-position problem.
+
+**Actual finding:** Further testing revealed the probe's `GetTextExt`
+**does return correct cell rects** for Excel (e.g. `top=345 bottom=367
+left=282 right=347` — a cell-sized rect, not the formula bar).  The initial
+formula bar rects were from a different DLL version or Excel focus state.
+
+The probe's `_LayoutChangeNotification` correctly positions the notify at
+the selected cell.  No special handling is needed — the probe works as-is.
+
+**Status: FIXED.  Verified — notify follows cell selection across rows and
+columns.**
 
 ---
 
-## 5. Additional fix: cached position fallback for SHOW_NOTIFY timer
+## 5. SHOW_NOTIFY timer: UIA fallback for WPF/UWP apps
 
-**Symptom:** In apps where the probe returns zero-height rects (PowerShell ISE)
-or is skipped by the hwndCaret guard, the `SHOW_NOTIFY` timer callback showed
-the notify without calling `_Move`.  The window appeared at its creation
-position (off-screen or wrong location).
+**Symptom:** In WPF apps (PowerShell ISE), the probe returns zero-height
+rects and `GetGUIThreadInfo` returns `rcCaret = {0,0,0,0}`.  The notify
+appeared at the window's client origin.
 
-**Fix:** In `_NotifyChangeNotification` SHOW_NOTIFY handler (line 1089–1092),
-apply `_notifyLocation` before showing:
+**Fix:** In the `SHOW_NOTIFY` timer callback, after the probe, check if
+`GetGUIThreadInfo` has a zero caret rect (indicating no Win32 caret).  If
+so, try UIAutomation `TextPattern` as a fallback, then apply `_Move`:
 
 ```cpp
 _pTextService->_ProbeComposition(pContext);
-if (_pNotifyWnd && _notifyLocation.x > UI::DEFAULT_WINDOW_X)
+GUITHREADINFO gtiCheck = { sizeof(GUITHREADINFO) };
+if (_pNotifyWnd && _notifyLocation.x > UI::DEFAULT_WINDOW_X
+    && GetGUIThreadInfo(0, &gtiCheck)
+    && gtiCheck.rcCaret == {0,0,0,0})
+{
+    // Try UIA, then apply position
+    RECT rcUIA = {0};
+    if (SUCCEEDED(_uiaCaretTracker.GetCaretRect(&rcUIA)) && height > 0)
+    {
+        _notifyLocation.x = rcUIA.left;
+        _notifyLocation.y = rcUIA.bottom;
+    }
     _pNotifyWnd->_Move(_notifyLocation.x, _notifyLocation.y);
+}
 ShowNotify(TRUE, 0, (UINT) wParam);
 ```
+
+For apps with real carets, the probe already positioned the notify
+correctly via `_LayoutChangeNotification` — the UIA/`_Move` block is
+skipped entirely.
 
 **Status: FIXED.**
 
 ---
 
-## 6. Known limitation: WPF apps (PowerShell ISE)
+## 6. WPF apps (PowerShell ISE): UIA fallback
 
 WPF apps don't create Win32 system carets.  Both `GetTextExt` (zero height)
-and `GetGUIThreadInfo` (`rcCaret = {0,0,0,0}`) fail.  The notify appears at
-the window's client origin — wrong but visible.
+and `GetGUIThreadInfo` (`rcCaret = {0,0,0,0}`) fail.
 
-**Planned fix:** UIAutomation `TextPattern` fallback.  See
-[CARET_TRACKING_UIA.md](CARET_TRACKING_UIA.md).
+**Fix:** UIAutomation `TextPattern` fallback.  UIA
+`ExpandToEnclosingUnit(TextUnit_Line)` provides the correct y-position
+(which line the caret is on).  The x-position is the text area's left
+edge — PSI's UIA provider cannot report caret-level horizontal position.
+
+**Result:** Notify on the correct line, left-aligned to text area.
+
+See [CARET_TRACKING_UIA.md](CARET_TRACKING_UIA.md) for full UIA details.
 
 ---
 
@@ -227,11 +272,11 @@ the URL bar.
 | **LINE** | Type Chinese, select candidates | **PASS** — normal input works |
 | **Notepad** | Notify at caret position | **PASS** |
 | **Word** | Notify at caret position | **PASS** |
-| **Excel** | Notify at selected cell (not formula bar) | **PASS** — hwndCaret guard |
+| **Excel** | Notify at selected cell (not formula bar) | **PASS** — probe returns cell rect |
 | **CMD** | Notify at caret position | **PASS** — hwndCaret guard |
 | **VS Code** | Notify at caret position | **PASS** |
 | **Edge** | Notify at text field | **PASS** |
 | **Teams** | Notify at caret position | **PASS** |
 | **Firefox** (normal page) | Notify at text field | **PASS** |
 | **Firefox** (new tab center) | Notify at URL bar | **EXPECTED** — see §7 |
-| **PowerShell ISE** | Notify at window origin | **KNOWN LIMITATION** — see §6 |
+| **PowerShell ISE** | Notify at correct line, x=left edge | **PASS** — UIA fallback; see §6 |
