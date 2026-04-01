@@ -89,6 +89,7 @@
     <ClInclude Include="TipCandidateString.h" />
     <ClInclude Include="UIConstants.h" />
     <ClInclude Include="UIPresenter.h" />
+    <ClInclude Include="UIACaretTracker.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ActiveLanguageProfileNotifySink.cpp" />
@@ -144,6 +145,7 @@
     <ClCompile Include="TipCandidateList.cpp" />
     <ClCompile Include="TipCandidateString.cpp" />
     <ClCompile Include="UIPresenter.cpp" />
+    <ClCompile Include="UIACaretTracker.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DIME.rc" />

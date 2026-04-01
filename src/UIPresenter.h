@@ -42,6 +42,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "TfTextLayoutSink.h"
 #include "DIME.h"
 #include "BaseStructure.h"
+#include "UIACaretTracker.h"
 
 #ifdef DIME_UNIT_TESTING
 // Forward declaration for integration tests
@@ -204,6 +205,7 @@ private:
 	POINT _candLocation;
 	POINT _notifyLocation;
 	RECT _rectCompRange;
+	CUIACaretTracker _uiaCaretTracker;
 
 	BOOL _inFocus;
 };

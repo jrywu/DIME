@@ -74,6 +74,7 @@ CUIPresenter::CUIPresenter(_In_ CDIME *pTextService, CCompositionProcessorEngine
     _candLocation = { UI::DEFAULT_WINDOW_X, UI::DEFAULT_WINDOW_Y };
     _notifyLocation = { UI::DEFAULT_WINDOW_X, UI::DEFAULT_WINDOW_Y };
     _rectCompRange = { UI::DEFAULT_WINDOW_X, UI::DEFAULT_WINDOW_Y, UI::DEFAULT_WINDOW_X, UI::DEFAULT_WINDOW_Y };
+    _uiaCaretTracker.Initialize();
     _inFocus = FALSE;
 }
 
@@ -1089,7 +1090,26 @@ HRESULT CUIPresenter::_NotifyChangeNotification(_In_ enum NOTIFY_WND action, _In
 								// Apply cached position before showing — the probe may not have
 								// updated position (e.g. zero-height rect from PowerShell ISE).
 								if (_pNotifyWnd && _notifyLocation.x > UI::DEFAULT_WINDOW_X)
+								{
+									// UIA fallback: only when _notifyLocation is still at window
+									// origin (seeded from zero GetGUIThreadInfo, never updated by
+									// candidate positioning or probe).
+									GUITHREADINFO gtiCheck = { sizeof(GUITHREADINFO) };
+									if (GetGUIThreadInfo(0, &gtiCheck) && gtiCheck.rcCaret.left == 0
+										&& gtiCheck.rcCaret.top == 0 && gtiCheck.rcCaret.right == 0
+										&& gtiCheck.rcCaret.bottom == 0
+										&& !(_pCandidateWnd && _pCandidateWnd->_IsWindowVisible()))
+									{
+										RECT rcUIA = {0};
+										if (SUCCEEDED(_uiaCaretTracker.GetCaretRect(&rcUIA)) && (rcUIA.bottom - rcUIA.top > 0))
+										{
+											_notifyLocation.x = rcUIA.left;
+											_notifyLocation.y = rcUIA.bottom;
+											debugPrint(L"SHOW_NOTIFY UIA caret fallback: x=%d y=%d", _notifyLocation.x, _notifyLocation.y);
+										}
+									}
 									_pNotifyWnd->_Move(_notifyLocation.x, _notifyLocation.y);
+								}
 								ShowNotify(TRUE, 0, (UINT) wParam);
 							}
 
@@ -1558,6 +1578,25 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange* pNotifyText, _In_opt_ UINT 
 
 				}
 				
+
+				// UIA fallback for WPF/UWP apps that don't create Win32 carets.
+				// GetGUIThreadInfo returns {0,0,0,0} → _notifyLocation is seeded
+				// to the window origin, which is wrong.  Try UIA to get a better
+				// position.  Skip if candidate window is visible (already positioned).
+				if (guiInfo->rcCaret.left == 0 && guiInfo->rcCaret.top == 0
+					&& guiInfo->rcCaret.right == 0 && guiInfo->rcCaret.bottom == 0
+					&& !(_pCandidateWnd && _pCandidateWnd->_IsWindowVisible()))
+				{
+					RECT rcUIA = {0};
+					HRESULT hrUIA = _uiaCaretTracker.GetCaretRect(&rcUIA);
+					debugPrint(L"UIA GetCaretRect hr=0x%08X rect=(%d,%d,%d,%d)", hrUIA, rcUIA.left, rcUIA.top, rcUIA.right, rcUIA.bottom);
+					if (SUCCEEDED(hrUIA) && (rcUIA.bottom - rcUIA.top > 0))
+					{
+						_notifyLocation.x = rcUIA.left;
+						_notifyLocation.y = rcUIA.bottom;
+						debugPrint(L"UIA caret fallback: x=%d y=%d", _notifyLocation.x, _notifyLocation.y);
+					}
+				}
 
 				// Probe before showing — position notify correctly before it becomes visible.
 				// Must run before ShowNotify when delayShow == 0 (immediate show).

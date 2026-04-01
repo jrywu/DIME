@@ -36,9 +36,18 @@ from selection-range `GetTextExt` returning lower-quality rects:
 | C | Chromium returns 2px-height rect for selection range | Pad with `_rectCompRange` height; DPI-scaled 16px minimum |
 | D | Rect from wrong UI element (Excel formula bar, CMD) | `hwndCaret != hwndParent` check skips unreliable rects |
 
+**WPF/UWP fallback — UIAutomation (tier 4):**
+
+When all three sources fail (zero-height `GetTextExt`, zero `GetGUIThreadInfo`,
+no Win32 caret), the probe falls through to UIAutomation `TextPattern` as a
+last resort.  UIA `ExpandToEnclosingUnit(TextUnit_Line)` provides the correct
+**y-position** (which line the caret is on).  The x-position is the text area's
+left edge — PSI's UIA provider cannot report caret-level horizontal position.
+See [CARET_TRACKING_UIA.md](CARET_TRACKING_UIA.md) for full details.
+
 **Known limitations:**
 
-- **WPF apps (PowerShell ISE):** No Win32 caret, zero-height `GetTextExt` — notify at window origin. Planned fix: UIAutomation fallback (see [CARET_TRACKING_UIA.md](CARET_TRACKING_UIA.md)).
+- **WPF apps (PowerShell ISE):** Notify at correct line, left-aligned to text area. UIA gives correct y but x = left edge (PSI UIA provider limitation).
 - **Firefox new tab center search field:** TSF context is the URL bar — notify appears there. Expected behavior.
 
 ### 1.2 During composition: TSF text layout sink
@@ -101,7 +110,14 @@ the host app's thread. In cross-process scenarios (SearchHost.exe, elevated
 CMD) this returns wrong coordinates. `GetGUIThreadInfo` is more reliable
 but WPF apps return `{0,0,0,0}`.
 
-**c) `_candLocation` / `_notifyLocation` (cached position)** — last resort.
+**c) UIAutomation TextPattern (WPF/UWP fallback)** — used in `ShowNotifyText`
+and `SHOW_NOTIFY` timer when `GetGUIThreadInfo` returns a zero caret rect and
+no candidate window is visible. Gets the caret's line rect via
+`ExpandToEnclosingUnit(TextUnit_Line)`, corrects client-to-screen coords using
+the focused element's `BoundingRectangle`. See §1.1 and
+[CARET_TRACKING_UIA.md](CARET_TRACKING_UIA.md).
+
+**d) `_candLocation` / `_notifyLocation` (cached position)** — last resort.
 When the TSF rect is invalid (e.g. `{0,0,1,1}` from SearchHost.exe) and a
 prior value exists, the window stays at the last good position. Prevents
 jumping to screen origin.

@@ -1,17 +1,18 @@
 # UIA Caret Tracking for WPF/UWP Apps
 
 **Date:** 2026-04-01
+**Status:** Implemented. Correct y-position; x = text area left edge (PSI limitation).
 
 ---
 
 ## 1. Problem
 
 WPF apps (PowerShell ISE) and some UWP apps don't create Win32 system carets.
-The current notify positioning chain fails for them:
+The existing notify positioning chain fails for them:
 
 | Source | PowerShell ISE result | Why it fails |
 |--------|----------------------|--------------|
-| TSF `GetTextExt` (probe) | `top=934 bottom=934` (zero height) | WPF TSF adapter returns degenerate rect |
+| TSF `GetTextExt` (probe) | `top=851 bottom=851` (zero height) | WPF TSF adapter returns degenerate rect |
 | `GetGUIThreadInfo` | `rcCaret = {0,0,0,0}` | WPF doesn't create Win32 carets |
 | `GetCaretPos` | `{0,0}` | Same reason — no Win32 caret |
 
@@ -20,105 +21,31 @@ origin (e.g. 71, 71) — the top-left corner — instead of the actual text care
 
 ---
 
-## 2. Proposed fix: UIAutomation TextPattern fallback
+## 2. Fix: UIAutomation TextPattern fallback
 
 **UIAutomation (UIA)** is a Windows accessibility framework (since Vista/Win7)
-that works across all UI frameworks.  WPF apps natively implement UIA providers,
-so `IUIAutomationTextPattern` returns accurate caret bounding rectangles even
-when Win32 caret APIs return zeros.
+that works across all UI frameworks.  WPF apps natively implement UIA providers.
 
-### Positioning priority chain (after this change)
+### Positioning priority chain
 
 ```
-1. TSF GetTextExt on composition range     ← existing, most accurate
-2. TSF GetTextExt on selection range (probe) ← existing, with hwndCaret guard
-3. GetGUIThreadInfo / GetCaretPos          ← existing, seeds _notifyLocation
-4. UIA TextPattern::GetSelection → GetBoundingRectangles  ← NEW
-5. _notifyLocation cache (last known good)  ← existing fallback
+1. TSF GetTextExt on composition range        ← existing, most accurate
+2. TSF GetTextExt on selection range (probe)   ← existing, with hwndCaret guard
+3. GetGUIThreadInfo / GetCaretPos              ← existing, seeds _notifyLocation
+4. UIA TextPattern → ExpandToLine              ← NEW, for WPF/UWP
+5. _notifyLocation cache (last known good)     ← existing fallback
 ```
 
-UIA is tier 4 — only used when tiers 1–3 all fail to produce a usable position.
+UIA is tier 4 — only used when tiers 1–3 all fail (zero-height `GetTextExt`
+AND `GetGUIThreadInfo` returns zero caret rect AND no candidate window visible).
 
 ---
 
-## 3. UIA API overview
+## 3. Implementation
 
-### 3.1 Initialization
+### 3.1 New files: `UIACaretTracker.h` / `UIACaretTracker.cpp`
 
-```cpp
-#include <UIAutomation.h>
-
-IUIAutomation* pAutomation = nullptr;
-CoCreateInstance(CLSID_CUIAutomation, nullptr, CLSCTX_INPROC_SERVER,
-                 IID_IUIAutomation, (void**)&pAutomation);
-```
-
-`CoCreateInstance` is ~1ms on first call, near-zero after.  The `IUIAutomation`
-instance should be created once and cached for the lifetime of the IME.
-
-### 3.2 Getting caret rect
-
-```cpp
-IUIAutomationElement* pFocused = nullptr;
-pAutomation->GetFocusedElement(&pFocused);
-
-IUIAutomationTextPattern* pTextPattern = nullptr;
-pFocused->GetCurrentPatternAs(UIA_TextPatternId,
-    IID_IUIAutomationTextPattern, (void**)&pTextPattern);
-
-if (pTextPattern)
-{
-    IUIAutomationTextRangeArray* pSelection = nullptr;
-    pTextPattern->GetSelection(&pSelection);
-    if (pSelection)
-    {
-        IUIAutomationTextRange* pRange = nullptr;
-        int length = 0;
-        pSelection->get_Length(&length);
-        if (length > 0 && SUCCEEDED(pSelection->GetElement(0, &pRange)))
-        {
-            SAFEARRAY* pRects = nullptr;
-            pRange->GetBoundingRectangles(&pRects);
-            // pRects contains doubles: [x, y, width, height, ...]
-            // First rect = caret/selection start position (screen coords)
-            if (pRects && pRects->rgsabound[0].cElements >= 4)
-            {
-                double* data = nullptr;
-                SafeArrayAccessData(pRects, (void**)&data);
-                RECT rcCaret;
-                rcCaret.left   = (LONG)data[0];
-                rcCaret.top    = (LONG)data[1];
-                rcCaret.right  = (LONG)(data[0] + data[2]);
-                rcCaret.bottom = (LONG)(data[1] + data[3]);
-                SafeArrayUnaccessData(pRects);
-                // rcCaret is in screen coordinates — use directly
-            }
-            if (pRects) SafeArrayDestroy(pRects);
-            pRange->Release();
-        }
-        pSelection->Release();
-    }
-    pTextPattern->Release();
-}
-pFocused->Release();
-```
-
-### 3.3 Key properties
-
-- **Returns screen coordinates** — no `ClientToScreen` needed
-- **Rect height** is the actual text line height, not zero
-- **Works for WPF, UWP, XAML Islands, and many Electron/Chromium apps**
-- `GetFocusedElement` + `GetSelection` takes ~5–50ms depending on app complexity
-- `GetBoundingRectangles` on a collapsed selection (caret) may return an empty
-  array in some apps — must handle gracefully
-
----
-
-## 4. Integration plan
-
-### 4.1 New file: `UIACaretTracker.h` / `UIACaretTracker.cpp`
-
-Encapsulate all UIA logic in a standalone helper class:
+Standalone helper class encapsulating all UIA COM logic:
 
 ```cpp
 class CUIACaretTracker
@@ -126,225 +53,159 @@ class CUIACaretTracker
 public:
     CUIACaretTracker();
     ~CUIACaretTracker();
-
-    // Initialize COM interface (call once, e.g. from CUIPresenter constructor)
     HRESULT Initialize();
-
-    // Get caret screen rect from UIA.  Returns S_OK if rect is valid.
-    // Returns E_FAIL if UIA is unavailable, element has no TextPattern,
-    // or GetBoundingRectangles returns empty.
     HRESULT GetCaretRect(_Out_ RECT* pRect);
-
 private:
     IUIAutomation* _pAutomation;
 };
 ```
 
-### 4.2 Lifetime management
+- `Initialize()` calls `CoCreateInstance(CLSID_CUIAutomation)` — ~1ms, cached
+  for IME lifetime.
+- `GetCaretRect()` returns screen-coordinate rect or E_FAIL.
+- No link library needed — UIA is purely COM-based.
 
-- `Initialize()` in `CUIPresenter::CUIPresenter()` constructor.
-- `_pAutomation->Release()` in `CUIPresenter::~CUIPresenter()` destructor.
-- `IUIAutomation` is apartment-threaded.  DIME's IME runs on the app's STA
-  thread, so no threading issues.
+### 3.2 `GetCaretRect` algorithm
 
-### 4.3 Call site: `ShowNotifyText` in `UIPresenter.cpp`
+```
+GetFocusedElement → GetCurrentPatternAs(TextPatternId)
+  → GetSelection → GetBoundingRectangles
+    → if cElements > 0: use directly (collapsed selection rect)
+    → if cElements == 0: ExpandToEnclosingUnit(TextUnit_Character), retry
+    → if still 0: ExpandToEnclosingUnit(TextUnit_Line), retry
+    → if rect looks like client coords (inside element dimensions but
+      left < element.left): offset by element's BoundingRectangle origin
+```
 
-After the existing `GetGUIThreadInfo` / `GetCaretPos` block (lines 1533–1558),
-add a UIA fallback:
+### 3.3 Client-coordinate detection and correction
+
+PSI's WPF UIA provider returns rects in **client coordinates** relative to
+the focused text control, not screen coordinates.  Detected by comparing the
+text rect against the focused element's `BoundingRectangle`:
 
 ```cpp
-// Existing code seeds _notifyLocation from GetGUIThreadInfo/GetCaretPos.
-// If that returned the window origin (indicating no Win32 caret),
-// try UIA as a fallback.
-if (_notifyLocation.x < 0 || isWindowOrigin(_notifyLocation, parentWndHandle))
+RECT rcElement = {0};
+pFocused->get_CurrentBoundingRectangle(&rcElement);
+LONG elemW = rcElement.right - rcElement.left;
+LONG elemH = rcElement.bottom - rcElement.top;
+if (pRect->right <= elemW && pRect->bottom <= elemH
+    && pRect->left < rcElement.left)
 {
-    RECT rcUIA = {0};
-    if (_pUIACaretTracker && SUCCEEDED(_pUIACaretTracker->GetCaretRect(&rcUIA))
-        && (rcUIA.bottom - rcUIA.top > 0))
-    {
-        _notifyLocation.x = rcUIA.left;
-        _notifyLocation.y = rcUIA.bottom;  // position below text line
-        debugPrint(L"UIA caret: x=%d y=%d", _notifyLocation.x, _notifyLocation.y);
-    }
+    // Client coords — offset by element screen origin
+    pRect->left   += rcElement.left;
+    pRect->top    += rcElement.top;
+    pRect->right  += rcElement.left;
+    pRect->bottom += rcElement.top;
 }
 ```
 
-**`isWindowOrigin` helper:** returns TRUE if the point equals
-`ClientToScreen(hwnd, {0,0})` — indicating `GetGUIThreadInfo` returned zeros.
+### 3.4 Integration in `CUIPresenter`
 
-### 4.4 Call site: `SHOW_NOTIFY` timer in `_NotifyChangeNotification`
+**Member:** `CUIACaretTracker _uiaCaretTracker` — initialized in constructor.
 
-Same fallback after the probe, before `_Move`:
+**Call site 1: `ShowNotifyText`** — after `GetGUIThreadInfo`/`GetCaretPos` seed:
 
 ```cpp
-_pTextService->_ProbeComposition(pContext);
-// If probe didn't update position and cached position looks like window origin,
-// try UIA before showing.
-if (_pNotifyWnd && _notifyLocation.x > UI::DEFAULT_WINDOW_X)
+if (guiInfo->rcCaret == {0,0,0,0} && no candidate window visible)
 {
-    // Check if _notifyLocation is just the window origin (no real caret data)
-    // If so, try UIA
-    RECT rcUIA = {0};
-    if (_pUIACaretTracker && SUCCEEDED(_pUIACaretTracker->GetCaretRect(&rcUIA))
-        && (rcUIA.bottom - rcUIA.top > 0))
+    RECT rcUIA;
+    if (SUCCEEDED(_uiaCaretTracker.GetCaretRect(&rcUIA)) && height > 0)
     {
         _notifyLocation.x = rcUIA.left;
         _notifyLocation.y = rcUIA.bottom;
     }
-    _pNotifyWnd->_Move(_notifyLocation.x, _notifyLocation.y);
 }
-ShowNotify(TRUE, 0, (UINT) wParam);
 ```
+
+**Call site 2: `SHOW_NOTIFY` timer** — same condition, after probe.
+
+### 3.5 Build changes
+
+- Added `UIACaretTracker.h` / `UIACaretTracker.cpp` to `DIME.vcxproj`
+- No additional library — UIA is COM-based (`CoCreateInstance`)
 
 ---
 
-## 5. Build changes
+## 4. What was tried and why
 
-### 5.1 Link library
+### 4.1 Collapsed selection `GetBoundingRectangles` — empty
 
-Add to `DIME.vcxproj` `<AdditionalDependencies>`:
+PSI returns `cElements=0` for a collapsed selection (zero-width caret).
+WPF's UIA TextPattern cannot produce a bounding rect for a zero-length range.
 
-```
-UIAutomationClient.lib
-```
+### 4.2 `ExpandToEnclosingUnit(TextUnit_Character)` — also empty
 
-This is a system library — no redistributable needed.
+PSI returns `cElements=0` for character-level expansion too.
+Only `TextUnit_Line` produces a rect.
 
-### 5.2 Source files
+### 4.3 `ExpandToEnclosingUnit(TextUnit_Line)` — correct y, wrong x
 
-Add to `DIME.vcxproj`:
+Returns the **entire line's** bounding rect.  `left` is the line's left margin
+(always the same), not the caret's horizontal position.  `top`/`bottom`
+correctly reflect which line the caret is on.
 
-```xml
-<ClInclude Include="UIACaretTracker.h" />
-<ClCompile Include="UIACaretTracker.cpp" />
-```
+### 4.4 Destructive probe (`StartComposition` → `SetText(L" ")` → `GetTextExt`)
 
-### 5.3 Precompiled header
+Attempted inserting a space into a temporary composition to give `GetTextExt`
+something to measure.  **Failed** — `GetTextExt` is called synchronously via
+`_MoveUIWindowsToTextExt`, but WPF renders asynchronously.  The rect comes back
+as junk (`top=851, bottom=851, left=1439, right=1440` — screen edge) because
+WPF hasn't processed the text insertion yet.
 
-`UIACaretTracker.cpp` uses standard includes (`UIAutomation.h`, `windows.h`).
-No PCH conflicts expected.  Set `<PrecompiledHeader>NotUsing</PrecompiledHeader>`
-for all 8 configurations (Win32/x64/ARM64/ARM64EC × Debug/Release) if needed.
+During real typing this works because the layout sink **callback** fires after
+WPF renders — the async notification path provides the correct rect.  The
+synchronous probe path cannot benefit from this.
 
----
-
-## 6. Performance considerations
-
-| Operation | Cost | When |
-|-----------|------|------|
-| `CoCreateInstance(CLSID_CUIAutomation)` | ~1ms | Once per IME lifetime |
-| `GetFocusedElement` | 1–10ms | Each notify show (only when tiers 1–3 fail) |
-| `GetSelection` + `GetBoundingRectangles` | 5–50ms | Same |
-
-The UIA path only runs when:
-1. TSF `GetTextExt` returns zero-height or is rejected by hwndCaret guard, AND
-2. `GetGUIThreadInfo` returns a zero caret rect
-
-This is rare — primarily WPF and some UWP apps.  The 5–50ms cost is acceptable
-for the delayed notify timer (already 500ms+ delay).
+Also attempted empty composition (no `SetText`) — same junk result.
 
 ---
 
-## 7. Apps expected to benefit
+## 5. PSI result: correct y, x = text area left edge
 
-| App | Framework | Current behavior | After UIA |
-|-----|-----------|-----------------|-----------|
-| PowerShell ISE | WPF | Notify at window origin (71, 71) | Notify at caret |
-| Visual Studio 2022 editor | WPF | Untested — may have same issue | Should work |
-| Windows Terminal | XAML/UWP | Untested | Should work if TextPattern exposed |
-| Settings app | UWP/XAML | Untested | Should work |
+| Before UIA | After UIA |
+|-----------|-----------|
+| Notify at window origin (71, 71) | Notify at text area left edge, correct line |
+
+The notify now appears on the **correct line** but at the left edge of the text
+area instead of at the caret's horizontal position.  This is a PSI WPF UIA
+provider limitation — no API returns the caret x-position:
+
+- `GetBoundingRectangles` on collapsed selection → empty
+- `ExpandToEnclosingUnit(Character)` → empty
+- `ExpandToEnclosingUnit(Line)` → correct y, x = line left margin
+- `GetTextExt` (destructive probe) → junk (async rendering)
+- `GetGUIThreadInfo` → `{0,0,0,0}` (no Win32 caret)
+
+### Apps where UIA helps
+
+| App | Framework | Before | After |
+|-----|-----------|--------|-------|
+| PowerShell ISE | WPF | Window origin (71, 71) | Correct line, left-aligned |
 
 ### Apps NOT affected (tiers 1–3 already work)
 
 | App | Why UIA won't run |
 |-----|-------------------|
-| Notepad | GetTextExt + GetCaretPos both work |
-| Word/Excel | hwndCaret guard + GetGUIThreadInfo work |
-| Edge/Chrome/VS Code | Probe GetTextExt on selection works |
+| Notepad | `GetTextExt` + `GetCaretPos` both work |
+| Word/Excel | hwndCaret guard + `GetGUIThreadInfo` work |
+| Edge/Chrome/VS Code | Probe `GetTextExt` on selection works |
 | LINE | Probe works (with height padding) |
-| CMD | GetGUIThreadInfo works (hwndCaret guard skips bad probe) |
+| CMD | `GetGUIThreadInfo` works (hwndCaret guard skips bad probe) |
 
 ---
 
-## 8. Detecting "no real caret" — the trigger condition
+## 6. Guarding against UIA overriding good positions
 
-The UIA fallback should only fire when existing sources failed.  Detection:
+UIA must not override `_notifyLocation` when it's already been set to a correct
+value by candidate window positioning or a successful probe.  Two conditions
+gate UIA:
 
-```cpp
-// After GetGUIThreadInfo seeds _notifyLocation:
-BOOL hasRealCaret = TRUE;
-if (gti.rcCaret.left == 0 && gti.rcCaret.top == 0
-    && gti.rcCaret.right == 0 && gti.rcCaret.bottom == 0)
-{
-    hasRealCaret = FALSE;  // No Win32 caret — WPF/UWP app
-}
-```
+1. **`GetGUIThreadInfo` returns zero caret** — only WPF/UWP apps.  Apps with
+   real Win32 carets skip UIA entirely.
 
-Combined with probe failure (zero-height `GetTextExt`), `!hasRealCaret` triggers
-the UIA path.  Store `hasRealCaret` as a member or pass it through the call chain.
+2. **No candidate window visible** — if the candidate window is on screen,
+   `_LayoutChangeNotification` already set correct `_notifyLocation`.  The
+   reverse lookup notify should use that position, not UIA.
 
----
-
-## 9. Error handling
-
-UIA can fail at multiple points.  Every failure = silent fallback to tier 5
-(`_notifyLocation` cache).  No user-visible errors.
-
-| Failure | Handling |
-|---------|----------|
-| `CoCreateInstance` fails | `_pAutomation = nullptr`, all `GetCaretRect` return E_FAIL |
-| `GetFocusedElement` returns NULL | Return E_FAIL |
-| Element has no `TextPattern` | Return E_FAIL (app doesn't support text UIA) |
-| `GetSelection` empty | Return E_FAIL |
-| `GetBoundingRectangles` empty | Return E_FAIL (collapsed caret, no rect) |
-| UIA call hangs (unresponsive app) | **Risk** — consider timeout via async call |
-
-### 9.1 Timeout protection
-
-`GetFocusedElement` can hang if the target app is unresponsive.  Mitigation
-options:
-
-1. **`CoSetProxyBlanket` with timeout** — not available for UIA inproc
-2. **Call from a worker thread with `WaitForSingleObject` timeout** — adds
-   complexity but guarantees the IME thread never blocks
-3. **Accept the risk** — the UIA path only fires on the delayed timer callback
-   (not keystroke-critical), and the timer already tolerates 500ms+ delay.
-   If the app is hung, the user isn't typing anyway.
-
-**Recommendation:** Start with option 3 (accept the risk).  If field reports
-show hangs, add a worker thread with 100ms timeout.
-
----
-
-## 10. Testing plan
-
-### 10.1 PowerShell ISE (primary target)
-
-1. Open PSI, focus script pane
-2. Toggle CHN/ENG → notify should appear near caret (not window origin)
-3. Move caret to different lines → notify should track
-4. Switch to console pane → notify should follow
-
-### 10.2 Regression — apps that already work
-
-1. **Notepad** — notify at caret (UIA path should NOT fire)
-2. **Excel** — notify at cell (hwndCaret guard, UIA should NOT fire)
-3. **Edge** — notify at text field (probe works, UIA should NOT fire)
-4. **LINE** — emoji still works, notify at caret
-5. **CMD** — notify at caret (GetGUIThreadInfo works)
-
-### 10.3 Debug verification
-
-Add `debugPrint` in `GetCaretRect`:
-```
-UIA: GetFocusedElement hr=0x%08X
-UIA: TextPattern hr=0x%08X
-UIA: GetBoundingRectangles count=%d rect=(%d,%d,%d,%d)
-```
-
-Verify in `debug.txt` that UIA path fires ONLY for PSI, not for Notepad/Excel.
-
-### 10.4 New apps to test with UIA
-
-- Visual Studio 2022 (WPF editor)
-- Windows Terminal (XAML)
-- Settings app text fields (UWP)
+These guards prevent the bug where UIA's `x=87` (left edge) overwrote the
+correct `x=252` (from candidate positioning) for the reverse lookup notify.

@@ -206,6 +206,9 @@
     <ClInclude Include="BuildInfo.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="UIACaretTracker.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DictionaryParser.cpp">
@@ -366,6 +369,9 @@
     </ClCompile>
     <ClCompile Include="ConfigDialog.cpp">
       <Filter>Source Files\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="UIACaretTracker.cpp">
+      <Filter>Source Files\TextService\IMInterface\Composition</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
