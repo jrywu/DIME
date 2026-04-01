@@ -36,9 +36,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "BaseWindow.h"
 
-// Shadow extends this many pixels in all directions around the owner window.
-// Used by UIPresenter to add spacing between adjacent windows.
-#define SHADOW_SPREAD 14
+// SHADOW_SPREAD is defined in Define.h
 
 class CShadowWindow : public CBaseWindow
 {

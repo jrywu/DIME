@@ -35,6 +35,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Private.h"
 #include "Globals.h"
 #include "BaseWindow.h"
+#include "Define.h"
 #include <dwmapi.h>
 #pragma comment(lib, "dwmapi.lib")
 
@@ -497,7 +498,7 @@ void CBaseWindow::CalcFitPointAroundTextExtent(_In_ const RECT *prcTextExtent, _
 	// the return text extent area is a large area instead as careet or composition range, like firefox 32bit.
 		baseX = prcTextExtent->left;
 	
-	OffsetRect(&rcTargetWindow[0], baseX, prcTextExtent->bottom);
+	OffsetRect(&rcTargetWindow[0], baseX, prcTextExtent->bottom + SHADOW_SPREAD / 2);
 
 	debugPrint(L"CBaseWindow::CalcFitPointAroundTextExtent, attach top side: top = %d, bottom = %d, right = %d, left = %d",
 		rcTargetWindow[0].top, rcTargetWindow[0].bottom, rcTargetWindow[0].right, rcTargetWindow[0].left);
@@ -505,7 +506,7 @@ void CBaseWindow::CalcFitPointAroundTextExtent(_In_ const RECT *prcTextExtent, _
 
     // set rcTargetWindow[1] which rectangle attached on top side of text extent
     rcTargetWindow[1] = *prcWindow;
-	OffsetRect(&rcTargetWindow[1], baseX, prcTextExtent->top - (prcWindow->bottom - prcWindow->top));
+	OffsetRect(&rcTargetWindow[1], baseX, prcTextExtent->top - (prcWindow->bottom - prcWindow->top) - SHADOW_SPREAD / 2);
 
 	debugPrint(L"CBaseWindow::CalcFitPointAroundTextExtent, attach bottom side: top = %d, bottom = %d, right = %d, left = %d",
 		rcTargetWindow[1].top, rcTargetWindow[1].bottom, rcTargetWindow[1].right, rcTargetWindow[1].left);

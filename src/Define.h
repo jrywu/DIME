@@ -53,6 +53,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define DIME_FONT_DEFAULT L"Microsoft JhengHei"
 
 //---------------------------------------------------------------------
+// Shadow spread — pixels the shadow extends beyond the candidate/notify window in all directions.
+// Used by ShadowWindow for bitmap size and by BaseWindow for positioning gap.
+//---------------------------------------------------------------------
+#define SHADOW_SPREAD 14
+
 // defined Candidate Window
 //---------------------------------------------------------------------
 #define CANDWND_ROW_WIDTH				(30)

@@ -111,7 +111,7 @@ public:
     STDMETHODIMP ShowCandidateNumbers(_Out_ BOOL *pIsShow); 
     STDMETHODIMP FinalizeExactCompositionString();
 
-    virtual HRESULT _StartCandidateList(TfClientId tfClientId, _In_ ITfDocumentMgr *pDocumentMgr, _In_ ITfContext *pContextDocument, TfEditCookie ec, _In_ ITfRange *pRangeComposition, UINT wndWidth);
+    virtual HRESULT _StartCandidateList(TfClientId tfClientId, _In_ ITfDocumentMgr *pDocumentMgr, _In_ ITfContext *pContextDocument, TfEditCookie ec, _In_opt_ ITfRange *pRangeComposition, UINT wndWidth);
     void _EndCandidateList();
 
 	void _SetCandidateText(_In_ CDIMEArray<CCandidateListItem> *pCandidateList, _In_ CCandidateRange* pIndexRange, BOOL isAddFindKeyCode, UINT candWidth, bool isPhraseMode = false);

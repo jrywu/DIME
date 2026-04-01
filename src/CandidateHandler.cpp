@@ -219,9 +219,18 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 			_candidateMode = CANDIDATE_MODE::CANDIDATE_PHRASE;
 			_isCandidateWithWildcard = FALSE;	
 			
-			// Show candidate window — _CreateAndStartCandidate now works without a composition.
-			// GetCaretPos fallback positions the window at the caret when no composition range exists.
-			_CreateAndStartCandidate(_pCompositionProcessorEngine, ec, pContext);
+			// Show phrase candidate window using the last saved composition rect for positioning.
+			// _StartLayout now updates the null range even for the same context,
+			// so _GetTextExt fails cleanly and the fallback uses _rectCompRange.
+			if (_pUIPresenter)
+			{
+				ITfDocumentMgr* pDocMgr = nullptr;
+				if (SUCCEEDED(pContext->GetDocumentMgr(&pDocMgr)))
+				{
+					_pUIPresenter->_StartCandidateList(_tfClientId, pDocMgr, pContext, ec, nullptr, _pCompositionProcessorEngine->GetCandidateWindowWidth());
+					pDocMgr->Release();
+				}
+			}
 			
 		}
 		else
@@ -379,12 +388,13 @@ HRESULT CDIME::_CreateAndStartCandidate(_In_ CCompositionProcessorEngine *pCompo
 		ITfDocumentMgr* pDocumentMgr = nullptr;
 		if (SUCCEEDED(pContext->GetDocumentMgr(&pDocumentMgr)))
 		{
-			// get the composition range (may be null for phrase candidates without composition).
+			// get the composition range.
 			ITfRange* pRange = nullptr;
-			if (_pComposition)
-				_pComposition->GetRange(&pRange);
-			hr = _pUIPresenter->_StartCandidateList(_tfClientId, pDocumentMgr, pContext, ec, pRange, pCompositionProcessorEngine->GetCandidateWindowWidth());
-			if (pRange) pRange->Release();
+			if (SUCCEEDED(_pComposition->GetRange(&pRange)))
+			{
+				hr = _pUIPresenter->_StartCandidateList(_tfClientId, pDocumentMgr, pContext, ec, pRange, pCompositionProcessorEngine->GetCandidateWindowWidth());
+				pRange->Release();
+			}
 			pDocumentMgr->Release();
 		}
 	}

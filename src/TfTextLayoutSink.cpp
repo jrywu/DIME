@@ -159,7 +159,7 @@ HRESULT CTfTextLayoutSink::_StartLayout(_In_ ITfContext *pContextDocument, TfEdi
 			_pContextDocument->AddRef();
 
 		_pRangeComposition = pRangeComposition;
-		if(_pRangeComposition) 
+		if(_pRangeComposition)
 			_pRangeComposition->AddRef();
 
 		_tfEditCookie = ec;
@@ -167,7 +167,17 @@ HRESULT CTfTextLayoutSink::_StartLayout(_In_ ITfContext *pContextDocument, TfEdi
 		return _AdviseTextLayoutSink();
 	}
 	else
+	{
+		// Same context — update range and edit cookie in case they changed
+		// (e.g. phrase candidates reusing the same context with null range).
+		if (_pRangeComposition)
+			_pRangeComposition->Release();
+		_pRangeComposition = pRangeComposition;
+		if (_pRangeComposition)
+			_pRangeComposition->AddRef();
+		_tfEditCookie = ec;
 		return S_OK;
+	}
 }
 
 VOID CTfTextLayoutSink::_EndLayout()

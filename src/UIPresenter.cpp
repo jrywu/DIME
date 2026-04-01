@@ -534,7 +534,7 @@ STDAPI CUIPresenter::FinalizeExactCompositionString()
 //
 //----------------------------------------------------------------------------
 
-HRESULT CUIPresenter::_StartCandidateList(TfClientId tfClientId, _In_ ITfDocumentMgr *pDocumentMgr, _In_ ITfContext *pContextDocument, TfEditCookie ec, _In_ ITfRange *pRangeComposition, UINT wndWidth)
+HRESULT CUIPresenter::_StartCandidateList(TfClientId tfClientId, _In_ ITfDocumentMgr *pDocumentMgr, _In_ ITfContext *pContextDocument, TfEditCookie ec, _In_opt_ ITfRange *pRangeComposition, UINT wndWidth)
 {
 	debugPrint(L"\nCUIPresenter::_StartCandidateList()");
 	pDocumentMgr;tfClientId;
@@ -549,11 +549,19 @@ HRESULT CUIPresenter::_StartCandidateList(TfClientId tfClientId, _In_ ITfDocumen
 
     BeginUIElement();
 
-	
-    hr = MakeCandidateWindow(pContextDocument, wndWidth);
-    if (FAILED(hr))
+
+    if (_pCandidateWnd)
     {
-        goto Exit;
+        // Candidate window already exists (e.g. reusing for phrase candidates) — skip creation
+        hr = S_OK;
+    }
+    else
+    {
+        hr = MakeCandidateWindow(pContextDocument, wndWidth);
+        if (FAILED(hr))
+        {
+            goto Exit;
+        }
     }
 
 	Show(_isShowMode);
@@ -565,9 +573,9 @@ HRESULT CUIPresenter::_StartCandidateList(TfClientId tfClientId, _In_ ITfDocumen
     }
     else
     {
-        // No composition range — use GetCaretPos fallback
-        RECT rcFallback = {0, 0, -1, -1};
-        _LayoutChangeNotification(&rcFallback, TRUE);
+        // No composition range (e.g. phrase candidates after commit).
+        // Reuse the last saved composition rect — the caret hasn't moved.
+        _LayoutChangeNotification(&_rectCompRange, TRUE);
     }
 
 Exit:
@@ -905,7 +913,7 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall)
 	ITfContextView * pView = nullptr;
 	HWND parentWndHandle;
 	POINT caretPt = { 0, 0 };
-	
+
 	if (pContext && SUCCEEDED(pContext->GetActiveView(&pView)))
 	{
 		debugPrint(L"parentWndHandle got from pContext");
@@ -915,7 +923,7 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall)
 	{
 		parentWndHandle = GetForegroundWindow();
 	}
-		
+
 	if (parentWndHandle)
 	{
 		GetCaretPos(&caretPt);
@@ -928,7 +936,8 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall)
 	if (_pCandidateWnd && lpRect)
 	{
 
-		if (lpRect->bottom - lpRect->top >=0  || lpRect->right - lpRect->left >=0 ) // confirm the extent rect is valid.
+		if ((lpRect->bottom - lpRect->top > 0  || lpRect->right - lpRect->left > 0) &&
+			!(lpRect->left <= 1 && lpRect->top <= 1 && lpRect->right <= 1 && lpRect->bottom <= 1)) // confirm the extent rect is valid (reject near-origin rects like {0,0,1,1} from buggy TSF hosts like SearchHost.exe)
 		{
 			_pCandidateWnd->_GetClientRect(&candRect);
 			if (((compRect.right - compRect.left) > (candRect.right - candRect.left)) && caretPt.x < compRect.right && caretPt.x >= compRect.left)
@@ -940,8 +949,14 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall)
 			_candLocation.y = candPt.y;
 			debugPrint(L"move cand to x = %d, y = %d", candPt.x, candPt.y);
 		}
+		else if (_candLocation.x != 0 || _candLocation.y != 0)
+		{
+			// Invalid extent rect — keep last known good position (e.g. SearchHost {0,0,1,1})
+			debugPrint(L"compRect not valid, keeping last position x = %d, y = %d", _candLocation.x, _candLocation.y);
+		}
 		else if (firstCall && parentWndHandle)
 		{
+			// First call with no valid rect and no last position — fall back to GetCaretPos
 			_pCandidateWnd->_GetClientRect(&candRect);
 			compRect.left = caretPt.x;
 			compRect.right = caretPt.x;
@@ -981,10 +996,10 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall)
 				_notifyLocation.y = candPt.y;
 				*/
 				debugPrint(L"notify width = %d, candwidth = %d", _pNotifyWnd->_GetWidth(), _pCandidateWnd->_GetWidth());
-				// cand window is on the top of caret
-				if (candPt.y < lpRect->top) 
+				// cand window is on the top of caret — bottom-align notify with candidate
+				if (candPt.y < lpRect->top)
 					_notifyLocation.y = candPt.y + (candRect.bottom - candRect.top) - _pNotifyWnd->_GetHeight();
-				else 
+				else
 					_notifyLocation.y = candPt.y;
 
 				if (candPt.x < (int)_pNotifyWnd->_GetWidth())
@@ -996,8 +1011,9 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall)
 				debugPrint(L"move notify to x = %d, y = %d", _notifyLocation.x, _notifyLocation.y);
 				_notifyLocation.x = candPt.x;
 			}
-			else
+			else if (!_pCandidateWnd)
 			{
+				// No candidate window at all — position notify independently
 				_pNotifyWnd->_GetClientRect(&notifyRect);
 				if (((compRect.right - compRect.left) > (notifyRect.right - notifyRect.left)) && caretPt.x < compRect.right && caretPt.x >= compRect.left)
 					compRect.left = caretPt.x;
@@ -1008,6 +1024,7 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall)
 				_notifyLocation.y = notifyPt.y;
 				debugPrint(L"move notify to x = %d, y = %d", notifyPt.x, notifyPt.y);
 			}
+			// else: candidate exists but not visible yet — skip, wait for NOTIFY: path to position
 
 		}
 	}

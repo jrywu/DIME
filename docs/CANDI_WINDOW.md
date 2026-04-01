@@ -235,36 +235,45 @@ The candidate window is a popup window (`WS_POPUP | WS_CLIPCHILDREN`) with three
 
 Each candidate row is divided into three horizontal zones. All measurements derive from font metrics using the configured IME font at the current monitor DPI.
 
-| Constant | Value | Meaning |
-|----------|-------|---------|
-| `PageCountPosition` | 1 | Number column starts at 1 × `cxLine` from the left |
-| `StringPosition` | 2 | Candidate text starts at 2 × `cxLine` from the left |
-
-Where `cxLine` is the wider of `tmAveCharWidth` and the average character width measured from a test string of `_wndWidth` CJK characters (typically '國'). This ensures full-width CJK characters determine the column grid.
+`cxLine` is the wider of `tmAveCharWidth` and the average character width measured from a test string of `_wndWidth` CJK characters (typically '國'). `cyLine = fontHeight * 5/4`. `leftPadding = cyLine / 2`.
 
 Row layout (left to right):
 
 | Zone | Left edge | Right edge | Content |
 |------|-----------|------------|---------|
-| Left margin | 0 | `PageCountPosition * cxLine` | Empty (background color) |
-| Number column | `PageCountPosition * cxLine` | `StringPosition * cxLine` | Selection key (1-9, 0) |
-| Candidate text | `StringPosition * cxLine` | `windowRight - scrollbarWidth` | Candidate string, selection-highlighted |
+| Left margin | 0 | `leftPadding` (`cyLine / 2`) | Empty (background color) |
+| Number column | `leftPadding` | `leftPadding + cxLine` | Selection key (1-9, 0) |
+| Candidate text | `leftPadding + cxLine` | `windowRight - scrollbarWidth` | Candidate string, selection-highlighted |
 | Scrollbar | `windowRight - scrollbarWidth` | `windowRight` | Thin scrollbar (child HWND) |
+
+### Padding on four sides
+
+All four paddings derive from `cyLine`:
+
+| Side | Variable | Formula | Set in |
+|------|----------|---------|--------|
+| Top | `topPadding` / `fistLineOffset` | `cyLine / 3` | `_ResizeWindow` (line 230) / `_DrawList` (line 929) |
+| Bottom | `_padding` | `cyLine / 2` | `WM_CREATE` (line 408), `_DrawList` (line 934) |
+| Left | `leftPadding` | `cyLine / 2` | `_DrawList` (line 930) |
+| Right | (none — scrollbar fills) | scrollbar width | `_ResizeWindow` (line 229) |
+
+**Critical:** `_padding` must be set in BOTH `WM_CREATE` and `_DrawList`. If `WM_CREATE` omits it (as it did before the 2026-03-31 fix), the initial `_ResizeWindow` produces a shorter height, and the first `_DrawList` triggers a resize that shifts the window downward when flipped above the composition.
 
 ### Row height and vertical spacing
 
 | Element | Formula | Description |
 |---------|---------|-------------|
 | `cyLine` (row height) | `fontHeight * 5/4` | Font height measured via `GetTextExtentPoint32`, multiplied by 1.25 for line spacing |
-| `firstLineOffset` | `cyLine / 4` | Blank space above the first candidate row (top padding) |
-| `cyOffset` (text baseline) | `fontHeight / 8 + firstLineOffset` | Vertical offset to center text within each row stripe |
+| `fistLineOffset` (top padding) | `cyLine / 3` | Blank space above the first candidate row |
+| `_padding` (bottom padding) | `cyLine / 2` | Visual balance below last row; page indicator area |
+| `cyOffset` (text baseline) | `fontHeight / 8 + fistLineOffset` | Vertical offset to center text within each row stripe |
 
 Vertical spacing diagram:
 
 ```
   border (1px)
   +-----------------------------------------+  ---
-  | firstLineOffset (cyLine/4)              |   ^
+  | fistLineOffset (cyLine/3)               |   ^  top padding
   +-----------------------------------------+   |
   | row 0: [num] [candidate text]  cyLine   |   |
   +-----------------------------------------+   |
@@ -274,9 +283,8 @@ Vertical spacing diagram:
   +-----------------------------------------+   |
   | row N: [num] [candidate text]  cyLine   |   v
   +-----------------------------------------+  ---
-  | bottom padding: cyLine / 2              |   ^
-  |   (all cases — page indicator removed)  | padding
-  |                                         |   v
+  | _padding (cyLine / 2)                   |   ^  bottom padding
+  |   page indicator "4/8" drawn here       |   v
   +-----------------------------------------+  ---
   border (1px)
 ```
@@ -289,21 +297,38 @@ During `WM_CREATE` and each `_DrawList` call, the content width is measured:
 
 1. Build a test string of `_wndWidth` copies of '國' (a full-width CJK character)
 2. Measure via `GetTextExtentPoint32` → `candSize.cx`
-3. `_cxTitle = candSize.cx + StringPosition * cxLine` — total content width including the number column
+3. `_cxTitle = candSize.cx + (leftPadding + cxLine)` — total content width including left margin and number column
 4. If any candidate text is wider than `_wndWidth` characters, `_cxTitle` expands to fit and `_ResizeWindow()` is called mid-paint
 
 ### Window dimensions
 
 | Element | Formula | Description |
 |---------|---------|-------------|
-| Content width (`_cxTitle`) | `candSize.cx + StringPosition * cxLine` | CJK text area + number column |
+| Content width (`_cxTitle`) | `candSize.cx + (leftPadding + cxLine)` | CJK text area + left margin + number column |
 | Scrollbar width | 6px idle / 16px hover (DPI-scaled) | Thin Win11-style overlay |
 | Total width | `_cxTitle + scrollbarWidth + 2 * CANDWND_BORDER_WIDTH` | Border is 1px per side |
-| Row area height | `candidateListPageCnt * cyLine` | Number of candidates per page × row height |
-| Bottom padding | `cyLine / 2` (all cases) | Visual balance below last row; page indicator removed |
-| Total height | `rowAreaHeight + bottomPadding + 2 * CANDWND_BORDER_WIDTH` | Border is 1px per side |
+| Top padding | `_cyRow / 3` | `fistLineOffset` |
+| Row area height | `_cyRow * candidateListPageCnt` | Number of candidates per page × row height |
+| Bottom padding (`_padding`) | `_cyRow / 2` | Visual balance below last row; page indicator area |
+| Total height | `topPadding + rowAreaHeight + _padding + 2 * CANDWND_BORDER_WIDTH` | Set in `_ResizeWindow` |
 
-> **Note:** The page indicator ("4/8") has been removed. The scrollbar's thin idle line already communicates scroll position visually.
+### Size calculation flow
+
+`_ResizeWindow()` computes the total window size:
+
+```
+totalW = _cxTitle + VScrollWidth + CANDWND_BORDER_WIDTH * 2
+totalH = _cyRow/3 + _cyRow * pageCnt + _padding + CANDWND_BORDER_WIDTH * 2
+```
+
+`_ResizeWindow` is called from:
+- `WM_CREATE` → `_Create` → `_ResizeWindow()` — initial size with `_cyRow` and `_padding` from `WM_CREATE` measurement
+- `_DrawList` (line 1069) — when `_cxTitle` changes during paint (wider candidate text)
+- `_Show(TRUE)` (line 304) — when window has zero size
+
+Both `WM_CREATE` and `_DrawList` must set `_cyRow` and `_padding` consistently, or the initial `_ResizeWindow` produces a different height than `_DrawList`'s `_ResizeWindow`, causing position drift when the candidate is flipped above the composition.
+
+> **Note:** The page indicator ("4/8") is drawn in the bottom padding area. The scrollbar's thin idle line also communicates scroll position visually.
 
 ### DPI scaling
 
@@ -627,3 +652,14 @@ Old Win32 apps (e.g. Windows XP-era Notepad) are DPI-unaware. Four bugs were fix
 - **Scrollbar magenta background:** On non-layered scrollbar windows (where `WS_EX_LAYERED` failed), the magenta color key painted as solid magenta. Fixed by using the parent's background brush via `WM_CTLCOLORSCROLLBAR` for non-layered windows. The selection highlight is drawn on top of all scrollbar elements via `_SetSelectionHighlight` so it visually extends over the scrollbar with its original `RoundRect` shape.
 
 See [CANDI_SCROLL_BAR.md](CANDI_SCROLL_BAR.md) RC22–RC26 for details.
+
+### Caret tracking fixes (2026-03-31)
+
+Three caret tracking improvements were made. See [CARET_TRACKING.md](CARET_TRACKING.md) for full details.
+
+- **Associated phrase space hack removed:** The space character `L" "` inserted into the composition buffer for phrase candidate positioning has been eliminated. Phrase candidates now position using `_rectCompRange` (the last saved composition rect). Required changes to `_StartLayout` (update range on same context), `_StartCandidateList` (skip `MakeCandidateWindow` if exists; fall back to `_rectCompRange`), and `CandidateHandler.cpp` (direct `_StartCandidateList(nullptr)` call).
+- **SearchHost.exe jump fix:** Windows 11 Explorer search box returns bogus `{0,0,1,1}` rects, causing the candidate to jump to screen origin. Fixed by tightening the validity check and adding `_candLocation` fallback.
+
+### Notify/candidate bottom alignment when flipped above (pre-existing, under investigation)
+
+When the candidate flips above the composition (not enough room below), the notify visually appears higher than the candidate despite the math being correct. Debug data confirms `candPt.y + candH = notifyY + notifyH` (mathematically bottom-aligned). `_pNotifyWnd->_GetHeight()` may not match the actual rendered height of the notify window.

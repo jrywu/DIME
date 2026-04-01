@@ -391,7 +391,7 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
             if (dcHandle)
             {
                 HFONT hFontOld = (HFONT)SelectObject(dcHandle, Global::defaultlFontHandle);
-                
+
 				PWCHAR pwszTestString = new (std::nothrow) WCHAR[_wndWidth + 1];
 
 				if (pwszTestString == NULL) return 0;
@@ -405,6 +405,7 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
 
 				_cxTitle = candSize.cx + StringPosition * (candSize.cx / _wndWidth);
 				_cyRow = candSize.cy * 5 / 4;
+				_padding = _cyRow / 2;  // match _DrawList (line 947) so _ResizeWindow produces consistent height
 
                 SelectObject(dcHandle, hFontOld);
                 ReleaseDC(wndHandle, dcHandle);
