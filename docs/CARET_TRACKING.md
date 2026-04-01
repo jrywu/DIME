@@ -6,13 +6,50 @@
 
 ## 1. How caret tracking works
 
-The candidate window needs a screen position to anchor itself. DIME uses three mechanisms, tried in priority order:
+DIME must know the screen position of the text caret at every stage of the
+input lifecycle — before, during, and after composition — to position the
+candidate window, notify window, and associated phrase popup.
 
-### 1.1 Primary: TSF `GetTextExt` (composition range)
+### 1.1 Before composition: probe (`_ProbeComposition`)
+
+**Files:** `Composition.cpp`, `UIPresenter.cpp`  
+**Full details:** [CARET_TRACKING_PROBE.md](CARET_TRACKING_PROBE.md)
+
+Before the user types anything, the CHN/ENG notify window needs a position.
+No composition exists yet, so the TSF text layout sink has no range to query.
+`_ProbeComposition` solves this by requesting a read-only edit session and
+calling `GetSelection` → `GetTextExt` on the selection range (caret position).
+
+**History:** The original probe used `StartComposition` → `EndComposition`
+(destructive) to force a composition range for `GetTextExt`. This corrupted
+LINE's Chromium TSF text store, breaking the Windows emoji panel. Replaced
+with a non-destructive read-only probe (2026-04-01).
+
+The probe feeds its rect into `_LayoutChangeNotification`, which uses the
+same data sources as the during-composition path (§1.2). Four issues arose
+from selection-range `GetTextExt` returning lower-quality rects:
+
+| Issue | Problem | Fix |
+|-------|---------|-----|
+| A | Zero-height junk rects (LINE initial focus) | Height > 0 guard |
+| B | Notify positioning skipped when candidate allocated but not visible | Expanded guard: `!_pCandidateWnd \|\| !_pCandidateWnd->_IsWindowVisible()` |
+| C | Chromium returns 2px-height rect for selection range | Pad with `_rectCompRange` height; DPI-scaled 16px minimum |
+| D | Rect from wrong UI element (Excel formula bar, CMD) | `hwndCaret != hwndParent` check skips unreliable rects |
+
+**Known limitations:**
+
+- **WPF apps (PowerShell ISE):** No Win32 caret, zero-height `GetTextExt` — notify at window origin. Planned fix: UIAutomation fallback (see [CARET_TRACKING_UIA.md](CARET_TRACKING_UIA.md)).
+- **Firefox new tab center search field:** TSF context is the URL bar — notify appears there. Expected behavior.
+
+### 1.2 During composition: TSF text layout sink
 
 **Files:** `TfTextLayoutSink.cpp`, `UIPresenter.cpp`
 
-When a composition is active, `_StartCandidateList` stores the composition range via `_StartLayout(pContextDocument, ec, pRangeComposition)`. The range is used by `_GetTextExt()` which calls `ITfContextView::GetTextExt(_pRangeComposition)` to get the composition's screen rectangle.
+When a composition is active, `_StartCandidateList` stores the composition
+range via `_StartLayout(pContext, ec, pRange)`. The text layout sink monitors
+this range — on every layout change, `_GetTextExt()` calls
+`ITfContextView::GetTextExt(_pRangeComposition)` to get the composition's
+screen rectangle.
 
 ```
 _StartCandidateList
@@ -21,40 +58,53 @@ _StartCandidateList
   → _LayoutChangeNotification(&rcTextExt)  // positions candidate at rcTextExt.bottom
 ```
 
-This is the most accurate method — the app itself reports where the composition text is on screen.
+This is the most accurate method — the app itself reports where the
+composition text is on screen.
 
-### 1.2 Saved composition rect: `_rectCompRange`
+### 1.3 After composition: `_rectCompRange` fallback
 
 **File:** `UIPresenter.cpp`
 
-`_rectCompRange` is saved at the end of every `_LayoutChangeNotification` call (line 1021). It stores the last valid composition rect. Used as fallback when `_GetTextExt` fails (e.g. phrase candidates after commit — the composition is gone but the caret hasn't moved).
+After a candidate is committed, the composition ends — the layout sink has
+no range to query. But the caret hasn't moved, so the last known position
+is still correct.
 
-Used in two places:
-- `_MoveUIWindowsToTextExt` (line 878) — when `_GetTextExt` fails
-- `_StartCandidateList` else branch (line 570) — when starting phrase candidates without composition
+`_rectCompRange` is saved at the end of every `_LayoutChangeNotification`
+call (line 1030). It stores the last valid composition rect. Used in two
+situations:
 
-### 1.3 Fallback: `GetCaretPos` (Win32 caret)
+- **Associated phrase popup** — after committing a candidate, the phrase
+  candidate list needs a position. `_StartCandidateList(nullptr)` falls
+  back to `_rectCompRange` (see §4 for the space hack removal).
+- **`_MoveUIWindowsToTextExt`** — when `_GetTextExt` fails, uses
+  `_rectCompRange` as fallback.
+- **Probe height padding** — `_rectCompRange` height supplements the
+  probe's 2px-height rect from Chromium apps (Issue C above).
 
-**File:** `UIPresenter.cpp` — `_LayoutChangeNotification`, lines 919-923
+`_rectCompRange` is reset on focus change (`ResetCompRange()` in
+`OnSetFocus`) so stale heights from a previous app are never used.
 
-Always called as a secondary signal. `GetCaretPos` returns the caret position of the calling thread's window, then `ClientToScreen` converts to screen coordinates.
+### 1.4 Data sources within `_LayoutChangeNotification`
 
-```cpp
-GetCaretPos(&caretPt);
-ClientToScreen(parentWndHandle, &caretPt);
-```
+All three lifecycle stages feed into `_LayoutChangeNotification`, which
+uses these data sources in priority order:
 
-Used in two situations:
-- **Narrowing:** When the composition rect is wider than the candidate window (e.g. Firefox returns the entire text field), `compRect.left` is narrowed to `caretPt.x` (line 936)
-- **firstCall fallback:** When `GetTextExt` returns an invalid rect, `_candLocation` has no prior value, and it's the first call, a synthetic rect is built from `caretPt` (lines 949-961)
+**a) TSF rect (`lpRect`)** — the rect from `GetTextExt` (composition range
+during typing, selection range from probe). Primary source when valid.
 
-**Limitation:** `GetCaretPos` returns the caret of the IME's thread, not the host app's thread. In cross-process scenarios (e.g. SearchHost.exe, elevated CMD), this returns wrong coordinates.
+**b) `GetCaretPos` / `GetGUIThreadInfo` (Win32 caret)** — always queried
+as a secondary signal. Used for narrowing (when TSF rect is wider than the
+candidate window, e.g. Firefox) and as firstCall fallback.
 
-### 1.4 Last resort: `_candLocation` (cached position)
+**Limitation:** `GetCaretPos` returns the caret of the IME's thread, not
+the host app's thread. In cross-process scenarios (SearchHost.exe, elevated
+CMD) this returns wrong coordinates. `GetGUIThreadInfo` is more reliable
+but WPF apps return `{0,0,0,0}`.
 
-**File:** `UIPresenter.cpp` — `_LayoutChangeNotification`, lines 944-948
-
-When the TSF rect is invalid (e.g. `{0,0,1,1}` from SearchHost.exe) and `_candLocation` has a prior value, the candidate stays at the last successfully computed position. This prevents jumping to screen origin.
+**c) `_candLocation` / `_notifyLocation` (cached position)** — last resort.
+When the TSF rect is invalid (e.g. `{0,0,1,1}` from SearchHost.exe) and a
+prior value exists, the window stays at the last good position. Prevents
+jumping to screen origin.
 
 ---
 
@@ -90,29 +140,28 @@ _LayoutChangeNotification(lpRect, firstCall):
 
 ## 4. Associated phrase — space hack removal (2026-03-31)
 
+Part of the after-composition caret tracking described in §1.3.
+
 **File:** `CandidateHandler.cpp` — `_HandleCandidateWorker`, lines 202-233
 
-### Problem
+**Problem:** After committing a candidate, if "Make Phrase" is enabled, the old
+code inserted a space `L" "` into a temporary composition to provide a range for
+`GetTextExt`. This space was visible to the user.
 
-After committing a candidate, if "Make Phrase" is enabled, the old code inserted a space `L" "` into a temporary composition to provide a range for `GetTextExt`. This space was visible to the user.
+**Fix:** Replaced with direct `_StartCandidateList(nullptr)` call. Three changes
+make this work:
 
-### Fix
+1. **`_StartLayout` updates range on same context** (`TfTextLayoutSink.cpp`) —
+   previously skipped when same context, leaving stale `_pRangeComposition`. Now
+   always updates the range so the null range is properly recorded.
 
-Replaced with direct `_StartCandidateList(nullptr)` call. Three changes make this work:
+2. **`_StartCandidateList` falls back to `_rectCompRange`** (`UIPresenter.cpp`)
+   — when `_GetTextExt` fails (null range), uses `_rectCompRange` saved during
+   the just-committed candidate's positioning.
 
-**1. `_StartLayout` updates range on same context (`TfTextLayoutSink.cpp`)**
-
-Previously, `_StartLayout` skipped entirely when `_pContextDocument == pContextDocument` (same context), leaving a stale `_pRangeComposition`. Now it always updates the range — releases old, stores new — so the null range is properly recorded.
-
-**2. `_StartCandidateList` falls back to `_rectCompRange` (`UIPresenter.cpp`)**
-
-When `_GetTextExt` fails (null range), the else branch passes `_rectCompRange` to `_LayoutChangeNotification`. This rect was saved during the just-committed normal candidate's positioning — the caret hasn't moved, so the position is correct.
-
-**3. `_StartCandidateList` skips `MakeCandidateWindow` if window exists (`UIPresenter.cpp`)**
-
-`MakeCandidateWindow` returns `E_FAIL` when `_pCandidateWnd` is non-null (window already exists). This caused `_EndCandidateList` to destroy the window. Now `_StartCandidateList` checks `_pCandidateWnd` first and skips creation if it already exists.
-
-### Files changed
+3. **`_StartCandidateList` skips `MakeCandidateWindow` if window exists**
+   (`UIPresenter.cpp`) — prevents `E_FAIL` → `_EndCandidateList` destroying an
+   existing window.
 
 | File | Change |
 |------|--------|
@@ -319,3 +368,60 @@ Line 84: leaving OnSetFocus()                ← no ClearNotify called, notify s
 ```
 
 Key finding: **`OnSetFocus` fires on title bar click** — confirmed by debug trace. It fires AFTER the candidate is already dismissed. The notify is not cleared because `OnSetFocus` doesn't call `ClearNotify`.
+
+---
+
+## 10. Verification test matrix
+
+### Different UI frameworks
+
+| App | Framework | Notify position | Candidate position | Emoji (Win+.) | Notes |
+|-----|-----------|-----------------|-------------------|---------------|-------|
+| Notepad | Win32 edit control | | | | Baseline reference |
+| CMD | Console host | | | | hwndCaret guard (Issue D) |
+| Windows Terminal | XAML | | | | Modern console, different from CMD |
+| PowerShell ISE | WPF | Known limitation | | | No Win32 caret; see §10 |
+| Visual Studio 2022 | WPF editor | | | | Multi-caret / IntelliSense |
+| Firefox | Gecko | | | | Different IME handling from Chromium |
+| File Explorer rename (F2) | Win32 lightweight | | | | Minimal edit control |
+
+### Office apps
+
+| App | Input surface | Notify position | Candidate position | Emoji (Win+.) | Notes |
+|-----|---------------|-----------------|-------------------|---------------|-------|
+| Word | Win32/COM | | | | |
+| Excel | Cell + formula bar | | | | hwndCaret guard (Issue D) |
+| PowerPoint | Canvas text box | | | | |
+| Outlook | HTML compose | | | | Different editor from Word |
+| OneNote | Free-form canvas | | | | |
+
+### System surfaces
+
+| App | Type | Notify position | Candidate position | Emoji (Win+.) | Notes |
+|-----|------|-----------------|-------------------|---------------|-------|
+| Win+R (Run dialog) | Minimal edit | | | | |
+| Start Menu / Search | UWP search box | | | | SearchHost.exe {0,0,1,1} rect |
+| Task Manager search | UWP | | | | |
+| Registry Editor (regedit) | Value edit dialog | | | | |
+| mstsc (Remote Desktop) | IME-over-RDP | | | | Cross-process, notoriously tricky |
+
+### Third-party (different toolkits)
+
+| App | Framework | Notify position | Candidate position | Emoji (Win+.) | Notes |
+|-----|-----------|-----------------|-------------------|---------------|-------|
+| VS Code | Electron/Chromium | | | | |
+| Edge | Chromium | | | | |
+| LINE | Chromium | | | | Primary emoji fix target |
+| Teams | Electron | | | | |
+| Discord | Electron | | | | Unique composition handling |
+| IntelliJ / Android Studio | Java/Swing | | | | Completely different IME integration |
+| Sublime Text | Custom renderer | | | | |
+| LibreOffice Writer | Independent IME | | | | |
+
+### Stress / edge cases
+
+| App | Scenario | Notify position | Candidate position | Emoji (Win+.) | Notes |
+|-----|----------|-----------------|-------------------|---------------|-------|
+| Elevated (Run as Admin) app | Privilege boundary | | | | IME injection across UIPI |
+| WSL terminal | Linux subsystem | | | | Input through WSL layer |
+| Game chat (e.g. Steam overlay) | DirectX overlay | | | | |

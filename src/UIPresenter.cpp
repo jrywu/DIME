@@ -1011,9 +1011,9 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall)
 				debugPrint(L"move notify to x = %d, y = %d", _notifyLocation.x, _notifyLocation.y);
 				_notifyLocation.x = candPt.x;
 			}
-			else if (!_pCandidateWnd)
+			else if (!_pCandidateWnd || !_pCandidateWnd->_IsWindowVisible())
 			{
-				// No candidate window at all — position notify independently
+				// No candidate window, or candidate not visible (e.g. probe-only notify) — position notify independently
 				_pNotifyWnd->_GetClientRect(&notifyRect);
 				if (((compRect.right - compRect.left) > (notifyRect.right - notifyRect.left)) && caretPt.x < compRect.right && caretPt.x >= compRect.left)
 					compRect.left = caretPt.x;
@@ -1024,7 +1024,6 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall)
 				_notifyLocation.y = notifyPt.y;
 				debugPrint(L"move notify to x = %d, y = %d", notifyPt.x, notifyPt.y);
 			}
-			// else: candidate exists but not visible yet — skip, wait for NOTIFY: path to position
 
 		}
 	}
@@ -1086,8 +1085,12 @@ HRESULT CUIPresenter::_NotifyChangeNotification(_In_ enum NOTIFY_WND action, _In
 						{
 							if(SUCCEEDED(pDocumentMgr->GetTop(&pContext)) && pContext)
 							{
-								ShowNotify(TRUE, 0, (UINT) wParam);
 								_pTextService->_ProbeComposition(pContext);
+								// Apply cached position before showing — the probe may not have
+								// updated position (e.g. zero-height rect from PowerShell ISE).
+								if (_pNotifyWnd && _notifyLocation.x > UI::DEFAULT_WINDOW_X)
+									_pNotifyWnd->_Move(_notifyLocation.x, _notifyLocation.y);
+								ShowNotify(TRUE, 0, (UINT) wParam);
 							}
 
 						}
@@ -1556,7 +1559,12 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange* pNotifyText, _In_opt_ UINT 
 				}
 				
 
-				ShowNotify(TRUE, delayShow, timeToHide);	
+				// Probe before showing — position notify correctly before it becomes visible.
+				// Must run before ShowNotify when delayShow == 0 (immediate show).
+				if(_pTextService && delayShow == 0 && _GetContextDocument() == nullptr && notifyType == NOTIFY_TYPE::NOTIFY_CHN_ENG )
+					_pTextService->_ProbeComposition(pContext);
+
+				ShowNotify(TRUE, delayShow, timeToHide);
 
 				if(delayShow == 0)
 				{
@@ -1564,15 +1572,12 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange* pNotifyText, _In_opt_ UINT 
 					{
 						if( _notifyLocation.x  < (int) _pNotifyWnd->_GetWidth() )
 							_pNotifyWnd->_Move(_notifyLocation.x  + _pCandidateWnd->_GetWidth() + SHADOW_SPREAD / 2, _notifyLocation.y);
-						else		
+						else
 							_pNotifyWnd->_Move(_notifyLocation.x  - _pNotifyWnd->_GetWidth() - SHADOW_SPREAD / 2, _notifyLocation.y);
 					}
 					else
 						_pNotifyWnd->_Move(_notifyLocation.x, _notifyLocation.y);
 				}
-				//means TextLayoutSink is not working. We need to ProbeComposition to start layout
-				if(_pTextService && delayShow == 0 && _GetContextDocument() == nullptr && notifyType == NOTIFY_TYPE::NOTIFY_CHN_ENG )
-					_pTextService->_ProbeComposition(pContext);
 
 			}
 
@@ -1591,6 +1596,12 @@ BOOL CUIPresenter::IsNotifyShown()
 	else
 		return FALSE;
 }
+void CUIPresenter::ResetCompRange()
+{
+	debugPrint(L"CUIPresenter::ResetCompRange()");
+	_rectCompRange = { UI::DEFAULT_WINDOW_X, UI::DEFAULT_WINDOW_Y, UI::DEFAULT_WINDOW_X, UI::DEFAULT_WINDOW_Y };
+}
+
 BOOL CUIPresenter::IsCandShown()
 {
 	if(_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())

@@ -155,6 +155,8 @@ public:
 	void ClearAll();
 	void ShowNotifyText(_In_ CStringRange *pNotifyText, _In_opt_ UINT delayShow = 0, _In_opt_ UINT timeToHide = 0, _In_opt_ NOTIFY_TYPE notifyType  = NOTIFY_TYPE::NOTIFY_OTHERS);
 	BOOL IsNotifyShown();
+	LONG GetCompRangeHeight() const { return _rectCompRange.bottom - _rectCompRange.top; }
+	void ResetCompRange();
 
 	BOOL isUILessMode() const {return !_isShowMode;}
 private:

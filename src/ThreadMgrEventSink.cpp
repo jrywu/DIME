@@ -81,6 +81,11 @@ STDAPI CDIME::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_opt_ ITfDocument
     pDocMgrPrevFocus;
 	ITfContext* pContext = nullptr;
 
+	// Reset stored comp range height on focus change so stale heights from a
+	// previous app are not used to pad probe rects in the new context.
+	if (_pUIPresenter && pDocMgrFocus != pDocMgrPrevFocus)
+		_pUIPresenter->ResetCompRange();
+
 	_InitTextEditSink(pDocMgrFocus);
 	
 	if(pDocMgrFocus && !_UpdateLanguageBarOnSetFocus(pDocMgrFocus))

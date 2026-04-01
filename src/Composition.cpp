@@ -565,15 +565,14 @@ void CDIME::_ProbeComposition(_In_ ITfContext *pContext)
 {
 	debugPrint(L"CDIME::_ProbeComposition() pContext = %x\n", pContext);
 
-
 	CProbeComposistionEditSession* pProbeComposistionEditSession = new (std::nothrow) CProbeComposistionEditSession(this, pContext);
 
 	if (pProbeComposistionEditSession && pContext)
 	{
-		
+
 		HRESULT hrES = S_OK, hr = S_OK;
 		hr = pContext->RequestEditSession(_tfClientId, pProbeComposistionEditSession, TF_ES_ASYNCDONTCARE | TF_ES_READWRITE, &hrES);
-		
+
 		debugPrint(L"CDIME::_ProbeComposition() RequestEdisession HRESULT = %x, return HRESULT  = %x\n", hrES, hr );
 
 		pProbeComposistionEditSession->Release();
@@ -584,53 +583,82 @@ void CDIME::_ProbeComposition(_In_ ITfContext *pContext)
 
 HRESULT CDIME::_ProbeCompositionRangeNotification(_In_ TfEditCookie ec, _In_ ITfContext *pContext)
 {
-	debugPrint(L"CDIME::_ProbeCompositionRangeNotification(), \n");
+	debugPrint(L"CDIME::_ProbeCompositionRangeNotification()\n");
 
+	if (pContext == nullptr)
+		return E_INVALIDARG;
 
-	HRESULT hr = S_OK;
-	if(!_IsComposing())
-		_StartComposition(pContext);
-	
-	hr = E_FAIL;
-    ULONG fetched = 0;
-    TF_SELECTION tfSelection;
+	HRESULT hr = E_FAIL;
+	ULONG fetched = 0;
+	TF_SELECTION tfSelection;
 
-    if ( pContext == nullptr || (hr = pContext->GetSelection(ec, TF_DEFAULT_SELECTION, 1, &tfSelection, &fetched)) != S_OK || fetched != 1 ||tfSelection.range==nullptr)
+	// Get selection range (collapsed = caret position) — no composition needed
+	hr = pContext->GetSelection(ec, TF_DEFAULT_SELECTION, 1, &tfSelection, &fetched);
+	if (FAILED(hr) || fetched != 1 || tfSelection.range == nullptr)
+		return hr;
+
+	// Get text extent of selection range directly
+	ITfContextView* pContextView = nullptr;
+	hr = pContext->GetActiveView(&pContextView);
+	if (SUCCEEDED(hr) && pContextView)
 	{
-		_TerminateComposition(ec,pContext);
-        return hr;
-	}
-	tfSelection.range->Release();
-   
-	
-	ITfRange *pRange;
-	ITfContextView* pContextView;
-	ITfDocumentMgr* pDocumgr;
-	if (_pComposition&&SUCCEEDED(_pComposition->GetRange(&pRange)) && pRange)
-	{
-		if(pContext && SUCCEEDED(pContext->GetActiveView(&pContextView)) && pContextView)
+		RECT rcExt = {0, 0, 0, 0};
+		BOOL isClipped = TRUE;
+		hr = pContextView->GetTextExt(ec, tfSelection.range, &rcExt, &isClipped);
+		debugPrint(L"CDIME::_ProbeCompositionRangeNotification() GetTextExt hr=0x%08X top=%d bottom=%d left=%d right=%d",
+			hr, rcExt.top, rcExt.bottom, rcExt.left, rcExt.right);
+		if (SUCCEEDED(hr) && _pUIPresenter && (rcExt.bottom - rcExt.top > 0))  // require non-zero height; LINE returns zero-height junk rects on initial focus
 		{
-			if(pContext && SUCCEEDED( pContext->GetDocumentMgr(&pDocumgr)) && pDocumgr && _pThreadMgr &&_pUIPresenter)
-			{
-				ITfDocumentMgr* pFocusDocuMgr;
-				_pThreadMgr->GetFocus(&pFocusDocuMgr);
-				if(pFocusDocuMgr == pDocumgr)
-				{
-					_pUIPresenter->_StartLayout(pContext, ec, pRange);
-					_pUIPresenter->_MoveUIWindowsToTextExt();
-				}
-				else 
-					_pUIPresenter->ClearNotify();
+			// Pad rect height — Chromium selection ranges return ~2px height instead of full text line.
+			// Use last known composition height if available, otherwise use a DPI-scaled default minimum.
+			LONG rectHeight = rcExt.bottom - rcExt.top;
+			LONG compHeight = _pUIPresenter->GetCompRangeHeight();
+			if (compHeight > 0 && rectHeight < compHeight)
+				rcExt.bottom = rcExt.top + compHeight;
+			else if (rectHeight < (LONG)MulDiv(16, CConfig::GetDpiForHwnd(NULL), 96))
+				rcExt.bottom = rcExt.top + MulDiv(16, CConfig::GetDpiForHwnd(NULL), 96);
+			debugPrint(L"CDIME::_ProbeCompositionRangeNotification() padded bottom=%d", rcExt.bottom);
 
-				pDocumgr->Release();
+			// Sanity check: if the system caret is in a different window from the
+			// TSF context, GetTextExt likely returns the wrong UI element's rect
+			// (e.g. Excel formula bar instead of cell, CMD console host).
+			// Skip the probe so the notify keeps its position from GetGUIThreadInfo.
+			BOOL rectIsReliable = TRUE;
+			HWND hwndParent = nullptr;
+			pContextView->GetWnd(&hwndParent);
+			if (!hwndParent) hwndParent = GetForegroundWindow();
+			{
+				GUITHREADINFO gti = { sizeof(GUITHREADINFO) };
+				if (GetGUIThreadInfo(0, &gti))
+				{
+					debugPrint(L"CDIME::_ProbeCompositionRangeNotification() sanity check: hwndParent=0x%X hwndCaret=0x%X",
+						hwndParent, gti.hwndCaret);
+					if (gti.hwndCaret != 0 && gti.hwndCaret != hwndParent)
+					{
+						debugPrint(L"CDIME::_ProbeCompositionRangeNotification() caret in different window, skipping layout update");
+						rectIsReliable = FALSE;
+					}
+				}
 			}
-		pContextView->Release();
+
+			if (rectIsReliable)
+			{
+				ITfDocumentMgr* pDocumgr = nullptr;
+				if (SUCCEEDED(pContext->GetDocumentMgr(&pDocumgr)) && pDocumgr && _pThreadMgr)
+				{
+					ITfDocumentMgr* pFocusDocuMgr = nullptr;
+					_pThreadMgr->GetFocus(&pFocusDocuMgr);
+					if (pFocusDocuMgr == pDocumgr)
+						_pUIPresenter->_LayoutChangeNotification(&rcExt);
+					else
+						_pUIPresenter->ClearNotify();
+					pDocumgr->Release();
+				}
+			}
 		}
-		pRange->Release();
+		pContextView->Release();
 	}
 
-
-    
-	_TerminateComposition(ec,pContext);
+	tfSelection.range->Release();
 	return hr;
 }
