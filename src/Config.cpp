@@ -41,6 +41,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "DictionarySearch.h"
 #include "File.h"
 #include "TableDictionaryEngine.h"
+#include "TfInputProcessorProfile.h"
 #include "Aclapi.h"
 #include "CompositionProcessorEngine.h"
 #ifndef DIMESettings
@@ -866,6 +867,42 @@ void CConfig::clearReverseConvervsionInfoList()
 	}
 	_reverseConvervsionInfoList->Clear();
 }
+
+void CConfig::EnumerateReverseConversionProviders(LANGID langid)
+{
+	CTfInputProcessorProfile* profile = new (std::nothrow) CTfInputProcessorProfile();
+	if (profile && SUCCEEDED(profile->CreateInstance()))
+	{
+		if (langid == 0)
+			profile->GetCurrentLanguage(&langid);
+		CDIMEArray<LanguageProfileInfo> langProfileInfoList;
+		profile->GetReverseConversionProviders(langid, &langProfileInfoList);
+		SetReverseConvervsionInfoList(&langProfileInfoList);
+	}
+	if (profile) delete profile;
+}
+
+void CConfig::SetReverseConversionSelection(UINT sel)
+{
+	if (sel == 0)
+	{
+		_reverseConverstionCLSID = CLSID_NULL;
+		_reverseConversionGUIDProfile = CLSID_NULL;
+		_reverseConversionDescription = new (std::nothrow) WCHAR[4];
+		if(_reverseConversionDescription)
+			StringCchCopy(_reverseConversionDescription, 4, L"(無)");
+	}
+	else
+	{
+		sel--;
+		_reverseConverstionCLSID = _reverseConvervsionInfoList->GetAt(sel)->clsid;
+		_reverseConversionGUIDProfile = _reverseConvervsionInfoList->GetAt(sel)->guidProfile;
+		_reverseConversionDescription = new (std::nothrow) WCHAR[wcslen(_reverseConvervsionInfoList->GetAt(sel)->description) + 1];
+		if(_reverseConversionDescription)
+			StringCchCopy(_reverseConversionDescription, wcslen(_reverseConvervsionInfoList->GetAt(sel)->description) + 1, _reverseConvervsionInfoList->GetAt(sel)->description);
+	}
+}
+
 
 BOOL CConfig::parseCINFile(_In_ LPCWSTR pathToLoad, _In_ LPCWSTR pathToWrite, _In_ BOOL customTableMode, _In_ BOOL suppressUI)
 {

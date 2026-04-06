@@ -187,6 +187,18 @@ Suppress all stdout/stderr output. Useful in scripts that only care about the ex
 
 ---
 
+### `--reset-ui`
+Reset the settings window position and size to defaults. Deletes the saved `WindowPlacement` from the registry (`HKCU\SOFTWARE\DIME\SettingsUI`), then continues normal startup. The window opens at the default centered position with default dimensions.
+
+No `--mode` required. Can combine with `--mode` to reset and launch to a specific IME tab:
+
+```
+DIMESettings.exe --reset-ui
+DIMESettings.exe --reset-ui --mode array
+```
+
+---
+
 ## Complete Key Reference
 
 ### Boolean keys (0 = off, 1 = on) — all modes unless noted

@@ -249,15 +249,22 @@ public:
 	static void SetDoHanConvert(BOOL doHanConvert) { _doHanConvert = doHanConvert;}
 	static BOOL GetDoHanConvert() {return _doHanConvert;}
 
+	static void LoadColorsForMode(IME_COLOR_MODE mode);
+	static void SaveColorsForMode(IME_COLOR_MODE mode);
+
 	//reversion conversion
+	static void EnumerateReverseConversionProviders(LANGID langid = 1028);
+	static void SetReverseConversionSelection(UINT sel);
 	static void SetReverseConvervsionInfoList (CDIMEArray <LanguageProfileInfo> *reverseConvervsionInfoList);
-	CDIMEArray <LanguageProfileInfo> *GetReverseConvervsionInfoList() {return _reverseConvervsionInfoList;}
+	static CDIMEArray <LanguageProfileInfo> *GetReverseConvervsionInfoList() {return _reverseConvervsionInfoList;}
 	static void SetReverseConverstionCLSID(CLSID reverseConverstionCLSID) { _reverseConverstionCLSID = reverseConverstionCLSID;}
 	static CLSID GetReverseConverstionCLSID() {return _reverseConverstionCLSID;}
 	static void SetReverseConversionGUIDProfile(GUID reverseConversionGUIDProfile) { _reverseConversionGUIDProfile = reverseConversionGUIDProfile;}
 	static GUID GetReverseConversionGUIDProfile() {return _reverseConversionGUIDProfile;}
 	static void SetReverseConversionDescription(WCHAR* reverseConversionDescription) { _reverseConversionDescription = reverseConversionDescription;}
 	static WCHAR* GetReverseConversionDescription() {return _reverseConversionDescription;}
+
+	static const ColorInfo* GetColors() { return colors; }
 
 	//phonetic keyboard layout
 	static void setPhoneticKeyboardLayout(PHONETIC_KEYBOARD_LAYOUT layout) { _phoneticKeyboardLayout = layout; }
@@ -379,8 +386,6 @@ private:
 	static _T_SetThreadDpiAwarenessContext _SetThreadDpiAwarenessContext;
 	
 
-	static void LoadColorsForMode(IME_COLOR_MODE mode);
-	static void SaveColorsForMode(IME_COLOR_MODE mode);
 	static IME_COLOR_MODE GetComboSelectedMode(HWND hCombo);
 
 	static void ParseConfig(HWND hDlg, IME_MODE imeMode, BOOL initDiag = FALSE);

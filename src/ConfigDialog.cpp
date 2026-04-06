@@ -1510,23 +1510,7 @@ INT_PTR CALLBACK CConfig::CommonPropertyPageWndProc(HWND hDlg, UINT message, WPA
 			hwnd = GetDlgItem(hDlg, IDC_COMBO_REVERSE_CONVERSION);
 			sel = (UINT)SendMessage(hwnd, CB_GETCURSEL, 0, 0);
 			debugPrint(L"selected reverse conversion item is %d", sel);
-			if (sel == 0)
-			{
-				_reverseConverstionCLSID = CLSID_NULL;
-				_reverseConversionGUIDProfile = CLSID_NULL;
-				_reverseConversionDescription = new (std::nothrow) WCHAR[4];
-				if(_reverseConversionDescription)
-					StringCchCopy(_reverseConversionDescription, 4, L"(無)");
-			}
-			else
-			{
-				sel--;
-				_reverseConverstionCLSID = _reverseConvervsionInfoList->GetAt(sel)->clsid;
-				_reverseConversionGUIDProfile = _reverseConvervsionInfoList->GetAt(sel)->guidProfile;
-				_reverseConversionDescription = new (std::nothrow) WCHAR[wcslen(_reverseConvervsionInfoList->GetAt(sel)->description) + 1];
-				if(_reverseConversionDescription)
-					StringCchCopy(_reverseConversionDescription, wcslen(_reverseConvervsionInfoList->GetAt(sel)->description) + 1, _reverseConvervsionInfoList->GetAt(sel)->description);
-			}
+			SetReverseConversionSelection(sel);
 
 			if (imeMode == IME_MODE::IME_MODE_ARRAY)
 			{

@@ -1,8 +1,8 @@
 # DIME Test Plan
 
-**Version**: 3.3 (DPI scaling unit tests; DIMESettings Per-Monitor V2 DPI awareness)
-**Last Updated**: 2026-03-24
-**Status**: ✅ **IME Core 82.4% — TARGET MET** — 568 tests passing
+**Version**: 3.4 (Settings controller unit tests; modern settings UI)
+**Last Updated**: 2026-04-06
+**Status**: ✅ **IME Core 82.4% — TARGET MET** — 589 tests passing
 
 ---
 
@@ -15,9 +15,9 @@
 | **IME Core Coverage** | ≥80% | **82.4%** | ✅ **TARGET MET** (2,316/2,811 lines) |
 | **IME UI Coverage** | ≥30% | **29.4%** | ⚠️ Near target (1,362/4,630 lines) |
 | **TSF Interface Coverage** | ≥15% | **6.9%** | ⚠️ Limited (345/4,971 lines) |
-| **Unit Tests** | — | **297 tests** | ✅ COMPLETE |
+| **Unit Tests** | — | **318 tests** | ✅ COMPLETE |
 | **Integration Tests** | — | **271 tests** | ✅ COMPLETE |
-| **Total Automated Tests** | — | **568 passing** | ✅ COMPLETE |
+| **Total Automated Tests** | — | **589 passing** | ✅ COMPLETE |
 | **Execution Time** | < 60s | **~22 seconds** | ✅ EXCELLENT |
 | **CI/CD Ready** | Yes | **Yes** | ✅ AUTO-RUN |
 
@@ -138,7 +138,7 @@ OpenCppCoverage --sources DIME --excluded_sources tests ^
 
 ## Test Suite Summary
 
-### Unit Tests Overview (297 tests, ~15 seconds)
+### Unit Tests Overview (318 tests, ~15 seconds)
 
 | Suite | Tests | Coverage Target | Actual Coverage | Files Tested |
 |-------|-------|----------------|-----------------|--------------|
@@ -157,7 +157,8 @@ OpenCppCoverage --sources DIME --excluded_sources tests ^
 | **UT-CV: Custom Table Validation** | 17 tests | ≥90% | ~90% | `Config.cpp` (CustomTableValidationUnitTest class) |
 | **UT-PT: Palette round-trip + backward compat** | 11 tests | ≥90% | ~90% | `Config.cpp` (ConfigTest class) |
 | **UT-DPI: DPI Scaling** | 16 tests | 100% | **100%** | `BaseStructure.h` (`ScaleForDpi`), MulDiv font math (`DpiScalingTest.cpp`) |
-| **Total Unit Tests** | **297** | **≥85%** | **~92%** | **Core functionality** |
+| **UT-SM: Settings Controller** | 21 tests | ≥90% | ~90% | `SettingsController.cpp`, `SettingsPageLayout.cpp` (`SettingsControllerTest.cpp`) |
+| **Total Unit Tests** | **318** | **≥85%** | **~92%** | **Core functionality** |
 
 *UT-06 has room for improvement in wildcard/reverse lookup coverage
 

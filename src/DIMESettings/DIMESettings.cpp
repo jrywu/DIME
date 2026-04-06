@@ -10,6 +10,7 @@
 #include "..\Config.h"
 #include "..\BuildInfo.h"
 #include "..\TfInputProcessorProfile.h"
+#include "SettingsWindow.h"
 
 #include <io.h>      // _open_osfhandle, _dup2, _fileno
 #include <fcntl.h>   // _O_WRONLY, _O_TEXT
@@ -47,7 +48,12 @@ static void SetAppPreferredMode(int mode)
     }
 }
 
-#pragma comment(lib, "ComCtl32.lib")  
+#pragma comment(lib, "ComCtl32.lib")
+// Enable ComCtl32 v6 (visual styles, TaskDialogIndirect support)
+#pragma comment(linker, "\"/manifestdependency:type='win32' \
+name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
+processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
+#include <commctrl.h>  
 constexpr wchar_t DIME_SETTINGS_INSTANCE_MUTEX_NAME[] = L"{B11F1FB2-3ECC-409E-A036-4162ADCEF1A3}";
 
 // Global Variables:
@@ -112,8 +118,56 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 {
     UNREFERENCED_PARAMETER(hPrevInstance);
 
-    // CLI mode: if any arguments are present, run headless and return immediately.
+    // Initialize Windows version flags (same as DllMain.cpp)
+    if (IsWindowsVersionOrGreater(10, 0, 17763))
+        Global::isWindows1809OrLater = TRUE;
+
+    // Check for --mode (GUI launch to specific IME mode) vs --legacy vs CLI commands
+    bool useLegacyUI = false;
+    bool useNewUI = false;
+    IME_MODE guiMode = IME_MODE::IME_MODE_DAYI;
     if (lpCmdLine && lpCmdLine[0] != L'\0')
+    {
+        // Parse --legacy flag
+        if (wcsstr(lpCmdLine, L"--legacy")) {
+            useLegacyUI = true;
+        }
+        // Parse --reset-ui flag (reset window placement, not a CLI command — launches GUI)
+        if (wcsstr(lpCmdLine, L"--reset-ui")) {
+            HKEY hKey;
+            if (RegOpenKeyExW(HKEY_CURRENT_USER, L"SOFTWARE\\DIME\\SettingsUI", 0, KEY_WRITE, &hKey) == ERROR_SUCCESS) {
+                RegDeleteValueW(hKey, L"WindowPlacement");
+                RegCloseKey(hKey);
+            }
+            useNewUI = true; // treat as GUI launch, not CLI
+        }
+        // Parse --mode for GUI launch (only if no CLI commands present)
+        const wchar_t* modeArg = wcsstr(lpCmdLine, L"--mode ");
+        // Note: --reset-ui must not match --reset (CLI command). Check for --reset NOT followed by -
+        bool hasResetCmd = false;
+        { const wchar_t* r = wcsstr(lpCmdLine, L"--reset");
+          if (r && r[7] != L'-') hasResetCmd = true; }
+        bool hasCLICommand = wcsstr(lpCmdLine, L"--get") || wcsstr(lpCmdLine, L"--set") ||
+            hasResetCmd || wcsstr(lpCmdLine, L"--import") ||
+            wcsstr(lpCmdLine, L"--export") || wcsstr(lpCmdLine, L"--load") ||
+            wcsstr(lpCmdLine, L"--list") || wcsstr(lpCmdLine, L"--help");
+        if (modeArg && !hasCLICommand && !useLegacyUI) {
+            modeArg += 7; // skip "--mode "
+            wchar_t modeName[32] = {};
+            int j = 0;
+            while (modeArg[j] && modeArg[j] != L' ' && j < 31) {
+                modeName[j] = modeArg[j]; j++;
+            }
+            IME_MODE parsed = SettingsModel::StringToImeMode(modeName);
+            if (parsed != IME_MODE::IME_MODE_NONE) {
+                guiMode = parsed;
+                useNewUI = true;
+            }
+        }
+    }
+
+    // CLI mode: if arguments are present and not a GUI launch, run headless.
+    if (lpCmdLine && lpCmdLine[0] != L'\0' && !useNewUI && !useLegacyUI)
     {
         // Check if the parent already redirected our stdout (pipe from
         // FOR /F, | pipe, or > file).  GUI-subsystem apps receive inherited
@@ -207,7 +261,21 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             ::ReleaseMutex(hMutexOneInstance);
             ::CloseHandle(hMutexOneInstance);
         }
-        SwitchToThisWindow(FindWindowW(NULL, L"DIME設定"), FALSE);
+        // Try new UI window first, then old dialog
+        HWND hExisting = FindWindowW(SETTINGS_WND_CLASS, nullptr);
+        if (!hExisting)
+            hExisting = FindWindowW(NULL, L"DIME設定");
+        if (hExisting) {
+            // Send mode info via WM_COPYDATA if we have --mode
+            if (useNewUI && lpCmdLine) {
+                COPYDATASTRUCT cds = {};
+                cds.dwData = WM_SETTINGS_SWITCH_MODE;
+                cds.cbData = (DWORD)(wcslen(lpCmdLine) + 1) * sizeof(WCHAR);
+                cds.lpData = (void*)lpCmdLine;
+                SendMessage(hExisting, WM_COPYDATA, 0, (LPARAM)&cds);
+            }
+            SetForegroundWindow(hExisting);
+        }
         return -1;
     }
 
@@ -251,19 +319,55 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         }
     }
 
+    // Set preferred app mode BEFORE any window is created.
+    // ForceDark(2) makes ALL windows dark including MessageBox; AllowDark(1) only affects opt-in windows.
+    if (CConfig::IsSystemDarkTheme())
+        SetAppPreferredMode(2);
+
+    InitCommonControls();
+
+    // ====================================================================
+    // New UI: sidebar + card-based settings window
+    // Launch when: no args (default), or --mode <name> without CLI commands
+    // ====================================================================
+    if (!useLegacyUI) {
+        // Default to new UI
+        if (!useNewUI) {
+            // No --mode specified, default to Dayi
+            guiMode = IME_MODE::IME_MODE_DAYI;
+        }
+        // Initialize COM for TSF profile enumeration
+        CoInitialize(nullptr);
+        // Enumerate reverse conversion providers (exact copy from legacy path)
+        {
+            CTfInputProcessorProfile* profile = new CTfInputProcessorProfile();
+            LANGID langid = 1028;  // CHT Language ID
+            if (SUCCEEDED(profile->CreateInstance())) {
+                if (langid == 0)
+                    profile->GetCurrentLanguage(&langid);
+                CDIMEArray<LanguageProfileInfo> langProfileInfoList;
+                profile->GetReverseConversionProviders(langid, &langProfileInfoList);
+                CConfig::SetReverseConvervsionInfoList(&langProfileInfoList);
+            }
+            delete profile;
+        }
+        // Load config so reverse conversion selection is read
+        CConfig::LoadConfig(guiMode);
+        int result = SettingsWindow::Run(hInstance, nCmdShow, guiMode);
+        if (hMutexOneInstance) {
+            ::ReleaseMutex(hMutexOneInstance);
+            ::CloseHandle(hMutexOneInstance);
+        }
+        return result;
+    }
+
+    // ====================================================================
+    // Legacy UI: old launcher dialog + PropertySheet (--legacy flag)
+    // ====================================================================
     HWND hDlg;
     MSG msg;
     BOOL ret;
 
-    // Set preferred app mode BEFORE any window is created.
-    // In dark mode: AllowDark(1) so our windows can opt-in.
-    // In light mode: do NOT call SetPreferredAppMode at all — Windows defaults to
-    // light and any call here primes uxtheme to track the window, causing
-    // WM_THEMECHANGED broadcasts from the property sheet to flip the title bar.
-    if (CConfig::IsSystemDarkTheme())
-        SetAppPreferredMode(1);
-
-    InitCommonControls();
     hDlg = CreateDialogParam(hInst, MAKEINTRESOURCE(IDD_DIMESETTINGS), 0, WndProc, 0);
     ShowWindow(hDlg, nCmdShow);
 
@@ -394,19 +498,17 @@ static void showIMESettings(HWND hDlg, IME_MODE imeMode)
         StringCchCat(dialogCaption, MAX_PATH, L"DIME 傳統注音輸入法設定");
     }
     // Reload reverse conversion list from system.
+    CConfig::EnumerateReverseConversionProviders(langid);
     if (SUCCEEDED(profile->CreateInstance()))
     {
         if(langid == 0)
             profile->GetCurrentLanguage(&langid);
-        
+
         if (guidProfile == GUID_NULL)
         {
             CLSID clsid;
             profile->GetDefaultLanguageProfile(langid, GUID_TFCAT_TIP_KEYBOARD, &clsid, &guidProfile);
         }
-        CDIMEArray <LanguageProfileInfo> langProfileInfoList;
-        profile->GetReverseConversionProviders(langid, &langProfileInfoList);
-        CConfig::SetReverseConvervsionInfoList(&langProfileInfoList);
     }
     // Load config file and set imeMode (will filtered out self from reverse conversion list)
     CConfig::LoadConfig(imeMode);
@@ -503,7 +605,7 @@ INT_PTR CALLBACK WndProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
         // In light mode, calling SetAppPreferredMode triggers uxtheme tracking
         // that can flip the title bar on subsequent WM_THEMECHANGED storms.
         if (s_isDarkTheme)
-            SetAppPreferredMode(1);
+            SetAppPreferredMode(2);
         if (s_hBrushDlgBg) { DeleteObject(s_hBrushDlgBg); s_hBrushDlgBg = nullptr; }
         if (s_hBrushControlBg) { DeleteObject(s_hBrushControlBg); s_hBrushControlBg = nullptr; }
         if (s_isDarkTheme) {

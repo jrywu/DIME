@@ -67,6 +67,7 @@
     </Link>
     <ResourceCompile>
       <PreprocessorDefinitions>DIMESettings;_UNICODE;UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -88,6 +89,7 @@
     </Link>
     <ResourceCompile>
       <PreprocessorDefinitions>DIMESettings;_UNICODE;UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -96,6 +98,11 @@
     <ClInclude Include="..\Globals.h" />
     <ClInclude Include="..\resource.h" />
     <ClInclude Include="CLI.h" />
+    <ClInclude Include="SettingsKeys.h" />
+    <ClInclude Include="SettingsController.h" />
+    <ClInclude Include="SettingsWindow.h" />
+    <ClInclude Include="SettingsPageLayout.h" />
+    <ClInclude Include="SettingsGeometry.h" />
     <ClInclude Include="DIMESettings.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="DIMESettingsResource.h" />
@@ -115,6 +122,10 @@
     <ClCompile Include="..\TfInputProcessorProfile.cpp" />
     <ClCompile Include="CLI.cpp" />
     <ClCompile Include="DIMESettings.cpp" />
+    <ClCompile Include="SettingsController.cpp" />
+    <ClCompile Include="SettingsWindow.cpp" />
+    <ClCompile Include="SettingsPageLayout.cpp" />
+    <ClCompile Include="SettingsGeometry.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\DIME.rc" />

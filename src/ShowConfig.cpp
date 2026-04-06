@@ -43,26 +43,79 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //----------------------------------------------------------------------------
 // static dialog procedure
 
+// Set to false to use new DIMESettings.exe UI, true to use legacy inline PropertySheet.
+// Toggle this flag to switch between new and old settings UI during development.
+static bool s_useLegacyUI = false;
+
 HRESULT CDIME::Show(_In_opt_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID inRefGuidProfile)
 {
 	debugPrint(L"CDIME::Show()");
 
 	if (_IsStoreAppMode() || _IsUILessMode() || _IsSecureMode()) return S_OK;
 
+	// Determine IME mode for the settings UI
+	IME_MODE settingsMode = Global::imeMode;
+	if (inRefGuidProfile == GUID_NULL)
+		settingsMode = Global::imeMode;
+	else if (inRefGuidProfile == Global::DIMEDayiGuidProfile)
+		settingsMode = IME_MODE::IME_MODE_DAYI;
+	else if (inRefGuidProfile == Global::DIMEPhoneticGuidProfile)
+		settingsMode = IME_MODE::IME_MODE_PHONETIC;
+	else if (inRefGuidProfile == Global::DIMEArrayGuidProfile)
+		settingsMode = IME_MODE::IME_MODE_ARRAY;
+	else if (inRefGuidProfile == Global::DIMEGenericGuidProfile)
+		settingsMode = IME_MODE::IME_MODE_GENERIC;
+
+	if (_IsComposing() && _pContext) _EndComposition(_pContext);
+	_DeleteCandidateList(TRUE, _pContext);
+
+	// ================================================================
+	// New UI: launch DIMESettings.exe --mode <mode>
+	// ================================================================
+	if (!s_useLegacyUI) {
+		// Map IME mode to --mode argument string
+		const wchar_t* modeName = L"dayi";
+		switch (settingsMode) {
+		case IME_MODE::IME_MODE_DAYI:     modeName = L"dayi"; break;
+		case IME_MODE::IME_MODE_ARRAY:    modeName = L"array"; break;
+		case IME_MODE::IME_MODE_PHONETIC: modeName = L"phonetic"; break;
+		case IME_MODE::IME_MODE_GENERIC:  modeName = L"generic"; break;
+		default: break;
+		}
+
+		// Build path to DIMESettings.exe in %ProgramFiles%\DIME\ (or %ProgramW6432%\DIME\)
+		WCHAR exePath[MAX_PATH] = {};
+		WCHAR programFiles[MAX_PATH] = {};
+		if (GetEnvironmentVariable(L"ProgramW6432", programFiles, MAX_PATH) == 0)
+			GetEnvironmentVariable(L"ProgramFiles", programFiles, MAX_PATH);
+		StringCchPrintf(exePath, MAX_PATH, L"%s\\DIME\\DIMESettings.exe", programFiles);
+
+		// Launch DIMESettings.exe --mode <mode>
+		WCHAR cmdLine[MAX_PATH] = {};
+		StringCchPrintf(cmdLine, MAX_PATH, L"\"%s\" --mode %s", exePath, modeName);
+		debugPrint(L"CDIME::Show() launching: %s", cmdLine);
+
+		STARTUPINFOW si = { sizeof(si) };
+		PROCESS_INFORMATION pi = {};
+		if (CreateProcessW(exePath, cmdLine, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi)) {
+			// Don't wait — DIMESettings runs independently.
+			// If already running, DIMESettings handles single-instance via mutex + WM_COPYDATA.
+			CloseHandle(pi.hProcess);
+			CloseHandle(pi.hThread);
+			return S_OK;
+		}
+		debugPrint(L"CDIME::Show() CreateProcess failed: %d — falling through to legacy UI", GetLastError());
+		// Fall through to legacy UI if DIMESettings.exe not found
+	}
+
+	// ================================================================
+	// Legacy UI: inline PropertySheet (old dialog)
+	// ================================================================
+	CConfig::SetIMEMode(settingsMode);
+
 	CTfInputProcessorProfile* profile = new CTfInputProcessorProfile();
 	LANGID langid = inLangid;
 	GUID guidProfile = inRefGuidProfile;
-	// called from hotkey in IME
-	if (guidProfile == GUID_NULL)
-		CConfig::SetIMEMode(Global::imeMode);
-	else if (guidProfile == Global::DIMEDayiGuidProfile)
-		CConfig::SetIMEMode(IME_MODE::IME_MODE_DAYI);
-	else if (guidProfile == Global::DIMEPhoneticGuidProfile)
-		CConfig::SetIMEMode(IME_MODE::IME_MODE_PHONETIC);
-	else if (guidProfile == Global::DIMEArrayGuidProfile)
-		CConfig::SetIMEMode(IME_MODE::IME_MODE_ARRAY);
-	else if (guidProfile == Global::DIMEGenericGuidProfile)
-		CConfig::SetIMEMode(IME_MODE::IME_MODE_GENERIC);
 
 	if (SUCCEEDED(profile->CreateInstance()))
 	{
@@ -77,24 +130,17 @@ HRESULT CDIME::Show(_In_opt_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID
 		CDIMEArray <LanguageProfileInfo> langProfileInfoList;
 		profile->GetReverseConversionProviders(langid, &langProfileInfoList);
 		CConfig::SetReverseConvervsionInfoList(&langProfileInfoList);
-
 	}
 	delete profile;
 
-	_LoadConfig(FALSE,CConfig::GetIMEMode());  // prevent set _imeMode being set if config triggered by control panel options button
-
-	if (_IsComposing() && _pContext) _EndComposition(_pContext);
-	_DeleteCandidateList(TRUE, _pContext);
-
-
+	_LoadConfig(FALSE, CConfig::GetIMEMode());
 
 	// comctl32.dll and comdlg32.dll can't be loaded into immersivemode (app container), thus use late binding here.
 	HINSTANCE dllCtlHandle = NULL;
 	dllCtlHandle = LoadLibrary(L"comctl32.dll");
-	
+
 	// Load Rich Edit control library (must be loaded before dialog creation)
 	HINSTANCE dllRichEditHandle = LoadLibrary(L"msftedit.dll");
-
 
 	_T_CreatePropertySheetPage _CreatePropertySheetPage = NULL;
 	_T_PropertySheet _PropertySheet = NULL;
@@ -104,8 +150,6 @@ HRESULT CDIME::Show(_In_opt_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID
 		_CreatePropertySheetPage = reinterpret_cast<_T_CreatePropertySheetPage> (GetProcAddress(dllCtlHandle, "CreatePropertySheetPageW"));
 		_PropertySheet = reinterpret_cast<_T_PropertySheet> (GetProcAddress(dllCtlHandle, "PropertySheetW"));
 	}
-
-
 
 	debugPrint(L"CDIME::Show() ,  ITfFnConfigure::Show(), _autoCompose = %d,  _doBeep = %d", CConfig::GetAutoCompose(),  CConfig::GetDoBeep());
 
@@ -117,7 +161,6 @@ HRESULT CDIME::Show(_In_opt_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID
 	} DlgPage[] = {
 		{ IDD_DIALOG_COMMON, CConfig::CommonPropertyPageWndProc },
 		{ IDD_DIALOG_DICTIONARY, CConfig::DictionaryPropertyPageWndProc }
-
 	};
 	HPROPSHEETPAGE hpsp[_countof(DlgPage)]{};
 	int i;
@@ -127,27 +170,24 @@ HRESULT CDIME::Show(_In_opt_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID
 	psp.dwFlags = PSP_PREMATURE;
 	psp.hInstance = Global::dllInstanceHandle;
 
-    for (i = 0; i<_countof(DlgPage); i++)
-    {
+	for (i = 0; i < _countof(DlgPage); i++)
+	{
 		psp.pszTemplate = MAKEINTRESOURCE(DlgPage[i].id);
 		psp.pfnDlgProc = DlgPage[i].DlgProc;
-		// Allocate a per-page DialogContext carrying the engine pointer.
-		// The dialog proc will free this context on WM_DESTROY.
 		DialogContext* pCtx = new (std::nothrow) DialogContext();
 		if (pCtx) {
-			pCtx->imeMode = CConfig::GetIMEMode(); // Capture current IME mode
-			pCtx->maxCodes = CConfig::GetMaxCodes(); // Capture max key length
+			pCtx->imeMode = CConfig::GetIMEMode();
+			pCtx->maxCodes = CConfig::GetMaxCodes();
 			pCtx->pEngine = _pCompositionProcessorEngine;
-			pCtx->engineOwned = false; // runtime engine owned by CDIME
+			pCtx->engineOwned = false;
 			psp.lParam = (LPARAM)pCtx;
 		} else {
 			psp.lParam = 0;
 		}
-        if (_CreatePropertySheetPage)
-            hpsp[i] = (*_CreatePropertySheetPage)(&psp);
-        // If page creation failed, free the allocated context
-        if (!hpsp[i] && pCtx) { delete pCtx; }
-    }
+		if (_CreatePropertySheetPage)
+			hpsp[i] = (*_CreatePropertySheetPage)(&psp);
+		if (!hpsp[i] && pCtx) { delete pCtx; }
+	}
 
 	ZeroMemory(&psh, sizeof(PROPSHEETHEADER));
 	psh.dwSize = sizeof(PROPSHEETHEADER);
@@ -160,9 +200,8 @@ HRESULT CDIME::Show(_In_opt_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID
 	psh.pszCaption = L"DIME User Settings";
 
 	WCHAR dialogCaption[MAX_PATH] = { 0 };
-
 	if (CConfig::GetIMEMode() == IME_MODE::IME_MODE_DAYI)
-		StringCchCat(dialogCaption, MAX_PATH,  L"DIME 大易輸入法設定");
+		StringCchCat(dialogCaption, MAX_PATH, L"DIME 大易輸入法設定");
 	else if (CConfig::GetIMEMode() == IME_MODE::IME_MODE_ARRAY)
 		StringCchCat(dialogCaption, MAX_PATH, L"DIME 行列輸入法設定");
 	else if (CConfig::GetIMEMode() == IME_MODE::IME_MODE_GENERIC)
@@ -171,20 +210,17 @@ HRESULT CDIME::Show(_In_opt_ HWND hwndParent, _In_ LANGID inLangid, _In_ REFGUID
 		StringCchCat(dialogCaption, MAX_PATH, L"DIME 傳統注音輸入法設定");
 
 	StringCchPrintf(dialogCaption, MAX_PATH, L"%s v%d.%d.%d.%d", dialogCaption,
-		 BUILD_VER_MAJOR, BUILD_VER_MINOR, BUILD_COMMIT_COUNT, BUILD_DATE_1);
+		BUILD_VER_MAJOR, BUILD_VER_MINOR, BUILD_COMMIT_COUNT, BUILD_DATE_1);
 	psh.pszCaption = dialogCaption;
 
-	//PropertySheet(&psh);
 	if (_PropertySheet)
 		(*_PropertySheet)(&psh);
 
-	// Reload config after settings dialog closes — picks up font/color changes immediately
+	// Reload config after settings dialog closes
 	_LoadConfig(FALSE, CConfig::GetIMEMode());
-	// Dispose notify window so it's recreated with the new font/color settings.
-	// The dialog close may have already triggered a "中文/英數" notify with the old font.
 	if (_pUIPresenter) _pUIPresenter->ClearNotify();
 
-	if(dllCtlHandle)
+	if (dllCtlHandle)
 		FreeLibrary(dllCtlHandle);
 	if (dllRichEditHandle)
 		FreeLibrary(dllRichEditHandle);
