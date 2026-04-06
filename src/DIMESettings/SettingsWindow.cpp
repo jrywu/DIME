@@ -984,6 +984,7 @@ void SettingsWindow::UpdateTheme(HWND hWnd, WindowData* wd)
 // Placeholder stubs — will be replaced one by one
 void SettingsWindow::SwitchMode(HWND hWnd, WindowData* wd, IME_MODE mode)
 {
+    bool modeChanged = (mode != wd->currentMode);
     wd->currentMode = mode;
     wd->selectedModeIndex = ModeToIndex(mode);
     wd->navLevel = 0;
@@ -999,11 +1000,12 @@ void SettingsWindow::SwitchMode(HWND hWnd, WindowData* wd, IME_MODE mode)
         for (int i = 0; i < ltCount && (4 + i) < 16; i++)
             wd->cardExpanded[4 + i] = ltCards[i].defaultExpanded;
     }
-    // Re-enumerate reverse conversion providers, then force SetIMEMode to re-run
-    // self-filtering even if mode hasn't changed (e.g., clicking same sidebar item
-    // from Level 1 to return to Level 0).
-    CConfig::EnumerateReverseConversionProviders(1028);
-    CConfig::SetIMEMode(IME_MODE::IME_MODE_NONE);
+    // Re-enumerate and reload only on actual mode change.
+    // SetIMEMode() filters self from the list but skips if mode is unchanged.
+    // Don't re-enumerate when staying on the same mode (e.g., sidebar click from
+    // Level 1 back to Level 0) — the list is already correctly filtered.
+    if (modeChanged)
+        CConfig::EnumerateReverseConversionProviders(1028);
     CConfig::LoadConfig(mode);
     wd->snapshot = SettingsModel::LoadFromConfig();
     // Recreate composition engine for the new mode (custom table validation)
