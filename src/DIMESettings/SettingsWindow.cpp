@@ -999,8 +999,11 @@ void SettingsWindow::SwitchMode(HWND hWnd, WindowData* wd, IME_MODE mode)
         for (int i = 0; i < ltCount && (4 + i) < 16; i++)
             wd->cardExpanded[4 + i] = ltCards[i].defaultExpanded;
     }
-    // Re-enumerate reverse conversion providers before LoadConfig filters out self
+    // Re-enumerate reverse conversion providers, then force SetIMEMode to re-run
+    // self-filtering even if mode hasn't changed (e.g., clicking same sidebar item
+    // from Level 1 to return to Level 0).
     CConfig::EnumerateReverseConversionProviders(1028);
+    CConfig::SetIMEMode(IME_MODE::IME_MODE_NONE);
     CConfig::LoadConfig(mode);
     wd->snapshot = SettingsModel::LoadFromConfig();
     // Recreate composition engine for the new mode (custom table validation)
