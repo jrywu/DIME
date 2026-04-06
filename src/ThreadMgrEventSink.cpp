@@ -81,6 +81,9 @@ STDAPI CDIME::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_opt_ ITfDocument
     pDocMgrPrevFocus;
 	ITfContext* pContext = nullptr;
 
+	// Reload config if INI file changed (e.g., DIMESettings.exe saved new settings)
+	_LoadConfig(FALSE);
+
 	// Reset stored comp range height on focus change so stale heights from a
 	// previous app are not used to pad probe rects in the new context.
 	if (_pUIPresenter && pDocMgrFocus != pDocMgrPrevFocus)
