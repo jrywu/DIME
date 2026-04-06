@@ -1165,13 +1165,14 @@ void CDIME::showChnEngNotify(BOOL isChinese, UINT delayShow)
 void CDIME::showFullHalfShapeNotify(BOOL isFullShape, UINT delayShow)
 {
 	CStringRange notify;
-    // Remove _IsStoreAppMode for Win 11 explorer, notepad and paint using XAML inputs.
-    if (CConfig::GetShowNotifyDesktop() && _pUIPresenter)
+    // Always show — no compartment for full/half shape, notify is the only visual feedback
+    if (_pUIPresenter)
         _pUIPresenter->ShowNotifyText(&notify.Set(isFullShape ? L"全形" : L"半形", 2), delayShow, CHN_ENG_NOTIFY_DELAY, NOTIFY_TYPE::NOTIFY_CHN_ENG);
 }
 void CDIME::showHanConvertNotify(BOOL isSimplified, UINT delayShow)
 {
 	CStringRange notify;
-    if (CConfig::GetShowNotifyDesktop() && _pUIPresenter)
+    // Always show — no compartment for han convert, notify is the only visual feedback
+    if (_pUIPresenter)
         _pUIPresenter->ShowNotifyText(&notify.Set(isSimplified ? L"簡" : L"繁", 1), delayShow, CHN_ENG_NOTIFY_DELAY, NOTIFY_TYPE::NOTIFY_CHN_ENG);
 }
