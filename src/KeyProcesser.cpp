@@ -337,7 +337,15 @@ BOOL CCompositionProcessorEngine::IsEscapeInput()
 		if (CConfig::GetArrayScope() == ARRAY_SCOPE::ARRAY40_BIG5
 			&& (towupper(c) == L'H' || c == L'8') && (c2 == L'\'' || c2 == L'[' || c2 == L']' || c2 == L'-' || c2 == L'='))
 			return TRUE;
+	}
 
+	// Array non-BIG5: HG + digit (hg0, hg1, ... hg9) — 3-char escape for CJK Radicals
+	if (Global::imeMode == IME_MODE::IME_MODE_ARRAY && len==3 &&
+		CConfig::GetArrayScope() != ARRAY_SCOPE::ARRAY40_BIG5) {
+		WCHAR c2 = *(_keystrokeBuffer.Get() + 1);
+		WCHAR c3 = *(_keystrokeBuffer.Get() + 2);
+		if (towupper(c) == L'H' && towupper(c2) == L'G' && c3 >= L'0' && c3 <= L'9')
+			return TRUE;
 	}
 
 	if (Global::imeMode == IME_MODE::IME_MODE_PHONETIC && c == L'\\' && len >= 2)
@@ -366,10 +374,10 @@ BOOL CCompositionProcessorEngine::IsEscapeInputChar(WCHAR wch)
 			&& IsDoubleSingleByte(wch) && wch != L' ')
 			return TRUE;
 	}
-	if (_keystrokeBuffer.Get() == nullptr || _keystrokeBuffer.GetLength() > 1)
+	if (_keystrokeBuffer.Get() == nullptr || _keystrokeBuffer.GetLength() > 2)  // > 2 to allow HG+digit (len==2)
 		goto exit;
 	debugPrint(L"CCompositionProcessorEngine::IsEscapeInputChar(), len = %d, c = %d", _keystrokeBuffer.GetLength(), *_keystrokeBuffer.Get());
-	
+
 	if (_keystrokeBuffer.GetLength() == 0)
 	{
 		if((Global::imeMode == IME_MODE::IME_MODE_DAYI && wch == L'=') ||
@@ -396,6 +404,16 @@ BOOL CCompositionProcessorEngine::IsEscapeInputChar(WCHAR wch)
 				return TRUE;
 
 		}
+	}
+	else if (_keystrokeBuffer.GetLength() == 2)
+	{
+		// Array non-BIG5: HG + digit → symbol input (hg0, hg1, ... hg9)
+		WCHAR c1 = towupper(*_keystrokeBuffer.Get());
+		WCHAR c2 = towupper(*(_keystrokeBuffer.Get() + 1));
+		if (Global::imeMode == IME_MODE::IME_MODE_ARRAY &&
+			CConfig::GetArrayScope() != ARRAY_SCOPE::ARRAY40_BIG5 &&
+			c1 == L'H' && c2 == L'G' && wch >= L'0' && wch <= L'9')
+			return TRUE;
 	}
 exit:
 	debugPrint(L"CCompositionProcessorEngine::IsEscapeInputChar() return FALSE");
