@@ -1426,8 +1426,10 @@ void SettingsWindow::PaintRow(HDC hdc, WindowData* wd,
         SetTextColor(hdc, tc.textPrimary);
         int lt = curY + ScaleForDpi(lr.description ? g_geo.rowLabelTopOff : 0, dpi);
         int lb = lr.description ? curY + thisH / 2 + ScaleForDpi(g_geo.rowLabelMidOff, dpi) : curY + thisH;
-        int comboW = ScaleForDpi(g_geo.comboWidth, dpi);
-        RECT rcL = { labelLeft, lt, ctrlRightEdge - comboW, lb };
+        // Label extends to ctrlRightEdge — WS_CLIPCHILDREN prevents label from
+        // painting over child HWND controls (combo, edit). Toggle/button are owner-drawn
+        // after the label, so they naturally paint on top.
+        RECT rcL = { labelLeft, lt, ctrlRightEdge, lb };
 
         if (lr.type == RowType::Clickable && lr.action == RowAction::OpenFontDialog) {
             WCHAR preview[128];

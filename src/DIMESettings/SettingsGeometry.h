@@ -34,7 +34,7 @@ struct SettingsGeometry {
     int sidebarAccentBarW     = 3;
     int sidebarAccentBarH     = 16;
     int sidebarAccentBarR     = 2;
-    int sidebarCollapseBreak  = 740;  // below this width, sidebar collapses (sidebar 280 + min content ~460)
+    int sidebarCollapseBreak  = 800;  // below this width, sidebar collapses (sidebar 280 + min content ~520)
     int hamburgerSize         = 36;   // hamburger button size when sidebar collapsed
 
     // Content area
@@ -65,7 +65,7 @@ struct SettingsGeometry {
     int toggleLabelGap        = 8;    // gap between "開啟" text and toggle
 
     // Controls
-    int comboWidth            = 160;
+    int comboWidth            = 180;
     int editWidth             = 120;
     int buttonWidth           = 120;
     int controlRightMargin    = 16;
@@ -115,7 +115,7 @@ struct SettingsGeometry {
     int swatchCellGap         = 2;     // gap between swatch rows
 
     // Window
-    int windowMinW            = 500;  // below sidebarCollapseBreak (680) to allow collapse
+    int windowMinW            = 520;  // below sidebarCollapseBreak (740) to allow collapse
     int windowMinH            = 450;
     int windowDefaultW        = 900;
     int windowDefaultH        = 650;
