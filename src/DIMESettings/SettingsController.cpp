@@ -102,12 +102,17 @@ SettingsSnapshot SettingsModel::LoadFromConfig()
     StringCchCopyW(snap.fontFaceName, LF_FACESIZE, CConfig::GetFontFaceName());
     snap.colorMode      = (int)CConfig::GetColorMode();
 
-    snap.itemColor      = CConfig::GetItemColor();
-    snap.phraseColor    = CConfig::GetPhraseColor();
-    snap.numberColor    = CConfig::GetNumberColor();
-    snap.itemBGColor    = CConfig::GetItemBGColor();
-    snap.selectedColor  = CConfig::GetSelectedColor();
-    snap.selectedBGColor = CConfig::GetSelectedBGColor();
+    // Load effective palette colors (respects system dark/light mode).
+    // Caller must call CConfig::LoadColorsForMode() before this if needed.
+    {
+        const ColorInfo* clrs = CConfig::GetColors();
+        snap.itemColor       = clrs[0].color;
+        snap.selectedColor   = clrs[1].color;
+        snap.itemBGColor     = clrs[2].color;
+        snap.phraseColor     = clrs[3].color;
+        snap.numberColor     = clrs[4].color;
+        snap.selectedBGColor = clrs[5].color;
+    }
 
     snap.autoCompose             = CConfig::GetAutoCompose();
     snap.clearOnBeep             = CConfig::GetClearOnBeep();
@@ -147,12 +152,10 @@ void SettingsModel::ApplyToConfig(const SettingsSnapshot& snap)
     CConfig::SetFontFaceName(const_cast<WCHAR*>(snap.fontFaceName));
     CConfig::SetColorMode((IME_COLOR_MODE)snap.colorMode);
 
-    CConfig::SetItemColor(snap.itemColor);
-    CConfig::SetPhraseColor(snap.phraseColor);
-    CConfig::SetNumberColor(snap.numberColor);
-    CConfig::SetItemBGColor(snap.itemBGColor);
-    CConfig::SetSelectedColor(snap.selectedColor);
-    CConfig::SetSelectedBGColor(snap.selectedBGColor);
+    // Do NOT write palette colors here — snapshot holds effective colors
+    // (may be light/dark/system palette), not custom palette values.
+    // Custom palette is only written via SaveColorsForMode() when the user
+    // explicitly changes a color swatch in CUSTOM mode.
 
     CConfig::SetAutoCompose(snap.autoCompose);
     CConfig::SetClearOnBeep(snap.clearOnBeep);

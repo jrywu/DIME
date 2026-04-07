@@ -1007,6 +1007,7 @@ void SettingsWindow::SwitchMode(HWND hWnd, WindowData* wd, IME_MODE mode)
     if (modeChanged)
         CConfig::EnumerateReverseConversionProviders(1028);
     CConfig::LoadConfig(mode);
+    CConfig::LoadColorsForMode((IME_COLOR_MODE)CConfig::GetColorMode());
     wd->snapshot = SettingsModel::LoadFromConfig();
     // Recreate composition engine for the new mode (custom table validation)
     SettingsModel::DestroyEngine(wd->pEngine);
