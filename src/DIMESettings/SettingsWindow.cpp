@@ -2377,7 +2377,7 @@ void SettingsWindow::PopulateControls(WindowData* wd)
             { L"行列30 Unicode Ext-A",  (int)ARRAY_SCOPE::ARRAY30_UNICODE_EXT_A },
             { L"行列30 Unicode Ext-AB", (int)ARRAY_SCOPE::ARRAY30_UNICODE_EXT_AB },
             { L"行列30 Unicode Ext-A~D",(int)ARRAY_SCOPE::ARRAY30_UNICODE_EXT_ABCD },
-            { L"行列30 Unicode Ext-A~G",(int)ARRAY_SCOPE::ARRAY30_UNICODE_EXT_ABCDE },
+            { L"行列30 Unicode Ext-A~J",(int)ARRAY_SCOPE::ARRAY30_UNICODE_EXT_A_TO_J },
             { L"行列40 Big5",           (int)ARRAY_SCOPE::ARRAY40_BIG5 },
         };
         for (auto& item : arrayScopeItems) {

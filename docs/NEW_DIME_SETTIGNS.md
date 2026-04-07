@@ -136,7 +136,6 @@ Complete row layout for every page, matching `SettingsPageLayout.cpp`.
 | CTRL_FONT_NAME | Clickable | OpenFontDialog | 字型設定 | 候選字視窗顯示字型 | ALL | U+E8D2 |
 | CTRL_COLOR_MODE | ComboBox | ExpandSection | 色彩模式 | 設定候選字視窗色彩主題 | ALL | U+E790 |
 | CTRL_COLOR_GRID | ColorGrid | OpenColorDialog | 色彩 | — | ALL | — |
-| CTRL_SHOW_NOTIFY | Toggle | ToggleValue | 在桌面模式顯示浮動中英切換視窗 | — | ALL | U+E9B4 |
 | CTRL_RESTORE_DEFAULT | Button | ResetDefaults | 還原預設值 | 將所有外觀設定還原為預設值 | ALL | U+E72C |
 
 #### 聲音與通知 (ExpandSection `∨`, default collapsed)
@@ -151,6 +150,7 @@ Complete row layout for every page, matching `SettingsPageLayout.cpp`.
 
 | Row | Type | Action | Label | Description | Modes | Icon |
 |-----|------|--------|-------|-------------|-------|------|
+| CTRL_SHOW_NOTIFY | Toggle | ToggleValue | 在桌面模式顯示浮動中英切換視窗 | — | ALL | U+E982 |
 | CTRL_ARRAY_SCOPE | ComboBox | None | 字集查詢範圍 | — | ARRAY | — |
 | CTRL_CHARSET_SCOPE | ComboBox | None | 字集查詢範圍 | — | NON_ARRAY | — |
 | CTRL_NUMERIC_PAD | ComboBox | None | 九宮格數字鍵盤 | — | ALL | — |
@@ -172,6 +172,90 @@ Complete row layout for every page, matching `SettingsPageLayout.cpp`.
 | CTRL_ARRAY_FORCE_SP | Toggle | ToggleValue | 僅接受輸入特別碼 | — | ARRAY | — |
 | CTRL_ARRAY_NOTIFY_SP | Toggle | ToggleValue | 特別碼提示 | — | ARRAY | — |
 | CTRL_ARRAY_SINGLE_QUOTE | Toggle | ToggleValue | 以'鍵查詢自建詞庫 | — | ARRAY | — |
+
+### Combo Options Specification
+
+Each ComboBox control's dropdown items, matching `PopulateControls()` in SettingsWindow.cpp:
+
+**CTRL_COLOR_MODE** (色彩模式):
+
+| Index | Label | Value | Note |
+|-------|-------|-------|------|
+| 0* | 跟隨系統模式 | IME_COLOR_MODE_SYSTEM (0) | *Win10 1809+ only |
+| 1 | 淡色模式 | IME_COLOR_MODE_LIGHT (1) | |
+| 2 | 深色模式 | IME_COLOR_MODE_DARK (2) | |
+| 3 | 自訂 | IME_COLOR_MODE_CUSTOM (3) | Expands color grid |
+
+**CTRL_ARRAY_SCOPE** (字集查詢範圍 — ARRAY only):
+
+| Index | Label | Value |
+|-------|-------|-------|
+| 0 | 行列30 Big5 (繁體中文) | ARRAY30_BIG5 |
+| 1 | 行列30 Unicode Ext-A | ARRAY30_UNICODE_EXT_A |
+| 2 | 行列30 Unicode Ext-AB | ARRAY30_UNICODE_EXT_AB |
+| 3 | 行列30 Unicode Ext-A~D | ARRAY30_UNICODE_EXT_ABCD |
+| 4 | 行列30 Unicode Ext-A~J | ARRAY30_UNICODE_EXT_A_TO_J |
+| 5 | 行列40 Big5 | ARRAY40_BIG5 |
+
+**CTRL_CHARSET_SCOPE** (字集查詢範圍 — NON_ARRAY):
+
+| Index | Label | Snapshot value |
+|-------|-------|---------------|
+| 0 | 完整字集 | big5Filter = false |
+| 1 | 繁體中文 | big5Filter = true |
+
+**CTRL_NUMERIC_PAD** (九宮格數字鍵盤):
+
+| Index | Label |
+|-------|-------|
+| 0 | 數字鍵盤輸入數字符號 |
+| 1 | 數字鍵盤輸入字根 |
+| 2 | 僅用數字鍵盤輸入字根 |
+
+**CTRL_PHONETIC_KB** (鍵盤對應選擇 — PHONETIC only):
+
+| Index | Label |
+|-------|-------|
+| 0 | 標準鍵盤 |
+| 1 | 倚天鍵盤 |
+
+**CTRL_IME_SHIFT_MODE** (中英切換熱鍵):
+
+| Index | Label |
+|-------|-------|
+| 0 | 左右SHIFT鍵 |
+| 1 | 右SHIFT鍵 |
+| 2 | 左SHIFT鍵 |
+| 3 | 無(僅Ctrl-Space鍵) |
+
+**CTRL_DOUBLE_SINGLE_BYTE** (全半形輸入模式):
+
+| Index | Label |
+|-------|-------|
+| 0 | 以 Shift-Space 熱鍵切換 |
+| 1 | 半型 |
+| 2 | 全型 |
+
+**CTRL_KEYBOARD_OPEN_CLOSE** (預設輸入模式):
+
+| Index | Label | Snapshot value |
+|-------|-------|---------------|
+| 0 | 中文模式 | activatedKeyboardMode = true |
+| 1 | 英數模式 | activatedKeyboardMode = false |
+
+**CTRL_OUTPUT_CHT_CHS** (輸出字元):
+
+| Index | Label | Snapshot value |
+|-------|-------|---------------|
+| 0 | 繁體中文 | doHanConvert = false |
+| 1 | 簡體中文 | doHanConvert = true |
+
+**CTRL_REVERSE_CONVERSION** (反查輸入字根):
+
+| Index | Label | Note |
+|-------|-------|------|
+| 0 | (無) | CLSID_NULL |
+| 1+ | (dynamic) | Enumerated from TSF ITfInputProcessorProfile, self filtered by SetIMEMode |
 
 #### 自建詞庫 (NavigateToCard `>`)
 
@@ -200,7 +284,7 @@ Complete row layout for every page, matching `SettingsPageLayout.cpp`.
 | CTRL_LOAD_ARRAY_SC | 簡碼碼表 |
 | CTRL_LOAD_ARRAY_EXT_B | Unicode Ext. B 碼表 |
 | CTRL_LOAD_ARRAY_EXT_CD | Unicode Ext. CD 碼表 |
-| CTRL_LOAD_ARRAY_EXT_EFG | Unicode Ext. EFG 碼表 |
+| CTRL_LOAD_ARRAY_EXT_E_TO_J | Unicode Ext. E-J 碼表 |
 | CTRL_LOAD_ARRAY40 | 行列40碼表 |
 | CTRL_LOAD_ARRAY_PHRASE | 行列詞庫碼表 |
 

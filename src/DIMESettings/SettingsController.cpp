@@ -434,7 +434,7 @@ const wchar_t* SettingsModel::GetLoadTableSuffix(SettingsControlId id)
     case CTRL_LOAD_ARRAY_SC:      return L"\\DIME\\Array-shortcode.cin";
     case CTRL_LOAD_ARRAY_EXT_B:   return L"\\DIME\\Array-Ext-B.cin";
     case CTRL_LOAD_ARRAY_EXT_CD:  return L"\\DIME\\Array-Ext-CD.cin";
-    case CTRL_LOAD_ARRAY_EXT_EFG: return L"\\DIME\\Array-Ext-EF.cin";
+    case CTRL_LOAD_ARRAY_EXT_E_TO_J: return L"\\DIME\\Array-Ext-EF.cin";
     case CTRL_LOAD_ARRAY40:       return L"\\DIME\\Array40.cin";
     case CTRL_LOAD_ARRAY_PHRASE:   return L"\\DIME\\Array-Phrase.cin";
     default: return nullptr;

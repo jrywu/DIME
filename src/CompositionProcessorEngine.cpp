@@ -511,7 +511,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 				if (_pArrayExtBTableDictionaryEngine)	_pArrayExtBTableDictionaryEngine->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList);
 				if (_pArrayExtCDTableDictionaryEngine)	_pArrayExtCDTableDictionaryEngine->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList);
 				break;
-			case ARRAY_SCOPE::ARRAY30_UNICODE_EXT_ABCDE:
+			case ARRAY_SCOPE::ARRAY30_UNICODE_EXT_A_TO_J:
 				if (_pArrayExtBTableDictionaryEngine)	_pArrayExtBTableDictionaryEngine->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList);
 				if (_pArrayExtCDTableDictionaryEngine)	_pArrayExtCDTableDictionaryEngine->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList);
 				if (_pArrayExtETableDictionaryEngine)	_pArrayExtETableDictionaryEngine->CollectWordForWildcard(&_keystrokeBuffer, pCandidateList);
@@ -568,7 +568,7 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 				if (_pArrayExtBTableDictionaryEngine)	_pArrayExtBTableDictionaryEngine->CollectWord(&_keystrokeBuffer, pCandidateList);
 				if (_pArrayExtCDTableDictionaryEngine)	_pArrayExtCDTableDictionaryEngine->CollectWord(&_keystrokeBuffer, pCandidateList);
 				break;
-			case ARRAY_SCOPE::ARRAY30_UNICODE_EXT_ABCDE:
+			case ARRAY_SCOPE::ARRAY30_UNICODE_EXT_A_TO_J:
 				if (_pArrayExtBTableDictionaryEngine)	_pArrayExtBTableDictionaryEngine->CollectWord(&_keystrokeBuffer, pCandidateList);
 				if (_pArrayExtCDTableDictionaryEngine)	_pArrayExtCDTableDictionaryEngine->CollectWord(&_keystrokeBuffer, pCandidateList);
 				if (_pArrayExtETableDictionaryEngine)	_pArrayExtETableDictionaryEngine->CollectWord(&_keystrokeBuffer, pCandidateList);

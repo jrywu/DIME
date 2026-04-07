@@ -17,7 +17,6 @@ static const LayoutRow s_appearanceRows[] = {
     { CTRL_FONT_NAME,       RowType::Clickable, RowAction::OpenFontDialog,  CTRL_NONE,       0, L"字型設定",        L"候選字視窗顯示字型",                    SM_MODE_ALL, true,  L'\xE8D2' },
     { CTRL_COLOR_MODE,      RowType::ComboBox,  RowAction::ExpandSection,   CTRL_NONE,       0, L"色彩模式",        L"設定候選字視窗色彩主題",                SM_MODE_ALL, false, L'\xE790' },
     { CTRL_COLOR_GRID,      RowType::ColorGrid, RowAction::OpenColorDialog, CTRL_COLOR_MODE, 0, L"色彩",            nullptr,                                 SM_MODE_ALL, false, 0         },
-    { CTRL_SHOW_NOTIFY,     RowType::Toggle,    RowAction::ToggleValue,     CTRL_NONE,       0, L"在桌面模式顯示浮動中英切換視窗", nullptr,                  SM_MODE_ALL, false, L'\xE982' },
     { CTRL_RESTORE_DEFAULT, RowType::Button,    RowAction::ResetDefaults,   CTRL_NONE,       0, L"還原預設值",      L"將所有外觀設定還原為預設值",            SM_MODE_ALL, false, L'\xE72C' },
 };
 
@@ -35,6 +34,7 @@ static const LayoutRow s_soundRows[] = {
 // Single ∨ expandable group per plan
 // ============================================================================
 static const LayoutRow s_inputSettingsRows[] = {
+    { CTRL_SHOW_NOTIFY,           RowType::Toggle,   RowAction::ToggleValue, CTRL_NONE, 0, L"在桌面模式顯示浮動中英切換視窗", nullptr,                  SM_MODE_ALL,       false, L'\xE982' },
     // --- Input behavior ---
     { CTRL_ARRAY_SCOPE,           RowType::ComboBox, RowAction::None,        CTRL_NONE, 0, L"字集查詢範圍",         nullptr,                                SM_MODE_ARRAY,     false, L'\xE774' },
     { CTRL_CHARSET_SCOPE,         RowType::ComboBox, RowAction::None,        CTRL_NONE, 0, L"字集查詢範圍",         nullptr,                                SM_MODE_NON_ARRAY, false, L'\xE774' },
@@ -103,13 +103,13 @@ static const int s_imePageLayoutCount = COUNTOF(s_imePageLayout);
 // ============================================================================
 // 行列擴充碼表 child rows (expanded under the parent card)
 static const LayoutRow s_arrayExpandRows[] = {
-    { CTRL_LOAD_ARRAY_SP,      RowType::Button, RowAction::LoadTable, CTRL_LOAD_ARRAY_EXPAND, 0, L"特別碼碼表",           nullptr, SM_MODE_ALL },
-    { CTRL_LOAD_ARRAY_SC,      RowType::Button, RowAction::LoadTable, CTRL_LOAD_ARRAY_EXPAND, 0, L"簡碼碼表",             nullptr, SM_MODE_ALL },
-    { CTRL_LOAD_ARRAY_EXT_B,   RowType::Button, RowAction::LoadTable, CTRL_LOAD_ARRAY_EXPAND, 0, L"Unicode Ext. B 碼表",  nullptr, SM_MODE_ALL },
-    { CTRL_LOAD_ARRAY_EXT_CD,  RowType::Button, RowAction::LoadTable, CTRL_LOAD_ARRAY_EXPAND, 0, L"Unicode Ext. CD 碼表", nullptr, SM_MODE_ALL },
-    { CTRL_LOAD_ARRAY_EXT_EFG, RowType::Button, RowAction::LoadTable, CTRL_LOAD_ARRAY_EXPAND, 0, L"Unicode Ext. EFG 碼表",nullptr, SM_MODE_ALL },
-    { CTRL_LOAD_ARRAY40,       RowType::Button, RowAction::LoadTable, CTRL_LOAD_ARRAY_EXPAND, 0, L"行列40碼表",           nullptr, SM_MODE_ALL },
-    { CTRL_LOAD_ARRAY_PHRASE,  RowType::Button, RowAction::LoadTable, CTRL_LOAD_ARRAY_EXPAND, 0, L"行列詞庫碼表",         nullptr, SM_MODE_ALL },
+    { CTRL_LOAD_ARRAY_SP,      RowType::Button, RowAction::LoadTable, CTRL_LOAD_ARRAY_EXPAND, 0, L"特別碼碼表",           nullptr, SM_MODE_ALL, false, L'\xE82D' },
+    { CTRL_LOAD_ARRAY_SC,      RowType::Button, RowAction::LoadTable, CTRL_LOAD_ARRAY_EXPAND, 0, L"簡碼碼表",             nullptr, SM_MODE_ALL, false, L'\xE82D' },
+    { CTRL_LOAD_ARRAY_EXT_B,   RowType::Button, RowAction::LoadTable, CTRL_LOAD_ARRAY_EXPAND, 0, L"Unicode Ext. B 碼表",  nullptr, SM_MODE_ALL, false, L'\xE82D' },
+    { CTRL_LOAD_ARRAY_EXT_CD,  RowType::Button, RowAction::LoadTable, CTRL_LOAD_ARRAY_EXPAND, 0, L"Unicode Ext. CD 碼表", nullptr, SM_MODE_ALL, false, L'\xE82D' },
+    { CTRL_LOAD_ARRAY_EXT_E_TO_J, RowType::Button, RowAction::LoadTable, CTRL_LOAD_ARRAY_EXPAND, 0, L"Unicode Ext. E-J 碼表",nullptr, SM_MODE_ALL, false, L'\xE82D' },
+    { CTRL_LOAD_ARRAY40,       RowType::Button, RowAction::LoadTable, CTRL_LOAD_ARRAY_EXPAND, 0, L"行列40碼表",           nullptr, SM_MODE_ALL, false, L'\xE82D' },
+    { CTRL_LOAD_ARRAY_PHRASE,  RowType::Button, RowAction::LoadTable, CTRL_LOAD_ARRAY_EXPAND, 0, L"行列詞庫碼表",         nullptr, SM_MODE_ALL, false, L'\xE82D' },
 };
 
 // Standalone load-table rows (one row per card, for button creation)
@@ -125,7 +125,7 @@ static const LayoutCard s_loadTablePageLayout[] = {
       RowAction::None, s_loadDayiRow, 1, 0, L'\xE82D', false },
     { L"行列主碼表",   L"載入或更新行列輸入法主碼表",
       RowAction::None, s_loadArrayRow, 1, 0, L'\xE82D', false },
-    { L"行列擴充碼表", L"特碼、簡碼、ExtB/CD/EFG、行列40、行列詞庫",
+    { L"行列擴充碼表", L"特碼、簡碼、ExtB/CD/E~J、行列40、行列詞庫",
       RowAction::ExpandSection, s_arrayExpandRows, COUNTOF(s_arrayExpandRows), 0, L'\xE8F1', false },
     { L"注音主碼表",   L"載入或更新注音輸入法主碼表",
       RowAction::None, s_loadPhoneticRow, 1, 0, L'\xE82D', false },

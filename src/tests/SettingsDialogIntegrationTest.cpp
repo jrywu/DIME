@@ -456,7 +456,7 @@ namespace DIMEIntegratedTests
                 ARRAY_SCOPE::ARRAY30_UNICODE_EXT_A,
                 ARRAY_SCOPE::ARRAY30_UNICODE_EXT_AB,
                 ARRAY_SCOPE::ARRAY30_UNICODE_EXT_ABCD,
-                ARRAY_SCOPE::ARRAY30_UNICODE_EXT_ABCDE,
+                ARRAY_SCOPE::ARRAY30_UNICODE_EXT_A_TO_J,
                 ARRAY_SCOPE::ARRAY40_BIG5,
                 ARRAY_SCOPE::ARRAY30_BIG5
             };

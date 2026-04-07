@@ -2401,8 +2401,8 @@ void CConfig::ParseConfig(HWND hDlg, IME_MODE imeMode, BOOL initDiag)
 			SendMessage(hwnd, CB_SETITEMDATA, idx, (LPARAM)ARRAY_SCOPE::ARRAY30_UNICODE_EXT_AB);
 			idx = SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-A~D");
 			SendMessage(hwnd, CB_SETITEMDATA, idx, (LPARAM)ARRAY_SCOPE::ARRAY30_UNICODE_EXT_ABCD);
-			idx = SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-A~G");
-			SendMessage(hwnd, CB_SETITEMDATA, idx, (LPARAM)ARRAY_SCOPE::ARRAY30_UNICODE_EXT_ABCDE);
+			idx = SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列30 Unicode Ext-A~J");
+			SendMessage(hwnd, CB_SETITEMDATA, idx, (LPARAM)ARRAY_SCOPE::ARRAY30_UNICODE_EXT_A_TO_J);
 			idx = SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM)L"行列40 Big5");
 			SendMessage(hwnd, CB_SETITEMDATA, idx, (LPARAM)ARRAY_SCOPE::ARRAY40_BIG5);
 		}
