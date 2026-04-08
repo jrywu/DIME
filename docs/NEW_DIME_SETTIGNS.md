@@ -243,12 +243,12 @@ Each ComboBox control's dropdown items, matching `PopulateControls()` in Setting
 | 0 | 中文模式 | activatedKeyboardMode = true |
 | 1 | 英數模式 | activatedKeyboardMode = false |
 
-**CTRL_OUTPUT_CHT_CHS** (輸出字元):
+**CTRL_OUTPUT_CHT_CHS** (簡繁轉換):
 
 | Index | Label | Snapshot value |
 |-------|-------|---------------|
-| 0 | 繁體中文 | doHanConvert = false |
-| 1 | 簡體中文 | doHanConvert = true |
+| 0 | 不轉換 | doHanConvert = false |
+| 1 | 繁轉簡 | doHanConvert = true |
 
 **CTRL_REVERSE_CONVERSION** (反查輸入字根):
 

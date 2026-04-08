@@ -2462,8 +2462,8 @@ void SettingsWindow::PopulateControls(WindowData* wd)
     }
     if ((h = FindControl(wd, CTRL_OUTPUT_CHT_CHS))) {
         SendMessage(h, CB_RESETCONTENT, 0, 0);
-        SendMessage(h, CB_ADDSTRING, 0, (LPARAM)L"繁體中文");
-        SendMessage(h, CB_ADDSTRING, 0, (LPARAM)L"簡體中文");
+        SendMessage(h, CB_ADDSTRING, 0, (LPARAM)L"不轉換");
+        SendMessage(h, CB_ADDSTRING, 0, (LPARAM)L"繁轉簡");
         SendMessage(h, CB_SETCURSEL, s.doHanConvert ? 1 : 0, 0);
     }
     if ((h = FindControl(wd, CTRL_DAYI_ARTICLE)))
