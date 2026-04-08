@@ -74,7 +74,6 @@ CUIPresenter::CUIPresenter(_In_ CDIME *pTextService, CCompositionProcessorEngine
     _candLocation = { UI::DEFAULT_WINDOW_X, UI::DEFAULT_WINDOW_Y };
     _notifyLocation = { UI::DEFAULT_WINDOW_X, UI::DEFAULT_WINDOW_Y };
     _rectCompRange = { UI::DEFAULT_WINDOW_X, UI::DEFAULT_WINDOW_Y, UI::DEFAULT_WINDOW_X, UI::DEFAULT_WINDOW_Y };
-    _uiaCaretTracker.Initialize();
     _inFocus = FALSE;
 }
 
@@ -535,7 +534,7 @@ STDAPI CUIPresenter::FinalizeExactCompositionString()
 //
 //----------------------------------------------------------------------------
 
-HRESULT CUIPresenter::_StartCandidateList(TfClientId tfClientId, _In_ ITfDocumentMgr *pDocumentMgr, _In_ ITfContext *pContextDocument, TfEditCookie ec, _In_opt_ ITfRange *pRangeComposition, UINT wndWidth)
+HRESULT CUIPresenter::_StartCandidateList(TfClientId tfClientId, _In_ ITfDocumentMgr *pDocumentMgr, _In_ ITfContext *pContextDocument, TfEditCookie ec, _In_ ITfRange *pRangeComposition, UINT wndWidth)
 {
 	debugPrint(L"\nCUIPresenter::_StartCandidateList()");
 	pDocumentMgr;tfClientId;
@@ -550,19 +549,11 @@ HRESULT CUIPresenter::_StartCandidateList(TfClientId tfClientId, _In_ ITfDocumen
 
     BeginUIElement();
 
-
-    if (_pCandidateWnd)
+	
+    hr = MakeCandidateWindow(pContextDocument, wndWidth);
+    if (FAILED(hr))
     {
-        // Candidate window already exists (e.g. reusing for phrase candidates) — skip creation
-        hr = S_OK;
-    }
-    else
-    {
-        hr = MakeCandidateWindow(pContextDocument, wndWidth);
-        if (FAILED(hr))
-        {
-            goto Exit;
-        }
+        goto Exit;
     }
 
 	Show(_isShowMode);
@@ -571,12 +562,6 @@ HRESULT CUIPresenter::_StartCandidateList(TfClientId tfClientId, _In_ ITfDocumen
     if (SUCCEEDED(_GetTextExt(&rcTextExt)))
     {
         _LayoutChangeNotification(&rcTextExt);
-    }
-    else
-    {
-        // No composition range (e.g. phrase candidates after commit).
-        // Reuse the last saved composition rect — the caret hasn't moved.
-        _LayoutChangeNotification(&_rectCompRange, TRUE);
     }
 
 Exit:
@@ -914,7 +899,7 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall)
 	ITfContextView * pView = nullptr;
 	HWND parentWndHandle;
 	POINT caretPt = { 0, 0 };
-
+	
 	if (pContext && SUCCEEDED(pContext->GetActiveView(&pView)))
 	{
 		debugPrint(L"parentWndHandle got from pContext");
@@ -924,7 +909,7 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall)
 	{
 		parentWndHandle = GetForegroundWindow();
 	}
-
+		
 	if (parentWndHandle)
 	{
 		GetCaretPos(&caretPt);
@@ -937,8 +922,7 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall)
 	if (_pCandidateWnd && lpRect)
 	{
 
-		if ((lpRect->bottom - lpRect->top > 0  || lpRect->right - lpRect->left > 0) &&
-			!(lpRect->left <= 1 && lpRect->top <= 1 && lpRect->right <= 1 && lpRect->bottom <= 1)) // confirm the extent rect is valid (reject near-origin rects like {0,0,1,1} from buggy TSF hosts like SearchHost.exe)
+		if (lpRect->bottom - lpRect->top >=0  || lpRect->right - lpRect->left >=0 ) // confirm the extent rect is valid.
 		{
 			_pCandidateWnd->_GetClientRect(&candRect);
 			if (((compRect.right - compRect.left) > (candRect.right - candRect.left)) && caretPt.x < compRect.right && caretPt.x >= compRect.left)
@@ -950,14 +934,8 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall)
 			_candLocation.y = candPt.y;
 			debugPrint(L"move cand to x = %d, y = %d", candPt.x, candPt.y);
 		}
-		else if (_candLocation.x != 0 || _candLocation.y != 0)
-		{
-			// Invalid extent rect — keep last known good position (e.g. SearchHost {0,0,1,1})
-			debugPrint(L"compRect not valid, keeping last position x = %d, y = %d", _candLocation.x, _candLocation.y);
-		}
 		else if (firstCall && parentWndHandle)
 		{
-			// First call with no valid rect and no last position — fall back to GetCaretPos
 			_pCandidateWnd->_GetClientRect(&candRect);
 			compRect.left = caretPt.x;
 			compRect.right = caretPt.x;
@@ -997,10 +975,10 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall)
 				_notifyLocation.y = candPt.y;
 				*/
 				debugPrint(L"notify width = %d, candwidth = %d", _pNotifyWnd->_GetWidth(), _pCandidateWnd->_GetWidth());
-				// cand window is on the top of caret — bottom-align notify with candidate
-				if (candPt.y < lpRect->top)
+				// cand window is on the top of caret
+				if (candPt.y < lpRect->top) 
 					_notifyLocation.y = candPt.y + (candRect.bottom - candRect.top) - _pNotifyWnd->_GetHeight();
-				else
+				else 
 					_notifyLocation.y = candPt.y;
 
 				if (candPt.x < (int)_pNotifyWnd->_GetWidth())
@@ -1012,9 +990,8 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall)
 				debugPrint(L"move notify to x = %d, y = %d", _notifyLocation.x, _notifyLocation.y);
 				_notifyLocation.x = candPt.x;
 			}
-			else if (!_pCandidateWnd || !_pCandidateWnd->_IsWindowVisible())
+			else
 			{
-				// No candidate window, or candidate not visible (e.g. probe-only notify) — position notify independently
 				_pNotifyWnd->_GetClientRect(&notifyRect);
 				if (((compRect.right - compRect.left) > (notifyRect.right - notifyRect.left)) && caretPt.x < compRect.right && caretPt.x >= compRect.left)
 					compRect.left = caretPt.x;
@@ -1086,30 +1063,8 @@ HRESULT CUIPresenter::_NotifyChangeNotification(_In_ enum NOTIFY_WND action, _In
 						{
 							if(SUCCEEDED(pDocumentMgr->GetTop(&pContext)) && pContext)
 							{
-								_pTextService->_ProbeComposition(pContext);
-
-								// Apply cached position for WPF/UWP (no Win32 caret).
-								// For apps with real carets, the probe already positioned correctly.
-								GUITHREADINFO gtiCheck = { sizeof(GUITHREADINFO) };
-								if (_pNotifyWnd && _notifyLocation.x > UI::DEFAULT_WINDOW_X
-									&& GetGUIThreadInfo(0, &gtiCheck)
-									&& gtiCheck.rcCaret.left == 0 && gtiCheck.rcCaret.top == 0
-									&& gtiCheck.rcCaret.right == 0 && gtiCheck.rcCaret.bottom == 0)
-								{
-									// No Win32 caret (WPF/UWP) — try UIA, then apply position
-									if (!(_pCandidateWnd && _pCandidateWnd->_IsWindowVisible()))
-									{
-										RECT rcUIA = {0};
-										if (SUCCEEDED(_uiaCaretTracker.GetCaretRect(&rcUIA)) && (rcUIA.bottom - rcUIA.top > 0))
-										{
-											_notifyLocation.x = rcUIA.left;
-											_notifyLocation.y = rcUIA.bottom;
-											debugPrint(L"SHOW_NOTIFY UIA caret fallback: x=%d y=%d", _notifyLocation.x, _notifyLocation.y);
-										}
-									}
-									_pNotifyWnd->_Move(_notifyLocation.x, _notifyLocation.y);
-								}
 								ShowNotify(TRUE, 0, (UINT) wParam);
+								_pTextService->_ProbeComposition(pContext);
 							}
 
 						}
@@ -1500,6 +1455,10 @@ void CUIPresenter::ClearNotify()
 	}
 	
 }
+void CUIPresenter::ResetCompRange()
+{
+	SetRect(&_rectCompRange, 0, 0, 0, 0);
+}
 void CUIPresenter::ShowNotifyText(_In_ CStringRange* pNotifyText, _In_opt_ UINT delayShow, _In_opt_ UINT timeToHide, _In_opt_ NOTIFY_TYPE notifyType)
 {
 	//if(pNotifyText) debugPrint(L"CUIPresenter::ShowNotifyText(): text = %s, delayShow = %d, timeTimeHide = %d, notifyType= %d, _inFocus = %d, ", pNotifyText->Get(), delayShow, timeToHide, notifyType, _inFocus);
@@ -1578,34 +1537,7 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange* pNotifyText, _In_opt_ UINT 
 				}
 				
 
-				// UIA fallback for WPF/UWP apps that don't create Win32 carets.
-				// GetGUIThreadInfo returns {0,0,0,0} → _notifyLocation is seeded
-				// to the window origin, which is wrong.  Try UIA to get a better
-				// position.  Skip if candidate window is visible (already positioned).
-				if (guiInfo->rcCaret.left == 0 && guiInfo->rcCaret.top == 0
-					&& guiInfo->rcCaret.right == 0 && guiInfo->rcCaret.bottom == 0
-					&& !(_pCandidateWnd && _pCandidateWnd->_IsWindowVisible()))
-				{
-					RECT rcUIA = {0};
-					HRESULT hrUIA = _uiaCaretTracker.GetCaretRect(&rcUIA);
-					debugPrint(L"UIA GetCaretRect hr=0x%08X rect=(%d,%d,%d,%d)", hrUIA, rcUIA.left, rcUIA.top, rcUIA.right, rcUIA.bottom);
-					if (SUCCEEDED(hrUIA) && (rcUIA.bottom - rcUIA.top > 0))
-					{
-						_notifyLocation.x = rcUIA.left;
-						_notifyLocation.y = rcUIA.bottom;
-						debugPrint(L"UIA caret fallback: x=%d y=%d", _notifyLocation.x, _notifyLocation.y);
-					}
-				}
-
-				// Probe before showing — position notify correctly before it becomes visible.
-				// Must run before ShowNotify when delayShow == 0 (immediate show).
-				// Save/restore _notifyLocation around probe: the probe's
-				// _LayoutChangeNotification may overwrite it with the wrong rect
-				// (e.g. Excel formula bar) when hwndCaret == hwndParent.
-				if(_pTextService && delayShow == 0 && _GetContextDocument() == nullptr && notifyType == NOTIFY_TYPE::NOTIFY_CHN_ENG )
-					_pTextService->_ProbeComposition(pContext);
-
-				ShowNotify(TRUE, delayShow, timeToHide);
+				ShowNotify(TRUE, delayShow, timeToHide);	
 
 				if(delayShow == 0)
 				{
@@ -1613,12 +1545,15 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange* pNotifyText, _In_opt_ UINT 
 					{
 						if( _notifyLocation.x  < (int) _pNotifyWnd->_GetWidth() )
 							_pNotifyWnd->_Move(_notifyLocation.x  + _pCandidateWnd->_GetWidth() + SHADOW_SPREAD / 2, _notifyLocation.y);
-						else
+						else		
 							_pNotifyWnd->_Move(_notifyLocation.x  - _pNotifyWnd->_GetWidth() - SHADOW_SPREAD / 2, _notifyLocation.y);
 					}
 					else
 						_pNotifyWnd->_Move(_notifyLocation.x, _notifyLocation.y);
 				}
+				//means TextLayoutSink is not working. We need to ProbeComposition to start layout
+				if(_pTextService && delayShow == 0 && _GetContextDocument() == nullptr && notifyType == NOTIFY_TYPE::NOTIFY_CHN_ENG )
+					_pTextService->_ProbeComposition(pContext);
 
 			}
 
@@ -1637,12 +1572,6 @@ BOOL CUIPresenter::IsNotifyShown()
 	else
 		return FALSE;
 }
-void CUIPresenter::ResetCompRange()
-{
-	debugPrint(L"CUIPresenter::ResetCompRange()");
-	_rectCompRange = { UI::DEFAULT_WINDOW_X, UI::DEFAULT_WINDOW_Y, UI::DEFAULT_WINDOW_X, UI::DEFAULT_WINDOW_Y };
-}
-
 BOOL CUIPresenter::IsCandShown()
 {
 	if(_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())

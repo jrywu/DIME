@@ -104,16 +104,32 @@ STDAPI CDIME::OnSetFocus(_In_ ITfDocumentMgr *pDocMgrFocus, _In_opt_ ITfDocument
 
 		//Update keyboard mode
 		if (pContext && !(_newlyActivated && !Global::isWindows8 && isWin7IEProcess()))
-		{	
+		{
 
 			debugPrint(L"CDIME::OnSetFocus() Set isChinese = lastkeyboardMode = %d,", _isChinese);
 			_lastKeyboardMode = _isChinese;
 			debugPrint(L"CDIME::OnSetFocus() Set keyboard mode to last state = %d", _lastKeyboardMode);
 			ConversionModeCompartmentUpdated(_pThreadMgr, &_lastKeyboardMode);
 			debugPrint(L"CDIME::OnSetFocus() show chi/eng notify _isChinese = %d", _isChinese);
-			if (!isBlackListedProcessForProbeComposition()) 	
+
+			// Skip notification for read-only or transitory contexts (dialogs without input fields, tooltips, menus)
+			BOOL skipNotify = FALSE;
+			TF_STATUS tfStatus;
+			if (SUCCEEDED(pContext->GetStatus(&tfStatus)))
+			{
+				if ((tfStatus.dwDynamicFlags & TF_SD_READONLY) ||
+					(tfStatus.dwStaticFlags & TS_SS_TRANSITORY))
+				{
+					skipNotify = TRUE;
+					debugPrint(L"CDIME::OnSetFocus() skip notify: readonly=%d, transitory=%d",
+						(tfStatus.dwDynamicFlags & TF_SD_READONLY) != 0,
+						(tfStatus.dwStaticFlags & TS_SS_TRANSITORY) != 0);
+				}
+			}
+
+			if (!skipNotify && !isBlackListedProcessForProbeComposition())
 				showChnEngNotify(_isChinese, 500);  //only show chn/eng notify for processes no black listed (may cause strange behaviour like firefox).
-			
+
 		}
 		else if (_newlyActivated)
 			_newlyActivated = FALSE;
