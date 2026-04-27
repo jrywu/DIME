@@ -149,7 +149,7 @@ STDAPI CTfTextLayoutSink::OnLayoutChange(_In_ ITfContext *pContext, TfLayoutCode
     return S_OK;
 }
 
-HRESULT CTfTextLayoutSink::_StartLayout(_In_ ITfContext *pContextDocument, TfEditCookie ec, _In_ ITfRange *pRangeComposition)
+HRESULT CTfTextLayoutSink::_StartLayout(_In_ ITfContext *pContextDocument, TfEditCookie ec, _In_opt_ ITfRange *pRangeComposition)
 {
 	debugPrint(L"CTfTextLayoutSink::_StartLayout()\n");
 	if(_pContextDocument != pContextDocument )

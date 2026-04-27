@@ -534,7 +534,7 @@ STDAPI CUIPresenter::FinalizeExactCompositionString()
 //
 //----------------------------------------------------------------------------
 
-HRESULT CUIPresenter::_StartCandidateList(TfClientId tfClientId, _In_ ITfDocumentMgr *pDocumentMgr, _In_ ITfContext *pContextDocument, TfEditCookie ec, _In_ ITfRange *pRangeComposition, UINT wndWidth)
+HRESULT CUIPresenter::_StartCandidateList(TfClientId tfClientId, _In_ ITfDocumentMgr *pDocumentMgr, _In_ ITfContext *pContextDocument, TfEditCookie ec, _In_opt_ ITfRange *pRangeComposition, UINT wndWidth)
 {
 	debugPrint(L"\nCUIPresenter::_StartCandidateList()");
 	pDocumentMgr;tfClientId;

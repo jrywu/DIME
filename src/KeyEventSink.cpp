@@ -169,6 +169,20 @@ BOOL CDIME::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pCod
 			_pUIPresenter->GetCount(&candiCount);
 			candiSelection = _pUIPresenter->_GetCandidateSelection();
 		}
+
+		// Issue #126: stale _candidateMode without an actual candidate window.
+		// Make-phrase sets _candidateMode = PHRASE before _StartCandidateList
+		// completes, leaving a window where candidate UI is not yet alive but
+		// _candidateMode says PHRASE. A numpad key that hits IsKeystrokeRange
+		// would then be eaten as SELECT_BY_NUMBER and crash on null _pCandidateWnd.
+		// If the candidate UI is not actually present, treat as no candidate mode.
+		if (_candidateMode != CANDIDATE_MODE::CANDIDATE_NONE && candiCount == 0)
+		{
+			debugPrint(L"_IsKeyEaten: stale _candidateMode=%d with candiCount=0, resetting to NONE",
+				(int)_candidateMode);
+			_candidateMode = CANDIDATE_MODE::CANDIDATE_NONE;
+			_isCandidateWithWildcard = FALSE;
+		}
 	
 		// If already in shifted english mode and wildcard char is typed, continue as shifted english
 		if (_isShiftedEnglish && !_IsComposing() && pwch && (*pwch == L'*' || *pwch == L'?') &&
@@ -383,7 +397,7 @@ STDAPI CDIME::OnTestKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, 
         KeystrokeState.Category = KEYSTROKE_CATEGORY::CATEGORY_COMPOSING;
         _InvokeKeyHandler(pContext, code, wch, (DWORD)lParam, KeystrokeState);
     }
-	else if (KeystrokeState.Category == KEYSTROKE_CATEGORY::CATEGORY_CANDIDATE 
+	else if (KeystrokeState.Category == KEYSTROKE_CATEGORY::CATEGORY_CANDIDATE
         && KeystrokeState.Function == KEYSTROKE_FUNCTION::FUNCTION_CANCEL) //cancel associated phrase with anykey.
 	{
 		_InvokeKeyHandler(pContext, code, wch, (DWORD)lParam, KeystrokeState);

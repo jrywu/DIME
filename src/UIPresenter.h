@@ -127,7 +127,7 @@ public:
 
 	DWORD_PTR _GetSelectedCandidateKeyCode(_Inout_ const WCHAR **ppwchCandidateString);
     DWORD_PTR _GetSelectedCandidateString(_Inout_ const WCHAR **ppwchCandidateString);
-    BOOL _SetCandidateSelectionInPage(int nPos) { return _pCandidateWnd->_SetSelectionInPage(nPos); }
+    BOOL _SetCandidateSelectionInPage(int nPos) { return _pCandidateWnd ? _pCandidateWnd->_SetSelectionInPage(nPos) : FALSE; }
 
     BOOL _MoveCandidateSelection(_In_ int offSet);
 	BOOL _SetCandidateSelection(_In_ int selectedIndex, _In_opt_ BOOL isNotify = TRUE);

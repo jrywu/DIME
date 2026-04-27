@@ -933,6 +933,15 @@ BOOL CCompositionProcessorEngine::IsKeystrokeRange(UINT uCode, PWCH pwch, _Inout
 	pKeyState->Category = KEYSTROKE_CATEGORY::CATEGORY_NONE;
 	pKeyState->Function = KEYSTROKE_FUNCTION::FUNCTION_NONE;
 
+	// Respect NumericPad preference: when numpad is configured to always type
+	// digits (NUMERIC) it must not act as a candidate selkey, even with a
+	// phrase / candidate window showing. (Issue #126)
+	if (uCode >= VK_NUMPAD0 && uCode <= VK_DIVIDE &&
+		CConfig::GetNumericPad() == NUMERIC_PAD::NUMERIC_PAD_MUMERIC)
+	{
+		return FALSE;
+	}
+
 	if (_pActiveCandidateListIndexRange->IsRange(uCode, *pwch, Global::ModifiersValue, candidateMode))
 	{
 
