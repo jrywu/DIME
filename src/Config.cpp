@@ -884,6 +884,11 @@ void CConfig::EnumerateReverseConversionProviders(LANGID langid)
 
 void CConfig::SetReverseConversionSelection(UINT sel)
 {
+	if (_reverseConversionDescription)
+	{
+		delete[] _reverseConversionDescription;
+		_reverseConversionDescription = nullptr;
+	}
 	if (sel == 0)
 	{
 		_reverseConverstionCLSID = CLSID_NULL;
@@ -901,6 +906,11 @@ void CConfig::SetReverseConversionSelection(UINT sel)
 		if(_reverseConversionDescription)
 			StringCchCopy(_reverseConversionDescription, wcslen(_reverseConvervsionInfoList->GetAt(sel)->description) + 1, _reverseConvervsionInfoList->GetAt(sel)->description);
 	}
+	// Completes REVERSE_CONV_REFACTOR.md item B: any selection change through
+	// this API must mark the IME-side _pITfReverseConversion[] cache for reload.
+	// The legacy ConfigDialog also did this on combo SELCHANGE; the new
+	// SettingsWindow had no equivalent line, leaving the cache stale.
+	_reloadReverseConversion = TRUE;
 }
 
 

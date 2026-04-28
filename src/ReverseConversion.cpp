@@ -103,7 +103,8 @@ HRESULT CDIME::_AsyncReverseConversionNotification(_In_ TfEditCookie ec,_In_ ITf
 		hr = E_OUTOFMEMORY;
 		goto Exit;
 	}
-	if(SUCCEEDED(_pITfReverseConversion[(UINT)Global::imeMode]->DoReverseConversion(bstr, &reverseConversionList)) && reverseConversionList)
+	ITfReverseConversion* pRC = _pITfReverseConversion[(UINT)Global::imeMode];
+	if(pRC && SUCCEEDED(pRC->DoReverseConversion(bstr, &reverseConversionList)) && reverseConversionList)
 	{
 		UINT hasResult;
 		if(SUCCEEDED(reverseConversionList->GetLength(&hasResult)) && hasResult)

@@ -1,4 +1,4 @@
-/* DIME IME for Windows 7/8/10/11
+﻿/* DIME IME for Windows 7/8/10/11
 
 BSD 3-Clause License
 
@@ -549,11 +549,25 @@ HRESULT CUIPresenter::_StartCandidateList(TfClientId tfClientId, _In_ ITfDocumen
 
     BeginUIElement();
 
-	
-    hr = MakeCandidateWindow(pContextDocument, wndWidth);
-    if (FAILED(hr))
+
+    if (_pCandidateWnd)
     {
-        goto Exit;
+        // Candidate window already exists (e.g. reusing for phrase candidates after
+        // commit — _ClearCandidateList + _SetCandidateText repopulated it). Skip
+        // creation; MakeCandidateWindow returns E_FAIL when _pCandidateWnd != nullptr,
+        // which would tear down the just-populated window via the Exit branch.
+        // (Regression from f898dd6 that reverted a97d654's guard. See debug log
+        //  pattern: phrase list shows briefly then _EndCandidateList fires with
+        //  _StartCandidateList returning E_FAIL.)
+        hr = S_OK;
+    }
+    else
+    {
+        hr = MakeCandidateWindow(pContextDocument, wndWidth);
+        if (FAILED(hr))
+        {
+            goto Exit;
+        }
     }
 
 	Show(_isShowMode);
@@ -562,6 +576,12 @@ HRESULT CUIPresenter::_StartCandidateList(TfClientId tfClientId, _In_ ITfDocumen
     if (SUCCEEDED(_GetTextExt(&rcTextExt)))
     {
         _LayoutChangeNotification(&rcTextExt);
+    }
+    else
+    {
+        // No composition range (e.g. phrase candidates after commit).
+        // Reuse the last saved composition rect — the caret hasn't moved.
+        _LayoutChangeNotification(&_rectCompRange, TRUE);
     }
 
 Exit:
@@ -1049,31 +1069,37 @@ HRESULT CUIPresenter::_NotifyChangeNotification(_In_ enum NOTIFY_WND action, _In
 			Global::IsShiftKeyDownOnly = FALSE;
 			break;
 		case NOTIFY_WND::SHOW_NOTIFY:
-			if((NOTIFY_TYPE)lParam == NOTIFY_TYPE::NOTIFY_CHN_ENG && !_pTextService->_IsComposing())
+		{
+			NOTIFY_TYPE nt = (NOTIFY_TYPE)lParam;
+			// Issue #127: probe should fire for NOTIFY_OTHERS too (reverse-lookup
+			// root keys, special-code hint) so those popups track the caret even
+			// when the floating CHN/ENG notify (which used to be the sole probe
+			// trigger) is disabled by the ShowNotifyDesktop preference.
+			BOOL needProbe = (nt == NOTIFY_TYPE::NOTIFY_CHN_ENG && _pTextService && !_pTextService->_IsComposing())
+			                 || nt == NOTIFY_TYPE::NOTIFY_OTHERS;
+			if (needProbe && _pTextService && _GetContextDocument() == nullptr)  //layout is not started. we need to do probecomposition to start layout
 			{
-				if(_pTextService && _GetContextDocument() == nullptr)  //layout is not started. we need to do probecomposition to start layout
+				ITfContext* pContext = nullptr;
+				ITfThreadMgr* pThreadMgr = nullptr;
+				ITfDocumentMgr* pDocumentMgr = nullptr;
+				pThreadMgr = _pTextService->_GetThreadMgr();
+				if (pThreadMgr)
 				{
-					ITfContext* pContext = nullptr;
-					ITfThreadMgr* pThreadMgr = nullptr;
-					ITfDocumentMgr* pDocumentMgr = nullptr;
-					pThreadMgr = _pTextService->_GetThreadMgr();
-					if (pThreadMgr)
+					if (SUCCEEDED(pThreadMgr->GetFocus(&pDocumentMgr)) && pDocumentMgr)
 					{
-						if (SUCCEEDED(pThreadMgr->GetFocus(&pDocumentMgr)) && pDocumentMgr)
+						if(SUCCEEDED(pDocumentMgr->GetTop(&pContext)) && pContext)
 						{
-							if(SUCCEEDED(pDocumentMgr->GetTop(&pContext)) && pContext)
-							{
-								ShowNotify(TRUE, 0, (UINT) wParam);
-								_pTextService->_ProbeComposition(pContext);
-							}
-
+							ShowNotify(TRUE, 0, (UINT) wParam);
+							_pTextService->_ProbeComposition(pContext);
 						}
+
 					}
 				}
 			}
-			else if((NOTIFY_TYPE)lParam == NOTIFY_TYPE::NOTIFY_OTHERS || (_pCandidateWnd && !_pCandidateWnd->_IsWindowVisible()))
+			else if(nt == NOTIFY_TYPE::NOTIFY_OTHERS || (_pCandidateWnd && !_pCandidateWnd->_IsWindowVisible()))
 				ShowNotify(TRUE, 0, (UINT) wParam);
 			break;
+		}
 	}
 	return S_OK;
 
@@ -1514,7 +1540,12 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange* pNotifyText, _In_opt_ UINT 
 				POINT* pt = nullptr;
 				guiInfo->cbSize = sizeof(GUITHREADINFO);
 				GetGUIThreadInfo(NULL, guiInfo);
-				if(guiInfo && parentWndHandle) 
+				// Issue #127: for NOTIFY_OTHERS (reverse-lookup, special-code) refresh
+				// _notifyLocation each show so a stale value from an earlier hint does
+				// not stick. The probe call below (also widened for #127) will overwrite
+				// with the precise caret rect when GetTextExt succeeds.
+				BOOL refreshLocation = (notifyType == NOTIFY_TYPE::NOTIFY_OTHERS);
+				if(guiInfo && parentWndHandle)
 				{   //for ancient non TSF aware apps with a floating composition window.  The caret position we can get is always the caret in the floating composition window.
 					pt = new POINT;
 					if(pt == nullptr) return;
@@ -1522,8 +1553,8 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange* pNotifyText, _In_opt_ UINT 
 					pt->y = guiInfo->rcCaret.bottom;
 					ClientToScreen(parentWndHandle, pt);
 					debugPrint(L"current caret position from GetGUIThreadInfo, x = %d, y = %d", pt->x, pt->y);
-					if(_notifyLocation.x < 0) _notifyLocation.x = pt->x;
-					if(_notifyLocation.y < 0) _notifyLocation.y = pt->y;
+					if(refreshLocation || _notifyLocation.x < 0) _notifyLocation.x = pt->x;
+					if(refreshLocation || _notifyLocation.y < 0) _notifyLocation.y = pt->y;
 				}
 				else if(parentWndHandle)
 				{
@@ -1531,8 +1562,8 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange* pNotifyText, _In_opt_ UINT 
 					GetCaretPos(&caretPt);
 					ClientToScreen(parentWndHandle, &caretPt);
 					debugPrint(L"current caret position from GetCaretPos, x = %d, y = %d", caretPt.x, caretPt.y);
-					if (_notifyLocation.x < 0) _notifyLocation.x = caretPt.x;
-					if (_notifyLocation.y < 0) _notifyLocation.y = caretPt.y;
+					if (refreshLocation || _notifyLocation.x < 0) _notifyLocation.x = caretPt.x;
+					if (refreshLocation || _notifyLocation.y < 0) _notifyLocation.y = caretPt.y;
 
 				}
 				
@@ -1543,16 +1574,28 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange* pNotifyText, _In_opt_ UINT 
 				{
 					if(_pCandidateWnd && _pNotifyWnd && _pCandidateWnd->_IsWindowVisible())
 					{
-						if( _notifyLocation.x  < (int) _pNotifyWnd->_GetWidth() )
-							_pNotifyWnd->_Move(_notifyLocation.x  + _pCandidateWnd->_GetWidth() + SHADOW_SPREAD / 2, _notifyLocation.y);
-						else		
-							_pNotifyWnd->_Move(_notifyLocation.x  - _pNotifyWnd->_GetWidth() - SHADOW_SPREAD / 2, _notifyLocation.y);
+						// Anchor the side-by-side notify to the candidate's actual
+						// position, not to the caret. When the phrase associative
+						// candidate is below the typing line and the reverse-lookup
+						// notify fires async, _notifyLocation.y is the caret y —
+						// using it here would place the notify on the typing row,
+						// covering text (visible in Chromium-based hosts; Notepad
+						// happens not to flip so the symptom is masked).
+						// Mirrors the cand-aligned logic in _LayoutChangeNotification.
+						if (_candLocation.x < (int) _pNotifyWnd->_GetWidth())
+							_pNotifyWnd->_Move(_candLocation.x + _pCandidateWnd->_GetWidth() + SHADOW_SPREAD / 2, _candLocation.y);
+						else
+							_pNotifyWnd->_Move(_candLocation.x - _pNotifyWnd->_GetWidth() - SHADOW_SPREAD / 2, _candLocation.y);
 					}
 					else
 						_pNotifyWnd->_Move(_notifyLocation.x, _notifyLocation.y);
 				}
-				//means TextLayoutSink is not working. We need to ProbeComposition to start layout
-				if(_pTextService && delayShow == 0 && _GetContextDocument() == nullptr && notifyType == NOTIFY_TYPE::NOTIFY_CHN_ENG )
+				//means TextLayoutSink is not working. We need to ProbeComposition to start layout.
+				// Issue #127: also probe for NOTIFY_OTHERS (reverse-lookup, special-code hints)
+				// so they track the caret when ShowNotifyDesktop pref is OFF.
+				if(_pTextService && delayShow == 0 && _GetContextDocument() == nullptr
+				   && (notifyType == NOTIFY_TYPE::NOTIFY_CHN_ENG
+				       || notifyType == NOTIFY_TYPE::NOTIFY_OTHERS) )
 					_pTextService->_ProbeComposition(pContext);
 
 			}

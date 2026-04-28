@@ -398,7 +398,11 @@ static int ApplyKeyValue(const KeyInfo* ki, const wchar_t* valueStr, FILE* err)
             WCHAR* p = new (std::nothrow) WCHAR[len];
             if (!p) return 2;
             StringCchCopyW(p, len, valueStr);
+            // Free previous description before overwriting (plug pre-existing leak).
+            WCHAR* old = CConfig::GetReverseConversionDescription();
+            if (old) delete[] old;
             CConfig::SetReverseConversionDescription(p);
+            CConfig::SetReloadReverseConversion(TRUE);
         }
         else return 1;
     }
@@ -415,9 +419,15 @@ static int ApplyKeyValue(const KeyInfo* ki, const wchar_t* valueStr, FILE* err)
             }
         }
         if (_wcsicmp(n, L"ReverseConversionCLSID") == 0)
+        {
             CConfig::SetReverseConverstionCLSID(clsid);
+            CConfig::SetReloadReverseConversion(TRUE);
+        }
         else if (_wcsicmp(n, L"ReverseConversionGUIDProfile") == 0)
+        {
             CConfig::SetReverseConversionGUIDProfile(clsid);
+            CConfig::SetReloadReverseConversion(TRUE);
+        }
         else return 1;
     }
     return 0;

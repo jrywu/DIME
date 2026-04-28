@@ -150,7 +150,13 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 	//-----------------do reverse conversion notify. We should not show notify in UI-less mode, thus cancel reverse conversion notify in UILess Mode
 	if (!_IsUILessMode())
 	{
-		if (_pITfReverseConversion[(UINT)Global::imeMode])
+		// Defense in depth: also check CLSID/GUIDProfile, not just the cached pointer.
+		// If reload flag was ever missed (e.g. legacy stale .ini state), the cached
+		// provider could disagree with the user's actual selection. Aligning the
+		// gate with _LoadConfig's lifecycle gate prevents stale notify popups.
+		if (_pITfReverseConversion[(UINT)Global::imeMode]
+		    && !IsEqualCLSID(CConfig::GetReverseConverstionCLSID(), CLSID_NULL)
+		    && !IsEqualCLSID(CConfig::GetReverseConversionGUIDProfile(), CLSID_NULL))
 		{
 			_AsyncReverseConversion(pContext); //asynchronized the reverse conversion with editsession for better perfomance
 		}

@@ -1,4 +1,4 @@
-/* DIME IME for Windows 7/8/10/11
+﻿/* DIME IME for Windows 7/8/10/11
 
 BSD 3-Clause License
 
@@ -265,8 +265,17 @@ HRESULT CTfTextLayoutSink::_GetTextExt(_Inout_ RECT *lpRect)
         return hr;
     }
 
-    if (_pRangeComposition==nullptr || FAILED(hr = pContextView->GetTextExt(_tfEditCookie, _pRangeComposition, lpRect, &isClipped)))
+    if (_pRangeComposition == nullptr)
     {
+        // No composition range to measure (e.g. phrase candidates after commit).
+        // Force failure so callers fall back to _rectCompRange / GetCaretPos
+        // instead of using the zero rect this function never populated.
+        pContextView->Release();
+        return E_FAIL;
+    }
+    if (FAILED(hr = pContextView->GetTextExt(_tfEditCookie, _pRangeComposition, lpRect, &isClipped)))
+    {
+        pContextView->Release();
         return hr;
     }
 	debugPrint (L"CTfTextLayoutSink::_GetTextExt(); top=%d, bottom=%d, left =%d, righ=%d",lpRect->top, lpRect->bottom, lpRect->left, lpRect->right);

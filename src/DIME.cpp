@@ -1050,6 +1050,20 @@ void CDIME::_LoadConfig(BOOL isForce, IME_MODE imeMode)
         }
     }
 
+	// Self-heal: detect inconsistency between the in-memory CLSID/GUIDProfile and
+	// the cached provider pointer. Either direction (CLSID null but provider
+	// cached, or CLSID set but provider null) means the user's saved selection
+	// does not match the runtime cache and we must reload. This covers stale
+	// .ini state from older DIME builds that wrote ReloadReverseConversion=0
+	// after a UI change (REVERSE_CONV_REFACTOR.md item B regression).
+	{
+		BOOL clsidIsNull = IsEqualCLSID(CConfig::GetReverseConverstionCLSID(), CLSID_NULL)
+		               || IsEqualCLSID(CConfig::GetReverseConversionGUIDProfile(), CLSID_NULL);
+		BOOL providerCached = (_pITfReverseConversion[(UINT)imeMode] != nullptr);
+		if (clsidIsNull == providerCached)  // mismatch in either direction
+			CConfig::SetReloadReverseConversion(TRUE);
+	}
+
 	if(CConfig::GetReloadReverseConversion() || isForce)
 	{
 		if(_pITfReverseConversion[(UINT)imeMode])
