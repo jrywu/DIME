@@ -619,10 +619,24 @@ void SettingsWindow::UpdateScrollInfo(WindowData* wd)
 
 void SettingsWindow::RepositionControlsForScroll(WindowData* wd)
 {
+    if (!wd->hContentArea) return;
+    UINT dpi = CConfig::GetDpiForHwnd(wd->hContentArea);
+    int titleBottom = ScaleForDpi(g_geo.topMargin, dpi);
     for (auto& ch : wd->controlHandles) {
-        if (ch.hWnd && IsWindow(ch.hWnd) && (ch.origW > 0 || ch.origH > 0))
-            SetWindowPos(ch.hWnd, nullptr, ch.origX, ch.origY - wd->scrollPos,
-                ch.origW, ch.origH, SWP_NOZORDER | SWP_NOACTIVATE);
+        if (!(ch.hWnd && IsWindow(ch.hWnd) && (ch.origW > 0 || ch.origH > 0)))
+            continue;
+        int newY = ch.origY - wd->scrollPos;
+        SetWindowPos(ch.hWnd, nullptr, ch.origX, newY,
+            ch.origW, ch.origH, SWP_NOZORDER | SWP_NOACTIVATE);
+        // Snap-hide any control whose top enters the title cover band.
+        // Settings rows are short (~24 px) — partial clipping looks like a
+        // floating control above the title rather than a graceful reveal.
+        if (newY < titleBottom) {
+            if (IsWindowVisible(ch.hWnd)) ShowWindow(ch.hWnd, SW_HIDE);
+        } else {
+            SetWindowRgn(ch.hWnd, nullptr, TRUE);
+            if (!IsWindowVisible(ch.hWnd)) ShowWindow(ch.hWnd, SW_SHOW);
+        }
     }
 }
 
@@ -1478,10 +1492,11 @@ void SettingsWindow::PaintRow(HDC hdc, WindowData* wd,
     }
 }
 
-void SettingsWindow::AddControl(WindowData* wd, SettingsControlId id, HWND h, int x, int y, int w, int ht)
+void SettingsWindow::AddControl(WindowData* wd, SettingsControlId id, HWND h, int x, int y, int w, int ht, int visH)
 {
     WindowData::ControlHandle ch = {};
     ch.id = id; ch.hWnd = h; ch.origX = x; ch.origY = y; ch.origW = w; ch.origH = ht;
+    ch.visH = (visH > 0) ? visH : ht;
     wd->controlHandles.push_back(ch);
     if (h) SetWindowSubclass(h, ChildWheelSubclassProc, 1, 0);
 }
@@ -1516,7 +1531,7 @@ void SettingsWindow::CreateRowControl(WindowData* wd, const LayoutRow& lr,
             SendMessage(h, WM_SETFONT, (WPARAM)wd->hFontBody, TRUE);
             if (wd->isDarkTheme) SetWindowTheme(h, L"DarkMode_CFD", nullptr);
         }
-        AddControl(wd, lr.id, h, ctrlRight - comboW, cy, comboW, ScaleForDpi(g_geo.comboDropH, dpi));
+        AddControl(wd, lr.id, h, ctrlRight - comboW, cy, comboW, ScaleForDpi(g_geo.comboDropH, dpi), ScaleForDpi(g_geo.ctrlHeight, dpi));
         break;
     }
     case RowType::Edit:
@@ -2171,9 +2186,10 @@ void SettingsWindow::RebuildContentArea(HWND hWnd, WindowData* wd)
     // Helper lambda: create a control and store it
     auto addCtrl = [&](SettingsControlId id, HWND h, int ox, int oy, int ow, int oh) {
         if (!h) return;
-        WindowData::ControlHandle ch;
+        WindowData::ControlHandle ch{};
         ch.id = id; ch.hWnd = h;
         ch.origX = ox; ch.origY = oy; ch.origW = ow; ch.origH = oh;
+        ch.visH = oh;
         wd->controlHandles.push_back(ch);
         // Subclass for mouse wheel forwarding
         if (IsWindowVisible(h))

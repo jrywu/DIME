@@ -103,7 +103,8 @@ private:
             SettingsControlId id;
             HWND hWnd;
             int origX, origY;  // original position (before scroll offset)
-            int origW, origH;
+            int origW, origH;  // window size (combobox origH = dropdown-open height)
+            int visH;          // visible/painted height (for combo == closed control height)
         };
         std::vector<ControlHandle> controlHandles;
 
@@ -143,7 +144,7 @@ private:
     static void NavigateToCategory(HWND hWnd, WindowData* wd, int cardIndex);
     static void PaintRow(HDC hdc, WindowData* wd, const LayoutRow& lr,
         int margin, int curY, int cardW, int thisH, int ctrlRightEdge, UINT dpi, bool isChild);
-    static void AddControl(WindowData* wd, SettingsControlId id, HWND h, int x, int y, int w, int ht);
+    static void AddControl(WindowData* wd, SettingsControlId id, HWND h, int x, int y, int w, int ht, int visH = -1);
     static void CreateRowControl(WindowData* wd, const LayoutRow& lr,
         int ctrlRight, int cy, int ctrlH, int btnH, UINT dpi);
     static void CreateColorGridControls(WindowData* wd, int margin, int curY, int ctrlRight, UINT dpi);
