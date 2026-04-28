@@ -1,4 +1,4 @@
-/* DIME IME for Windows 7/8/10/11
+﻿/* DIME IME for Windows 7/8/10/11
 
 BSD 3-Clause License
 
@@ -36,6 +36,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
+#include <array>
 #include "KeyHandlerEditSession.h"
 #include "CandidateWindow.h"
 #include "NotifyWindow.h"
@@ -149,12 +150,12 @@ public:
 
 	void GetCandLocation(_Out_ POINT *lpPoint) const;
 
-	HRESULT MakeNotifyWindow(_In_ ITfContext *pContextDocument, _In_ CStringRange *pNotifyText =nullptr, _In_ enum NOTIFY_TYPE notifyType = NOTIFY_TYPE::NOTIFY_OTHERS);
-	void SetNotifyText(_In_ CStringRange *pNotifyText);
-	void ShowNotify(_In_ BOOL showMode, _In_opt_ UINT delayShow = 0, _In_opt_ UINT timeToHide = 0);
+	HRESULT MakeNotifyWindow(_In_ ITfContext *pContextDocument, _In_ CStringRange *pNotifyText =nullptr, _In_ enum NOTIFY_TYPE notifyType = NOTIFY_TYPE::NOTIFY_CHN_ENG);
+	void SetNotifyText(_In_ CStringRange *pNotifyText, _In_opt_ NOTIFY_TYPE notifyType = NOTIFY_TYPE::NOTIFY_CHN_ENG);
+	void ShowNotify(_In_ BOOL showMode, _In_opt_ UINT delayShow = 0, _In_opt_ UINT timeToHide = 0, _In_opt_ NOTIFY_TYPE notifyType = NOTIFY_TYPE::NOTIFY_CHN_ENG);
 	void ClearNotify();
 	void ClearAll();
-	void ShowNotifyText(_In_ CStringRange *pNotifyText, _In_opt_ UINT delayShow = 0, _In_opt_ UINT timeToHide = 0, _In_opt_ NOTIFY_TYPE notifyType  = NOTIFY_TYPE::NOTIFY_OTHERS);
+	void ShowNotifyText(_In_ CStringRange *pNotifyText, _In_opt_ UINT delayShow = 0, _In_opt_ UINT timeToHide = 0, _In_opt_ NOTIFY_TYPE notifyType  = NOTIFY_TYPE::NOTIFY_CHN_ENG);
 	BOOL IsNotifyShown();
 	LONG GetCompRangeHeight() const { return _rectCompRange.bottom - _rectCompRange.top; }
 	void ResetCompRange();
@@ -182,7 +183,12 @@ private:
     HRESULT MakeCandidateWindow(_In_ ITfContext *pContextDocument, _In_ UINT wndWidth);
 	
     void DisposeCandidateWindow();
-	void DisposeNotifyWindow();
+	void DisposeNotifyWindow(_In_opt_ NOTIFY_TYPE notifyType = NOTIFY_TYPE::NOTIFY_COUNT);  // NOTIFY_COUNT = dispose all slots
+	// Stack-layout helpers (see docs/MULTI_NOTIFY.md).
+	BOOL _AnyHintSlotVisible() const;
+	BOOL _DecideStackGrowUp() const;
+	POINT _ComputeStackPosForNewSlot(_In_ NOTIFY_TYPE newSlot, _In_ BOOL growUp) const;
+	void _RestackVisibleSlots(_In_ BOOL growUp);
 
     void AddCandidateToUI(_In_ CDIMEArray<CCandidateListItem> *pCandidateList, BOOL isAddFindKeyCode);
 
@@ -190,7 +196,12 @@ private:
 
 protected:
     std::unique_ptr<CCandidateWindow> _pCandidateWnd;
-	std::unique_ptr<CNotifyWindow> _pNotifyWnd;
+	// One CNotifyWindow per NOTIFY_TYPE. Lazily instantiated by MakeNotifyWindow.
+	// Concurrency invariant (see docs/MULTI_NOTIFY.md): at most NOTIFY_REVERSE_LOOKUP
+	// and NOTIFY_SPECIAL_CODE coexist, both wiped together by ClearNotify on next
+	// keystroke; CHN_ENG cannot coexist with hint slots in practice. Future hints
+	// with timeToHide>0 would need restack-on-hide — not implemented here.
+	std::array<std::unique_ptr<CNotifyWindow>, (size_t)NOTIFY_TYPE::NOTIFY_COUNT> _pNotifyWnds;
     BOOL _isShowMode;
 
 

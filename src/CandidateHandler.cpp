@@ -170,7 +170,7 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 				StringCchCatN(_commitKeyCode, MAX_KEY_LENGTH, pCandidateKeyCode, keyCodeLen);
 			CStringRange commitKeyCode, convertedKeyCode;
 			_pCompositionProcessorEngine->GetReadingString(&convertedKeyCode, NULL, &commitKeyCode.Set(_commitKeyCode, wcslen(_commitKeyCode)));
-			_pUIPresenter->ShowNotifyText(&convertedKeyCode, 0, 0, NOTIFY_TYPE::NOTIFY_OTHERS);
+			_pUIPresenter->ShowNotifyText(&convertedKeyCode, 0, 0, NOTIFY_TYPE::NOTIFY_REVERSE_LOOKUP);
 		}
 
 	}
@@ -183,7 +183,7 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 		CStringRange notifyText;
 		ArraySPFound = _pCompositionProcessorEngine->GetArraySpeicalCodeFromConvertedText(&commitString, &specialCode); 
 		if(specialCode.Get())
-			_pUIPresenter->ShowNotifyText(&specialCode, 0, 0, NOTIFY_TYPE::NOTIFY_OTHERS);
+			_pUIPresenter->ShowNotifyText(&specialCode, 0, 0, NOTIFY_TYPE::NOTIFY_SPECIAL_CODE);
 	}
 	convertedString = commitString;
 	//----------------- do TC to SC covert if required----------------------------------------------------------------------------------

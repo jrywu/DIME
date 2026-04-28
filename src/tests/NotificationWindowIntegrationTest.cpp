@@ -310,12 +310,12 @@ namespace DIMEIntegratedTests
         {
             Logger::WriteMessage("Test: IT04_04_NotifyWindow_ShowNotifyType_Creates\n");
 
-            // Act: Using NOTIFY_TYPE::NOTIFY_OTHERS instead of non-existent SHOW_NOTIFY
-            CNotifyWindow* pNotifyWnd = new CNotifyWindow(TestNotifyCallback, nullptr, NOTIFY_TYPE::NOTIFY_OTHERS);
+            // Act: Using NOTIFY_TYPE::NOTIFY_REVERSE_LOOKUP instead of non-existent SHOW_NOTIFY
+            CNotifyWindow* pNotifyWnd = new CNotifyWindow(TestNotifyCallback, nullptr, NOTIFY_TYPE::NOTIFY_REVERSE_LOOKUP);
             pNotifyWnd->_Create(20, NULL);
 
             // Assert
-            Assert::AreEqual(static_cast<int>(NOTIFY_TYPE::NOTIFY_OTHERS), static_cast<int>(pNotifyWnd->GetNotifyType()));
+            Assert::AreEqual(static_cast<int>(NOTIFY_TYPE::NOTIFY_REVERSE_LOOKUP), static_cast<int>(pNotifyWnd->GetNotifyType()));
 
             // Cleanup
             delete pNotifyWnd;
@@ -328,11 +328,11 @@ namespace DIMEIntegratedTests
             // Arrange
             CNotifyWindow* pNotifyWnd = new CNotifyWindow(TestNotifyCallback, nullptr, NOTIFY_TYPE::NOTIFY_CHN_ENG);
 
-            // Act: Change notification type to NOTIFY_OTHERS
-            pNotifyWnd->SetNotifyType(NOTIFY_TYPE::NOTIFY_OTHERS);
+            // Act: Change notification type to NOTIFY_REVERSE_LOOKUP
+            pNotifyWnd->SetNotifyType(NOTIFY_TYPE::NOTIFY_REVERSE_LOOKUP);
 
             // Assert
-            Assert::AreEqual(static_cast<int>(NOTIFY_TYPE::NOTIFY_OTHERS), static_cast<int>(pNotifyWnd->GetNotifyType()));
+            Assert::AreEqual(static_cast<int>(NOTIFY_TYPE::NOTIFY_REVERSE_LOOKUP), static_cast<int>(pNotifyWnd->GetNotifyType()));
 
             // Cleanup
             delete pNotifyWnd;

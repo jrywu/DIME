@@ -216,12 +216,17 @@ enum class SEARCH_SECTION
 //---------------------------------------------------------------------
 // NOTIFY_TYPE
 //---------------------------------------------------------------------
+// Each value is also a slot index into CUIPresenter::_pNotifyWnds.
+// Co-existing slots (today: only NOTIFY_REVERSE_LOOKUP + NOTIFY_SPECIAL_CODE) stack
+// at the caret anchor. Order is layout order (slot 0 closest to anchor).
 enum class NOTIFY_TYPE
 {
-	NOTIFY_CHN_ENG = 0,
+	NOTIFY_CHN_ENG = 0,        // 中文/英數, 全形/半形, 簡/繁 — mutually exclusive in slot 0
 	NOTIFY_SINGLEDOUBLEBYTE,
-	NOTIFY_BEEP,
-	NOTIFY_OTHERS
+	NOTIFY_BEEP,               // sound only — slot reserved but no window instantiated
+	NOTIFY_REVERSE_LOOKUP,     // 反查根 / wildcard key code
+	NOTIFY_SPECIAL_CODE,       // Array 特別碼
+	NOTIFY_COUNT               // sentinel — array size, not a real type
 };
 
 enum class NUMERIC_PAD

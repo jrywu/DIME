@@ -590,7 +590,7 @@ namespace DIMEIntegratedTests
             pUIPresenter->MakeCandidateWindow(nullptr, 200);
             CStringRange text;
             text.Set(L"測試", 2);
-            pUIPresenter->MakeNotifyWindow(nullptr, &text, NOTIFY_TYPE::NOTIFY_OTHERS);
+            pUIPresenter->MakeNotifyWindow(nullptr, &text, NOTIFY_TYPE::NOTIFY_REVERSE_LOOKUP);
 
             // Act: Show
             HRESULT hr = pUIPresenter->Show(TRUE);
@@ -614,7 +614,7 @@ namespace DIMEIntegratedTests
             pUIPresenter->MakeCandidateWindow(nullptr, 200);
             CStringRange text;
             text.Set(L"測試", 2);
-            pUIPresenter->MakeNotifyWindow(nullptr, &text, NOTIFY_TYPE::NOTIFY_OTHERS);
+            pUIPresenter->MakeNotifyWindow(nullptr, &text, NOTIFY_TYPE::NOTIFY_REVERSE_LOOKUP);
             pUIPresenter->Show(TRUE);
 
             // Act: Hide
@@ -1500,7 +1500,7 @@ namespace DIMEIntegratedTests
             // Arrange
             StubCDIME* pStubDIME = new StubCDIME();
             CUIPresenter* pUIPresenter = new CUIPresenter(pStubDIME, nullptr);
-            pUIPresenter->MakeNotifyWindow(nullptr, nullptr, NOTIFY_TYPE::NOTIFY_OTHERS);
+            pUIPresenter->MakeNotifyWindow(nullptr, nullptr, NOTIFY_TYPE::NOTIFY_REVERSE_LOOKUP);
 
             // Act: Set notify text color
             pUIPresenter->_SetNotifyTextColor(RGB(0, 128, 0), RGB(255, 255, 255));
@@ -1584,7 +1584,7 @@ namespace DIMEIntegratedTests
             StubCDIME* pStubDIME = new StubCDIME();
             CUIPresenter* pUIPresenter = new CUIPresenter(pStubDIME, nullptr);
             pUIPresenter->MakeCandidateWindow(nullptr, 200);
-            pUIPresenter->MakeNotifyWindow(nullptr, nullptr, NOTIFY_TYPE::NOTIFY_OTHERS);
+            pUIPresenter->MakeNotifyWindow(nullptr, nullptr, NOTIFY_TYPE::NOTIFY_REVERSE_LOOKUP);
 
             // Add data to both windows
             CDIMEArray<CCandidateListItem> candidates;

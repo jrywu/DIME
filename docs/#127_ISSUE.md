@@ -4,7 +4,7 @@
 - **Reporter:** alivejoke-spec
 - **Title (orig.):** 反查輸入字根 與 特別碼提示，提示視窗位置不如浮動中英切換視窗
 - **Severity:** Medium (visual UX defect, no crash, no data loss)
-- **Status:** Investigating — fix proposal below
+- **Status:** Fixed (probe widening landed; multi-notify extension landed — see "Extension" section)
 
 ## Symptom
 
@@ -395,3 +395,116 @@ With `DEBUG_PRINT` re-enabled in `UIPresenter.cpp`, `CandidateWindow.cpp`, `Cand
 - The orphaned `pContext`/`pDocumentMgr` references in the existing `SHOW_NOTIFY` timer block ([UIPresenter.cpp:1056-1071](../src/UIPresenter.cpp#L1056-L1071)) are not released on the success path. Worth tightening when restructuring for Change B.
 - `NOTIFY_OTHERS` is also used by `showFullHalfShapeNotify` ([LanguageBar.cpp:1165-1170](../src/LanguageBar.cpp#L1165-L1170)) and other small notifications. These will *also* benefit from probe-based positioning after the patch — verify they still look right (they should look *better*).
 - A longer-term cleanup would decouple "should we show the CHN/ENG notify?" from "should we run probe to seed `_notifyLocation`?" — they are conceptually independent and should not share a preference at all.
+
+---
+
+## Extension — multi-notify (reverse-lookup + special-code coexist)
+
+After the probe widening shipped, a follow-up defect surfaced in Array IM: when both reverse-lookup (反查) and special-code (特別碼) hints fire from the same candidate-finalize edit session, the second `ShowNotifyText` call **overwrote** the first inside the single shared notify window. The user only ever saw one of the two.
+
+Full design rationale, concurrency-invariant audit, and call-site inventory in [docs/MULTI_NOTIFY.md](MULTI_NOTIFY.md). Implementation summary follows.
+
+### Approach
+
+Give each notify source its own `CNotifyWindow` instance, indexed by `NOTIFY_TYPE` itself. The window class is unchanged; only the presenter's ownership and layout grow. Co-existing slots (today: only reverse-lookup + special-code) form a stack anchored to the candidate window's left edge.
+
+### Slot key — split `NOTIFY_OTHERS`, use `NOTIFY_TYPE` as the array index
+
+[src/BaseStructure.h](../src/BaseStructure.h):
+
+```cpp
+enum class NOTIFY_TYPE
+{
+    NOTIFY_CHN_ENG = 0,        // 中文/英數, 全形/半形, 簡/繁 — share slot 0
+    NOTIFY_SINGLEDOUBLEBYTE,
+    NOTIFY_BEEP,               // sound only — slot reserved, no window
+    NOTIFY_REVERSE_LOOKUP,     // 反查根 / wildcard key code
+    NOTIFY_SPECIAL_CODE,       // Array 特別碼
+    NOTIFY_COUNT               // sentinel — array size
+};
+```
+
+`NOTIFY_OTHERS` removed. Each `NOTIFY_TYPE` value is now both a semantic tag *and* an array index into the slot table.
+
+### Owner
+
+[src/UIPresenter.h](../src/UIPresenter.h):
+
+```cpp
+std::array<std::unique_ptr<CNotifyWindow>, (size_t)NOTIFY_TYPE::NOTIFY_COUNT> _pNotifyWnds;
+```
+
+Replaces the single `_pNotifyWnd`. Slots are lazily instantiated by `MakeNotifyWindow(notifyType)` and indexed by `(size_t)notifyType` everywhere. `DisposeNotifyWindow(NOTIFY_COUNT)` (sentinel) wipes all slots; per-type variant wipes one.
+
+### Stack layout — `_RestackVisibleSlots`
+
+Single source of truth for slot positioning. Two rules:
+
+**X rule:**
+
+- Candidate visible → each slot's **right edge** aligned to candidate's left edge minus `SHADOW_SPREAD/2`. Per-slot x = `candLeft - slot.width`.
+- No candidate → all slots share `_notifyLocation.x` (caret-anchored, left-aligned).
+
+**Y rule (candidate visible):**
+
+- `growUp = false` (candidate below caret) → first visible slot's **top** at candidate's top; stack grows downward.
+- `growUp = true`  (candidate above caret) → first visible slot's **bottom** at candidate's bottom; stack grows upward.
+
+`growUp` is decided by `_DecideStackGrowUp`: candidate visible → mirror its side of the caret; no candidate → flip up only on screen-bottom overflow.
+
+### Right-edge alignment guarantees no overlap
+
+By computing `slotX = candLeft - slot.width` per slot, a slot can never extend past `candLeft` regardless of width. Earlier attempts (left-edge alignment with max-width clamp) were correct in principle but visually displaced narrower slots, which the user disliked. The right-edge rule produces the natural "all slots flush against the candidate" appearance.
+
+### Concurrency invariant (verified — see [MULTI_NOTIFY.md §Verified concurrency invariant](MULTI_NOTIFY.md))
+
+- Only realistic concurrent visible pair: reverse-lookup + special-code, siblings of one Array candidate-finalize step.
+- Both share one lifetime: appear together (sync + async within the same edit session), neither auto-hides (`timeToHide=0`), both wiped together by next-keystroke `ClearNotify`.
+- CHN/ENG cannot realistically coexist: every key-event path calls `ClearNotify` before `showChnEngNotify`; the rare compartment-change path is suppressed by the generalised precedence guard `_AnyHintSlotVisible()`.
+
+**Consequence:** at most two slots visible at once with shared lifetime — no middle-slot-expires-and-leaves-a-gap scenario. No restack on slot disappearance is needed.
+
+### CHN/ENG precedence — generalised
+
+Old guard ([UIPresenter.cpp:1498-1499](../src/UIPresenter.cpp#L1498-L1499)) blocked `NOTIFY_CHN_ENG` from clobbering an active `NOTIFY_OTHERS`. New guard `_AnyHintSlotVisible()` blocks CHN/ENG when any compositional-hint slot (reverse-lookup or special-code) is visible. Same intent, per-slot semantics.
+
+### Files changed
+
+| File | Change |
+| --- | --- |
+| [src/BaseStructure.h](../src/BaseStructure.h) | Replace `NOTIFY_OTHERS` with `NOTIFY_REVERSE_LOOKUP` and `NOTIFY_SPECIAL_CODE`; add `NOTIFY_COUNT` sentinel. |
+| [src/UIPresenter.h](../src/UIPresenter.h) | `_pNotifyWnd` → `std::array<unique_ptr<CNotifyWindow>, NOTIFY_COUNT> _pNotifyWnds`. Add `_AnyHintSlotVisible`, `_DecideStackGrowUp`, `_ComputeStackPosForNewSlot`, `_RestackVisibleSlots`. Slot-aware overloads of `MakeNotifyWindow` / `SetNotifyText` / `ShowNotify` / `DisposeNotifyWindow`. Saved as UTF-8 with BOM. |
+| [src/UIPresenter.cpp](../src/UIPresenter.cpp) | Per-slot indexing throughout; cross-cutting ops (`_SetNotifyTextColor`, `IsNotifyShown`, `ToShowUIWindows`, `ClearAll`) loop the array. `_LayoutChangeNotification` finds first-visible slot as anchor for max-width / candidate-collision math, then translates whole visible stack via `_RestackVisibleSlots`. `ShowNotifyText` does per-slot replace, generalised precedence guard, then `_RestackVisibleSlots`. SHOW_NOTIFY timer routes correct slot via `(NOTIFY_TYPE)lParam`. Probe-widening updated to enumerate the new hint types. |
+| [src/ReverseConversion.cpp:119](../src/ReverseConversion.cpp#L119) | `NOTIFY_OTHERS` → `NOTIFY_REVERSE_LOOKUP`. |
+| [src/CandidateHandler.cpp:173,186](../src/CandidateHandler.cpp#L173) | Line 173 (wildcard key code) → `NOTIFY_REVERSE_LOOKUP`. Line 186 (Array special-code) → `NOTIFY_SPECIAL_CODE`. |
+| [src/tests/NotificationWindowIntegrationTest.cpp](../src/tests/NotificationWindowIntegrationTest.cpp), [src/tests/UIPresenterIntegrationTest.cpp](../src/tests/UIPresenterIntegrationTest.cpp) | Test references `NOTIFY_OTHERS` → `NOTIFY_REVERSE_LOOKUP`. |
+
+### Behaviour matrix
+
+| Scenario | Before extension | After extension |
+| --- | --- | --- |
+| Reverse-lookup only | One notify near caret | One notify near caret (unchanged) |
+| Special-code only | One notify near caret | One notify near caret (unchanged) |
+| Both fire (Array finalize) | Second clobbers first; one visible | Both visible, stacked; right edges aligned at candidate's left |
+| Both visible, candidate above caret (no room below) | n/a | Stack grows upward from candidate's bottom; first slot's bottom at candidate.bottom |
+| Both visible, candidate below caret | n/a | Stack grows downward from candidate's top; first slot's top at candidate.top |
+| CHN/ENG fires while a hint slot is visible | Existing guard blocked it | Generalised guard still blocks it |
+| Next keystroke after both shown | `ClearNotify` wipes the single window | `ClearNotify` disposes all slots; layout sink ended once |
+
+### Extension verification
+
+1. Array IM: type a syllable that triggers both reverse-lookup and special-code → two notify boxes visible, right edges flush against candidate's left edge, stacked vertically (lower index closer to candidate). Confirmed via screenshots.
+2. Caret near top of edit area (candidate below caret) → stack grows downward from candidate top. Confirmed.
+3. Caret near bottom of edit area (candidate above caret) → stack grows upward from candidate bottom; first slot's bottom flush with candidate's bottom. Confirmed via screenshot.
+4. CHN/ENG via Shift while hints visible → keystroke clears hints first, then CHN/ENG appears alone in slot 0. Existing precedence path.
+5. CHN/ENG via language-bar click while hints visible → `_AnyHintSlotVisible()` suppresses the CHN/ENG show. Hints remain.
+6. LINE Win+. emoji panel after triggering hints → emoji inserts. Probe is still read-only.
+7. Build verified Debug x64 + Debug Win32 clean (Release blocked by pre-existing `BuildInfo.cmd` infrastructure issue, unrelated).
+
+### Design history (decisions taken and rejected)
+
+- **Multi-line single window** considered and rejected: ~180 lines of changes inside `CNotifyWindow` (rendering, sweep timer, prefix table, multi-line measurement). Concentrates risk in the rendering window.
+- **Parallel `NOTIFY_SLOT` enum** considered and rejected: dual axis (type + slot) was redundant since `NOTIFY_TYPE` already carries semantic meaning. Splitting `NOTIFY_OTHERS` into its real producers cleans up an existing wart.
+- **Left-edge alignment with max-width clamp** implemented and reverted at user request: produced visually-displaced narrower slots. Right-edge alignment is the user's preferred final design.
+- **Per-slot expiry + restack-on-hide** considered and rejected: verified concurrency invariant rules out middle-slot-expires; both hint slots share lifetime via `ClearNotify`. Saves a `HIDDEN` callback and restack pass.
+- **Per-slot show/hide preferences** considered and rejected as scope creep. The original report did not ask for finer-grained preference control; left as a future enhancement if requested.
