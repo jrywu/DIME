@@ -1,8 +1,8 @@
 # DIME Test Plan
 
-**Version**: 3.4 (Settings controller unit tests; modern settings UI)
-**Last Updated**: 2026-04-06
-**Status**: ✅ **IME Core 82.4% — TARGET MET** — 589 tests passing
+**Version**: 3.5 (RichEdit viewport tests; custom-table validation primitives; issue #130)
+**Last Updated**: 2026-04-30
+**Status**: ✅ **IME Core 82.4% — TARGET MET** — 611 tests passing
 
 ---
 
@@ -15,9 +15,9 @@
 | **IME Core Coverage** | ≥80% | **82.4%** | ✅ **TARGET MET** (2,316/2,811 lines) |
 | **IME UI Coverage** | ≥30% | **29.4%** | ⚠️ Near target (1,362/4,630 lines) |
 | **TSF Interface Coverage** | ≥15% | **6.9%** | ⚠️ Limited (345/4,971 lines) |
-| **Unit Tests** | — | **318 tests** | ✅ COMPLETE |
-| **Integration Tests** | — | **271 tests** | ✅ COMPLETE |
-| **Total Automated Tests** | — | **589 passing** | ✅ COMPLETE |
+| **Unit Tests** | — | **330 tests** | ✅ COMPLETE |
+| **Integration Tests** | — | **281 tests** | ✅ COMPLETE |
+| **Total Automated Tests** | — | **611 passing** | ✅ COMPLETE |
 | **Execution Time** | < 60s | **~22 seconds** | ✅ EXCELLENT |
 | **CI/CD Ready** | Yes | **Yes** | ✅ AUTO-RUN |
 
@@ -158,7 +158,8 @@ OpenCppCoverage --sources DIME --excluded_sources tests ^
 | **UT-PT: Palette round-trip + backward compat** | 11 tests | ≥90% | ~90% | `Config.cpp` (ConfigTest class) |
 | **UT-DPI: DPI Scaling** | 16 tests | 100% | **100%** | `BaseStructure.h` (`ScaleForDpi`), MulDiv font math (`DpiScalingTest.cpp`) |
 | **UT-SM: Settings Controller** | 21 tests | ≥90% | ~90% | `SettingsController.cpp`, `SettingsPageLayout.cpp` (`SettingsControllerTest.cpp`) |
-| **Total Unit Tests** | **318** | **≥85%** | **~92%** | **Core functionality** |
+| **UT-VL/UT-LT/UT-VB: Custom Table Validation Primitives** | 12 tests | ≥90% | ~90% | `SettingsController.cpp` — `ValidateLine`, `LoadTextFileAsUtf16` (`SettingsControllerTest.cpp`) |
+| **Total Unit Tests** | **330** | **≥85%** | **~92%** | **Core functionality** |
 
 *UT-06 has room for improvement in wildcard/reverse lookup coverage
 
@@ -173,11 +174,12 @@ OpenCppCoverage --sources DIME --excluded_sources tests ^
 | **IT-05: TSF Core Logic** | 18 tests | ≥70% | KeyEventSink: 23.2%, Engine: 13.8% | Stub-based logic testing |
 | **IT-06: UIPresenter** | 54 tests | 55-60%* | **54.8%** | Stub-based testing (practical max) |
 | **IT-07: Settings Dialog** | 18 tests | ≥90% | Config: ~60-70% | End-to-end dialog integration (incl. IT-CM-01–04) |
-| **IT-CLI: CLI Integration** | 50 tests | ≥95% | **94.9%** | End-to-end CLI via `RunCLI()` + INI verification |
+| **IT-CLI: CLI Integration** | 54 tests | ≥95% | **94.9%** | End-to-end CLI via `RunCLI()` + INI verification |
 | **IT-CV: Custom Table Validation** | 14 tests | ≥85% | Config: ~70% | DialogContext + mode-aware validation |
 | **IT-PT: Palette integration** | 8 tests | ≥90% | Config: ~80% | Light/dark palette get/set + static defaults |
 | **IT-MF: CMemoryFile Real-File** | 6 tests | ≥85% | File.cpp: ~85% | Real dictionary + cache validation |
-| **Total Integration Tests** | **271** | **≥75%** | **~45%** | **Interaction & workflows** |
+| **IT-RE: RichEdit Viewport** | 6 tests | ≥90% | ~90% | In-process RICHEDIT50W — EM_EXLIMITTEXT, TOM paint, EN_CHANGE mute, auto-jump |
+| **Total Integration Tests** | **281** | **≥75%** | **~45%** | **Interaction & workflows** |
 
 *IT-06 revised target: 55-60% is practical maximum without full TSF simulation infrastructure
 **Overall project coverage limited by TSF/UI integration complexity
@@ -451,6 +453,46 @@ These tests validate the `ScaleForDpi()` helper and the `MulDiv`-based font poin
 
 ---
 
+### UT-VL/UT-LT/UT-VB: Custom Table Validation Primitives (12 tests)
+
+**Target**: `SettingsController.cpp` (`ValidateLine`, `LoadTextFileAsUtf16`) | **Coverage**: ~90%
+**Test File**: `src/tests/SettingsControllerTest.cpp` (classes `ValidateLineTest`, `LoadTextFileTest`, `ValidateBufferTest`)
+
+These tests exercise the pure-function validation and encoding-detection primitives added as part of issue #130 (large custom-table import hang fix). All test data is generated programmatically — no fixture files.
+
+#### ValidateLineTest (6 tests, UT_VL_01–06)
+
+| Test | Key Validations |
+|------|-----------------|
+| **UT_VL_01** | `L"roc 語"` (DAYI, maxCodes=4) → `valid=true`, no errors |
+| **UT_VL_02** | `L"roc 語 fdfdafds"` (3 tokens) → `Format` error |
+| **UT_VL_03** | 12-char key with maxCodes=4 → `KeyTooLong` error |
+| **UT_VL_04** | 1025-char line → `Format` error (Level-0 length cap > 1024) |
+| **UT_VL_05** | `L"fff"` (no whitespace separator) → `Format` error |
+| **UT_VL_06** | `L"中 abc"` in PHONETIC mode → `InvalidChar` (U+4E2D outside `'!'`..`'~'`) |
+
+#### LoadTextFileTest (4 tests, UT_LT_01–04)
+
+Uses a `WriteTempBinaryFile` helper that writes raw bytes to `%TEMP%` and reads back via `LoadTextFileAsUtf16`.
+
+| Test | Key Validations |
+|------|-----------------|
+| **UT_LT_01** | `{0xFF,0xFE, …}` UTF-16LE BOM → `outLen=5`, `result[0]=L'r'` |
+| **UT_LT_02** | `{0xEF,0xBB,0xBF, …}` UTF-8 BOM → `outLen=5`, `result[0]=L'r'` |
+| **UT_LT_03** | `{0x72,0x6F,0x63,…}` UTF-8 no-BOM → `outLen=5`, `result[0]=L'r'` |
+| **UT_LT_04** | `{0x61,0x20,0x80,…}` (0x80 invalid UTF-8) → CP_ACP fallback, `result[0]=L'a'` |
+
+#### ValidateBufferTest (2 tests, UT_VB_01–02)
+
+Inlines a `RunBufferValidation` helper (split on `\n`, strip `\r`, call `ValidateLine` per line) to verify multi-line buffer scanning — the same iteration pattern used by the production `ValidateViewport` code.
+
+| Test | Key Validations |
+|------|-----------------|
+| **UT_VB_01** | 2000 valid lines + 50 error lines (`BADBADBADBAD 語`, 12-char key) → 50 errors, firstErrLine=2001 |
+| **UT_VB_02** | 200 valid lines + 1 error line → 1 error, firstErrLine=201 |
+
+---
+
 ## Integration Tests
 
 **Total:** 270 tests | **Execution Time:** ~20 seconds | **Coverage:** Interaction & workflow validation
@@ -640,7 +682,7 @@ Integration tests focus on **component interaction** rather than line coverage:
 
 ---
 
-### IT-CLI: CLI Integration (50 tests, `CLIIntegrationTest.cpp`)
+### IT-CLI: CLI Integration (54 tests, `CLIIntegrationTest.cpp`)
 
 **Target**: `CLI.cpp` (`RunCLI`, all command handlers) | **Coverage**: **94.9%**
 **Test File**: `src/tests/CLIIntegrationTest.cpp`
@@ -668,6 +710,7 @@ End-to-end tests that call `RunCLI()` and verify results by reading INI files di
 | **CLILoadPhraseSuccessTests** | 2 | Valid file + locked file |
 | **CLILoadArraySuccessTests** | 2 | All 7 table types + locked file |
 | **CLIImportExportErrorPathTests** | 2 | Locked file import, bad dest path export |
+| **CLIImportCustomTableValidationTests** | 4 | UTF-8 BOM roundtrip exit 0; 3-error-line import exits 3 (no write); 200-valid+1-error exits 3; --no-validate bypasses validation |
 
 **Key testing patterns**:
 - Primary assertion: `GetPrivateProfileStringW` on INI file (independent of `--get`)
@@ -693,6 +736,32 @@ Real-file integration tests that exercise `CMemoryFile` against installed dictio
 | **IT-MF-04** (`CacheInvalidated_OnSourceMtimeChange`) | Advancing source mtime via `_wutime` invalidates cache; rebuilt cache has updated `%src_mtime`; original mtime restored after test |
 | **IT-MF-05** (`DayiTTS_CacheFile_LineCountMatchesMemory`) | Same as IT-MF-03 but with DAYI TTS table (`TableTextServiceDaYi.txt`); cache file `TableTextServiceDaYi-Big5.txt` line count matches in-memory buffer |
 | **IT-MF-06** (`DayiTTS_CacheInvalidated_OnSourceMtimeChange`) | Same as IT-MF-04 but with DAYI TTS table; advancing source mtime invalidates cache |
+
+---
+
+### IT-RE: RichEdit Viewport Tests (6 tests, `RichEditViewportTest.cpp`)
+
+**Target**: `SettingsWindow.cpp` RichEdit + TOM patterns | **Coverage**: ~90%
+**Test File**: `src/tests/RichEditViewportTest.cpp` (class `RichEditViewportTest`, namespace `DIMEIntegratedTests`)
+
+Hosts a bare `RICHEDIT50W` in-process (no Settings UI needed). Verifies the RichEdit + TOM contract exercised by the custom-table editor: `EM_EXLIMITTEXT`, caret stability under TOM colour painting, `ValidateViewport`-style error colouring, auto-jump, and `EN_CHANGE` mute/restore brackets. All test data generated programmatically — no fixture files.
+
+**Setup**: `TEST_CLASS_INITIALIZE` loads `Msftedit.dll`, creates a `RICHEDIT50W` window (`WS_POPUP | ES_MULTILINE`), and raises the text limit to 100 MB via `EM_EXLIMITTEXT`.
+
+| Test | Key Validations |
+|------|-----------------|
+| **IT_RE_01** `LargeImportAcceptsInput` | Build ~1.5 MB buffer (200 K lines × `"a 中\n"`); after `SetWindowTextW`, `EM_REPLACESEL("X")` must increase `GetWindowTextLengthW` — proves `EM_EXLIMITTEXT(100 MB)` keeps the control editable at import scale |
+| **IT_RE_02** `ExLimitText_RaisesAboveDefault` | Fresh `RICHEDIT50W`: `EM_GETLIMITTEXT` default < 100 MB; after `EM_EXLIMITTEXT(100 MB)`: returned limit ≥ 100 MB — confirms the raise is necessary (issue #130 fix) |
+| **IT_RE_03** `TOMPaintDoesNotMoveSelection` | Set caret (5,5); `PaintRangeColor(0, 100, RED)` via `ITextFont::SetForeColor`; `EM_EXGETSEL` must still return (5,5) |
+| **IT_RE_04** `ValidateViewport_PaintsErrors` | 4 valid + 1 `"foo bar baz"` line; per-line `ValidateLine` + `PaintRangeColor`; `GetCharColor` via TOM: line 0 = `RGB(0,180,0)`, line 4 = `RGB(200,0,0)` |
+| **IT_RE_05** `AutoJumpAfterSaveError` | 60 lines; `EM_LINEINDEX(49)` → `EM_SETSEL(cp,cp)` → `EM_SCROLLCARET`; `EM_EXGETSEL` returns `(cp, cp)` |
+| **IT_RE_06** `ENChangeMuteSurvivesPaint` | Set `ENM_CHANGE`; mute → `PaintRangeColor` → restore; `EM_GETEVENTMASK` returns `ENM_CHANGE` after restore |
+
+**TOM helpers** (local to the test file, same API as production `SettingsWindow.cpp`):
+- `GetTOM(hRE)` — `EM_GETOLEINTERFACE` + `QueryInterface(__uuidof(ITextDocument))`
+- `PaintRangeColor(pDoc, cpMin, cpMax, color)` — `ITextDocument::Range` + `ITextFont::SetForeColor`
+- `GetCharColor(pDoc, cp)` — `ITextDocument::Range(cp, cp+1)` + `ITextFont::GetForeColor`
+- `SetTextQ(hRE, text)` — `EM_SETEVENTMASK(0)` + `SetWindowTextW` + restore mask
 
 ---
 
@@ -778,6 +847,17 @@ jobs:
 ---
 
 ## Document Revision History
+
+### Version 3.5 - 2026-04-30
+**RichEdit viewport tests; custom-table validation primitives; issue #130 fix coverage:**
+
+- ✅ **Total: 611 tests passing** (up from 589 at v3.4); 330 unit + 281 integration
+- ✅ **UT-VL (6 tests):** `ValidateLineTest` in `SettingsControllerTest.cpp` — `ValidateLine` 4-level logic: valid line, 3-token format error, key-too-long, length-cap (>1024), no-separator, InvalidChar in PHONETIC mode
+- ✅ **UT-LT (4 tests):** `LoadTextFileTest` in `SettingsControllerTest.cpp` — `LoadTextFileAsUtf16` encoding ladder: UTF-16LE BOM, UTF-8 BOM, UTF-8 no-BOM, CP_ACP fallback (0x80 invalid byte). All test data written programmatically to `%TEMP%`
+- ✅ **UT-VB (2 tests):** `ValidateBufferTest` in `SettingsControllerTest.cpp` — multi-line buffer scanning: 2000-valid+50-error and 200-valid+1-error; inline `RunBufferValidation` helper mirrors production `ValidateViewport` iteration
+- ✅ **IT-CLI expanded to 54 tests** (up from 50): `CLIImportCustomTableValidationTests` (4 tests) — UTF-8 BOM full roundtrip, 3-error-line import exits 3 with no file written, 200-valid+1-error exits 3, `--no-validate` bypasses validation
+- ✅ **IT-RE (6 tests):** New `RichEditViewportTest.cpp` — in-process `RICHEDIT50W` tests: large import editable after `EM_EXLIMITTEXT`, limit raise confirmed, TOM paint preserves caret, `ValidateViewport`-style error colouring, auto-jump, `EN_CHANGE` mute/restore
+- ✅ **Fixture-free design**: all 22 new tests generate data programmatically (`wstring` loops, `CreateFileW`/`WriteFile` binary helpers, `MakeTempBinaryFile`/`MakeUTF8BOMFile`) — CI/CD safe on GitHub Actions runners
 
 ### Version 3.3 - 2026-03-24
 **DPI scaling unit tests; DIMESettings Per-Monitor V2 DPI awareness:**

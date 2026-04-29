@@ -454,4 +454,234 @@ namespace DIMEUnitTests
         }
 
     };
+
+    // ============================================================================
+    // ValidateLineTest — UT_VL_*
+    // ============================================================================
+    TEST_CLASS(ValidateLineTest)
+    {
+    public:
+        // UT_VL_01: valid two-token line passes all levels
+        TEST_METHOD(UT_VL_01_ValidateLine_TwoTokens_Pass)
+        {
+            const wchar_t* line = L"roc 語";
+            auto v = SettingsModel::ValidateLine(line, (int)wcslen(line),
+                IME_MODE::IME_MODE_DAYI, 4);
+            Assert::IsTrue(v.valid);
+            Assert::IsTrue(v.errors.empty());
+        }
+
+        // UT_VL_02: three tokens → Format error
+        TEST_METHOD(UT_VL_02_ValidateLine_ThreeTokens_FormatError)
+        {
+            const wchar_t* line = L"roc 語 fdfdafds";
+            auto v = SettingsModel::ValidateLine(line, (int)wcslen(line),
+                IME_MODE::IME_MODE_DAYI, 4);
+            Assert::IsFalse(v.valid);
+            Assert::IsTrue(v.errors.size() == 1);
+            Assert::IsTrue(v.errors[0].error == SettingsModel::LineError::Format);
+        }
+
+        // UT_VL_03: key longer than maxCodes → KeyTooLong
+        TEST_METHOD(UT_VL_03_ValidateLine_KeyTooLong)
+        {
+            const wchar_t* line = L"LONGKEY12345 語";  // 12-char key, maxCodes=4
+            auto v = SettingsModel::ValidateLine(line, (int)wcslen(line),
+                IME_MODE::IME_MODE_DAYI, 4);
+            Assert::IsFalse(v.valid);
+            Assert::IsTrue(v.errors.size() == 1);
+            Assert::IsTrue(v.errors[0].error == SettingsModel::LineError::KeyTooLong);
+        }
+
+        // UT_VL_04: trimmed length > MAX_TABLE_LINE_LENGTH (1024) → Level-0 hard cap
+        TEST_METHOD(UT_VL_04_ValidateLine_LengthCap)
+        {
+            std::wstring line(1025, L'a');  // no whitespace → trimmed len 1025 > 1024
+            auto v = SettingsModel::ValidateLine(line.c_str(), (int)line.size(),
+                IME_MODE::IME_MODE_DAYI, 4);
+            Assert::IsFalse(v.valid);
+            Assert::IsTrue(v.errors.size() == 1);
+            Assert::IsTrue(v.errors[0].error == SettingsModel::LineError::Format);
+        }
+
+        // UT_VL_05: single token, no whitespace separator → Format error
+        TEST_METHOD(UT_VL_05_ValidateLine_NoSeparator)
+        {
+            const wchar_t* line = L"fff";
+            auto v = SettingsModel::ValidateLine(line, (int)wcslen(line),
+                IME_MODE::IME_MODE_DAYI, 4);
+            Assert::IsFalse(v.valid);
+            Assert::IsTrue(v.errors.size() == 1);
+            Assert::IsTrue(v.errors[0].error == SettingsModel::LineError::Format);
+        }
+
+        // UT_VL_06: U+4E2D (中) as PHONETIC key char — outside '!'..'~' → InvalidChar
+        TEST_METHOD(UT_VL_06_ValidateLine_PerCharInvalid_Phonetic)
+        {
+            const wchar_t* line = L"中 abc";
+            auto v = SettingsModel::ValidateLine(line, (int)wcslen(line),
+                IME_MODE::IME_MODE_PHONETIC, 64);
+            Assert::IsFalse(v.valid);
+            Assert::IsFalse(v.errors.empty());
+            Assert::IsTrue(v.errors[0].error == SettingsModel::LineError::InvalidChar);
+        }
+    };
+
+    // ============================================================================
+    // LoadTextFileTest — UT_LT_*
+    // ============================================================================
+    TEST_CLASS(LoadTextFileTest)
+    {
+        static std::wstring WriteTempBinaryFile(const wchar_t* suffix, const BYTE* data, DWORD len)
+        {
+            WCHAR tmp[MAX_PATH];
+            GetTempPathW(MAX_PATH, tmp);
+            std::wstring path = std::wstring(tmp) + L"dime_lt_" + suffix + L".txt";
+            HANDLE h = CreateFileW(path.c_str(), GENERIC_WRITE, 0, nullptr,
+                CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+            if (h != INVALID_HANDLE_VALUE) {
+                DWORD written = 0;
+                WriteFile(h, data, len, &written, nullptr);
+                CloseHandle(h);
+            }
+            return path;
+        }
+
+    public:
+        // UT_LT_01: UTF-16LE BOM file — BOM stripped, content decoded correctly
+        TEST_METHOD(UT_LT_01_LoadTextFile_Utf16BOM)
+        {
+            // "roc\r\n" encoded as UTF-16LE with BOM (FF FE)
+            BYTE bytes[] = { 0xFF,0xFE, 0x72,0x00,0x6F,0x00,0x63,0x00,0x0D,0x00,0x0A,0x00 };
+            std::wstring path = WriteTempBinaryFile(L"lt01", bytes, sizeof(bytes));
+
+            size_t outLen = 0;
+            LPWSTR result = SettingsModel::LoadTextFileAsUtf16(path.c_str(), &outLen);
+            DeleteFileW(path.c_str());
+
+            Assert::IsNotNull(result);
+            Assert::AreEqual((size_t)5, outLen);  // r o c \r \n
+            Assert::AreEqual(L'r', result[0]);
+            Assert::AreEqual(L'o', result[1]);
+            Assert::AreEqual(L'c', result[2]);
+            delete[] result;
+        }
+
+        // UT_LT_02: UTF-8 BOM file — BOM stripped, decoded as UTF-8
+        TEST_METHOD(UT_LT_02_LoadTextFile_Utf8BOM)
+        {
+            // UTF-8 BOM (EF BB BF) + "roc\r\n"
+            BYTE bytes[] = { 0xEF,0xBB,0xBF, 0x72,0x6F,0x63,0x0D,0x0A };
+            std::wstring path = WriteTempBinaryFile(L"lt02", bytes, sizeof(bytes));
+
+            size_t outLen = 0;
+            LPWSTR result = SettingsModel::LoadTextFileAsUtf16(path.c_str(), &outLen);
+            DeleteFileW(path.c_str());
+
+            Assert::IsNotNull(result);
+            Assert::AreEqual((size_t)5, outLen);  // r o c \r \n
+            Assert::AreEqual(L'r', result[0]);
+            delete[] result;
+        }
+
+        // UT_LT_03: UTF-8 without BOM — strict sniff (MB_ERR_INVALID_CHARS) succeeds
+        TEST_METHOD(UT_LT_03_LoadTextFile_Utf8NoBOM)
+        {
+            // "roc\r\n" as plain UTF-8, no BOM
+            BYTE bytes[] = { 0x72,0x6F,0x63,0x0D,0x0A };
+            std::wstring path = WriteTempBinaryFile(L"lt03", bytes, sizeof(bytes));
+
+            size_t outLen = 0;
+            LPWSTR result = SettingsModel::LoadTextFileAsUtf16(path.c_str(), &outLen);
+            DeleteFileW(path.c_str());
+
+            Assert::IsNotNull(result);
+            Assert::AreEqual((size_t)5, outLen);
+            Assert::AreEqual(L'r', result[0]);
+            delete[] result;
+        }
+
+        // UT_LT_04: byte invalid for UTF-8 → CP_ACP fallback; ASCII prefix preserved
+        // 0x80 fails MB_ERR_INVALID_CHARS for UTF-8.  On CP1252 (GitHub Actions runner)
+        // it maps to U+20AC; on CP950 it is treated as a lone invalid byte.  Either
+        // way the loader must return non-null with 'a' and ' ' at positions 0 and 1.
+        TEST_METHOD(UT_LT_04_LoadTextFile_CP_ACP_Fallback)
+        {
+            BYTE bytes[] = { 0x61, 0x20, 0x80, 0x0D, 0x0A };  // "a " + 0x80 + CRLF
+            std::wstring path = WriteTempBinaryFile(L"lt04", bytes, sizeof(bytes));
+
+            size_t outLen = 0;
+            LPWSTR result = SettingsModel::LoadTextFileAsUtf16(path.c_str(), &outLen);
+            DeleteFileW(path.c_str());
+
+            Assert::IsNotNull(result);
+            Assert::IsTrue(outLen >= 2);
+            Assert::AreEqual(L'a', result[0]);
+            Assert::AreEqual(L' ', result[1]);
+            delete[] result;
+        }
+    };
+
+    // ============================================================================
+    // ValidateBufferTest — UT_VB_*
+    // Inline equivalent of file-static ValidateCustomTableBuffer (SettingsWindow.cpp).
+    // ============================================================================
+    TEST_CLASS(ValidateBufferTest)
+    {
+        struct BufferResult { int errorCount; int firstErrLine; };
+
+        static BufferResult RunBufferValidation(const wchar_t* buf, IME_MODE mode, UINT maxCodes)
+        {
+            BufferResult r = { 0, -1 };
+            if (!buf) return r;
+            int lineNo = 0;
+            const wchar_t* p = buf;
+            while (*p) {
+                ++lineNo;
+                const wchar_t* eol = p;
+                while (*eol && *eol != L'\n') ++eol;
+                int lineLen = (int)(eol - p);
+                if (lineLen > 0 && p[lineLen - 1] == L'\r') --lineLen;
+                auto v = SettingsModel::ValidateLine(p, lineLen, mode, maxCodes);
+                if (!v.valid) {
+                    ++r.errorCount;
+                    if (r.firstErrLine < 0) r.firstErrLine = lineNo;
+                }
+                p = eol;
+                if (*p == L'\n') ++p;
+            }
+            return r;
+        }
+
+    public:
+        // UT_VB_01: 2000 valid + 50 KeyTooLong lines → 50 errors, first at line 2001
+        TEST_METHOD(UT_VB_01_ValidateCustomTableBuffer_FirstError)
+        {
+            std::wstring buf;
+            buf.reserve(2050 * 16);
+            for (int i = 0; i < 2000; ++i)
+                buf += L"roc 語\n";
+            for (int i = 0; i < 50; ++i)
+                buf += L"BADBADBADBAD 語\n";  // 12-char key > maxCodes=4
+
+            auto r = RunBufferValidation(buf.c_str(), IME_MODE::IME_MODE_DAYI, 4);
+            Assert::AreEqual(50, r.errorCount);
+            Assert::AreEqual(2001, r.firstErrLine);
+        }
+
+        // UT_VB_02: 200 valid + 1 KeyTooLong line → 1 error at line 201
+        TEST_METHOD(UT_VB_02_ValidateCustomTableBuffer_DeepError)
+        {
+            std::wstring buf;
+            buf.reserve(202 * 12);
+            for (int i = 0; i < 200; ++i)
+                buf += L"a 中\n";
+            buf += L"BADBADBADBAD 中\n";  // 12-char key > maxCodes=4
+
+            auto r = RunBufferValidation(buf.c_str(), IME_MODE::IME_MODE_DAYI, 4);
+            Assert::AreEqual(1, r.errorCount);
+            Assert::AreEqual(201, r.firstErrLine);
+        }
+    };
+
 }

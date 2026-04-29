@@ -62,6 +62,41 @@ static FILE* OpenNullOut()
     return f;
 }
 
+// Write raw bytes to a temp file and return its path.
+static std::wstring MakeTempBinaryFile(const wchar_t* suffix, const BYTE* data, DWORD len)
+{
+    WCHAR tmp[MAX_PATH];
+    GetTempPathW(MAX_PATH, tmp);
+    std::wstring path = std::wstring(tmp) + L"dime_cli_test_" + suffix + L".txt";
+    HANDLE h = CreateFileW(path.c_str(), GENERIC_WRITE, 0, nullptr,
+        CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (h != INVALID_HANDLE_VALUE) {
+        DWORD written = 0;
+        WriteFile(h, data, len, &written, nullptr);
+        CloseHandle(h);
+    }
+    return path;
+}
+
+// Build a UTF-8 BOM file with validLines × "a 中\n" then errorLines × "BADBADBADBAD 中\n".
+// "BADBADBADBAD" (12 chars) exceeds the default maxCodes=4 for DAYI → KeyTooLong on import.
+static std::wstring MakeUTF8BOMFile(const wchar_t* suffix, int validLines, int errorLines)
+{
+    std::string content;
+    content.reserve((validLines + errorLines) * 20);
+    for (int i = 0; i < validLines; ++i)
+        content += "a \xe4\xb8\xad\n";           // "a 中\n" in UTF-8
+    for (int i = 0; i < errorLines; ++i)
+        content += "BADBADBADBAD \xe4\xb8\xad\n"; // 12-char key > maxCodes=4
+
+    std::string full;
+    full.reserve(3 + content.size());
+    full += "\xEF\xBB\xBF";  // UTF-8 BOM
+    full += content;
+    return MakeTempBinaryFile(suffix,
+        reinterpret_cast<const BYTE*>(full.c_str()), (DWORD)full.size());
+}
+
 // Write a minimal temporary CIN file to TEMP and return its path.
 static std::wstring MakeTempCIN(const wchar_t* suffix, const char* utf8Content)
 {
@@ -1132,6 +1167,135 @@ public:
         fclose(nul);
 
         Assert::AreEqual(2, rc);
+    }
+};
+
+// ---------------------------------------------------------------------------
+// CLIImportCustomTableValidationTests — Layer 2: CLI import with validation
+// ---------------------------------------------------------------------------
+TEST_CLASS(CLIImportCustomTableValidationTests)
+{
+    static void GetCustomTablePaths(WCHAR* txtPath, WCHAR* cinPath, DWORD cch)
+    {
+        WCHAR appData[MAX_PATH]; SHGetSpecialFolderPath(NULL, appData, CSIDL_APPDATA, FALSE);
+        StringCchPrintfW(txtPath, cch, L"%s\\DIME\\DAYI-Custom.txt", appData);
+        StringCchPrintfW(cinPath, cch, L"%s\\DIME\\DAYI-Custom.cin", appData);
+    }
+
+public:
+    TEST_METHOD_INITIALIZE(Setup)
+    {
+        WCHAR txt[MAX_PATH], cin[MAX_PATH];
+        GetCustomTablePaths(txt, cin, MAX_PATH);
+        DeleteFileW(txt);
+        DeleteFileW(cin);
+        DeleteConfigFile(IME_MODE::IME_MODE_DAYI);
+        // Write DAYI defaults so GetMaxCodes() returns 4
+        FILE* nul = OpenNullOut();
+        RunCLI(L"--mode dayi --reset", nul);
+        fclose(nul);
+    }
+
+    TEST_METHOD_CLEANUP(Teardown)
+    {
+        WCHAR txt[MAX_PATH], cin[MAX_PATH];
+        GetCustomTablePaths(txt, cin, MAX_PATH);
+        DeleteFileW(txt);
+        DeleteFileW(cin);
+        DeleteConfigFile(IME_MODE::IME_MODE_DAYI);
+    }
+
+    // IT_CLI_UTF8BOM_FullRoundTrip: UTF-8 BOM source → exit 0, output is UTF-16LE+BOM
+    TEST_METHOD(IT_CLI_UTF8BOM_FullRoundTrip)
+    {
+        // "a 中\nb 語\n" as UTF-8 with BOM
+        BYTE bytes[] = {
+            0xEF,0xBB,0xBF,
+            0x61,0x20,0xE4,0xB8,0xAD,0x0A,  // a 中\n
+            0x62,0x20,0xE8,0xA9,0x9E,0x0A   // b 語\n
+        };
+        std::wstring src = MakeTempBinaryFile(L"utf8bom_rt", bytes, sizeof(bytes));
+
+        FILE* nul = OpenNullOut();
+        WCHAR cmd[512];
+        StringCchPrintfW(cmd, 512, L"--mode dayi --import-custom %s", src.c_str());
+        int rc = RunCLI(cmd, nul);
+        fclose(nul);
+        DeleteFileW(src.c_str());
+
+        Assert::AreEqual(0, rc, L"exit 0 on clean UTF-8 BOM import");
+
+        WCHAR txt[MAX_PATH], cin_[MAX_PATH];
+        GetCustomTablePaths(txt, cin_, MAX_PATH);
+        Assert::IsTrue(PathFileExistsW(txt) == TRUE, L"DAYI-Custom.txt should be written");
+
+        // Verify UTF-16LE BOM at start of output file
+        HANDLE hf = CreateFileW(txt, GENERIC_READ, FILE_SHARE_READ, NULL,
+            OPEN_EXISTING, 0, NULL);
+        Assert::IsTrue(hf != INVALID_HANDLE_VALUE, L"output file must be openable");
+        BYTE bom[2] = {};
+        DWORD rd = 0;
+        ReadFile(hf, bom, 2, &rd, NULL);
+        CloseHandle(hf);
+        Assert::AreEqual((BYTE)0xFF, bom[0], L"byte 0 must be 0xFF (UTF-16LE BOM)");
+        Assert::AreEqual((BYTE)0xFE, bom[1], L"byte 1 must be 0xFE (UTF-16LE BOM)");
+    }
+
+    // IT_CLI_InvalidLines_AbortsClean: all-error file → exit 3, nothing written
+    TEST_METHOD(IT_CLI_InvalidLines_AbortsClean)
+    {
+        std::wstring src = MakeUTF8BOMFile(L"inv_lines", 0, 3);  // 3 × KeyTooLong lines
+
+        FILE* nul = OpenNullOut();
+        WCHAR cmd[512];
+        StringCchPrintfW(cmd, 512, L"--mode dayi --import-custom %s", src.c_str());
+        int rc = RunCLI(cmd, nul);
+        fclose(nul);
+        DeleteFileW(src.c_str());
+
+        Assert::AreEqual(3, rc, L"exit 3 on validation failure");
+
+        WCHAR txt[MAX_PATH], cin_[MAX_PATH];
+        GetCustomTablePaths(txt, cin_, MAX_PATH);
+        Assert::IsFalse(PathFileExistsW(txt) == TRUE, L"DAYI-Custom.txt must NOT be written on abort");
+    }
+
+    // IT_CLI_DeepError_AbortsClean: 200 valid + 1 error at line 201 → exit 3
+    TEST_METHOD(IT_CLI_DeepError_AbortsClean)
+    {
+        std::wstring src = MakeUTF8BOMFile(L"deep_err", 200, 1);
+
+        FILE* nul = OpenNullOut();
+        WCHAR cmd[512];
+        StringCchPrintfW(cmd, 512, L"--mode dayi --import-custom %s", src.c_str());
+        int rc = RunCLI(cmd, nul);
+        fclose(nul);
+        DeleteFileW(src.c_str());
+
+        Assert::AreEqual(3, rc, L"exit 3 when error is at line 201");
+
+        WCHAR txt[MAX_PATH], cin_[MAX_PATH];
+        GetCustomTablePaths(txt, cin_, MAX_PATH);
+        Assert::IsFalse(PathFileExistsW(txt) == TRUE, L"DAYI-Custom.txt must NOT be written on abort");
+    }
+
+    // IT_CLI_NoValidate_BypassesError: same corrupt file with --no-validate → exit 0
+    TEST_METHOD(IT_CLI_NoValidate_BypassesError)
+    {
+        std::wstring src = MakeUTF8BOMFile(L"no_val", 200, 1);
+
+        FILE* nul = OpenNullOut();
+        WCHAR cmd[512];
+        StringCchPrintfW(cmd, 512, L"--mode dayi --no-validate --import-custom %s", src.c_str());
+        int rc = RunCLI(cmd, nul);
+        fclose(nul);
+        DeleteFileW(src.c_str());
+
+        Assert::AreEqual(0, rc, L"exit 0 when validation bypassed with --no-validate");
+
+        WCHAR txt[MAX_PATH], cin_[MAX_PATH];
+        GetCustomTablePaths(txt, cin_, MAX_PATH);
+        Assert::IsTrue(PathFileExistsW(txt) == TRUE, L"DAYI-Custom.txt should be written with --no-validate");
     }
 };
 

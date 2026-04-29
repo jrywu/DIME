@@ -367,6 +367,7 @@
     <ClCompile Include="CLIIntegrationTest.cpp" />
     <ClCompile Include="DpiScalingTest.cpp" />
     <ClCompile Include="SettingsControllerTest.cpp" />
+    <ClCompile Include="RichEditViewportTest.cpp" />
     <ClCompile Include="..\DIMESettings\SettingsPageLayout.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>

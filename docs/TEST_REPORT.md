@@ -1,10 +1,10 @@
 # DIME Test Report
 
-**Report Date:** April 6, 2026
+**Report Date:** April 30, 2026
 **Test Framework:** Microsoft.VisualStudio.CppUnitTestFramework
 **Build Status:** ✅ Successful
 **Overall Coverage:** **IME Core: 82.4%** | IME UI: 29.4% | TSF Interface: 6.9%
-**Version:** 3.4 — Settings controller unit tests; 589 passing (318 unit + 271 integration)
+**Version:** 3.5 — RichEdit viewport tests; custom-table validation primitives; issue #130; 611 passing (330 unit + 281 integration)
 
 ---
 
@@ -12,9 +12,9 @@
 
 | Metric | Value | Status |
 |--------|-------|--------|
-| **Total Tests** | 589 passing | ✅ All Passing |
-| **Unit Tests** | 318 | ✅ |
-| **Integration Tests** | 271 | ✅ |
+| **Total Tests** | 611 passing | ✅ All Passing |
+| **Unit Tests** | 330 | ✅ |
+| **Integration Tests** | 281 | ✅ |
 | **Test Execution Time** | ~23 seconds | ✅ |
 | **Build Status** | Debug x64 | ✅ |
 | **IME Core Coverage** | **82.4%** | ✅ Target ≥80% **MET** |
@@ -27,16 +27,16 @@
 - TSF Interface: 345 / 4,971 lines (6.9%) — 39 files
 - Overall production: 4,023 / 12,412 lines (32.4%)
 
-**Test Count Note**: 589 `TEST_METHOD` declarations defined and running across 20 test files (318 unit in 10 files, 271 integration in 10 files). All tests run in the current environment; IT-MF-03 through 06 fail (not skip) when source tables are missing.
+**Test Count Note**: 611 `TEST_METHOD` declarations defined and running across 21 test files (330 unit in 10 files, 281 integration in 11 files). All tests run in the current environment; IT-MF-03 through 06 fail (not skip) when source tables are missing.
 
 ---
 
 ## Test Suite Results
 
-### Unit Tests (UT-01 to UT-BS) - Namespace: `DIMEUnitTests`
-- **Tests:** 297
+### Unit Tests (UT-01 to UT-VB) - Namespace: `DIMEUnitTests`
+- **Tests:** 330
 - **Status:** ✅ All Passing
-- **Files:** ConfigTest.cpp (three classes), MemoryTest.cpp, StringTest.cpp (three classes), TableDictionaryEngineTest.cpp, CINParserTest.cpp, DictionaryTest.cpp, CMemoryFileTest.cpp, CLIParserTest.cpp, DpiScalingTest.cpp, SettingsControllerTest.cpp
+- **Files:** ConfigTest.cpp (three classes), MemoryTest.cpp, StringTest.cpp (three classes), TableDictionaryEngineTest.cpp, CINParserTest.cpp, DictionaryTest.cpp, CMemoryFileTest.cpp, CLIParserTest.cpp, DpiScalingTest.cpp, SettingsControllerTest.cpp (four classes)
 - **Coverage:** High for core components (60-97% for tested modules); **97.2% for BaseStructure.cpp**; **94.9% for CLI.cpp**; **91.7% for CMemoryFile cache functions**; File.cpp overall **90.1%**
 
 ### Integration Tests (IT-01 to IT-CLI) - Namespace: `DIMEIntegratedTests`
@@ -205,6 +205,18 @@
   - Sidebar items: count = 6 (4 modes + separator + 載入碼表)
   - GetModeBitmask: all modes + NONE
 
+#### UT-VL/UT-LT/UT-VB: Custom Table Validation Primitives
+
+- **Tests:** 12 (ValidateLineTest: 6, LoadTextFileTest: 4, ValidateBufferTest: 2)
+- **Status:** ✅ All Passing
+- **Files:** `SettingsControllerTest.cpp` (classes `ValidateLineTest`, `LoadTextFileTest`, `ValidateBufferTest`)
+- **Coverage:** ~90% of `SettingsModel::ValidateLine` and `SettingsModel::LoadTextFileAsUtf16`
+- **Key validations:**
+  - `ValidateLine`: valid 2-token line; 3-token format error; key-too-long (12 chars, maxCodes=4); Level-0 length cap (>1024 chars); no-separator format error; InvalidChar in PHONETIC mode (U+4E2D outside `'!'`..`'~'`)
+  - `LoadTextFileAsUtf16`: UTF-16LE BOM (strips BOM, correct content); UTF-8 BOM (strips BOM, converts); UTF-8 no-BOM (sniff pass); invalid UTF-8 byte (0x80) → CP_ACP fallback
+  - `ValidateBufferTest`: inline `RunBufferValidation` iterates buffer by `\n`, strips `\r`, calls `ValidateLine` — 2000 valid+50 error lines → 50 errors, firstErrLine=2001; 200 valid+1 error → 1 error, firstErrLine=201
+- **Design note:** All test data generated programmatically; `WriteTempBinaryFile` helper writes raw bytes to `%TEMP%` — no fixture files, CI/CD safe
+
 #### UT-CLI: CLI Parser Unit Tests
 
 - **Tests:** 62 (ParseModeTests: 6, ParseArrayTableNameTests: 9, ParseCLIArgsTests: 16, KeyApplicableModeTests: 6, ParseColorValueTests: 7, FindKeyTests: 8, RunCLI_ListModesUnitTest: 2, RunCLI_ExitCodeUnitTests: 8)
@@ -215,7 +227,7 @@
 
 #### IT-CLI: CLI Integration Tests
 
-- **Tests:** 50 (19 test classes covering all 11 CLI commands)
+- **Tests:** 54 (20 test classes covering all 11 CLI commands)
 - **Status:** ✅ All Passing
 - **Files:** `CLIIntegrationTest.cpp` (class `DIMEIntegratedTests`)
 - **Coverage:** **94.9%** of `CLI.cpp` (29 uncovered lines are unreachable defensive defaults)
@@ -227,6 +239,7 @@
   - Import/export custom tables with roundtrip verification
   - Error paths: invalid values, out-of-range, unknown keys, wrong mode, locked files, bad paths
   - JSON and silent output modes
+  - **CLIImportCustomTableValidationTests** (4 new tests — issue #130): UTF-8 BOM import roundtrip exits 0 and output file has UTF-16LE BOM; 3-error-line import exits 3 and file NOT written; 200-valid+1-error import exits 3; `--no-validate` flag bypasses validation and exits 0
 - **Test infrastructure:**
   - `GetConfigFilePath(mode)` — builds INI path for direct assertion
   - `ReadIniKey(mode, key)` — reads INI via `GetPrivateProfileStringW` (primary assertion)
@@ -234,6 +247,22 @@
   - `MakeTempCIN(suffix, content)` — creates temp CIN files for load/import tests
   - `GetDimeFilePath(filename)` — builds `%APPDATA%\DIME\<file>` path
   - `BackupDimeFile`/`RestoreDimeFile` — preserve pre-existing `.cin` files during load-main/phrase/array tests
+
+#### IT-RE: RichEdit Viewport Integration Tests
+
+- **Tests:** 6 (IT_RE_01 through IT_RE_06)
+- **Status:** ✅ All Passing
+- **Files:** `RichEditViewportTest.cpp` (class `RichEditViewportTest`, namespace `DIMEIntegratedTests`)
+- **Coverage:** ~90% of RichEdit + TOM patterns used in `SettingsWindow.cpp`
+- **Setup:** `TEST_CLASS_INITIALIZE` loads `Msftedit.dll`, creates shared `RICHEDIT50W` window, raises limit to 100 MB via `EM_EXLIMITTEXT`
+- **Key validations:**
+  - **IT_RE_01**: 200 K lines (~1.5 MB) loaded; `EM_REPLACESEL("X")` succeeds (text length grows) — proves `EM_EXLIMITTEXT(100 MB)` keeps control editable post-import
+  - **IT_RE_02**: Fresh control's default `EM_GETLIMITTEXT` < 100 MB; after `EM_EXLIMITTEXT(100 MB)` returned limit ≥ 100 MB — confirms the raise is necessary (issue #130 fix)
+  - **IT_RE_03**: TOM `ITextFont::SetForeColor` over chars 0–100 does not change `EM_EXGETSEL` result — caret stays at (5,5)
+  - **IT_RE_04**: Per-line `ValidateLine` + `PaintRangeColor`; `GetCharColor` confirms line 0 = `RGB(0,180,0)` (valid), line 4 = `RGB(200,0,0)` (error on `"foo bar baz"`)
+  - **IT_RE_05**: `EM_LINEINDEX(49)` → `EM_SETSEL` → `EM_SCROLLCARET`; `EM_EXGETSEL` returns exact `(cp, cp)`
+  - **IT_RE_06**: `ENM_CHANGE` set; mute bracket → TOM paint → restore; `EM_GETEVENTMASK` returns `ENM_CHANGE`
+- **Design note:** TOM helpers re-implemented locally (same `ITextDocument`/`ITextRange`/`ITextFont` API as production) — avoids pulling all of `SettingsWindow.cpp`'s Win32/dialog dependencies into the test project
 
 #### UT-09: CMemoryFile Filter + Cache Tests
 
@@ -384,7 +413,7 @@ This split reveals that the previously reported "Config.cpp 24%" was misleading 
 
 ## Test Reliability
 
-- **Pass Rate:** 100% (552/552 running)
+- **Pass Rate:** 100% (611/611 running)
 - **Flaky Tests:** 0
 - **Skipped Tests:** 0 (IT-MF-01–06 skip when system files absent, e.g. CI runners without DIME installed)
 - **Manual Tests Required:** System-level TSF integration tests with real applications
@@ -457,16 +486,18 @@ All **new non-TSF code** should target ≥90% coverage (as demonstrated by CLI.c
 ## Conclusion
 
 ✅ **IME Core coverage: 82.4% — TARGET MET (≥80%)**
-✅ **All automated tests passing (589/589)**
+✅ **All automated tests passing (611/611)**
 ✅ **Test suite executes quickly (~22s)**
 ✅ **Config.cpp split**: Config_Core.cpp (IME Core, 73%) + Config_UI.cpp (IME UI, 7.5%)
 ✅ **IT-07 + IT-CM + IT-CV + IT-PT: 18+ Settings Dialog tests with REAL Win32 dialogs**
-✅ **UT-CLI + IT-CLI (112 tests):** CLI headless interface — 94.9% coverage of CLI.cpp, all 11 commands, 50 keys, error paths
+✅ **UT-CLI + IT-CLI (116 tests):** CLI headless interface — 94.9% coverage of CLI.cpp, all 11 commands, 50 keys, error paths; +4 `CLIImportCustomTableValidationTests` (issue #130)
 ✅ **UT-CFG (33 tests):** Config setter/getter round-trips — all 28 pairs + ResetAllDefaults + WriteConfig INI
 ✅ **UT-BS (22 tests):** BaseStructure helpers + CCandidateRange — **97.2%** of BaseStructure.cpp (up from 58%)
 ✅ **UT-DPI (16 tests):** DPI scaling helper + font conversion math — ScaleForDpi at 96/120/144/192 DPI, point-to-pixel, RichEdit twips round-trip
 ✅ **UT-SM (21 tests):** Settings controller — layout tree, visibility rules (4 modes), sidebar/scroll math, snapshot round-trip (25+ fields), WCAG color contrast, mode string conversion, WM_COPYDATA parsing
-✅ **Namespaces properly organized:** `DIMEUnitTests` (318 unit tests) · `DIMEIntegratedTests` (271 integration tests)
+✅ **UT-VL/UT-LT/UT-VB (12 tests):** Custom-table validation primitives — `ValidateLine` 4-level logic, `LoadTextFileAsUtf16` encoding ladder (UTF-16LE/UTF-8 BOM/no-BOM/CP_ACP fallback), multi-line buffer scanning (issue #130)
+✅ **IT-RE (6 tests):** In-process `RICHEDIT50W` viewport — `EM_EXLIMITTEXT` large-import editability, limit raise confirmed, TOM paint preserves caret, `ValidateViewport`-style error colouring, auto-jump, `EN_CHANGE` mute/restore (issue #130)
+✅ **Namespaces properly organized:** `DIMEUnitTests` (330 unit tests) · `DIMEIntegratedTests` (281 integration tests)
 ✅ **New suites:** UT-CV (17), UT-PT (11), IT-CV (14), IT-PT (8) cover custom-table validation and theme persistence
 ✅ **UT-09 (31 tests):** CMemoryFile filter + disk cache — cache functions 91.7%, File.cpp 90.1%. CRLF bug fixed, BMP symbol pass-through, surrogate plane check, `C3_IDEOGRAPH | C3_ALPHA` fallback, cache create/reuse/invalidate/corrupt/error paths
 ✅ **UT-09-19:** Surrogate-pair plane check (`CMemoryFile::FilterLine`, `File.cpp` · `CMemoryFileTests`, `CMemoryFileTest.cpp`) — `cp < 0x20000u` — SMP emoji pass, SIP CJK Ext B/C/D/E/F filtered
@@ -497,9 +528,13 @@ All **new non-TSF code** should target ≥90% coverage (as demonstrated by CLI.c
 7. `CMemoryFileTest.cpp` — CMemoryFile Big5/CP950 filter + disk cache tests (UT-09, 31 tests, cache 91.7% / File.cpp 90.1%)
 8. `CLIParserTest.cpp` — CLI parser unit tests (UT-CLI, 62 tests, 94.9% coverage of CLI.cpp)
 9. `DpiScalingTest.cpp` — DPI scaling helper + font conversion math (UT-DPI, 16 tests, 100% of ScaleForDpi)
-10. `SettingsControllerTest.cpp` — Settings controller unit tests (UT-SM, 21 tests, ~90% of SettingsController.cpp + SettingsPageLayout.cpp)
+10. `SettingsControllerTest.cpp` — four classes:
+    - `SettingsModelTest` (UT-SM, 21 tests, ~90% of SettingsController.cpp + SettingsPageLayout.cpp)
+    - `ValidateLineTest` (UT-VL, 6 tests — `ValidateLine` 4-level logic)
+    - `LoadTextFileTest` (UT-LT, 4 tests — `LoadTextFileAsUtf16` encoding ladder)
+    - `ValidateBufferTest` (UT-VB, 2 tests — multi-line buffer scanning)
 
-### Integration Tests (DIMEIntegratedTests) — 271 tests
+### Integration Tests (DIMEIntegratedTests) — 281 tests
 1. `TSFIntegrationTest.cpp` — TSF COM integration (18 tests)
 2. `TSFIntegrationTest_Simple.cpp` — direct CDIME unit tests (15 tests)
 3. `UIPresenterIntegrationTest.cpp` — UI presenter (54 tests)
@@ -511,8 +546,9 @@ All **new non-TSF code** should target ≥90% coverage (as demonstrated by CLI.c
    - `SettingsDialogIntegrationTest` (IT-07 + IT-CM, 18 tests)
    - `CustomTableValidationIntegrationTest` (IT-CV + IT-PT, 23 tests)
 9. `CMemoryFileIntegrationTest.cpp` — 6 tests (IT-MF-01 through IT-MF-06: filter, TTS, cache line count, cache invalidation, DAYI TTS cache)
-10. `CLIIntegrationTest.cpp` — CLI end-to-end tests (IT-CLI, 50 tests, 19 test classes)
+10. `CLIIntegrationTest.cpp` — CLI end-to-end tests (IT-CLI, 54 tests, 20 test classes, incl. CLIImportCustomTableValidationTests)
+11. `RichEditViewportTest.cpp` — in-process RichEdit viewport tests (IT-RE, 6 tests, `RichEditViewportTest` class)
 
-**Total Test Files:** 19 (9 unit, 10 integration)
-**Total Test Methods:** 568 (all running)
+**Total Test Files:** 21 (10 unit, 11 integration)
+**Total Test Methods:** 611 (all running)
 **Build:** ✅ Successful
