@@ -1,512 +1,351 @@
-﻿# Custom Table Validation Feature - Design & Implementation
+# Custom Table Validation — Design & Implementation
 
-## Document Version
-- **Created**: 2026-03-01
-- **Updated**: 2026-03-02
-- **Author**: GitHub Copilot & Jeremy Wu
-- **Status**: Phase 5 Complete — All tests written
+- **Created:** 2026-03-01 (legacy ConfigDialog — Phases 1-5)
+- **Major rewrite:** 2026-04-29 alongside [#130 fix](./#130_ISSUE.md). Legacy property-page implementation in `Config.cpp` is no longer the active surface; the new SettingsWindow (`src/DIMESettings/`) is.
+- **Final pass:** 2026-04-29 (sync to actual shipped code — see Appendix B 7.0).
+- **Status:** Production. The current architecture is documented below; the historical Phase-1–5 design is summarised in §Appendix A for reference.
 
-## Quick Summary
+## 1. Goals and constraints
 
-**Problem**: Custom table validation was either too slow (800ms debounce) or too aggressive (every keystroke), and property pages saved to wrong config files.
+The custom table editor lets users hand-edit `<key> <whitespace> <value>` rows. Validation must:
 
-**Solution**: Smart validation that triggers at natural pause points (Space/Enter keys, line switches, paste/delete) with instant visual feedback, 3-level error hierarchy, and full light/dark theme support.
+1. Catch malformed lines before the parser writes a corrupt `.cin` file.
+2. Provide actionable feedback (visible-line highlighting + auto-jump to first error on Save).
+3. **Stay responsive on tens of thousands of lines.** Issue #130 reproduced a UI hang from a 73,278-line user file; that is the hard performance ceiling we design against.
+4. Use the **same validation function** for GUI and CLI so `--import-custom`'s pre-flight matches GUI Save's contract exactly.
 
-**Current Status**:
-- ✅ **Phase 1**: Context isolation (fixed wrong config file bug)
-- ✅ **Phase 2**: Smart validation with Space/Enter triggers
-- ✅ **Phase 3**: 3-level validation (RED/ORANGE/CYAN error highlighting)
-- ✅ **Phase 4**: DIMESettings UI dark/light theme + theme-aware validation colors
-- ✅ **Phase 5**: Testing (unit tests UT-CV-01–16 + integration tests IT-CV-01–14 written)
+## 2. Trigger paths and call chains
 
-**Key Achievements**:
-- Validates on **Space key** (user just finished typing key)
-- Validates on **Enter key** (line complete)
-- Detects **paste/delete** operations automatically
-- **Instant feedback**: error colors disappear immediately when correcting
-- **10–15 validations per 100 keystrokes** (vs 100 in naive approach)
-- **3-level error hierarchy**: RED (format) / ORANGE (length) / CYAN (invalid char)
-- **Full theme support**: all DIMESettings dialogs follow Windows light/dark mode
-- **Build Status**: ✅ Successful
+Three paths share the same primitives — `LoadTextFileAsUtf16` for reads, `ValidateLine` for format checks, and the same UTF-16+BOM `.txt` write + `parseCINFile(customTableMode=TRUE)` persist sequence. Internals in §3 onward; this section answers *when* validation runs and *why*.
 
----
+### 2.1 GUI 「匯入自建詞庫」 button → 「儲存」
 
-## 1. Problem Statement & Dialog Consolidation
+```text
+RowAction::ImportCustomTable
+  └─ LoadTextFileAsUtf16
+  └─ ValidateCustomTableBuffer (in-memory pre-scan)
+       └─ SettingsModel::ValidateLine (per line, pEngine = wd->pEngine)
+       └─ on errors: count + first-error line recorded, but DO NOT abort
+  └─ EM_GETEVENTMASK / EM_SETEVENTMASK(0)              ← mute EN_CHANGE
+  └─ SetWindowTextW                                     ← bulk load (always)
+  └─ EM_SETEVENTMASK(prev)                              ← restore ENM_CHANGE
+  └─ EnableSaveButton(TRUE)                             ← Import = new content vs disk
+  └─ ValidateViewport                                   ← FG paint visible (TOM)
+  └─ if errCount > 0:
+       ├─ ThemedMessageBox (warning, non-blocking — load already succeeded)
+       └─ on dismiss: SetFocus(hRE) + EM_SETSEL(line) + EM_SCROLLCARET
+                      + ValidateViewport (paint destination)
 
-### Issues Addressed
-1. **Wrong Config File Bug**: Property pages used global `_imeMode` instead of page-specific mode, causing settings to be saved to the wrong config file when users switch IME mode while the dialog is open.
-2. **No Real-Time Validation**: Users only discovered format errors when clicking Apply.
-3. **No Granular Error Feedback**: Only entire lines were marked — no indication of specific issues.
-4. **Theme Blindness**: DIMESettings dialogs rendered with light backgrounds even in Windows dark mode; validation error colors were optimized for light theme only.
+(user clicks 儲存)
+RowAction::SaveCustomTable
+  └─ GetWindowTextW
+  └─ ValidateCustomTableBuffer (in-memory, O(N) — full pre-persist gate)
+       └─ on errors:
+            ├─ ThemedMessageBox (with first-N line numbers)
+            └─ on dismiss: SetFocus + EM_SETSEL(firstErrorLine) + EM_SCROLLCARET
+                           + ValidateViewport — abort write
+       └─ on clean: continue
+  └─ CreateFileW + WriteFile         (writes <MODE>-Custom.txt as UTF-16+BOM)
+  └─ CConfig::parseCINFile(customTableMode=TRUE)
+                                     (writes <MODE>-Custom.cin)
+  └─ EnableSaveButton(FALSE)         (mark not-dirty until next edit)
+```
 
-### Dialog Consolidation
-Both `ShowConfig.cpp` (runtime IME dialog) and `DIMESettings.cpp` (standalone settings app) call the same property page procs from `Config.cpp`. Updating `Config.cpp` once covers all four settings dialogs with no duplication.
+### 2.2 RichEdit 直接編輯 → 「儲存」
 
----
+```text
+(settings page open — initial load)
+SettingsWindow build code
+  └─ EM_EXLIMITTEXT(100 MB)                             ← RichEdit default cap is
+                                                         ~32-64K chars and silently
+                                                         rejects user input above it;
+                                                         must raise immediately after
+                                                         CreateWindow.
+  └─ LoadTextFileAsUtf16
+  └─ SetWindowTextW                                     ← ENM_CHANGE not yet set
+  └─ EM_SETEVENTMASK(ENM_CHANGE)                        ← enable EN_CHANGE going forward
+  └─ ValidateViewport                                   ← FG paint visible (TOM)
+                                                         (Save stays disabled — content
+                                                          matches disk, not dirty)
 
-## 2. Solution Architecture
+(per keystroke / paste / Enter / Space — foreground only)
+EN_CHANGE handler  (or WM_USER+1 deferred from subclass on Enter/Space/Paste/large-delete)
+  ├─ ValidateViewport                                    ← TOM-based, no caret jump
+  ├─ CancelBgScan                                        ← defensive no-op (BG never runs)
+  └─ EnableSaveButton(TRUE)                              ← mark dirty
 
-### 2.1 Per-Page Context Isolation
+WM_VSCROLL / WM_MOUSEWHEEL (forwarded by RichEdit subclass as WM_USER+3)
+  └─ ValidateViewport only (paint newly-visible lines)
 
-**Root Cause**: Property pages used global `_imeMode` which changes when the user switches the system IME.
+(user clicks 儲存)
+RowAction::SaveCustomTable
+  └─ (same as path 2.1, Save stage — full validate then persist)
+```
 
-**Fix**: Each property page captures and stores its IME mode in `DialogContext` at creation time. The struct (defined in `Config.h`) holds:
+**Save-button state machine** (simple dirty-bit model — no BG/timer dependency):
 
-| Field | Purpose |
-|-------|---------|
-| `imeMode` | IME mode captured at page creation — never changes during dialog lifetime |
-| `maxCodes` | Max key length for this IME mode |
-| `pEngine` | Pointer to composition engine for validation |
-| `engineOwned` | Whether the dialog is responsible for deleting the engine |
-| `lastEditedLine` | Tracks which line the user is currently editing |
-| `lastLineCount` | Detects structural changes (paste/delete via line count diff) |
-| `keystrokesSinceValidation` | Throttles validation frequency |
-| `isDarkTheme` | True if Windows dark mode is active |
-| `hBrushBackground` | GDI brush for dialog/static backgrounds (freed in WM_DESTROY) |
-| `hBrushEditControl` | GDI brush for edit control backgrounds (freed in WM_DESTROY) |
+| Event | Save button |
+| --- | --- |
+| Settings page open (initial load matches disk) | disabled |
+| Import button → bulk load (with or without errors) | **enabled** (loaded content differs from disk) |
+| Any `EN_CHANGE` / `WM_USER+1` (user edited) | **enabled** (dirty) |
+| Save click → `ValidateCustomTableBuffer` fails | enabled (still dirty; user must fix) |
+| Save click → `ValidateCustomTableBuffer` passes → persist | disabled (no longer dirty) |
 
-### 2.2 Three-Level Validation Hierarchy
+**Key design choices:**
 
-| Level | Issue | Scope | Light Mode Color | Dark Mode Color |
-|-------|-------|-------|-----------------|-----------------|
-| 1 | No key-value separator | Entire line | 🔴 `RGB(255,0,0)` bright red | 🌸 `RGB(255,120,120)` pastel red |
-| 2 | Key exceeds max length | Key only | 🟠 `RGB(200,100,0)` dark orange | 🟡 `RGB(255,180,0)` bright orange |
-| 3 | Invalid character in key | Per character | 🩵 `RGB(0,150,255)` cyan-blue | 💠 `RGB(100,200,255)` light cyan-blue |
-| — | Valid text | — | ⚫ `RGB(0,0,0)` black | ⬜ `RGB(255,255,255)` white |
+- **TOM-based painting only.** `ValidateViewport` and `ValidateCustomTableRE_OneLine` use `ITextDocument::Range` + `ITextFont::SetForeColor` — selection is never touched, so live highlighting on every keystroke causes no caret jumps and no flicker.
+- **EN_CHANGE reentrancy guard.** `ValidateViewport` brackets its painting loop with `EM_SETEVENTMASK(0)` / restore. Without this, RichEdit fires EN_CHANGE on some CHARFORMAT-only operations and the handler would recurse into itself, pegging the message pump.
+- **Live painting is viewport-only.** Errors outside the visible range are not pre-painted. They surface when the user scrolls (`WM_USER+3` → `ValidateViewport`) or clicks Save (full in-memory validation with auto-jump to first error on dismiss).
+- **Save validates synchronously at click time.** `ValidateCustomTableBuffer` is in-memory O(N) — ~500 ms for 73K lines, acceptable for an explicit Save action. On errors, the message box reports first-N line numbers, the caret auto-jumps to the first error after dismiss, write is aborted.
+- **Import is non-blocking.** Pre-scan finds errors but the bulk load happens regardless; user sees the content and can fix in place. CLI keeps strict abort-on-error (no UI to inspect).
 
-**Validation hierarchy** (each level only runs if the previous passes):
+**RichEdit text limit:** RichEdit50W's default cap is ~32-64K characters. `SetWindowTextW` bypasses the cap (large bulk loads succeed) but the editor then silently rejects user input because the buffer is over-limit. `EM_EXLIMITTEXT(100 MB)` is set immediately after `CreateWindow` to prevent this.
 
-1. **Format check** — line must match `key<whitespace>value` pattern
-2. **Length check** — key must not exceed `maxCodes` for the active IME mode
-3. **Character check** — each character in key must be valid for the IME mode
+### 2.3 CLI `--import-custom`
 
-**Character validation rules by IME mode:**
+CLI keeps the original strict pre-flight model — there's no editor to inspect from a headless invocation, so any error aborts.
 
-| IME Mode | Allowed characters |
-|----------|--------------------|
+```text
+RunCLI
+  └─ HandleImportCustom
+       └─ LoadTextFileAsUtf16                           ← shared with GUI
+       └─ SettingsModel::CreateEngine                   ← same factory the GUI uses
+       └─ SettingsModel::ValidateLine (per line, pEngine = engine)
+            └─ on any failure → fwprintf line numbers, exit 3, no write to disk
+       └─ SettingsModel::DestroyEngine
+       └─ CreateFileW + WriteFile                       (writes <MODE>-Custom.txt as
+                                                         UTF-16+BOM, same as GUI 儲存)
+       └─ CConfig::parseCINFile(customTableMode=TRUE)
+                                                         (writes <MODE>-Custom.cin)
+```
+
+`--no-validate` skips the pre-flight (power users importing master `.cin` files with non-standard sections).
+
+### 2.4 Shared spine
+
+| Stage | Function | GUI Import | RichEdit edit | CLI |
+| --- | --- | --- | --- | --- |
+| Read | `LoadTextFileAsUtf16` | ✓ | ✓ (initial load) | ✓ |
+| Validate (live, viewport) | `ValidateViewport` (TOM, ~visible lines) | ✓ (post-load) | ✓ (per-keystroke + scroll) | — |
+| Validate (full) | `ValidateCustomTableBuffer` (in-memory, O(N)) | ✓ (pre-load scan, non-blocking) + ✓ (on Save) | ✓ (on Save) | — |
+| Validate (full, CLI) | per-line `ValidateLine` over `LoadTextFileAsUtf16` output | — | — | ✓ (pre-flight, abort on error) |
+| Persist `.txt` (UTF-16+BOM) | `CreateFileW` + `WriteFile` | ✓ (on Save) | ✓ (on Save) | ✓ |
+| Persist `.cin` | `CConfig::parseCINFile(customTableMode=TRUE)` | ✓ (on Save) | ✓ (on Save) | ✓ |
+| Auto-jump to first error | `EM_LINEINDEX` + `EM_SETSEL` + `EM_SCROLLCARET` | ✓ (after warning dismiss) | ✓ (after Save error dismiss) | — |
+| `pEngine` lifetime | — | long-lived in `wd` | long-lived in `wd` | constructed for the import, freed after |
+
+The on-disk format and the destination files are identical across all three paths.
+
+## 3. Validation architecture
+
+### 3.1 Single source of truth
+
+```text
+SettingsModel::ValidateLine(line, len, mode, maxCodes, pEngine) → LineValidation
+  (src/DIMESettings/SettingsController.cpp)
+```
+
+Pure function. Called from three callers:
+
+| Caller | File | Purpose |
+| --- | --- | --- |
+| `ValidateCustomTableRE_OneLine` | SettingsWindow.cpp | Single-line painter — reads via `EM_GETTEXTRANGE`, validates, paints valid + error colours via TOM. Used by `ValidateViewport`. |
+| `ValidateCustomTableBuffer` | SettingsWindow.cpp | Per-line iteration over an in-memory `wchar_t*` buffer; no UI side effects. Used by Import pre-scan, Export pre-scan, and Save's pre-persist gate. |
+| `HandleImportCustom` (CLI) | DIMESettings/CLI.cpp | Pre-flight loop over `LoadTextFileAsUtf16` output before persist. |
+
+### 3.2 Validation hierarchy
+
+`ValidateLine` runs four levels in sequence; first failure short-circuits.
+
+| Level | Check | Cost | Reports |
+| --- | --- | --- | --- |
+| **0 — length cap** | `(e - s) > MAX_TABLE_LINE_LENGTH` (`= 1024`, [src/Define.h:173](../src/Define.h#L173)) | O(1) | `LineError::Format` over whole trimmed range |
+| **1 — format** | manual scan: exactly two non-whitespace tokens (key + value); a third token after the value is a format error | O(line length) | `LineError::Format` over whole trimmed range |
+| **2 — key length** | `key.length() > maxKeyLength` where `maxKeyLength = (PHONETIC) ? MAX_KEY_LENGTH : maxCodes` | O(1) | `LineError::KeyTooLong` over key |
+| **3 — char check** | per-char engine validation (or basic-range fallback when `pEngine == nullptr`) | O(key length) | `LineError::InvalidChar` per offending character (multiple errors per line possible) |
+
+Level 1 used to be `std::wregex(L"^([^\\s]+)\\s+(.+)$")`. That regex catastrophically backtracked on a single very-long no-whitespace input and was the proximate hang in #130. The manual scan replaces it. Level 0 is a hard cap added at the same time so no future bug can re-introduce a multi-MB single-line input to the validator. Level 1 was tightened from "key + whitespace + anything" to "key + whitespace + value with no trailing token" so lines like `roc 中華民國 fdfdafds` (3 tokens) are caught.
+
+### 3.3 Character validation rules
+
+| IME mode | Rule |
+| --- | --- |
 | Phonetic | Printable ASCII `!`–`~` (0x21–0x7E); excludes space, `*`, `?` |
-| Dayi / Array / Generic | ASCII letters A–Z accepted via quick path; otherwise validated with `ValidateCompositionKeyCharFull` |
+| Dayi / Array / Generic | A–Z accepted via quick path; otherwise `pEngine->ValidateCompositionKeyCharFull(c)`; if `pEngine == nullptr`, fallback range check `[32, 32 + MAX_RADICAL]` |
 
----
+CLI builds a real engine via `SettingsModel::CreateEngine(args.mode)` so its Level-3 check is identical to the GUI's (no fallback gap).
 
-## 3. Phase 4 — Theme Support Architecture
+## 4. Read path — encoding-aware loader
 
-### 3.1 Theme Detection
+`SettingsModel::LoadTextFileAsUtf16(path, &outLen)` ([src/DIMESettings/SettingsController.cpp](../src/DIMESettings/SettingsController.cpp)):
 
-`CConfig::IsSystemDarkTheme()` (declared as `static bool` in `Config.h`, implemented in `Config.cpp`) provides safe theme detection across Win7–Win11:
+1. UTF-16LE BOM (`FF FE`) → strip BOM, copy as-is
+2. UTF-16BE BOM (`FE FF`) → byte-swap to LE
+3. UTF-8 BOM (`EF BB BF`) → skip BOM
+4. Strict UTF-8 sniff via `MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, ...)` → if it fails, fall back to:
+5. `MultiByteToWideChar(CP_ACP, 0, ...)` — CP950/Big5 on zh-TW Windows
 
-1. **Win10 build ≥ 17763**: calls `ShouldAppsUseDarkMode` via `uxtheme.dll` ordinal 132. The build guard is mandatory — ordinal 132 resolves to a different function on older Windows.
-2. **Fallback**: reads `HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize\AppsUseLightTheme` from the registry. Key absent on pre-Win10 → returns light (correct default).
+Used by:
 
-`DIMESettings.cpp` calls `CConfig::IsSystemDarkTheme()` directly — no duplicated detection logic.
+- GUI initial load on settings page open
+- GUI Import button
+- CLI `--import-custom`
 
-### 3.2 Color Constants (Define.h)
+Before #130 the read paths cast file bytes directly into `WCHAR[]` with no decoding, which aliased Big5/UTF-8 input to ~550K-character single mega-lines. The helper eliminates that class of bug at the read boundary.
 
-Dark theme UI colors:
+## 5. Performance regimes
 
-| Constant | Value | Usage |
-|----------|-------|-------|
-| `DARK_DIALOG_BG` | `RGB(32,32,32)` | Dialog/page backgrounds |
-| `DARK_CONTROL_BG` | `RGB(45,45,48)` | Edit control backgrounds |
-| `DARK_TEXT` | `RGB(220,220,220)` | Primary text |
-| `DARK_DISABLED_TEXT` | `RGB(128,128,128)` | Disabled/grayed text |
+All live-edit work is bounded by the visible viewport size (typically 20-50 lines), independent of total document size. Save's full validation is the only path that scales with line count, and is gated by an explicit user click.
 
-Per-theme validation colors:
+| Scenario | Validator | Cost |
+| --- | --- | --- |
+| Live edit (`EN_CHANGE` / `WM_USER+1`) | `ValidateViewport` (TOM, visible lines only) | < 1 ms per fire — typing stays responsive at any document size |
+| Scroll (`WM_USER+3`) | `ValidateViewport` | < 1 ms per fire |
+| Initial-load (settings page open) | `ValidateViewport` once after `SetWindowTextW` | < 1 ms |
+| Import button — pre-load scan | `ValidateCustomTableBuffer` over `LoadTextFileAsUtf16` output | ~500 ms for 73K lines, runs once |
+| Save (儲存) | `ValidateCustomTableBuffer` + persist | ~500 ms validation + < 100 ms write |
+| CLI `--import-custom` pre-flight | per-line `ValidateLine` over `LoadTextFileAsUtf16` output | ~500 ms for 73K lines |
 
-| Constant | Value | Usage |
-|----------|-------|-------|
-| `CUSTOM_TABLE_LIGHT_ERROR_FORMAT` | `RGB(255,0,0)` | Level 1, light mode |
-| `CUSTOM_TABLE_LIGHT_ERROR_LENGTH` | `RGB(200,100,0)` | Level 2, light mode |
-| `CUSTOM_TABLE_LIGHT_ERROR_CHAR` | `RGB(0,150,255)` | Level 3, light mode |
-| `CUSTOM_TABLE_LIGHT_VALID` | `RGB(0,0,0)` | Valid text, light mode |
-| `CUSTOM_TABLE_DARK_ERROR_FORMAT` | `RGB(255,120,120)` | Level 1, dark mode |
-| `CUSTOM_TABLE_DARK_ERROR_LENGTH` | `RGB(255,180,0)` | Level 2, dark mode |
-| `CUSTOM_TABLE_DARK_ERROR_CHAR` | `RGB(100,200,255)` | Level 3, dark mode |
-| `CUSTOM_TABLE_DARK_VALID` | `RGB(255,255,255)` | Valid text, dark mode |
+## 6. Bulk-load handling
 
-### 3.3 Theme Handling per Dialog Area
+`SetWindowTextW` on the RichEdit fires `EN_CHANGE`, which would trigger `ValidateViewport`. For Import (which loads 70K+ lines in one shot) the EN_CHANGE-driven viewport pass is unnecessary work, so the handler is muted around the bulk write:
 
-| Area | State storage | File |
-|------|---------------|------|
-| Property pages (`CommonPropertyPageWndProc` + `DictionaryPropertyPageWndProc`) | `DialogContext.isDarkTheme`, `hBrushBackground`, `hBrushEditControl` | `Config.cpp` |
-| Main launcher (4-button dialog) | `s_isDarkTheme`, `s_hBrushDlgBg`, `s_hBrushControlBg` file-scope statics | `DIMESettings/DIMESettings.cpp` |
-
-**Win32 messages handled** in all three WndProcs:
-
-| Message | Property pages | Main launcher | Notes |
-|---------|---------------|---------------|-------|
-| `WM_INITDIALOG` | ✅ | ✅ | Dictionary page also sets `EM_SETBKGNDCOLOR` + `SetWindowTheme` on RichEdit; DWM dark title bar applied when `isDarkTheme` |
-| `WM_CTLCOLORDLG` | ✅ | ✅ | Returns dark background brush |
-| `WM_CTLCOLORSTATIC` | ✅ | ✅ | Sets dark text + background |
-| `WM_CTLCOLOREDIT` | ✅ Common page only | — | Standard edit boxes; RichEdit uses `EM_SETBKGNDCOLOR` |
-| `WM_CTLCOLORBTN` | — | ✅ | Button background for launcher |
-| `WM_DRAWITEM` | — | ✅ | Owner-draw dark buttons in launcher |
-| `WM_THEMECHANGED` | ✅ | ✅ | Recreates brush, re-applies theme; Dictionary also re-validates |
-| `WM_NCACTIVATE` | — | ✅ (dark only) | Re-asserts title bar color |
-| `WM_DESTROY` | ✅ | ✅ | `DeleteObject` on all brushes |
-
-### 3.4 Title Bar Fix
-
-`DictionaryPropertyPageWndProc WM_INITDIALOG` previously had `BOOL useDark = TRUE` hardcoded, which caused `DwmSetWindowAttribute` to flip the DIMESettings title bar dark even in light mode. Fixed by guarding the entire DWM block with `if (pCtx->isDarkTheme)`.
-
-### 3.5 Validation Color Selection
-
-`ValidateCustomTableLines` reads `isDarkTheme` from `DialogContext` at entry and sets four local `COLORREF` variables (`errorFormat`, `errorLength`, `errorChar`, `validColor`) from the appropriate `CUSTOM_TABLE_LIGHT_*` / `CUSTOM_TABLE_DARK_*` constants. All color assignments throughout the function use these local variables — no hardcoded `RGB()` values.
-
-The caret-positioning scan compares `cfGet.crTextColor != validColor` (theme-aware) instead of `!= RGB(0,0,0)`.
-
-### 3.6 Theme-Aware Error Message
-
-`MessageBoxW` text is selected by `isDarkTheme`:
-- **Light mode**: 紅色整行 / 橙色鍵碼 / 青色字元
-- **Dark mode**: 淡紅色整行 / 亮橙色鍵碼 / 淡青色字元
-
----
-
-## 4. Validation Logic Flow
-
-### 4.1 Trigger Decision (EN_CHANGE)
-
-```
-EN_CHANGE fires
-  │
-  ├─ Line count changed from last time?
-  │   └─ Yes → structuralChange: validate immediately
-  │
-  └─ No structural change
-      ├─ User moved to a different line?
-      │   └─ Yes → validate immediately, reset counter
-      │
-      └─ Same line
-          ├─ keystrokesSinceValidation ≥ 3?
-          │   └─ Yes → validate, reset counter
-          └─ No → skip (error colors stay visible)
+```text
+LoadTextFileAsUtf16        ← decode source
+ValidateCustomTableBuffer  ← pre-scan in memory (errors recorded, not blocking)
+EM_GETEVENTMASK            ← save current event mask
+EM_SETEVENTMASK(0)         ← mute EN_CHANGE
+SetWindowTextW             ← bulk write — does NOT trigger live validator
+update ctLastLineCount
+EM_SETEVENTMASK(prev)      ← restore (ENM_CHANGE re-enabled for user edits)
+ValidateViewport           ← single explicit FG paint of the new visible range
 ```
 
-### 4.2 ValidateCustomTableLines Logic
+Initial-load uses the same protection implicitly: `EM_SETEVENTMASK(ENM_CHANGE)` is set *after* the initial `SetWindowTextW`.
 
+## 7. Persist sequence (shared across GUI Save and CLI)
+
+```text
+GUI Save (儲存):
+  GetWindowTextW
+  → ValidateCustomTableBuffer (full O(N) gate; on errors → message box + abort)
+  → CreateFileW + WriteFile UTF-16LE BOM + content   ← writes <MODE>-Custom.txt
+  → CConfig::parseCINFile(txtPath, cinPath, customTableMode=TRUE, suppressUI=TRUE)
+                                          ← reads .txt as ccs=UTF-16LE,
+                                            writes %chardef-wrapped <MODE>-Custom.cin
+  → EnableSaveButton(FALSE)               ← mark not-dirty until next edit
+
+CLI --import-custom:
+  use already-decoded text from LoadTextFileAsUtf16
+  → SettingsModel::ValidateLine per line  ← pre-flight (skippable via --no-validate)
+                                            (exit 3 on failure, per-line stderr report)
+  → CreateFileW + WriteFile UTF-16LE BOM + content   ← writes <MODE>-Custom.txt
+  → CConfig::parseCINFile(txtPath, cinPath, customTableMode=TRUE, suppressUI=TRUE)
+                                          ← writes <MODE>-Custom.cin
 ```
-For each non-empty line:
-  │
-  ├─ Regex match ^([^\s]+)\s+(.+)$ ?
-  │   └─ No → mark entire line with errorFormat (Level 1); next line
-  │
-  └─ Match → check key.length() > maxCodes?
-      ├─ Yes → mark entire key with errorLength (Level 2); next line
-      └─ No → validate each character (Level 3)
-          ├─ Phonetic: must be printable ASCII '!'-'~'
-          │   └─ Invalid char → mark char with errorChar
-          ├─ Other modes: all ASCII letters → accept (quick path)
-          └─ Other modes: use ValidateCompositionKeyCharFull
-              └─ Invalid char → mark char with errorChar
 
-All valid → return TRUE
-Any error → show MessageBox (if showAlert), scroll to first error, return FALSE
-```
+`customTableMode=TRUE` is essential: it tells `parseCINFile` to read the `.txt` as `ccs=UTF-16LE` (matching the BOM we just wrote) and to emit an escape-mode `.cin` for the IME runtime. The legacy CLI path that called `parseCINFile(..., FALSE)` against the **original** source file is gone — that path silently truncated Big5 input because it opened the source as `ccs=UTF-8` and bailed on the first non-UTF-8 byte.
 
-### 4.3 Additional Trigger Points (Subclass proc)
+## 8. Live-edit triggers
 
-| Event | Action |
-|-------|--------|
-| `WM_KEYDOWN VK_SPACE` | Posts `WM_USER+1` → validate after character is inserted |
-| `WM_KEYDOWN VK_RETURN` | Posts `WM_USER+1` → validate after newline is inserted |
-| `WM_KEYDOWN VK_DELETE/VK_BACK` with selection > 10 chars | Posts `WM_USER+1` → validate after deletion |
-| `WM_PASTE` | Posts `WM_USER+1` → validate after paste completes |
+| Event | Source | Action |
+| --- | --- | --- |
+| `EN_CHANGE` | RichEdit (any edit) | `ValidateViewport` + `EnableSaveButton(TRUE)` |
+| `WM_KEYDOWN VK_SPACE` / `VK_RETURN` | RichEdit subclass | Posts `WM_USER+1` (deferred validate after the keystroke is fully applied) |
+| `WM_KEYDOWN VK_DELETE` / `VK_BACK` with selection > `CUSTOM_TABLE_LARGE_DELETION_THRESHOLD` (10) | RichEdit subclass | Posts `WM_USER+1` |
+| `WM_PASTE` | RichEdit subclass | Posts `WM_USER+1` |
+| `WM_USER+1` | parent ContentWndProc | `ValidateViewport` + `EnableSaveButton(TRUE)` (same as `EN_CHANGE`) |
+| `WM_VSCROLL` / `WM_MOUSEWHEEL` | RichEdit subclass | Posts `WM_USER+3` (foreground-only viewport revalidate) |
+| `WM_USER+3` | parent ContentWndProc | `ValidateViewport` only — paint newly-visible lines, no Save state change |
 
-`WM_USER+1` handler in `DictionaryPropertyPageWndProc` calls `ValidateCustomTableLines` then resets `keystrokesSinceValidation`.
+## 9. Theme support
 
----
+Validation colours are theme-aware. The active theme comes from `WindowData::isDarkTheme` (set at settings window construction; updated on `WM_THEMECHANGED`). `ValidateCustomTableRE_OneLine` and `PaintErrorRange` select COLORREFs from `CUSTOM_TABLE_LIGHT_*` / `CUSTOM_TABLE_DARK_*` constants ([src/Define.h](../src/Define.h)):
 
-## 5. Edge Case Handling
+| Constant | Role |
+| --- | --- |
+| `CUSTOM_TABLE_*_ERROR_FORMAT` | Level 0/1 — entire offending line |
+| `CUSTOM_TABLE_*_ERROR_LENGTH` | Level 2 — entire key |
+| `CUSTOM_TABLE_*_ERROR_CHAR` | Level 3 — per-character |
+| `CUSTOM_TABLE_*_VALID` | reset/OK colour |
 
-### Delete + Paste
-Line count change detection covers both: deleting lines decrements count, pasting new lines increments count. Either triggers immediate full validation.
+## 10. Configuration constants
 
-### Rapid Multi-Line Entry
-Line number change detection ensures the previous line is validated whenever the caret moves to a new line, even if the 3-keystroke threshold was not reached.
+| Constant | Value | File | Role |
+| --- | --- | --- | --- |
+| `MAX_TABLE_LINE_LENGTH` | 1024 | Define.h | Level-0 cap; also `parseCINFile` `fgetws` buffer |
+| `MAX_KEY_LENGTH` | 64 | Define.h | Phonetic mode key cap |
+| RichEdit text limit | 100 MB chars | hard-coded `EM_EXLIMITTEXT` call in `CreateRichEditorControl` | Allows the editor to accept user input on buffers larger than the default ~32-64K cap |
+| `CUSTOM_TABLE_VALIDATE_KEYSTROKE_THRESHOLD` | 3 | Define.h | Legacy live-throttle (used by other call sites; the FG viewport pass is cheap enough not to need it) |
+| `CUSTOM_TABLE_LARGE_DELETION_THRESHOLD` | 10 | Define.h | Selection size that triggers a deferred WM_USER+1 on Delete/Backspace |
 
-### Large Selection Delete
-Selection character count is checked in `WM_KEYDOWN`; if it exceeds `CUSTOM_TABLE_LARGE_DELETION_THRESHOLD` (10 chars), a deferred validation message is posted.
+## 11. Code locations
 
-### Error Color Persistence
-Color clearing happens **only inside `ValidateCustomTableLines`**, not in `EN_CHANGE`. This ensures error colors persist between validation runs and do not flash on every keystroke.
+| Symbol | File | Notes |
+| --- | --- | --- |
+| `SettingsModel::ValidateLine` | [src/DIMESettings/SettingsController.cpp](../src/DIMESettings/SettingsController.cpp) | Single source of truth |
+| `SettingsModel::LoadTextFileAsUtf16` | [src/DIMESettings/SettingsController.cpp](../src/DIMESettings/SettingsController.cpp) | Encoding-aware loader |
+| `SettingsModel::CreateEngine` / `DestroyEngine` | SettingsController.cpp | Per-mode engine factory shared by GUI and CLI |
+| `GetRichEditTextDocument` | SettingsWindow.cpp (file-static) | Gets `ITextDocument` via `EM_GETOLEINTERFACE`; caller releases |
+| `PaintRangeColor` | SettingsWindow.cpp (file-static) | TOM-based foreground-colour painter — sets colour without touching selection |
+| `PaintErrorRange` | SettingsWindow.cpp (file-static) | Per-error TOM painter (calls `PaintRangeColor` with the appropriate Level palette) |
+| `GetViewportLineRange` | SettingsWindow.cpp (file-static) | Computes [firstVis, lastVis] from `EM_GETFIRSTVISIBLELINE` + `EM_CHARFROMPOS` |
+| `ValidateCustomTableRE_OneLine` | SettingsWindow.cpp (file-static) | Validate + TOM-paint a single RichEdit line by index |
+| `ValidateViewport` | SettingsWindow.cpp (file-static) | Foreground pass — validates visible range only; brackets the loop with `EM_SETEVENTMASK(0)` to prevent CHARFORMAT-fired EN_CHANGE recursion |
+| `ValidateCustomTableBuffer` | SettingsWindow.cpp (file-static) | In-memory full-document validator (Import pre-scan, Export pre-scan, Save pre-persist gate) |
+| `EnableSaveButton` | SettingsWindow.cpp (file-static) | Centralised Save-button enable/disable |
+| Import button handler | SettingsWindow.cpp `RowAction::ImportCustomTable` | Pre-scan + EN_CHANGE-muted bulk load + ValidateViewport + non-blocking warning + auto-jump |
+| Save handler | SettingsWindow.cpp `RowAction::SaveCustomTable` | `ValidateCustomTableBuffer` + persist; on errors → message box + auto-jump to first error |
+| Export handler | SettingsWindow.cpp `RowAction::ExportCustomTable` | `ValidateCustomTableBuffer` + file dialog + write |
+| Initial-load block | SettingsWindow.cpp `CreateRichEditorControl` (~L1840-L1880) | `EM_EXLIMITTEXT(100MB)` + `LoadTextFileAsUtf16` + `SetWindowTextW` + `EM_SETEVENTMASK(ENM_CHANGE)` + `ValidateViewport` |
+| `ContentWndProc` `WM_USER+1` | SettingsWindow.cpp | Deferred validate after Enter/Space/Paste/large-delete (same body as EN_CHANGE) |
+| `ContentWndProc` `WM_USER+3` | SettingsWindow.cpp | FG-only viewport revalidate after WM_VSCROLL / WM_MOUSEWHEEL |
+| RichEdit subclass | SettingsWindow.cpp `CustomTableRE_SubclassProc` | Posts WM_USER+1 on Enter/Space/Paste/large-delete; forwards WM_VSCROLL / WM_MOUSEWHEEL as WM_USER+3; resets selection to (0,0) on WM_SETFOCUS |
+| CLI `HandleImportCustom` | [src/DIMESettings/CLI.cpp](../src/DIMESettings/CLI.cpp) | Validate + UTF-16+BOM .txt + parseCINFile(TRUE) |
 
----
+## 12. Test scenarios (regression matrix)
 
-## 6. Testing Strategy
+Repro artefacts under `.claude/txt/` from issue #130 are the canonical fixtures. CLI tests run headless; GUI tests are manual.
 
-### Unit Tests (`ConfigTest.cpp`)
-- Verify `DialogContext` captures correct `imeMode` at creation and is unaffected by later global `_imeMode` changes
-- Verify structural change detection (line count tracking)
-- Verify keystroke threshold (validate every 3 keystrokes)
+| # | Test | Pass criterion |
+| --- | --- | --- |
+| 1 | CLI: `--import-custom issue130_nowhitespace.txt --mode dayi` (100K-char no-whitespace single line) | Completes in < 2 s, exits 3, prints `Line 1: format error`. **Direct regression test for the catastrophic-backtracking RC** — without the Level-0 + manual-scan fix the call would never return. |
+| 2 | CLI: `--import-custom issue130_source.txt --mode dayi` (Big5, 73,278 lines) | Validator decodes Big5 (CP_ACP fallback) → no errors → `DAYI-Custom.txt` is UTF-16+BOM with all lines of correct hanzi → `DAYI-Custom.cin` (escape-mode `%chardef`-wrapped) also written. No silent truncation. |
+| 3 | CLI: `--import-custom` on UTF-8 with BOM and UTF-8 without BOM | Both exit 0, both produce identical 73,278-line `.txt` + `.cin`. |
+| 4 | CLI: corrupt line (`TOOLONGKEY 詞`, key length 10 > maxCodes=4) | Exits 3, prints offending line number, does NOT write to `DAYI-Custom.txt` or `.cin`. |
+| 5 | CLI: same corrupt file with `--no-validate` | Exits 0; writes `.txt` + `.cin` (whatever was decoded). Bypass for power users. |
+| 6 | GUI: Settings → 自建詞庫 → 匯入 → pick `issue130_source.txt` | RichEdit fills in seconds with proper Big5 hanzi (no mojibake, no spinner). Save button **enables**. Editor accepts user input (caret moves and characters are inserted). Click Save → `.txt` + `.cin` written, button disables. |
+| 7 | GUI: Import `fg_bg_2k.txt` (2,000 valid + 50 `BADBADBADBAD 詞` lines) | Warning message box: "匯入完成，但偵測到 50 個格式錯誤行，第一個錯誤在第 2001 行 ..." On dismiss, caret jumps to line 2001 with the orange "key too long" highlight visible. |
+| 8 | GUI: Import `fg_bg_73k_err50k.txt` (line 50,000 has `LONGKEY12345 詞`) | Warning message box reports line 50,000. On dismiss, caret jumps to line 50,000, viewport painted. Save still enabled — clicking Save shows the same error and re-jumps. |
+| 9 | GUI: type new line `roc 中華民國 fdfdafds` (3 tokens) | Visible-line repaint shows the line marked red (Level 1 format error — extra token). Click Save → message box reports it, caret jumps to it. |
+| 10 | GUI: import the 73K Big5 file, then type characters in the editor | Caret moves normally, characters appear immediately, no flicker, no caret jumps. (Regression test for `EM_EXLIMITTEXT`, TOM painting, and EN_CHANGE-mute guard.) |
 
-### Integration Tests (`SettingsDialogIntegrationTest.cpp`)
-- Space key triggers `ValidateCustomTableLines`
-- Enter key triggers `ValidateCustomTableLines`
-- Paste detection: `WM_PASTE` → `WM_USER+1` posted
-- Large deletion detection: selection > threshold → `WM_USER+1` posted
-- Theme switching: `WM_THEMECHANGED` updates `isDarkTheme` and re-validates
+## 13. Related work
 
-### Manual Test Scenarios
-
-| Scenario | Expected Behavior |
-|----------|-------------------|
-| Type "abc defg" slowly | No validation until Space or 3rd char |
-| Paste 50 lines | All lines validated immediately |
-| Delete 20 lines | Remaining lines re-validated |
-| Type invalid key "ab@" (phonetic) | `@` turns cyan after Space/Enter |
-| Correct "ab@" → "abc" | Cyan disappears on next validation |
-| Switch from Dayi to Phonetic | Dayi dialog still uses Dayi mode |
-| Toggle Windows dark/light mode | Dialog repaints; validation recolors |
-
-### Phase 4 Theme Testing
-
-| Scenario | Expected |
-|----------|---------|
-| Light theme: invalid key | Bright red / dark orange / cyan-blue visible |
-| Dark theme: invalid key | Pastel red / bright orange / light cyan visible |
-| Toggle theme while dialog open | `WM_THEMECHANGED` → dialog repaints with new colors |
-| Light theme title bar | DIMESettings title bar stays light |
-| Dark theme title bar | DIMESettings title bar goes dark |
-
----
-
-## 7. Performance Analysis
-
-| Approach | Validations / 100 keystrokes | UX |
-|----------|-----------------------------|----|
-| Every keystroke | 100 | ❌ Laggy |
-| 800ms debounce | ~5–10 | ❌ Delayed feedback |
-| Smart (implemented) | ~10–15 | ✅ Responsive + smooth |
-
-**Time complexity**: `ValidateCustomTableLines` is O(N × M) where N = line count, M = average key length. Runs in < 1ms per 100 lines on modern hardware.
+- **Issue #130** — original symptom report and root-cause analysis: [docs/#130_ISSUE.md](./#130_ISSUE.md). Why the validator hung on a 73K-line user file, with the simulation that pinned it on `std::wregex` catastrophic backtracking + byte-as-WCHAR aliasing.
+- **[docs/RICHEDIT_VIEWPORT_VAL.md](RICHEDIT_VIEWPORT_VAL.md)** — focused implementation reference for the live-edit viewport validator (TOM-based painting, trigger wiring, RichEdit text-limit fix, code map).
+- **Legacy ConfigDialog property pages** in `Config.cpp` (`CommonPropertyPageWndProc`, `DictionaryPropertyPageWndProc`, `CConfig::ValidateCustomTableLines`) still exist but are no longer the user-facing surface and were not modified by the #130 fix. They retain the older regex-based validator.
 
 ---
 
-## 8. Implementation Checklist
+## Appendix A — Historical Phase 1-5 design (legacy ConfigDialog)
 
-### Phase 1: Context Isolation ✅
-- [x] Add `imeMode` to `DialogContext`
-- [x] Capture `imeMode` in `ShowConfig.cpp`
-- [x] Capture `imeMode` in `DIMESettings.cpp`
-- [x] Retrieve `imeMode` in `CommonPropertyPageWndProc`
-- [x] Retrieve `imeMode` in `DictionaryPropertyPageWndProc`
-- [x] Verify build succeeds
+The original validation system landed 2026-03-01–02 in the **legacy** `Config.cpp` property pages. It introduced:
 
-### Phase 2: Smart Validation ✅
-- [x] Add constants to `Define.h`
-- [x] Add `maxCodes`, `lastEditedLine`, `lastLineCount`, `keystrokesSinceValidation` to `DialogContext`
-- [x] Initialize `maxCodes` in `ShowConfig.cpp` & `DIMESettings.cpp`
-- [x] Initialize tracking fields in `WM_INITDIALOG`
-- [x] Implement smart `EN_CHANGE` handler with structural change detection
-- [x] Update `CustomTable_SubclassWndProc` with Space/Enter/Delete/Paste detection
-- [x] Add `WM_USER+1` handler for post-action validation
-- [x] Move `ValidateCustomTableLines` to public section for subclass access
-- [x] Verify build succeeds
+- **Phase 1:** `DialogContext` per-page state to fix the wrong-config-file bug (global `_imeMode` shared across pages).
+- **Phase 2:** Smart-validation triggers (Space/Enter/Paste/Delete + structural-change detection).
+- **Phase 3:** 3-level error hierarchy (format / key length / per-char).
+- **Phase 4:** Light/dark theme support — `CConfig::IsSystemDarkTheme` (uxtheme ordinal 132 + registry fallback), per-theme colour constants, `WM_CTLCOLOR*` handlers, `DwmSetWindowAttribute` title bar dark mode.
+- **Phase 5:** Unit tests `UT-CV-01–16` and integration tests `IT-CV-01–14`.
 
-### Phase 3: 3-Level Validation ✅
-- [x] Update `ValidateCustomTableLines` signature to accept `maxCodes` parameter
-- [x] Update all 7 callers to pass `maxCodes`
-- [x] Implement Level 2: Key length validation (orange highlighting)
-- [x] Implement Level 3: Per-character validation (cyan highlighting)
-- [x] Update error message to explain 3 color codes
-- [x] Add color constants to `Define.h`
-- [x] Verify build succeeds
+That work shaped the validation contract and colour palette that the new SettingsWindow inherits. The SettingsWindow re-implements the surface (RichEdit, validator, theming) in `src/DIMESettings/`. The Phase 1-5 details are preserved in git history.
 
-### Phase 4: Theme Support ✅
-- [x] Add `DARK_DIALOG_BG`, `DARK_CONTROL_BG`, `DARK_TEXT`, `DARK_DISABLED_TEXT` to `Define.h`
-- [x] Add 8 per-theme `CUSTOM_TABLE_LIGHT/DARK_*` constants to `Define.h`
-- [x] Add `isDarkTheme`, `hBrushBackground`, `hBrushEditControl` to `DialogContext` in `Config.h`
-- [x] Declare and implement `CConfig::IsSystemDarkTheme()` (uxtheme ordinal 132 + registry fallback)
-- [x] `CommonPropertyPageWndProc`: `WM_INITDIALOG` theme init, `WM_CTLCOLORDLG/STATIC/EDIT`, `WM_THEMECHANGED`, `WM_DESTROY`
-- [x] `DictionaryPropertyPageWndProc`: same + `EM_SETBKGNDCOLOR`, `SetWindowTheme` on RichEdit, DWM title bar (dark-only guard), re-validate on `WM_THEMECHANGED`
-- [x] Fix title bar flip: guard DWM block with `if (pCtx->isDarkTheme)` in `DictionaryPropertyPageWndProc`
-- [x] `DIMESettings.cpp` main launcher: `WM_INITDIALOG`, `WM_CTLCOLORDLG/STATIC/BTN`, `WM_DRAWITEM`, `WM_NCACTIVATE`, `WM_THEMECHANGED`, `WM_DESTROY`
-- [x] `ValidateCustomTableLines`: 4 local theme-aware color vars driven by `isDarkTheme`
-- [x] Caret scan: compare `cfGet.crTextColor != validColor` (theme-aware)
-- [x] Error `MessageBoxW`: theme-aware color names in Chinese text
-- [x] `ApplyDialogDarkTheme` helper: walks all child controls with `SetWindowTheme`
-- [x] Verify build succeeds
-
-### Phase 5: Testing ✅
-- [x] Write unit tests in `ConfigTest.cpp` — 16 tests (UT-CV-01 through UT-CV-16)
-- [x] Write integration tests in `SettingsDialogIntegrationTest.cpp` — 14 tests (IT-CV-01 through IT-CV-14)
-- [ ] Manual testing with all 4 IME modes (Dayi, Array, Phonetic, Generic)
-- [ ] Performance profiling with large custom tables
-- [ ] Theme switching tests (light ↔ dark while dialog open)
-
----
-
-## 9. Configuration Constants Reference (`Define.h`)
-
-| Constant | Value | Purpose |
-|----------|-------|---------|
-| `CUSTOM_TABLE_VALIDATE_KEYSTROKE_THRESHOLD` | 3 | Validate every N keystrokes |
-| `CUSTOM_TABLE_LARGE_DELETION_THRESHOLD` | 10 | Char count to trigger immediate validation |
-
-**Tuning guidance**:
-- **KEYSTROKE_THRESHOLD** (3): Lower = more responsive, higher = better performance
-- **DELETION_THRESHOLD** (10): Lower = catches more deletions, higher = avoids false positives
-
----
-
-## 10. Known Limitations & Future Work
-
-### Current Limitations
-1. **Full document scan** — validates all lines even for single-character edits (mitigated by smart triggering)
-2. **No undo/redo tracking** — undo may not trigger re-validation
-
-### Future Improvements
-1. **Incremental validation** — only validate changed lines (requires line content hashing)
-2. **Background validation** — offload to worker thread for very large tables (1000+ lines)
-3. **Undo/Redo hooks** — subscribe to `EM_UNDO`/`EM_REDO` messages
-4. **High contrast mode** — detect via `SystemParametersInfo SPI_GETHIGHCONTRAST`
-
----
-
-## 11. Validation Rules Reference
-
-### Format Validation (Level 1)
-Regex: `^([^\s]+)\s+(.+)$`
-
-| Component | Pattern | Explanation |
-|-----------|---------|-------------|
-| `^` | Start of line | Anchor |
-| `([^\s]+)` | Key (group 1) | 1+ non-whitespace chars |
-| `\s+` | Separator | 1+ whitespace chars |
-| `(.+)` | Value (group 2) | 1+ any chars |
-| `$` | End of line | Anchor |
-
-Valid examples: `abc 測試`, `a1b2 詞彙`
-Invalid examples: `abc測試` (no separator), ` abc 測試` (leading space)
-
-### Character Validation (Level 3)
-
-#### Phonetic Mode
-Key characters must be printable ASCII `0x21–0x7E` (excludes space, `*`, `?`).
-
-#### Other IME Modes (Dayi / Array / Generic)
-1. **Quick accept**: if all characters are ASCII letters A–Z, accept without engine call
-2. **Engine validation**: call `ValidateCompositionKeyCharFull` per character
-3. **Fallback** (no engine): range check against `MAX_RADICAL`
-
----
-
-## 12. Code Location Reference
-
-| Component | File | Notes |
-|-----------|------|-------|
-| `DialogContext` struct | `Config.h` ~L45 | All per-page state |
-| Dark theme + validation constants | `Define.h` ~L80 | `DARK_*`, `CUSTOM_TABLE_*` |
-| `IsSystemDarkTheme()` | `Config.cpp` ~L146 | Theme detection |
-| `ApplyDialogDarkTheme()` | `Config.cpp` ~L265 | Child control theming helper |
-| `CustomTable_SubclassWndProc` | `Config.cpp` ~L140 | Space/Enter/Paste/Delete detection |
-| `ValidateCustomTableLines` | `Config.cpp` ~L720 | Core validation logic |
-| `CommonPropertyPageWndProc` | `Config.cpp` ~L1000 | Common settings page |
-| `DictionaryPropertyPageWndProc` | `Config.cpp` ~L1556 | Dictionary/custom table page |
-| Context creation (runtime) | `ShowConfig.cpp` ~L135 | Initializes `DialogContext` for runtime IME |
-| Context creation (standalone) | `DIMESettings/DIMESettings.cpp` ~L152 | Initializes `DialogContext` for settings app |
-| Main launcher `WndProc` | `DIMESettings/DIMESettings.cpp` ~L320 | 4-button launcher dialog |
-
----
-
-## 13. Revision History
+## Appendix B — Revision history
 
 | Date | Version | Changes |
-|------|---------|---------|
-| 2026-03-01 | 1.0 | Initial design document |
-| 2026-03-01 | 1.1 | Added Space key trigger requirement |
-| 2026-03-01 | 1.2 | Added structural change detection |
-| 2026-03-01 | 2.0 | Phase 2 implementation completed |
-| 2026-03-01 | 2.1 | Phase 3 detailed implementation plan added |
-| 2026-03-01 | 3.0 | Phase 3 implementation completed |
-| 2026-03-01 | 3.1 | Bug fixes: Level 3 color changed; Space key timing fixed with PostMessage |
-| 2026-03-01 | 3.2 | Critical fix: removed color clearing from EN_CHANGE; errors now persist |
-| 2026-03-01 | 3.3 | Color improvement: Level 3 changed from magenta → cyan-blue |
-| 2026-03-01 | 4.0 | Phase 4 planning: comprehensive theme-aware UI design |
-| 2026-03-02 | 4.1 | Phase 4 implementation completed: full light/dark theme support |
-| 2026-03-02 | 4.2 | Document updated: removed all code blocks, updated all checklists |
-| 2026-03-02 | 5.0 | Phase 5 complete: 16 unit tests (UT-CV-01–16) + 14 integration tests (IT-CV-01–14) |
-
----
-
-## 14. Next Steps (Phase 5 — Testing)
-
-### Priority 1: Manual Testing
-- [ ] Test with Dayi IME mode (validate entries, Space/Enter triggers, paste/delete)
-- [ ] Test with Array IME mode (array-specific key validation, maxCodes enforcement)
-- [ ] Test with Phonetic IME mode (ASCII-only key validation, special character rejection)
-- [ ] Test with Generic IME mode (baseline validation)
-- [ ] Test theme switching while dialog is open
-- [ ] Test DIMESettings title bar stays light in Windows light mode
-
-### Priority 2: Edge Case Testing
-- [ ] Large file performance (1000+ lines)
-- [ ] Rapid typing test (no lag)
-- [ ] Paste very large content
-- [ ] Delete entire document
-- [ ] Undo/Redo operations
-- [ ] Mixed valid/invalid lines
-
-### Priority 3: Unit & Integration Tests
-- [x] Add unit tests for `DialogContext` initialization (UT-CV-01)
-- [x] Add tests for validation trigger conditions (UT-CV-04 – UT-CV-14)
-- [x] Add integration tests per IME mode (IT-CV-01 – IT-CV-08)
-- [x] Add tests for structural change detection (IT-CV-10)
-- [x] Add theme-switching integration tests (IT-CV-09, IT-CV-13, IT-CV-14)
-- [x] Add performance tests (IT-CV-11, IT-CV-12)
-
-### Performance Requirements
-- Validation latency < 16ms (60 FPS) for typical tables
-- No perceptible lag during continuous typing
-- Instant visual feedback (error → valid on correction)
-
----
-
-## 15. References
-
-- **RichEdit EM_SETCHARFORMAT**: https://learn.microsoft.com/en-us/windows/win32/controls/em-setcharformat
-- **DwmSetWindowAttribute**: https://learn.microsoft.com/en-us/windows/win32/api/dwmapi/nf-dwmapi-dwmsetwindowattribute
-- **Related code**: `parseCINFile()` — file parsing logic; `importCustomTableFile()` — file loading
-
----
-
-## Appendix A: Design Decisions
-
-### Why Space Key Validation?
-Space is the key-value separator (`key<space>value`). The user has just finished typing the key — the most natural pause point. Validating here gives instant feedback before the user types the value.
-
-### Why Track Line Count Instead of Line Content?
-`EM_GETLINECOUNT` is O(1) vs O(N) for content hashing. Integer comparison catches 95% of paste/delete cases. Space/Enter key triggers cover the remainder.
-
-### Why Clear Colors Inside ValidateCustomTableLines, Not EN_CHANGE?
-Clearing in EN_CHANGE caused error colors to disappear every keystroke (since EN_CHANGE fires every keystroke but validation only runs every 3). Moving the clear into `ValidateCustomTableLines` ensures errors stay visible until the next validation run.
-
-### Why PostMessage for Space/Enter Validation?
-Event order is: `WM_KEYDOWN` → character inserted → `EN_CHANGE`. If validation runs in `WM_KEYDOWN`, the subsequent `EN_CHANGE` clears colors and makes the state stale. `PostMessage(WM_USER+1)` defers validation until after `EN_CHANGE` completes.
-
-### Why isDarkTheme from DialogContext Instead of EM_GETBKGNDCOLOR Luminance?
-The original plan described querying `EM_GETBKGNDCOLOR` and computing luminance. The implementation uses `DialogContext.isDarkTheme` instead — simpler, more direct, and reliably set at `WM_INITDIALOG` and updated at `WM_THEMECHANGED`. The observable result is identical.
-
-### Why Guard DWM Title Bar with isDarkTheme?
-`DwmSetWindowAttribute(DWMWA_USE_IMMERSIVE_DARK_MODE, TRUE)` on the DIMESettings owner window must only be called in dark mode. Calling it unconditionally (the original bug) caused the title bar to flip dark when the dictionary property page opened, even in light mode.
-
----
-
-## Appendix B: Code Review Checklist
-
-### Before Merge
-- [x] All Phase 1–4 checklist items completed
-- [x] Unit tests written (`ConfigTest.cpp` — UT-CV-01–16)
-- [x] Integration tests written (`SettingsDialogIntegrationTest.cpp` — IT-CV-01–14)
-- [ ] Unit tests pass in CI
-- [ ] Manual testing in all 4 IME modes
-- [ ] Performance profiling completed (small / medium / large tables)
-- [ ] No memory leaks (GDI brushes deleted in `WM_DESTROY`)
-- [ ] No hardcoded `RGB()` values in `ValidateCustomTableLines`
-- [ ] Theme switching tested (light ↔ dark while dialog open)
-- [ ] Title bar behavior verified in both themes
-
----
-
-*End of Document*
+| --- | --- | --- |
+| 2026-03-01 | 1.0–3.3 | Phase 1-3 in legacy ConfigDialog (context isolation, smart triggers, 3-level errors) |
+| 2026-03-02 | 4.0–5.0 | Phase 4 (theme) and Phase 5 (tests) in legacy ConfigDialog |
+| 2026-04-29 | 6.0 | Major rewrite for SettingsWindow surface and #130 fix: removed `std::wregex`, added Level-0 cap, `LoadTextFileAsUtf16`, `ValidateCustomTableBuffer`, EN_CHANGE-mute on bulk load, CLI parity through `SettingsModel::ValidateLine` + `CreateEngine` |
+| 2026-04-29 | 7.0 | Shipped state: viewport-only live validator with TOM-based painting (`ITextDocument` + `ITextRange::SetForeColor` — no `EM_SETSEL`, no caret jumps, no flicker); `ValidateViewport` brackets its painting loop with `EM_SETEVENTMASK(0)` to prevent EN_CHANGE recursion; `EM_EXLIMITTEXT(100 MB)` set on RichEdit creation so the editor accepts input on large imports; Save button uses simple dirty-bit; Import is non-blocking (loads even with errors, shows warning + auto-jumps); Save and Import auto-jump to first error after message-box dismiss; Level 1 tightened to require exactly two non-whitespace tokens. |

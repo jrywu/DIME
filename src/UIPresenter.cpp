@@ -1063,7 +1063,8 @@ HRESULT CUIPresenter::_NotifyChangeNotification(_In_ enum NOTIFY_WND action, _In
 		{
 			NOTIFY_TYPE nt = (NOTIFY_TYPE)lParam;
 			BOOL isHintSlot = (nt == NOTIFY_TYPE::NOTIFY_REVERSE_LOOKUP
-			                   || nt == NOTIFY_TYPE::NOTIFY_SPECIAL_CODE);
+			                   || nt == NOTIFY_TYPE::NOTIFY_SPECIAL_CODE
+			                   || nt == NOTIFY_TYPE::NOTIFY_BEEP);
 			// Issue #127: probe should fire for compositional-hint slots too so
 			// those popups track the caret even when the floating CHN/ENG notify
 			// (which used to be the sole probe trigger) is disabled.
@@ -1616,12 +1617,16 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange* pNotifyText, _In_opt_ UINT 
 				POINT* pt = nullptr;
 				guiInfo->cbSize = sizeof(GUITHREADINFO);
 				GetGUIThreadInfo(NULL, guiInfo);
-				// Issue #127: for compositional-hint slots, refresh _notifyLocation
-				// each show so a stale value from an earlier hint does not stick.
-				// The probe call below (also widened for #127) will overwrite with
-				// the precise caret rect when GetTextExt succeeds.
+				// Issue #127: for transient slots (compositional hints + BEEP),
+				// refresh _notifyLocation each show so a stale value from an earlier
+				// show does not stick. The probe call below (also widened) will
+				// overwrite with the precise caret rect when GetTextExt succeeds.
+				// Pre-multi-notify this matched the old NOTIFY_OTHERS bucket; without
+				// BEEP here the 錯誤組字 popup pinned to (0,0) in Firefox after the
+				// first show seeded _notifyLocation to a non-negative stale value.
 				BOOL refreshLocation = (notifyType == NOTIFY_TYPE::NOTIFY_REVERSE_LOOKUP
-				                        || notifyType == NOTIFY_TYPE::NOTIFY_SPECIAL_CODE);
+				                        || notifyType == NOTIFY_TYPE::NOTIFY_SPECIAL_CODE
+				                        || notifyType == NOTIFY_TYPE::NOTIFY_BEEP);
 				if(guiInfo && parentWndHandle)
 				{   //for ancient non TSF aware apps with a floating composition window.  The caret position we can get is always the caret in the floating composition window.
 					pt = new POINT;
@@ -1630,8 +1635,12 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange* pNotifyText, _In_opt_ UINT 
 					pt->y = guiInfo->rcCaret.bottom;
 					ClientToScreen(parentWndHandle, pt);
 					debugPrint(L"current caret position from GetGUIThreadInfo, x = %d, y = %d", pt->x, pt->y);
-					if(refreshLocation || _notifyLocation.x < 0) _notifyLocation.x = pt->x;
-					if(refreshLocation || _notifyLocation.y < 0) _notifyLocation.y = pt->y;
+					// Only refresh from GUIThreadInfo when the result is non-zero.
+					// Firefox/Chromium return rcCaret={0,0,0,0}; accepting that would
+					// overwrite a previously cached valid position with (0,0).
+					BOOL validCaretPos = (pt->x != 0 || pt->y != 0);
+					if((refreshLocation && validCaretPos) || _notifyLocation.x < 0) _notifyLocation.x = pt->x;
+					if((refreshLocation && validCaretPos) || _notifyLocation.y < 0) _notifyLocation.y = pt->y;
 				}
 				else if(parentWndHandle)
 				{
@@ -1639,8 +1648,9 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange* pNotifyText, _In_opt_ UINT 
 					GetCaretPos(&caretPt);
 					ClientToScreen(parentWndHandle, &caretPt);
 					debugPrint(L"current caret position from GetCaretPos, x = %d, y = %d", caretPt.x, caretPt.y);
-					if (refreshLocation || _notifyLocation.x < 0) _notifyLocation.x = caretPt.x;
-					if (refreshLocation || _notifyLocation.y < 0) _notifyLocation.y = caretPt.y;
+					BOOL validCaretPosAlt = (caretPt.x != 0 || caretPt.y != 0);
+					if ((refreshLocation && validCaretPosAlt) || _notifyLocation.x < 0) _notifyLocation.x = caretPt.x;
+					if ((refreshLocation && validCaretPosAlt) || _notifyLocation.y < 0) _notifyLocation.y = caretPt.y;
 
 				}
 
@@ -1667,12 +1677,13 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange* pNotifyText, _In_opt_ UINT 
 					}
 				}
 				//means TextLayoutSink is not working. We need to ProbeComposition to start layout.
-				// Issue #127: also probe for compositional-hint slots so they track the
-				// caret when ShowNotifyDesktop pref is OFF.
+				// Issue #127: also probe for compositional-hint slots and BEEP so they
+				// track the caret when ShowNotifyDesktop pref is OFF.
 				if(_pTextService && delayShow == 0 && _GetContextDocument() == nullptr
 				   && (notifyType == NOTIFY_TYPE::NOTIFY_CHN_ENG
 				       || notifyType == NOTIFY_TYPE::NOTIFY_REVERSE_LOOKUP
-				       || notifyType == NOTIFY_TYPE::NOTIFY_SPECIAL_CODE) )
+				       || notifyType == NOTIFY_TYPE::NOTIFY_SPECIAL_CODE
+				       || notifyType == NOTIFY_TYPE::NOTIFY_BEEP) )
 					_pTextService->_ProbeComposition(pContext);
 
 			}

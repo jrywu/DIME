@@ -4,7 +4,10 @@
 // to 'out' (defaults to stdout).
 //
 // Exit codes: 0 = success, 1 = invalid arg/key/value,
-//             2 = I/O error, 3 = key not applicable to mode.
+//             2 = I/O error,
+//             3 = command-specific semantic error
+//                 (--get/--set: key not applicable to mode;
+//                  --import-custom: format validation failure).
 
 #pragma once
 
@@ -63,6 +66,7 @@ struct CLIArgs
     BOOL            hasMode;
     BOOL            jsonOutput;
     BOOL            silent;
+    BOOL            noValidate;     // --no-validate: skip pre-flight format check on --import-custom
     WCHAR           getKey[64];
     CLISetPair      setPairs[CLI_MAX_SET_PAIRS];
     int             setCount;

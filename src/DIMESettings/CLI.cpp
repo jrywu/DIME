@@ -12,6 +12,8 @@
 #include "..\define.h"
 #include "..\Config.h"
 #include "..\Globals.h"
+#include "..\CompositionProcessorEngine.h"
+#include "SettingsController.h"
 
 // ---------------------------------------------------------------------------
 // Key registry
@@ -458,6 +460,8 @@ static int HandleHelp(FILE* out)
         L"  --set <key> <value> [--set ...]   Set one or more settings\n"
         L"  --reset                           Reset all settings to defaults\n"
         L"  --import-custom <file>            Import a custom phrase table\n"
+        L"                                    (pre-flights through the same format\n"
+        L"                                     checker the GUI uses; see --no-validate)\n"
         L"  --export-custom <file>            Export the custom phrase table\n"
         L"  --load-main <file>                Load a main dictionary (.cin)\n"
         L"  --load-phrase <file>              Load a phrase dictionary (.cin)\n"
@@ -468,9 +472,12 @@ static int HandleHelp(FILE* out)
         L"Options:\n"
         L"  --json                            Output in JSON format\n"
         L"  --silent                          Suppress all output\n"
+        L"  --no-validate                     Skip pre-flight format check on\n"
+        L"                                    --import-custom (use with care)\n"
         L"\n"
         L"Exit codes: 0=success, 1=invalid argument, 2=I/O error,\n"
-        L"            3=key not applicable to mode\n"
+        L"            3=semantic error (key not applicable, or\n"
+        L"              --import-custom format validation failure)\n"
         L"\n"
         L"Examples:\n"
         L"  DIMESettings.exe                                    (open UI, dayi tab)\n"
@@ -675,22 +682,134 @@ static int HandleReset(const CLIArgs& args, FILE* out, FILE* err)
 
 // ---------------------------------------------------------------------------
 // Command: --import-custom <file>
+// Mirrors the GUI Save pipeline end-to-end:
+//   1. Load + decode source via SettingsModel::LoadTextFileAsUtf16 (handles
+//      UTF-16/UTF-8/CP_ACP/Big5).
+//   2. Pre-flight every line through SettingsModel::ValidateLine (same format
+//      checker the GUI uses). Abort with exit 3 on any failure unless
+//      --no-validate is passed.
+//   3. Write the decoded UTF-16 to <MODE>-Custom.txt with a UTF-16LE BOM —
+//      the same on-disk format the GUI 儲存 path produces.
+//   4. parseCINFile(customTableMode=TRUE) to write <MODE>-Custom.cin for the
+//      IME runtime.
+// Exit codes: 0 success, 2 I/O / parser failure, 3 validation failure.
 // ---------------------------------------------------------------------------
 static int HandleImportCustom(const CLIArgs& args, FILE* out, FILE* err)
 {
-    // Verify the source file exists before calling parseCINFile
+    UNREFERENCED_PARAMETER(out);
+
+    // Verify the source file exists before doing any work.
     if (!PathFileExistsW(args.filePath))
     {
         fwprintf_s(err, L"Error: file not found: %s\n", args.filePath);
         return 2;
     }
 
-    WCHAR destPath[MAX_PATH];
-    GetCustomTablePath(args.mode, destPath, MAX_PATH);
-
-    if (!CConfig::parseCINFile(args.filePath, destPath, FALSE, TRUE))
+    // ---- Stage 1: load + decode (encoding detection) ---------------------
+    size_t wlen = 0;
+    LPWSTR text = SettingsModel::LoadTextFileAsUtf16(args.filePath, &wlen);
+    if (!text)
     {
-        fwprintf_s(err, L"Error: failed to import custom table from %s\n", args.filePath);
+        fwprintf_s(err, L"Error: could not read or decode file: %s\n", args.filePath);
+        return 2;
+    }
+
+    // ---- Stage 2: validate (skippable via --no-validate) -----------------
+    if (!args.noValidate)
+    {
+        // Same factory the GUI uses → identical Level-3 per-IME char validation.
+        CCompositionProcessorEngine* pEngine = SettingsModel::CreateEngine(args.mode);
+        CConfig::LoadConfig(args.mode);  // so GetMaxCodes returns saved value
+        UINT maxCodes = CConfig::GetMaxCodes();
+
+        const int MAX_REPORT = 20;
+        int errCount = 0;
+        int lineNo = 0;
+        const wchar_t* p = text;
+        const wchar_t* lineStart = p;
+        const wchar_t* endBuf = text + wlen;
+
+        while (p <= endBuf)
+        {
+            if (p == endBuf || *p == L'\n')
+            {
+                ++lineNo;
+                int len = (int)(p - lineStart);
+                if (len > 0 && lineStart[len - 1] == L'\r') --len;
+
+                auto v = SettingsModel::ValidateLine(lineStart, len, args.mode, maxCodes, pEngine);
+                if (!v.valid)
+                {
+                    if (errCount < MAX_REPORT)
+                    {
+                        const wchar_t* errKind = L"format";
+                        if (!v.errors.empty())
+                        {
+                            switch (v.errors[0].error)
+                            {
+                            case SettingsModel::LineError::Format:      errKind = L"format";       break;
+                            case SettingsModel::LineError::KeyTooLong:  errKind = L"key too long"; break;
+                            case SettingsModel::LineError::InvalidChar: errKind = L"invalid char"; break;
+                            default: break;
+                            }
+                        }
+                        fwprintf_s(err, L"Line %d: %s error\n", lineNo, errKind);
+                    }
+                    ++errCount;
+                }
+
+                if (p == endBuf) break;
+                lineStart = p + 1;
+            }
+            ++p;
+        }
+
+        SettingsModel::DestroyEngine(pEngine);
+
+        if (errCount > 0)
+        {
+            if (errCount > MAX_REPORT)
+                fwprintf_s(err, L"  (+ %d more error(s) suppressed)\n", errCount - MAX_REPORT);
+            fwprintf_s(err, L"\nValidation failed: %d invalid line(s). Import aborted.\n", errCount);
+            delete[] text;
+            return 3;
+        }
+    }
+
+    // ---- Stage 3: persist .txt (UTF-16+BOM) — mirrors GUI 儲存 ----------
+    WCHAR txtPath[MAX_PATH] = {};
+    WCHAR cinPath[MAX_PATH] = {};
+    SettingsModel::GetCustomTableTxtPath(args.mode, txtPath, MAX_PATH);
+    SettingsModel::GetCustomTableCINPath(args.mode, cinPath, MAX_PATH);
+
+    HANDLE hFile = CreateFileW(txtPath, GENERIC_WRITE, FILE_SHARE_READ, nullptr,
+        CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (hFile == INVALID_HANDLE_VALUE)
+    {
+        fwprintf_s(err, L"Error: could not open %s for writing (error %lu)\n",
+            txtPath, GetLastError());
+        delete[] text;
+        return 2;
+    }
+    DWORD written = 0;
+    WCHAR bom = 0xFEFF;
+    BOOL writeOk = WriteFile(hFile, &bom, sizeof(WCHAR), &written, nullptr)
+                && WriteFile(hFile, text, (DWORD)(wlen * sizeof(WCHAR)), &written, nullptr);
+    CloseHandle(hFile);
+    delete[] text;
+
+    if (!writeOk)
+    {
+        fwprintf_s(err, L"Error: failed to write %s\n", txtPath);
+        return 2;
+    }
+
+    // ---- Stage 4: parseCINFile(customTableMode=TRUE) → .cin -------------
+    // customTableMode=TRUE opens the .txt with ccs=UTF-16LE and emits an
+    // escaped %chardef-wrapped .cin for the IME runtime.
+    if (!CConfig::parseCINFile(txtPath, cinPath, TRUE, TRUE))
+    {
+        fwprintf_s(err, L"Error: failed to parse %s into %s\n", txtPath, cinPath);
         return 2;
     }
     return 0;
@@ -862,6 +981,7 @@ bool ParseCLIArgs(_In_ const wchar_t* cmdLine, _Out_ CLIArgs& args, _In_ FILE* e
         }
         else if (_wcsicmp(arg, L"--json")        == 0) args.jsonOutput = TRUE;
         else if (_wcsicmp(arg, L"--silent")      == 0) args.silent     = TRUE;
+        else if (_wcsicmp(arg, L"--no-validate") == 0) args.noValidate = TRUE;
         else if (_wcsicmp(arg, L"--list-modes")  == 0) args.command    = CLI_LIST_MODES;
         else if (_wcsicmp(arg, L"--list-keys")   == 0) args.command    = CLI_LIST_KEYS;
         else if (_wcsicmp(arg, L"--help") == 0 || _wcsicmp(arg, L"-h") == 0) args.command = CLI_HELP;

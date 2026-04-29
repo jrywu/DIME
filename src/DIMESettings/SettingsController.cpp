@@ -8,7 +8,6 @@
 #include <strsafe.h>
 #include <shlobj.h>
 #include <sys/stat.h>
-#include <regex>
 #include "..\define.h"
 #include "..\BaseStructure.h"
 #include "..\Globals.h"
@@ -222,21 +221,51 @@ SettingsModel::LineValidation SettingsModel::ValidateLine(const wchar_t* line, i
     while (e > s && iswspace(line[e - 1])) --e;
     if (s >= e) return v; // empty line → valid (skip)
 
-    // Extract trimmed substring for format check
-    std::wstring trimmed(line + s, e - s);
-
-    // Level 1: regex format check — key (no whitespace) + whitespace + value
-    static const std::wregex kv_re(L"^([^\\s]+)\\s+(.+)$");
-    std::wsmatch kv_match;
-    if (!std::regex_match(trimmed, kv_match, kv_re))
-    {
-        // Format error — mark entire line
+    // Level 0: hard length cap. Bounds worst-case validator runtime regardless
+    // of caller. Defends against the catastrophic-backtracking footgun that the
+    // old std::wregex below used to hit when the read path fed the validator a
+    // single mega-line (issue #130).
+    if ((e - s) > MAX_TABLE_LINE_LENGTH) {
         v.valid = false;
         v.errors.push_back({ LineError::Format, s, e - s });
         return v;
     }
 
-    std::wstring key = kv_match[1].str();
+    // Level 1: manual format scan. Per-line format is documented as
+    // "輸入碼 空白 詞彙" (key whitespace value) — exactly two non-whitespace
+    // tokens. Anything else (no separator, no value, or extra tokens after
+    // the value like "key value extra") is a format error.
+    const wchar_t* p      = line + s;
+    const wchar_t* end    = line + e;
+
+    // Key: first non-whitespace run.
+    const wchar_t* keyEnd = p;
+    while (keyEnd < end && !iswspace(*keyEnd)) ++keyEnd;
+    if (keyEnd == p || keyEnd == end) {
+        v.valid = false;
+        v.errors.push_back({ LineError::Format, s, e - s });
+        return v;
+    }
+    // Separator: whitespace run.
+    const wchar_t* valStart = keyEnd;
+    while (valStart < end && iswspace(*valStart)) ++valStart;
+    if (valStart == end) {
+        v.valid = false;
+        v.errors.push_back({ LineError::Format, s, e - s });
+        return v;
+    }
+    // Value: second non-whitespace run.
+    const wchar_t* valEnd = valStart;
+    while (valEnd < end && !iswspace(*valEnd)) ++valEnd;
+    // Anything after the value must be whitespace only — no third token.
+    const wchar_t* tail = valEnd;
+    while (tail < end && iswspace(*tail)) ++tail;
+    if (tail != end) {
+        v.valid = false;
+        v.errors.push_back({ LineError::Format, s, e - s });
+        return v;
+    }
+    std::wstring key(p, keyEnd - p);
 
     // Level 2: Check key length
     UINT maxKeyLength = (mode == IME_MODE::IME_MODE_PHONETIC) ? MAX_KEY_LENGTH : maxCodes;
@@ -360,6 +389,111 @@ void SettingsModel::GetCustomTableCINPath(IME_MODE mode, WCHAR* out, DWORD cch)
     default:                          suffix = L"\\DIME\\GENERIC-Custom.cin";  break;
     }
     StringCchPrintfW(out, cch, L"%s%s", appData, suffix);
+}
+
+// ============================================================================
+// Encoding-aware text loader (issue #130)
+// ============================================================================
+// The legacy ImportCustomTable / initial-load path read raw bytes straight
+// into a WCHAR[] buffer with no encoding conversion. For ANSI/Big5/UTF-8
+// sources the bytes reinterpreted to wide chars with zero whitespace, which
+// in turn fed the format-checker regex catastrophic input. This helper
+// detects encoding and returns a real UTF-16LE wide string.
+LPWSTR SettingsModel::LoadTextFileAsUtf16(LPCWSTR path, size_t* outLen)
+{
+    if (outLen) *outLen = 0;
+    if (!path) return nullptr;
+
+    HANDLE hFile = CreateFileW(path, GENERIC_READ,
+        FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
+        OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
+    if (hFile == INVALID_HANDLE_VALUE) return nullptr;
+
+    DWORD dwSize = GetFileSize(hFile, nullptr);
+    if (dwSize == INVALID_FILE_SIZE || dwSize == 0) {
+        CloseHandle(hFile);
+        // Empty file → return a valid 1-wchar NUL buffer so callers can
+        // SetWindowTextW(L"") rather than blank-on-failure.
+        LPWSTR empty = new (std::nothrow) WCHAR[1];
+        if (empty) empty[0] = 0;
+        return empty;
+    }
+
+    BYTE* raw = new (std::nothrow) BYTE[dwSize];
+    if (!raw) { CloseHandle(hFile); return nullptr; }
+    DWORD dwRead = 0;
+    if (!ReadFile(hFile, raw, dwSize, &dwRead, nullptr) || dwRead == 0) {
+        delete[] raw;
+        CloseHandle(hFile);
+        return nullptr;
+    }
+    CloseHandle(hFile);
+
+    // ---- Detect BOM ----
+    // UTF-16LE BOM: FF FE
+    if (dwRead >= 2 && raw[0] == 0xFF && raw[1] == 0xFE) {
+        size_t bytes = dwRead - 2;
+        size_t wlen = bytes / sizeof(WCHAR);
+        LPWSTR out = new (std::nothrow) WCHAR[wlen + 1];
+        if (!out) { delete[] raw; return nullptr; }
+        memcpy(out, raw + 2, wlen * sizeof(WCHAR));
+        out[wlen] = 0;
+        delete[] raw;
+        if (outLen) *outLen = wlen;
+        return out;
+    }
+    // UTF-16BE BOM: FE FF — byte-swap into LE
+    if (dwRead >= 2 && raw[0] == 0xFE && raw[1] == 0xFF) {
+        size_t bytes = dwRead - 2;
+        size_t wlen = bytes / sizeof(WCHAR);
+        LPWSTR out = new (std::nothrow) WCHAR[wlen + 1];
+        if (!out) { delete[] raw; return nullptr; }
+        for (size_t i = 0; i < wlen; ++i) {
+            BYTE hi = raw[2 + i * 2];
+            BYTE lo = raw[2 + i * 2 + 1];
+            out[i] = (WCHAR)((hi << 8) | lo);
+            // swap to LE
+            out[i] = (WCHAR)(((out[i] & 0xFF) << 8) | ((out[i] >> 8) & 0xFF));
+        }
+        out[wlen] = 0;
+        delete[] raw;
+        if (outLen) *outLen = wlen;
+        return out;
+    }
+
+    // UTF-8 BOM: EF BB BF — strip and decode as UTF-8
+    BYTE* utf8Start = raw;
+    DWORD utf8Bytes = dwRead;
+    if (dwRead >= 3 && raw[0] == 0xEF && raw[1] == 0xBB && raw[2] == 0xBF) {
+        utf8Start = raw + 3;
+        utf8Bytes = dwRead - 3;
+    }
+
+    // Try strict UTF-8 first (catches any UTF-8 file, with or without BOM).
+    int wcharsNeeded = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
+        (LPCCH)utf8Start, (int)utf8Bytes, nullptr, 0);
+    UINT useCp = CP_UTF8;
+    DWORD useFlags = MB_ERR_INVALID_CHARS;
+    if (wcharsNeeded == 0) {
+        // Not valid UTF-8 → fall back to system ANSI codepage (CP950 on zh-TW).
+        useCp = CP_ACP;
+        useFlags = 0;
+        wcharsNeeded = MultiByteToWideChar(CP_ACP, 0,
+            (LPCCH)utf8Start, (int)utf8Bytes, nullptr, 0);
+    }
+    if (wcharsNeeded <= 0) {
+        delete[] raw;
+        return nullptr;
+    }
+
+    LPWSTR out = new (std::nothrow) WCHAR[wcharsNeeded + 1];
+    if (!out) { delete[] raw; return nullptr; }
+    int wlen = MultiByteToWideChar(useCp, useFlags,
+        (LPCCH)utf8Start, (int)utf8Bytes, out, wcharsNeeded);
+    out[wlen] = 0;
+    delete[] raw;
+    if (outLen) *outLen = (size_t)wlen;
+    return out;
 }
 
 // ============================================================================

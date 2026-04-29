@@ -192,6 +192,15 @@ public:
     static void GetCustomTableTxtPath(IME_MODE mode, WCHAR* out, DWORD cch);
     static void GetCustomTableCINPath(IME_MODE mode, WCHAR* out, DWORD cch);
 
+    // --- Encoding-aware text loader (issue #130) ---
+    // Reads a text file from disk and decodes it to UTF-16LE in a freshly
+    // allocated buffer. Detection order: UTF-16LE/BE BOM → UTF-8 BOM →
+    // UTF-8 sniff (MultiByteToWideChar with MB_ERR_INVALID_CHARS) → CP_ACP
+    // fallback (CP950/Big5 on zh-TW Windows). BOM is stripped from the
+    // returned buffer. Caller frees with delete[]. *outLen receives wchar
+    // count (excluding NUL terminator). Returns nullptr on failure.
+    static LPWSTR LoadTextFileAsUtf16(LPCWSTR path, size_t* outLen);
+
     // --- Sidebar index ↔ IME mode ---
     static IME_MODE IndexToMode(int index);
     static int ModeToIndex(IME_MODE mode);

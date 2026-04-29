@@ -35,9 +35,10 @@ public:
     // Content area child window procedure (public: used by RegisterContentClass)
     static LRESULT CALLBACK ContentWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-private:
-
-    // Instance data stored via GWLP_USERDATA
+public:
+    // Instance data stored via GWLP_USERDATA. Public so file-static helpers
+    // in SettingsWindow.cpp (foreground/background validator, etc.) can hold
+    // WindowData* parameters.
     struct WindowData {
         HINSTANCE hInstance;
         bool isDarkTheme;
@@ -83,6 +84,23 @@ private:
         int ctLastEditedLine;
         int ctKeystrokeCount;
 
+        // Issue #130 Phase 3: chunked background validator.
+        // BG scan is started ONLY by Import button + initial-load (one-shot
+        // visual feedback for bulk content). EN_CHANGE never starts a BG scan
+        // — typing only runs the foreground viewport pass and cancels any
+        // in-flight BG (since the snapshotted lines are now stale). The Save
+        // button has its own pre-persist ValidateCustomTableBuffer pass, so
+        // BG completion is purely cosmetic (paints errors + auto-jumps).
+        // Snapshot taken at scan start (one-shot GetWindowTextW + line offsets);
+        // freed on scan complete / cancel / WM_DESTROY.
+        UINT_PTR ctBgScanTimer;            // 0 = not running; chunked scan timer
+        int      ctBgScanCursor;           // next 0-based line index to validate
+        int      ctBgScanLineCountAtStart; // line count at scan start
+        int      ctFirstBgErrorLine;       // 1-based first error this pass; -1 if none
+        LPWSTR   ctBgBuffer;               // owned wchar_t*; nullptr when no scan
+        int      ctBgBufferLen;            // wchar count, excluding NUL
+        int*     ctBgLineOffsets;          // owned int[]; offset of each line in ctBgBuffer
+
         // GDI resources
         HBRUSH hBrushSidebarBg;
         HBRUSH hBrushContentBg;
@@ -114,6 +132,9 @@ private:
             currentMode(IME_MODE::IME_MODE_DAYI), snapshot{}, pEngine(nullptr),
             hContentArea(nullptr), scrollPos(0), scrollMax(0),
             ctLastLineCount(0), ctLastEditedLine(-1), ctKeystrokeCount(0),
+            ctBgScanTimer(0), ctBgScanCursor(0),
+            ctBgScanLineCountAtStart(0), ctFirstBgErrorLine(-1),
+            ctBgBuffer(nullptr), ctBgBufferLen(0), ctBgLineOffsets(nullptr),
             hBrushSidebarBg(nullptr), hBrushContentBg(nullptr), hBrushCardBg(nullptr),
             hFontTitle(nullptr), hFontCardHeader(nullptr), hFontBody(nullptr), hFontDesc(nullptr),
             hFontMDL2(nullptr), hFontMDL2Icon(nullptr), hasMDL2(false), colorGridExpanded(true), sidebarCollapsed(false), sidebarNarrowMode(false)
@@ -124,7 +145,9 @@ private:
         }
     };
 
-    // Helpers
+    // Helpers (internal — but FindControl is needed by file-static helpers
+    // in SettingsWindow.cpp for the FG/BG validator, so it stays public).
+private:
     static void SwitchMode(HWND hWnd, WindowData* wd, IME_MODE mode);
     static void RebuildContentArea(HWND hWnd, WindowData* wd);
     static void UpdateTheme(HWND hWnd, WindowData* wd);
@@ -162,6 +185,8 @@ private:
     static void RepositionControlsForScroll(WindowData* wd);
     static void ApplyAndSave(WindowData* wd);
     static void PopulateControls(WindowData* wd);
+public:
     static HWND FindControl(WindowData* wd, SettingsControlId id);
+private:
     static COLORREF GetAccentColor();
 };

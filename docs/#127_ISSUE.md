@@ -501,6 +501,65 @@ Old guard ([UIPresenter.cpp:1498-1499](../src/UIPresenter.cpp#L1498-L1499)) bloc
 6. LINE Win+. emoji panel after triggering hints → emoji inserts. Probe is still read-only.
 7. Build verified Debug x64 + Debug Win32 clean (Release blocked by pre-existing `BuildInfo.cmd` infrastructure issue, unrelated).
 
+---
+
+## Follow-up — Firefox / Chromium reverse-lookup at (0,0) (2026-04-29)
+
+### Problem
+
+After the multi-notify extension landed, reverse-lookup (slot 3) and NOTIFY_BEEP
+still appeared at screen position (0,0) in Firefox when the associative-candidate
+list was OFF. NOTIFY_BEEP had already been added to the `refreshLocation` and probe
+predicates (closing the immediate-show gap) but both hits still went to (0,0).
+
+### Root-cause trace (debug.txt)
+
+```text
+current caret position from GetGUIThreadInfo, x = 0, y = 0   ← Firefox zero caret
+CUIPresenter::ShowNotify(slot=3)
+CDIME::_ProbeComposition() pContext = bb715190
+CDIME::_ProbeCompositionRangeNotification() GetTextExt hr=0x80040206 top=0 bottom=0 left=0 right=0
+```
+
+`0x80040206` = `TS_E_NOLAYOUT`. Firefox has not recalculated TSF layout after the
+composition commit. `GetGUIThreadInfo` also returns `rcCaret={0,0,0,0}` in all
+Chromium-based hosts.
+
+Two failures stack:
+
+1. `GetGUIThreadInfo` returns `(0,0)` (Firefox zero caret) — `refreshLocation=TRUE` (new for NOTIFY_REVERSE_LOOKUP) caused `_notifyLocation` to be overwritten with `(0,0)`, discarding the previously cached valid position.
+2. `GetTextExt` returns `TS_E_NOLAYOUT` (post-commit layout stale) — `_LayoutChangeNotification` is never called, so the overwritten `(0,0)` is never corrected.
+
+The earlier `ShowNotify(slot=0)` during active composition *did* succeed (probe + GetTextExt worked while composition was live), so `_notifyLocation` was valid at that point. The `refreshLocation` overwrite then destroyed that good value just before it was needed for slot=3.
+
+### Fix
+
+[src/UIPresenter.cpp](../src/UIPresenter.cpp) — `ShowNotifyText` GetGUIThreadInfo and GetCaretPos branches:
+
+```cpp
+// Before
+if(refreshLocation || _notifyLocation.x < 0) _notifyLocation.x = pt->x;
+if(refreshLocation || _notifyLocation.y < 0) _notifyLocation.y = pt->y;
+
+// After — only refresh when the new position is actually non-zero
+BOOL validCaretPos = (pt->x != 0 || pt->y != 0);
+if((refreshLocation && validCaretPos) || _notifyLocation.x < 0) _notifyLocation.x = pt->x;
+if((refreshLocation && validCaretPos) || _notifyLocation.y < 0) _notifyLocation.y = pt->y;
+```
+
+Same pattern applied to the `GetCaretPos` branch. By refusing to overwrite with a zero position, the previously cached valid `_notifyLocation` (set by the earlier composition-phase probe) survives as the fallback when `GetTextExt` fails with `TS_E_NOLAYOUT` after commit.
+
+### Verified
+
+Deploy Release x64, Firefox URL bar, associative candidate OFF:
+
+- Reverse-lookup notify appears next to the committed character, not at (0,0). ✓
+- NOTIFY_BEEP continues to work correctly. ✓
+
+`DEBUG_PRINT` disabled in `UIPresenter.cpp` and `Composition.cpp` after verification.
+
+---
+
 ### Design history (decisions taken and rejected)
 
 - **Multi-line single window** considered and rejected: ~180 lines of changes inside `CNotifyWindow` (rendering, sweep timer, prefix table, multi-line measurement). Concentrates risk in the rendering window.
