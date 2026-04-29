@@ -503,16 +503,53 @@ Old guard ([UIPresenter.cpp:1498-1499](../src/UIPresenter.cpp#L1498-L1499)) bloc
 
 ---
 
-## Follow-up — Firefox / Chromium reverse-lookup at (0,0) (2026-04-29)
+## Follow-up — Firefox notify position in Firefox (2026-04-29 → 2026-04-30)
 
 ### Problem
 
 After the multi-notify extension landed, reverse-lookup (slot 3) and NOTIFY_BEEP
-still appeared at screen position (0,0) in Firefox when the associative-candidate
-list was OFF. NOTIFY_BEEP had already been added to the `refreshLocation` and probe
-predicates (closing the immediate-show gap) but both hits still went to (0,0).
+appeared at wrong screen positions in Firefox (URL bar and web search fields).
+Specifically:
 
-### Root-cause trace (debug.txt)
+- With associative candidate **OFF**: both hit near screen `(0,0)` / Firefox window origin.
+- With both reverse-lookup **and** special-code slots **ON**: slots appeared at correct
+  positions individually but were **X-misaligned** relative to each other.
+
+### Root causes (three layers)
+
+**Layer 1 — `refreshLocation` overwrote cached `_notifyLocation` with zero**
+
+Firefox returns `rcCaret={0,0,0,0}` from `GetGUIThreadInfo` (no Win32 system caret).
+After `refreshLocation` was added for hint slots (REVERSE_LOOKUP, SPECIAL_CODE, BEEP),
+every hint show unconditionally overwrote `_notifyLocation` with the result, discarding
+the valid value that had been seeded by the probe during active composition. The probe
+then also failed post-commit (`TS_E_NOLAYOUT`), so the overwrite was never corrected.
+
+**Layer 2 — `validCaretPos` check was after `ClientToScreen`**
+
+First attempted fix: check `validCaretPos = (pt->x != 0 || pt->y != 0)` after
+`ClientToScreen`. This was wrong: Firefox's `rcCaret={0,0,0,0}` client-space
+coordinates are transformed by `ClientToScreen` to the **screen position of the
+Firefox window's client origin** (e.g. `(850, 150)`) — non-zero, so the check passed
+and `_notifyLocation` was still overwritten with the browser window's top-left corner.
+Result: both slots appeared at the top-left of the Firefox page, not near the caret.
+
+#### Layer 3 — initialization guard also wrote browser window origin
+
+Even with the `validCaretPos` check before `ClientToScreen`, the initialization guard
+`_notifyLocation.x < 0` still fired on first use and wrote `pt->x` (now the Firefox
+window origin after `ClientToScreen`). `_notifyLocation` was then set to the window
+origin on first hint, and both slots went to the top-left corner of the page.
+
+#### Layer 4 — slot X misalignment when two slots are shown
+
+The no-candidate branch called `_ComputeStackPosForNewSlot` + `slot->_Move` for the
+new slot only. If `_notifyLocation.x` changed between the first and second
+`ShowNotifyText` calls (e.g. probe fired in-between and called `_LayoutChangeNotification`),
+the two slots ended up with different X values. Replacing with `_RestackVisibleSlots`
+repositions all visible slots from the same anchor on every add.
+
+### Debug trace (debug.txt)
 
 ```text
 current caret position from GetGUIThreadInfo, x = 0, y = 0   ← Firefox zero caret
@@ -521,40 +558,58 @@ CDIME::_ProbeComposition() pContext = bb715190
 CDIME::_ProbeCompositionRangeNotification() GetTextExt hr=0x80040206 top=0 bottom=0 left=0 right=0
 ```
 
-`0x80040206` = `TS_E_NOLAYOUT`. Firefox has not recalculated TSF layout after the
-composition commit. `GetGUIThreadInfo` also returns `rcCaret={0,0,0,0}` in all
-Chromium-based hosts.
+`0x80040206` = `TS_E_NOLAYOUT`. TSF layout is not recalculated in Firefox after
+composition commit. `GetTextExt` fails, so `_LayoutChangeNotification` is never called.
 
-Two failures stack:
+### Fix (final, landing 2026-04-30)
 
-1. `GetGUIThreadInfo` returns `(0,0)` (Firefox zero caret) — `refreshLocation=TRUE` (new for NOTIFY_REVERSE_LOOKUP) caused `_notifyLocation` to be overwritten with `(0,0)`, discarding the previously cached valid position.
-2. `GetTextExt` returns `TS_E_NOLAYOUT` (post-commit layout stale) — `_LayoutChangeNotification` is never called, so the overwritten `(0,0)` is never corrected.
-
-The earlier `ShowNotify(slot=0)` during active composition *did* succeed (probe + GetTextExt worked while composition was live), so `_notifyLocation` was valid at that point. The `refreshLocation` overwrite then destroyed that good value just before it was needed for slot=3.
-
-### Fix
-
-[src/UIPresenter.cpp](../src/UIPresenter.cpp) — `ShowNotifyText` GetGUIThreadInfo and GetCaretPos branches:
+**A — check raw `rcCaret` BEFORE `ClientToScreen`**
 
 ```cpp
-// Before
-if(refreshLocation || _notifyLocation.x < 0) _notifyLocation.x = pt->x;
-if(refreshLocation || _notifyLocation.y < 0) _notifyLocation.y = pt->y;
-
-// After — only refresh when the new position is actually non-zero
-BOOL validCaretPos = (pt->x != 0 || pt->y != 0);
-if((refreshLocation && validCaretPos) || _notifyLocation.x < 0) _notifyLocation.x = pt->x;
-if((refreshLocation && validCaretPos) || _notifyLocation.y < 0) _notifyLocation.y = pt->y;
+// validCaretPos must be determined from the raw rcCaret fields, not from pt after
+// ClientToScreen — Firefox's {0,0,0,0} maps to the browser window screen origin.
+BOOL validCaretPos = (guiInfo->rcCaret.left   != 0 || guiInfo->rcCaret.top    != 0
+                   || guiInfo->rcCaret.right  != 0 || guiInfo->rcCaret.bottom != 0);
+pt->x = guiInfo->rcCaret.left;
+pt->y = guiInfo->rcCaret.bottom;
+ClientToScreen(parentWndHandle, pt);
 ```
 
-Same pattern applied to the `GetCaretPos` branch. By refusing to overwrite with a zero position, the previously cached valid `_notifyLocation` (set by the earlier composition-phase probe) survives as the fallback when `GetTextExt` fails with `TS_E_NOLAYOUT` after commit.
+**B — fully gate `_notifyLocation` updates on `validCaretPos` (no init-guard exception)**
+
+```cpp
+if (validCaretPos) {
+    if (refreshLocation || _notifyLocation.x < 0) _notifyLocation.x = pt->x;
+    if (refreshLocation || _notifyLocation.y < 0) _notifyLocation.y = pt->y;
+}
+```
+
+When `validCaretPos=FALSE`, `_notifyLocation` is never written from this path — not
+even on first use. The probe's `_LayoutChangeNotification` is the only writer when
+Firefox is the host. The same guard is applied to the `GetCaretPos` branch.
+
+**C — `_candLocation` fallback for uninitialised `_notifyLocation`**
+
+```cpp
+// If _notifyLocation was never seeded (no valid caret and no prior probe),
+// fall back to the last known candidate window position as approximation.
+if (_notifyLocation.x < 0 && _candLocation.x >= 0)
+    _notifyLocation = _candLocation;
+```
+
+**D — use `_RestackVisibleSlots` in the no-candidate branch**
+
+Replaced `_ComputeStackPosForNewSlot` + `slot->_Move` (positions new slot only) with
+`_RestackVisibleSlots` (repositions all visible slots), ensuring consistent X alignment
+regardless of when `_notifyLocation` changes relative to each `ShowNotifyText` call.
 
 ### Verified
 
-Deploy Release x64, Firefox URL bar, associative candidate OFF:
+Firefox URL bar and Yahoo/Google web search boxes (Firefox), associative candidate ON and OFF:
 
-- Reverse-lookup notify appears next to the committed character, not at (0,0). ✓
-- NOTIFY_BEEP continues to work correctly. ✓
+- Reverse-lookup and special-code notifies appear near the committed character. ✓
+- Both slots X-aligned when shown together. ✓
+- NOTIFY_BEEP unaffected. ✓
 
 `DEBUG_PRINT` disabled in `UIPresenter.cpp` and `Composition.cpp` after verification.
 

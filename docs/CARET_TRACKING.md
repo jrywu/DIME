@@ -122,6 +122,20 @@ When the TSF rect is invalid (e.g. `{0,0,1,1}` from SearchHost.exe) and a
 prior value exists, the window stays at the last good position. Prevents
 jumping to screen origin.
 
+**Firefox-specific behaviour (hint slots):** Firefox returns `rcCaret={0,0,0,0}`
+from `GetGUIThreadInfo` and `TS_E_NOLAYOUT` from `GetTextExt` after a commit.
+`ShowNotifyText` handles this with three rules:
+
+- `validCaretPos` is checked against raw `rcCaret` **before** `ClientToScreen`;
+  `ClientToScreen({0,0})` maps to the Firefox window's screen origin (non-zero,
+  but wrong), so the post-transform value must not be used.
+- `_notifyLocation` is never overwritten when `validCaretPos=FALSE` — not even
+  on first use; the cached value from the last successful composition-phase probe
+  is kept.
+- If `_notifyLocation` is still uninitialised (no prior probe), `_candLocation`
+  is used as approximation.
+See [CARET_TRACKING_PROBE.md §7](CARET_TRACKING_PROBE.md) for full details.
+
 ---
 
 ## 2. Positioning flow in `_LayoutChangeNotification`

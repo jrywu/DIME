@@ -1631,28 +1631,44 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange* pNotifyText, _In_opt_ UINT 
 				{   //for ancient non TSF aware apps with a floating composition window.  The caret position we can get is always the caret in the floating composition window.
 					pt = new POINT;
 					if(pt == nullptr) return;
+					// Check raw rcCaret BEFORE ClientToScreen. Firefox/Chromium return
+					// rcCaret={0,0,0,0}; ClientToScreen then maps that to the window's
+					// screen origin (non-zero), which would wrongly overwrite a cached
+					// valid position with the browser window's top-left corner.
+					BOOL validCaretPos = (guiInfo->rcCaret.left   != 0 || guiInfo->rcCaret.top    != 0
+					                   || guiInfo->rcCaret.right  != 0 || guiInfo->rcCaret.bottom != 0);
 					pt->x = guiInfo->rcCaret.left;
 					pt->y = guiInfo->rcCaret.bottom;
 					ClientToScreen(parentWndHandle, pt);
 					debugPrint(L"current caret position from GetGUIThreadInfo, x = %d, y = %d", pt->x, pt->y);
-					// Only refresh from GUIThreadInfo when the result is non-zero.
-					// Firefox/Chromium return rcCaret={0,0,0,0}; accepting that would
-					// overwrite a previously cached valid position with (0,0).
-					BOOL validCaretPos = (pt->x != 0 || pt->y != 0);
-					if((refreshLocation && validCaretPos) || _notifyLocation.x < 0) _notifyLocation.x = pt->x;
-					if((refreshLocation && validCaretPos) || _notifyLocation.y < 0) _notifyLocation.y = pt->y;
+					// Only update when rcCaret is non-zero. When validCaretPos=FALSE,
+					// pt (after ClientToScreen) is the browser window's screen origin —
+					// not the caret — so we must not write it even for initialisation.
+					// A cached valid _notifyLocation from a prior probe is always better.
+					if (validCaretPos) {
+						if (refreshLocation || _notifyLocation.x < 0) _notifyLocation.x = pt->x;
+						if (refreshLocation || _notifyLocation.y < 0) _notifyLocation.y = pt->y;
+					}
 				}
 				else if(parentWndHandle)
 				{
 					POINT caretPt;
 					GetCaretPos(&caretPt);
+					// Check raw client-coords before ClientToScreen for the same reason.
+					BOOL validCaretPosAlt = (caretPt.x != 0 || caretPt.y != 0);
 					ClientToScreen(parentWndHandle, &caretPt);
 					debugPrint(L"current caret position from GetCaretPos, x = %d, y = %d", caretPt.x, caretPt.y);
-					BOOL validCaretPosAlt = (caretPt.x != 0 || caretPt.y != 0);
-					if ((refreshLocation && validCaretPosAlt) || _notifyLocation.x < 0) _notifyLocation.x = caretPt.x;
-					if ((refreshLocation && validCaretPosAlt) || _notifyLocation.y < 0) _notifyLocation.y = caretPt.y;
-
+					if (validCaretPosAlt) {
+						if (refreshLocation || _notifyLocation.x < 0) _notifyLocation.x = caretPt.x;
+						if (refreshLocation || _notifyLocation.y < 0) _notifyLocation.y = caretPt.y;
+					}
 				}
+				// Chromium fallback: if _notifyLocation is still uninitialised after both
+				// paths (Chromium returns zero rcCaret and no prior probe seeded a value),
+				// approximate with the last known candidate position, which was placed by
+				// the probe during active composition and is near the actual caret.
+				if (_notifyLocation.x < 0 && _candLocation.x >= 0)
+					_notifyLocation = _candLocation;
 
 
 				ShowNotify(TRUE, delayShow, timeToHide, notifyType);
@@ -1660,21 +1676,17 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange* pNotifyText, _In_opt_ UINT 
 				auto& slot = _pNotifyWnds[idx];
 				if(delayShow == 0 && slot)
 				{
-					if(_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())
 					{
-						// Per-slot x (right-edge aligned to candidate's left) is
-						// applied inside _RestackVisibleSlots when candidate visible.
-						// Here we just set the y anchor to candidate's top.
-						BOOL growUp = _DecideStackGrowUp();
+					// Restack ALL visible slots from the same _notifyLocation anchor
+					// so every slot — new or pre-existing — shares the same X edge.
+					// Using _ComputeStackPosForNewSlot+_Move for only the new slot
+					// caused X misalignment when _notifyLocation changed between the
+					// first and second ShowNotifyText calls (e.g. probe fired in between).
+					BOOL growUp = _DecideStackGrowUp();
+					if (_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())
 						_notifyLocation.y = _candLocation.y;
-						_RestackVisibleSlots(growUp);
-					}
-					else
-					{
-						BOOL growUp = _DecideStackGrowUp();
-						POINT p = _ComputeStackPosForNewSlot(notifyType, growUp);
-						slot->_Move(p.x, p.y);
-					}
+					_RestackVisibleSlots(growUp);
+				}
 				}
 				//means TextLayoutSink is not working. We need to ProbeComposition to start layout.
 				// Issue #127: also probe for compositional-hint slots and BEEP so they

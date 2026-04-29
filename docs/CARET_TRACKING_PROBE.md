@@ -243,13 +243,55 @@ See [CARET_TRACKING_UIA.md](CARET_TRACKING_UIA.md) for full UIA details.
 
 ---
 
-## 7. Known limitation: Firefox new tab center search field
+## 7. Firefox-specific: post-commit `TS_E_NOLAYOUT` for hint slots
+
+### Known limitation: Firefox new tab center search field
 
 Firefox's new tab page center search field is a visual proxy for the URL bar.
 Clicking it transfers focus to the URL bar's TSF context.  `GetTextExt`
 correctly returns the URL bar position.  The notify appears at the URL bar,
 not the center field.  This is expected Firefox behavior — the TSF context IS
 the URL bar.
+
+### Firefox: zero rcCaret + TS_E_NOLAYOUT after commit
+
+Firefox does not maintain a Win32 system caret.  `GetGUIThreadInfo` always
+returns `rcCaret={0,0,0,0}`.  After a composition commit, `GetTextExt` returns
+`TS_E_NOLAYOUT` (0x80040206) because TSF has not recalculated layout for the
+ended composition.
+
+This means the probe cannot position hint-slot notifies (reverse-lookup,
+special-code) that fire **post-commit**: the probe fires but `GetTextExt` fails,
+so `_LayoutChangeNotification` is never called for those slots.
+
+**Fix in `ShowNotifyText` (not in the probe itself):**
+
+1. `validCaretPos` is now checked against the raw `rcCaret` fields **before**
+   `ClientToScreen`.  `ClientToScreen(hwnd, {0,0})` would produce the Firefox
+   window's screen origin — non-zero but wrong — so the check must happen on
+   the untransformed value:
+
+   ```cpp
+   BOOL validCaretPos = (guiInfo->rcCaret.left   != 0 || guiInfo->rcCaret.top    != 0
+                      || guiInfo->rcCaret.right  != 0 || guiInfo->rcCaret.bottom != 0);
+   ```
+
+2. `_notifyLocation` is **never updated** from `GetGUIThreadInfo`/`GetCaretPos`
+   when `validCaretPos = FALSE` — not even for first-use initialisation.  The
+   cached value from the last successful probe (set during active composition)
+   is preserved as the fallback.
+
+3. If `_notifyLocation` is still uninitialised (negative default, no prior
+   probe), `_candLocation` is used as approximation — the candidate window was
+   positioned correctly during composition, so it is near the actual caret.
+
+4. The no-candidate slot-positioning branch was changed from
+   `_ComputeStackPosForNewSlot` + `slot->_Move` (moves new slot only) to
+   `_RestackVisibleSlots` (moves all visible slots from the same anchor),
+   ensuring all co-existing hint slots share the same X edge.
+
+See [#127_ISSUE.md "Follow-up — Firefox notify position"](../docs/#127_ISSUE.md)
+for the full root-cause trace and debug log.
 
 ---
 
