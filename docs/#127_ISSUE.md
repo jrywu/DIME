@@ -615,6 +615,54 @@ Firefox URL bar and Yahoo/Google web search boxes (Firefox), associative candida
 
 ---
 
+## Follow-up — stale `_notifyLocation` across typing sessions (2026-05-01)
+
+### Problem
+
+After the Firefox fixes above landed, a user screenshot showed the reverse-lookup
+and special-code notify slots appearing at the **far right** of the browser window
+when typing in the Yahoo search box on tw.yahoo.com — far from the caret in the
+center of the page.
+
+### Root cause
+
+`_notifyLocation` is never reset between typing sessions. The `refreshLocation`
+flag (set for hint slots: REVERSE_LOOKUP, SPECIAL_CODE, BEEP) was supposed to
+force a position update on every show. But for Firefox:
+
+1. `GetGUIThreadInfo` returns `rcCaret={0,0,0,0}` → `validCaretPos=FALSE` → no update.
+2. `GetCaretPos` returns `{0,0}` → `validCaretPosAlt=FALSE` → no update.
+3. The `_candLocation` fallback at the end only fires when `_notifyLocation.x < 0`
+   (uninitialised). After the **first** successful probe anywhere (e.g., a previous
+   typing session at x=1500 in a wide editor), `_notifyLocation.x >= 0`, so the
+   fallback is skipped.
+4. The probe fired from `ShowNotifyText` returns `TS_E_NOLAYOUT` post-commit →
+   `_LayoutChangeNotification` is never called → `_notifyLocation` not corrected.
+
+Net effect: hint-slot notifies in Firefox reuse a stale `_notifyLocation.x` from a
+previous typing session at a completely different screen position (e.g., far right).
+
+### Fix ([UIPresenter.cpp:1630-1680](../src/UIPresenter.cpp#L1630-L1680))
+
+Track whether a valid caret position was actually written (`caretUpdated`). Expand
+the `_candLocation` fallback condition from `_notifyLocation.x < 0` to also cover
+`refreshLocation=TRUE` when `caretUpdated=FALSE`:
+
+```cpp
+BOOL caretUpdated = FALSE;
+// ... GetGUIThreadInfo and GetCaretPos paths set caretUpdated=TRUE when valid ...
+if (!caretUpdated && (refreshLocation || _notifyLocation.x < 0) && _candLocation.x >= 0)
+    _notifyLocation = _candLocation;
+```
+
+For hint slots in Firefox, `_notifyLocation` is now always seeded from `_candLocation`
+(the last candidate window position from the current composition session) before the
+probe fires. The probe then overwrites it with the precise `GetTextExt` rect if TSF
+layout is still valid. For apps that DO provide a valid caret (`caretUpdated=TRUE`),
+behaviour is unchanged.
+
+---
+
 ### Design history (decisions taken and rejected)
 
 - **Multi-line single window** considered and rejected: ~180 lines of changes inside `CNotifyWindow` (rendering, sweep timer, prefix table, multi-line measurement). Concentrates risk in the rendering window.

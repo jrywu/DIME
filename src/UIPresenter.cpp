@@ -1627,6 +1627,12 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange* pNotifyText, _In_opt_ UINT 
 				BOOL refreshLocation = (notifyType == NOTIFY_TYPE::NOTIFY_REVERSE_LOOKUP
 				                        || notifyType == NOTIFY_TYPE::NOTIFY_SPECIAL_CODE
 				                        || notifyType == NOTIFY_TYPE::NOTIFY_BEEP);
+				// Track whether a valid caret position was actually written to _notifyLocation
+				// from GetGUIThreadInfo or GetCaretPos. When FALSE (e.g. Firefox always returns
+				// zero rcCaret), the _candLocation fallback below must cover the refreshLocation
+				// case too — not just the uninitialised case — to avoid reusing a stale
+				// _notifyLocation from a previous typing session at a different screen position.
+				BOOL caretUpdated = FALSE;
 				if(guiInfo && parentWndHandle)
 				{   //for ancient non TSF aware apps with a floating composition window.  The caret position we can get is always the caret in the floating composition window.
 					pt = new POINT;
@@ -1644,10 +1650,10 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange* pNotifyText, _In_opt_ UINT 
 					// Only update when rcCaret is non-zero. When validCaretPos=FALSE,
 					// pt (after ClientToScreen) is the browser window's screen origin —
 					// not the caret — so we must not write it even for initialisation.
-					// A cached valid _notifyLocation from a prior probe is always better.
 					if (validCaretPos) {
 						if (refreshLocation || _notifyLocation.x < 0) _notifyLocation.x = pt->x;
 						if (refreshLocation || _notifyLocation.y < 0) _notifyLocation.y = pt->y;
+						caretUpdated = TRUE;
 					}
 				}
 				else if(parentWndHandle)
@@ -1661,13 +1667,16 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange* pNotifyText, _In_opt_ UINT 
 					if (validCaretPosAlt) {
 						if (refreshLocation || _notifyLocation.x < 0) _notifyLocation.x = caretPt.x;
 						if (refreshLocation || _notifyLocation.y < 0) _notifyLocation.y = caretPt.y;
+						caretUpdated = TRUE;
 					}
 				}
-				// Chromium fallback: if _notifyLocation is still uninitialised after both
-				// paths (Chromium returns zero rcCaret and no prior probe seeded a value),
-				// approximate with the last known candidate position, which was placed by
-				// the probe during active composition and is near the actual caret.
-				if (_notifyLocation.x < 0 && _candLocation.x >= 0)
+				// Firefox/Chromium fallback: when no valid caret was obtained from either path,
+				// use the last known candidate position. For hint slots (refreshLocation=TRUE)
+				// this always applies — not just when _notifyLocation is uninitialised — so a
+				// stale _notifyLocation from a previous typing session at a different screen
+				// position is never reused. The probe fired below will overwrite this with the
+				// precise GetTextExt rect if TSF layout is still valid.
+				if (!caretUpdated && (refreshLocation || _notifyLocation.x < 0) && _candLocation.x >= 0)
 					_notifyLocation = _candLocation;
 
 
