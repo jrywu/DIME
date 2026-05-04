@@ -223,13 +223,68 @@ namespace DIMEIntegratedTests
             return count;
         }
 
+        // Count lines in a (filtered) buffer whose value is a single character that
+        // passes the CP950 (Big5) round-trip.  Uses the same field-extraction logic as
+        // FilterLine (handles CIN key<TAB>char and TTS "key"="char" formats).
+        // Directives (%), section headers, multi-char values, and surrogate pairs are
+        // excluded.  Only characters that encode losslessly to CP950 are counted.
+        static size_t CountCP950Lines(const WCHAR* buf, DWORD_PTR byteLen)
+        {
+            if (!buf || byteLen == 0) return 0;
+            const WCHAR* end = buf + byteLen / sizeof(WCHAR);
+            const WCHAR* rp  = buf;
+            size_t count = 0;
+
+            while (rp < end)
+            {
+                const WCHAR* lineStart = rp;
+                while (rp < end && *rp != L'\n') ++rp;
+                DWORD_PTR lineLen = (DWORD_PTR)(rp - lineStart);
+                if (rp < end) ++rp;
+
+                if (lineLen > 0 && lineStart[lineLen - 1] == L'\r') --lineLen;
+
+                const WCHAR* q  = lineStart;
+                const WCHAR* le = lineStart + lineLen;
+                while (q < le && (*q == L' ' || *q == L'\t')) ++q;
+                if (q >= le || *q == L'%' || *q == L'[') continue;
+
+                // Skip keycode
+                if (*q == L'"') { ++q; while (q < le && *q != L'"') ++q; if (q < le) ++q; }
+                else            { while (q < le && *q != L' ' && *q != L'\t' && *q != L'=') ++q; }
+
+                // Skip separator
+                while (q < le && (*q == L' ' || *q == L'\t' || *q == L'=')) ++q;
+
+                // Extract value
+                const WCHAR* valStart;
+                const WCHAR* valEnd;
+                if (q < le && *q == L'"')
+                { ++q; valStart = q; while (q < le && *q != L'"') ++q; valEnd = q; }
+                else
+                { valStart = q; while (q < le && *q != L' ' && *q != L'\t') ++q; valEnd = q; }
+
+                if ((DWORD_PTR)(valEnd - valStart) != 1) continue;  // multi-char, surrogate, or empty
+
+                WCHAR ch = valStart[0];
+                char  mb[4] = {};
+                int   r  = WideCharToMultiByte(950, 0, &ch, 1, mb, sizeof(mb), nullptr, nullptr);
+                if (r <= 0) continue;
+                WCHAR rt = 0;
+                int   r2 = MultiByteToWideChar(950, 0, mb, r, &rt, 1);
+                if (r2 == 1 && rt == ch) ++count;
+            }
+            return count;
+        }
+
     public:
 
         // IT-MF-01: CP950 filter reduces Array.cin from Unicode range to Big5 range.
         //
         // Array.cin contains ~32 000 keymapping entries spanning Big5 characters AND
         // CJK Extension characters (Ext-B, Ext-C, etc.) that are outside CP950/Big5.
-        // After filtering, only Big5-encodable entries survive (~15 000 lines).
+        // After filtering, Big5-encodable entries and pass-through symbols survive.
+        // cp950Lines counts only the entries whose value round-trips through CP950.
         //
         // The dual-filter comparison proves that additional non-CP950 (CJK Extension A)
         // entries injected after the natural filter are also removed — without the
@@ -273,6 +328,7 @@ namespace DIMEIntegratedTests
             const WCHAR* rawFiltBuf = memRaw.GetReadBufferPointer();
             Assert::IsNotNull(rawFiltBuf, L"Filtered raw buffer must be non-null");
             size_t rawFiltLines = CountDataLines(rawFiltBuf, memRaw.GetFileSize());
+            size_t cp950Lines   = CountCP950Lines(rawFiltBuf, memRaw.GetFileSize());
 
             delete pRaw;
 
@@ -324,10 +380,11 @@ namespace DIMEIntegratedTests
             WCHAR msg[512] = {};
             StringCchPrintfW(msg, 512,
                 L"IT-MF-01: rawLines=%llu  rawFiltLines=%llu  removed=%llu"
-                L"  augLines=%llu  augFiltLines=%llu",
+                L"  cp950Lines=%llu  augLines=%llu  augFiltLines=%llu",
                 (unsigned long long)rawLines,
                 (unsigned long long)rawFiltLines,
                 (unsigned long long)(rawLines >= rawFiltLines ? rawLines - rawFiltLines : 0),
+                (unsigned long long)cp950Lines,
                 (unsigned long long)augLines,
                 (unsigned long long)augFiltLines);
             Logger::WriteMessage(msg);
@@ -341,12 +398,13 @@ namespace DIMEIntegratedTests
                 L"Filter must remove non-Big5 CJK Extension entries from Array.cin");
 
             // All standard Big5 characters must be preserved
-            Assert::IsTrue(rawFiltLines >= 13053,
-                L"At least 13 053 Big5 mapping lines must survive filtering");
+            Assert::IsTrue(cp950Lines >= 13053,
+                L"At least 13 053 CP950 round-trip mapping lines must survive filtering");
 
-            // Result must be in Big5 range (like Phone.cin ~15 000 lines)
-            Assert::IsTrue(rawFiltLines <= 16000,
-                L"Filtered line count must be in Big5 range (<= 16 000)");
+            // CP950-only count must stay within Big5 range; symbols that pass the filter
+            // (C3_SYMBOL, Yijing, superscripts, etc.) are excluded from this count.
+            Assert::IsTrue(cp950Lines <= 16000,
+                L"CP950 round-trip line count must be in Big5 range (<= 16 000)");
 
             // Augmented file (raw + 5 CJK Extension A entries) must produce the same filtered count:
             // the 5 injected non-CP950 C3_IDEOGRAPH entries are also removed by the filter.
