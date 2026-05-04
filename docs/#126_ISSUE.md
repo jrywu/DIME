@@ -4,7 +4,7 @@
 - **Reporter:** SimonChung (additional confirmations from WuPai500, carlos06tw)
 - **Affected version:** 1.3.616
 - **Severity:** High (host-application crash, possible data loss)
-- **Status:** Fixed
+- **Status:** Fixed; mixed-mode follow-up implemented and verified OK
 
 ## Symptom
 
@@ -18,9 +18,33 @@ Reproduction string from the issue: `我當年18歲時`.
 
 Pressing the **top-row** digit keys does not crash — only the numpad. Pressing **space first** (which dismisses the associated-phrase popup), then numpad digits, also does not crash.
 
+## Numpad mode design question
+
+The default numeric-pad mode is value `0`, now named `NUMERIC_PAD_NUMERIC`. Users expect this mode to allow right-side numeric keypad input while the IME is in Chinese mode and no composition is active. A related user expectation is that, once a candidate window is visibly active, the same numpad keys may temporarily act as candidate selection keys. That is a reasonable IME design: the numpad behaves as normal numeric input in ordinary Chinese mode, but the candidate UI owns numeric selection while it is actually present.
+
+Values `1` and `2` are different. In those modes, the numeric keypad is explicitly assigned to IME composition/root input, so users cannot type normal numbers with the numeric keypad while Chinese mode is active.
+
+### Numpad function comparison
+
+| Value | Enum | Number input when Chinese mode is active and no composition is active | Composition/root input | Candidate selection when a real candidate window is active |
+| ---: | --- | --- | --- | --- |
+| `0` | `NUMERIC_PAD_NUMERIC` | Numpad enters numeric characters directly. | Numpad is not treated as IME roots during normal composition handling. | Mixed-mode design: numpad may select candidates while a candidate window is visibly active. This does not reintroduce the crash if stale candidate state is reset and `_SetCandidateSelectionInPage` is null-guarded. |
+| `1` | `NUMERIC_PAD_NUMERIC_COMPOSITION` | Numpad does not enter normal numeric characters directly; the IME consumes it. | Numpad can be used as IME composition/root input. | Numpad selects candidates while a candidate window is active. |
+| `2` | `NUMERIC_PAD_NUMERIC_COMPOSITION_ONLY` | Numpad does not enter normal numeric characters directly; the IME consumes it. | Only numpad keys are accepted for IME composition/root input; non-numpad root keys are rejected. | Numpad selects candidates while a candidate window is active. |
+
+### Behavior before and after `a75b1809a04a2f0f6483653d77b67dd3bcc71a54`
+
+| Value | Enum | UI label | Numpad when not composing | Candidate selection before `a75b1809a04a2f0f6483653d77b67dd3bcc71a54` | Candidate selection after `a75b1809a04a2f0f6483653d77b67dd3bcc71a54` |
+| ---: | --- | --- | --- | --- | --- |
+| `0` | `NUMERIC_PAD_NUMERIC` | `數字鍵盤輸入數字符號` | Types numeric characters in Chinese mode. | Numpad `0`-`9` could select candidates when a candidate/phrase window was active. This behavior is defensible when the candidate UI is real, but it also exposed the crash path when `_candidateMode` was stale and `_pCandidateWnd` was null. | The original commit blocked numpad candidate selection in this mode. The mixed-mode follow-up restores candidate selection when a real candidate window is active while keeping the stale-state reset and null guard for crash safety. |
+| `1` | `NUMERIC_PAD_NUMERIC_COMPOSITION` | `數字鍵盤輸入字根` | Does not type normal numbers; feeds IME composition/root input. | Numpad `0`-`9` could select candidates when a candidate/phrase window was active. The stale-state crash risk was still present. | Numpad still selects candidates when a real candidate/phrase window is active. The stale-state reset and null guard prevent the fixed crash path. |
+| `2` | `NUMERIC_PAD_NUMERIC_COMPOSITION_ONLY` | `僅用數字鍵盤輸入字根` | Does not type normal numbers; only numpad keys are accepted for composition/root input. | Numpad `0`-`9` could select candidates when a candidate/phrase window was active. The stale-state crash risk was still present. | Numpad still selects candidates when a real candidate/phrase window is active. The stale-state reset and null guard prevent the fixed crash path. |
+
+The important distinction is that allowing numpad candidate selection does not itself cause the crash. The crash requires inconsistent state: `_candidateMode != CANDIDATE_NONE` while the candidate window is absent. If that stale state is reset before key classification, and `_SetCandidateSelectionInPage` is null-guarded as a last resort, value `0` can safely keep the mixed behavior: type numbers when no candidate window is active, select candidates when a real candidate window is active.
+
 ## Root Cause
 
-Two cooperating defects, both visible only when the associated-phrase candidate window is showing:
+Two crash defects were visible only when the associated-phrase candidate state became inconsistent. A third behavior question involved whether default numpad mode should still allow candidate selection when the candidate window is genuinely active.
 
 ### Defect 1 — `_pCandidateWnd` null dereference
 
@@ -45,7 +69,7 @@ CDIME::_HandleCandidateSelectByNumber() iSelectAsNumber = 0
 
 `candidateMode = 2 = CANDIDATE_PHRASE` while `candiCount = 0` means the IME thinks the phrase popup is active, but `_pCandidateWnd` (the actual candidate window) has either not yet been created or has been torn down without the mode flag being cleared. Make-phrase code in [CandidateHandler.cpp](../src/CandidateHandler.cpp) sets `_candidateMode = CANDIDATE_PHRASE` *before* `_StartCandidateList` finishes constructing the window — a brief window in which the state is inconsistent.
 
-### Defect 3 — `IsRange` ignores the `NumericPad` user preference
+### Behavior question — `IsRange` treats numpad as candidate selkeys
 
 In `CCandidateRange::IsRange` ([BaseStructure.cpp:285-291](../src/BaseStructure.cpp#L285-L291)) numpad keys (`VK_NUMPAD0..VK_NUMPAD9`) are unconditionally accepted as candidate-by-index selectors:
 
@@ -57,7 +81,12 @@ else if ((VK_NUMPAD0 <= vKey) && (vKey <= VK_NUMPAD9))
 }
 ```
 
-This violates the documented `NumericPad` preference. Users who set `NumericPad = NUMERIC_PAD_MUMERIC` (the default — *"numpad always types digits"*) still had numpad keys hijacked as candidate selectors whenever a candidate window was showing. Top-row digits also reach selkey selection, but via the `Printable` match path which reflects the keyboard layout — the user's report of "top-row OK, numpad bad" is consistent with the user expecting numpad to be a digit per their pref.
+For `NUMERIC_PAD_NUMERIC` (value `0`, the default), this can be interpreted in two ways:
+
+- If value `0` means "numpad always types numeric characters," then this candidate-selection path violates the preference.
+- If value `0` means "numpad types numeric characters during normal Chinese input, but an active candidate window may own numeric selection keys," then this behavior is reasonable and should be preserved.
+
+The crash fix should not depend on resolving that product decision. The host crash is prevented by clearing stale candidate state and guarding the candidate-window pointer. Blocking candidate selection for value `0` is a behavior change, not required for crash safety.
 
 ### Why "space first then numpad" did not crash
 
@@ -67,7 +96,7 @@ Numpad keys go through `IsKeystrokeRange` → `FUNCTION_SELECT_BY_NUMBER` → `_
 
 ## Fix
 
-Three independent, layered changes:
+The original commit used three independent, layered changes:
 
 ### 1. Reset stale `_candidateMode` in `_IsKeyEaten`
 
@@ -81,17 +110,19 @@ if (_candidateMode != CANDIDATE_MODE::CANDIDATE_NONE && candiCount == 0)
 }
 ```
 
-### 2. Respect the `NumericPad` preference in `IsKeystrokeRange`
+### 2. Block default-mode numpad candidate selection in `IsKeystrokeRange`
 
-[src/KeyProcesser.cpp](../src/KeyProcesser.cpp) — short-circuit numpad keys when the user has selected `NUMERIC_PAD_MUMERIC`. Numpad never acts as a candidate selkey under that preference, regardless of whether a candidate window is showing.
+[src/KeyProcesser.cpp](../src/KeyProcesser.cpp) — short-circuit numpad keys when the user has selected `NUMERIC_PAD_NUMERIC`. Numpad never acts as a candidate selkey under that preference, regardless of whether a candidate window is showing.
 
 ```cpp
 if (uCode >= VK_NUMPAD0 && uCode <= VK_DIVIDE &&
-    CConfig::GetNumericPad() == NUMERIC_PAD::NUMERIC_PAD_MUMERIC)
+    CConfig::GetNumericPad() == NUMERIC_PAD::NUMERIC_PAD_NUMERIC)
 {
     return FALSE;
 }
 ```
+
+This is safe, but it also changes the value `0` design by preventing numpad candidate selection even when the candidate window is real. If the desired design is mixed mode, this guard can be removed or narrowed while keeping fixes 1 and 3.
 
 ### 3. Defensive null-guard on `_SetCandidateSelectionInPage`
 
@@ -103,17 +134,38 @@ BOOL _SetCandidateSelectionInPage(int nPos) {
 }
 ```
 
-### Behavior matrix after the fix
+### Behavior matrix after the original fix
 
 | State                    | Pref                | Key     | Result                                          |
 | ------------------------ | ------------------- | ------- | ----------------------------------------------- |
 | Live phrase popup        | `NUMERIC` (default) | numpad  | Not eaten — host receives digit                 |
 | Live phrase popup        | `NUMERIC` (default) | top-row | Selects candidate (Printable match — unchanged) |
-| Live phrase popup        | `RADICAL`           | numpad  | Selects candidate (unchanged)                   |
+| Live phrase popup        | `NUMERIC_COMPOSITION` / `NUMERIC_COMPOSITION_ONLY` | numpad  | Selects candidate (unchanged)                   |
 | Stale phrase mode (race) | any                 | numpad  | State reset to NONE; host receives digit        |
 | No candidate mode        | any                 | numpad  | Host receives digit (always worked)             |
 
+### Crash-safe mixed-mode behavior
+
+The current mixed-mode behavior for value `0` supports both normal numeric input and candidate selection:
+
+| State | Pref | Key | Result |
+| --- | --- | --- | --- |
+| No candidate mode | `NUMERIC` (default) | numpad | Host receives digit. |
+| Live phrase popup | `NUMERIC` (default) | numpad | Selects candidate. |
+| Stale phrase mode (race) | any | numpad | State reset to `NONE`; host receives digit. |
+| Future null-window regression | any | numpad candidate selection path | `_SetCandidateSelectionInPage` returns `FALSE`; host does not crash. |
+
+In this design, the required crash fixes are:
+
+1. Keep the stale `_candidateMode` reset in `_IsKeyEaten`.
+2. Keep the null guard on `_SetCandidateSelectionInPage`.
+3. Do not block `NUMERIC_PAD_NUMERIC` in `IsKeystrokeRange`, because that block is a product-behavior choice rather than a crash-safety requirement.
+
 ## Verification
+
+Implementation status: mixed-mode follow-up implemented and verified OK.
+
+Original post-commit behavior:
 
 Manual repro of `我當年18歲時`:
 
@@ -127,10 +179,18 @@ Expected: full string `我當年18歲時` typed, host application stable, phrase
 
 Repeat with top-row digits to confirm no regression in candidate-selection behavior.
 
+Mixed-mode follow-up verification:
+
+1. With `NumericPad = NUMERIC`, verify numpad enters numeric characters when Chinese mode is active and no composition/candidate window is active.
+2. With `NumericPad = NUMERIC`, verify numpad selects candidates when a real candidate window is visible.
+3. Repeat the stale-state/crash repro and verify the host remains stable.
+
+Result: verified OK.
+
 ## Files changed
 
 - [src/KeyEventSink.cpp](../src/KeyEventSink.cpp) — stale-state reset in `_IsKeyEaten`.
-- [src/KeyProcesser.cpp](../src/KeyProcesser.cpp) — `NumericPad=NUMERIC` short-circuit in `IsKeystrokeRange`.
+- [src/KeyProcesser.cpp](../src/KeyProcesser.cpp) — original `NumericPad=NUMERIC` short-circuit in `IsKeystrokeRange` removed for mixed-mode behavior.
 - [src/UIPresenter.h](../src/UIPresenter.h) — null-guard on `_SetCandidateSelectionInPage`.
 
 ## Code review
@@ -175,7 +235,9 @@ if (_candidateMode != CANDIDATE_MODE::CANDIDATE_NONE && candiCount == 0)
 
 ---
 
-### 2. `src/KeyProcesser.cpp` — respect `NumericPad` preference in `CCompositionProcessorEngine::IsKeystrokeRange`
+### 2. `src/KeyProcesser.cpp` — default-mode numpad candidate-selection block in `CCompositionProcessorEngine::IsKeystrokeRange`
+
+This block existed in the original fix, but is removed for mixed-mode behavior:
 
 ```cpp
 pKeyState->Category = KEYSTROKE_CATEGORY::CATEGORY_NONE;
@@ -185,7 +247,7 @@ pKeyState->Function = KEYSTROKE_FUNCTION::FUNCTION_NONE;
 // digits (NUMERIC) it must not act as a candidate selkey, even with a
 // phrase / candidate window showing. (Issue #126)
 if (uCode >= VK_NUMPAD0 && uCode <= VK_DIVIDE &&
-    CConfig::GetNumericPad() == NUMERIC_PAD::NUMERIC_PAD_MUMERIC)
+    CConfig::GetNumericPad() == NUMERIC_PAD::NUMERIC_PAD_NUMERIC)
 {
     return FALSE;
 }
@@ -196,15 +258,17 @@ if (_pActiveCandidateListIndexRange->IsRange(uCode, *pwch, Global::ModifiersValu
 }
 ```
 
-**What it does.** Short-circuits `IsKeystrokeRange` to return `FALSE` when (a) the virtual-key code is in the numpad range `VK_NUMPAD0..VK_DIVIDE`, and (b) the user's `NumericPad` preference is `NUMERIC_PAD_MUMERIC` (numpad-always-types-digits — the default).
+**What it did.** Short-circuited `IsKeystrokeRange` to return `FALSE` when (a) the virtual-key code is in the numpad range `VK_NUMPAD0..VK_DIVIDE`, and (b) the user's `NumericPad` preference is `NUMERIC_PAD_NUMERIC` (value `0`, the default).
 
-**Why it is necessary.** Even with the stale-state reset in change 1, the bug would still appear when there *are* real phrase candidates: `CCandidateRange::IsRange` ([BaseStructure.cpp:285-291](../src/BaseStructure.cpp#L285-L291)) unconditionally maps `VK_NUMPAD0..VK_NUMPAD9` to a candidate index regardless of `NumericPad`, so numpad keys would still be eaten as selkeys. That violates the documented preference and surprises users who configured numpad as a digit pad. The guard ensures `NUMERIC` always means "type digits", everywhere.
+**Why it was added.** Even with the stale-state reset in change 1, `CCandidateRange::IsRange` ([BaseStructure.cpp:285-291](../src/BaseStructure.cpp#L285-L291)) still maps `VK_NUMPAD0..VK_NUMPAD9` to a candidate index whenever candidate mode is active. If the intended meaning of `NUMERIC_PAD_NUMERIC` is "numpad always types digits," the guard enforces that everywhere.
+
+**Why it was removed.** The intended design is mixed mode: value `0` should type numbers when no candidate window is active and select candidates when a real candidate window is active. This guard was broader than the crash fix requires. The crash is still prevented by the stale-state reset and `_pCandidateWnd` null guard.
 
 **Why this location.** `IsKeystrokeRange` is the single entry into selkey selection from `IsVirtualKeyNeed` (called for both `CANDIDATE_ORIGINAL` and `CANDIDATE_PHRASE`). Adding the check here covers both candidate flavours without touching the lower-level `CCandidateRange::IsRange` (which is also used by `GetIndex` and other callers that should retain the existing numpad-by-index semantics).
 
-**Symmetry with existing code.** The `(uCode >= VK_NUMPAD0 && uCode <= VK_DIVIDE)` range and the `CConfig::GetNumericPad() == NUMERIC_PAD_MUMERIC` test mirror the bypass already present three places in `IsVirtualKeyNeed` and `IsVirtualKeyKeystrokeComposition`. This change extends the existing convention to the candidate-selkey path that previously missed it.
+**Symmetry with existing code.** The `(uCode >= VK_NUMPAD0 && uCode <= VK_DIVIDE)` range and the `CConfig::GetNumericPad() == NUMERIC_PAD_NUMERIC` test still belong in normal composition/root handling, where value `0` should produce numeric input instead of IME roots. Candidate selection is different: when a real candidate window is active, the UI may own numeric selection keys.
 
-**What it does not do.** It does not affect `NUMERIC_PAD_MUMERIC_COMPOSITION_ONLY` or `NUMERIC_PAD_RADICAL` modes — both retain their current numpad-as-selkey behaviour, since the guard only triggers when the pref is `NUMERIC`. It also does not affect top-row digits (which match selkeys via `Printable` rather than the numpad-index branch in `IsRange`).
+**What it does not do.** It does not affect `NUMERIC_PAD_NUMERIC_COMPOSITION` or `NUMERIC_PAD_NUMERIC_COMPOSITION_ONLY` modes — both retain numpad-as-selkey behavior when a candidate window is active. It also does not affect top-row digits, which match selkeys via `Printable` rather than the numpad-index branch in `IsRange`.
 
 ---
 
@@ -233,10 +297,10 @@ BOOL _SetCandidateSelectionInPage(int nPos) { return _pCandidateWnd ? _pCandidat
 The three changes form three layers of protection against the same family of failure (`_candidateMode != NONE` while `_pCandidateWnd == nullptr`):
 
 1. **`_IsKeyEaten`** detects the desync earliest and prevents the key from being eaten in the first place — host receives the digit, IME state self-heals.
-2. **`IsKeystrokeRange`** prevents numpad keys from being misclassified as selkeys when the user's pref says they are digits, eliminating the most common path into the selkey handler.
+2. **`IsKeystrokeRange`** no longer blocks numpad keys in default numeric mode, so mixed-mode candidate selection works when a real candidate window is active.
 3. **`_SetCandidateSelectionInPage`** is the last-resort null-guard at the actual crash site.
 
-Any one of the three would prevent the host crash in the reported scenario; together they also fix two latent correctness bugs (NumericPad pref violation, and an unguarded inline pointer dereference).
+For crash safety, the stale-state reset and the `_pCandidateWnd` null guard are the essential protections. The removed `IsKeystrokeRange` default-mode block was a product-behavior decision, not a required crash-safety guard.
 
 ## Notes
 

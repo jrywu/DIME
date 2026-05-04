@@ -554,9 +554,9 @@ namespace DIMEIntegratedTests
 
             // Test ALL 3 valid values from BaseStructure.h
             NUMERIC_PAD testValues[] = {
-                NUMERIC_PAD::NUMERIC_PAD_MUMERIC,
-                NUMERIC_PAD::NUMERIC_PAD_MUMERIC_COMPOSITION,
-                NUMERIC_PAD::NUMERIC_PAD_MUMERIC_COMPOSITION_ONLY
+                NUMERIC_PAD::NUMERIC_PAD_NUMERIC,
+                NUMERIC_PAD::NUMERIC_PAD_NUMERIC_COMPOSITION,
+                NUMERIC_PAD::NUMERIC_PAD_NUMERIC_COMPOSITION_ONLY
             };
 
             for (auto testValue : testValues)

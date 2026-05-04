@@ -65,7 +65,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 IME_MODE CConfig::_imeMode = IME_MODE::IME_MODE_NONE;
 BOOL CConfig::_loadTableMode = FALSE;
 ARRAY_SCOPE CConfig::_arrayScope = ARRAY_SCOPE::ARRAY30_UNICODE_EXT_A;
-NUMERIC_PAD CConfig::_numericPad = NUMERIC_PAD::NUMERIC_PAD_MUMERIC;
+NUMERIC_PAD CConfig::_numericPad = NUMERIC_PAD::NUMERIC_PAD_NUMERIC;
 BOOL CConfig::_clearOnBeep = TRUE;
 BOOL CConfig::_doBeep = TRUE;
 BOOL CConfig::_doBeepNotify = TRUE;
@@ -613,7 +613,7 @@ void CConfig::ResetAllDefaults(IME_MODE imeMode)
 	_showNotifyDesktop            = TRUE;
 	_dayiArticleMode              = FALSE;
 	_big5Filter                   = FALSE;
-	_numericPad                   = NUMERIC_PAD::NUMERIC_PAD_MUMERIC;
+	_numericPad                   = NUMERIC_PAD::NUMERIC_PAD_NUMERIC;
 	_phoneticKeyboardLayout       = PHONETIC_KEYBOARD_LAYOUT::PHONETIC_STANDARD_KEYBOARD_LAYOUT;
 	_imeShiftMode                 = IME_SHIFT_MODE::IME_BOTH_SHIFT;
 	_doubleSingleByteMode         = DOUBLE_SINGLE_BYTE_MODE::DOUBLE_SINGLE_BYTE_ALWAYS_SINGLE;

@@ -1959,8 +1959,8 @@ namespace DIMEUnitTests
 
         TEST_METHOD(SetGet_NumericPad)
         {
-            CConfig::SetNumericPad(NUMERIC_PAD::NUMERIC_PAD_MUMERIC_COMPOSITION);
-            Assert::IsTrue(CConfig::GetNumericPad() == NUMERIC_PAD::NUMERIC_PAD_MUMERIC_COMPOSITION);
+            CConfig::SetNumericPad(NUMERIC_PAD::NUMERIC_PAD_NUMERIC_COMPOSITION);
+            Assert::IsTrue(CConfig::GetNumericPad() == NUMERIC_PAD::NUMERIC_PAD_NUMERIC_COMPOSITION);
         }
 
         TEST_METHOD(SetGet_ArrayScope)
