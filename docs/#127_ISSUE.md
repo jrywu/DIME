@@ -663,6 +663,111 @@ behaviour is unchanged.
 
 ---
 
+## Follow-up — Y-position drift when switching between text fields in Firefox (2026-05-04)
+
+### Problem
+
+After the stale-`_notifyLocation` fix above landed, a user screenshot showed
+hint-slot notifies appearing at the **correct X position** but the **wrong Y position**
+in Firefox/Gmail — slots appeared in the email body area (~Y=520) when the user typed
+in the Gmail search bar (~Y=40).
+
+### Root cause (Y-position drift)
+
+Two problems compound.
+
+**Problem 1 — `_candLocation.y` carries stale Y from a previous text field**
+
+`_candLocation` is set by `_LayoutChangeNotification`'s candidate-visible path:
+
+```cpp
+_candLocation.x = candPt.x;
+_candLocation.y = candPt.y;   // top of candidate window in the CURRENT field
+```
+
+`_candLocation` is never reset on focus change. When the user switches from the
+Gmail compose box (where `_candLocation.y ≈ 520`) to the search bar, `_candLocation.y`
+still holds the compose-box value.
+
+**Problem 2 — fallback unconditionally overwrites `_notifyLocation` with stale `_candLocation`**
+
+The previous stale-session fix added at line 1679:
+
+```cpp
+if (!caretUpdated && (refreshLocation || _notifyLocation.x < 0) && _candLocation.x >= 0)
+    _notifyLocation = _candLocation;
+```
+
+Because `refreshLocation=TRUE` for hint slots, this fires regardless of whether
+`_notifyLocation` was already correctly set. Here is the exact failure sequence:
+
+1. TextLayoutSink fires `_LayoutChangeNotification` during active composition in the
+   search bar → no-candidate path sets `_notifyLocation.y ≈ 60` (correct search-bar Y).
+2. Composition commits → `NOTIFY_REVERSE_LOOKUP` fires via `ShowNotifyText`.
+3. Firefox: `validCaretPos=FALSE` (`rcCaret={0,0,0,0}`) → `caretUpdated=FALSE`.
+4. Fallback condition: `!caretUpdated` ✓, `refreshLocation=TRUE` ✓, `_candLocation.x≥0`
+   (stale from compose box) ✓ → **`_notifyLocation = _candLocation`** →
+   `_notifyLocation.y` overwritten with ≈520 (compose-box Y).
+5. Probe fires post-commit → `TS_E_NOLAYOUT` in Firefox → `_LayoutChangeNotification`
+   never called → Y not corrected.
+6. `_RestackVisibleSlots` runs with `_notifyLocation.y ≈ 520` → slots appear in the
+   email body area.
+
+### Fix
+
+Two changes in `src/UIPresenter.cpp`, no other files needed.
+
+**Change 1 — line 1679: remove `refreshLocation` from fallback condition**
+
+Fall back to `_candLocation` only when `_notifyLocation` is truly uninitialized
+(negative sentinel). When `_notifyLocation` was already set correctly by
+`_LayoutChangeNotification` this session, skip the fallback.
+
+```cpp
+// Before:
+if (!caretUpdated && (refreshLocation || _notifyLocation.x < 0) && _candLocation.x >= 0)
+    _notifyLocation = _candLocation;
+
+// After:
+if (!caretUpdated && _notifyLocation.x < 0 && _candLocation.x >= 0)
+    _notifyLocation = _candLocation;
+```
+
+**Change 2 — `ResetCompRange()`: reset `_notifyLocation` on focus change**
+
+`ResetCompRange()` is already called from `ThreadMgrEventSink.cpp:90` on document
+manager change. Extend it to also clear `_notifyLocation`:
+
+```cpp
+void CUIPresenter::ResetCompRange()
+{
+    SetRect(&_rectCompRange, 0, 0, 0, 0);
+    _notifyLocation = { UI::DEFAULT_WINDOW_X, UI::DEFAULT_WINDOW_Y };
+}
+```
+
+On focus into a new field, `_LayoutChangeNotification` (fired by TextLayoutSink
+during the first composition) sets `_notifyLocation` correctly before any hint slot
+fires. The reset ensures a stale value from field A can never bleed into field B
+even if the fallback triggers.
+
+### Why the fix is safe
+
+| Scenario | Outcome |
+| --- | --- |
+| TSF layout fired in new field before commit | `_notifyLocation.x >= 0` — fallback skipped, correct Y preserved |
+| `_notifyLocation` reset on focus, no TSF layout yet | `_notifyLocation.x < 0` — fallback uses `_candLocation` if available |
+| Non-Firefox apps (valid `GetGUIThreadInfo`) | `caretUpdated=TRUE` — fallback not reached, no change |
+
+### Files changed (Y-position fix)
+
+| File                  | Change                                                                                        |
+| --------------------- | --------------------------------------------------------------------------------------------- |
+| `src/UIPresenter.cpp` | Line 1679: remove `refreshLocation` from fallback condition; update comment                   |
+| `src/UIPresenter.cpp` | `ResetCompRange()` (~line 1561): add `_notifyLocation = {DEFAULT_WINDOW_X, DEFAULT_WINDOW_Y}` |
+
+---
+
 ### Design history (decisions taken and rejected)
 
 - **Multi-line single window** considered and rejected: ~180 lines of changes inside `CNotifyWindow` (rendering, sweep timer, prefix table, multi-line measurement). Concentrates risk in the rendering window.
@@ -670,3 +775,100 @@ behaviour is unchanged.
 - **Left-edge alignment with max-width clamp** implemented and reverted at user request: produced visually-displaced narrower slots. Right-edge alignment is the user's preferred final design.
 - **Per-slot expiry + restack-on-hide** considered and rejected: verified concurrency invariant rules out middle-slot-expires; both hint slots share lifetime via `ClearNotify`. Saves a `HIDDEN` callback and restack pass.
 - **Per-slot show/hide preferences** considered and rejected as scope creep. The original report did not ask for finer-grained preference control; left as a future enhancement if requested.
+
+---
+
+## Follow-up — flipped-candidate notify positioning (2026-05-04)
+
+### Problem
+
+When the composition is near the bottom of the screen the candidate window flips
+**above** the caret. Post-commit, REVERSE_LOOKUP and SPECIAL_CODE hint slots must
+also appear above the composition line. Two bugs were observed:
+
+- **Case 1 (consistent, correct):** Space below caret is sufficient for three slots
+  after the probe fires for CHN_ENG. Slots appear non-flipped, correct order, near
+  screen edge. This path needs no change — the probe updates `_notifyLocation` and
+  `_DecideStackGrowUp` naturally returns `growDown`.
+
+- **Case 2 (bug):** Space below caret is NOT sufficient. Slots should appear flipped
+  (above composition), but one or more slots overlap the composition line. The
+  overlapping slot varied between runs (sometimes the bottom slot, sometimes the middle
+  slot), indicating a race condition rather than a deterministic geometry error.
+
+### Root cause — `_LayoutChangeNotification` race
+
+`ShowNotifyText` (the else-if block, ~line 1733) correctly detects the flipped
+state and sets:
+
+```cpp
+_notifyLocation.y = _rectCompRange.top - SHADOW_SPREAD / 2;   // candidate bottom
+growUp = TRUE;
+```
+
+However, `_LayoutChangeNotification` also calls `_RestackVisibleSlots` whenever a
+layout event fires (line 1017):
+
+```cpp
+_RestackVisibleSlots(_DecideStackGrowUp());
+```
+
+`_DecideStackGrowUp()` with no candidate visible uses the overflow check:
+
+```cpp
+return (_notifyLocation.y + totalH > screenBottom) ? TRUE : FALSE;
+```
+
+With `_notifyLocation.y ≈ 628` (the flipped anchor, above composition at 635) and
+slot totalH ≈ 90 px, the sum is ~718 — below a typical 768 px screen — so
+`growDown = FALSE`. `_RestackVisibleSlots(FALSE)` then grows the stack **downward**
+from 628, pushing slots into or below the composition line.
+
+Because TSF layout events fire asynchronously and can arrive **between** consecutive
+`ShowNotifyText` calls (e.g. between REVERSE_LOOKUP and SPECIAL_CODE shows), the
+number of slots already placed when the bad restack hits varies — which explains the
+inconsistency.
+
+### Fix — mirror flipped detection inside `_LayoutChangeNotification`
+
+Replace the bare `_DecideStackGrowUp()` call with the same flipped-candidate check
+used in `ShowNotifyText`:
+
+```cpp
+// src/UIPresenter.cpp — _LayoutChangeNotification, line ~1017
+BOOL layoutGrowUp = _DecideStackGrowUp();
+if (!(_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())
+    && compRect.bottom > compRect.top
+    && _candLocation.y < compRect.top)
+{
+    _notifyLocation.y = compRect.top - SHADOW_SPREAD / 2;
+    layoutGrowUp = TRUE;
+}
+_RestackVisibleSlots(layoutGrowUp);
+```
+
+When a layout event fires while hint slots are visible in the flipped state,
+the restack now uses `growUp = TRUE` with the correct bottom anchor, keeping
+all slots above the composition line regardless of when the event arrives.
+
+### Fix — natural slot-order reversal when flipped
+
+The original `reverseIter` logic forced the same visual order in both modes (CHN_ENG
+always at the visual top). The correct semantic is: **CHN_ENG is always nearest to
+the candidate/composition**, which means:
+
+- **Non-flipped (growDown):** CHN_ENG at the TOP of the stack, SPECIAL_CODE at bottom.
+- **Flipped (growUp):** CHN_ENG at the BOTTOM of the stack (closest to composition),
+  SPECIAL_CODE at top.
+
+`reverseIter` was removed. `_RestackVisibleSlots` now always iterates in index order
+(0 → N). Forward iteration with `growUp` naturally places slot 0 (CHN_ENG) at the
+bottom anchor and higher-indexed slots above it — the order reverses automatically.
+
+### Files changed
+
+| File | Change |
+| --- | --- |
+| `src/UIPresenter.cpp` | `_LayoutChangeNotification`: mirror flipped-candidate detection before `_RestackVisibleSlots` call |
+| `src/UIPresenter.cpp` | `_RestackVisibleSlots`: remove `reverseIter`; use forward index iteration always |
+| `src/DIME.vcxproj` | `PreBuildEvent`: `BuildInfo.cmd` → `"$(ProjectDir)buildInfo.cmd"` (explicit path fixes `cmd.exe` invocation from Git Bash environment where `PATHEXT` does not include `.CMD`) |

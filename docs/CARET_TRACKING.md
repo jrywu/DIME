@@ -124,16 +124,23 @@ jumping to screen origin.
 
 **Firefox-specific behaviour (hint slots):** Firefox returns `rcCaret={0,0,0,0}`
 from `GetGUIThreadInfo` and `TS_E_NOLAYOUT` from `GetTextExt` after a commit.
-`ShowNotifyText` handles this with three rules:
+`ShowNotifyText` handles this with four rules:
 
 - `validCaretPos` is checked against raw `rcCaret` **before** `ClientToScreen`;
   `ClientToScreen({0,0})` maps to the Firefox window's screen origin (non-zero,
   but wrong), so the post-transform value must not be used.
-- `_notifyLocation` is never overwritten when `validCaretPos=FALSE` — not even
-  on first use; the cached value from the last successful composition-phase probe
-  is kept.
-- If `_notifyLocation` is still uninitialised (no prior probe), `_candLocation`
-  is used as approximation.
+- `_notifyLocation` is never overwritten when `validCaretPos=FALSE`. The value
+  set by `_LayoutChangeNotification` during active composition (via TextLayoutSink)
+  is the authoritative source for hint-slot positioning.
+- `_notifyLocation` is reset to the off-screen sentinel in `ResetCompRange()`,
+  which fires on every document-manager focus change. This prevents a stale Y from
+  a previous text field (e.g. a Gmail compose box) bleeding into a new field (e.g.
+  the search bar) — the scenario that produced correct X but wrong Y in Firefox/Gmail.
+- If `_notifyLocation` is still uninitialized after the reset (no TSF layout has
+  fired in the new field), `_candLocation` is used as approximation. This fallback
+  is conditioned on `_notifyLocation.x < 0` only — not on `refreshLocation` — so
+  a freshly-set `_notifyLocation` from `_LayoutChangeNotification` is never
+  overwritten by a potentially stale `_candLocation` from a prior field.
 See [CARET_TRACKING_PROBE.md §7](CARET_TRACKING_PROBE.md) for full details.
 
 ---
@@ -480,6 +487,65 @@ In Notepad, the candidate window for the test case happened to land below the li
 ### Related work
 
 This is the side-by-side y-anchor counterpart of [REVERSE_CONV_REFACTOR.md "Change 6"](REVERSE_CONV_REFACTOR.md). The notify-positioning misalignment was a pre-existing latent bug that became visible only after #127 enabled `refreshLocation` for `NOTIFY_OTHERS`, which made the caret-y seed authoritative on every reverse-lookup show.
+
+---
+
+## 12. Flipped-candidate notify restack race (2026-05-04)
+
+### §12 Symptom
+
+When the composition is near the bottom of the screen and the candidate window flips
+**above** the caret, post-commit hint slots (REVERSE_LOOKUP, SPECIAL_CODE) overlapped
+the composition line. The overlapping slot varied between runs — sometimes the bottom
+slot, sometimes the middle slot — indicating a timing dependency rather than a
+deterministic geometry error.
+
+### §12 Root cause
+
+`ShowNotifyText`'s override block correctly sets `_notifyLocation.y = compRect.top -
+SHADOW_SPREAD/2` and `growUp = TRUE` when it detects the flipped state. However,
+`_LayoutChangeNotification` also calls:
+
+```cpp
+_RestackVisibleSlots(_DecideStackGrowUp());
+```
+
+`_DecideStackGrowUp()` with no candidate uses the screen-overflow check. With the
+flipped anchor `_notifyLocation.y ≈ 628` and slot totalH ≈ 90 px the sum is well
+below `SM_CYSCREEN`, so `growDown = FALSE` is returned. `_RestackVisibleSlots(FALSE)`
+then grows the stack **downward** from the flipped anchor into the composition line.
+
+Because layout events arrive asynchronously and can fire between consecutive
+`ShowNotifyText` calls, the number of already-placed slots at the time of the bad
+restack varies — explaining the inconsistency.
+
+### §12 Fix
+
+Mirror the same flipped-candidate detection inside `_LayoutChangeNotification` before
+calling `_RestackVisibleSlots` (see [#127_ISSUE.md — Flipped-candidate notify positioning](./%23127_ISSUE.md)):
+
+```cpp
+BOOL layoutGrowUp = _DecideStackGrowUp();
+if (!(_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())
+    && compRect.bottom > compRect.top
+    && _candLocation.y < compRect.top)
+{
+    _notifyLocation.y = compRect.top - SHADOW_SPREAD / 2;
+    layoutGrowUp = TRUE;
+}
+_RestackVisibleSlots(layoutGrowUp);
+```
+
+When a layout event arrives while hint slots are in the flipped state, the restack
+uses `growUp = TRUE` with the correct bottom anchor regardless of when the event fires.
+
+### §12 Slot order when flipped
+
+With `growUp = TRUE`, forward index iteration (slot 0 → N) places CHN_ENG (slot 0) at
+the **bottom** of the upward stack — nearest the composition — and SPECIAL_CODE at the
+top. This mirrors the non-flipped convention (CHN_ENG nearest candidate/composition)
+and reverses the visual order naturally. The earlier `reverseIter` logic that forced
+CHN_ENG to the top in both modes was removed.
 
 ---
 

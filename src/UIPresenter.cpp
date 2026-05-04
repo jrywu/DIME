@@ -1000,6 +1000,7 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall)
 					_notifyLocation.y = candPt.y + (candRect.bottom - candRect.top) - anchorWnd->_GetHeight();
 				else
 					_notifyLocation.y = candPt.y;
+				debugPrint(L"_LayoutChangeNotification cand-visible: candPt.y=%d lpRect->top=%d _notifyLocation.y=%d", candPt.y, lpRect->top, _notifyLocation.y);
 			}
 			else
 			{
@@ -1010,9 +1011,24 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall)
 				anchorWnd->_GetWindowExtent(&compRect, &notifyRect, &notifyPt);
 				_notifyLocation.x = notifyPt.x;
 				_notifyLocation.y = notifyPt.y;
+				debugPrint(L"_LayoutChangeNotification no-cand: notifyPt.x=%d notifyPt.y=%d compRect.top=%d compRect.bottom=%d", notifyPt.x, notifyPt.y, compRect.top, compRect.bottom);
 			}
 			// Translate the whole visible stack to the new anchor; keep slot order.
-			_RestackVisibleSlots(_DecideStackGrowUp());
+			// Mirror the flipped-candidate detection from ShowNotifyText: if the
+			// candidate was above the composition (flipped) and is now gone, force
+			// growUp and realign the bottom anchor so a layout event fired between
+			// notify shows doesn't restack the slots downward into the composition line.
+			{
+				BOOL layoutGrowUp = _DecideStackGrowUp();
+				if (!(_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())
+					&& compRect.bottom > compRect.top
+					&& _candLocation.y < compRect.top)
+				{
+					_notifyLocation.y = compRect.top - SHADOW_SPREAD / 2;
+					layoutGrowUp = TRUE;
+				}
+				_RestackVisibleSlots(layoutGrowUp);
+			}
 			debugPrint(L"move notify stack to x = %d, y = %d", _notifyLocation.x, _notifyLocation.y);
 		}
 	}
@@ -1543,8 +1559,13 @@ void CUIPresenter::_RestackVisibleSlots(_In_ BOOL growUp)
 		anchorY = growUp ? cr.bottom : _candLocation.y;
 	}
 
+	// Always iterate slots in index order (0 → N). When growing down, slot 0
+	// (CHN_ENG) lands at the top nearest the candidate/composition; when growing
+	// up (flipped), slot 0 lands at the bottom nearest the composition — the
+	// visual order reverses naturally, mirroring the candidate-flipped behaviour.
 	int offset = 0;
-	for (size_t i = 0; i < _pNotifyWnds.size(); ++i)
+	int n = (int)_pNotifyWnds.size();
+	for (int i = 0; i < n; ++i)
 	{
 		auto& w = _pNotifyWnds[i];
 		if (!w || !w->_IsWindowVisible()) continue;
@@ -1560,6 +1581,8 @@ void CUIPresenter::_RestackVisibleSlots(_In_ BOOL growUp)
 void CUIPresenter::ResetCompRange()
 {
 	SetRect(&_rectCompRange, 0, 0, 0, 0);
+	_notifyLocation = { UI::DEFAULT_WINDOW_X, UI::DEFAULT_WINDOW_Y };
+	debugPrint(L"ResetCompRange: _notifyLocation reset to DEFAULT_WINDOW");
 }
 void CUIPresenter::ShowNotifyText(_In_ CStringRange* pNotifyText, _In_opt_ UINT delayShow, _In_opt_ UINT timeToHide, _In_opt_ NOTIFY_TYPE notifyType)
 {
@@ -1670,14 +1693,28 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange* pNotifyText, _In_opt_ UINT 
 						caretUpdated = TRUE;
 					}
 				}
-				// Firefox/Chromium fallback: when no valid caret was obtained from either path,
-				// use the last known candidate position. For hint slots (refreshLocation=TRUE)
-				// this always applies — not just when _notifyLocation is uninitialised — so a
-				// stale _notifyLocation from a previous typing session at a different screen
-				// position is never reused. The probe fired below will overwrite this with the
-				// precise GetTextExt rect if TSF layout is still valid.
-				if (!caretUpdated && (refreshLocation || _notifyLocation.x < 0) && _candLocation.x >= 0)
-					_notifyLocation = _candLocation;
+				// Firefox fallback: when no valid caret was obtained from either path and
+				// _notifyLocation is uninitialised (reset on focus change by ResetCompRange),
+				// seed from the last known candidate position. Conditioned on _notifyLocation.x < 0
+				// only — not refreshLocation — so a freshly-set _notifyLocation from
+				// _LayoutChangeNotification during active composition is never overwritten by a
+				// stale _candLocation from a previous text field (e.g. Gmail compose box Y
+				// bleeding into the search bar).
+				debugPrint(L"ShowNotifyText pre-fallback: type=%d caretUpdated=%d notifyLoc=(%d,%d) candLoc=(%d,%d) rectComp=(%d,%d,%d,%d)",
+				           (int)notifyType, caretUpdated, _notifyLocation.x, _notifyLocation.y, _candLocation.x, _candLocation.y,
+				           _rectCompRange.left, _rectCompRange.top, _rectCompRange.right, _rectCompRange.bottom);
+				if (!caretUpdated && _notifyLocation.x < 0 && _candLocation.x >= 0)
+				{
+					_notifyLocation.x = _candLocation.x;
+					// If the candidate was flipped above the caret (candLocation.y < compRange.top),
+					// _notifyLocation.y is used directly as slot TOP in the no-candidate restack path,
+					// so place it below the composition text (not at candidate top or candidate bottom).
+					if (_rectCompRange.bottom > _rectCompRange.top && _candLocation.y < _rectCompRange.top)
+						_notifyLocation.y = _rectCompRange.bottom + SHADOW_SPREAD / 2;
+					else
+						_notifyLocation.y = _candLocation.y;
+				}
+				debugPrint(L"ShowNotifyText post-fallback: notifyLoc=(%d,%d)", _notifyLocation.x, _notifyLocation.y);
 
 
 				ShowNotify(TRUE, delayShow, timeToHide, notifyType);
@@ -1693,7 +1730,36 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange* pNotifyText, _In_opt_ UINT 
 					// first and second ShowNotifyText calls (e.g. probe fired in between).
 					BOOL growUp = _DecideStackGrowUp();
 					if (_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())
-						_notifyLocation.y = _candLocation.y;
+					{
+						// Set _notifyLocation.y above candidate top so _DecideStackGrowUp returns
+						// TRUE when the candidate is flipped. _RestackVisibleSlots then uses
+						// cr.bottom as the actual anchor (slots grow upward from candidate bottom).
+						if (_rectCompRange.top > 0 && _candLocation.y < _rectCompRange.top)
+						{
+							RECT _candWndRect = {};
+							_pCandidateWnd->_GetWindowRect(&_candWndRect);
+							_notifyLocation.y = _candLocation.y + (_candWndRect.bottom - _candWndRect.top);
+						}
+						else
+							_notifyLocation.y = _candLocation.y;
+					}
+					else if (!caretUpdated && _rectCompRange.bottom > _rectCompRange.top
+					         && _candLocation.y < _rectCompRange.top)
+					{
+						// Candidate was flipped above caret. Anchor = candidate window bottom,
+						// which _GetWindowExtent always places SHADOW_SPREAD/2 above comp top:
+						//   candBottom = _rectCompRange.top - SHADOW_SPREAD/2
+						// Using _rectCompRange.top directly lands the slot 7px too low.
+						// Also realign X to candidate left edge.
+						_notifyLocation.y = _rectCompRange.top - SHADOW_SPREAD / 2;
+						growUp = TRUE;
+						if (_candLocation.x >= 0)
+							_notifyLocation.x = _candLocation.x;
+					}
+					debugPrint(L"ShowNotifyText restack: notifyLoc=(%d,%d) candVisible=%d rectComp.top=%d candLoc.y=%d",
+					           _notifyLocation.x, _notifyLocation.y,
+					           (_pCandidateWnd && _pCandidateWnd->_IsWindowVisible()) ? 1 : 0,
+					           _rectCompRange.top, _candLocation.y);
 					_RestackVisibleSlots(growUp);
 				}
 				}
