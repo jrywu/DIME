@@ -176,7 +176,13 @@ BOOL CDIME::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pCod
 		// _candidateMode says PHRASE. A numpad key that hits IsKeystrokeRange
 		// would then be eaten as SELECT_BY_NUMBER and crash on null _pCandidateWnd.
 		// If the candidate UI is not actually present, treat as no candidate mode.
-		if (_candidateMode != CANDIDATE_MODE::CANDIDATE_NONE && candiCount == 0)
+		// Do NOT reset CANDIDATE_INCREMENTAL: zero incremental candidates is a normal
+		// composing state (phrase-code suffix has no short-code match). Resetting it
+		// drops the VK_OEM_7 phrase handler that lives only in the INCREMENTAL branch
+		// of IsVirtualKeyNeed (#132).
+		if (_candidateMode != CANDIDATE_MODE::CANDIDATE_NONE &&
+			_candidateMode != CANDIDATE_MODE::CANDIDATE_INCREMENTAL &&
+			candiCount == 0)
 		{
 			debugPrint(L"_IsKeyEaten: stale _candidateMode=%d with candiCount=0, resetting to NONE",
 				(int)_candidateMode);
