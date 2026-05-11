@@ -677,6 +677,10 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 				}
 			}
 
+			// If the shifted char is itself a radical key, enter composition instead
+			if (IsVirtualKeyKeystrokeComposition(uCode, pwch, pKeyState, KEYSTROKE_FUNCTION::FUNCTION_NONE))
+				return TRUE;
+
 			if (pKeyState)
 			{
 				pKeyState->Category = KEYSTROKE_CATEGORY::CATEGORY_COMPOSING;
@@ -685,7 +689,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 			return TRUE;
 		}
 	}
-	
+
 	//Processing Composing keys -------------------------------------------------------------------------------------------
 	if (fComposing)
 	{
