@@ -540,21 +540,22 @@ HRESULT CDIME::_HandleCompositionShiftEnglishInput(TfEditCookie ec, _In_ ITfCont
     }
     else if (code >= '0' && code <= '9')
     {
-        // Digit keys (1~0): CapsLock OFF → shifted symbol (!@#$%^&*())
-        //                   CapsLock ON  → base digit (1234567890)
-        // wch is already the shifted char ('!' etc.). Use code directly with
-        // ToUnicodeEx to avoid VkKeyScanExW back-computation for the ON case.
-        if (!isCapsLockOn)
+        // VK_0–VK_9 equal ASCII '0'–'9', so (WCHAR)code is the base digit directly.
+        // wch is the shifted symbol ('!', '@', '$', etc.) from the key event.
+        WCHAR symbol = wch;
+        WCHAR digit  = (WCHAR)code;
+
+        switch (CConfig::GetShiftEnglishDigitMode())
         {
-            outputChar = wch;  // already '!', '@', etc.
-        }
-        else
-        {
-            BYTE scanCode = (BYTE)MapVirtualKey(code, MAPVK_VK_TO_VSC);
-            BYTE keyState[256] = {0};
-            WCHAR result[2] = {0};
-            if (ToUnicodeEx(code, scanCode, keyState, result, 2, 0, GetKeyboardLayout(0)) == 1)
-                outputChar = result[0];
+        case IME_SHIFT_ENGLISH_DIGIT_MODE::SHIFT_ENGLISH_DIGIT_CAPS_OFF_DIGIT:
+            outputChar = isCapsLockOn ? symbol : digit;
+            break;
+        case IME_SHIFT_ENGLISH_DIGIT_MODE::SHIFT_ENGLISH_DIGIT_ALWAYS_SYMBOL:
+            outputChar = symbol;
+            break;
+        default: // SHIFT_ENGLISH_DIGIT_CAPS_OFF_SYMBOL — default, current behaviour
+            outputChar = isCapsLockOn ? digit : symbol;
+            break;
         }
     }
     else

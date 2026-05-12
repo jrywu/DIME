@@ -2707,6 +2707,14 @@ void SettingsWindow::PopulateControls(WindowData* wd)
         const wchar_t* p[] = { L"數字鍵盤輸入數字符號", L"數字鍵盤輸入字根", L"僅用數字鍵盤輸入字根" };
         ComboAddAndSelect(h, p, 3, s.numericPad);
     }
+    if ((h = FindControl(wd, CTRL_SHIFT_ENGLISH_DIGIT_MODE))) {
+        const wchar_t* d[] = {
+            L"CapsLock 關輸出符號",
+            L"CapsLock 關輸出數字",
+            L"永遠輸出符號"
+        };
+        ComboAddAndSelect(h, d, 3, s.shiftEnglishDigitMode);
+    }
     if ((h = FindControl(wd, CTRL_PHONETIC_KB))) {
         const wchar_t* l[] = { L"標準鍵盤", L"倚天鍵盤" };
         ComboAddAndSelect(h, l, 2, s.phoneticKeyboardLayout);

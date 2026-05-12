@@ -47,6 +47,7 @@ static const KeyInfo g_keyRegistry[] =
     { L"FontWeight",                   INT_T,  100, 900,   CLI_MASK_ALL       },
     { L"IMEShiftMode",                 INT_T,    0,   3,   CLI_MASK_ALL       },
     { L"DoubleSingleByteMode",         INT_T,    0,   2,   CLI_MASK_ALL       },
+    { L"ShiftEnglishDigitMode",        INT_T,    0,   2,   CLI_MASK_ALL       },
     { L"ColorMode",                    INT_T,    0,   3,   CLI_MASK_ALL       },
     { L"NumericPad",                   INT_T,    0,   2,   CLI_MASK_ALL       },
     { L"ArrayScope",                   INT_T,    0,   5,   CLI_MASK_ARRAY     },
@@ -221,6 +222,8 @@ static bool GetKeyValue(const KeyInfo* ki, WCHAR* outBuf, int bufLen)
         StringCchPrintfW(outBuf, bufLen, L"%d", (int)CConfig::GetIMEShiftMode());
     else if (_wcsicmp(n, L"DoubleSingleByteMode") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%d", (int)CConfig::GetDoubleSingleByteMode());
+    else if (_wcsicmp(n, L"ShiftEnglishDigitMode") == 0)
+        StringCchPrintfW(outBuf, bufLen, L"%d", (int)CConfig::GetShiftEnglishDigitMode());
     else if (_wcsicmp(n, L"ColorMode") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%d", (int)CConfig::GetColorMode());
     else if (_wcsicmp(n, L"NumericPad") == 0)
@@ -352,6 +355,7 @@ static int ApplyKeyValue(const KeyInfo* ki, const wchar_t* valueStr, FILE* err)
         else if (_wcsicmp(n, L"FontWeight") == 0)               CConfig::SetFontWeight((UINT)v);
         else if (_wcsicmp(n, L"IMEShiftMode") == 0)             CConfig::SetIMEShiftMode((IME_SHIFT_MODE)v);
         else if (_wcsicmp(n, L"DoubleSingleByteMode") == 0)     CConfig::SetDoubleSingleByteMode((DOUBLE_SINGLE_BYTE_MODE)v);
+        else if (_wcsicmp(n, L"ShiftEnglishDigitMode") == 0)    CConfig::SetShiftEnglishDigitMode((IME_SHIFT_ENGLISH_DIGIT_MODE)v);
         else if (_wcsicmp(n, L"ColorMode") == 0)                CConfig::SetColorMode((IME_COLOR_MODE)v);
         else if (_wcsicmp(n, L"NumericPad") == 0)               CConfig::SetNumericPad((NUMERIC_PAD)v);
         else if (_wcsicmp(n, L"ArrayScope") == 0)               CConfig::SetArrayScope((ARRAY_SCOPE)v);

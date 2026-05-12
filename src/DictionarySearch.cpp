@@ -414,6 +414,8 @@ ReadValue:
 					CConfig::SetFontItalic((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"DoubleSingleByteMode", 20)) == CSTR_EQUAL)
 					CConfig::SetDoubleSingleByteMode((DOUBLE_SINGLE_BYTE_MODE)_wtoi(valueStrings.GetAt(0)->Get()));
+				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ShiftEnglishDigitMode", 21)) == CSTR_EQUAL)
+					CConfig::SetShiftEnglishDigitMode((IME_SHIFT_ENGLISH_DIGIT_MODE)_wtoi(valueStrings.GetAt(0)->Get()));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"IMEShiftMode", 12)) == CSTR_EQUAL)
 					CConfig::SetIMEShiftMode((IME_SHIFT_MODE)_wtoi(valueStrings.GetAt(0)->Get()));
 				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"MaxCodes", 8)) == CSTR_EQUAL)

@@ -133,6 +133,8 @@ public:
 	static IME_SHIFT_MODE GetIMEShiftMode() { return _imeShiftMode; }
 	static void SetDoubleSingleByteMode(DOUBLE_SINGLE_BYTE_MODE doubleSingleMode) { _doubleSingleByteMode = doubleSingleMode; }
 	static DOUBLE_SINGLE_BYTE_MODE GetDoubleSingleByteMode() { return _doubleSingleByteMode; }
+	static void SetShiftEnglishDigitMode(IME_SHIFT_ENGLISH_DIGIT_MODE mode) { _shiftEnglishDigitMode = mode; }
+	static IME_SHIFT_ENGLISH_DIGIT_MODE GetShiftEnglishDigitMode() { return _shiftEnglishDigitMode; }
 	static void SetMaxCodes(UINT maxCodes) { _maxCodes = maxCodes;}
 	static UINT GetMaxCodes(){return _maxCodes;}
 	// clear composing on beep when error 
@@ -358,6 +360,8 @@ private:
 	static IME_SHIFT_MODE _imeShiftMode;
 
 	static DOUBLE_SINGLE_BYTE_MODE _doubleSingleByteMode;
+
+	static IME_SHIFT_ENGLISH_DIGIT_MODE _shiftEnglishDigitMode;
 
 	static BOOL _customTableChanged;
 	

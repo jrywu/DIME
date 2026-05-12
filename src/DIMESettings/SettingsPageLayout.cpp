@@ -39,6 +39,7 @@ static const LayoutRow s_inputSettingsRows[] = {
     { CTRL_ARRAY_SCOPE,           RowType::ComboBox, RowAction::None,        CTRL_NONE, 0, L"字集查詢範圍",         nullptr,                                SM_MODE_ARRAY,     false, L'\xE774' },
     { CTRL_CHARSET_SCOPE,         RowType::ComboBox, RowAction::None,        CTRL_NONE, 0, L"字集查詢範圍",         nullptr,                                SM_MODE_NON_ARRAY, false, L'\xE774' },
     { CTRL_NUMERIC_PAD,           RowType::ComboBox, RowAction::None,        CTRL_NONE, 0, L"九宮格數字鍵盤",       nullptr,                                SM_MODE_ALL,       false, L'\xE75F' },
+    { CTRL_SHIFT_ENGLISH_DIGIT_MODE, RowType::ComboBox, RowAction::None,     CTRL_NONE, 0, L"Shift英數模式數字鍵行為", nullptr,                              SM_MODE_ALL,       false, L'\xE75F' },
     { CTRL_PHONETIC_KB,           RowType::ComboBox, RowAction::None,        CTRL_NONE, 0, L"鍵盤對應選擇",         nullptr,                                SM_MODE_PHONETIC,  false, L'\xE765' },
     { CTRL_MAX_CODES,             RowType::Edit,     RowAction::None,        CTRL_NONE, 0, L"組字區最大長度",       nullptr,                                SM_MODE_ALL,       false, L'\xE8C1' },
     // --- Candidate settings ---

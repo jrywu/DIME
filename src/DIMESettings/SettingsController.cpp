@@ -137,6 +137,7 @@ SettingsSnapshot SettingsModel::LoadFromConfig()
     snap.phoneticKeyboardLayout  = (int)CConfig::getPhoneticKeyboardLayout();
     snap.imeShiftMode            = (int)CConfig::GetIMEShiftMode();
     snap.doubleSingleByteMode    = (int)CConfig::GetDoubleSingleByteMode();
+    snap.shiftEnglishDigitMode   = (int)CConfig::GetShiftEnglishDigitMode();
 
     snap.reverseConversionIndex  = 0; // default; UI populates from reverse conversion list
 
@@ -180,6 +181,7 @@ void SettingsModel::ApplyToConfig(const SettingsSnapshot& snap)
     CConfig::setPhoneticKeyboardLayout((PHONETIC_KEYBOARD_LAYOUT)snap.phoneticKeyboardLayout);
     CConfig::SetIMEShiftMode((IME_SHIFT_MODE)snap.imeShiftMode);
     CConfig::SetDoubleSingleByteMode((DOUBLE_SINGLE_BYTE_MODE)snap.doubleSingleByteMode);
+    CConfig::SetShiftEnglishDigitMode((IME_SHIFT_ENGLISH_DIGIT_MODE)snap.shiftEnglishDigitMode);
 }
 
 void SettingsModel::SyncToggleToSnapshot(SettingsSnapshot& s, SettingsControlId id, bool isOn)
@@ -533,7 +535,8 @@ void SettingsModel::SyncComboToSnapshot(SettingsSnapshot& s, SettingsControlId i
     case CTRL_NUMERIC_PAD:         s.numericPad = sel; break;
     case CTRL_PHONETIC_KB:         s.phoneticKeyboardLayout = sel; break;
     case CTRL_IME_SHIFT_MODE:      s.imeShiftMode = sel; break;
-    case CTRL_DOUBLE_SINGLE_BYTE:  s.doubleSingleByteMode = sel; break;
+    case CTRL_DOUBLE_SINGLE_BYTE:        s.doubleSingleByteMode = sel; break;
+    case CTRL_SHIFT_ENGLISH_DIGIT_MODE:  s.shiftEnglishDigitMode = sel; break;
     case CTRL_KEYBOARD_OPEN_CLOSE: s.activatedKeyboardMode = (sel == 0); break;
     case CTRL_OUTPUT_CHT_CHS:      s.doHanConvert = (sel == 1); break;
     default: break;

@@ -38,12 +38,13 @@ namespace SettingsKeys {
     constexpr const wchar_t NumericPad[]                   = L"NumericPad";
     constexpr const wchar_t ArrayScope[]                   = L"ArrayScope";
     constexpr const wchar_t PhoneticKeyboardLayout[]       = L"PhoneticKeyboardLayout";
+    constexpr const wchar_t ShiftEnglishDigitMode[]        = L"ShiftEnglishDigitMode";
 
     // String keys
     constexpr const wchar_t FontFaceName[]                 = L"FontFaceName";
 
     // Total count of non-color, non-CLSID keys (keys that have a UI control)
-    constexpr int UI_KEY_COUNT = 30;
+    constexpr int UI_KEY_COUNT = 31;
 }
 
 // IME mode string identifiers (used by --mode CLI parameter and CDIME::Show() migration)

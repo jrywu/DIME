@@ -114,6 +114,7 @@ UINT CConfig::GetDpiForHwnd(HWND hWnd)
 PHONETIC_KEYBOARD_LAYOUT CConfig::_phoneticKeyboardLayout = PHONETIC_KEYBOARD_LAYOUT::PHONETIC_STANDARD_KEYBOARD_LAYOUT;
 IME_SHIFT_MODE CConfig::_imeShiftMode = IME_SHIFT_MODE::IME_BOTH_SHIFT;
 DOUBLE_SINGLE_BYTE_MODE CConfig::_doubleSingleByteMode = DOUBLE_SINGLE_BYTE_MODE::DOUBLE_SINGLE_BYTE_ALWAYS_SINGLE;
+IME_SHIFT_ENGLISH_DIGIT_MODE CConfig::_shiftEnglishDigitMode = IME_SHIFT_ENGLISH_DIGIT_MODE::SHIFT_ENGLISH_DIGIT_CAPS_OFF_SYMBOL;
 
 CDIMEArray <LanguageProfileInfo>* CConfig::_reverseConvervsionInfoList = new (std::nothrow) CDIMEArray <LanguageProfileInfo>;
 CLSID CConfig::_reverseConverstionCLSID = CLSID_NULL;
@@ -402,6 +403,7 @@ VOID CConfig::WriteConfig(IME_MODE imeMode, BOOL confirmUpdated)
 			fwprintf_s(fp, L"MaxCodes = %d\n", _maxCodes);
 			fwprintf_s(fp, L"IMEShiftMode  = %d\n", _imeShiftMode);
 			fwprintf_s(fp, L"DoubleSingleByteMode = %d\n", _doubleSingleByteMode);
+			fwprintf_s(fp, L"ShiftEnglishDigitMode = %d\n", (int)_shiftEnglishDigitMode);
 			fwprintf_s(fp, L"ShowNotifyDesktop = %d\n", _showNotifyDesktop ? 1 : 0);
 			fwprintf_s(fp, L"DoHanConvert = %d\n", _doHanConvert ? 1 : 0);
 			fwprintf_s(fp, L"FontSize = %d\n", _fontSize);
@@ -617,6 +619,7 @@ void CConfig::ResetAllDefaults(IME_MODE imeMode)
 	_phoneticKeyboardLayout       = PHONETIC_KEYBOARD_LAYOUT::PHONETIC_STANDARD_KEYBOARD_LAYOUT;
 	_imeShiftMode                 = IME_SHIFT_MODE::IME_BOTH_SHIFT;
 	_doubleSingleByteMode         = DOUBLE_SINGLE_BYTE_MODE::DOUBLE_SINGLE_BYTE_ALWAYS_SINGLE;
+	_shiftEnglishDigitMode        = IME_SHIFT_ENGLISH_DIGIT_MODE::SHIFT_ENGLISH_DIGIT_CAPS_OFF_SYMBOL;
 	_arrayScope                   = ARRAY_SCOPE::ARRAY30_UNICODE_EXT_A;
 	_colorMode = Global::isWindows1809OrLater
 		? IME_COLOR_MODE::IME_COLOR_MODE_SYSTEM

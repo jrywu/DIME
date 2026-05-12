@@ -39,6 +39,7 @@ enum SettingsControlId {
     CTRL_ARRAY_SCOPE,
     CTRL_CHARSET_SCOPE,
     CTRL_NUMERIC_PAD,
+    CTRL_SHIFT_ENGLISH_DIGIT_MODE,
     CTRL_PHONETIC_KB,
     CTRL_MAX_CODES,
 
@@ -137,6 +138,7 @@ struct SettingsSnapshot {
     int phoneticKeyboardLayout;  // PHONETIC_KEYBOARD_LAYOUT as int
     int imeShiftMode;     // IME_SHIFT_MODE as int
     int doubleSingleByteMode;    // DOUBLE_SINGLE_BYTE_MODE as int
+    int shiftEnglishDigitMode;   // IME_SHIFT_ENGLISH_DIGIT_MODE as int
     int reverseConversionIndex;
 };
 

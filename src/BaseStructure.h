@@ -121,6 +121,13 @@ enum class DOUBLE_SINGLE_BYTE_MODE
 	DOUBLE_SINGLE_BYTE_ALWAYS_DOUBLE
 };
 
+enum class IME_SHIFT_ENGLISH_DIGIT_MODE
+{
+	SHIFT_ENGLISH_DIGIT_CAPS_OFF_SYMBOL = 0,  // CapsLock OFF → symbol (!), ON → digit (1) — default
+	SHIFT_ENGLISH_DIGIT_CAPS_OFF_DIGIT,        // CapsLock OFF → digit (1), ON → symbol (!)
+	SHIFT_ENGLISH_DIGIT_ALWAYS_SYMBOL          // always symbol regardless of CapsLock
+};
+
 enum class BEEP_TYPE
 {
 	BEEP_COMPOSITION_ERROR = 0,
