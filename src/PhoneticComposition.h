@@ -67,7 +67,13 @@ UINT vpStandardKeyTable[MAX_RADICAL+1] =
    vpP,  vpJ,  vpN,  vpCH, vpI,  vpX,  vpT,  vpL,
 
 // 'Y',  'Z',  '[',  '\',  ']',  '^',  '_',  '`'
-   vpZ,  vpF,  0,    0,    0,    0,    0,    0
+   vpZ,  vpF,  0,    0,    0,    0,    0,    0,
+
+// 'a',  'b',  'c',  'd',  'e',  'f',  'g',  'h',  'i',  'j',  'k',  'l',  'm',  'n',  'o',  'p',
+   0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+
+// 'q',  'r',  's',  't',  'u',  'v',  'w',  'x',  'y',  'z',  '{',  '|',  '}',  '~',  DEL,  0x80
+   0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0
 };
 WCHAR vpEtenKeyToStandardKeyTable[MAX_RADICAL + 1] =
 {
@@ -95,7 +101,13 @@ WCHAR vpEtenKeyToStandardKeyTable[MAX_RADICAL + 1] =
    'O',  'K',  'N',  'W',  'M',  'E',  ',',  'J',
 
 // 'Y',  'Z',  '[',  '\',  ']',  '^',  '_',  '`'
-   '.',  'L',   0,    0,    0,    0,    0,    0
+   '.',  'L',   0,    0,    0,    0,    0,    0,
+
+// 'a',  'b',  'c',  'd',  'e',  'f',  'g',  'h',  'i',  'j',  'k',  'l',  'm',  'n',  'o',  'p',
+   0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+
+// 'q',  'r',  's',  't',  'u',  'v',  'w',  'x',  'y',  'z',  '{',  '|',  '}',  '~',  DEL,  0x80
+   0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0
 };
 
 const WCHAR vpStandardLayoutCode[42] = {' ', 

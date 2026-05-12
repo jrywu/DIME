@@ -156,7 +156,7 @@ enum class IME_COLOR_MODE : int
 //---------------------------------------------------------------------
 // Maximum radical size and candidate selkey size
 //---------------------------------------------------------------------
-#define MAX_RADICAL 64 // ascii table 0x20 (0d32) ~ 0x60 (0d96)
+#define MAX_RADICAL 96 // ascii table 0x20 (0d32) ~ 0x80 (0d128)
 #define MAX_CAND_SELKEY  16 
 // -------------------------------------------------------------------- -
 // IM SLOTS

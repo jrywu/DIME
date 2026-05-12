@@ -653,10 +653,12 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 		if (iswprint(c) && c != L' ' &&
 			!(IsWildcardChar(c) && !(Global::imeMode == IME_MODE::IME_MODE_PHONETIC && c == L'*')))  // Exclude space as it's handled by preserved key
 		{
-			// Check if key is in the radical map (or Dayi address char table) for the active IME mode
-			// If not, bypass to system without processing
-			// Use base (unshifted) char from virtual key code, not the shifted char in c
-			// e.g. Shift+, sends '<' but ',' is the radical key to check
+			// ① Check if the shifted char is itself a radical — if so, enter composition immediately
+			if (IsVirtualKeyKeystrokeComposition(uCode, pwch, pKeyState, KEYSTROKE_FUNCTION::FUNCTION_NONE))
+				return TRUE;
+
+			// ② Use base (unshifted) char to decide whether Shift English mode applies at all
+			// e.g. Shift+, sends '<'; check ',' (base) — if base not a radical, bypass to system
 			WCHAR baseChar = (WCHAR)MapVirtualKey(uCode, MAPVK_VK_TO_CHAR);
 			if (Global::imeMode == IME_MODE::IME_MODE_DAYI && IsDayiAddressChar(baseChar))
 			{
@@ -676,10 +678,6 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 					return FALSE;  // Out of range — bypass to system
 				}
 			}
-
-			// If the shifted char is itself a radical key, enter composition instead
-			if (IsVirtualKeyKeystrokeComposition(uCode, pwch, pKeyState, KEYSTROKE_FUNCTION::FUNCTION_NONE))
-				return TRUE;
 
 			if (pKeyState)
 			{
