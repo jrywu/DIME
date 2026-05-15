@@ -110,6 +110,8 @@ namespace UI {
     constexpr UINT_PTR TIME_TO_HIDE_TIMER_ID    = 39776; // Auto-hide timer
     constexpr UINT_PTR SCROLLBAR_COLLAPSE_TIMER_ID = 39777; // Delay before scrollbar collapses after mouse leaves scrollbar column
     constexpr UINT    SCROLLBAR_COLLAPSE_DELAY_MS  = 2000;  // 2-second collapse delay
+    constexpr UINT_PTR STAY_ON_TOP_TIMER_ID     = 39778; // #135: re-stamp HWND_TOPMOST to beat host TOPMOST popups that open async after our show (Firefox MozillaDropShadowWindowClass)
+    constexpr UINT    STAY_ON_TOP_TICK_MS       = 30;    // Tick interval — runs while candidate is visible, KillTimer on hide / destroy. 30ms keeps the cover-gap below human perception (~16ms frame)
 
     //---------------------------------------------------------------------
     // Window Positioning
