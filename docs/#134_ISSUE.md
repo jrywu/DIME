@@ -211,6 +211,124 @@ Add the same combo box near the existing `IDC_COMBO_IME_SHIFT_MODE` block with t
 
 ---
 
+## Fix C — Gate the wildcard bypass on numpad and digit-key preferences
+
+### Actual current flow for `*` and `?`
+
+There are **two separate code paths** that handle wildcards. Which one fires depends on the `_isShiftedEnglish` flag in `KeyEventSink`:
+
+1. **Pre-existing `_isShiftedEnglish` gate** ([`src/KeyEventSink.cpp:193-204`](../src/KeyEventSink.cpp#L193-L204)) — set TRUE after any prior keystroke handled as `FUNCTION_SHIFT_ENGLISH_INPUT`, cleared when Shift is released (with a `Shift+Backspace` carve-out). While TRUE, any wildcard char with Shift held is forced to `FUNCTION_SHIFT_ENGLISH_INPUT` — output as ASCII via `_HandleCompositionShiftEnglishInput`, NOT composition.
+2. **Wildcard bypass in `KeyProcesser.cpp:824`** — fires only when path 1 is skipped (`_isShiftedEnglish=FALSE`). Catches `*` / `?` and returns `FUNCTION_INPUT`, sending the char into composition as a wildcard.
+
+Resulting behaviour for `*` (Shift+8) **before Fix C**:
+
+| Scenario | Path taken | Result |
+|----------|-----------|--------|
+| Fresh Shift hold, `*` is the first keystroke (`_isShiftedEnglish=FALSE`) | KeyProcesser wildcard bypass | `*` enters composition |
+| Continuing Shift hold after any Shift+letter (`_isShiftedEnglish=TRUE`) | KeyEventSink:193 → Shift English output | `*` output as ASCII |
+
+So in **typical use** (Shift+a, Shift+b, Shift+8…), `*` does NOT enter composition — it's already output as ASCII via path 1. The fresh-first-keystroke case is the only one that still falls through to composition.
+
+The KeyHandler digit branch added in the feature commit (`KeyHandler.cpp _HandleCompositionShiftEnglishInput`, digit section ~line 541) already handles the per-pref digit/symbol output for path 1. So `Shift+8` after `Shift+a` already follows the new digit-mode pref correctly.
+
+**Numpad `*` (VK_MULTIPLY)** — no Shift is held, so path 1 never fires. Path 2 (wildcard bypass) always catches it → composition. The existing `九宮格數字鍵盤 = NUMERIC` gating only lives in `IsVirtualKeyKeystrokeComposition` (which the wildcard bypass doesn't call), so it's effectively bypassed for the wildcard case.
+
+### What Fix C addresses
+
+- **Numpad `*` / `?` (Change 2)**: gate the wildcard bypass on the existing 九宮格 = NUMERIC pref so numpad keys output to system instead of entering wildcard composition. This is a real gap — without Change 2, numpad `*` enters composition regardless of the 九宮格 setting.
+- **Digit-row fresh-keystroke (Change 1)**: route `Shift+digit` through the Shift English block when the new digit-mode pref wants digit output, so the very first Shift+8 in a Shift hold also outputs `8`. Without Change 1, fresh Shift+8 enters wildcard composition even when pref=digit. Continuing-Shift presses already handled by the KeyEventSink flag path.
+
+### Code change
+
+**File**: [`src/KeyProcesser.cpp`](../src/KeyProcesser.cpp)
+
+**Change 1** — line 653-654, conditionally allow wildcards into Shift English when digit-mode wants digit output:
+
+```cpp
+        // Allow wildcards through the Shift English block only when the digit-row pref
+        // resolves to "digit output" — in that case we want to output the digit (e.g. 8),
+        // not the wildcard char (*). Otherwise, wildcards fall through to the wildcard
+        // bypass below as before.
+        bool digitRowWantsDigit = false;
+        if (uCode >= '0' && uCode <= '9')
+        {
+            bool capsOn = (GetKeyState(VK_CAPITAL) & 0x0001) != 0;
+            switch (CConfig::GetShiftEnglishDigitMode())
+            {
+            case IME_SHIFT_ENGLISH_DIGIT_MODE::SHIFT_ENGLISH_DIGIT_CAPS_OFF_DIGIT:    digitRowWantsDigit = !capsOn; break;
+            case IME_SHIFT_ENGLISH_DIGIT_MODE::SHIFT_ENGLISH_DIGIT_ALWAYS_SYMBOL:     digitRowWantsDigit = false;   break;
+            default: /* SHIFT_ENGLISH_DIGIT_CAPS_OFF_SYMBOL */                        digitRowWantsDigit = capsOn;  break;
+            }
+        }
+
+        if (iswprint(c) && c != L' ' &&
+            (digitRowWantsDigit ||
+             !(IsWildcardChar(c) && !(Global::imeMode == IME_MODE::IME_MODE_PHONETIC && c == L'*'))))
+        {
+            // existing Fix A body
+            ...
+        }
+```
+
+**Change 2** — line 796, gate the wildcard bypass on the numpad pref:
+
+```cpp
+        // Numpad NUMERIC pref: numpad keys output directly to system, even for * / ?
+        if (IsWildcardChar(*pwch) && !(Global::imeMode == IME_MODE::IME_MODE_PHONETIC && *pwch == L'*') &&
+            !(CConfig::GetNumericPad() == NUMERIC_PAD::NUMERIC_PAD_NUMERIC &&
+              uCode >= VK_NUMPAD0 && uCode <= VK_DIVIDE))
+        {
+            if (pKeyState)
+            {
+                pKeyState->Category = KEYSTROKE_CATEGORY::CATEGORY_COMPOSING;
+                pKeyState->Function = KEYSTROKE_FUNCTION::FUNCTION_INPUT;
+            }
+            return TRUE;
+        }
+```
+
+### Behaviour matrix
+
+**Numpad `*` (VK_MULTIPLY), buffer empty:** Shift not held, so `_isShiftedEnglish` path never applies — only path 2 matters.
+
+| 九宮格 setting | Before | After |
+|----------------|--------|-------|
+| NUMERIC_PAD_NUMERIC (數字鍵盤輸入數字符號) | composition (wildcard) | output `*` to system |
+| NUMERIC_PAD_NUMERIC_COMPOSITION_ONLY (僅用數字鍵盤輸入字根) | composition (wildcard) | composition (wildcard) |
+| Default (composition) | composition (wildcard) | composition (wildcard) |
+
+**Digit-row Shift+8 → `*`, buffer empty, fresh first keystroke (`_isShiftedEnglish=FALSE`):**
+
+| Digit-mode setting | CapsLock | Before | After |
+|--------------------|----------|--------|-------|
+| CapsLock 關輸出符號 (default) | OFF | composition (wildcard) | composition (wildcard) |
+| CapsLock 關輸出符號 (default) | ON  | composition (wildcard) | output `8` |
+| CapsLock 關輸出數字 | OFF | composition (wildcard) | output `8` |
+| CapsLock 關輸出數字 | ON  | composition (wildcard) | composition (wildcard) |
+| 永遠輸出符號 | any | composition (wildcard) | composition (wildcard) |
+
+**Digit-row Shift+8 → `*`, buffer empty, continuing Shift hold (`_isShiftedEnglish=TRUE`):** unaffected by Fix C — already routed through `_HandleCompositionShiftEnglishInput` digit branch (added in the feature commit), so digit/symbol output already follows the new digit-mode pref.
+
+| Digit-mode setting | CapsLock | Before & After |
+|--------------------|----------|----------------|
+| CapsLock 關輸出符號 (default) | OFF | output `*` |
+| CapsLock 關輸出符號 (default) | ON  | output `8` |
+| CapsLock 關輸出數字 | OFF | output `8` |
+| CapsLock 關輸出數字 | ON  | output `*` |
+| 永遠輸出符號 | any | output `*` |
+
+### Side effects
+
+| Case | Behaviour |
+|------|-----------|
+| Buffer non-empty (`fComposing`) | Unaffected — wildcard composition for active search still works; Shift English block is guarded by `!fComposing`. |
+| Phonetic mode | `*` unchanged (not a wildcard in Phonetic); `?` unchanged for both numpad and digit-row paths. |
+| Numpad `/` (VK_DIVIDE) | Same Change 2 gating as `*` — when pref = NUMERIC, outputs `/` to system. |
+| Digit-row Shift+digit where shifted char is a mapped radical but **not** a wildcard (e.g. `!@#$%^&()`) | Fix A still applies — composition vs Shift English decided by Fix A's `IsVirtualKeyKeystrokeComposition` check. The digit-mode pref overrides for wildcards only (Change 1); radicals continue to enter composition so the radical-input feature keeps working. |
+| `_isShiftedEnglish` flag path | Unchanged by Fix C — `KeyEventSink:193-204` continues to intercept wildcards during a continuing Shift hold, routing them to `_HandleCompositionShiftEnglishInput`. The KeyHandler digit branch (committed in the feature commit) handles digit/symbol output per pref. |
+
+---
+
 ## README.md — New Documentation Section
 
 ### Where to insert
@@ -241,6 +359,8 @@ Shift+數字鍵的輸出對照：
 - 「CapsLock 關輸出符號」（預設）：CapsLock OFF → `!@#$%^&*()`，CapsLock ON → `1234567890`
 - 「CapsLock 關輸出數字」：CapsLock OFF → `1234567890`，CapsLock ON → `!@#$%^&*()`
 - 「永遠輸出符號」：無論 CapsLock 狀態一律輸出 `!@#$%^&*()`
+
+> **與字根互動**：當偏好設定為輸出符號（預設或「永遠輸出符號」）且該符號在自訂碼表中是字根（如 `(`、`!`），會進入組字而非直接輸出符號；若偏好設定為輸出數字（如「CapsLock 關輸出數字」且 CapsLock OFF），則一律直接輸出數字。萬用字元 `*` 不論偏好設定皆輸出為英數（不進入萬用字元搜尋；如需萬用字元搜尋，請放開 Shift 鍵以一般中文模式輸入）。
 ```
 
 ---

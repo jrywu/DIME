@@ -647,11 +647,36 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 	{
 		WCHAR c = *pwch;
 
+		// Resolve the digit-row Shift English preference for current CapsLock.
+		// When it resolves to "digit output" (e.g. Shift+8 should produce '8'),
+		// allow wildcards into the Shift English block so the digit branch in
+		// _HandleCompositionShiftEnglishInput can output the base digit instead
+		// of letting the wildcard bypass send '*' into composition.
+		bool digitRowWantsDigit = false;
+		if (uCode >= '0' && uCode <= '9')
+		{
+			bool capsOn = (GetKeyState(VK_CAPITAL) & 0x0001) != 0;
+			switch (CConfig::GetShiftEnglishDigitMode())
+			{
+			case IME_SHIFT_ENGLISH_DIGIT_MODE::SHIFT_ENGLISH_DIGIT_CAPS_OFF_DIGIT:
+				digitRowWantsDigit = !capsOn;
+				break;
+			case IME_SHIFT_ENGLISH_DIGIT_MODE::SHIFT_ENGLISH_DIGIT_ALWAYS_SYMBOL:
+				digitRowWantsDigit = false;
+				break;
+			default: // SHIFT_ENGLISH_DIGIT_CAPS_OFF_SYMBOL
+				digitRowWantsDigit = capsOn;
+				break;
+			}
+		}
+
 		// Check for printable ASCII characters (iswprint filters control chars)
-		// Exclude valid wildcard chars so they enter composition for wildcard search
+		// Exclude valid wildcard chars so they enter composition for wildcard search,
+		// EXCEPT when the digit-row pref wants digit output — then route through here.
 		// In Phonetic mode, only ? is a valid wildcard (* is not mapped)
 		if (iswprint(c) && c != L' ' &&
-			!(IsWildcardChar(c) && !(Global::imeMode == IME_MODE::IME_MODE_PHONETIC && c == L'*')))  // Exclude space as it's handled by preserved key
+			(digitRowWantsDigit ||
+			 !(IsWildcardChar(c) && !(Global::imeMode == IME_MODE::IME_MODE_PHONETIC && c == L'*'))))  // Exclude space as it's handled by preserved key
 		{
 			// ① Check if the shifted char is itself a radical — if so, enter composition immediately
 			if (IsVirtualKeyKeystrokeComposition(uCode, pwch, pKeyState, KEYSTROKE_FUNCTION::FUNCTION_NONE))
@@ -794,7 +819,11 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 	if (fComposing || candidateMode == CANDIDATE_MODE::CANDIDATE_INCREMENTAL || candidateMode == CANDIDATE_MODE::CANDIDATE_NONE)
 	{
 		// Bypassing wildcard keys (in Phonetic mode, only ? is valid, not *)
-		if (IsWildcardChar(*pwch) && !(Global::imeMode == IME_MODE::IME_MODE_PHONETIC && *pwch == L'*'))
+		// Numpad NUMERIC pref: numpad keys (incl. VK_MULTIPLY '*' / VK_DIVIDE '/')
+		// output directly to system, even when * / ? would otherwise be a wildcard.
+		if (IsWildcardChar(*pwch) && !(Global::imeMode == IME_MODE::IME_MODE_PHONETIC && *pwch == L'*') &&
+			!(CConfig::GetNumericPad() == NUMERIC_PAD::NUMERIC_PAD_NUMERIC &&
+			  uCode >= VK_NUMPAD0 && uCode <= VK_DIVIDE))
 		{
 			if (pKeyState)
 			{
