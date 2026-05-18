@@ -342,11 +342,44 @@ While `DEBUG_PRINT` and the temporary `DELAYED Z-snap` diagnostic were active du
 - Restored `//#define DEBUG_PRINT` (commented out) in `UIPresenter.cpp`, `CandidateWindow.cpp`, `CandidateHandler.cpp`.
 - Kept the `STAY_ON_TOP_TIMER_ID` constant and the `CCandidateWindow::_Show` TIMERPROC as the permanent landed change.
 
-## Files modified (final)
+## Follow-up: flicker + persistent Firefox coverage when reverse-lookup notify is on (2026-05-18)
+
+### Symptom
+
+After the 2026-05-15 fix shipped, a follow-up screenshot shows: in Firefox with the reverse-lookup notify (e.g. Dayi `0^7^` hint) visible alongside the phrase candidate, the candidate is half-covered by Firefox autocomplete AND flickering. With reverse-lookup notify OFF, the original fix still works correctly.
+
+### Root cause
+
+The TIMERPROC's "skip if no real competitor" check rejected only invisible windows and tiny (≤8×8) system helpers. It did **not** distinguish foreign-process competitors (Firefox `MozillaDropShadowWindowClass`) from our own-process `WS_EX_TOPMOST` windows (notify slots, shadow, scrollbar).
+
+The reverse-lookup notify ([NotifyWindow.cpp:131](../src/NotifyWindow.cpp#L131)) is `WS_EX_TOPMOST`, visible, and well above 8×8 (~60–100 px wide). When stamped TOPMOST at creation, it sits above the candidate in z-order. Every 30 ms the candidate's TIMERPROC walked `GW_HWNDPREV`, found the notify, and called `SetWindowPos(HWND_TOPMOST)`. Each such call cascaded through:
+
+1. Candidate `WM_WINDOWPOSCHANGING` → `_pShadowWnd->_OnOwnerWndMoved` → shadow `SetWindowPos`.
+2. Candidate `WM_WINDOWPOSCHANGED` → `_pShadowWnd->_OnOwnerWndMoved` again.
+
+33 Hz shadow re-stacking — the visible flicker. Worse, the constant re-stamp churn against our own notify wasted the budget that was supposed to win the race against Firefox's autocomplete popup, so items 1–6 of the phrase candidate sat behind the popup.
+
+### Fix
+
+In `CCandidateWindow::_Show`'s TIMERPROC competitor walk ([CandidateWindow.cpp:352-401](../src/CandidateWindow.cpp#L352-L401)), call `GetClassWord(hwnd, GCW_ATOM)` for each candidate competitor and skip windows whose class atom matches one of DIME's registered atoms: `AtomCandidateWindow`, `AtomCandidateShadowWindow`, `AtomCandidateScrollBarWindow`, `AtomNotifyWindow`, `AtomNotifyShadowWindow`. Our own notify / shadow / scrollbar are never real Z-order competitors with the candidate — they're either off-axis (notify is to the left, no visual overlap), or part of the candidate's own visual (shadow, scrollbar).
+
+Only non-DIME `WS_EX_TOPMOST` windows (Firefox `MozillaDropShadowWindowClass`, etc.) now trigger the re-stamp. Visually: notify and candidate coexist with no shadow re-stack churn; Firefox popup still gets out-stamped on each tick.
+
+#### Why PID-based filtering does NOT work here
+
+The first attempt at this follow-up used `GetWindowThreadProcessId` with `GetCurrentProcessId()` as the filter — that's wrong, because **DIME is a TSF IME DLL loaded in-process into the host application (firefox.exe)**. Every window DIME creates while running in Firefox returns Firefox's PID — and so does Firefox's own autocomplete popup. The PID filter therefore skipped Firefox's popup too, and the candidate stopped re-stamping entirely (visible regression: both notify and candidate covered by the Firefox popup, no longer "winning" the race). Class-atom comparison is the correct discriminator because DIME registers its own class atoms regardless of host.
+
+### Files modified (follow-up)
+
+| File | Change |
+|---|---|
+| `src/CandidateWindow.cpp` | Added `GetClassWord(hwnd, GCW_ATOM)` check inside the TIMERPROC's GW_HWNDPREV walk, skipping windows whose class atom is one of DIME's registered atoms. |
+
+## Files modified (cumulative)
 
 | File | Change |
 |---|---|
 | `src/UIConstants.h`     | Added `STAY_ON_TOP_TIMER_ID` and `STAY_ON_TOP_TICK_MS` constants. |
-| `src/CandidateWindow.cpp` | Added raw `SetTimer` / `TIMERPROC` block at the end of `_Show(BOOL)` that re-stamps `HWND_TOPMOST` while visible (with skip-if-no-real-competitor); `KillTimer` on hide. |
+| `src/CandidateWindow.cpp` | Added raw `SetTimer` / `TIMERPROC` block at the end of `_Show(BOOL)` that re-stamps `HWND_TOPMOST` while visible (with skip-if-no-real-foreign-competitor); `KillTimer` on hide. |
 
 No header changes, no preference changes, no new methods.

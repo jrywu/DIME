@@ -354,28 +354,45 @@ void CCandidateWindow::_Show(BOOL isShowWnd)
 				{
 					if (!IsWindow(hwnd) || !IsWindowVisible(hwnd)) return;
 
-					// Only re-stamp when a visible non-trivial window is above us in the
-					// topmost band. Walks GW_HWNDPREV chain and ignores system helpers
-					// (tiny 1x1 rects like ThumbnailDeviceHelperWnd, our own shadow, etc.).
-					// Avoids 33Hz no-op SetWindowPos calls that cascade into shadow
-					// re-stacking and visual flicker.
+					// Only re-stamp when a visible non-trivial NON-DIME window is above
+					// us in the topmost band. Walks GW_HWNDPREV chain and ignores:
+					// (a) system helpers (tiny rects like ThumbnailDeviceHelperWnd),
+					// (b) DIME's own window classes — notify, notify-shadow,
+					// candidate-shadow, scrollbar — identified by class atom.
+					// Note: PID-based filtering would NOT work because DIME is a TSF
+					// IME DLL loaded in-process into the host (firefox.exe), so DIME
+					// windows and Firefox's autocomplete popup share the same PID.
+					// #135 follow-up: with reverse-lookup notify on, our notify
+					// (WS_EX_TOPMOST) sits above the candidate. The pre-fix check
+					// treated it as a competitor and re-stamped every 30 ms, cascading
+					// through WM_WINDOWPOSCHANGED → shadow _OnOwnerWndMoved (visible
+					// flicker) and starving the budget meant to beat Firefox.
 					HWND cur = GetWindow(hwnd, GW_HWNDPREV);
 					int  depth = 0;
 					while (cur && depth < 20)
 					{
 						if (IsWindowVisible(cur))
 						{
-							RECT rc;
-							if (GetWindowRect(cur, &rc))
+							ATOM cls = (ATOM)GetClassWord(cur, GCW_ATOM);
+							BOOL isOurs = (cls == Global::AtomCandidateWindow
+							            || cls == Global::AtomCandidateShadowWindow
+							            || cls == Global::AtomCandidateScrollBarWindow
+							            || cls == Global::AtomNotifyWindow
+							            || cls == Global::AtomNotifyShadowWindow);
+							if (!isOurs)
 							{
-								int w = rc.right - rc.left;
-								int hgt = rc.bottom - rc.top;
-								if (w > 8 && hgt > 8)
+								RECT rc;
+								if (GetWindowRect(cur, &rc))
 								{
-									// Real visible competitor — re-stamp ourselves.
-									SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
-										SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-									return;
+									int w = rc.right - rc.left;
+									int hgt = rc.bottom - rc.top;
+									if (w > 8 && hgt > 8)
+									{
+										// Real non-DIME visible competitor — re-stamp ourselves.
+										SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0,
+											SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+										return;
+									}
 								}
 							}
 						}
