@@ -457,6 +457,28 @@ namespace DIMEUnitTests
             }
         }
 
+        // #136: build the production phrase-selector range
+        //   Printable = '!@#$%^&*()'  (Shift+digit row)
+        //   Index     =  1,2,3,...,9,0  (matches main-row / Numpad digit)
+        //   Modifiers = TF_MOD_SHIFT
+        void SetupPhraseRange(CCandidateRange& range)
+        {
+            range.Clear();
+            const WCHAR keys[] = L"!@#$%^&*()";
+            for (int i = 0; i < 10; i++)
+            {
+                _KEYSTROKE* pks = range.Append();
+                if (pks)
+                {
+                    pks->Printable  = keys[i];
+                    pks->Index      = (i != 9) ? (i + 1) : 0;
+                    pks->VirtualKey = 0;
+                    pks->Modifiers  = TF_MOD_SHIFT;
+                    pks->Function   = KEYSTROKE_FUNCTION::FUNCTION_NONE;
+                }
+            }
+        }
+
     public:
         TEST_METHOD(IsRange_ValidKey_ReturnsTrue)
         {
@@ -492,7 +514,7 @@ namespace DIMEUnitTests
         {
             CCandidateRange range;
             SetupRange(range, L"1234567890", 10);
-            int idx = range.GetIndex('3', L'3', CANDIDATE_MODE::CANDIDATE_ORIGINAL);
+            int idx = range.GetIndex('3', L'3', 0, CANDIDATE_MODE::CANDIDATE_ORIGINAL);
             Assert::AreEqual(2, idx);
         }
 
@@ -500,7 +522,7 @@ namespace DIMEUnitTests
         {
             CCandidateRange range;
             SetupRange(range, L"1234567890", 10);
-            int idx = range.GetIndex('z', L'z', CANDIDATE_MODE::CANDIDATE_ORIGINAL);
+            int idx = range.GetIndex('z', L'z', 0, CANDIDATE_MODE::CANDIDATE_ORIGINAL);
             Assert::AreEqual(-1, idx);
         }
 
@@ -508,7 +530,7 @@ namespace DIMEUnitTests
         {
             CCandidateRange range;
             SetupRange(range, L"1234567890", 10);
-            int idx = range.GetIndex('1', L'1', CANDIDATE_MODE::CANDIDATE_NONE);
+            int idx = range.GetIndex('1', L'1', 0, CANDIDATE_MODE::CANDIDATE_NONE);
             Assert::AreEqual(-1, idx);
         }
 
@@ -516,8 +538,96 @@ namespace DIMEUnitTests
         {
             CCandidateRange range;
             SetupRange(range, L"1234567890", 10);
-            int idx = range.GetIndex(VK_NUMPAD2, 0, CANDIDATE_MODE::CANDIDATE_ORIGINAL);
+            int idx = range.GetIndex(VK_NUMPAD2, 0, 0, CANDIDATE_MODE::CANDIDATE_ORIGINAL);
             Assert::AreEqual(2, idx);
+        }
+
+        // ----- #136 phrase-selector + NumericPad pref-gated modifier check -----
+
+        TEST_METHOD(Issue136_PhraseMode_CompositionOnly_NumpadNoShift_ReturnsNeg1)
+        {
+            CCandidateRange range;
+            SetupPhraseRange(range);
+            NUMERIC_PAD prev = CConfig::GetNumericPad();
+            CConfig::SetNumericPad(NUMERIC_PAD::NUMERIC_PAD_NUMERIC_COMPOSITION_ONLY);
+            // VK_NUMPAD1, wch='1', no modifier — should NOT match phrase entry 0
+            Assert::IsFalse(range.IsRange(VK_NUMPAD1, L'1', 0, CANDIDATE_MODE::CANDIDATE_PHRASE) == TRUE);
+            int idx = range.GetIndex(VK_NUMPAD1, L'1', 0, CANDIDATE_MODE::CANDIDATE_PHRASE);
+            Assert::AreEqual(-1, idx);
+            CConfig::SetNumericPad(prev);
+        }
+
+        TEST_METHOD(Issue136_PhraseMode_CompositionOnly_NumpadWithShift_ReturnsIndex0)
+        {
+            CCandidateRange range;
+            SetupPhraseRange(range);
+            NUMERIC_PAD prev = CConfig::GetNumericPad();
+            CConfig::SetNumericPad(NUMERIC_PAD::NUMERIC_PAD_NUMERIC_COMPOSITION_ONLY);
+            // VK_NUMPAD1, wch='1', Shift held — should match phrase entry 0
+            Assert::IsTrue(range.IsRange(VK_NUMPAD1, L'1', TF_MOD_SHIFT, CANDIDATE_MODE::CANDIDATE_PHRASE) == TRUE);
+            int idx = range.GetIndex(VK_NUMPAD1, L'1', TF_MOD_SHIFT, CANDIDATE_MODE::CANDIDATE_PHRASE);
+            Assert::AreEqual(0, idx);
+            CConfig::SetNumericPad(prev);
+        }
+
+        TEST_METHOD(Issue136_PhraseMode_Numeric_NumpadNoShift_StillSelects)
+        {
+            CCandidateRange range;
+            SetupPhraseRange(range);
+            NUMERIC_PAD prev = CConfig::GetNumericPad();
+            CConfig::SetNumericPad(NUMERIC_PAD::NUMERIC_PAD_NUMERIC);
+            // Pre-existing behaviour preserved: under NUMERIC pref, plain Numpad still
+            // matches phrase entry by Index. (The fix is intentionally scoped to
+            // NUMERIC_COMPOSITION_ONLY to avoid surprising users on other prefs.)
+            int idx = range.GetIndex(VK_NUMPAD1, L'1', 0, CANDIDATE_MODE::CANDIDATE_PHRASE);
+            Assert::AreEqual(0, idx);
+            CConfig::SetNumericPad(prev);
+        }
+
+        TEST_METHOD(Issue136_PhraseMode_Composition_NumpadNoShift_StillSelects)
+        {
+            CCandidateRange range;
+            SetupPhraseRange(range);
+            NUMERIC_PAD prev = CConfig::GetNumericPad();
+            CConfig::SetNumericPad(NUMERIC_PAD::NUMERIC_PAD_NUMERIC_COMPOSITION);
+            int idx = range.GetIndex(VK_NUMPAD1, L'1', 0, CANDIDATE_MODE::CANDIDATE_PHRASE);
+            Assert::AreEqual(0, idx);
+            CConfig::SetNumericPad(prev);
+        }
+
+        TEST_METHOD(Issue136_PhraseMode_MainRowShifted_AnyPref_ReturnsIndex0)
+        {
+            CCandidateRange range;
+            SetupPhraseRange(range);
+            // Main-row Shift+1 produces wch='!'. Printable branch matches independent of pref.
+            NUMERIC_PAD prev = CConfig::GetNumericPad();
+            CConfig::SetNumericPad(NUMERIC_PAD::NUMERIC_PAD_NUMERIC_COMPOSITION_ONLY);
+            int idx = range.GetIndex('1', L'!', TF_MOD_SHIFT, CANDIDATE_MODE::CANDIDATE_PHRASE);
+            Assert::AreEqual(0, idx);
+            CConfig::SetNumericPad(prev);
+        }
+
+        TEST_METHOD(Issue136_PhraseMode_MainRowPlainDigit_ReturnsNeg1)
+        {
+            CCandidateRange range;
+            SetupPhraseRange(range);
+            // Main-row plain '1' (Printable='1') already doesn't match phrase Printable '!'.
+            // Pin this against future regressions in the Printable branch.
+            int idx = range.GetIndex('1', L'1', 0, CANDIDATE_MODE::CANDIDATE_PHRASE);
+            Assert::AreEqual(-1, idx);
+        }
+
+        TEST_METHOD(Issue136_OriginalMode_CompositionOnly_NumpadNoShift_StillSelects)
+        {
+            // Main-candidate range stores Modifiers=0, so the gate is a no-op even under
+            // NUMERIC_PAD_NUMERIC_COMPOSITION_ONLY. Numpad continues to select normally.
+            CCandidateRange range;
+            SetupRange(range, L"1234567890", 10);
+            NUMERIC_PAD prev = CConfig::GetNumericPad();
+            CConfig::SetNumericPad(NUMERIC_PAD::NUMERIC_PAD_NUMERIC_COMPOSITION_ONLY);
+            int idx = range.GetIndex(VK_NUMPAD2, 0, 0, CANDIDATE_MODE::CANDIDATE_ORIGINAL);
+            Assert::AreEqual(2, idx);
+            CConfig::SetNumericPad(prev);
         }
     };
 }

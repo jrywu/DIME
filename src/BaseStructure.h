@@ -375,7 +375,7 @@ public:
     ~CCandidateRange(void);
 
     BOOL IsRange(UINT vKey, WCHAR Printable, UINT Modifiers, CANDIDATE_MODE candidateMode);
-    int GetIndex(UINT vKey, WCHAR Printable, CANDIDATE_MODE candidateMode);
+    int GetIndex(UINT vKey, WCHAR Printable, UINT Modifiers, CANDIDATE_MODE candidateMode);
 
     inline int Count() const 
     { 

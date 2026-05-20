@@ -273,6 +273,8 @@ BOOL CCandidateRange::IsRange(UINT vKey, WCHAR Printable, UINT Modifiers, CANDID
 	debugPrint(L"CCandidateRange::IsRange(): vKey = %d, Modifiers = %d, candiMode = %d. ", vKey, Modifiers, candidateMode);
 	if (candidateMode != CANDIDATE_MODE::CANDIDATE_NONE)
 	{
+		const bool gateNumpadByModifier =
+			(CConfig::GetNumericPad() == NUMERIC_PAD::NUMERIC_PAD_NUMERIC_COMPOSITION_ONLY);
 		for (UINT i = 0; i < _CandidateListIndexRange.Count(); i++)
 		{
 			if (Printable == _CandidateListIndexRange.GetAt(i)->Printable)
@@ -286,6 +288,17 @@ BOOL CCandidateRange::IsRange(UINT vKey, WCHAR Printable, UINT Modifiers, CANDID
 			{
 				if ((vKey - VK_NUMPAD0) == _CandidateListIndexRange.GetAt(i)->Index)
 				{
+					// #136: Under "Numpad for radicals only" the user has declared Numpad
+					// to be radical-intent. Enforce the entry's required Modifiers so
+					// plain Numpad does not bypass the Shift gate on phrase selkeys.
+					// Main-candidate entries store Modifiers=0 — gate is a no-op.
+					// Other NumericPad prefs preserve today's behaviour.
+					if (gateNumpadByModifier)
+					{
+						const UINT required = _CandidateListIndexRange.GetAt(i)->Modifiers;
+						if ((Modifiers & required) != required)
+							continue;
+					}
 					return TRUE;
 				}
 			}
@@ -295,11 +308,13 @@ BOOL CCandidateRange::IsRange(UINT vKey, WCHAR Printable, UINT Modifiers, CANDID
 
 }
 
-int CCandidateRange::GetIndex(UINT vKey, WCHAR Printable, CANDIDATE_MODE candidateMode)
+int CCandidateRange::GetIndex(UINT vKey, WCHAR Printable, UINT Modifiers, CANDIDATE_MODE candidateMode)
 {
-	debugPrint(L"CCandidateRange::GetIndex(): vKey = %d, candidateMode = %d ", vKey, candidateMode);
+	debugPrint(L"CCandidateRange::GetIndex(): vKey = %d, Modifiers = %d, candidateMode = %d ", vKey, Modifiers, candidateMode);
 	if(candidateMode != CANDIDATE_MODE::CANDIDATE_NONE)
 	{
+		const bool gateNumpadByModifier =
+			(CConfig::GetNumericPad() == NUMERIC_PAD::NUMERIC_PAD_NUMERIC_COMPOSITION_ONLY);
 		for (UINT i = 0; i < _CandidateListIndexRange.Count(); i++)
 		{
 			if (Printable == _CandidateListIndexRange.GetAt(i)->Printable)
@@ -310,6 +325,13 @@ int CCandidateRange::GetIndex(UINT vKey, WCHAR Printable, CANDIDATE_MODE candida
 			{
 				if ((vKey - VK_NUMPAD0) == _CandidateListIndexRange.GetAt(i)->Index)
 				{
+					// #136: see IsRange — same pref-gated modifier check.
+					if (gateNumpadByModifier)
+					{
+						const UINT required = _CandidateListIndexRange.GetAt(i)->Modifiers;
+						if ((Modifiers & required) != required)
+							continue;
+					}
 					return i;
 				}
 			}
