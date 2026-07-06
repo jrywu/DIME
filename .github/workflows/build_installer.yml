@@ -62,10 +62,9 @@ jobs:
             "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
             "Microsoft.VisualStudio.Component.VC.Tools.ARM64",
             "Microsoft.VisualStudio.Component.VC.Tools.ARM64EC",
-            "Microsoft.VisualStudio.Component.VC.14.44.17.14.x86.x64.Spectre",
-            "Microsoft.VisualStudio.Component.VC.14.44.17.14.ARM64.Spectre",
             "Microsoft.VisualStudio.Component.VC.Runtimes.x86.x64.Spectre",
-            "Microsoft.VisualStudio.Component.VC.Runtimes.ARM64.Spectre"
+            "Microsoft.VisualStudio.Component.VC.Runtimes.ARM64.Spectre",
+            "Microsoft.VisualStudio.Component.VC.Runtimes.ARM64EC.Spectre"
           )
 
           $arguments = @(
@@ -87,18 +86,17 @@ jobs:
           }
 
           $vcToolsRoot = Join-Path $vsInstallPath "VC\Tools\MSVC"
-          $v143Tools = Get-ChildItem -Path $vcToolsRoot -Directory |
-            Where-Object { $_.Name -like "14.44.*" } |
-            Sort-Object Name -Descending |
+          $latestTools = Get-ChildItem -Path $vcToolsRoot -Directory |
+            Sort-Object { [version]$_.Name } -Descending |
             Select-Object -First 1
-          if (-not $v143Tools) {
-            throw "MSVC v143 14.44 toolset not found under $vcToolsRoot."
+          if (-not $latestTools) {
+            throw "MSVC toolset not found under $vcToolsRoot."
           }
 
-          foreach ($arch in @("x86", "x64", "arm64")) {
-            $spectreDir = Join-Path $v143Tools.FullName "lib\spectre\$arch"
+          foreach ($arch in @("x86", "x64", "arm64", "arm64ec")) {
+            $spectreDir = Join-Path $latestTools.FullName "lib\spectre\$arch"
             if (-not (Test-Path $spectreDir)) {
-              throw "MSVC v143 Spectre libraries missing: $spectreDir"
+              throw "MSVC Spectre libraries missing: $spectreDir"
             }
           }
 
@@ -114,7 +112,7 @@ jobs:
           )
 
           foreach ($build in $builds) {
-            msbuild DIME.sln /p:Configuration=Release "/p:Platform=$($build.Platform)" /p:PlatformToolset=v143 "/t:$($build.Target)"
+            msbuild DIME.sln /p:Configuration=Release "/p:Platform=$($build.Platform)" "/t:$($build.Target)"
             if ($LASTEXITCODE -ne 0) {
               exit $LASTEXITCODE
             }
