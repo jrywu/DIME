@@ -43,18 +43,65 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      
+
       - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@v2
-      
+
+      - name: Install MSVC Spectre libraries
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $vsWhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vsInstallPath = & $vsWhere -latest -products * -requires Microsoft.Component.MSBuild -property installationPath
+          if (-not $vsInstallPath) {
+            throw "Visual Studio installation not found."
+          }
+
+          $setup = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\setup.exe"
+          $components = @(
+            "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+            "Microsoft.VisualStudio.Component.VC.Tools.ARM64",
+            "Microsoft.VisualStudio.Component.VC.Tools.ARM64EC",
+            "Microsoft.VisualStudio.Component.VC.Runtimes.x86.x64.Spectre",
+            "Microsoft.VisualStudio.Component.VC.Runtimes.ARM64.Spectre"
+          )
+
+          $arguments = @(
+            "modify",
+            "--installPath", $vsInstallPath,
+            "--quiet",
+            "--norestart",
+            "--nocache"
+          )
+          foreach ($component in $components) {
+            $arguments += @("--add", $component)
+          }
+
+          & $setup @arguments
+          if ($LASTEXITCODE -eq 3010) {
+            Write-Host "Visual Studio Installer requested a reboot; continuing on the hosted runner."
+          } elseif ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+
       - name: Build All Platforms (Release)
+        shell: pwsh
         run: |
           cd src
-          msbuild DIME.sln /p:Configuration=Release /p:Platform=Win32 /p:PlatformToolset=v143 /t:DIME
-          msbuild DIME.sln /p:Configuration=Release /p:Platform=x64 /p:PlatformToolset=v143 /t:DIME
-          msbuild DIME.sln /p:Configuration=Release /p:Platform=ARM64 /p:PlatformToolset=v143 /t:DIME
-          msbuild DIME.sln /p:Configuration=Release /p:Platform=Win32 /p:PlatformToolset=v143 /t:DIMESettings
-      
+          $builds = @(
+            @{ Platform = "Win32"; Target = "DIME" },
+            @{ Platform = "x64"; Target = "DIME" },
+            @{ Platform = "ARM64"; Target = "DIME" },
+            @{ Platform = "Win32"; Target = "DIMESettings" }
+          )
+
+          foreach ($build in $builds) {
+            msbuild DIME.sln /p:Configuration=Release "/p:Platform=$($build.Platform)" /p:PlatformToolset=v143 "/t:$($build.Target)"
+            if ($LASTEXITCODE -ne 0) {
+              exit $LASTEXITCODE
+            }
+          }
+
       - name: Install WiX Toolset v6
         run: |
           dotnet tool install --global wix --version 6.0.2
@@ -65,10 +112,10 @@ jobs:
       - name: Build Installer with PowerShell Script
         run: |
           cd installer
-          ./deploy-wix-installer.ps1
+          ./deploy-wix-installer.ps1 -NonInteractive
         shell: pwsh
-      
-      
+
+
       - name: Commit test files
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"

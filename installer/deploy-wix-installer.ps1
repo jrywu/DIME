@@ -70,13 +70,25 @@ $filesToCopy = @(
     @{Source = "..\src\Release\Win32\DIME.dll"; Dest = "..\Installer\x86\"; Desc = "x86 DLL"}
 )
 
+$missingArtifacts = @()
 foreach ($file in $filesToCopy) {
     if (Test-Path $file.Source) {
         Copy-Item -Path $file.Source -Destination $file.Dest -Force
         Write-Host "  Copied: $($file.Desc)" -ForegroundColor Green
     } else {
-        Write-Host "  WARNING: $($file.Source) not found!" -ForegroundColor Red
+        Write-Host "  ERROR: $($file.Source) not found!" -ForegroundColor Red
+        $missingArtifacts += $file.Source
     }
+}
+
+if ($missingArtifacts.Count -gt 0) {
+    Write-Host ""
+    Write-Host "ERROR: Required build artifacts are missing; aborting before WiX build." -ForegroundColor Red
+    foreach ($missing in $missingArtifacts) {
+        Write-Host "  Missing: $missing" -ForegroundColor Red
+    }
+    if (-not $NonInteractive) { Read-Host "Press Enter to exit" }
+    exit 1
 }
 
 # ==============================================================================
