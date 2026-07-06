@@ -210,6 +210,38 @@ namespace DIMEIntegratedTests
             Logger::WriteMessage("SUCCESS: Escape key processed\n");
         }
 
+        TEST_METHOD(Issue142_PhraseEscape_IsEatenAsCandidateCancel)
+        {
+            CCompositionProcessorEngine engine(nullptr);
+            _KEYSTROKE_STATE state;
+            WCHAR wch = 0;
+
+            BOOL eaten = engine.IsVirtualKeyNeed(VK_ESCAPE, &wch, FALSE,
+                CANDIDATE_MODE::CANDIDATE_PHRASE, FALSE, 1, -1, &state);
+
+            Assert::IsTrue(eaten == TRUE,
+                L"Esc must be eaten while an associated phrase candidate is active.");
+            Assert::IsTrue(state.Category == KEYSTROKE_CATEGORY::CATEGORY_CANDIDATE,
+                L"Esc in phrase mode must route to candidate cancel, not app pass-through.");
+            Assert::IsTrue(state.Function == KEYSTROKE_FUNCTION::FUNCTION_CANCEL,
+                L"Esc in phrase mode must cancel the phrase candidate.");
+        }
+
+        TEST_METHOD(Issue142_PhraseShiftOnly_DoesNotCancelCandidate)
+        {
+            CCompositionProcessorEngine engine(nullptr);
+            _KEYSTROKE_STATE state;
+            WCHAR wch = 0;
+
+            BOOL eaten = engine.IsVirtualKeyNeed(VK_SHIFT, &wch, FALSE,
+                CANDIDATE_MODE::CANDIDATE_PHRASE, FALSE, 1, -1, &state);
+
+            Assert::IsFalse(eaten == TRUE,
+                L"Bare Shift should not be eaten as an associated-phrase cancel.");
+            Assert::IsFalse(state.Function == KEYSTROKE_FUNCTION::FUNCTION_CANCEL,
+                L"Bare Shift must only update modifier state for the following printable key.");
+        }
+
         TEST_METHOD(IT05_01_ProcessSpaceKey_TriggersCandidates)
         {
             Logger::WriteMessage("Test: IT05_01_ProcessSpaceKey_TriggersCandidates\n");

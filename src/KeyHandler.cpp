@@ -522,6 +522,7 @@ HRESULT CDIME::_HandleCompositionDoubleSingleByte(TfEditCookie ec, _In_ ITfConte
 HRESULT CDIME::_HandleCompositionShiftEnglishInput(TfEditCookie ec, _In_ ITfContext *pContext, UINT code, WCHAR wch)
 {
     HRESULT hr = S_OK;
+    const BOOL wasPhraseCandidate = (_candidateMode == CANDIDATE_MODE::CANDIDATE_PHRASE);
 
     // If candidate list is present, finalize it (selects highlighted/default candidate;
     // for associated phrase with no selection, this dismisses it).
@@ -558,7 +559,7 @@ HRESULT CDIME::_HandleCompositionShiftEnglishInput(TfEditCookie ec, _In_ ITfCont
             break;
         }
     }
-    else
+    else if (!wasPhraseCandidate)
     {
         // Other symbol keys: CapsLock OFF → base char, CapsLock ON → shifted char
         // Note: Space is unaffected by CapsLock/Shift - ToUnicodeEx always returns space

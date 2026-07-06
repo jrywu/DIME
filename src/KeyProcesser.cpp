@@ -629,7 +629,7 @@ BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCH
 	}
     // cancel associated phrase with anykey except shift
 	if (candidateMode == CANDIDATE_MODE::CANDIDATE_PHRASE
-	&& !(GetCandidateListPhraseModifier() == 0 && uCode == VK_SHIFT))
+	&& uCode != VK_SHIFT)
 	{
 	if (pKeyState)
 	{

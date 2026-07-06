@@ -403,7 +403,8 @@ STDAPI CDIME::OnTestKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, 
         KeystrokeState.Category = KEYSTROKE_CATEGORY::CATEGORY_COMPOSING;
         _InvokeKeyHandler(pContext, code, wch, (DWORD)lParam, KeystrokeState);
     }
-	else if (KeystrokeState.Category == KEYSTROKE_CATEGORY::CATEGORY_CANDIDATE
+	else if (!*pIsEaten
+        && KeystrokeState.Category == KEYSTROKE_CATEGORY::CATEGORY_CANDIDATE
         && KeystrokeState.Function == KEYSTROKE_FUNCTION::FUNCTION_CANCEL) //cancel associated phrase with anykey.
 	{
 		_InvokeKeyHandler(pContext, code, wch, (DWORD)lParam, KeystrokeState);
@@ -444,7 +445,10 @@ STDAPI CDIME::OnKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL
         //
         // Invoke key handler edit session
         //
-        if (code == VK_ESCAPE)
+        if (code == VK_ESCAPE &&
+            !(_candidateMode == CANDIDATE_MODE::CANDIDATE_PHRASE &&
+              KeystrokeState.Category == KEYSTROKE_CATEGORY::CATEGORY_CANDIDATE &&
+              KeystrokeState.Function == KEYSTROKE_FUNCTION::FUNCTION_CANCEL))
         {
             KeystrokeState.Category = KEYSTROKE_CATEGORY::CATEGORY_COMPOSING;
         }
