@@ -92,7 +92,9 @@
     <ClInclude Include="UIACaretTracker.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ActiveLanguageProfileNotifySink.cpp" />
+    <ClCompile Include="ActiveLanguageProfileNotifySink.cpp">
+      <PreprocessorDefinitions Condition="'$(DiagnosticLogging)'=='true'">DEBUG_PRINT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
     <ClCompile Include="BaseWindow.cpp" />
     <ClCompile Include="ButtonWindow.cpp" />
     <ClCompile Include="CandidateHandler.cpp" />
@@ -100,7 +102,9 @@
     <ClCompile Include="Config.cpp" />
     <ClCompile Include="ConfigDialog.cpp" />
     <ClCompile Include="Compartment.cpp" />
-    <ClCompile Include="Composition.cpp" />
+    <ClCompile Include="Composition.cpp">
+      <PreprocessorDefinitions Condition="'$(DiagnosticLogging)'=='true'">DEBUG_PRINT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
     <ClCompile Include="CompositionProcessorEngine.cpp" />
     <ClCompile Include="EnumTfCandidates.cpp" />
     <ClCompile Include="KeyProcesser.cpp" />
@@ -117,35 +121,55 @@
     <ClCompile Include="DisplayAttributeProvider.cpp" />
     <ClCompile Include="DllMain.cpp" />
     <ClCompile Include="EditSession.cpp" />
-    <ClCompile Include="EndComposition.cpp" />
+    <ClCompile Include="EndComposition.cpp">
+      <PreprocessorDefinitions Condition="'$(DiagnosticLogging)'=='true'">DEBUG_PRINT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
     <ClCompile Include="EnumDisplayAttributeInfo.cpp" />
     <ClCompile Include="File.cpp" />
     <ClCompile Include="FunctionProviderSink.cpp" />
     <ClCompile Include="GetTextExtentEditSession.cpp" />
     <ClCompile Include="Globals.cpp" />
-    <ClCompile Include="KeyEventSink.cpp" />
+    <ClCompile Include="KeyEventSink.cpp">
+      <PreprocessorDefinitions Condition="'$(DiagnosticLogging)'=='true'">DEBUG_PRINT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
     <ClCompile Include="KeyHandler.cpp" />
     <ClCompile Include="KeyHandlerEditSession.cpp" />
     <ClCompile Include="LanguageBar.cpp" />
     <ClCompile Include="Register.cpp" />
     <ClCompile Include="RegKey.cpp" />
     <ClCompile Include="ScrollBarWindow.cpp" />
-    <ClCompile Include="Server.cpp" />
+    <ClCompile Include="Server.cpp">
+      <PreprocessorDefinitions Condition="'$(DiagnosticLogging)'=='true'">DEBUG_PRINT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
     <ClCompile Include="SetupCompositionProcesseorEngine.cpp" />
     <ClCompile Include="ShadowWindow.cpp" />
     <ClCompile Include="ShowConfig.cpp" />
-    <ClCompile Include="StartComposition.cpp" />
+    <ClCompile Include="StartComposition.cpp">
+      <PreprocessorDefinitions Condition="'$(DiagnosticLogging)'=='true'">DEBUG_PRINT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
     <ClCompile Include="TableDictionaryEngine.cpp" />
-    <ClCompile Include="DIME.cpp" />
-    <ClCompile Include="TextEditSink.cpp" />
+    <ClCompile Include="DIME.cpp">
+      <PreprocessorDefinitions Condition="'$(DiagnosticLogging)'=='true'">DEBUG_PRINT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="TextEditSink.cpp">
+      <PreprocessorDefinitions Condition="'$(DiagnosticLogging)'=='true'">DEBUG_PRINT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
     <ClCompile Include="TfInputProcessorProfile.cpp" />
-    <ClCompile Include="TfTextLayoutSink.cpp" />
-    <ClCompile Include="ThreadFocusSink.cpp" />
-    <ClCompile Include="ThreadMgrEventSink.cpp" />
+    <ClCompile Include="TfTextLayoutSink.cpp">
+      <PreprocessorDefinitions Condition="'$(DiagnosticLogging)'=='true'">DEBUG_PRINT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="ThreadFocusSink.cpp">
+      <PreprocessorDefinitions Condition="'$(DiagnosticLogging)'=='true'">DEBUG_PRINT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="ThreadMgrEventSink.cpp">
+      <PreprocessorDefinitions Condition="'$(DiagnosticLogging)'=='true'">DEBUG_PRINT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
     <ClCompile Include="TipCandidateList.cpp" />
     <ClCompile Include="TipCandidateString.cpp" />
     <ClCompile Include="UIPresenter.cpp" />
-    <ClCompile Include="UIACaretTracker.cpp" />
+    <ClCompile Include="UIACaretTracker.cpp">
+      <PreprocessorDefinitions Condition="'$(DiagnosticLogging)'=='true'">DEBUG_PRINT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DIME.rc" />

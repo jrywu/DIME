@@ -32,6 +32,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <map>
+#include <ShlObj.h>
+#include <Shlwapi.h>
+#include <strsafe.h>
+#include <stdarg.h>
+#include <stdio.h>
+
+#define DEBUG_PRINT_IMPLEMENTATION
 #include "Globals.h"
 #include "Private.h"
 #include "resource.h"
@@ -39,6 +46,66 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "define.h"
 #include "BaseStructure.h"
 
+static SRWLOCK debugLogLock = SRWLOCK_INIT;
+static FILE* debugLogFile = nullptr;
+
+void debugPrint(const WCHAR* format, ...)
+{
+    AcquireSRWLockExclusive(&debugLogLock);
+
+    if (debugLogFile == nullptr)
+    {
+        WCHAR appData[MAX_PATH] = {};
+        if (!SHGetSpecialFolderPathW(nullptr, appData, CSIDL_APPDATA, TRUE))
+        {
+            ReleaseSRWLockExclusive(&debugLogLock);
+            return;
+        }
+
+        WCHAR logDirectory[MAX_PATH] = {};
+        StringCchPrintfW(logDirectory, ARRAYSIZE(logDirectory), L"%s\\DIME", appData);
+        if (!PathFileExists(logDirectory) &&
+            !CreateDirectoryW(logDirectory, nullptr) &&
+            GetLastError() != ERROR_ALREADY_EXISTS)
+        {
+            ReleaseSRWLockExclusive(&debugLogLock);
+            return;
+        }
+
+        WCHAR executablePath[MAX_PATH] = {};
+        WCHAR executableName[MAX_PATH] = L"host";
+        if (GetModuleFileNameW(nullptr, executablePath, ARRAYSIZE(executablePath)) != 0)
+        {
+            StringCchCopyW(executableName, ARRAYSIZE(executableName), PathFindFileNameW(executablePath));
+            PathRemoveExtensionW(executableName);
+        }
+
+        WCHAR logPath[MAX_PATH] = {};
+        StringCchPrintfW(logPath, ARRAYSIZE(logPath), L"%s\\debug-%s-%lu.txt",
+            logDirectory, executableName, GetCurrentProcessId());
+        _wfopen_s(&debugLogFile, logPath, L"a, ccs=UTF-8");
+    }
+
+    if (debugLogFile != nullptr)
+    {
+        WCHAR message[4096] = {};
+        va_list args;
+        va_start(args, format);
+        StringCchVPrintfW(message, ARRAYSIZE(message), format, args);
+        va_end(args);
+
+        SYSTEMTIME timestamp = {};
+        GetLocalTime(&timestamp);
+        fwprintf_s(debugLogFile,
+            L"[%04u-%02u-%02u %02u:%02u:%02u.%03u pid=%lu tid=%lu] %s\n",
+            timestamp.wYear, timestamp.wMonth, timestamp.wDay,
+            timestamp.wHour, timestamp.wMinute, timestamp.wSecond, timestamp.wMilliseconds,
+            GetCurrentProcessId(), GetCurrentThreadId(), message);
+        fflush(debugLogFile);
+    }
+
+    ReleaseSRWLockExclusive(&debugLogLock);
+}
 
 namespace Global {
 

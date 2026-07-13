@@ -229,3 +229,5 @@ DIME.VC.db
 /.vscode
 /.omc
 /src/.omc
+
+/installer/logging-output/
