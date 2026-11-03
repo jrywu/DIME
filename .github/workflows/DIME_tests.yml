@@ -36,7 +36,7 @@ jobs:
             exit 0
           }
           # Check for source changes in last 24 hours
-          $changes = git log --since="24 hours ago" --name-only --pretty=format: -- 'src/**/*.cpp' 'src/**/*.h' 'src/**/*.rc' 'src/**/*.def' 'src/**/*.sln' 'src/**/*.vcxproj' 'src/**/*.vcxproj.filters' | Sort-Object -Unique | Where-Object { $_ -ne "" }
+          $changes = git log --since="24 hours ago" --name-only --pretty=format: -- 'src/**/*.cpp' 'src/**/*.h' 'src/**/*.rc' 'src/**/*.def' 'src/**/*.sln' 'src/**/*.vcxproj' 'src/**/*.vcxproj.filters' 'rust/**/*.rs' 'rust/**/Cargo.toml' 'rust/Cargo.lock' 'rust/**/*.h' | Sort-Object -Unique | Where-Object { $_ -ne "" }
           if ($changes) {
             Write-Host "Source changes detected in last 24 hours"
             echo "should-run=true" >> $env:GITHUB_OUTPUT
@@ -59,6 +59,14 @@ jobs:
         uses: microsoft/setup-msbuild@v2
       - name: Setup VSTest
         uses: darenm/Setup-VSTest@v1.3
+      - name: Setup Rust (dime-ffi for RustParityTest)
+        shell: pwsh
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup target add i686-pc-windows-msvc x86_64-pc-windows-msvc
+      - name: Rust unit tests
+        if: matrix.platform == 'x64' && matrix.configuration == 'Debug'
+        run: cargo test --locked --manifest-path rust/Cargo.toml
       - name: Build
         run: |
           cd src

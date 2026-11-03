@@ -251,6 +251,21 @@ protected:
     HRESULT HandleKeySelectByNumber(KeyHandlerEditSessionDTO dto);
 };
 
+// sentence mode: keys acting on the pending sentence (no reading, no candidates)
+class CKeyStateSentence : public CKeyStateCategory
+{
+public:
+    CKeyStateSentence(_In_ CDIME *pTextService) : CKeyStateCategory(pTextService) {};
+
+protected:
+    // Enter / Space: commit the sentence
+    HRESULT HandleKeyConvert(KeyHandlerEditSessionDTO dto);
+    // Backspace / Delete: remove a character
+    HRESULT HandleKeyBackspace(KeyHandlerEditSessionDTO dto);
+    // Left / Right / Home / End move the cursor, Down opens the candidates
+    HRESULT HandleKeyArrow(KeyHandlerEditSessionDTO dto);
+};
+
 //degeneration class
 class CKeyStateNull : public CKeyStateCategory
 {

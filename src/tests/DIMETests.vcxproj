@@ -368,6 +368,18 @@
     <ClCompile Include="DpiScalingTest.cpp" />
     <ClCompile Include="SettingsControllerTest.cpp" />
     <ClCompile Include="RichEditViewportTest.cpp" />
+    <ClCompile Include="RustParityTest.cpp" />
+    <ClCompile Include="RustEngineAdapterTest.cpp" />
+    <ClCompile Include="..\RustTableDictionaryEngine.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\SentenceBuffer.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\SentenceHandler.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="SentenceBufferTest.cpp" />
     <ClCompile Include="..\DIMESettings\SettingsPageLayout.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
@@ -925,6 +937,35 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|ARM64EC'">NotUsing</PrecompiledHeader>
     </ClCompile>
   </ItemGroup>
+  <!--
+    Rust migration (phase 2): build rust/crates/dime-ffi as a static library and link it
+    so that RustParityTest.cpp can compare the C++ and Rust dictionary engines.
+    Only Win32/x64 have a matching Rust target here; other platforms skip the parity tests.
+  -->
+  <PropertyGroup Label="DimeRust">
+    <DimeRustRoot>$(ProjectDir)..\..\rust\</DimeRustRoot>
+    <DimeRustTarget Condition="'$(Platform)'=='Win32'">i686-pc-windows-msvc</DimeRustTarget>
+    <DimeRustTarget Condition="'$(Platform)'=='x64'">x86_64-pc-windows-msvc</DimeRustTarget>
+    <DimeRustEnabled Condition="'$(DimeRustTarget)'!=''">true</DimeRustEnabled>
+    <DimeRustLibDir>$(DimeRustRoot)target\$(DimeRustTarget)\release\</DimeRustLibDir>
+    <DimeCargo Condition="Exists('$(USERPROFILE)\.cargo\bin\cargo.exe')">"$(USERPROFILE)\.cargo\bin\cargo.exe"</DimeCargo>
+    <DimeCargo Condition="'$(DimeCargo)'==''">cargo</DimeCargo>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(DimeRustEnabled)'=='true'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(DimeRustRoot)crates\dime-ffi\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>DIME_RUST_AVAILABLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>$(DimeRustLibDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>dime_ffi.lib;ntdll.lib;userenv.lib;ws2_32.lib;dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <!-- Rust links against the release CRT; Debug builds use the debug CRT instead. -->
+      <IgnoreSpecificDefaultLibraries Condition="'$(Configuration)'=='Debug'">msvcrt.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+    </Link>
+  </ItemDefinitionGroup>
+  <Target Name="BuildDimeRust" BeforeTargets="ClCompile" Condition="'$(DimeRustEnabled)'=='true'">
+    <Exec Command="$(DimeCargo) build --release --locked -p dime-ffi --target $(DimeRustTarget) --manifest-path &quot;$(DimeRustRoot)Cargo.toml&quot;" />
+  </Target>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

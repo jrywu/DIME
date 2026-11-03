@@ -146,6 +146,12 @@
     <ClInclude Include="TableDictionaryEngine.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="RustTableDictionaryEngine.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SentenceBuffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="TfInputProcessorProfile.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -231,6 +237,15 @@
     </ClCompile>
     <ClCompile Include="TableDictionaryEngine.cpp">
       <Filter>Source Files\TextService\IMInterface\Dictionary</Filter>
+    </ClCompile>
+    <ClCompile Include="RustTableDictionaryEngine.cpp">
+      <Filter>Source Files\TextService\IMInterface\Dictionary</Filter>
+    </ClCompile>
+    <ClCompile Include="SentenceBuffer.cpp">
+      <Filter>Source Files\TextService\IMInterface\Dictionary</Filter>
+    </ClCompile>
+    <ClCompile Include="SentenceHandler.cpp">
+      <Filter>Source Files\TextService\IMInterface\Handler</Filter>
     </ClCompile>
     <ClCompile Include="Compartment.cpp">
       <Filter>Source Files\TextService\LanguageBar</Filter>

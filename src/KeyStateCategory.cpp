@@ -73,6 +73,10 @@ CKeyStateCategory* CKeyStateCategoryFactory::MakeKeyStateCategory(KEYSTROKE_CATE
         pKeyState = new (std::nothrow) CKeyStatePhrase(pTextService);
         break;
 
+    case KEYSTROKE_CATEGORY::CATEGORY_SENTENCE:
+        pKeyState = new (std::nothrow) CKeyStateSentence(pTextService);
+        break;
+
     default:
         pKeyState = new (std::nothrow) CKeyStateNull(pTextService);
         break;
@@ -502,4 +506,25 @@ HRESULT CKeyStatePhrase::HandleKeySelectByNumber(KeyHandlerEditSessionDTO dto)
 {
 	if(_pTextService == nullptr) return E_FAIL;
     return _pTextService->_HandlePhraseSelectByNumber(dto.ec, dto.pContext, dto.code, dto.wch);
+}
+/*
+class CKeyStateSentence
+*/
+
+HRESULT CKeyStateSentence::HandleKeyConvert(KeyHandlerEditSessionDTO dto)
+{
+	if(_pTextService == nullptr) return E_FAIL;
+	return _pTextService->_HandleSentenceCommit(dto.ec, dto.pContext);
+}
+
+HRESULT CKeyStateSentence::HandleKeyBackspace(KeyHandlerEditSessionDTO dto)
+{
+	if(_pTextService == nullptr) return E_FAIL;
+	return _pTextService->_HandleSentenceBackspace(dto.ec, dto.pContext, dto.code);
+}
+
+HRESULT CKeyStateSentence::HandleKeyArrow(KeyHandlerEditSessionDTO dto)
+{
+	if(_pTextService == nullptr) return E_FAIL;
+	return _pTextService->_HandleSentenceArrowKey(dto.ec, dto.pContext, dto.arrowKey);
 }

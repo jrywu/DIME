@@ -83,6 +83,8 @@
     <ClInclude Include="ShadowWindow.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="TableDictionaryEngine.h" />
+    <ClInclude Include="RustTableDictionaryEngine.h" />
+    <ClInclude Include="SentenceBuffer.h" />
     <ClInclude Include="TfInputProcessorProfile.h" />
     <ClInclude Include="TfTextLayoutSink.h" />
     <ClInclude Include="TipCandidateList.h" />
@@ -148,6 +150,11 @@
       <PreprocessorDefinitions Condition="'$(DiagnosticLogging)'=='true'">DEBUG_PRINT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <ClCompile Include="TableDictionaryEngine.cpp" />
+    <ClCompile Include="RustTableDictionaryEngine.cpp" />
+    <ClCompile Include="SentenceBuffer.cpp" />
+    <ClCompile Include="SentenceHandler.cpp">
+      <PreprocessorDefinitions Condition="'$(DiagnosticLogging)'=='true'">DEBUG_PRINT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
     <ClCompile Include="DIME.cpp">
       <PreprocessorDefinitions Condition="'$(DiagnosticLogging)'=='true'">DEBUG_PRINT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
@@ -520,6 +527,45 @@
       <Command>BuildInfo.cmd</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
+  <!--
+    Rust migration: opt-in Rust dictionary engine (rust/crates/dime-core via dime-ffi).
+      msbuild DIME.sln /t:DIME /p:Configuration=Release /p:Platform=x64 /p:DimeUseRustEngine=true
+    When enabled, CTableDictionaryEngine::Create() returns CRustTableDictionaryEngine and the
+    static library dime_ffi.lib is built by cargo before compiling. Release links the static CRT
+    (matching /MT); Debug uses the dynamic CRT build (matching /MDd).
+  -->
+  <PropertyGroup Label="DimeRust">
+    <DimeUseRustEngine Condition="'$(DimeUseRustEngine)'==''">false</DimeUseRustEngine>
+    <DimeRustRoot>$(ProjectDir)..\rust\</DimeRustRoot>
+    <DimeRustTarget Condition="'$(Platform)'=='Win32'">i686-pc-windows-msvc</DimeRustTarget>
+    <DimeRustTarget Condition="'$(Platform)'=='x64'">x86_64-pc-windows-msvc</DimeRustTarget>
+    <DimeRustTarget Condition="'$(Platform)'=='ARM64'">aarch64-pc-windows-msvc</DimeRustTarget>
+    <DimeRustTarget Condition="'$(Platform)'=='ARM64EC'">arm64ec-pc-windows-msvc</DimeRustTarget>
+    <DimeRustEnabled Condition="'$(DimeUseRustEngine)'=='true' And '$(DimeRustTarget)'!=''">true</DimeRustEnabled>
+    <DimeRustTargetDir Condition="'$(Configuration)'=='Release'">$(DimeRustRoot)target\crt-static\</DimeRustTargetDir>
+    <DimeRustTargetDir Condition="'$(Configuration)'!='Release'">$(DimeRustRoot)target\</DimeRustTargetDir>
+    <DimeRustFlags Condition="'$(Configuration)'=='Release'">-C target-feature=+crt-static</DimeRustFlags>
+    <DimeRustLibDir>$(DimeRustTargetDir)$(DimeRustTarget)\release\</DimeRustLibDir>
+    <DimeCargo Condition="Exists('$(USERPROFILE)\.cargo\bin\cargo.exe')">"$(USERPROFILE)\.cargo\bin\cargo.exe"</DimeCargo>
+    <DimeCargo Condition="'$(DimeCargo)'==''">cargo</DimeCargo>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(DimeRustEnabled)'=='true'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(DimeRustRoot)crates\dime-ffi\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>DIME_RUST_AVAILABLE;DIME_USE_RUST_ENGINE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>$(DimeRustLibDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>dime_ffi.lib;ntdll.lib;userenv.lib;ws2_32.lib;dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <IgnoreSpecificDefaultLibraries Condition="'$(Configuration)'!='Release'">msvcrt.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+    </Link>
+  </ItemDefinitionGroup>
+  <Target Name="BuildDimeRust" BeforeTargets="ClCompile" Condition="'$(DimeRustEnabled)'=='true'">
+    <Exec Command="$(DimeCargo) build --release --locked -p dime-ffi --target $(DimeRustTarget) --target-dir &quot;$(DimeRustTargetDir.TrimEnd('\'))&quot; --manifest-path &quot;$(DimeRustRoot)Cargo.toml&quot;" EnvironmentVariables="RUSTFLAGS=$(DimeRustFlags)" />
+  </Target>
+  <Target Name="DimeRustUnsupportedPlatform" BeforeTargets="ClCompile" Condition="'$(DimeUseRustEngine)'=='true' And '$(DimeRustTarget)'==''">
+    <Error Text="DimeUseRustEngine=true is not supported for platform $(Platform)." />
+  </Target>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

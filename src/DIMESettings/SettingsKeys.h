@@ -16,6 +16,7 @@ namespace SettingsKeys {
     constexpr const wchar_t DoBeep[]                       = L"DoBeep";
     constexpr const wchar_t DoBeepNotify[]                 = L"DoBeepNotify";
     constexpr const wchar_t DoBeepOnCandi[]                = L"DoBeepOnCandi";
+    constexpr const wchar_t SentenceMode[]                 = L"SentenceMode";
     constexpr const wchar_t ActivatedKeyboardMode[]        = L"ActivatedKeyboardMode";
     constexpr const wchar_t MakePhrase[]                   = L"MakePhrase";
     constexpr const wchar_t ShowNotifyDesktop[]            = L"ShowNotifyDesktop";

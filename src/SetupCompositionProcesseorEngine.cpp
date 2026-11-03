@@ -117,7 +117,7 @@ void CCompositionProcessorEngine::SetupBig5Engine(IME_MODE imeMode, LCID locale)
 	_pBig5TableDictionaryFile[slot] = new (std::nothrow) CMemoryFile(_pTableDictionaryFile[slot]);
 	if (!_pBig5TableDictionaryFile[slot]) return;
 
-	_pBig5TableDictionaryEngine[slot] = new (std::nothrow) CTableDictionaryEngine(
+	_pBig5TableDictionaryEngine[slot] = CTableDictionaryEngine::Create(
 		locale, _pBig5TableDictionaryFile[slot], _pTableDictionaryEngine[slot]->GetDictionaryType());
 	if (_pBig5TableDictionaryEngine[slot])
 		_pBig5TableDictionaryEngine[slot]->ParseConfig(imeMode);
@@ -285,7 +285,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode, LCID loc
 				if (_pTableDictionaryEngine[(UINT)imeMode])
 					delete _pTableDictionaryEngine[(UINT)imeMode];
 				_pTableDictionaryEngine[(UINT)imeMode] = //cin files use tab as delimiter
-					new (std::nothrow) CTableDictionaryEngine(locale, _pTableDictionaryFile[(UINT)imeMode], DICTIONARY_TYPE::CIN_DICTIONARY);
+					CTableDictionaryEngine::Create(locale, _pTableDictionaryFile[(UINT)imeMode], DICTIONARY_TYPE::CIN_DICTIONARY);
 				_pTableDictionaryEngine[(UINT)imeMode]->ParseConfig(imeMode); //parse config first.
 			SetupBig5Engine(imeMode, locale);
 			big5EngineRebuilt = true;
@@ -338,7 +338,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode, LCID loc
 			else
 			{
 				_pTableDictionaryEngine[(UINT)imeMode] = //TTS file use '=' as delimiter
-					new (std::nothrow) CTableDictionaryEngine(locale, _pTableDictionaryFile[(UINT)imeMode], DICTIONARY_TYPE::TTS_DICTIONARY);
+					CTableDictionaryEngine::Create(locale, _pTableDictionaryFile[(UINT)imeMode], DICTIONARY_TYPE::TTS_DICTIONARY);
 				if (_pTableDictionaryEngine[(UINT)imeMode] == nullptr)  goto ErrorExit;
 
 				_pTableDictionaryEngine[(UINT)imeMode]->ParseConfig(imeMode); //parse config first.
@@ -373,7 +373,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode, LCID loc
 				if (_pPhraseTableDictionaryEngine)
 					delete _pPhraseTableDictionaryEngine;
 				_pPhraseTableDictionaryEngine =
-					new (std::nothrow) CTableDictionaryEngine(locale, _pPhraseDictionaryFile, DICTIONARY_TYPE::CIN_DICTIONARY); //cin files use tab as delimiter
+					CTableDictionaryEngine::Create(locale, _pPhraseDictionaryFile, DICTIONARY_TYPE::CIN_DICTIONARY); //cin files use tab as delimiter
 				_pPhraseTableDictionaryEngine->ParseConfig(imeMode); //parse config first.				
 
 			}
@@ -413,7 +413,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode, LCID loc
 			if (_pPhraseTableDictionaryEngine)
 				delete _pPhraseTableDictionaryEngine;
 			_pPhraseTableDictionaryEngine =
-				new (std::nothrow) CTableDictionaryEngine(locale, _pPhraseDictionaryFile, DICTIONARY_TYPE::TTS_DICTIONARY); //TTS file use '=' as delimiter
+				CTableDictionaryEngine::Create(locale, _pPhraseDictionaryFile, DICTIONARY_TYPE::TTS_DICTIONARY); //TTS file use '=' as delimiter
 			if (!_pPhraseTableDictionaryEngine)  goto ErrorExit;
 
 			_pPhraseTableDictionaryEngine->ParseConfig(imeMode); //parse config first.
@@ -460,7 +460,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode, LCID loc
 						if (_pArrayExtBTableDictionaryEngine)
 							delete _pArrayExtBTableDictionaryEngine;
 						_pArrayExtBTableDictionaryEngine =
-							new (std::nothrow) CTableDictionaryEngine(locale, _pArrayExtBDictionaryFile, DICTIONARY_TYPE::CIN_DICTIONARY); //cin files use tab as delimiter
+							CTableDictionaryEngine::Create(locale, _pArrayExtBDictionaryFile, DICTIONARY_TYPE::CIN_DICTIONARY); //cin files use tab as delimiter
 						if (_pArrayExtBTableDictionaryEngine)
 							_pArrayExtBTableDictionaryEngine->ParseConfig(imeMode); // to release the file handle
 					}
@@ -503,7 +503,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode, LCID loc
 						if (_pArrayExtCDTableDictionaryEngine)
 							delete _pArrayExtCDTableDictionaryEngine;
 						_pArrayExtCDTableDictionaryEngine =
-							new (std::nothrow) CTableDictionaryEngine(locale, _pArrayExtCDDictionaryFile, DICTIONARY_TYPE::CIN_DICTIONARY); //cin files use tab as delimiter
+							CTableDictionaryEngine::Create(locale, _pArrayExtCDDictionaryFile, DICTIONARY_TYPE::CIN_DICTIONARY); //cin files use tab as delimiter
 						if (_pArrayExtCDTableDictionaryEngine)
 							_pArrayExtCDTableDictionaryEngine->ParseConfig(imeMode); // to release the file handle
 					}
@@ -545,7 +545,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode, LCID loc
 						_pArrayExtEDictionaryFile->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
 					{
 						_pArrayExtETableDictionaryEngine =
-							new (std::nothrow) CTableDictionaryEngine(locale, _pArrayExtEDictionaryFile, DICTIONARY_TYPE::CIN_DICTIONARY); //cin files use tab as delimiter
+							CTableDictionaryEngine::Create(locale, _pArrayExtEDictionaryFile, DICTIONARY_TYPE::CIN_DICTIONARY); //cin files use tab as delimiter
 						if (_pArrayExtETableDictionaryEngine)
 							_pArrayExtETableDictionaryEngine->ParseConfig(imeMode); // to release the file handle
 					}
@@ -582,7 +582,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode, LCID loc
 						if (_pArrayPhraseTableDictionaryEngine)
 							delete _pArrayPhraseTableDictionaryEngine;
 						_pArrayPhraseTableDictionaryEngine =
-							new (std::nothrow) CTableDictionaryEngine(locale, _pArrayPhraseDictionaryFile, DICTIONARY_TYPE::CIN_DICTIONARY); //cin files use tab as delimiter
+							CTableDictionaryEngine::Create(locale, _pArrayPhraseDictionaryFile, DICTIONARY_TYPE::CIN_DICTIONARY); //cin files use tab as delimiter
 						if (_pArrayPhraseTableDictionaryEngine)
 							_pArrayPhraseTableDictionaryEngine->ParseConfig(imeMode);// to release the file handle
 					}
@@ -625,7 +625,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode, LCID loc
 						if (_pArraySpecialCodeTableDictionaryEngine)
 							_pArraySpecialCodeTableDictionaryEngine;
 						_pArraySpecialCodeTableDictionaryEngine =
-							new (std::nothrow) CTableDictionaryEngine(locale, _pArraySpecialCodeDictionaryFile, DICTIONARY_TYPE::CIN_DICTIONARY); //cin files use tab as delimiter
+							CTableDictionaryEngine::Create(locale, _pArraySpecialCodeDictionaryFile, DICTIONARY_TYPE::CIN_DICTIONARY); //cin files use tab as delimiter
 						if (_pArraySpecialCodeTableDictionaryEngine)
 							_pArraySpecialCodeTableDictionaryEngine->ParseConfig(imeMode); // to release the file handle
 					}
@@ -667,7 +667,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode, LCID loc
 						if (_pArrayShortCodeTableDictionaryEngine)
 							delete _pArrayShortCodeTableDictionaryEngine;
 						_pArrayShortCodeTableDictionaryEngine =
-							new (std::nothrow) CTableDictionaryEngine(locale, _pArrayShortCodeDictionaryFile, DICTIONARY_TYPE::CIN_DICTIONARY); //cin files use tab as delimiter
+							CTableDictionaryEngine::Create(locale, _pArrayShortCodeDictionaryFile, DICTIONARY_TYPE::CIN_DICTIONARY); //cin files use tab as delimiter
 						if (_pArrayShortCodeTableDictionaryEngine)
 							_pArrayShortCodeTableDictionaryEngine->ParseConfig(imeMode);// to release the file handle
 					}
@@ -702,7 +702,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode, LCID loc
 				if (_pCustomTableDictionaryEngine[(UINT)imeMode])
 					delete _pCustomTableDictionaryEngine[(UINT)imeMode];
 				_pCustomTableDictionaryEngine[(UINT)imeMode] =
-					new (std::nothrow) CTableDictionaryEngine(locale, _pCustomTableDictionaryFile[(UINT)imeMode], DICTIONARY_TYPE::CIN_DICTIONARY); //cin files use tab as delimiter
+					CTableDictionaryEngine::Create(locale, _pCustomTableDictionaryFile[(UINT)imeMode], DICTIONARY_TYPE::CIN_DICTIONARY); //cin files use tab as delimiter
 				if (_pCustomTableDictionaryEngine[(UINT)imeMode])
 					_pCustomTableDictionaryEngine[(UINT)imeMode]->ParseConfig(imeMode);// to release the file handle
 			}
@@ -1386,7 +1386,7 @@ BOOL CCompositionProcessorEngine::SetupHanCovertTable()
 				(_pTCSCTableDictionaryFile)->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
 			{
 				_pTCSCTableDictionaryEngine =
-					new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pTCSCTableDictionaryFile, DICTIONARY_TYPE::CIN_DICTIONARY); //cin files use tab as delimiter
+					CTableDictionaryEngine::Create(_pTextService->GetLocale(), _pTCSCTableDictionaryFile, DICTIONARY_TYPE::CIN_DICTIONARY); //cin files use tab as delimiter
 			}
 		}
 		bRet = TRUE;
@@ -1438,7 +1438,7 @@ BOOL CCompositionProcessorEngine::SetupTCFreqTable()
 			(_pTCFreqTableDictionaryFile)->CreateFile(pwszCINFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ))
 		{
 			_pTCFreqTableDictionaryEngine =
-				new (std::nothrow) CTableDictionaryEngine(_pTextService->GetLocale(), _pTCFreqTableDictionaryFile, DICTIONARY_TYPE::CIN_DICTIONARY); //cin files use tab as delimiter
+				CTableDictionaryEngine::Create(_pTextService->GetLocale(), _pTCFreqTableDictionaryFile, DICTIONARY_TYPE::CIN_DICTIONARY); //cin files use tab as delimiter
 		}
 	}
 

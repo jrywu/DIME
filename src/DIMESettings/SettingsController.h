@@ -62,6 +62,7 @@ enum SettingsControlId {
     CTRL_REVERSE_CONVERSION,
 
     CTRL_DAYI_ARTICLE,
+    CTRL_SENTENCE_MODE,
     CTRL_ARRAY_FORCE_SP,
     CTRL_ARRAY_NOTIFY_SP,
     CTRL_ARRAY_SINGLE_QUOTE,
@@ -129,6 +130,7 @@ struct SettingsSnapshot {
     BOOL arrayForceSP;
     BOOL arraySingleQuoteCustomPhrase;
     BOOL dayiArticleMode;
+    BOOL sentenceMode;
     BOOL doHanConvert;
     BOOL activatedKeyboardMode;
     BOOL big5Filter;

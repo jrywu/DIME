@@ -2780,6 +2780,8 @@ void SettingsWindow::PopulateControls(WindowData* wd)
     }
     if ((h = FindControl(wd, CTRL_DAYI_ARTICLE)))
         SendMessage(h, BM_SETCHECK, s.dayiArticleMode ? BST_CHECKED : BST_UNCHECKED, 0);
+    if ((h = FindControl(wd, CTRL_SENTENCE_MODE)))
+        SendMessage(h, BM_SETCHECK, s.sentenceMode ? BST_CHECKED : BST_UNCHECKED, 0);
     if ((h = FindControl(wd, CTRL_ARRAY_FORCE_SP)))
         SendMessage(h, BM_SETCHECK, s.arrayForceSP ? BST_CHECKED : BST_UNCHECKED, 0);
     if ((h = FindControl(wd, CTRL_ARRAY_NOTIFY_SP)))

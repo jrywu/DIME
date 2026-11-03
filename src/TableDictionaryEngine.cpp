@@ -36,6 +36,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "TableDictionaryEngine.h"
 #include "DictionarySearch.h"
 #include "DIME.h"
+#ifdef DIME_USE_RUST_ENGINE
+#include "RustTableDictionaryEngine.h"
+#endif
 
 
 CTableDictionaryEngine::CTableDictionaryEngine(LCID locale, _In_ CFile *pDictionaryFile, _In_ DICTIONARY_TYPE dictionaryType )
@@ -456,3 +459,17 @@ VOID CTableDictionaryEngine::MergeSortByWordFrequency(_Inout_ CDIMEArray<CCandid
 	}
 }
 
+//+---------------------------------------------------------------------------
+//
+// Create
+//
+//----------------------------------------------------------------------------
+
+CTableDictionaryEngine* CTableDictionaryEngine::Create(LCID locale, _In_ CFile *pDictionaryFile, _In_ DICTIONARY_TYPE dictionaryType)
+{
+#ifdef DIME_USE_RUST_ENGINE
+	return new (std::nothrow) CRustTableDictionaryEngine(locale, pDictionaryFile, dictionaryType);
+#else
+	return new (std::nothrow) CTableDictionaryEngine(locale, pDictionaryFile, dictionaryType);
+#endif
+}

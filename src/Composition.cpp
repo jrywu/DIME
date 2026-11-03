@@ -52,7 +52,26 @@ STDAPI CDIME::OnCompositionTerminated(TfEditCookie ecWrite, _In_ ITfComposition 
 	debugPrint(L"CDIME::OnCompositionTerminated()");
 	HRESULT hr = S_OK;
     ITfContext* pContext = _pContext;
-   
+
+	// Sentence mode: the application ended the composition; leave the converted
+	// sentence in the document and drop our reference right away so the deferred
+	// _TerminateComposition does not clear it.
+	if (_IsSentencePending() && _pComposition && pComposition == _pComposition)
+	{
+		_SentenceFinalizeInComposition(ecWrite);
+		if (_pContext)
+			_ClearCompositionDisplayAttributes(ecWrite, _pContext);
+		_DeleteCandidateList(TRUE, _pContext);
+		_pComposition->Release();
+		_pComposition = nullptr;
+		if (_pContext)
+		{
+			_pContext->Release();
+			_pContext = nullptr;
+		}
+		return S_OK;
+	}
+
 	// Clear dummy composition
 	_RemoveDummyCompositionForComposing(ecWrite, pComposition);
 	

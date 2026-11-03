@@ -320,6 +320,10 @@ CDIME::CDIME()
 
 	_newlyActivated = FALSE;
 
+	_pSentenceLexicon = nullptr;
+	_sentenceLexiconLoaded = FALSE;
+	_sentenceEditPos = -1;
+	_sentencePinNext = FALSE;
 }
 
 //+---------------------------------------------------------------------------
@@ -331,6 +335,11 @@ CDIME::CDIME()
 CDIME::~CDIME()
 {
 	debugPrint(L"CDIME:~CDIME() destructor");
+	if (_pSentenceLexicon)
+	{
+		delete _pSentenceLexicon;
+		_pSentenceLexicon = nullptr;
+	}
 	if (_pUIPresenter)
     {
         delete _pUIPresenter;

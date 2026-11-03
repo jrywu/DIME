@@ -37,6 +37,7 @@ static const KeyInfo g_keyRegistry[] =
     { L"FontItalic",                   BOOL_T,   0,   1,   CLI_MASK_ALL       },
     { L"CustomTablePriority",          BOOL_T,   0,   1,   CLI_MASK_ALL       },
     { L"DayiArticleMode",              BOOL_T,   0,   1,   CLI_MASK_DAYI      },
+    { L"SentenceMode",                 BOOL_T,   0,   1,   CLI_MASK_DAYI      },
     { L"ArrayForceSP",                 BOOL_T,   0,   1,   CLI_MASK_ARRAY     },
     { L"ArrayNotifySP",                BOOL_T,   0,   1,   CLI_MASK_ARRAY     },
     { L"ArraySingleQuoteCustomPhrase", BOOL_T,   0,   1,   CLI_MASK_ARRAY     },
@@ -203,6 +204,8 @@ static bool GetKeyValue(const KeyInfo* ki, WCHAR* outBuf, int bufLen)
         StringCchPrintfW(outBuf, bufLen, L"%d", CConfig::getCustomTablePriority() ? 1 : 0);
     else if (_wcsicmp(n, L"DayiArticleMode") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%d", CConfig::getDayiArticleMode() ? 1 : 0);
+    else if (_wcsicmp(n, L"SentenceMode") == 0)
+        StringCchPrintfW(outBuf, bufLen, L"%d", CConfig::GetSentenceMode() ? 1 : 0);
     else if (_wcsicmp(n, L"ArrayForceSP") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%d", CConfig::GetArrayForceSP() ? 1 : 0);
     else if (_wcsicmp(n, L"ArrayNotifySP") == 0)
@@ -346,6 +349,7 @@ static int ApplyKeyValue(const KeyInfo* ki, const wchar_t* valueStr, FILE* err)
         else if (_wcsicmp(n, L"FontItalic") == 0)               CConfig::SetFontItalic((BOOL)v);
         else if (_wcsicmp(n, L"CustomTablePriority") == 0)      CConfig::setCustomTablePriority((BOOL)v);
         else if (_wcsicmp(n, L"DayiArticleMode") == 0)          CConfig::setDayiArticleMode((BOOL)v);
+        else if (_wcsicmp(n, L"SentenceMode") == 0)             CConfig::SetSentenceMode((BOOL)v);
         else if (_wcsicmp(n, L"ArrayForceSP") == 0)             CConfig::SetArrayForceSP((BOOL)v);
         else if (_wcsicmp(n, L"ArrayNotifySP") == 0)            CConfig::SetArrayNotifySP((BOOL)v);
         else if (_wcsicmp(n, L"ArraySingleQuoteCustomPhrase") == 0) CConfig::SetArraySingleQuoteCustomPhrase((BOOL)v);

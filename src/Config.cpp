@@ -70,6 +70,7 @@ BOOL CConfig::_clearOnBeep = TRUE;
 BOOL CConfig::_doBeep = TRUE;
 BOOL CConfig::_doBeepNotify = TRUE;
 BOOL CConfig::_doBeepOnCandi = FALSE;
+BOOL CConfig::_sentenceMode = FALSE;
 BOOL CConfig::_autoCompose = FALSE;
 BOOL CConfig::_customTablePriority = FALSE;
 BOOL CConfig::_arrayForceSP = FALSE;
@@ -398,6 +399,7 @@ VOID CConfig::WriteConfig(IME_MODE imeMode, BOOL confirmUpdated)
 			fwprintf_s(fp, L"DoBeep = %d\n", _doBeep ? 1 : 0);
 			fwprintf_s(fp, L"DoBeepNotify = %d\n", _doBeepNotify ? 1 : 0);
 			fwprintf_s(fp, L"DoBeepOnCandi = %d\n", _doBeepOnCandi ? 1 : 0);
+			fwprintf_s(fp, L"SentenceMode = %d\n", _sentenceMode ? 1 : 0);
 			fwprintf_s(fp, L"ActivatedKeyboardMode = %d\n", _activatedKeyboardMode ? 1 : 0);
 			fwprintf_s(fp, L"MakePhrase = %d\n", _makePhrase ? 1 : 0);
 			fwprintf_s(fp, L"MaxCodes = %d\n", _maxCodes);
@@ -597,6 +599,7 @@ void CConfig::ResetAllDefaults(IME_MODE imeMode)
 	_doBeep                       = TRUE;
 	_doBeepNotify                 = TRUE;
 	_doBeepOnCandi                = FALSE;
+	_sentenceMode                 = FALSE;
 	_autoCompose                  = FALSE;
 	_customTablePriority          = FALSE;
 	_arrayForceSP                 = FALSE;
@@ -690,7 +693,7 @@ BOOL CConfig::LoadConfig(IME_MODE imeMode)
 			if (iniDictionaryFile && (iniDictionaryFile)->CreateFile(_pwszINIFileName, GENERIC_READ, OPEN_EXISTING, FILE_SHARE_READ | FILE_SHARE_WRITE))
 			{
 				CTableDictionaryEngine* iniTableDictionaryEngine;
-				iniTableDictionaryEngine = new (std::nothrow) CTableDictionaryEngine(MAKELCID(1028, SORT_DEFAULT), iniDictionaryFile, DICTIONARY_TYPE::INI_DICTIONARY);//CHT:1028
+				iniTableDictionaryEngine = CTableDictionaryEngine::Create(MAKELCID(1028, SORT_DEFAULT), iniDictionaryFile, DICTIONARY_TYPE::INI_DICTIONARY);//CHT:1028
 				if (iniTableDictionaryEngine)
 				{
 					_loadTableMode = TRUE; // reset _loadTableMode first. If no _loadTableMode is exist we should not should load tables buttons

@@ -115,6 +115,9 @@ private:
 
 };
 
+// Applies one [Config] key/value pair to CConfig (see DictionarySearch.cpp).
+void ApplyIniConfigEntry(LCID locale, _In_ CStringRange* pKeyword, _In_ CStringRange* pValue);
+
 //////////////////////////////////////////////////////////////////////
 //
 // CDictionaryResult declaration.

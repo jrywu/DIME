@@ -98,6 +98,18 @@ HRESULT CDIME::_HandleCancel(TfEditCookie ec, _In_ ITfContext *pContext)
 {
 	debugPrint(L"CDIME::_HandleCancel()");
 
+	// Sentence mode: cancelling a reading or candidate window keeps the sentence;
+	// cancelling with nothing else pending discards the sentence.
+	if (_IsSentencePending())
+	{
+		if ((_pCompositionProcessorEngine && _pCompositionProcessorEngine->GetVirtualKeyLength() > 0) ||
+			_candidateMode != CANDIDATE_MODE::CANDIDATE_NONE)
+		{
+			return _SentenceCloseReading(ec, pContext);
+		}
+		_SentenceReset();
+	}
+
     _RemoveDummyCompositionForComposing(ec, _pComposition);
 
     _DeleteCandidateList(TRUE, pContext);
@@ -206,8 +218,10 @@ HRESULT CDIME::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *p
     //
     pCompositionProcessorEngine->GetReadingString(&readingString, &isWildcardIncluded);
 
-   
-	hr = _AddComposingAndChar(ec, pContext, &readingString);
+	if (_IsSentencePending())
+		hr = _SentenceRender(ec, pContext, std::wstring(readingString.Get() ? readingString.Get() : L"", readingString.GetLength()));
+	else
+		hr = _AddComposingAndChar(ec, pContext, &readingString);
 		
     if (FAILED(hr))
     {
@@ -277,6 +291,15 @@ HRESULT CDIME::_HandleCompositionFinalize(TfEditCookie ec, _In_ ITfContext *pCon
 	debugPrint(L"CDIME::_HandleCompositionFinalize()");
     HRESULT hr = S_OK;
 
+	if (_IsSentenceMode())
+	{
+		// A chosen candidate joins the sentence; anything else commits it first.
+		if (isCandidateList && _pUIPresenter)
+			return _HandleCandidateWorker(ec, pContext);
+		if (!isCandidateList)
+			_SentenceCommitBeforeOutput(ec, pContext);
+	}
+
     if (isCandidateList && _pUIPresenter)
     {
         // Finalize selected candidate string from UIPresenter
@@ -331,6 +354,18 @@ HRESULT CDIME::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pCont
     //
     CCompositionProcessorEngine* pCompositionProcessorEngine = nullptr;
     pCompositionProcessorEngine = _pCompositionProcessorEngine;
+
+	// Sentence mode: the character joins the sentence with all its candidates instead
+	// of opening the candidate window.  Wildcard and symbol ('=') input still show the
+	// window; the chosen item then joins the sentence pinned (_HandleCandidateWorker).
+	if (_IsSentenceMode() && !isWildcardSearch && pCompositionProcessorEngine->GetVirtualKeyLength() > 0 &&
+		!pCompositionProcessorEngine->IsEscapeInputLeading())
+	{
+		pCompositionProcessorEngine->GetCandidateList(&candidateList, FALSE, FALSE, FALSE);
+		if (candidateList.Count())
+			return _SentenceAppendFromCandidateList(ec, pContext, &candidateList, -1);
+	}
+
     pCompositionProcessorEngine->GetCandidateList(&candidateList, FALSE, isWildcardSearch, isArrayPhraseEnding);
 
     // If there is no candlidate listing the current reading string, we don't do anything. Just wait for
@@ -422,7 +457,15 @@ HRESULT CDIME::_HandleCompositionBackspace(TfEditCookie ec, _In_ ITfContext *pCo
 		BOOL symbolMode = pCompositionProcessorEngine->IsEscapeInput();
         pCompositionProcessorEngine->RemoveVirtualKey(vKeyLen - 1);
 
-		if ((pCompositionProcessorEngine->GetVirtualKeyLength() && !symbolMode) &&
+		if (_IsSentencePending())
+		{
+			// Keep the sentence when the reading is emptied.
+			if (pCompositionProcessorEngine->GetVirtualKeyLength() && !symbolMode)
+				_HandleCompositionInputWorker(pCompositionProcessorEngine, ec, pContext);
+			else
+				_SentenceCloseReading(ec, pContext);
+		}
+		else if ((pCompositionProcessorEngine->GetVirtualKeyLength() && !symbolMode) &&
 			!(Global::imeMode == IME_MODE::IME_MODE_PHONETIC && _candidateMode != CANDIDATE_MODE::CANDIDATE_NONE))
         {
             _HandleCompositionInputWorker(pCompositionProcessorEngine, ec, pContext);
@@ -492,6 +535,8 @@ HRESULT CDIME::_HandleCompositionDoubleSingleByte(TfEditCookie ec, _In_ ITfConte
 {
     HRESULT hr = S_OK;
 
+    _SentenceCommitBeforeOutput(ec, pContext);
+
     WCHAR fullWidth = Global::FullWidthCharTable[wch - 0x20];
 
     CStringRange fullWidthString;
@@ -530,6 +575,7 @@ HRESULT CDIME::_HandleCompositionShiftEnglishInput(TfEditCookie ec, _In_ ITfCont
     {
         _HandleCandidateFinalize(ec, pContext);
     }
+    _SentenceCommitBeforeOutput(ec, pContext);
 
     WCHAR outputChar = wch; // Default fallback
     BOOL isCapsLockOn = (GetKeyState(VK_CAPITAL) & 0x0001) != 0;
@@ -628,6 +674,7 @@ HRESULT CDIME::_HandleCompositionAddressChar(TfEditCookie ec, _In_ ITfContext *p
 
 	if (pCompositionProcessorEngine == nullptr) return S_FALSE;
 
+	_SentenceCommitBeforeOutput(ec, pContext);
 	if (_IsComposing())  _HandleCancel(ec, pContext);
 
 	WCHAR addressChar = pCompositionProcessorEngine->GetDayiAddressChar(wch);

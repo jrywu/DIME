@@ -58,6 +58,7 @@ static const LayoutRow s_inputSettingsRows[] = {
     { CTRL_REVERSE_CONVERSION,    RowType::ComboBox, RowAction::None,        CTRL_NONE, 0, L"反查輸入字根",         nullptr,                                SM_MODE_ALL,       false, L'\xE721' },
     // --- IME-specific ---
     { CTRL_DAYI_ARTICLE,          RowType::Toggle,   RowAction::ToggleValue, CTRL_NONE, 0, L"地址鍵輸入符號",       nullptr,                                SM_MODE_DAYI,      false, L'\xE8AC' },
+    { CTRL_SENTENCE_MODE,         RowType::Toggle,   RowAction::ToggleValue, CTRL_NONE, 0, L"整句輸入",             L"連續打字不選字，依上下文自動組成句子，按 Enter 送出", SM_MODE_DAYI, false, L'\xE8D2' },
     { CTRL_ARRAY_FORCE_SP,        RowType::Toggle,   RowAction::ToggleValue, CTRL_NONE, 0, L"僅接受輸入特別碼",     nullptr,                                SM_MODE_ARRAY,     false, L'\xE73E' },
     { CTRL_ARRAY_NOTIFY_SP,       RowType::Toggle,   RowAction::ToggleValue, CTRL_NONE, 0, L"特別碼提示",           nullptr,                                SM_MODE_ARRAY,     false, L'\xE7E7' },
     { CTRL_ARRAY_SINGLE_QUOTE,    RowType::Toggle,   RowAction::ToggleValue, CTRL_NONE, 0, L"以'鍵查詢自建詞庫",    nullptr,                                SM_MODE_ARRAY,     false, L'\xE848' },

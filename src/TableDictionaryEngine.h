@@ -62,14 +62,14 @@ public:
     //     [out] pasrgWordString - Specified returns pointer of word as CStringRange.
     // returns
     //     none.
-    VOID CollectWord(_In_ CStringRange *pKeyCode, _Inout_ CDIMEArray<CStringRange> *pWordStrings);
-    VOID CollectWord(_In_ CStringRange *pKeyCode, _Inout_ CDIMEArray<CCandidateListItem> *pItemList);
+    virtual VOID CollectWord(_In_ CStringRange *pKeyCode, _Inout_ CDIMEArray<CStringRange> *pWordStrings);
+    virtual VOID CollectWord(_In_ CStringRange *pKeyCode, _Inout_ CDIMEArray<CCandidateListItem> *pItemList);
 
-    VOID CollectWordForWildcard(_In_ CStringRange *psrgKeyCode, _Inout_ CDIMEArray<CCandidateListItem> *pItemList, _In_opt_ CTableDictionaryEngine* wordFreqTableDictionaryEngine = nullptr);
+    virtual VOID CollectWordForWildcard(_In_ CStringRange *psrgKeyCode, _Inout_ CDIMEArray<CCandidateListItem> *pItemList, _In_opt_ CTableDictionaryEngine* wordFreqTableDictionaryEngine = nullptr);
 
-	VOID CollectWordFromConvertedString(_In_ CStringRange *pString, _Inout_ CDIMEArray<CCandidateListItem> *pItemList);
-    VOID CollectWordFromConvertedStringForWildcard(_In_ CStringRange *pString, _Inout_ CDIMEArray<CCandidateListItem> *pItemList);
-	VOID ParseConfig(IME_MODE imeMode);
+	virtual VOID CollectWordFromConvertedString(_In_ CStringRange *pString, _Inout_ CDIMEArray<CCandidateListItem> *pItemList);
+    virtual VOID CollectWordFromConvertedStringForWildcard(_In_ CStringRange *pString, _Inout_ CDIMEArray<CCandidateListItem> *pItemList);
+	virtual VOID ParseConfig(IME_MODE imeMode);
 	VOID SetSearchSection(SEARCH_SECTION searchSection) { _searchSection =searchSection;}
 
 	VOID SortListItemByFindKeyCode(_Inout_ CDIMEArray<CCandidateListItem> *pItemList);
@@ -81,7 +81,12 @@ public:
 	PWCH GetSelkey() { return _pSelkey; };
 	PWCH GetEndkey() { return _pEndkey; };
 
-private:
+	// Factory used by all production call sites. Returns the Rust-backed
+	// engine (CRustTableDictionaryEngine) when built with DIME_USE_RUST_ENGINE,
+	// otherwise the C++ engine. Returns nullptr on allocation failure.
+	static CTableDictionaryEngine* Create(LCID locale, _In_ CFile *pDictionaryFile, _In_ DICTIONARY_TYPE dictionaryType);
+
+protected:
 	CFile* _pDictionaryFile;
     LCID _locale;
 	WCHAR _keywordDelimiter;

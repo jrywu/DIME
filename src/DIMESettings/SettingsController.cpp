@@ -128,6 +128,7 @@ SettingsSnapshot SettingsModel::LoadFromConfig()
     snap.arrayForceSP            = CConfig::GetArrayForceSP();
     snap.arraySingleQuoteCustomPhrase = CConfig::GetArraySingleQuoteCustomPhrase();
     snap.dayiArticleMode         = CConfig::getDayiArticleMode();
+    snap.sentenceMode            = CConfig::GetSentenceMode();
     snap.doHanConvert            = CConfig::GetDoHanConvert();
     snap.activatedKeyboardMode   = CConfig::GetActivatedKeyboardMode();
     snap.big5Filter              = CConfig::GetBig5Filter();
@@ -172,6 +173,7 @@ void SettingsModel::ApplyToConfig(const SettingsSnapshot& snap)
     CConfig::SetArrayForceSP(snap.arrayForceSP);
     CConfig::SetArraySingleQuoteCustomPhrase(snap.arraySingleQuoteCustomPhrase);
     CConfig::setDayiArticleMode(snap.dayiArticleMode);
+    CConfig::SetSentenceMode(snap.sentenceMode);
     CConfig::SetDoHanConvert(snap.doHanConvert);
     CConfig::SetActivatedKeyboardMode(snap.activatedKeyboardMode);
     CConfig::SetBig5Filter(snap.big5Filter);
@@ -201,6 +203,7 @@ void SettingsModel::SyncToggleToSnapshot(SettingsSnapshot& s, SettingsControlId 
     case CTRL_KEYBOARD_OPEN_CLOSE: s.activatedKeyboardMode = isOn; break;
     case CTRL_OUTPUT_CHT_CHS:      s.doHanConvert = isOn; break;
     case CTRL_DAYI_ARTICLE:        s.dayiArticleMode = isOn; break;
+    case CTRL_SENTENCE_MODE:       s.sentenceMode = isOn; break;
     case CTRL_ARRAY_FORCE_SP:      s.arrayForceSP = isOn; break;
     case CTRL_ARRAY_NOTIFY_SP:     s.arrayNotifySP = isOn; break;
     case CTRL_ARRAY_SINGLE_QUOTE:  s.arraySingleQuoteCustomPhrase = isOn; break;

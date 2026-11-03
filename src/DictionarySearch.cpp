@@ -381,150 +381,7 @@ ReadValue:
 			}
 			if(_searchMode == SEARCH_MODE::SEARCH_CONFIG)
 			{
-				CParserStringRange testKey, value;				
-				if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"AutoCompose", 11)) == CSTR_EQUAL)
-					CConfig::SetAutoCompose((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ArrayForceSP", 12)) == CSTR_EQUAL)
-					CConfig::SetArrayForceSP((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ArrayNotifySP", 13)) == CSTR_EQUAL)
-					CConfig::SetArrayNotifySP((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ArraySingleQuoteCustomPhrase", 28)) == CSTR_EQUAL)
-					CConfig::SetArraySingleQuoteCustomPhrase((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"DayiArticleMode", 15)) == CSTR_EQUAL)
-					CConfig::setDayiArticleMode((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"SpaceAsPageDown", 15)) == CSTR_EQUAL)
-					CConfig::SetSpaceAsPageDown((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"SpaceAsFirstCandSelkey", 22)) == CSTR_EQUAL)
-					CConfig::SetSpaceAsFirstCaniSelkey((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ArrowKeySWPages", 15)) == CSTR_EQUAL)
-					CConfig::SetArrowKeySWPages((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ClearOnBeep", 11)) == CSTR_EQUAL)
-					CConfig::SetClearOnBeep((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"DoBeep", 6)) == CSTR_EQUAL)
-					CConfig::SetDoBeep((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"DoBeepNotify", 12)) == CSTR_EQUAL)
-					CConfig::SetDoBeepNotify((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"DoBeepOnCandi", 13)) == CSTR_EQUAL)
-					CConfig::SetDoBeepOnCandi((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"FontSize", 10)) == CSTR_EQUAL)
-					CConfig::SetFontSize(_wtoi(valueStrings.GetAt(0)->Get()));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"FontWeight", 10)) == CSTR_EQUAL)
-					CConfig::SetFontWeight(_wtoi(valueStrings.GetAt(0)->Get()));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"FontItalic", 10)) == CSTR_EQUAL)
-					CConfig::SetFontItalic((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"DoubleSingleByteMode", 20)) == CSTR_EQUAL)
-					CConfig::SetDoubleSingleByteMode((DOUBLE_SINGLE_BYTE_MODE)_wtoi(valueStrings.GetAt(0)->Get()));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ShiftEnglishDigitMode", 21)) == CSTR_EQUAL)
-					CConfig::SetShiftEnglishDigitMode((IME_SHIFT_ENGLISH_DIGIT_MODE)_wtoi(valueStrings.GetAt(0)->Get()));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"IMEShiftMode", 12)) == CSTR_EQUAL)
-					CConfig::SetIMEShiftMode((IME_SHIFT_MODE)_wtoi(valueStrings.GetAt(0)->Get()));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"MaxCodes", 8)) == CSTR_EQUAL)
-				{
-					int maxCodes = _wtoi(valueStrings.GetAt(0)->Get());
-					if (maxCodes > 0 && maxCodes <= MAX_CODES) // Validate range
-						CConfig::SetMaxCodes(maxCodes);
-					// If invalid, keep the current default value
-				}
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ActivatedKeyboardMode", 21)) == CSTR_EQUAL)
-					CConfig::SetActivatedKeyboardMode((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"MakePhrase", 10)) == CSTR_EQUAL)
-					CConfig::SetMakePhrase((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"DoHanConvert", 12)) == CSTR_EQUAL)
-					CConfig::SetDoHanConvert((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"PhoneticKeyboardLayout", 22)) == CSTR_EQUAL)
-					CConfig::setPhoneticKeyboardLayout((PHONETIC_KEYBOARD_LAYOUT) _wtoi(valueStrings.GetAt(0)->Get() ) );
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ArrayUnicodeScope", 17)) == CSTR_EQUAL)
-					CConfig::SetArrayScope((ARRAY_SCOPE)_wtoi(valueStrings.GetAt(0)->Get()));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ArrayScope", 10)) == CSTR_EQUAL)
-					CConfig::SetArrayScope((ARRAY_SCOPE)_wtoi(valueStrings.GetAt(0)->Get()));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"Big5Filter", 10)) == CSTR_EQUAL)
-					CConfig::SetBig5Filter(
-						CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL);
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"NumericPad", 10)) == CSTR_EQUAL)
-					CConfig::SetNumericPad((NUMERIC_PAD)_wtoi(valueStrings.GetAt(0)->Get()));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ReloadReverseConversion", 23)) == CSTR_EQUAL)
-					CConfig::SetReloadReverseConversion((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ReverseConversionCLSID", 22)) == CSTR_EQUAL)
-				{
-					BSTR pbstr;
-					pbstr = SysAllocStringLen( valueStrings.GetAt(0)->Get(), (UINT) valueStrings.GetAt(0)->GetLength());
-					CLSID clsid;
-					if(SUCCEEDED(CLSIDFromString(pbstr, &clsid)))
-						CConfig::SetReverseConverstionCLSID(clsid);
-					SysFreeString(pbstr);
-				}
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ReverseConversionGUIDProfile", 28)) == CSTR_EQUAL)
-				{
-					BSTR pbstr;
-					pbstr = SysAllocStringLen( valueStrings.GetAt(0)->Get(), (UINT) valueStrings.GetAt(0)->GetLength());
-					CLSID clsid;
-					if(SUCCEEDED(CLSIDFromString(pbstr, &clsid)))
-						CConfig::SetReverseConversionGUIDProfile(clsid);
-					SysFreeString(pbstr);
-				}
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ReverseConversionDescription", 28)) == CSTR_EQUAL)
-				{
-					WCHAR *pwszReverseConversionDescription = new (std::nothrow) WCHAR[valueStrings.GetAt(0)->GetLength() + 1];
-					StringCchCopyN(pwszReverseConversionDescription, valueStrings.GetAt(0)->GetLength() +1, valueStrings.GetAt(0)->Get(), valueStrings.GetAt(0)->GetLength());
-					CConfig::SetReverseConversionDescription(pwszReverseConversionDescription);
-				}
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ShowNotifyDesktop", 17)) == CSTR_EQUAL)
-					CConfig::SetShowNotifyDesktop((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));			
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"AppPermissionSet", 16)) == CSTR_EQUAL)
-					CConfig::SetAppPermissionSet((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ColorMode", 10)) == CSTR_EQUAL)
-				{
-					CConfig::SetColorMode(static_cast<IME_COLOR_MODE>(wcstol(valueStrings.GetAt(0)->Get(), NULL, 0)));
-					CConfig::SetColorModeKeyFound(true);
-				}
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ItemColor", 10)) == CSTR_EQUAL)
-					CConfig::SetItemColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"PhraseColor", 12)) == CSTR_EQUAL)
-					CConfig::SetPhraseColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"NumberColor", 12)) == CSTR_EQUAL)
-					CConfig::SetNumberColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"ItemBGColor", 12)) == CSTR_EQUAL)
-					CConfig::SetItemBGColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"SelectedItemColor", 18)) == CSTR_EQUAL)
-					CConfig::SetSelectedColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"SelectedBGItemColor", 20)) == CSTR_EQUAL)
-					CConfig::SetSelectedBGColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));	
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"LightItemColor", 15)) == CSTR_EQUAL)
-					CConfig::SetLightItemColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"LightPhraseColor", 17)) == CSTR_EQUAL)
-					CConfig::SetLightPhraseColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"LightNumberColor", 17)) == CSTR_EQUAL)
-					CConfig::SetLightNumberColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"LightItemBGColor", 17)) == CSTR_EQUAL)
-					CConfig::SetLightItemBGColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"LightSelectedItemColor", 23)) == CSTR_EQUAL)
-					CConfig::SetLightSelectedColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"LightSelectedBGItemColor", 25)) == CSTR_EQUAL)
-					CConfig::SetLightSelectedBGColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"DarkItemColor", 14)) == CSTR_EQUAL)
-					CConfig::SetDarkItemColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"DarkPhraseColor", 16)) == CSTR_EQUAL)
-					CConfig::SetDarkPhraseColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"DarkNumberColor", 16)) == CSTR_EQUAL)
-					CConfig::SetDarkNumberColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"DarkItemBGColor", 16)) == CSTR_EQUAL)
-					CConfig::SetDarkItemBGColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"DarkSelectedItemColor", 22)) == CSTR_EQUAL)
-					CConfig::SetDarkSelectedColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"DarkSelectedBGItemColor", 24)) == CSTR_EQUAL)
-					CConfig::SetDarkSelectedBGColor(wcstoul(valueStrings.GetAt(0)->Get(), NULL, 0));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"CustomTablePriority", 20)) == CSTR_EQUAL)
-					CConfig::setCustomTablePriority((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"FontFaceName", 12)) == CSTR_EQUAL)
-				{
-					WCHAR *pwszFontFaceName = new (std::nothrow) WCHAR[LF_FACESIZE];
-					assert(valueStrings.GetAt(0)->GetLength() < LF_FACESIZE-1);
-					StringCchCopyN(pwszFontFaceName, LF_FACESIZE, valueStrings.GetAt(0)->Get(), valueStrings.GetAt(0)->GetLength());
-					CConfig::SetFontFaceName(pwszFontFaceName);
-					delete[] pwszFontFaceName;
-				}
-				else if (CStringRange::Compare(_locale, &keyword, &testKey.Set(L"LoadTableMode", 13)) == CSTR_EQUAL)
-					CConfig::SetLoadTableMode((CStringRange::Compare(_locale, valueStrings.GetAt(0), &value.Set(L"1", 1)) == CSTR_EQUAL));
+				ApplyIniConfigEntry(_locale, &keyword, valueStrings.GetAt(0));
 				goto FindNextLine;
 			}
 			else if (_searchMode == SEARCH_MODE::SEARCH_CONTROLKEY && controlKeyType == CONTROLKEY_TYPE::CIN_CONTROLKEY)  // get value of cin control keys
@@ -682,4 +539,163 @@ void CDictionarySearch::setSearchOffset(DWORD_PTR offset)
 {
 	_charIndex = offset;
 	_searchMode = SEARCH_MODE::SEARCH_MAPPING;
+}
+//+---------------------------------------------------------------------------
+//
+// ApplyIniConfigEntry
+//
+// Applies one [Config] key/value pair (INI / TTS config files) to CConfig.
+// Shared by CDictionarySearch and the Rust-backed engine adapter.
+// pValue must be NUL-terminated after its range (_wtoi/wcstoul read past it).
+//
+//----------------------------------------------------------------------------
+
+void ApplyIniConfigEntry(LCID locale, _In_ CStringRange* pKeyword, _In_ CStringRange* pValue)
+{
+	CParserStringRange testKey, value;
+	if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"AutoCompose", 11)) == CSTR_EQUAL)
+		CConfig::SetAutoCompose((CStringRange::Compare(locale, pValue, &value.Set(L"1", 1)) == CSTR_EQUAL));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"ArrayForceSP", 12)) == CSTR_EQUAL)
+		CConfig::SetArrayForceSP((CStringRange::Compare(locale, pValue, &value.Set(L"1", 1)) == CSTR_EQUAL));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"ArrayNotifySP", 13)) == CSTR_EQUAL)
+		CConfig::SetArrayNotifySP((CStringRange::Compare(locale, pValue, &value.Set(L"1", 1)) == CSTR_EQUAL));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"ArraySingleQuoteCustomPhrase", 28)) == CSTR_EQUAL)
+		CConfig::SetArraySingleQuoteCustomPhrase((CStringRange::Compare(locale, pValue, &value.Set(L"1", 1)) == CSTR_EQUAL));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"DayiArticleMode", 15)) == CSTR_EQUAL)
+		CConfig::setDayiArticleMode((CStringRange::Compare(locale, pValue, &value.Set(L"1", 1)) == CSTR_EQUAL));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"SpaceAsPageDown", 15)) == CSTR_EQUAL)
+		CConfig::SetSpaceAsPageDown((CStringRange::Compare(locale, pValue, &value.Set(L"1", 1)) == CSTR_EQUAL));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"SpaceAsFirstCandSelkey", 22)) == CSTR_EQUAL)
+		CConfig::SetSpaceAsFirstCaniSelkey((CStringRange::Compare(locale, pValue, &value.Set(L"1", 1)) == CSTR_EQUAL));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"ArrowKeySWPages", 15)) == CSTR_EQUAL)
+		CConfig::SetArrowKeySWPages((CStringRange::Compare(locale, pValue, &value.Set(L"1", 1)) == CSTR_EQUAL));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"ClearOnBeep", 11)) == CSTR_EQUAL)
+		CConfig::SetClearOnBeep((CStringRange::Compare(locale, pValue, &value.Set(L"1", 1)) == CSTR_EQUAL));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"DoBeep", 6)) == CSTR_EQUAL)
+		CConfig::SetDoBeep((CStringRange::Compare(locale, pValue, &value.Set(L"1", 1)) == CSTR_EQUAL));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"DoBeepNotify", 12)) == CSTR_EQUAL)
+		CConfig::SetDoBeepNotify((CStringRange::Compare(locale, pValue, &value.Set(L"1", 1)) == CSTR_EQUAL));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"DoBeepOnCandi", 13)) == CSTR_EQUAL)
+		CConfig::SetDoBeepOnCandi((CStringRange::Compare(locale, pValue, &value.Set(L"1", 1)) == CSTR_EQUAL));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"SentenceMode", 12)) == CSTR_EQUAL)
+		CConfig::SetSentenceMode((CStringRange::Compare(locale, pValue, &value.Set(L"1", 1)) == CSTR_EQUAL));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"FontSize", 10)) == CSTR_EQUAL)
+		CConfig::SetFontSize(_wtoi(pValue->Get()));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"FontWeight", 10)) == CSTR_EQUAL)
+		CConfig::SetFontWeight(_wtoi(pValue->Get()));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"FontItalic", 10)) == CSTR_EQUAL)
+		CConfig::SetFontItalic((CStringRange::Compare(locale, pValue, &value.Set(L"1", 1)) == CSTR_EQUAL));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"DoubleSingleByteMode", 20)) == CSTR_EQUAL)
+		CConfig::SetDoubleSingleByteMode((DOUBLE_SINGLE_BYTE_MODE)_wtoi(pValue->Get()));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"ShiftEnglishDigitMode", 21)) == CSTR_EQUAL)
+		CConfig::SetShiftEnglishDigitMode((IME_SHIFT_ENGLISH_DIGIT_MODE)_wtoi(pValue->Get()));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"IMEShiftMode", 12)) == CSTR_EQUAL)
+		CConfig::SetIMEShiftMode((IME_SHIFT_MODE)_wtoi(pValue->Get()));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"MaxCodes", 8)) == CSTR_EQUAL)
+	{
+		int maxCodes = _wtoi(pValue->Get());
+		if (maxCodes > 0 && maxCodes <= MAX_CODES) // Validate range
+			CConfig::SetMaxCodes(maxCodes);
+		// If invalid, keep the current default value
+	}
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"ActivatedKeyboardMode", 21)) == CSTR_EQUAL)
+		CConfig::SetActivatedKeyboardMode((CStringRange::Compare(locale, pValue, &value.Set(L"1", 1)) == CSTR_EQUAL));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"MakePhrase", 10)) == CSTR_EQUAL)
+		CConfig::SetMakePhrase((CStringRange::Compare(locale, pValue, &value.Set(L"1", 1)) == CSTR_EQUAL));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"DoHanConvert", 12)) == CSTR_EQUAL)
+		CConfig::SetDoHanConvert((CStringRange::Compare(locale, pValue, &value.Set(L"1", 1)) == CSTR_EQUAL));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"PhoneticKeyboardLayout", 22)) == CSTR_EQUAL)
+		CConfig::setPhoneticKeyboardLayout((PHONETIC_KEYBOARD_LAYOUT) _wtoi(pValue->Get() ) );
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"ArrayUnicodeScope", 17)) == CSTR_EQUAL)
+		CConfig::SetArrayScope((ARRAY_SCOPE)_wtoi(pValue->Get()));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"ArrayScope", 10)) == CSTR_EQUAL)
+		CConfig::SetArrayScope((ARRAY_SCOPE)_wtoi(pValue->Get()));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"Big5Filter", 10)) == CSTR_EQUAL)
+		CConfig::SetBig5Filter(
+			CStringRange::Compare(locale, pValue, &value.Set(L"1", 1)) == CSTR_EQUAL);
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"NumericPad", 10)) == CSTR_EQUAL)
+		CConfig::SetNumericPad((NUMERIC_PAD)_wtoi(pValue->Get()));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"ReloadReverseConversion", 23)) == CSTR_EQUAL)
+		CConfig::SetReloadReverseConversion((CStringRange::Compare(locale, pValue, &value.Set(L"1", 1)) == CSTR_EQUAL));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"ReverseConversionCLSID", 22)) == CSTR_EQUAL)
+	{
+		BSTR pbstr;
+		pbstr = SysAllocStringLen( pValue->Get(), (UINT) pValue->GetLength());
+		CLSID clsid;
+		if(SUCCEEDED(CLSIDFromString(pbstr, &clsid)))
+			CConfig::SetReverseConverstionCLSID(clsid);
+		SysFreeString(pbstr);
+	}
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"ReverseConversionGUIDProfile", 28)) == CSTR_EQUAL)
+	{
+		BSTR pbstr;
+		pbstr = SysAllocStringLen( pValue->Get(), (UINT) pValue->GetLength());
+		CLSID clsid;
+		if(SUCCEEDED(CLSIDFromString(pbstr, &clsid)))
+			CConfig::SetReverseConversionGUIDProfile(clsid);
+		SysFreeString(pbstr);
+	}
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"ReverseConversionDescription", 28)) == CSTR_EQUAL)
+	{
+		WCHAR *pwszReverseConversionDescription = new (std::nothrow) WCHAR[pValue->GetLength() + 1];
+		StringCchCopyN(pwszReverseConversionDescription, pValue->GetLength() +1, pValue->Get(), pValue->GetLength());
+		CConfig::SetReverseConversionDescription(pwszReverseConversionDescription);
+	}
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"ShowNotifyDesktop", 17)) == CSTR_EQUAL)
+		CConfig::SetShowNotifyDesktop((CStringRange::Compare(locale, pValue, &value.Set(L"1", 1)) == CSTR_EQUAL));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"AppPermissionSet", 16)) == CSTR_EQUAL)
+		CConfig::SetAppPermissionSet((CStringRange::Compare(locale, pValue, &value.Set(L"1", 1)) == CSTR_EQUAL));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"ColorMode", 10)) == CSTR_EQUAL)
+	{
+		CConfig::SetColorMode(static_cast<IME_COLOR_MODE>(wcstol(pValue->Get(), NULL, 0)));
+		CConfig::SetColorModeKeyFound(true);
+	}
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"ItemColor", 10)) == CSTR_EQUAL)
+		CConfig::SetItemColor(wcstoul(pValue->Get(), NULL, 0));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"PhraseColor", 12)) == CSTR_EQUAL)
+		CConfig::SetPhraseColor(wcstoul(pValue->Get(), NULL, 0));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"NumberColor", 12)) == CSTR_EQUAL)
+		CConfig::SetNumberColor(wcstoul(pValue->Get(), NULL, 0));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"ItemBGColor", 12)) == CSTR_EQUAL)
+		CConfig::SetItemBGColor(wcstoul(pValue->Get(), NULL, 0));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"SelectedItemColor", 18)) == CSTR_EQUAL)
+		CConfig::SetSelectedColor(wcstoul(pValue->Get(), NULL, 0));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"SelectedBGItemColor", 20)) == CSTR_EQUAL)
+		CConfig::SetSelectedBGColor(wcstoul(pValue->Get(), NULL, 0));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"LightItemColor", 15)) == CSTR_EQUAL)
+		CConfig::SetLightItemColor(wcstoul(pValue->Get(), NULL, 0));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"LightPhraseColor", 17)) == CSTR_EQUAL)
+		CConfig::SetLightPhraseColor(wcstoul(pValue->Get(), NULL, 0));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"LightNumberColor", 17)) == CSTR_EQUAL)
+		CConfig::SetLightNumberColor(wcstoul(pValue->Get(), NULL, 0));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"LightItemBGColor", 17)) == CSTR_EQUAL)
+		CConfig::SetLightItemBGColor(wcstoul(pValue->Get(), NULL, 0));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"LightSelectedItemColor", 23)) == CSTR_EQUAL)
+		CConfig::SetLightSelectedColor(wcstoul(pValue->Get(), NULL, 0));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"LightSelectedBGItemColor", 25)) == CSTR_EQUAL)
+		CConfig::SetLightSelectedBGColor(wcstoul(pValue->Get(), NULL, 0));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"DarkItemColor", 14)) == CSTR_EQUAL)
+		CConfig::SetDarkItemColor(wcstoul(pValue->Get(), NULL, 0));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"DarkPhraseColor", 16)) == CSTR_EQUAL)
+		CConfig::SetDarkPhraseColor(wcstoul(pValue->Get(), NULL, 0));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"DarkNumberColor", 16)) == CSTR_EQUAL)
+		CConfig::SetDarkNumberColor(wcstoul(pValue->Get(), NULL, 0));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"DarkItemBGColor", 16)) == CSTR_EQUAL)
+		CConfig::SetDarkItemBGColor(wcstoul(pValue->Get(), NULL, 0));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"DarkSelectedItemColor", 22)) == CSTR_EQUAL)
+		CConfig::SetDarkSelectedColor(wcstoul(pValue->Get(), NULL, 0));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"DarkSelectedBGItemColor", 24)) == CSTR_EQUAL)
+		CConfig::SetDarkSelectedBGColor(wcstoul(pValue->Get(), NULL, 0));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"CustomTablePriority", 20)) == CSTR_EQUAL)
+		CConfig::setCustomTablePriority((CStringRange::Compare(locale, pValue, &value.Set(L"1", 1)) == CSTR_EQUAL));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"FontFaceName", 12)) == CSTR_EQUAL)
+	{
+		WCHAR *pwszFontFaceName = new (std::nothrow) WCHAR[LF_FACESIZE];
+		assert(pValue->GetLength() < LF_FACESIZE-1);
+		StringCchCopyN(pwszFontFaceName, LF_FACESIZE, pValue->Get(), pValue->GetLength());
+		CConfig::SetFontFaceName(pwszFontFaceName);
+		delete[] pwszFontFaceName;
+	}
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"LoadTableMode", 13)) == CSTR_EQUAL)
+		CConfig::SetLoadTableMode((CStringRange::Compare(locale, pValue, &value.Set(L"1", 1)) == CSTR_EQUAL));
 }

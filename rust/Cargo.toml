@@ -1,0 +1,15 @@
+[workspace]
+resolver = "2"
+members = ["crates/dime-core", "crates/dime-ffi"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "BSD-3-Clause"
+publish = false
+
+[profile.release]
+# The FFI layer catches every panic at the boundary; keep unwinding so that
+# catch_unwind works. Never let a panic escape into the host process.
+panic = "unwind"
+debug = 1

@@ -117,6 +117,18 @@ HRESULT CDIME::_HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext
 			goto Exit;
 		}
     }
+	// Sentence mode: the chosen candidate joins (or edits) the pending sentence instead of
+	// being committed.  It is pinned when the user picked it explicitly.
+	if (_IsSentenceMode() && _candidateMode != CANDIDATE_MODE::CANDIDATE_PHRASE)
+	{
+		std::wstring selected(pCandidateString, candidateLen);
+		BOOL isExplicit = _sentencePinNext || _isCandidateWithWildcard ||
+			_pUIPresenter->_GetCandidateSelection() > 0 ||
+			_pCompositionProcessorEngine->IsEscapeInputLeading();
+		_sentencePinNext = FALSE;
+		return _SentenceSelectCandidate(ec, pContext, selected, isExplicit);
+	}
+
 	if (_pCompositionProcessorEngine->IsArrayShortCode() && candidateLen == 1 && *pCandidateString == 0x2394) // empty position in arry short code table.
 	{
 		hr = S_FALSE;
@@ -292,7 +304,10 @@ HRESULT CDIME::_HandleCandidateSelectByNumber(TfEditCookie ec, _In_ ITfContext *
     {
         if (_pUIPresenter->_SetCandidateSelectionInPage(iSelectAsNumber))
         {
-            return _HandleCandidateConvert(ec, pContext);
+            _sentencePinNext = TRUE;  // sentence mode: a select key pins the character
+            HRESULT hr = _HandleCandidateConvert(ec, pContext);
+            _sentencePinNext = FALSE;
+            return hr;
         }
     }
 

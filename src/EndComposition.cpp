@@ -81,6 +81,15 @@ void CDIME::_TerminateComposition(TfEditCookie ec, _In_ ITfContext *pContext, BO
 	debugPrint(L"CDIME::_TerminateComposition()\n");
 
 
+	// Sentence mode: a composition ended from outside (focus change, mode switch,
+	// deactivation) keeps the converted sentence instead of being cleared.
+	if (_pComposition && _IsSentencePending())
+	{
+		_SentenceFinalizeInComposition(ec);
+		isCalledFromDeactivate = FALSE;
+	}
+	_SentenceReset();
+
     if (_pComposition)
     {
 		if(isCalledFromDeactivate)

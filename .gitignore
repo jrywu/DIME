@@ -231,3 +231,6 @@ DIME.VC.db
 /src/.omc
 
 /installer/logging-output/
+
+# Rust build output
+rust/target/

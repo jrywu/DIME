@@ -146,6 +146,9 @@ public:
 	static BOOL GetDoBeepNotify() { return _doBeepNotify; }
 	static void SetDoBeepOnCandi(BOOL doBeepOnCandi) { _doBeepOnCandi = doBeepOnCandi; }
 	static BOOL GetDoBeepOnCandi() { return _doBeepOnCandi; }
+	// Sentence mode (continuous input without choosing candidates), Dayi only.
+	static void SetSentenceMode(BOOL sentenceMode) { _sentenceMode = sentenceMode; }
+	static BOOL GetSentenceMode() { return _sentenceMode; }
 	static void SetMakePhrase(BOOL makePhrase) { _makePhrase = makePhrase;}
 	static BOOL GetMakePhrase() {return _makePhrase;}
 	static void SetShowNotifyDesktop(BOOL showNotifyDesktop) { _showNotifyDesktop = showNotifyDesktop;}
@@ -312,6 +315,7 @@ private:
 	static BOOL _doBeep;
 	static BOOL _doBeepNotify;
 	static BOOL _doBeepOnCandi;
+	static BOOL _sentenceMode;
 	static BOOL _appPermissionSet;
 	static BOOL _reloadReverseConversion;
 	static BOOL _activatedKeyboardMode;

@@ -39,6 +39,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "BaseStructure.h"
 #include "Compartment.h"
 #include "LanguageBar.h"
+#include "SentenceBuffer.h"
 
 #ifdef DIME_UNIT_TESTING
 // Forward declaration for integration tests
@@ -172,7 +173,12 @@ public:
     HRESULT _HandleCompositionDoubleSingleByte(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch);
 	HRESULT _HandleCompositionShiftEnglishInput(TfEditCookie ec, _In_ ITfContext *pContext, UINT code, WCHAR wch);
 	HRESULT _HandleCompositionAddressChar(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch);
-	
+
+    // sentence mode (SentenceHandler.cpp): keys handled while a sentence is pending
+    HRESULT _HandleSentenceCommit(TfEditCookie ec, _In_ ITfContext *pContext);
+    HRESULT _HandleSentenceBackspace(TfEditCookie ec, _In_ ITfContext *pContext, UINT code);
+    HRESULT _HandleSentenceArrowKey(TfEditCookie ec, _In_ ITfContext *pContext, KEYSTROKE_FUNCTION keyFunction);
+
     // key event handlers for candidate object.
     HRESULT _HandleCandidateFinalize(TfEditCookie ec, _In_ ITfContext *pContext);
     HRESULT _HandleCandidateConvert(TfEditCookie ec, _In_ ITfContext *pContext);
@@ -305,6 +311,23 @@ private:
 	// function for process candidate
 	VOID _DeleteCandidateList(BOOL fForce, _In_opt_ ITfContext *pContext);
 
+	// sentence mode (SentenceHandler.cpp)
+	BOOL _IsSentenceMode();
+	BOOL _IsSentencePending() { return !_sentence.IsEmpty(); }
+	BOOL _IsSentenceKeyEaten(UINT code, _Inout_opt_ _KEYSTROKE_STATE *pKeyState);
+	CSentenceLexicon* _GetSentenceLexicon();
+	std::wstring _GetKeystrokeCode();
+	HRESULT _SentenceRender(TfEditCookie ec, _In_ ITfContext *pContext, const std::wstring& reading);
+	HRESULT _SentenceWrite(TfEditCookie ec, _In_ ITfContext *pContext, const std::wstring& text, size_t caret, BOOL withAttributes);
+	HRESULT _SentenceCommitBeforeOutput(TfEditCookie ec, _In_ ITfContext *pContext);
+	HRESULT _SentenceAppend(TfEditCookie ec, _In_ ITfContext *pContext, const std::vector<std::wstring>& candidates, int pinned);
+	HRESULT _SentenceAppendFromCandidateList(TfEditCookie ec, _In_ ITfContext *pContext, _In_ CDIMEArray<CCandidateListItem> *pCandidateList, int pinned);
+	HRESULT _SentenceSelectCandidate(TfEditCookie ec, _In_ ITfContext *pContext, const std::wstring& selected, BOOL isExplicit);
+	HRESULT _SentenceOpenCandidates(TfEditCookie ec, _In_ ITfContext *pContext);
+	HRESULT _SentenceCloseReading(TfEditCookie ec, _In_ ITfContext *pContext);
+	void _SentenceFinalizeInComposition(TfEditCookie ec);
+	void _SentenceReset();
+
 	//language bar private
     BOOL InitLanguageBar(_In_ CLangBarItemButton *pLanguageBar, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, REFGUID guidCompartment);
     void SetupLanguageBar(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId, BOOL isSecureMode);
@@ -404,6 +427,14 @@ private:
 	CStringRange lastReadingString;
 
 	BOOL _newlyActivated;
+
+	// sentence mode state
+	CSentenceBuffer _sentence;
+	CSentenceLexicon* _pSentenceLexicon;
+	BOOL _sentenceLexiconLoaded;
+	int _sentenceEditPos;          // position edited by the candidate window, or -1
+	BOOL _sentencePinNext;         // the next candidate finalize came from a select key
+	std::wstring _sentenceDisplay; // current composition text (backs lastReadingString)
 };
 
 

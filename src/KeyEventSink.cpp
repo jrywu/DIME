@@ -232,6 +232,16 @@ BOOL CDIME::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pCod
 			return TRUE;
 		}
 
+		// Sentence mode: with a pending sentence and nothing being typed, Enter/Space/
+		// Backspace/arrows act on the sentence (see SentenceHandler.cpp).
+		if (_IsSentencePending() && _IsComposing() &&
+			_candidateMode == CANDIDATE_MODE::CANDIDATE_NONE &&
+			pCompositionProcessorEngine->GetVirtualKeyLength() == 0 &&
+			_IsSentenceKeyEaten(*pCodeOut, pKeyState))
+		{
+			return TRUE;
+		}
+
 		if (pCompositionProcessorEngine->IsVirtualKeyNeed(*pCodeOut, pwch, _IsComposing(), _candidateMode, _isCandidateWithWildcard, candiCount, candiSelection, pKeyState))
         {
             return TRUE;

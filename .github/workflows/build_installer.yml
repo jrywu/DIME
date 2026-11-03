@@ -3,6 +3,11 @@ name: Build
 
 on:
   workflow_dispatch:
+    inputs:
+      rust_engine:
+        description: 'Build DIME.dll with the Rust dictionary engine (DimeUseRustEngine)'
+        type: boolean
+        default: false
   push:
     branches: [master]
     paths:
@@ -100,8 +105,17 @@ jobs:
             }
           }
 
+      - name: Setup Rust (only when the Rust engine is enabled)
+        if: github.event_name == 'workflow_dispatch' && inputs.rust_engine
+        shell: pwsh
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup target add i686-pc-windows-msvc x86_64-pc-windows-msvc aarch64-pc-windows-msvc arm64ec-pc-windows-msvc
+
       - name: Build All Platforms (Release)
         shell: pwsh
+        env:
+          DIME_USE_RUST_ENGINE: ${{ github.event_name == 'workflow_dispatch' && inputs.rust_engine && 'true' || 'false' }}
         run: |
           cd src
           $builds = @(
@@ -112,7 +126,7 @@ jobs:
           )
 
           foreach ($build in $builds) {
-            msbuild DIME.sln /p:Configuration=Release "/p:Platform=$($build.Platform)" "/t:$($build.Target)"
+            msbuild DIME.sln /p:Configuration=Release "/p:Platform=$($build.Platform)" "/t:$($build.Target)" "/p:DimeUseRustEngine=$env:DIME_USE_RUST_ENGINE"
             if ($LASTEXITCODE -ne 0) {
               exit $LASTEXITCODE
             }

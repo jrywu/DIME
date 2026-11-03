@@ -220,6 +220,7 @@ DIMESettings.exe --reset-ui --mode array
 | `FontItalic` | 字型斜體 | 0 | all |
 | `CustomTablePriority` | 自建詞優先 | 0 | all |
 | `DayiArticleMode` | 地址鍵輸入符號 | 0 | dayi |
+| `SentenceMode` | 整句輸入（連續打字不選字，依上下文自動選字；需 Rust 版 DIME.dll） | 0 | dayi |
 | `ArrayForceSP` | 僅接受輸入特別碼 | 0 | array |
 | `ArrayNotifySP` | 特別碼提示 | 0 | array |
 | `ArraySingleQuoteCustomPhrase` | 以'鍵查詢自建詞庫 | 0 | array |

@@ -1,0 +1,9 @@
+[package]
+name = "dime-core"
+description = "Platform-neutral core of the DIME IME: .cin/TTS dictionary parsing and search."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
