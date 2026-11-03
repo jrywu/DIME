@@ -201,6 +201,116 @@ namespace DIMEUnitTests
             Assert::AreEqual(std::wstring(L"\u6211\u5011\u4ECA\u5929"), s.Text());
         }
 
+        TEST_METHOD(UserModelLearnsPinnedCharactersAndPairs)
+        {
+            if (!CSentenceLexicon::IsSupported())
+            {
+                Logger::WriteMessage(L"Rust library not linked; skipped.");
+                return;
+            }
+            CSentenceLexicon lex;
+            std::wstring root = SentenceRepoRoot() + L"installer\\";
+            LoadInto(lex, root + L"TCFreq.cin", true);
+
+            // "k" lists \u4E4B before \u7ACB (Dragonfly order); \u4E4B also has the higher frequency.
+            CSentenceBuffer b;
+            b.Insert(L"k", C({ L"\u4E4B", L"\u7ACB", L"\u4EA0" }), -1);
+            b.Insert(L"kn", C({ L"\u521D" }), -1);
+            b.Convert(&lex);
+            Assert::AreEqual(std::wstring(L"\u4E4B\u521D"), b.Text());
+
+            // The user fixes the first character; committing teaches k -> \u7ACB and the pair \u7ACB\u521D.
+            b.Pin(0, 1);
+            b.Convert(&lex);
+            CSentenceUserModel user;
+            Assert::IsTrue(user.Learn(b));
+            Assert::AreEqual((size_t)1, user.ChoiceCount());
+            Assert::AreEqual((size_t)1, user.WordCount());
+
+            // Next time the same codes convert to the learned text without pinning.
+            CSentenceBuffer again;
+            again.Insert(L"k", C({ L"\u4E4B", L"\u7ACB", L"\u4EA0" }), -1);
+            again.Insert(L"kn", C({ L"\u521D" }), -1);
+            again.Convert(&lex, &user);
+            Assert::AreEqual(std::wstring(L"\u7ACB\u521D"), again.Text());
+            again.Convert(&lex);
+            Assert::AreEqual(std::wstring(L"\u4E4B\u521D"), again.Text(), L"without the model nothing changes");
+
+            // A lone "k" needs the choice repeated before it beats \u4E4B on its own.
+            CSentenceBuffer lone;
+            lone.Insert(L"k", C({ L"\u4E4B", L"\u7ACB", L"\u4EA0" }), -1);
+            lone.Convert(&lex, &user);
+            Assert::AreEqual(std::wstring(L"\u4E4B"), lone.Text());
+            for (int i = 0; i < 2; i++)
+            {
+                CSentenceBuffer pinned;
+                pinned.Insert(L"k", C({ L"\u4E4B", L"\u7ACB", L"\u4EA0" }), 1);
+                pinned.Convert(&lex, &user);
+                user.Learn(pinned);
+            }
+            lone.Convert(&lex, &user);
+            Assert::AreEqual(std::wstring(L"\u7ACB"), lone.Text());
+
+            // Nothing pinned: nothing learned.
+            CSentenceUserModel empty;
+            Assert::IsFalse(empty.Learn(again));
+        }
+
+        TEST_METHOD(UserModelFileRoundTripAndMerge)
+        {
+            if (!CSentenceLexicon::IsSupported())
+            {
+                Logger::WriteMessage(L"Rust library not linked; skipped.");
+                return;
+            }
+            WCHAR tempDir[MAX_PATH] = { 0 };
+            GetTempPathW(MAX_PATH, tempDir);
+            std::wstring path = std::wstring(tempDir) + L"dime_sentence_user_test.txt";
+            DeleteFileW(path.c_str());
+
+            CSentenceUserModel missing;
+            Assert::AreEqual((size_t)0, missing.LoadFile(path.c_str()), L"missing file loads nothing");
+
+            CSentenceBuffer b;
+            b.Insert(L"k", C({ L"\u4E4B", L"\u7ACB" }), 1);
+            b.Insert(L"kln", C({ L"\u523B" }), -1);
+            b.Convert(nullptr);
+
+            // Two "processes" learn separately; each save re-reads the file and adds its own data.
+            CSentenceUserModel pendingA, pendingB;
+            pendingA.Learn(b);
+            pendingB.Learn(b);
+
+            CSentenceUserModel freshA;
+            freshA.LoadFile(path.c_str());
+            freshA.Merge(pendingA);
+            Assert::IsTrue(freshA.SaveFile(path.c_str()) != FALSE);
+
+            CSentenceUserModel freshB;
+            freshB.LoadFile(path.c_str());
+            freshB.Merge(pendingB);
+            Assert::IsTrue(freshB.SaveFile(path.c_str()) != FALSE);
+
+            CSentenceUserModel loaded;
+            Assert::AreEqual((size_t)2, loaded.LoadFile(path.c_str()));
+            std::wstring text = loaded.Export();
+            Assert::IsTrue(text.find(L"W\t\u7ACB\u523B\t2") != std::wstring::npos, text.c_str());
+            Assert::IsTrue(text.find(L"C\tk\t\u7ACB\t2") != std::wstring::npos, text.c_str());
+
+            // The file starts with a BOM so it opens as UTF-16 in editors.
+            HANDLE h = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr);
+            Assert::IsTrue(h != INVALID_HANDLE_VALUE);
+            WCHAR first = 0;
+            DWORD read = 0;
+            ReadFile(h, &first, sizeof(first), &read, nullptr);
+            CloseHandle(h);
+            Assert::AreEqual((int)0xFEFF, (int)first);
+
+            loaded.Clear();
+            Assert::AreEqual((size_t)0, loaded.WordCount());
+            DeleteFileW(path.c_str());
+        }
+
         // The Dayi table users actually type with: dragonfly.cin (Dragonfly, at the
         // repository root).  Plain .cin: "code<space>char" lines in %chardef, in
         // candidate order.  Each character is typed with its first listed code and

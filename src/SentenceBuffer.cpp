@@ -42,6 +42,37 @@ namespace
 #ifdef DIME_RUST_AVAILABLE
 	static_assert(sizeof(WCHAR) == sizeof(uint16_t), "WCHAR must be UTF-16");
 	inline const uint16_t* U16(const WCHAR* p) { return reinterpret_cast<const uint16_t*>(p); }
+
+	// The flattened arrays dime_sentence_convert / dime_user_model_learn take.
+	struct SentenceArrays
+	{
+		std::vector<const uint16_t*> codes;
+		std::vector<size_t> codeLens;
+		std::vector<size_t> starts;
+		std::vector<const uint16_t*> cands;
+		std::vector<size_t> candLens;
+		std::vector<int32_t> pinned;
+		std::vector<int32_t> chosen;
+
+		explicit SentenceArrays(const CSentenceBuffer& b)
+		{
+			starts.push_back(0);
+			for (size_t i = 0; i < b.Count(); i++)
+			{
+				const CSentencePosition& position = b.At(i);
+				codes.push_back(U16(position.code.c_str()));
+				codeLens.push_back(position.code.length());
+				for (const std::wstring& c : position.candidates)
+				{
+					cands.push_back(U16(c.c_str()));
+					candLens.push_back(c.length());
+				}
+				starts.push_back(cands.size());
+				pinned.push_back(position.pinned);
+				chosen.push_back(position.chosen);
+			}
+		}
+	};
 #endif
 }
 
@@ -122,6 +153,145 @@ size_t CSentenceLexicon::CharCount() const
 }
 
 //////////////////////////////////////////////////////////////////////
+// CSentenceUserModel
+//////////////////////////////////////////////////////////////////////
+
+CSentenceUserModel::CSentenceUserModel() : _pModel(nullptr)
+{
+#ifdef DIME_RUST_AVAILABLE
+	_pModel = dime_user_model_new();
+#endif
+}
+
+CSentenceUserModel::~CSentenceUserModel()
+{
+#ifdef DIME_RUST_AVAILABLE
+	dime_user_model_free(_pModel);
+#endif
+	_pModel = nullptr;
+}
+
+size_t CSentenceUserModel::Import(_In_reads_(len) const WCHAR* buf, size_t len)
+{
+#ifdef DIME_RUST_AVAILABLE
+	if (_pModel && buf) return dime_user_model_import(_pModel, U16(buf), len);
+#else
+	buf; len;
+#endif
+	return 0;
+}
+
+std::wstring CSentenceUserModel::Export() const
+{
+	std::wstring text;
+#ifdef DIME_RUST_AVAILABLE
+	DimeBuffer* pBuffer = dime_user_model_export(_pModel);
+	if (pBuffer)
+	{
+		size_t len = 0;
+		const uint16_t* p = dime_buffer_data(pBuffer, &len);
+		if (p) text.assign(reinterpret_cast<const WCHAR*>(p), len);
+		dime_buffer_free(pBuffer);
+	}
+#endif
+	return text;
+}
+
+void CSentenceUserModel::Merge(const CSentenceUserModel& other)
+{
+#ifdef DIME_RUST_AVAILABLE
+	dime_user_model_merge(_pModel, other._pModel);
+#else
+	other;
+#endif
+}
+
+void CSentenceUserModel::Clear()
+{
+#ifdef DIME_RUST_AVAILABLE
+	dime_user_model_clear(_pModel);
+#endif
+}
+
+size_t CSentenceUserModel::WordCount() const
+{
+#ifdef DIME_RUST_AVAILABLE
+	return dime_user_model_word_count(_pModel);
+#else
+	return 0;
+#endif
+}
+
+size_t CSentenceUserModel::ChoiceCount() const
+{
+#ifdef DIME_RUST_AVAILABLE
+	return dime_user_model_choice_count(_pModel);
+#else
+	return 0;
+#endif
+}
+
+bool CSentenceUserModel::Learn(const CSentenceBuffer& sentence)
+{
+#ifdef DIME_RUST_AVAILABLE
+	if (_pModel == nullptr || sentence.IsEmpty()) return false;
+	SentenceArrays a(sentence);
+	return dime_user_model_learn(_pModel, sentence.Count(), a.codes.data(), a.codeLens.data(), a.starts.data(),
+		a.cands.data(), a.candLens.data(), a.pinned.data(), a.chosen.data()) != 0;
+#else
+	sentence;
+	return false;
+#endif
+}
+
+size_t CSentenceUserModel::LoadFile(_In_z_ LPCWSTR path)
+{
+	HANDLE h = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr,
+		OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+	if (h == INVALID_HANDLE_VALUE) return 0;
+
+	size_t imported = 0;
+	LARGE_INTEGER size = {};
+	if (GetFileSizeEx(h, &size) && size.QuadPart > 0 && size.QuadPart < 64 * 1024 * 1024)
+	{
+		std::vector<WCHAR> data((size_t)size.QuadPart / sizeof(WCHAR) + 1, 0);
+		DWORD read = 0;
+		if (ReadFile(h, data.data(), (DWORD)size.QuadPart, &read, nullptr))
+		{
+			size_t len = read / sizeof(WCHAR);
+			const WCHAR* p = data.data();
+			if (len && *p == 0xFEFF) { p++; len--; }
+			imported = Import(p, len);
+		}
+	}
+	CloseHandle(h);
+	return imported;
+}
+
+BOOL CSentenceUserModel::SaveFile(_In_z_ LPCWSTR path) const
+{
+	std::wstring text = Export();
+	if (text.empty()) return FALSE;
+
+	std::wstring temp = std::wstring(path) + L".tmp";
+	HANDLE h = CreateFileW(temp.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+	if (h == INVALID_HANDLE_VALUE) return FALSE;
+
+	const WCHAR bom = 0xFEFF;
+	DWORD written = 0;
+	DWORD bytes = (DWORD)(text.length() * sizeof(WCHAR));
+	BOOL ok = WriteFile(h, &bom, sizeof(bom), &written, nullptr) && written == sizeof(bom) &&
+		WriteFile(h, text.data(), bytes, &written, nullptr) && written == bytes;
+	CloseHandle(h);
+
+	if (ok)
+		ok = MoveFileExW(temp.c_str(), path, MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
+	if (!ok)
+		DeleteFileW(temp.c_str());
+	return ok;
+}
+
+//////////////////////////////////////////////////////////////////////
 // CSentenceBuffer
 //////////////////////////////////////////////////////////////////////
 
@@ -171,43 +341,25 @@ bool CSentenceBuffer::Pin(size_t pos, int index)
 	return true;
 }
 
-void CSentenceBuffer::Convert(_In_opt_ const CSentenceLexicon* pLexicon)
+void CSentenceBuffer::Convert(_In_opt_ const CSentenceLexicon* pLexicon, _In_opt_ const CSentenceUserModel* pUser)
 {
 	if (_positions.empty()) return;
 
 #ifdef DIME_RUST_AVAILABLE
-	std::vector<size_t> starts;
-	std::vector<const uint16_t*> cands;
-	std::vector<size_t> lens;
-	std::vector<int32_t> pinned;
-	std::vector<int32_t> chosen(_positions.size(), 0);
-	starts.reserve(_positions.size() + 1);
-	pinned.reserve(_positions.size());
-
-	starts.push_back(0);
-	for (const CSentencePosition& position : _positions)
-	{
-		for (const std::wstring& c : position.candidates)
-		{
-			cands.push_back(U16(c.c_str()));
-			lens.push_back(c.length());
-		}
-		starts.push_back(cands.size());
-		pinned.push_back(position.pinned);
-	}
-
-	if (dime_sentence_convert(pLexicon ? pLexicon->Handle() : nullptr, _positions.size(), starts.data(),
-		cands.data(), lens.data(), pinned.data(), chosen.data()))
+	SentenceArrays a(*this);
+	if (dime_sentence_convert(pLexicon ? pLexicon->Handle() : nullptr, pUser ? pUser->Handle() : nullptr,
+		_positions.size(), a.codes.data(), a.codeLens.data(), a.starts.data(),
+		a.cands.data(), a.candLens.data(), a.pinned.data(), a.chosen.data()))
 	{
 		for (size_t i = 0; i < _positions.size(); i++)
 		{
-			int k = chosen[i];
+			int k = a.chosen[i];
 			_positions[i].chosen = (k >= 0 && (size_t)k < _positions[i].candidates.size()) ? k : 0;
 		}
 		return;
 	}
 #else
-	pLexicon;
+	pLexicon; pUser;
 #endif
 
 	for (CSentencePosition& position : _positions)

@@ -15,13 +15,14 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::ptr;
 
 use dime_core::big5;
-use dime_core::sentence::{self, Lexicon, Position};
+use dime_core::sentence::{self, Lexicon, Position, UserModel};
 use dime_core::{CandidateItem, DictionaryType, SearchSection, TableDictionaryEngine, WinTextOps};
 
 pub struct DimeEngine(TableDictionaryEngine<WinTextOps>);
 pub struct DimeItems(Vec<CandidateItem>);
 pub struct DimeBuffer(Vec<u16>);
 pub struct DimeLexicon(Lexicon);
+pub struct DimeUserModel(UserModel);
 
 fn guard<R>(fallback: R, f: impl FnOnce() -> R) -> R {
     catch_unwind(AssertUnwindSafe(f)).unwrap_or(fallback)
@@ -487,9 +488,136 @@ pub unsafe extern "C" fn dime_lexicon_char_count(lex: *const DimeLexicon) -> usi
 }
 
 #[no_mangle]
+pub extern "C" fn dime_user_model_new() -> *mut DimeUserModel {
+    guard(ptr::null_mut(), || boxed(DimeUserModel(UserModel::new())))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_user_model_free(model: *mut DimeUserModel) {
+    if !model.is_null() {
+        guard((), || drop(unsafe { Box::from_raw(model) }));
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_user_model_import(model: *mut DimeUserModel, buf: *const u16, len: usize) -> usize {
+    guard(0, || match unsafe { model.as_mut() } {
+        Some(m) => m.0.import(unsafe { slice(buf, len) }),
+        None => 0,
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_user_model_export(model: *const DimeUserModel) -> *mut DimeBuffer {
+    guard(ptr::null_mut(), || match unsafe { model.as_ref() } {
+        Some(m) => boxed(DimeBuffer(m.0.export())),
+        None => ptr::null_mut(),
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_user_model_merge(dst: *mut DimeUserModel, src: *const DimeUserModel) {
+    guard((), || {
+        if let (Some(d), Some(s)) = (unsafe { dst.as_mut() }, unsafe { src.as_ref() }) {
+            if !ptr::eq(d, s) {
+                d.0.merge(&s.0);
+            }
+        }
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_user_model_clear(model: *mut DimeUserModel) {
+    guard((), || {
+        if let Some(m) = unsafe { model.as_mut() } {
+            m.0.clear();
+        }
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_user_model_word_count(model: *const DimeUserModel) -> usize {
+    guard(0, || unsafe { model.as_ref() }.map_or(0, |m| m.0.word_count()))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_user_model_choice_count(model: *const DimeUserModel) -> usize {
+    guard(0, || unsafe { model.as_ref() }.map_or(0, |m| m.0.choice_count()))
+}
+
+/// The arrays shared by convert and learn; see dime_ffi.h.
+#[derive(Clone, Copy)]
+struct SentenceArgs {
+    count: usize,
+    codes: *const *const u16,
+    code_lens: *const usize,
+    cand_start: *const usize,
+    cands: *const *const u16,
+    cand_lens: *const usize,
+    pinned: *const i32,
+}
+
+impl SentenceArgs {
+    /// Build the positions, or `None` when the arrays are inconsistent.
+    unsafe fn positions<'a>(self) -> Option<Vec<Position<'a>>> {
+        if self.cand_start.is_null() {
+            return None;
+        }
+        // SAFETY: the caller passes count + 1 offsets.
+        let starts = unsafe { std::slice::from_raw_parts(self.cand_start, self.count + 1) };
+        let total = starts[self.count];
+        if starts[0] != 0
+            || starts.windows(2).any(|w| w[0] > w[1])
+            || (total > 0 && (self.cands.is_null() || self.cand_lens.is_null()))
+            || (self.codes.is_null() != self.code_lens.is_null())
+        {
+            return None;
+        }
+        let (ptrs, lens): (&[*const u16], &[usize]) = if total == 0 {
+            (&[], &[])
+        } else {
+            // SAFETY: the caller passes `total` candidate pointers and lengths.
+            unsafe {
+                (
+                    std::slice::from_raw_parts(self.cands, total),
+                    std::slice::from_raw_parts(self.cand_lens, total),
+                )
+            }
+        };
+        Some(
+            (0..self.count)
+                .map(|i| {
+                    // SAFETY: optional arrays, when not null, have `count` entries.
+                    let pin = if self.pinned.is_null() {
+                        -1
+                    } else {
+                        unsafe { *self.pinned.add(i) }
+                    };
+                    let code = if self.codes.is_null() {
+                        &[][..]
+                    } else {
+                        unsafe { slice(*self.codes.add(i), *self.code_lens.add(i)) }
+                    };
+                    Position {
+                        code,
+                        candidates: (starts[i]..starts[i + 1])
+                            .map(|k| unsafe { slice(ptrs[k], lens[k]) })
+                            .collect(),
+                        pinned: usize::try_from(pin).ok(),
+                    }
+                })
+                .collect(),
+        )
+    }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn dime_sentence_convert(
     lex: *const DimeLexicon,
+    user: *const DimeUserModel,
     position_count: usize,
+    codes: *const *const u16,
+    code_lens: *const usize,
     cand_start: *const usize,
     cands: *const *const u16,
     cand_lens: *const usize,
@@ -500,53 +628,68 @@ pub unsafe extern "C" fn dime_sentence_convert(
         if position_count == 0 {
             return 1;
         }
-        if cand_start.is_null() || out_chosen.is_null() {
+        if out_chosen.is_null() {
             return 0;
         }
+        let args = SentenceArgs {
+            count: position_count,
+            codes,
+            code_lens,
+            cand_start,
+            cands,
+            cand_lens,
+            pinned,
+        };
+        let Some(positions) = (unsafe { args.positions() }) else {
+            return 0;
+        };
         let empty = Lexicon::new();
         let lex = unsafe { lex.as_ref() }.map_or(&empty, |l| &l.0);
-        // SAFETY: the caller passes position_count + 1 offsets.
-        let starts = unsafe { std::slice::from_raw_parts(cand_start, position_count + 1) };
-        let total = starts[position_count];
-        if starts[0] != 0
-            || starts.windows(2).any(|w| w[0] > w[1])
-            || (total > 0 && (cands.is_null() || cand_lens.is_null()))
-        {
-            return 0;
-        }
-        let (ptrs, lens) = if total == 0 {
-            (&[][..], &[][..])
-        } else {
-            // SAFETY: the caller passes `total` candidate pointers and lengths.
-            unsafe {
-                (
-                    std::slice::from_raw_parts(cands, total),
-                    std::slice::from_raw_parts(cand_lens, total),
-                )
-            }
-        };
-        let positions: Vec<Position> = (0..position_count)
-            .map(|i| {
-                // SAFETY: `pinned`, when not null, has position_count entries.
-                let pin = if pinned.is_null() {
-                    -1
-                } else {
-                    unsafe { *pinned.add(i) }
-                };
-                Position {
-                    candidates: (starts[i]..starts[i + 1])
-                        .map(|k| unsafe { slice(ptrs[k], lens[k]) })
-                        .collect(),
-                    pinned: usize::try_from(pin).ok(),
-                }
-            })
-            .collect();
-        let chosen = sentence::convert(lex, &positions);
+        let user = unsafe { user.as_ref() }.map(|u| &u.0);
+        let chosen = sentence::convert_with_user(lex, user, &positions);
         for (i, k) in chosen.into_iter().enumerate() {
             // SAFETY: `out_chosen` has position_count entries.
             unsafe { *out_chosen.add(i) = k as i32 };
         }
         1
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_user_model_learn(
+    model: *mut DimeUserModel,
+    position_count: usize,
+    codes: *const *const u16,
+    code_lens: *const usize,
+    cand_start: *const usize,
+    cands: *const *const u16,
+    cand_lens: *const usize,
+    pinned: *const i32,
+    chosen: *const i32,
+) -> i32 {
+    guard(0, || {
+        let Some(m) = (unsafe { model.as_mut() }) else { return 0 };
+        if position_count == 0 || chosen.is_null() {
+            return 0;
+        }
+        let args = SentenceArgs {
+            count: position_count,
+            codes,
+            code_lens,
+            cand_start,
+            cands,
+            cand_lens,
+            pinned,
+        };
+        let Some(positions) = (unsafe { args.positions() }) else {
+            return 0;
+        };
+        // SAFETY: `chosen` has position_count entries.
+        let chosen: Vec<usize> = unsafe { std::slice::from_raw_parts(chosen, position_count) }
+            .iter()
+            .map(|&k| usize::try_from(k).unwrap_or(0))
+            .collect();
+        i32::from(m.0.learn(&positions, &chosen))
     })
 }
 
@@ -597,6 +740,9 @@ mod tests {
         let c = [w("\u{73fe}"), w("\u{5728}"), w("\u{4ee3}")];
         let ptrs: Vec<*const u16> = c.iter().map(|v| v.as_ptr()).collect();
         let lens: Vec<usize> = c.iter().map(|v| v.len()).collect();
+        let code = [w("a"), w("b")];
+        let code_ptrs: Vec<*const u16> = code.iter().map(|v| v.as_ptr()).collect();
+        let code_lens: Vec<usize> = code.iter().map(|v| v.len()).collect();
         let starts = [0usize, 1, 3];
         let mut chosen = [-1i32; 2];
         unsafe {
@@ -605,43 +751,42 @@ mod tests {
             assert_eq!(dime_lexicon_load_cin_values(lex, words.as_ptr(), words.len()), 1);
             assert_eq!(dime_lexicon_word_count(lex), 1);
             assert_eq!(dime_lexicon_char_count(lex), 3);
-            let pinned = [-1i32, -1];
-            let ok = dime_sentence_convert(
-                lex,
-                2,
-                starts.as_ptr(),
-                ptrs.as_ptr(),
-                lens.as_ptr(),
-                pinned.as_ptr(),
-                chosen.as_mut_ptr(),
+            let convert = |lex, user, codes: *const *const u16, pinned: *const i32, out: *mut i32| {
+                dime_sentence_convert(
+                    lex,
+                    user,
+                    2,
+                    codes,
+                    if codes.is_null() {
+                        ptr::null()
+                    } else {
+                        code_lens.as_ptr()
+                    },
+                    starts.as_ptr(),
+                    ptrs.as_ptr(),
+                    lens.as_ptr(),
+                    pinned,
+                    out,
+                )
+            };
+            let none = [-1i32, -1];
+            assert_eq!(
+                convert(lex, ptr::null(), code_ptrs.as_ptr(), none.as_ptr(), chosen.as_mut_ptr()),
+                1
             );
-            assert_eq!(ok, 1);
             assert_eq!(chosen, [0, 1]);
-            let pinned = [-1i32, 0];
-            dime_sentence_convert(
-                lex,
-                2,
-                starts.as_ptr(),
-                ptrs.as_ptr(),
-                lens.as_ptr(),
-                pinned.as_ptr(),
-                chosen.as_mut_ptr(),
-            );
+            let pin = [-1i32, 0];
+            convert(lex, ptr::null(), code_ptrs.as_ptr(), pin.as_ptr(), chosen.as_mut_ptr());
             assert_eq!(chosen, [0, 0]);
-            // A null lexicon still converts (first candidates).
-            dime_sentence_convert(
-                ptr::null(),
-                2,
-                starts.as_ptr(),
-                ptrs.as_ptr(),
-                lens.as_ptr(),
-                ptr::null(),
-                chosen.as_mut_ptr(),
-            );
+            // A null lexicon and no codes still convert (first candidates).
+            convert(ptr::null(), ptr::null(), ptr::null(), ptr::null(), chosen.as_mut_ptr());
             assert_eq!(chosen, [0, 0]);
             let bad = dime_sentence_convert(
                 lex,
+                ptr::null(),
                 2,
+                ptr::null(),
+                ptr::null(),
                 ptr::null(),
                 ptrs.as_ptr(),
                 lens.as_ptr(),
@@ -649,6 +794,41 @@ mod tests {
                 chosen.as_mut_ptr(),
             );
             assert_eq!(bad, 0);
+
+            // Learn the pinned choice (code "b" -> second candidate), export, import.
+            let user = dime_user_model_new();
+            let learned_from = [0i32, 0];
+            let ok = dime_user_model_learn(
+                user,
+                2,
+                code_ptrs.as_ptr(),
+                code_lens.as_ptr(),
+                starts.as_ptr(),
+                ptrs.as_ptr(),
+                lens.as_ptr(),
+                pin.as_ptr(),
+                learned_from.as_ptr(),
+            );
+            assert_eq!(ok, 1);
+            assert_eq!(dime_user_model_choice_count(user), 1);
+            assert_eq!(dime_user_model_word_count(user), 1);
+            let buf = dime_user_model_export(user);
+            let mut n = 0;
+            let p = dime_buffer_data(buf, &mut n);
+            let copy = dime_user_model_new();
+            assert_eq!(dime_user_model_import(copy, p, n), 2);
+            dime_buffer_free(buf);
+            dime_user_model_merge(copy, user);
+            dime_user_model_merge(copy, copy);
+            assert_eq!(dime_user_model_choice_count(copy), 1);
+            convert(lex, copy, code_ptrs.as_ptr(), none.as_ptr(), chosen.as_mut_ptr());
+            assert_eq!(chosen[0], 0);
+            dime_user_model_clear(copy);
+            assert_eq!(dime_user_model_word_count(copy), 0);
+            dime_user_model_free(copy);
+            dime_user_model_free(user);
+            dime_user_model_free(ptr::null_mut());
+            assert!(dime_user_model_export(ptr::null()).is_null());
             dime_lexicon_free(lex);
             dime_lexicon_free(ptr::null_mut());
         }

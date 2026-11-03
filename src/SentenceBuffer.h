@@ -35,7 +35,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // without choosing candidates; each typed character becomes a position that
 // keeps its whole candidate list, and the conversion (dime_core::sentence in
 // Rust) picks the candidates that read best together.  Positions the user
-// fixes by hand are pinned.
+// fixes by hand are pinned, and on commit CSentenceUserModel learns from them
+// (preferred character per code, and the pairs it forms with its neighbours).
 //
 // This file is free of TSF so it can be unit tested; CDIME drives it from
 // SentenceHandler.cpp.
@@ -47,6 +48,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <windows.h>
 
 struct DimeLexicon;
+struct DimeUserModel;
+class CSentenceBuffer;
 
 // Word list + character frequencies used by the conversion.  Without the Rust
 // library (DIME_RUST_AVAILABLE undefined) it is an empty shell and the
@@ -73,6 +76,37 @@ public:
 
 private:
 	DimeLexicon* _pLexicon;
+};
+
+// What the user taught sentence mode.  Persisted as text (UTF-16 with BOM);
+// several processes share one file, so a save re-reads the file and adds only
+// this process's new data (kept separately as "pending").
+class CSentenceUserModel
+{
+public:
+	CSentenceUserModel();
+	~CSentenceUserModel();
+	CSentenceUserModel(const CSentenceUserModel&) = delete;
+	CSentenceUserModel& operator=(const CSentenceUserModel&) = delete;
+
+	size_t Import(_In_reads_(len) const WCHAR* buf, size_t len);
+	std::wstring Export() const;
+	void Merge(const CSentenceUserModel& other);
+	void Clear();
+	size_t WordCount() const;
+	size_t ChoiceCount() const;
+	// Learn from the pinned positions of a sentence about to be committed.
+	bool Learn(const CSentenceBuffer& sentence);
+
+	// Add the entries of a file written by SaveFile (missing file: 0).
+	size_t LoadFile(_In_z_ LPCWSTR path);
+	// Write Export() to path (via a temporary file).  FALSE on failure.
+	BOOL SaveFile(_In_z_ LPCWSTR path) const;
+
+	DimeUserModel* Handle() const { return _pModel; }
+
+private:
+	DimeUserModel* _pModel;
 };
 
 struct CSentencePosition
@@ -114,7 +148,7 @@ public:
 	bool Pin(size_t pos, int index);
 
 	// Run the conversion and update every position's chosen candidate.
-	void Convert(_In_opt_ const CSentenceLexicon* pLexicon);
+	void Convert(_In_opt_ const CSentenceLexicon* pLexicon, _In_opt_ const CSentenceUserModel* pUser = nullptr);
 
 	// Concatenated chosen candidates.
 	std::wstring Text() const;

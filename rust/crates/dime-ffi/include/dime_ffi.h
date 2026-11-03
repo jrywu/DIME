@@ -111,15 +111,42 @@ int32_t dime_lexicon_add_word(DimeLexicon* lex, const uint16_t* word, size_t len
 size_t  dime_lexicon_word_count(const DimeLexicon* lex);
 size_t  dime_lexicon_char_count(const DimeLexicon* lex);
 
-/* Pick one candidate per position.  Position i owns candidates
-   [cand_start[i], cand_start[i+1]) of cands/cand_lens (cand_start has
-   position_count + 1 entries, cand_start[0] == 0).  pinned (nullable) holds
-   the fixed candidate index per position or -1.  out_chosen receives the
-   chosen index per position.  lex may be NULL (no data: first candidates).
+/* Learned data (user choices per code, user words).  Text format: see
+   dime_user_model_export.  Counts only grow; merge adds counts. */
+typedef struct DimeUserModel DimeUserModel;
+
+DimeUserModel* dime_user_model_new(void);
+void           dime_user_model_free(DimeUserModel* model);
+/* Add the entries of an exported text (UTF-16, BOM optional).  Returns entries read. */
+size_t      dime_user_model_import(DimeUserModel* model, const uint16_t* buf, size_t len);
+/* "W<TAB>word<TAB>count" / "C<TAB>code<TAB>char<TAB>count" lines after a header line,
+   most used first.  Free with dime_buffer_free. */
+DimeBuffer* dime_user_model_export(const DimeUserModel* model);
+void        dime_user_model_merge(DimeUserModel* dst, const DimeUserModel* src);
+void        dime_user_model_clear(DimeUserModel* model);
+size_t      dime_user_model_word_count(const DimeUserModel* model);
+size_t      dime_user_model_choice_count(const DimeUserModel* model);
+
+/* Sentence arrays shared by convert and learn:
+   - position i typed codes[i] (codes/code_lens nullable together: no codes);
+   - it owns candidates [cand_start[i], cand_start[i+1]) of cands/cand_lens
+     (cand_start has position_count + 1 entries, cand_start[0] == 0);
+   - pinned (nullable) holds the candidate fixed by the user, or -1. */
+
+/* Pick one candidate per position into out_chosen.  lex and user may be NULL.
    Returns 1 on success, 0 on invalid arguments. */
-int32_t dime_sentence_convert(const DimeLexicon* lex, size_t position_count, const size_t* cand_start,
+int32_t dime_sentence_convert(const DimeLexicon* lex, const DimeUserModel* user, size_t position_count,
+                              const uint16_t* const* codes, const size_t* code_lens, const size_t* cand_start,
                               const uint16_t* const* cands, const size_t* cand_lens, const int32_t* pinned,
                               int32_t* out_chosen);
+
+/* Learn from a committed sentence (chosen = candidate index per position):
+   pinned single Han characters teach their code choice and neighbour pairs.
+   Returns 1 if anything was learned. */
+int32_t dime_user_model_learn(DimeUserModel* model, size_t position_count,
+                              const uint16_t* const* codes, const size_t* code_lens, const size_t* cand_start,
+                              const uint16_t* const* cands, const size_t* cand_lens, const int32_t* pinned,
+                              const int32_t* chosen);
 
 #ifdef __cplusplus
 }

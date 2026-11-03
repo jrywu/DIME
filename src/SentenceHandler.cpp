@@ -46,6 +46,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //   Down                        choose the character under the cursor (pins it)
 //   select keys / arrows in the candidate window pin the character
 //
+// Characters pinned by hand are learned on commit (_SentenceLearn): the code's
+// preferred character and the pairs it forms with its neighbours, saved to
+// %APPDATA%\DIME\SentenceUser.txt and used by later conversions.
+//
 // Anything that outputs text directly (punctuation, address keys, Shift+key
 // English, unhandled keys) commits the sentence first.
 
@@ -173,9 +177,81 @@ CSentenceLexicon* CDIME::_GetSentenceLexicon()
 				size_t words = LoadDataFile(L"Array-Phrase.cin", _pSentenceLexicon, FALSE);
 				debugPrint(L"CDIME::_GetSentenceLexicon() freq lines = %d, words = %d", (int)freq, (int)words);
 			}
+
+			_pSentenceUser = new (std::nothrow) CSentenceUserModel();
+			_pSentencePending = new (std::nothrow) CSentenceUserModel();
+			WCHAR path[MAX_PATH] = { 0 };
+			if (_pSentenceUser && _SentenceUserFilePath(path))
+				_pSentenceUser->LoadFile(path);
 		}
 	}
 	return _pSentenceLexicon;
+}
+
+//+---------------------------------------------------------------------------
+//
+// _SentenceUserFilePath
+//
+// %APPDATA%\DIME\SentenceUser.txt: what sentence mode learned from the
+// characters the user fixed by hand.  Delete the file to forget.
+//----------------------------------------------------------------------------
+
+BOOL CDIME::_SentenceUserFilePath(_Out_writes_(MAX_PATH) WCHAR* path)
+{
+	*path = L'\0';
+	WCHAR appData[MAX_PATH] = { 0 };
+	if (!SHGetSpecialFolderPath(NULL, appData, CSIDL_APPDATA, FALSE))
+		return FALSE;
+	return SUCCEEDED(StringCchPrintf(path, MAX_PATH, L"%s\\DIME\\SentenceUser.txt", appData));
+}
+
+void CDIME::_SentenceConvert()
+{
+	CSentenceLexicon* pLexicon = _GetSentenceLexicon();
+	_sentence.Convert(pLexicon, _pSentenceUser);
+}
+
+//+---------------------------------------------------------------------------
+//
+// _SentenceLearn
+//
+// Called with the sentence about to be committed.  Characters the user fixed
+// by hand are learned in memory right away and saved to the shared file: the
+// file is re-read and only this process's new data added, so several
+// processes do not overwrite each other.  Store apps cannot write %APPDATA%
+// (read-only for AppContainer), so there the data stays in memory.
+//----------------------------------------------------------------------------
+
+void CDIME::_SentenceLearn()
+{
+	if (_sentence.IsEmpty() || _pSentenceUser == nullptr || _pSentencePending == nullptr)
+		return;
+	if (!_pSentenceUser->Learn(_sentence))
+		return;
+	_pSentencePending->Learn(_sentence);
+
+	if (_IsStoreAppMode() || isLowIntegrityProcess())
+		return;
+
+	WCHAR path[MAX_PATH] = { 0 };
+	if (!_SentenceUserFilePath(path))
+		return;
+
+	CSentenceUserModel* pFresh = new (std::nothrow) CSentenceUserModel();
+	if (pFresh == nullptr)
+		return;
+	pFresh->LoadFile(path);
+	pFresh->Merge(*_pSentencePending);
+	if (pFresh->SaveFile(path))
+	{
+		_pSentencePending->Clear();
+		delete _pSentenceUser;
+		_pSentenceUser = pFresh;  // now also includes what other processes learned
+	}
+	else
+	{
+		delete pFresh;  // keep the pending data for the next save
+	}
 }
 
 std::wstring CDIME::_GetKeystrokeCode()
@@ -263,7 +339,7 @@ HRESULT CDIME::_SentenceAppend(TfEditCookie ec, _In_ ITfContext *pContext, const
 	if (!_sentence.Insert(code, candidates, pinned))
 		return _SentenceRender(ec, pContext, L"");
 
-	_sentence.Convert(_GetSentenceLexicon());
+	_SentenceConvert();
 
 	if (_sentence.Count() >= CSentenceBuffer::MaxPositions)
 		return _HandleSentenceCommit(ec, pContext);
@@ -311,7 +387,7 @@ HRESULT CDIME::_SentenceSelectCandidate(TfEditCookie ec, _In_ ITfContext *pConte
 			}
 		}
 		_DeleteCandidateList(TRUE, pContext);
-		_sentence.Convert(_GetSentenceLexicon());
+		_SentenceConvert();
 		return _SentenceRender(ec, pContext, L"");
 	}
 
@@ -409,6 +485,8 @@ HRESULT CDIME::_HandleSentenceCommit(TfEditCookie ec, _In_ ITfContext *pContext)
 	if (_sentence.IsEmpty())
 		return S_OK;
 
+	_SentenceLearn();
+
 	std::wstring text = _sentence.Text();
 	if (CConfig::GetDoHanConvert() && _pCompositionProcessorEngine)
 	{
@@ -449,7 +527,7 @@ HRESULT CDIME::_HandleSentenceBackspace(TfEditCookie ec, _In_ ITfContext *pConte
 	if (_sentence.IsEmpty())
 		return _HandleCancel(ec, pContext);  // nothing left: drop the composition
 
-	_sentence.Convert(_GetSentenceLexicon());
+	_SentenceConvert();
 	return _SentenceRender(ec, pContext, L"");
 }
 
@@ -486,6 +564,8 @@ void CDIME::_SentenceFinalizeInComposition(TfEditCookie ec)
 {
 	if (_sentence.IsEmpty() || _pComposition == nullptr)
 		return;
+
+	_SentenceLearn();
 
 	ITfRange* pRange = nullptr;
 	if (SUCCEEDED(_pComposition->GetRange(&pRange)) && pRange)

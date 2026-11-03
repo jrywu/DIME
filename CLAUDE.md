@@ -62,7 +62,8 @@ vstest.console.exe bin\x64\Debug\DIMETests.dll /TestCaseFilter:"FullyQualifiedNa
 
 - 設定 `SentenceMode=1`（INI / CLI / 設定視窗「整句輸入」）後，空白鍵或結束鍵不再跳出候選字窗，而是把該字（連同該字碼的全部候選字）加入組字區的「整句」，由 `rust/crates/dime-core/src/sentence.rs` 的 Viterbi 依字頻（`TCFreq.cin`）與詞庫（`Array-Phrase.cin` 的詞，不用其字碼）重選整句；Enter／空白送出，←→ 移動、↓ 改選游標所在字（選定即釘住），Backspace／Delete 刪字，Esc 放棄。標點、地址鍵、Shift 英數等直接輸出的鍵會先送出整句。
 - TSF 端在 `SentenceHandler.cpp`（`CDIME::_Sentence*`、`CKeyStateSentence`），資料結構在 `SentenceBuffer.*`（不依賴 TSF，`tests/SentenceBufferTest.cpp` 有單元測試與實際大易碼表的整句測試）。攔截點：`_IsKeyEaten`、`_HandleCompositionConvert`、`_HandleCandidateWorker`、`_HandleCancel`、`_HandleCompositionBackspace`、`_TerminateComposition`、`OnCompositionTerminated`。
-- 沒有 Rust（`DIME_RUST_AVAILABLE` 未定義）時仍可用，但只會取第一候選字（沒有上下文判斷）。
+- 學習：送出整句時，使用者手動選定（釘住）的字會被 `UserModel`（Rust）記住「該字碼偏好的字」與「它和前後字組成的雙字詞」，之後轉換加分（同一字碼要選約 3 次才會在沒有上下文時取代第一候選字；詞在上下文中一次就生效）。存在 `%APPDATA%\DIME\SentenceUser.txt`（UTF-16，刪除即重置）；多個行程共用此檔，存檔時重新讀檔再加上本行程新增的部分（`_pSentencePending`），不會互相覆蓋。Store app／低完整性行程不寫檔，只留在記憶體。
+- 沒有 Rust（`DIME_RUST_AVAILABLE` 未定義）時仍可用，但只會取第一候選字（沒有上下文判斷、也不學習）。
 
 ```powershell
 cargo test --manifest-path rust/Cargo.toml                 # Rust 單元測試

@@ -21,8 +21,13 @@
 //!   floored at [`CHAR_FLOOR_IN_WORD`], so rare characters do not sink real
 //!   words) plus [`WORD_BONUS`] for every character after the first, plus a
 //!   small bonus from the word's own frequency when the lexicon has one.
+//!
+//! Learning ([`UserModel`]): when the user fixes a character by hand, the
+//! model remembers that the code was meant to be that character, and the
+//! pairs it forms with its neighbours as user words.  Both add a bonus that
+//! grows with how often the choice was made.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// Penalty for each place a candidate sits below the first one.
 pub const RANK_PENALTY: f64 = 1.5;
@@ -34,33 +39,126 @@ pub const CHAR_FLOOR_IN_WORD: f64 = -14.0;
 pub const WORD_FREQ_WEIGHT: f64 = 0.5;
 /// Longest word (in characters) the lexicon keeps.
 pub const MAX_WORD_LEN: usize = 8;
+/// Bonus for a candidate the user has chosen for this code before.
+pub const USER_CHOICE_BONUS: f64 = 2.0;
+/// Extra bonus for a user word on top of the normal word bonus.
+pub const USER_WORD_BONUS: f64 = 4.0;
+/// Weight of `ln(count)` for repeated user choices / words.
+pub const USER_COUNT_WEIGHT: f64 = 1.0;
+/// Most user words / choices kept when exporting.
+pub const MAX_USER_ENTRIES: usize = 20000;
 
 const ROOT: u32 = 0;
+const USER_FILE_HEADER: &str = "# DIME sentence learning v1";
 
-/// Word list (as a character trie) plus single-character frequencies.
-#[derive(Default)]
-pub struct Lexicon {
+/// Character trie mapping words to a value (frequency or count).
+#[derive(Default, Clone)]
+struct Trie {
     /// (parent node, code point) -> child node.
     edges: HashMap<(u32, u32), u32>,
-    /// Per node: `Some(freq)` when the path from the root spells a word
-    /// (`freq` is 0 when the source had no frequency).
+    /// Per node: `Some(value)` when the path from the root spells a word.
     word: Vec<Option<u32>>,
     words: usize,
-    char_freq: HashMap<u32, u32>,
-    char_total: u64,
 }
 
-impl Lexicon {
-    pub fn new() -> Self {
-        Lexicon {
+impl Trie {
+    fn new() -> Self {
+        Trie {
             word: vec![None],
             ..Default::default()
         }
     }
 
+    /// Insert `cps`; an existing value is combined with `combine`.  Returns
+    /// `true` when the word is new.
+    fn insert(&mut self, cps: &[u32], value: u32, combine: fn(u32, u32) -> u32) -> bool {
+        let mut node = ROOT;
+        for &c in cps {
+            node = match self.edges.get(&(node, c)) {
+                Some(&n) => n,
+                None => {
+                    let n = self.word.len() as u32;
+                    self.word.push(None);
+                    self.edges.insert((node, c), n);
+                    n
+                }
+            };
+        }
+        let slot = &mut self.word[node as usize];
+        match slot {
+            Some(v) => {
+                *v = combine(*v, value);
+                false
+            }
+            None => {
+                *slot = Some(value);
+                self.words += 1;
+                true
+            }
+        }
+    }
+
+    fn child(&self, node: u32, ch: u32) -> Option<u32> {
+        self.edges.get(&(node, ch)).copied()
+    }
+
+    fn get(&self, cps: &[u32]) -> Option<u32> {
+        let mut node = ROOT;
+        for &c in cps {
+            node = self.child(node, c)?;
+        }
+        self.word[node as usize]
+    }
+
+    /// Every word with its value.
+    fn entries(&self) -> Vec<(Vec<u32>, u32)> {
+        let mut children: HashMap<u32, Vec<(u32, u32)>> = HashMap::new();
+        for (&(parent, cp), &child) in &self.edges {
+            children.entry(parent).or_default().push((cp, child));
+        }
+        let mut out = Vec::new();
+        let mut stack = vec![(ROOT, Vec::new())];
+        while let Some((node, path)) = stack.pop() {
+            if let Some(v) = self.word[node as usize] {
+                out.push((path.clone(), v));
+            }
+            if let Some(kids) = children.get(&node) {
+                for &(cp, child) in kids {
+                    let mut p = path.clone();
+                    p.push(cp);
+                    stack.push((child, p));
+                }
+            }
+        }
+        out
+    }
+}
+
+/// Word list (as a character trie) plus single-character frequencies.
+pub struct Lexicon {
+    trie: Trie,
+    char_freq: HashMap<u32, u32>,
+    char_total: u64,
+}
+
+impl Default for Lexicon {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Lexicon {
+    pub fn new() -> Self {
+        Lexicon {
+            trie: Trie::new(),
+            char_freq: HashMap::new(),
+            char_total: 0,
+        }
+    }
+
     /// Number of distinct words (two characters or more).
     pub fn word_count(&self) -> usize {
-        self.words
+        self.trie.words
     }
 
     /// Number of characters with a frequency.
@@ -75,30 +173,7 @@ impl Lexicon {
         if cps.len() < 2 || cps.len() > MAX_WORD_LEN || cps.iter().any(|&c| c < 0x80) {
             return false;
         }
-        let mut node = ROOT;
-        for &c in &cps {
-            node = match self.edges.get(&(node, c)) {
-                Some(&n) => n,
-                None => {
-                    let n = self.word.len() as u32;
-                    self.word.push(None);
-                    self.edges.insert((node, c), n);
-                    n
-                }
-            };
-        }
-        let slot = &mut self.word[node as usize];
-        match slot {
-            Some(f) => {
-                *f = (*f).max(freq);
-                false
-            }
-            None => {
-                *slot = Some(freq);
-                self.words += 1;
-                true
-            }
-        }
+        self.trie.insert(&cps, freq, u32::max)
     }
 
     /// Set the frequency of a single character (keeps the larger value).
@@ -147,10 +222,6 @@ impl Lexicon {
         used
     }
 
-    fn child(&self, node: u32, ch: u32) -> Option<u32> {
-        self.edges.get(&(node, ch)).copied()
-    }
-
     fn char_score(&self, cand: &Cand) -> f64 {
         let base = match cand.cp {
             Some(cp) if self.char_total > 0 => {
@@ -164,9 +235,206 @@ impl Lexicon {
     }
 }
 
-/// One character position: its candidates in table order, and the index the
-/// user pinned (if any).
+/// What the user taught the conversion: preferred characters per code and
+/// user words.  Counts only grow; [`UserModel::merge`] adds another model's
+/// counts (used to combine the file on disk with this process's new data).
+#[derive(Default, Clone)]
+pub struct UserModel {
+    words: Trie,
+    choices: HashMap<(Vec<u16>, u32), u32>,
+}
+
+impl UserModel {
+    pub fn new() -> Self {
+        UserModel {
+            words: Trie::new(),
+            choices: HashMap::new(),
+        }
+    }
+
+    pub fn word_count(&self) -> usize {
+        self.words.words
+    }
+
+    pub fn choice_count(&self) -> usize {
+        self.choices.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.word_count() == 0 && self.choice_count() == 0
+    }
+
+    pub fn clear(&mut self) {
+        *self = UserModel::new();
+    }
+
+    /// Record that `code` was meant to be `ch` (`count` more times).
+    pub fn add_choice(&mut self, code: &[u16], ch: u32, count: u32) {
+        if code.is_empty() || count == 0 {
+            return;
+        }
+        let e = self.choices.entry((code.to_vec(), ch)).or_insert(0);
+        *e = e.saturating_add(count);
+    }
+
+    /// Record a user word (`count` more times).  Same rules as
+    /// [`Lexicon::add_word`].
+    pub fn add_word(&mut self, word: &[u16], count: u32) -> bool {
+        let Some(cps) = code_points(word) else { return false };
+        if cps.len() < 2 || cps.len() > MAX_WORD_LEN || cps.iter().any(|&c| c < 0x80) || count == 0 {
+            return false;
+        }
+        self.words.insert(&cps, count, u32::saturating_add);
+        true
+    }
+
+    /// Times `ch` was chosen for `code`.
+    pub fn choice(&self, code: &[u16], ch: u32) -> u32 {
+        self.choices.get(&(code.to_vec(), ch)).copied().unwrap_or(0)
+    }
+
+    /// Times `word` was learned.
+    pub fn word(&self, word: &[u16]) -> u32 {
+        code_points(word).and_then(|cps| self.words.get(&cps)).unwrap_or(0)
+    }
+
+    /// Learn from a committed sentence: every pinned position whose chosen
+    /// candidate is a single Han character teaches the code -> character
+    /// choice (when the code had alternatives) and the pairs it forms with its
+    /// Han neighbours.  Returns `true` if anything was learned.
+    pub fn learn(&mut self, positions: &[Position], chosen: &[usize]) -> bool {
+        let chars: Vec<Option<u32>> = positions
+            .iter()
+            .enumerate()
+            .map(|(i, p)| {
+                let k = chosen.get(i).copied().unwrap_or(0);
+                p.candidates.get(k).and_then(|c| single_cp(c)).filter(|&cp| is_han(cp))
+            })
+            .collect();
+        let mut pairs: HashSet<usize> = HashSet::new();
+        let mut learned = false;
+        for (i, p) in positions.iter().enumerate() {
+            if p.pinned.is_none() {
+                continue;
+            }
+            let Some(cp) = chars[i] else { continue };
+            if p.candidates.len() > 1 {
+                self.add_choice(p.code, cp, 1);
+                learned = true;
+            }
+            if i > 0 && chars[i - 1].is_some() {
+                pairs.insert(i - 1);
+            }
+            if i + 1 < positions.len() && chars[i + 1].is_some() {
+                pairs.insert(i);
+            }
+        }
+        for start in pairs {
+            let (Some(a), Some(b)) = (chars[start], chars[start + 1]) else {
+                continue;
+            };
+            let word: String = [a, b].iter().filter_map(|&c| char::from_u32(c)).collect();
+            let units: Vec<u16> = word.encode_utf16().collect();
+            learned |= self.add_word(&units, 1);
+        }
+        learned
+    }
+
+    /// Add all counts of `other`.
+    pub fn merge(&mut self, other: &UserModel) {
+        for ((code, ch), count) in &other.choices {
+            self.add_choice(code, *ch, *count);
+        }
+        for (cps, count) in other.words.entries() {
+            self.words.insert(&cps, count, u32::saturating_add);
+        }
+    }
+
+    /// Read the text format written by [`UserModel::export`], adding counts.
+    /// Unknown or malformed lines are skipped.  Returns the number of entries read.
+    pub fn import(&mut self, buf: &[u16]) -> usize {
+        let text = String::from_utf16_lossy(buf);
+        let mut read = 0;
+        for line in text.lines() {
+            let fields: Vec<&str> = line.trim_end_matches('\r').split('\t').collect();
+            match fields.as_slice() {
+                ["W", word, count] => {
+                    if let Ok(n) = count.parse::<u32>() {
+                        let units: Vec<u16> = word.encode_utf16().collect();
+                        if self.add_word(&units, n) {
+                            read += 1;
+                        }
+                    }
+                }
+                ["C", code, ch, count] => {
+                    let mut chars = ch.chars();
+                    if let (Some(c), None, Ok(n)) = (chars.next(), chars.next(), count.parse::<u32>()) {
+                        if n > 0 && !code.is_empty() {
+                            let units: Vec<u16> = code.encode_utf16().collect();
+                            self.add_choice(&units, u32::from(c), n);
+                            read += 1;
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+        read
+    }
+
+    /// Text form (UTF-16, no BOM): a header line, then `W<TAB>word<TAB>count`
+    /// and `C<TAB>code<TAB>char<TAB>count` lines, most used first, at most
+    /// [`MAX_USER_ENTRIES`] of each.
+    pub fn export(&self) -> Vec<u16> {
+        let mut words: Vec<(String, u32)> = self
+            .words
+            .entries()
+            .into_iter()
+            .map(|(cps, n)| (cps.iter().filter_map(|&c| char::from_u32(c)).collect(), n))
+            .collect();
+        words.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+        words.truncate(MAX_USER_ENTRIES);
+
+        let mut choices: Vec<(String, char, u32)> = self
+            .choices
+            .iter()
+            .filter_map(|((code, ch), n)| Some((String::from_utf16(code).ok()?, char::from_u32(*ch)?, *n)))
+            .filter(|(code, _, _)| !code.contains(['\t', '\r', '\n']))
+            .collect();
+        choices.sort_by(|a, b| b.2.cmp(&a.2).then_with(|| (&a.0, a.1).cmp(&(&b.0, b.1))));
+        choices.truncate(MAX_USER_ENTRIES);
+
+        let mut out = String::from(USER_FILE_HEADER);
+        out.push_str("\r\n");
+        for (word, n) in words {
+            out.push_str(&format!("W\t{word}\t{n}\r\n"));
+        }
+        for (code, ch, n) in choices {
+            out.push_str(&format!("C\t{code}\t{ch}\t{n}\r\n"));
+        }
+        out.encode_utf16().collect()
+    }
+
+    fn choice_bonus(&self, code: &[u16], cand: &Cand) -> f64 {
+        match cand.cp {
+            Some(cp) if !code.is_empty() => count_bonus(USER_CHOICE_BONUS, self.choice(code, cp)),
+            _ => 0.0,
+        }
+    }
+}
+
+fn count_bonus(base: f64, count: u32) -> f64 {
+    if count == 0 {
+        0.0
+    } else {
+        base + USER_COUNT_WEIGHT * f64::from(count).ln()
+    }
+}
+
+/// One character position: the code typed, its candidates in table order,
+/// and the index the user pinned (if any).
 pub struct Position<'a> {
+    pub code: &'a [u16],
     pub candidates: Vec<&'a [u16]>,
     pub pinned: Option<usize>,
 }
@@ -176,6 +444,8 @@ struct Cand {
     rank: usize,
     /// The code point when the candidate is exactly one character.
     cp: Option<u32>,
+    /// Character score including the user's preference for this code.
+    score: f64,
 }
 
 #[derive(Clone)]
@@ -187,9 +457,14 @@ enum Back {
     Word(Vec<usize>),
 }
 
+/// Choose one candidate index for every position without learned data.
+pub fn convert(lex: &Lexicon, positions: &[Position]) -> Vec<usize> {
+    convert_with_user(lex, None, positions)
+}
+
 /// Choose one candidate index for every position.  Pinned positions always
 /// keep their pin; positions without candidates get index 0.
-pub fn convert(lex: &Lexicon, positions: &[Position]) -> Vec<usize> {
+pub fn convert_with_user(lex: &Lexicon, user: Option<&UserModel>, positions: &[Position]) -> Vec<usize> {
     let n = positions.len();
     if n == 0 {
         return Vec::new();
@@ -198,14 +473,19 @@ pub fn convert(lex: &Lexicon, positions: &[Position]) -> Vec<usize> {
     let allowed: Vec<Vec<Cand>> = positions
         .iter()
         .map(|p| {
-            let make = |index: usize| Cand {
-                index,
-                rank: index,
-                cp: single_cp(p.candidates[index]),
+            let make = |index: usize, rank: usize| {
+                let mut c = Cand {
+                    index,
+                    rank,
+                    cp: single_cp(p.candidates[index]),
+                    score: 0.0,
+                };
+                c.score = lex.char_score(&c) + user.map_or(0.0, |u| u.choice_bonus(p.code, &c));
+                c
             };
             match p.pinned {
-                Some(i) if i < p.candidates.len() => vec![Cand { rank: 0, ..make(i) }],
-                _ => (0..p.candidates.len()).map(make).collect(),
+                Some(i) if i < p.candidates.len() => vec![make(i, 0)],
+                _ => (0..p.candidates.len()).map(|i| make(i, i)).collect(),
             }
         })
         .collect();
@@ -213,6 +493,15 @@ pub fn convert(lex: &Lexicon, positions: &[Position]) -> Vec<usize> {
     let mut best = vec![f64::NEG_INFINITY; n + 1];
     let mut back: Vec<(usize, Back)> = vec![(0, Back::None); n + 1];
     best[0] = 0.0;
+
+    let lexicon_bonus = |freq: u32| {
+        if freq > 0 {
+            WORD_FREQ_WEIGHT * (1.0 + f64::from(freq)).ln()
+        } else {
+            0.0
+        }
+    };
+    let user_bonus = |count: u32| count_bonus(USER_WORD_BONUS, count);
 
     for i in 0..n {
         if best[i] == f64::NEG_INFINITY {
@@ -224,11 +513,19 @@ pub fn convert(lex: &Lexicon, positions: &[Position]) -> Vec<usize> {
             continue;
         }
         for c in &allowed[i] {
-            let s = best[i] + lex.char_score(c);
+            let s = best[i] + c.score;
             relax(&mut best, &mut back, i + 1, s, i, Back::Single(c.index));
         }
-        let mut path = Vec::new();
-        extend_words(lex, &allowed, i, i, ROOT, 0.0, &mut path, &mut best, &mut back);
+        let mut search = WordSearch {
+            allowed: &allowed,
+            start: i,
+            best: &mut best,
+            back: &mut back,
+        };
+        search.extend(&lex.trie, &lexicon_bonus, i, ROOT, 0.0, &mut Vec::new());
+        if let Some(u) = user {
+            search.extend(&u.words, &user_bonus, i, ROOT, 0.0, &mut Vec::new());
+        }
     }
 
     let mut chosen = vec![0usize; n];
@@ -249,37 +546,48 @@ pub fn convert(lex: &Lexicon, positions: &[Position]) -> Vec<usize> {
     chosen
 }
 
-#[allow(clippy::too_many_arguments)]
-fn extend_words(
-    lex: &Lexicon,
-    allowed: &[Vec<Cand>],
+/// Depth-first search for words starting at one position.
+struct WordSearch<'a> {
+    allowed: &'a [Vec<Cand>],
     start: usize,
-    pos: usize,
-    node: u32,
-    score: f64,
-    path: &mut Vec<usize>,
-    best: &mut [f64],
-    back: &mut [(usize, Back)],
-) {
-    if pos >= allowed.len() || path.len() >= MAX_WORD_LEN {
-        return;
-    }
-    for c in &allowed[pos] {
-        let Some(cp) = c.cp else { continue };
-        let Some(next) = lex.child(node, cp) else { continue };
-        let s = score + lex.char_score(c).max(CHAR_FLOOR_IN_WORD);
-        path.push(c.index);
-        if path.len() >= 2 {
-            if let Some(freq) = lex.word[next as usize] {
-                let mut total = best[start] + s + WORD_BONUS * (path.len() - 1) as f64;
-                if freq > 0 {
-                    total += WORD_FREQ_WEIGHT * (1.0 + f64::from(freq)).ln();
-                }
-                relax(best, back, pos + 1, total, start, Back::Word(path.clone()));
-            }
+    best: &'a mut [f64],
+    back: &'a mut [(usize, Back)],
+}
+
+impl WordSearch<'_> {
+    fn extend(
+        &mut self,
+        trie: &Trie,
+        word_bonus: &dyn Fn(u32) -> f64,
+        pos: usize,
+        node: u32,
+        score: f64,
+        path: &mut Vec<usize>,
+    ) {
+        if pos >= self.allowed.len() || path.len() >= MAX_WORD_LEN {
+            return;
         }
-        extend_words(lex, allowed, start, pos + 1, next, s, path, best, back);
-        path.pop();
+        for c in &self.allowed[pos] {
+            let Some(cp) = c.cp else { continue };
+            let Some(next) = trie.child(node, cp) else { continue };
+            let s = score + c.score.max(CHAR_FLOOR_IN_WORD);
+            path.push(c.index);
+            if path.len() >= 2 {
+                if let Some(value) = trie.word[next as usize] {
+                    let total = self.best[self.start] + s + WORD_BONUS * (path.len() - 1) as f64 + word_bonus(value);
+                    relax(
+                        self.best,
+                        self.back,
+                        pos + 1,
+                        total,
+                        self.start,
+                        Back::Word(path.clone()),
+                    );
+                }
+            }
+            self.extend(trie, word_bonus, pos + 1, next, s, path);
+            path.pop();
+        }
     }
 }
 
@@ -288,6 +596,11 @@ fn relax(best: &mut [f64], back: &mut [(usize, Back)], end: usize, score: f64, s
         best[end] = score;
         back[end] = (start, b);
     }
+}
+
+/// CJK unified ideographs (with extensions) and compatibility ideographs.
+fn is_han(cp: u32) -> bool {
+    matches!(cp, 0x3400..=0x4DBF | 0x4E00..=0x9FFF | 0xF900..=0xFAFF | 0x20000..=0x3FFFF)
 }
 
 /// Decode UTF-16 into code points; `None` on unpaired surrogates.
@@ -388,6 +701,7 @@ mod tests {
         cands
             .iter()
             .map(|cs| Position {
+                code: &[],
                 candidates: cs.iter().map(|c| c.as_slice()).collect(),
                 pinned: None,
             })
@@ -543,5 +857,122 @@ mod tests {
             .collect();
         let chosen = convert(&lex, &positions(&cands));
         assert_eq!(chosen.len(), 60);
+    }
+
+    fn coded<'a>(codes: &'a [Vec<u16>], cands: &'a [Vec<Vec<u16>>]) -> Vec<Position<'a>> {
+        codes
+            .iter()
+            .zip(cands)
+            .map(|(code, cs)| Position {
+                code,
+                candidates: cs.iter().map(|c| c.as_slice()).collect(),
+                pinned: None,
+            })
+            .collect()
+    }
+
+    fn cp(s: &str) -> u32 {
+        s.chars().next().unwrap() as u32
+    }
+
+    #[test]
+    fn learning_a_pinned_character_records_choice_and_pairs() {
+        let codes = vec![w("k"), w("kln"), w("rb1")];
+        let cands = vec![cs(&["之", "立", "亠"]), cs(&["刻"]), cs(&["引", "弔"])];
+        let mut pos = coded(&codes, &cands);
+        pos[0].pinned = Some(1);
+        let mut user = UserModel::new();
+        assert!(user.learn(&pos, &[1, 0, 0]));
+        assert_eq!(user.choice(&w("k"), cp("立")), 1);
+        assert_eq!(
+            user.choice(&w("kln"), cp("刻")),
+            0,
+            "unpinned / single-candidate codes are not choices"
+        );
+        assert_eq!(user.word(&w("立刻")), 1);
+        assert_eq!(user.word(&w("刻引")), 0, "only pairs touching a pinned character");
+
+        // Nothing pinned: nothing learned.
+        let pos = coded(&codes, &cands);
+        assert!(!UserModel::new().learn(&pos, &[0, 0, 0]));
+    }
+
+    #[test]
+    fn learning_skips_symbols_and_multi_character_candidates() {
+        let codes = vec![w("a"), w("b"), w("c")];
+        let cands = vec![cs(&["中", "終"]), cs(&["，", "。"]), cs(&["中華民國", "國"])];
+        let mut pos = coded(&codes, &cands);
+        pos[1].pinned = Some(0);
+        pos[2].pinned = Some(0);
+        let mut user = UserModel::new();
+        assert!(!user.learn(&pos, &[0, 0, 0]));
+        assert!(user.is_empty());
+    }
+
+    #[test]
+    fn learned_choice_changes_the_default_after_repeats() {
+        let lex = lexicon(&[], &[("之", 24653), ("立", 7394)]);
+        let codes = vec![w("k")];
+        let cands = vec![cs(&["之", "立"])];
+        let mut user = UserModel::new();
+        assert_eq!(convert_with_user(&lex, Some(&user), &coded(&codes, &cands)), vec![0]);
+        user.add_choice(&w("k"), cp("立"), 1);
+        assert_eq!(
+            convert_with_user(&lex, Some(&user), &coded(&codes, &cands)),
+            vec![0],
+            "one choice is not enough on its own"
+        );
+        user.add_choice(&w("k"), cp("立"), 2);
+        assert_eq!(convert_with_user(&lex, Some(&user), &coded(&codes, &cands)), vec![1]);
+        // The same character under another code is not affected.
+        let other = vec![w("x")];
+        assert_eq!(convert_with_user(&lex, Some(&user), &coded(&other, &cands)), vec![0]);
+    }
+
+    #[test]
+    fn learned_word_wins_in_context() {
+        let lex = lexicon(&[], &[("之", 24653), ("立", 7394), ("初", 2122)]);
+        let codes = vec![w("k"), w("kn")];
+        let cands = vec![cs(&["之", "立"]), cs(&["初"])];
+        assert_eq!(convert(&lex, &coded(&codes, &cands)), vec![0, 0]);
+        let mut user = UserModel::new();
+        user.add_word(&w("立初"), 1);
+        assert_eq!(convert_with_user(&lex, Some(&user), &coded(&codes, &cands)), vec![1, 0]);
+    }
+
+    #[test]
+    fn export_import_merge_round_trip() {
+        let mut a = UserModel::new();
+        a.add_word(&w("立刻"), 3);
+        a.add_word(&w("𠀀一"), 1);
+        a.add_choice(&w("k"), cp("立"), 2);
+        a.add_choice(&w("kl/n"), cp("刻"), 1);
+        let text = a.export();
+        assert!(String::from_utf16_lossy(&text).starts_with(USER_FILE_HEADER));
+
+        let mut b = UserModel::new();
+        assert_eq!(b.import(&text), 4);
+        assert_eq!(b.word(&w("立刻")), 3);
+        assert_eq!(b.word(&w("𠀀一")), 1);
+        assert_eq!(b.choice(&w("kl/n"), cp("刻")), 1);
+
+        // Import adds; merge adds.
+        b.import(&text);
+        assert_eq!(b.word(&w("立刻")), 6);
+        let mut c = UserModel::new();
+        c.add_choice(&w("k"), cp("立"), 1);
+        b.merge(&c);
+        assert_eq!(b.choice(&w("k"), cp("立")), 5);
+
+        // Garbage is skipped.
+        let mut d = UserModel::new();
+        assert_eq!(
+            d.import(&w(
+                "junk\nW\tx\t1\nW\t中文\tabc\nC\tk\t立立\t1\nC\t\t立\t1\nW\t中文\t2\n"
+            )),
+            1
+        );
+        d.clear();
+        assert!(d.is_empty());
     }
 }

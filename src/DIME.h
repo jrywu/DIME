@@ -316,6 +316,9 @@ private:
 	BOOL _IsSentencePending() { return !_sentence.IsEmpty(); }
 	BOOL _IsSentenceKeyEaten(UINT code, _Inout_opt_ _KEYSTROKE_STATE *pKeyState);
 	CSentenceLexicon* _GetSentenceLexicon();
+	void _SentenceConvert();
+	void _SentenceLearn();
+	BOOL _SentenceUserFilePath(_Out_writes_(MAX_PATH) WCHAR* path);
 	std::wstring _GetKeystrokeCode();
 	HRESULT _SentenceRender(TfEditCookie ec, _In_ ITfContext *pContext, const std::wstring& reading);
 	HRESULT _SentenceWrite(TfEditCookie ec, _In_ ITfContext *pContext, const std::wstring& text, size_t caret, BOOL withAttributes);
@@ -431,6 +434,8 @@ private:
 	// sentence mode state
 	CSentenceBuffer _sentence;
 	CSentenceLexicon* _pSentenceLexicon;
+	CSentenceUserModel* _pSentenceUser;     // learned data: file + this process
+	CSentenceUserModel* _pSentencePending;  // learned by this process since the last save
 	BOOL _sentenceLexiconLoaded;
 	int _sentenceEditPos;          // position edited by the candidate window, or -1
 	BOOL _sentencePinNext;         // the next candidate finalize came from a select key

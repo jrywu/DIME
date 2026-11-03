@@ -321,6 +321,8 @@ CDIME::CDIME()
 	_newlyActivated = FALSE;
 
 	_pSentenceLexicon = nullptr;
+	_pSentenceUser = nullptr;
+	_pSentencePending = nullptr;
 	_sentenceLexiconLoaded = FALSE;
 	_sentenceEditPos = -1;
 	_sentencePinNext = FALSE;
@@ -339,6 +341,16 @@ CDIME::~CDIME()
 	{
 		delete _pSentenceLexicon;
 		_pSentenceLexicon = nullptr;
+	}
+	if (_pSentenceUser)
+	{
+		delete _pSentenceUser;
+		_pSentenceUser = nullptr;
+	}
+	if (_pSentencePending)
+	{
+		delete _pSentencePending;
+		_pSentencePending = nullptr;
 	}
 	if (_pUIPresenter)
     {
