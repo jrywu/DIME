@@ -582,6 +582,24 @@ public:
             ReadIniKey(IME_MODE::IME_MODE_DAYI, L"DayiArticleMode"));
     }
 
+    TEST_METHOD(SetDayiSelkeyMode_InDayiMode_WrittenToINI)
+    {
+        FILE* nul = OpenNullOut();
+        RunCLI(L"--mode dayi --reset", nul);
+        Assert::AreEqual(std::wstring(L"0"),
+            ReadIniKey(IME_MODE::IME_MODE_DAYI, L"DayiSelkeyMode"), L"default is 0 (from table)");
+        int rc = RunCLI(L"--mode dayi --set DayiSelkeyMode 2", nul);
+        int rcOutOfRange = RunCLI(L"--mode dayi --set DayiSelkeyMode 3", nul);
+        int rcWrongMode = RunCLI(L"--mode array --set DayiSelkeyMode 1", nul);
+        fclose(nul);
+
+        Assert::AreEqual(0, rc);
+        Assert::AreEqual(1, rcOutOfRange);
+        Assert::AreEqual(3, rcWrongMode);
+        Assert::AreEqual(std::wstring(L"2"),
+            ReadIniKey(IME_MODE::IME_MODE_DAYI, L"DayiSelkeyMode"));
+    }
+
     TEST_METHOD(SetBig5Filter_InGenericMode_WrittenToINI)
     {
         DeleteConfigFile(IME_MODE::IME_MODE_GENERIC);

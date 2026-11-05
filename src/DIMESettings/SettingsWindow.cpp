@@ -2715,6 +2715,10 @@ void SettingsWindow::PopulateControls(WindowData* wd)
         };
         ComboAddAndSelect(h, d, 3, s.shiftEnglishDigitMode);
     }
+    if ((h = FindControl(wd, CTRL_DAYI_SELKEY_MODE))) {
+        const wchar_t* k[] = { L"依碼表設定", L"數字鍵 1~0", L"大易選擇鍵 ' [ ] - \\" };
+        ComboAddAndSelect(h, k, 3, s.dayiSelkeyMode);
+    }
     if ((h = FindControl(wd, CTRL_PHONETIC_KB))) {
         const wchar_t* l[] = { L"標準鍵盤", L"倚天鍵盤" };
         ComboAddAndSelect(h, l, 2, s.phoneticKeyboardLayout);

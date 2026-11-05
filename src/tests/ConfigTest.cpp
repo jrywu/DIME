@@ -1883,6 +1883,35 @@ namespace DIMEUnitTests
             Assert::IsTrue(CConfig::getDayiArticleMode() == TRUE);
         }
 
+        TEST_METHOD(SetGet_DayiSelkeyMode)
+        {
+            DAYI_SELKEY_MODE saved = CConfig::GetDayiSelkeyMode();
+            CConfig::SetDayiSelkeyMode(DAYI_SELKEY_MODE::DAYI_SELKEY_NUMERIC);
+            Assert::IsTrue(CConfig::GetDayiSelkeyMode() == DAYI_SELKEY_MODE::DAYI_SELKEY_NUMERIC);
+            CConfig::SetDayiSelkeyMode(saved);
+        }
+
+        TEST_METHOD(ResetAllDefaults_Dayi_SelkeyModeFromTable)
+        {
+            CConfig::SetDayiSelkeyMode(DAYI_SELKEY_MODE::DAYI_SELKEY_DAYI);
+            CConfig::ResetAllDefaults(IME_MODE::IME_MODE_DAYI);
+            Assert::IsTrue(CConfig::GetDayiSelkeyMode() == DAYI_SELKEY_MODE::DAYI_SELKEY_FROM_TABLE);
+        }
+
+        TEST_METHOD(DayiSelkeyMode_RoundTrip)
+        {
+            // One write/load per test: LoadConfig only re-reads when the INI timestamp changes.
+            DAYI_SELKEY_MODE saved = CConfig::GetDayiSelkeyMode();
+            CConfig::SetIMEMode(IME_MODE::IME_MODE_DAYI);
+            CConfig::SetDayiSelkeyMode(DAYI_SELKEY_MODE::DAYI_SELKEY_DAYI);
+            CConfig::WriteConfig(IME_MODE::IME_MODE_DAYI, FALSE);
+            CConfig::SetDayiSelkeyMode(DAYI_SELKEY_MODE::DAYI_SELKEY_NUMERIC);  // perturb in-memory
+            CConfig::LoadConfig(IME_MODE::IME_MODE_DAYI);
+            Assert::AreEqual((int)DAYI_SELKEY_MODE::DAYI_SELKEY_DAYI, (int)CConfig::GetDayiSelkeyMode(),
+                L"DayiSelkeyMode must survive INI round-trip");
+            CConfig::SetDayiSelkeyMode(saved);
+        }
+
         TEST_METHOD(SetGet_ArrayForceSP)
         {
             CConfig::SetArrayForceSP(TRUE);
@@ -2080,6 +2109,9 @@ namespace DIMEUnitTests
 
             GetPrivateProfileStringW(L"Config", L"DayiArticleMode", L"?", buf, 64, iniPath);
             Assert::AreNotEqual(0, wcscmp(buf, L"?"), L"DayiArticleMode must be present");
+
+            GetPrivateProfileStringW(L"Config", L"DayiSelkeyMode", L"?", buf, 64, iniPath);
+            Assert::AreEqual(0, wcscmp(buf, L"0"), L"DayiSelkeyMode must be present with default 0");
 
             // Cleanup
             DeleteFileW(iniPath);

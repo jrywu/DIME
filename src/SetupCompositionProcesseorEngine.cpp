@@ -1596,7 +1596,22 @@ void CCompositionProcessorEngine::SetupCandidateListRange(IME_MODE imeMode)
 	WCHAR localSelKey[MAX_CAND_SELKEY];
 	WCHAR phraseSelKey[MAX_CAND_SELKEY];
 
-	if (pSelkey == nullptr || wcslen(pSelkey) == 0)
+	// Dayi: a fixed select-key set overrides the table's %selkey. Space keeps
+	// selecting the (highlighted) first candidate through the VK_SPACE convert
+	// path, so it does not take a slot and the first select key is candidate 1.
+	BOOL spaceAsFirstCandSelkey = CConfig::GetSpaceAsFirstCaniSelkey();
+	const DAYI_SELKEY_MODE dayiSelkeyMode = (imeMode == IME_MODE::IME_MODE_DAYI) ?
+		CConfig::GetDayiSelkeyMode() : DAYI_SELKEY_MODE::DAYI_SELKEY_FROM_TABLE;
+
+	if (dayiSelkeyMode != DAYI_SELKEY_MODE::DAYI_SELKEY_FROM_TABLE)
+	{
+		StringCchCopy(localSelKey, MAX_CAND_SELKEY,
+			(dayiSelkeyMode == DAYI_SELKEY_MODE::DAYI_SELKEY_NUMERIC) ? L"1234567890" : L"'[]-\\\"{}_");
+		pSelkey = localSelKey;
+		_candidatePageSize = (UINT)wcslen(pSelkey);
+		spaceAsFirstCandSelkey = FALSE;
+	}
+	else if (pSelkey == nullptr || wcslen(pSelkey) == 0)
 	{
 		StringCchCopy(localSelKey, MAX_CAND_SELKEY, (imeMode == IME_MODE::IME_MODE_DAYI) ? L"'[]-\\\"{}_" : L"1234567890");
 		pSelkey = localSelKey;
@@ -1618,7 +1633,7 @@ void CCompositionProcessorEngine::SetupCandidateListRange(IME_MODE imeMode)
 		pNewPhraseIndexRange = _phraseCandidateListIndexRange.Append();
 		if (pNewIndexRange != nullptr)
 		{
-			if (CConfig::GetSpaceAsFirstCaniSelkey())
+			if (spaceAsFirstCandSelkey)
 			{
 				if (i == 0)
 				{

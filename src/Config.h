@@ -249,6 +249,8 @@ public:
 	//dayi address/article mode
 	static void setDayiArticleMode(BOOL dayiArticleMode) { _dayiArticleMode = dayiArticleMode; }
 	static BOOL getDayiArticleMode() { return _dayiArticleMode; }
+	static void SetDayiSelkeyMode(DAYI_SELKEY_MODE dayiSelkeyMode) { _dayiSelkeyMode = dayiSelkeyMode; }
+	static DAYI_SELKEY_MODE GetDayiSelkeyMode() { return _dayiSelkeyMode; }
 
 	//convert output string to simplifed chinese
 	static void SetDoHanConvert(BOOL doHanConvert) { _doHanConvert = doHanConvert;}
@@ -358,6 +360,7 @@ private:
 	static BOOL _doHanConvert;
 
 	static BOOL _dayiArticleMode;  // Article mode: input full-shaped symbols with address keys
+	static DAYI_SELKEY_MODE _dayiSelkeyMode;  // Candidate select keys in Dayi mode
 
 	static PHONETIC_KEYBOARD_LAYOUT _phoneticKeyboardLayout;
 

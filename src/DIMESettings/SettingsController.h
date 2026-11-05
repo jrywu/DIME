@@ -63,6 +63,7 @@ enum SettingsControlId {
 
     CTRL_DAYI_ARTICLE,
     CTRL_SENTENCE_MODE,
+    CTRL_DAYI_SELKEY_MODE,
     CTRL_ARRAY_FORCE_SP,
     CTRL_ARRAY_NOTIFY_SP,
     CTRL_ARRAY_SINGLE_QUOTE,
@@ -138,6 +139,7 @@ struct SettingsSnapshot {
     int arrayScope;       // ARRAY_SCOPE as int
     int numericPad;       // NUMERIC_PAD as int
     int phoneticKeyboardLayout;  // PHONETIC_KEYBOARD_LAYOUT as int
+    int dayiSelkeyMode;          // DAYI_SELKEY_MODE as int
     int imeShiftMode;     // IME_SHIFT_MODE as int
     int doubleSingleByteMode;    // DOUBLE_SINGLE_BYTE_MODE as int
     int shiftEnglishDigitMode;   // IME_SHIFT_ENGLISH_DIGIT_MODE as int

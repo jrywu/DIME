@@ -275,6 +275,7 @@ namespace DIMEUnitTests
             CConfig::SetArrayForceSP(TRUE);
             CConfig::SetArraySingleQuoteCustomPhrase(FALSE);
             CConfig::setDayiArticleMode(TRUE);
+            CConfig::SetDayiSelkeyMode(DAYI_SELKEY_MODE::DAYI_SELKEY_DAYI);
             CConfig::SetDoHanConvert(FALSE);
             CConfig::SetActivatedKeyboardMode(TRUE);
             CConfig::SetBig5Filter(FALSE);
@@ -304,6 +305,8 @@ namespace DIMEUnitTests
             Assert::AreEqual(snap1.arrayForceSP, snap2.arrayForceSP, L"arrayForceSP mismatch");
             Assert::AreEqual(snap1.arraySingleQuoteCustomPhrase, snap2.arraySingleQuoteCustomPhrase, L"arraySingleQuoteCustomPhrase mismatch");
             Assert::AreEqual(snap1.dayiArticleMode, snap2.dayiArticleMode, L"dayiArticleMode mismatch");
+            Assert::AreEqual(snap1.dayiSelkeyMode, snap2.dayiSelkeyMode, L"dayiSelkeyMode mismatch");
+            Assert::AreEqual((int)DAYI_SELKEY_MODE::DAYI_SELKEY_DAYI, snap2.dayiSelkeyMode, L"dayiSelkeyMode value");
             Assert::AreEqual(snap1.doHanConvert, snap2.doHanConvert, L"doHanConvert mismatch");
             Assert::AreEqual(snap1.activatedKeyboardMode, snap2.activatedKeyboardMode, L"activatedKeyboardMode mismatch");
             Assert::AreEqual(snap1.big5Filter, snap2.big5Filter, L"big5Filter mismatch");

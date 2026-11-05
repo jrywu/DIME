@@ -53,6 +53,7 @@ static const KeyInfo g_keyRegistry[] =
     { L"NumericPad",                   INT_T,    0,   2,   CLI_MASK_ALL       },
     { L"ArrayScope",                   INT_T,    0,   5,   CLI_MASK_ARRAY     },
     { L"PhoneticKeyboardLayout",       INT_T,    0,   1,   CLI_MASK_PHONETIC  },
+    { L"DayiSelkeyMode",               INT_T,    0,   2,   CLI_MASK_DAYI      },
     // String keys
     { L"FontFaceName",                 STRING_T, 0,   0,   CLI_MASK_ALL       },
     { L"ReverseConversionDescription", STRING_T, 0,   0,   CLI_MASK_ALL       },
@@ -206,6 +207,8 @@ static bool GetKeyValue(const KeyInfo* ki, WCHAR* outBuf, int bufLen)
         StringCchPrintfW(outBuf, bufLen, L"%d", CConfig::getDayiArticleMode() ? 1 : 0);
     else if (_wcsicmp(n, L"SentenceMode") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%d", CConfig::GetSentenceMode() ? 1 : 0);
+    else if (_wcsicmp(n, L"DayiSelkeyMode") == 0)
+        StringCchPrintfW(outBuf, bufLen, L"%d", (int)CConfig::GetDayiSelkeyMode());
     else if (_wcsicmp(n, L"ArrayForceSP") == 0)
         StringCchPrintfW(outBuf, bufLen, L"%d", CConfig::GetArrayForceSP() ? 1 : 0);
     else if (_wcsicmp(n, L"ArrayNotifySP") == 0)
@@ -364,6 +367,7 @@ static int ApplyKeyValue(const KeyInfo* ki, const wchar_t* valueStr, FILE* err)
         else if (_wcsicmp(n, L"NumericPad") == 0)               CConfig::SetNumericPad((NUMERIC_PAD)v);
         else if (_wcsicmp(n, L"ArrayScope") == 0)               CConfig::SetArrayScope((ARRAY_SCOPE)v);
         else if (_wcsicmp(n, L"PhoneticKeyboardLayout") == 0)   CConfig::setPhoneticKeyboardLayout((PHONETIC_KEYBOARD_LAYOUT)v);
+        else if (_wcsicmp(n, L"DayiSelkeyMode") == 0)           CConfig::SetDayiSelkeyMode((DAYI_SELKEY_MODE)v);
         else return 1; // should not reach here
     }
     else if (ki->type == COLOR_T)

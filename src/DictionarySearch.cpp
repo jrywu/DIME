@@ -563,6 +563,13 @@ void ApplyIniConfigEntry(LCID locale, _In_ CStringRange* pKeyword, _In_ CStringR
 		CConfig::SetArraySingleQuoteCustomPhrase((CStringRange::Compare(locale, pValue, &value.Set(L"1", 1)) == CSTR_EQUAL));
 	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"DayiArticleMode", 15)) == CSTR_EQUAL)
 		CConfig::setDayiArticleMode((CStringRange::Compare(locale, pValue, &value.Set(L"1", 1)) == CSTR_EQUAL));
+	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"DayiSelkeyMode", 14)) == CSTR_EQUAL)
+	{
+		int selkeyMode = _wtoi(pValue->Get());
+		if (selkeyMode < (int)DAYI_SELKEY_MODE::DAYI_SELKEY_FROM_TABLE || selkeyMode > (int)DAYI_SELKEY_MODE::DAYI_SELKEY_DAYI)
+			selkeyMode = (int)DAYI_SELKEY_MODE::DAYI_SELKEY_FROM_TABLE;
+		CConfig::SetDayiSelkeyMode((DAYI_SELKEY_MODE)selkeyMode);
+	}
 	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"SpaceAsPageDown", 15)) == CSTR_EQUAL)
 		CConfig::SetSpaceAsPageDown((CStringRange::Compare(locale, pValue, &value.Set(L"1", 1)) == CSTR_EQUAL));
 	else if (CStringRange::Compare(locale, pKeyword, &testKey.Set(L"SpaceAsFirstCandSelkey", 22)) == CSTR_EQUAL)

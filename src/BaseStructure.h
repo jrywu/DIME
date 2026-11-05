@@ -245,6 +245,14 @@ enum class NUMERIC_PAD
 
 };
 
+// Candidate select keys for Dayi (DayiSelkeyMode)
+enum class DAYI_SELKEY_MODE
+{
+    DAYI_SELKEY_FROM_TABLE = 0,   // %selkey of the loaded table (space selects the first candidate)
+    DAYI_SELKEY_NUMERIC,          // 1234567890
+    DAYI_SELKEY_DAYI,             // ' [ ] - \ then Shift+' [ ] - (the Dayi manual's layout)
+};
+
 enum class PROCESS_INTEGRITY_LEVEL
 {
 	PROCESS_INTEGRITY_LEVEL_HIGH,

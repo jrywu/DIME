@@ -88,6 +88,7 @@ BOOL CConfig::_makePhrase = TRUE;
 BOOL CConfig::_doHanConvert = FALSE;
 BOOL CConfig::_showNotifyDesktop = TRUE;
 BOOL CConfig::_dayiArticleMode = FALSE;  // Article mode: input full-shaped symbols with address keys
+DAYI_SELKEY_MODE CConfig::_dayiSelkeyMode = DAYI_SELKEY_MODE::DAYI_SELKEY_FROM_TABLE;
 BOOL CConfig::_customTableChanged = FALSE;
 BOOL CConfig::_arraySingleQuoteCustomPhrase = FALSE;
 BOOL CConfig::_big5Filter = FALSE;
@@ -451,6 +452,7 @@ VOID CConfig::WriteConfig(IME_MODE imeMode, BOOL confirmUpdated)
 			if (imeMode == IME_MODE::IME_MODE_DAYI)
 			{
 				fwprintf_s(fp, L"DayiArticleMode = %d\n", _dayiArticleMode ? 1 : 0);
+				fwprintf_s(fp, L"DayiSelkeyMode = %d\n", (int)_dayiSelkeyMode);
 			}
 
 			if (imeMode == IME_MODE::IME_MODE_ARRAY)
@@ -617,6 +619,7 @@ void CConfig::ResetAllDefaults(IME_MODE imeMode)
 	_doHanConvert                 = FALSE;
 	_showNotifyDesktop            = TRUE;
 	_dayiArticleMode              = FALSE;
+	_dayiSelkeyMode               = DAYI_SELKEY_MODE::DAYI_SELKEY_FROM_TABLE;
 	_big5Filter                   = FALSE;
 	_numericPad                   = NUMERIC_PAD::NUMERIC_PAD_NUMERIC;
 	_phoneticKeyboardLayout       = PHONETIC_KEYBOARD_LAYOUT::PHONETIC_STANDARD_KEYBOARD_LAYOUT;

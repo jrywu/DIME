@@ -136,6 +136,7 @@ SettingsSnapshot SettingsModel::LoadFromConfig()
     snap.arrayScope              = (int)CConfig::GetArrayScope();
     snap.numericPad              = (int)CConfig::GetNumericPad();
     snap.phoneticKeyboardLayout  = (int)CConfig::getPhoneticKeyboardLayout();
+    snap.dayiSelkeyMode          = (int)CConfig::GetDayiSelkeyMode();
     snap.imeShiftMode            = (int)CConfig::GetIMEShiftMode();
     snap.doubleSingleByteMode    = (int)CConfig::GetDoubleSingleByteMode();
     snap.shiftEnglishDigitMode   = (int)CConfig::GetShiftEnglishDigitMode();
@@ -181,6 +182,7 @@ void SettingsModel::ApplyToConfig(const SettingsSnapshot& snap)
     CConfig::SetArrayScope((ARRAY_SCOPE)snap.arrayScope);
     CConfig::SetNumericPad((NUMERIC_PAD)snap.numericPad);
     CConfig::setPhoneticKeyboardLayout((PHONETIC_KEYBOARD_LAYOUT)snap.phoneticKeyboardLayout);
+    CConfig::SetDayiSelkeyMode((DAYI_SELKEY_MODE)snap.dayiSelkeyMode);
     CConfig::SetIMEShiftMode((IME_SHIFT_MODE)snap.imeShiftMode);
     CConfig::SetDoubleSingleByteMode((DOUBLE_SINGLE_BYTE_MODE)snap.doubleSingleByteMode);
     CConfig::SetShiftEnglishDigitMode((IME_SHIFT_ENGLISH_DIGIT_MODE)snap.shiftEnglishDigitMode);
@@ -537,6 +539,7 @@ void SettingsModel::SyncComboToSnapshot(SettingsSnapshot& s, SettingsControlId i
     case CTRL_CHARSET_SCOPE:       s.big5Filter = (sel == 1); break;
     case CTRL_NUMERIC_PAD:         s.numericPad = sel; break;
     case CTRL_PHONETIC_KB:         s.phoneticKeyboardLayout = sel; break;
+    case CTRL_DAYI_SELKEY_MODE:    s.dayiSelkeyMode = sel; break;
     case CTRL_IME_SHIFT_MODE:      s.imeShiftMode = sel; break;
     case CTRL_DOUBLE_SINGLE_BYTE:        s.doubleSingleByteMode = sel; break;
     case CTRL_SHIFT_ENGLISH_DIGIT_MODE:  s.shiftEnglishDigitMode = sel; break;

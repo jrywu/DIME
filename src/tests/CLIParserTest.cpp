@@ -363,6 +363,19 @@ public:
         Assert::IsFalse(CLI_KeyApplicableToMode(ki, IME_MODE::IME_MODE_GENERIC));
     }
 
+    TEST_METHOD(DayiSelkeyMode_Applicable_OnlyToDayi)
+    {
+        const KeyInfo* ki = CLI_FindKey(L"DayiSelkeyMode");
+        Assert::IsNotNull(ki);
+        Assert::AreEqual((int)INT_T, (int)ki->type);
+        Assert::AreEqual(0, ki->minVal);
+        Assert::AreEqual(2, ki->maxVal);
+        Assert::IsTrue (CLI_KeyApplicableToMode(ki, IME_MODE::IME_MODE_DAYI));
+        Assert::IsFalse(CLI_KeyApplicableToMode(ki, IME_MODE::IME_MODE_ARRAY));
+        Assert::IsFalse(CLI_KeyApplicableToMode(ki, IME_MODE::IME_MODE_PHONETIC));
+        Assert::IsFalse(CLI_KeyApplicableToMode(ki, IME_MODE::IME_MODE_GENERIC));
+    }
+
     TEST_METHOD(ArrayScope_Applicable_OnlyToArray)
     {
         const KeyInfo* ki = CLI_FindKey(L"ArrayScope");

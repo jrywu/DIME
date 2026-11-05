@@ -39,6 +39,7 @@ namespace SettingsKeys {
     constexpr const wchar_t NumericPad[]                   = L"NumericPad";
     constexpr const wchar_t ArrayScope[]                   = L"ArrayScope";
     constexpr const wchar_t PhoneticKeyboardLayout[]       = L"PhoneticKeyboardLayout";
+    constexpr const wchar_t DayiSelkeyMode[]               = L"DayiSelkeyMode";
     constexpr const wchar_t ShiftEnglishDigitMode[]        = L"ShiftEnglishDigitMode";
 
     // String keys
