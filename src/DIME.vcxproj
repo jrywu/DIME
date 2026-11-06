@@ -348,6 +348,9 @@
       <AdditionalDependencies>Shlwapi.lib;Comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>DIME.def</ModuleDefinitionFile>
     </Link>
+    <PreBuildEvent>
+      <Command>call .\BuildInfo.cmd</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -366,6 +369,9 @@
       <AdditionalDependencies>shlwapi.lib;Comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>DIME.def</ModuleDefinitionFile>
     </Link>
+    <PreBuildEvent>
+      <Command>call .\BuildInfo.cmd</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
     <ClCompile>
@@ -385,6 +391,9 @@
       <ModuleDefinitionFile>DIME.def</ModuleDefinitionFile>
       <TargetMachine>MachineARM64</TargetMachine>
     </Link>
+    <PreBuildEvent>
+      <Command>call .\BuildInfo.cmd</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64EC'">
     <ClCompile>
@@ -404,6 +413,9 @@
       <ModuleDefinitionFile>DIME.def</ModuleDefinitionFile>
       <TargetMachine>MachineARM64X</TargetMachine>
     </Link>
+    <PreBuildEvent>
+      <Command>call .\BuildInfo.cmd</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -431,7 +443,7 @@
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
     <PreBuildEvent>
-      <Command>BuildInfo.cmd</Command>
+      <Command>call .\BuildInfo.cmd</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -462,7 +474,7 @@
       </ImageHasSafeExceptionHandlers>
     </Link>
     <PreBuildEvent>
-      <Command>BuildInfo.cmd</Command>
+      <Command>call .\BuildInfo.cmd</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
@@ -492,7 +504,7 @@
       <ImageHasSafeExceptionHandlers>true</ImageHasSafeExceptionHandlers>
     </Link>
     <PreBuildEvent>
-      <Command>BuildInfo.cmd</Command>
+      <Command>call .\BuildInfo.cmd</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64EC'">
@@ -524,7 +536,7 @@
       </ImageHasSafeExceptionHandlers>
     </Link>
     <PreBuildEvent>
-      <Command>BuildInfo.cmd</Command>
+      <Command>call .\BuildInfo.cmd</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <!--
