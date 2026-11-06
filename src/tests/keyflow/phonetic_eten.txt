@@ -1,0 +1,6 @@
+# script: n e 3 1
+init -> passed text="" sel=0
+n -> eaten text="ㄋ" sel=1 comp="ㄋ"
+e -> eaten text="ㄋㄧ" sel=2 comp="ㄋㄧ"
+3 -> eaten text="ㄋㄧˇ" sel=3 comp="ㄋㄧˇ" cand=original[*你 妳 擬 禰 儗 旎 昵 坭 柅 薿 檷 抳 苨 馜 隬 譺]
+1 -> eaten text="你" sel=1

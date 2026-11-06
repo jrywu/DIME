@@ -79,6 +79,13 @@
 
   C++ 的 sink／edit session 只負責把 `Action` 套用到 TSF。這一步也是第 3、4 階段的前提。
 - **建議分兩步**：(2a) 先把 C++ 自己重構成「決策 → 動作」的形式（仍是 C++），補上錄製測試；(2b) 再把決策層換成 Rust。直接跳 (2b) 的話，沒有乾淨的 C++ 基準可以對拍。
+- **進度（2026-11-06）**：
+  - ✅ 2a-1 黃金測試：`src/tests/KeyFlowHarness.*` 在專屬 STA 執行緒上建立**真實的 TSF thread manager**，文件由自製的 `ITextStoreACP`（純文字 + 一個選取區）提供；`CDIME::_TestActivate` 走 `ActivateEx` + `OnActivated` 的引擎設定（不註冊系統 sink），按鍵依 `ITfKeystrokeMgr` 的順序送進 `OnTestKeyDown`/`OnKeyDown`/`OnTestKeyUp`/`OnKeyUp`，並設定執行緒的鍵盤狀態（Shift、CapsLock）與美式鍵盤配置。每個按鍵後記錄：是否吃掉、文件文字、選取區、組字內容、候選字模式、候選字清單與選擇。`%APPDATA%` 透過新的 `Global::GetAppDataPath()`（測試可用 `Global::testAppDataOverride` 導向）與 `%ProgramW6432%` 都指向暫存資料夾，不碰使用者的設定與碼表。IME 若當機（SEH），測試會失敗並附上呼叫堆疊，不會帶走測試主機。
+  - `src/tests/KeyFlowTest.cpp` 有 40 個情境（行列／注音用安裝程式碼表；大易／自訂用合成小碼表；聯想詞用合成的 `TableTextServiceDaYi.txt`），涵蓋選字鍵、翻頁、萬用字元、符號模式、Shift 英數、最大碼長、強制特別碼、行列 40、注音倚天鍵盤、大易地址鍵與選字鍵模式、自動組字、聯想詞、整句輸入（含候選字修改）。黃金檔在 `src/tests/keyflow/*.txt`，設 `DIME_KEYFLOW_RECORD=1` 重新錄製。C++ 模式與 Rust 設定儲存模式（`DIME_USE_RUST_CONFIG`）、x64 Debug 與 Win32 Release 結果都相同。
+  - 黃金測試找到的問題：
+    - **已修正**：自訂模式開「自動組字」時，輸入 `a` 再輸入萬用字元 `*` 會讓宿主程式當掉（`CompositionProcessorEngine.cpp` 增量候選的字碼長度相減下溢，`CCandidateWindow::_AddString` 丟出 `std::bad_array_new_length`）。
+    - **尚未修正（已記錄現況，`dayi_phrase_cin` 情境）**：README 格式的自訂 `Phrase.cin` 查不到聯想詞。查詢時若 `Global::hasPhraseSection` 為 FALSE 會在字後加 `*`，但 CIN 的 `CollectWord` 不把 `*` 當萬用字元；這個全域旗標由任一 TTS `[Phrase]` 段落設定且從不清除，所以實際行為取決於行程先前載入過什麼。
+  - ⏳ 2a-2：在黃金測試保護下，把 `KeyEventSink` / `KeyHandler*` / `CandidateHandler` / `SentenceHandler` 重構成「判斷 → 動作」。
 - **測試**：建立「按鍵序列 → 動作序列」的黃金測試資料：四種模式 × 主要設定組合（`SentenceMode`、`DayiSelkeyMode`、`ArrayScope`、注音鍵盤、空白鍵選字…），用實際 `installer/*.cin` 碼表。同一序列餵給 C++ 與 Rust，逐筆比對。`TSFCoreLogicIntegrationTest`、`SelkeyModeTest`、`SentenceBufferTest` 改接新介面。
 - **風險**：這是整個計畫最難、也最有價值的一段；目前邏輯與 TSF 呼叫交錯（例如 `_HandleCandidateWorker`、`SentenceHandler` 的攔截點），抽離時最容易改到行為。
 

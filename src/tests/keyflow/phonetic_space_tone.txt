@@ -1,0 +1,9 @@
+# script: 5 j / Space Space Down Enter
+init -> passed text="" sel=0
+5 -> eaten text="ㄓ" sel=1 comp="ㄓ"
+j -> eaten text="ㄓㄨ" sel=2 comp="ㄓㄨ"
+/ -> eaten text="ㄓㄨㄥ" sel=3 comp="ㄓㄨㄥ"
+Space -> eaten text="ㄓㄨㄥ" sel=3 comp="ㄓㄨㄥ" cand=original[*中 鐘 終 忠 鍾 衷 忪 盅 螽 伀 妐 蔠 柊 煄 彸 舯 炂 籦]
+Space -> eaten text="ㄓㄨㄥ" sel=3 comp="ㄓㄨㄥ" cand=original[中 鐘 終 忠 鍾 衷 忪 盅 螽 *伀 妐 蔠 柊 煄 彸 舯 炂 籦]
+Down -> eaten text="ㄓㄨㄥ" sel=3 comp="ㄓㄨㄥ" cand=original[中 鐘 終 忠 鍾 衷 忪 盅 螽 伀 *妐 蔠 柊 煄 彸 舯 炂 籦]
+Enter -> eaten text="妐" sel=1

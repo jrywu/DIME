@@ -1,0 +1,8 @@
+# script: a Space 2 a Space 1
+init -> passed text="" sel=0
+a -> eaten text="1-" sel=2 comp="1-" cand=incremental[*一]
+Space -> eaten text="一" sel=1
+2 -> passed text="一" sel=1
+a -> eaten text="一1-" sel=3 comp="1-" cand=incremental[*一]
+Space -> eaten text="一一" sel=2
+1 -> passed text="一一" sel=2

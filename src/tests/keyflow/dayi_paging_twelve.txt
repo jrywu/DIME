@@ -1,0 +1,9 @@
+# script: g Space PgDn PgUp Down Down 3
+init -> passed text="" sel=0
+g -> eaten text="王" sel=1 comp="王"
+Space -> eaten text="王" sel=1 comp="王" cand=original[*王 國 主 玉 全 金 理 現 球 班 珠 琴]
+PgDn -> eaten text="王" sel=1 comp="王" cand=original[王 國 主 玉 全 金 理 現 球 班 *珠 琴]
+PgUp -> eaten text="王" sel=1 comp="王" cand=original[*王 國 主 玉 全 金 理 現 球 班 珠 琴]
+Down -> eaten text="王" sel=1 comp="王" cand=original[王 *國 主 玉 全 金 理 現 球 班 珠 琴]
+Down -> eaten text="王" sel=1 comp="王" cand=original[王 國 *主 玉 全 金 理 現 球 班 珠 琴]
+3 -> eaten text="玉" sel=1

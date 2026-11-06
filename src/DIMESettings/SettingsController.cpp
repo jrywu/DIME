@@ -373,7 +373,7 @@ void SettingsModel::DestroyEngine(CCompositionProcessorEngine*& pEngine)
 void SettingsModel::GetCustomTableTxtPath(IME_MODE mode, WCHAR* out, DWORD cch)
 {
     WCHAR appData[MAX_PATH] = {};
-    SHGetSpecialFolderPathW(nullptr, appData, CSIDL_APPDATA, TRUE);
+    Global::GetAppDataPath(appData, TRUE);
     const wchar_t* suffix;
     switch (mode) {
     case IME_MODE::IME_MODE_DAYI:     suffix = L"\\DIME\\DAYI-Custom.txt";     break;
@@ -387,7 +387,7 @@ void SettingsModel::GetCustomTableTxtPath(IME_MODE mode, WCHAR* out, DWORD cch)
 void SettingsModel::GetCustomTableCINPath(IME_MODE mode, WCHAR* out, DWORD cch)
 {
     WCHAR appData[MAX_PATH] = {};
-    SHGetSpecialFolderPathW(nullptr, appData, CSIDL_APPDATA, TRUE);
+    Global::GetAppDataPath(appData, TRUE);
     const wchar_t* suffix;
     switch (mode) {
     case IME_MODE::IME_MODE_DAYI:     suffix = L"\\DIME\\DAYI-Custom.cin";     break;

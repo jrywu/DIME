@@ -147,7 +147,7 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode, LCID loc
 
 	//CSIDL_APPDATA  personal roaming application data.
 	if (pwszAppData)
-		SHGetSpecialFolderPath(NULL, pwszAppData, CSIDL_APPDATA, TRUE);
+		Global::GetAppDataPath(pwszAppData, TRUE);
 
 	WCHAR* pwszTTSFileName = new (std::nothrow) WCHAR[MAX_PATH];
 	WCHAR* pwszCINFileName = new (std::nothrow) WCHAR[MAX_PATH];
@@ -1361,7 +1361,7 @@ BOOL CCompositionProcessorEngine::SetupHanCovertTable()
 		}
 
 		//CSIDL_APPDATA  personal roaming application data.
-		SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);
+		Global::GetAppDataPath(wszAppData, TRUE);
 
 		debugPrint(L"CCompositionProcessorEngine::SetupDictionaryFile() :wszProgramFiles = %s", wszProgramFiles);
 
@@ -1414,7 +1414,7 @@ BOOL CCompositionProcessorEngine::SetupTCFreqTable()
 	}
 
 	//CSIDL_APPDATA  personal roaming application data.
-	SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);
+	Global::GetAppDataPath(wszAppData, TRUE);
 
 	debugPrint(L"CCompositionProcessorEngine::SetupTCFreqTable() :wszProgramFiles = %s", wszProgramFiles);
 

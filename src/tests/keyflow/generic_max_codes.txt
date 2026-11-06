@@ -1,0 +1,10 @@
+# script: a b c Space a b c d
+init -> passed text="" sel=0
+a -> eaten text="A" sel=1 comp="A"
+b -> eaten text="AB" sel=2 comp="AB"
+c -> eaten text="" sel=0
+Space -> passed text="" sel=0
+a -> eaten text="A" sel=1 comp="A"
+b -> eaten text="AB" sel=2 comp="AB"
+c -> eaten text="" sel=0
+d -> eaten text="D" sel=1 comp="D"

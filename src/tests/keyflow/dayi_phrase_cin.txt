@@ -1,0 +1,6 @@
+# script: a Space Space 2
+init -> passed text="" sel=0
+a -> eaten text="人" sel=1 comp="人"
+Space -> eaten text="人" sel=1 comp="人" cand=original[*人 入 八]
+Space -> eaten text="人" sel=1
+2 -> passed text="人" sel=1

@@ -1,0 +1,8 @@
+# script: a b ; b ; 2
+init -> passed text="" sel=0
+a -> eaten text="A" sel=1 comp="A"
+b -> eaten text="AB" sel=2 comp="AB"
+; -> eaten text="" sel=0
+b -> eaten text="B" sel=1 comp="B"
+; -> eaten text="" sel=0
+2 -> passed text="" sel=0

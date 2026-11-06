@@ -115,6 +115,22 @@ BOOL isWindows1809OrLater = FALSE;
 
 IME_MODE imeMode = IME_MODE::IME_MODE_NONE;
 
+#ifdef DIME_UNIT_TESTING
+WCHAR testAppDataOverride[MAX_PATH] = L"";
+#endif
+
+BOOL GetAppDataPath(_Out_writes_(MAX_PATH) WCHAR* path, BOOL create)
+{
+#ifdef DIME_UNIT_TESTING
+	if (testAppDataOverride[0])
+	{
+		if (create) CreateDirectoryW(testAppDataOverride, nullptr);
+		return SUCCEEDED(StringCchCopyW(path, MAX_PATH, testAppDataOverride));
+	}
+#endif
+	return SHGetSpecialFolderPathW(nullptr, path, CSIDL_APPDATA, create);
+}
+
 BOOL hasPhraseSection = FALSE;
 BOOL hasCINPhraseSection = FALSE;
 

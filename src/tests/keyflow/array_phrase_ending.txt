@@ -1,0 +1,9 @@
+# script: t a ' r g ' Space
+init -> passed text="" sel=0
+t -> eaten text="5^" sel=2 comp="5^" cand=incremental[*的]
+a -> eaten text="5^1-" sel=4 comp="5^1-" cand=incremental[*界]
+' -> eaten text="" sel=0
+r -> eaten text="4^" sel=2 comp="4^" cand=incremental[*土 士 廿]
+g -> eaten text="4^5-" sel=4 comp="4^5-" cand=incremental[*城]
+' -> eaten text="" sel=0
+Space -> passed text="" sel=0

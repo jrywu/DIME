@@ -1603,7 +1603,7 @@ INT_PTR CALLBACK CConfig::DictionaryPropertyPageWndProc(HWND hDlg, UINT message,
 	}openFileType = OPEN_NULL;
 
 	//CSIDL_APPDATA  personal roaming application data.
-	SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);
+	Global::GetAppDataPath(wszAppData, TRUE);
 	SHGetSpecialFolderPath(NULL, wszUserDoc, CSIDL_MYDOCUMENTS, TRUE);
 
 	if (dllDlgHandle)

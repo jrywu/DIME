@@ -34,6 +34,7 @@ vstest.console.exe bin\x64\Debug\DIMETests.dll /TestCaseFilter:"FullyQualifiedNa
 
 - CI（`.github/workflows/DIME_tests.yml`）跑 Win32/x64 × Debug/Release 矩陣。
 - `src/tests/run_all_coverage.ps1` 以 OpenCppCoverage 產生覆蓋率報告。
+- **按鍵流程黃金測試**（`KeyFlowTest.cpp` + `KeyFlowHarness.*`）：真實 TSF thread manager + 自製 `ITextStoreACP`，把按鍵腳本送進未修改的 `CDIME`，逐鍵記錄吃鍵與否、文件文字、組字、候選字，與 `src/tests/keyflow/*.txt` 比對。改動按鍵處理、候選字、整句等行為時，先跑這組；行為是刻意改變時設 `DIME_KEYFLOW_RECORD=1` 重新錄製並檢查 diff。測試用 `Global::testAppDataOverride` 與 `%ProgramW6432%` 指向暫存資料夾，不碰真實 `%APPDATA%\DIME`；產品程式碼取得 `%APPDATA%` 一律用 `Global::GetAppDataPath()`。
 - 測試專案**直接編譯** `src/` 與 `src/DIMESettings/` 的產品 `.cpp`（不是連結 `DIME.dll`），並定義 `DIME_UNIT_TESTING`。此巨集會在 `Config.h`、`DIME.h`、`File.h`、`UIPresenter.h`、`CLI.h` 等處開放測試用 hook；`TestStubs.cpp` 補上被排除的 `DllMain.cpp` 符號。新增產品 `.cpp` 而測試需要用到時，要一併加進 `src/tests/DIMETests.vcxproj`。
 
 ## 架構重點

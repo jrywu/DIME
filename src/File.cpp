@@ -590,7 +590,7 @@ BOOL CMemoryFile::BuildCachePath(WCHAR* outPath, size_t maxLen) const
     // Unit-test temp files live elsewhere and must not produce cache files
     // in the user's DIME data folder.
     WCHAR appData[MAX_PATH] = {};
-    if (!SHGetSpecialFolderPathW(nullptr, appData, CSIDL_APPDATA, FALSE))
+    if (!Global::GetAppDataPath(appData, FALSE))
         return FALSE;
 
     WCHAR dimeDir[MAX_PATH];

@@ -403,8 +403,15 @@ void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidate
 
 			if (pLI)
 			{
+				// With a wildcard in the buffer ('*' matches nothing) a candidate's key code can be
+				// shorter than what was typed; it then has no remaining keys. (The unsigned
+				// subtraction used to underflow and crash in CCandidateWindow::_AddString.)
 				CStringRange newFindKeyCode;
-				newFindKeyCode.Set(pLI->_FindKeyCode.Get() + keystrokeBufferLen, pLI->_FindKeyCode.GetLength() - keystrokeBufferLen);
+				DWORD_PTR findKeyCodeLen = pLI->_FindKeyCode.GetLength();
+				if (findKeyCodeLen > keystrokeBufferLen)
+					newFindKeyCode.Set(pLI->_FindKeyCode.Get() + keystrokeBufferLen, findKeyCodeLen - keystrokeBufferLen);
+				else
+					newFindKeyCode.Set(pLI->_FindKeyCode.Get() + findKeyCodeLen, 0);
 				pLI->_FindKeyCode.Set(newFindKeyCode);
 			}
 		}

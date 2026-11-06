@@ -1,0 +1,7 @@
+# script: c Space a d Space
+init -> passed text="" sel=0
+c -> eaten text="金" sel=1 comp="金"
+Space -> eaten text="金" sel=1
+a -> eaten text="金人" sel=2 comp="人"
+d -> eaten text="金人言" sel=3 comp="人言"
+Space -> eaten text="金信" sel=2

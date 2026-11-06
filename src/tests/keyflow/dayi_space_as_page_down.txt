@@ -1,0 +1,7 @@
+# script: g Space Space Space 1
+init -> passed text="" sel=0
+g -> eaten text="王" sel=1 comp="王"
+Space -> eaten text="王" sel=1 comp="王" cand=original[*王 國 主 玉 全 金 理 現 球 班 珠 琴]
+Space -> eaten text="王" sel=1 comp="王" cand=original[王 國 主 玉 全 金 理 現 球 班 *珠 琴]
+Space -> eaten text="王" sel=1 comp="王" cand=original[*王 國 主 玉 全 金 理 現 球 班 珠 琴]
+1 -> eaten text="國" sel=1

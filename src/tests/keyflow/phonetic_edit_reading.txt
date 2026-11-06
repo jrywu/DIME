@@ -1,0 +1,14 @@
+# script: j i Back Back j i 3 Esc j i 4 Back
+init -> passed text="" sel=0
+j -> eaten text="ㄨ" sel=1 comp="ㄨ"
+i -> eaten text="ㄨㄛ" sel=2 comp="ㄨㄛ"
+Back -> eaten text="ㄨ" sel=1 comp="ㄨ"
+Back -> eaten text="" sel=0
+j -> eaten text="ㄨ" sel=1 comp="ㄨ"
+i -> eaten text="ㄨㄛ" sel=2 comp="ㄨㄛ"
+3 -> eaten text="ㄨㄛˇ" sel=3 comp="ㄨㄛˇ" cand=original[*我 婐 捰]
+Esc -> eaten text="" sel=0
+j -> eaten text="ㄨ" sel=1 comp="ㄨ"
+i -> eaten text="ㄨㄛ" sel=2 comp="ㄨㄛ"
+4 -> eaten text="ㄨㄛˋ" sel=3 comp="ㄨㄛˋ" cand=original[*握 臥 沃 渥 斡 齷 幄 涴 偓 濣 焥]
+Back -> eaten text="" sel=0

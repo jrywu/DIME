@@ -1,0 +1,8 @@
+# script: , . / ; Space Enter
+init -> passed text="" sel=0
+, -> eaten text="8v" sel=2 comp="8v" cand=incremental[*， 火 米]
+. -> eaten text="8v9v" sel=4 comp="8v9v" cand=incremental[*敝 敉]
+/ -> eaten text="8v9v0v" sel=6 comp="8v9v0v" cand=incremental[*蟞]
+; -> eaten text="8v9v0v0-" sel=8 comp="8v9v0v0-" cand=incremental[]
+Space -> eaten text="" sel=0
+Enter -> passed text="" sel=0

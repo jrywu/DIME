@@ -1,0 +1,7 @@
+# script: t a Space 1 Back
+init -> passed text="" sel=0
+t -> eaten text="5^" sel=2 comp="5^" cand=incremental[*的]
+a -> eaten text="5^1-" sel=4 comp="5^1-" cand=incremental[*界]
+Space -> eaten text="界" sel=1
+1 -> passed text="界" sel=1
+Back -> passed text="界" sel=1

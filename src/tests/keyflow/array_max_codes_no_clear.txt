@@ -1,0 +1,9 @@
+# script: a a a a a a Esc
+init -> passed text="" sel=0
+a -> eaten text="1-" sel=2 comp="1-" cand=incremental[*一]
+a -> eaten text="1-1-" sel=4 comp="1-1-" cand=incremental[*二]
+a -> eaten text="1-1-1-" sel=6 comp="1-1-1-" cand=incremental[*三]
+a -> eaten text="1-1-1-1-" sel=8 comp="1-1-1-1-" cand=incremental[*亖]
+a -> eaten text="1-1-1-1-1-" sel=10 comp="1-1-1-1-1-" cand=incremental[]
+a -> eaten text="1-1-1-1-1-" sel=10 comp="1-1-1-1-1-" cand=incremental[]
+Esc -> eaten text="" sel=0

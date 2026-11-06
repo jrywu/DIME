@@ -1,0 +1,12 @@
+# script: a Space Down Down Up PgDn PgUp Right Left Enter
+init -> passed text="" sel=0
+a -> eaten text="1-" sel=2 comp="1-" cand=incremental[*一]
+Space -> eaten text="一" sel=1
+Down -> passed text="一" sel=1
+Down -> passed text="一" sel=1
+Up -> passed text="一" sel=1
+PgDn -> passed text="一" sel=1
+PgUp -> passed text="一" sel=1
+Right -> passed text="一" sel=1
+Left -> passed text="一" sel=1
+Enter -> passed text="一" sel=1

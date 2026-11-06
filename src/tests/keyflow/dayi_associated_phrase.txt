@@ -1,0 +1,26 @@
+# script: a Space Space 2 a Space Space Esc e f Space a Space Space Down Enter a Space Space Shift+x a Space Space a
+init -> passed text="" sel=0
+a -> eaten text="人" sel=1 comp="人"
+Space -> eaten text="人" sel=1 comp="人" cand=original[*人 入 八]
+Space -> eaten text="人" sel=1 cand=phrase[民 們 生]
+2 -> passed text="人" sel=1
+a -> eaten text="人人" sel=2 comp="人"
+Space -> eaten text="人人" sel=2 comp="人" cand=original[*人 入 八]
+Space -> eaten text="人人" sel=2 cand=phrase[民 們 生]
+Esc -> eaten text="人人" sel=2
+e -> eaten text="人人山" sel=3 comp="山"
+f -> eaten text="人人山土" sel=4 comp="山土"
+Space -> eaten text="人人地" sel=3 cand=phrase[方 球]
+a -> eaten text="人人地人" sel=4 comp="人"
+Space -> eaten text="人人地人" sel=4 comp="人" cand=original[*人 入 八]
+Space -> eaten text="人人地人" sel=4 cand=phrase[民 們 生]
+Down -> eaten text="人人地人" sel=4 cand=phrase[*民 們 生]
+Enter -> eaten text="人人地人民" sel=5
+a -> eaten text="人人地人民人" sel=6 comp="人"
+Space -> eaten text="人人地人民人" sel=6 comp="人" cand=original[*人 入 八]
+Space -> eaten text="人人地人民人" sel=6 cand=phrase[民 們 生]
+Shift+x -> eaten text="人人地人民人x" sel=7
+a -> eaten text="人人地人民人x人" sel=8 comp="人"
+Space -> eaten text="人人地人民人x人" sel=8 comp="人" cand=original[*人 入 八]
+Space -> eaten text="人人地人民人x人" sel=8 cand=phrase[民 們 生]
+a -> eaten text="人人地人民人x人人" sel=9 comp="人"

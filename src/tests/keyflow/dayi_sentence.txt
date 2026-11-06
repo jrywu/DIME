@@ -1,0 +1,18 @@
+# script: a Space d Space a d Space Left Left Down 2 Right Left Down Esc Enter
+init -> passed text="" sel=0
+a -> eaten text="人" sel=1 comp="人"
+Space -> eaten text="人" sel=1 comp="人"
+d -> eaten text="人言" sel=2 comp="人言"
+Space -> eaten text="人言" sel=2 comp="人言"
+a -> eaten text="人言人" sel=3 comp="人言人"
+d -> eaten text="人言人言" sel=4 comp="人言人言"
+Space -> eaten text="人言信" sel=3 comp="人言信"
+Left -> eaten text="人言信" sel=2 comp="人言信"
+Left -> eaten text="人言信" sel=1 comp="人言信"
+Down -> eaten text="人言信" sel=1 comp="人言信" cand=original[*言 詞]
+2 -> eaten text="人言信" sel=1 comp="人言信" cand=original[*言 詞]
+Right -> eaten text="人言信" sel=1 comp="人言信" cand=original[*言 詞]
+Left -> eaten text="人言信" sel=1 comp="人言信" cand=original[*言 詞]
+Down -> eaten text="人言信" sel=1 comp="人言信" cand=original[言 *詞]
+Esc -> eaten text="人言信" sel=1 comp="人言信"
+Enter -> eaten text="人言信" sel=3

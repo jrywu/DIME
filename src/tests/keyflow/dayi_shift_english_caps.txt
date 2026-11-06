@@ -1,0 +1,4 @@
+# script: Shift+a Shift+1
+init -> passed text="" sel=0
+Shift+a -> eaten text="a" sel=1
+Shift+1 -> passed text="a" sel=1

@@ -1,0 +1,8 @@
+# script: Shift+a Shift+b t Shift+c Shift+1 Shift+/
+init -> passed text="" sel=0
+Shift+a -> eaten text="a" sel=1
+Shift+b -> eaten text="ab" sel=2
+t -> eaten text="ab5^" sel=4 comp="5^" cand=incremental[*的]
+Shift+c -> eaten text="ab5^" sel=4 comp="5^" cand=incremental[*的]
+Shift+1 -> eaten text="ab5^" sel=4 comp="5^" cand=incremental[*的]
+Shift+/ -> eaten text="ab5^?" sel=5 comp="5^?" cand=incremental[*阿 君 改 引 界 皮 阞 歉 衛 阯 聿 弓 防 鑒 掃 夬 尹 費 選 提 陳 陣 堅 已 己 巳 畫 圖 保 婆 艮 陪 團]

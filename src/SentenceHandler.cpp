@@ -71,7 +71,7 @@ namespace
 		WCHAR appData[MAX_PATH] = { 0 };
 		WCHAR programFiles[MAX_PATH] = { 0 };
 
-		if (SHGetSpecialFolderPath(NULL, appData, CSIDL_APPDATA, FALSE))
+		if (Global::GetAppDataPath(appData, FALSE))
 		{
 			StringCchPrintf(path, MAX_PATH, L"%s\\DIME\\%s", appData, name);
 			if (PathFileExists(path)) return TRUE;
@@ -200,7 +200,7 @@ BOOL CDIME::_SentenceUserFilePath(_Out_writes_(MAX_PATH) WCHAR* path)
 {
 	*path = L'\0';
 	WCHAR appData[MAX_PATH] = { 0 };
-	if (!SHGetSpecialFolderPath(NULL, appData, CSIDL_APPDATA, FALSE))
+	if (!Global::GetAppDataPath(appData, FALSE))
 		return FALSE;
 	return SUCCEEDED(StringCchPrintf(path, MAX_PATH, L"%s\\DIME\\SentenceUser.txt", appData));
 }

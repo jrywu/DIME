@@ -1,0 +1,9 @@
+# script: w 1 Space 1 w 2 Esc
+init -> passed text="" sel=0
+w -> eaten text="2^" sel=2 comp="2^" cand=incremental[*女]
+1 -> eaten text="w1" sel=2 comp="w1" cand=original[*， 、 。 ． ‧ ； ： ？ ！ ︰ … ‥ ﹐ ﹑ ﹒ · ﹔ ﹕ ﹖ ﹗ ｜ – ︱ — ︳ ╴ ︴ ﹏]
+Space -> eaten text="，" sel=1
+1 -> passed text="，" sel=1
+w -> eaten text="，2^" sel=3 comp="2^" cand=incremental[*女]
+2 -> eaten text="，w2" sel=3 comp="w2" cand=original[*（ ） ︵ ︶ ｛ ｝ ︷ ︸ 〔 〕 ︹ ︺ 【 】 ︻ ︼ 《 》 ︽ ︾ 〈 〉 ︿ ﹀ 「 」 ﹁ ﹂ 『 』 ﹃ ﹄ ﹙ ﹚ ﹛ ﹜ ﹝ ﹞ ‘ ’ “ ” 〝 〞 ‵ ′]
+Esc -> eaten text="，" sel=1

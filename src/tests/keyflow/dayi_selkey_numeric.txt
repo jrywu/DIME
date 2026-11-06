@@ -1,0 +1,8 @@
+# script: a Space 2 g Space 0
+init -> passed text="" sel=0
+a -> eaten text="人" sel=1 comp="人"
+Space -> eaten text="人" sel=1 comp="人" cand=original[*人 入 八]
+2 -> eaten text="入" sel=1
+g -> eaten text="入王" sel=2 comp="王"
+Space -> eaten text="入王" sel=2 comp="王" cand=original[*王 國 主 玉 全 金 理 現 球 班 珠 琴]
+0 -> eaten text="入班" sel=2

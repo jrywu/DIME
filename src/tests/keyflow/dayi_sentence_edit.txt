@@ -1,0 +1,18 @@
+# script: a Space e Space Back d Space Del Left Left Del Esc a Space , Esc
+init -> passed text="" sel=0
+a -> eaten text="人" sel=1 comp="人"
+Space -> eaten text="人" sel=1 comp="人"
+e -> eaten text="人山" sel=2 comp="人山"
+Space -> eaten text="人山" sel=2 comp="人山"
+Back -> eaten text="人" sel=1 comp="人"
+d -> eaten text="人言" sel=2 comp="人言"
+Space -> eaten text="人言" sel=2 comp="人言"
+Del -> eaten text="人言" sel=2 comp="人言"
+Left -> eaten text="人言" sel=1 comp="人言"
+Left -> eaten text="人言" sel=0 comp="人言"
+Del -> eaten text="言" sel=0 comp="言"
+Esc -> eaten text="" sel=0
+a -> eaten text="人" sel=1 comp="人"
+Space -> eaten text="人" sel=1 comp="人"
+, -> eaten text="人力" sel=2 comp="人力"
+Esc -> eaten text="人" sel=1 comp="人"

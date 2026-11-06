@@ -1,0 +1,8 @@
+# script: ' [ ] - \ `
+init -> passed text="" sel=0
+' -> eaten text="號" sel=1
+[ -> eaten text="號路" sel=2
+] -> eaten text="號路街" sel=3
+- -> eaten text="號路街鄉" sel=4
+\ -> eaten text="號路街鄉鎮" sel=5
+` -> eaten text="號路街鄉鎮巷" sel=6

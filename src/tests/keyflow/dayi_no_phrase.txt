@@ -1,0 +1,8 @@
+# script: a Space Space e f Space
+init -> passed text="" sel=0
+a -> eaten text="人" sel=1 comp="人"
+Space -> eaten text="人" sel=1 comp="人" cand=original[*人 入 八]
+Space -> eaten text="人" sel=1
+e -> eaten text="人山" sel=2 comp="山"
+f -> eaten text="人山土" sel=3 comp="山土"
+Space -> eaten text="人地" sel=2

@@ -1,0 +1,10 @@
+# script: a Shift+8 Space Esc a Shift+/ Space 1
+init -> passed text="" sel=0
+a -> eaten text="A" sel=1 comp="A" cand=incremental[*一 二 三 四 五 六 七 八 九 十 百 千 東 西 南 北]
+Shift+8 -> eaten text="A*" sel=2 comp="A*" cand=incremental[*一 二 三 四 五 六 七 八 九 十 百 千 東 西 南 北]
+Space -> eaten text="一" sel=1
+Esc -> passed text="一" sel=1
+a -> eaten text="一A" sel=2 comp="A" cand=incremental[*一 二 三 四 五 六 七 八 九 十 百 千 東 西 南 北]
+Shift+/ -> eaten text="一A?" sel=3 comp="A?" cand=incremental[*東 西]
+Space -> eaten text="一東" sel=2
+1 -> passed text="一東" sel=2

@@ -1,0 +1,10 @@
+# script: = 1 Space 2 = 2 Space 1
+init -> passed text="" sel=0
+= -> eaten text="=" sel=1 comp="="
+1 -> eaten text="=1" sel=2 comp="=1" cand=original[*， 。]
+Space -> eaten text="，" sel=1
+2 -> passed text="，" sel=1
+= -> eaten text="，=" sel=2 comp="="
+2 -> eaten text="，=2" sel=3 comp="=2" cand=original[*「 」]
+Space -> eaten text="，「" sel=2
+1 -> passed text="，「" sel=2

@@ -1,0 +1,8 @@
+# script: a Space Space b Space Space
+init -> passed text="" sel=0
+a -> eaten text="A" sel=1 comp="A"
+Space -> eaten text="A" sel=1 comp="A" cand=original[*一 二 三 四 五 六 七 八 九 十 百 千]
+Space -> eaten text="一" sel=1
+b -> eaten text="一B" sel=2 comp="B"
+Space -> eaten text="一B" sel=2 comp="B" cand=original[*大 小]
+Space -> eaten text="一大" sel=2

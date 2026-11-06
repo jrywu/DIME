@@ -230,6 +230,16 @@ public:
 	BOOL isBlackListedProcessForProbeComposition() { return  (CompareString(GetLocale(), NORM_IGNORECASE, _processName, -1, L"firefox.exe", -1) == CSTR_EQUAL); }
 	PROCESS_INTEGRITY_LEVEL GetProcessIntegrityLevel() { return _processIntegrityLevel; }
 
+#ifdef DIME_UNIT_TESTING
+	// Key-flow tests (tests/KeyFlowHarness.*): activate against a test thread manager
+	// without the sinks ActivateEx advises (key events are delivered directly), and
+	// read the state the tests record.
+	HRESULT _TestActivate(_In_ ITfThreadMgr* pThreadMgr, TfClientId tfClientId, LANGID langid, REFGUID guidProfile);
+	CANDIDATE_MODE _TestCandidateMode() const { return _candidateMode; }
+	CUIPresenter* _TestUIPresenter() const { return _pUIPresenter; }
+	ITfComposition* _TestComposition() const { return _pComposition; }
+#endif
+
 private:
 	PROCESS_INTEGRITY_LEVEL _processIntegrityLevel;
 	WCHAR _processName[MAX_PATH];

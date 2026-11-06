@@ -1,0 +1,8 @@
+# script: t a Space y d Space
+init -> passed text="" sel=0
+t -> eaten text="5^" sel=2 comp="5^" cand=incremental[*的]
+a -> eaten text="5^1-" sel=4 comp="5^1-" cand=incremental[*界]
+Space -> eaten text="界" sel=1
+y -> eaten text="界6^" sel=3 comp="6^" cand=incremental[*立 言]
+d -> eaten text="界6^3-" sel=5 comp="6^3-" cand=incremental[*訕]
+Space -> eaten text="界訕" sel=2

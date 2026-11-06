@@ -132,7 +132,7 @@ static const wchar_t* ModeName(IME_MODE mode)
 static void GetDimePath(WCHAR* buf, int bufLen)
 {
     WCHAR appData[MAX_PATH] = {};
-    SHGetSpecialFolderPath(NULL, appData, CSIDL_APPDATA, FALSE);
+    Global::GetAppDataPath(appData, FALSE);
     StringCchPrintfW(buf, bufLen, L"%s\\DIME", appData);
 }
 

@@ -1,0 +1,7 @@
+# script: a d Back g 3
+init -> passed text="" sel=0
+a -> eaten text="人" sel=1 comp="人" cand=incremental[*人 入 八 從 信]
+d -> eaten text="人言" sel=2 comp="人言" cand=incremental[*信]
+Back -> eaten text="人" sel=1 comp="人" cand=incremental[*人 入 八 從 信]
+g -> eaten text="人王" sel=2 comp="人王" cand=incremental[]
+3 -> eaten text="人王" sel=2 comp="人王" cand=incremental[]

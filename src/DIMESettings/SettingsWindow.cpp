@@ -3616,7 +3616,7 @@ LRESULT CALLBACK SettingsWindow::ContentWndProc(HWND hWnd, UINT msg, WPARAM wPar
                             ofn.lpstrFilter = L"CIN TXT Files(*.txt, *.cin)\0*.cin;*.txt\0\0";
                             if (pGetOpen(&ofn)) {
                                 WCHAR wszAppData[MAX_PATH] = {};
-                                SHGetSpecialFolderPathW(nullptr, wszAppData, CSIDL_APPDATA, TRUE);
+                                Global::GetAppDataPath(wszAppData, TRUE);
                                 WCHAR pathToWrite[MAX_PATH] = {};
                                 StringCchPrintfW(pathToWrite, MAX_PATH, L"%s%s", wszAppData, targetSuffix);
                                 if (CConfig::parseCINFile(pathToLoad, pathToWrite))

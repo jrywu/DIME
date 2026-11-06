@@ -50,6 +50,13 @@ void DllRelease();
 namespace Global {
 
 extern IME_MODE imeMode;
+
+// %APPDATA% (SHGetSpecialFolderPath CSIDL_APPDATA). Unit tests can redirect it by
+// setting testAppDataOverride, so they never touch the real %APPDATA%\DIME.
+BOOL GetAppDataPath(_Out_writes_(MAX_PATH) WCHAR* path, BOOL create);
+#ifdef DIME_UNIT_TESTING
+extern WCHAR testAppDataOverride[MAX_PATH];
+#endif
 extern BOOL isWindows8;        // Win8+
 extern BOOL isWindows1809OrLater; // Win10 1809+ (build 17763): dark theme support
  extern DWORD g_WinMajorVersion;

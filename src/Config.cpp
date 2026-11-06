@@ -728,7 +728,7 @@ void CConfig::SetIMEMode(IME_MODE imeMode)
 		_imeMode = imeMode;
 		GUID guidProfile = CLSID_NULL;
 		WCHAR wszAppData[MAX_PATH] = L"\0";
-		SHGetSpecialFolderPath(NULL, wszAppData, CSIDL_APPDATA, TRUE);
+		Global::GetAppDataPath(wszAppData, TRUE);
 
 		StringCchPrintf(_pwzsDIMEProfile, MAX_PATH, L"%s\\DIME", wszAppData);
 		if (!PathFileExists(_pwzsDIMEProfile))

@@ -594,6 +594,49 @@ ExitError:
     return E_FAIL;
 }
 
+#ifdef DIME_UNIT_TESTING
+//+---------------------------------------------------------------------------
+//
+// _TestActivate
+//
+// ActivateEx for the key-flow tests: same engine setup, but no thread-manager,
+// key-event, profile, focus or function-provider sinks (the tests call
+// OnTestKeyDown / OnKeyDown themselves).
+//
+//----------------------------------------------------------------------------
+
+HRESULT CDIME::_TestActivate(_In_ ITfThreadMgr* pThreadMgr, TfClientId tfClientId, LANGID langid, REFGUID guidProfile)
+{
+	_pThreadMgr = pThreadMgr;
+	if (_pThreadMgr)
+		_pThreadMgr->AddRef();
+	_tfClientId = tfClientId;
+	_dwActivateFlags = 0;
+
+	if (!_InitDisplayAttributeGuidAtom())
+		return E_FAIL;
+	if (!_AddTextProcessorEngine(langid, guidProfile))
+		return E_FAIL;
+
+	// What OnActivated(DIMECLSID, guidProfile, TRUE) does next, except that it asks the
+	// system for the default profile; here the profile is the one given.
+	Global::imeMode = _pCompositionProcessorEngine->GetImeModeFromGuidProfile(guidProfile);
+	CConfig::SetIMEMode(Global::imeMode);
+	_LoadConfig(TRUE);
+	_pCompositionProcessorEngine->SetImeMode(guidProfile);
+	_lastKeyboardMode = CConfig::GetActivatedKeyboardMode();
+	_isChinese = _lastKeyboardMode;
+	_newlyActivated = TRUE;
+	ITfDocumentMgr* pDocMgr = nullptr;
+	if (SUCCEEDED(_pThreadMgr->GetFocus(&pDocMgr)) && pDocMgr)
+	{
+		OnSetFocus(pDocMgr, nullptr);
+		pDocMgr->Release();
+	}
+	return S_OK;
+}
+#endif
+
 //+---------------------------------------------------------------------------
 //
 // ITfTextInputProcessorEx::Deactivate
