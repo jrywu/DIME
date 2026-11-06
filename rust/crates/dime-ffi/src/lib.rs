@@ -15,6 +15,7 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::ptr;
 
 use dime_core::big5;
+use dime_core::candidates::{self, CandidatePaging};
 use dime_core::sentence::{self, Lexicon, Position, UserModel};
 use dime_config::{ini, keys, ConfigValues, Env, ImeMode, Settings};
 use dime_core::{CandidateItem, DictionaryType, SearchSection, TableDictionaryEngine, WinTextOps};
@@ -1021,6 +1022,149 @@ pub unsafe extern "C" fn dime_settings_set_key(
                 1
             }
         }
+    })
+}
+
+// ---------------------------------------------------------------------------
+// Candidate selection / paging (dime_core::candidates, port of CCandidateListModel)
+// ---------------------------------------------------------------------------
+
+pub struct DimeCandidates(CandidatePaging);
+
+fn with_cand<R>(c: *mut DimeCandidates, fallback: R, f: impl FnOnce(&mut CandidatePaging) -> R) -> R {
+    guard(fallback, move || match unsafe { c.as_mut() } {
+        Some(c) => f(&mut c.0),
+        None => panic!("null candidates handle"),
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn dime_candidates_new() -> *mut DimeCandidates {
+    guard(ptr::null_mut(), || boxed(DimeCandidates(CandidatePaging::new())))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_candidates_free(c: *mut DimeCandidates) {
+    if !c.is_null() {
+        guard((), || drop(unsafe { Box::from_raw(c) }));
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_candidates_push_item(c: *mut DimeCandidates) {
+    with_cand(c, (), |c| c.push_item());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_candidates_clear(c: *mut DimeCandidates) {
+    with_cand(c, (), |c| c.clear());
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_candidates_selection(c: *mut DimeCandidates) -> i32 {
+    with_cand(c, 0, |c| c.selection())
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_candidates_set_selection_raw(c: *mut DimeCandidates, index: i32) {
+    with_cand(c, (), |c| c.set_selection_raw(index));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_candidates_page_count(c: *mut DimeCandidates) -> u32 {
+    with_cand(c, 0, |c| c.pages().len() as u32)
+}
+
+/// Page start; 0 for an invalid page.
+#[no_mangle]
+pub unsafe extern "C" fn dime_candidates_page_start(c: *mut DimeCandidates, page: u32) -> u32 {
+    with_cand(c, 0, |c| c.pages().get(page as usize).copied().unwrap_or(0))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_candidates_set_page_index(c: *mut DimeCandidates, pages: *const u32, count: u32) {
+    with_cand(c, (), |c| {
+        let p = if pages.is_null() || count == 0 { &[][..] } else { unsafe { std::slice::from_raw_parts(pages, count as usize) } };
+        c.set_page_index(p)
+    });
+}
+
+/// HRESULT; *page = current page (0 on failure).
+#[no_mangle]
+pub unsafe extern "C" fn dime_candidates_current_page(c: *mut DimeCandidates, page: *mut u32) -> i32 {
+    with_cand(c, candidates::E_FAIL, |c| {
+        let r = c.current_page();
+        unsafe { set(page, r.unwrap_or(0)) };
+        r.map_or_else(|e| e, |_| candidates::S_OK)
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_candidates_set_selection_in_page(c: *mut DimeCandidates, pos: i32) -> i32 {
+    with_cand(c, 0, |c| i32::from(c.set_selection_in_page(pos)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_candidates_move_selection(c: *mut DimeCandidates, offset: i32) -> i32 {
+    with_cand(c, 0, |c| i32::from(c.move_selection(offset)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_candidates_set_selection(c: *mut DimeCandidates, page_size: u32, index: i32, applied: *mut i32) -> i32 {
+    with_cand(c, 0, |c| {
+        let (ok, a) = c.set_selection(page_size, index);
+        unsafe { set(applied, i32::from(a)) };
+        i32::from(ok)
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_candidates_move_page(c: *mut DimeCandidates, page_size: u32, offset: i32, wrapped: *mut i32) -> i32 {
+    with_cand(c, 0, |c| {
+        let (ok, w) = c.move_page(page_size, offset);
+        unsafe { set(wrapped, i32::from(w)) };
+        i32::from(ok)
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_candidates_set_selection_offset(c: *mut DimeCandidates, page_size: u32, offset: i32) -> i32 {
+    with_cand(c, 0, |c| i32::from(c.set_selection_offset(page_size, offset)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_candidates_adjust_page_index_for_selection(c: *mut DimeCandidates, page_size: u32) -> i32 {
+    with_cand(c, 0, |c| i32::from(c.adjust_page_index_for_selection(page_size)))
+}
+
+/// HRESULT (E_FAIL without page size, S_FALSE without a current page, else S_OK).
+#[no_mangle]
+pub unsafe extern "C" fn dime_candidates_current_page_has_empty_items(c: *mut DimeCandidates, page_size: u32, has_empty: *mut i32) -> i32 {
+    with_cand(c, candidates::E_FAIL, |c| match c.current_page_has_empty_items(page_size) {
+        Ok(v) => {
+            unsafe { set(has_empty, i32::from(v)) };
+            candidates::S_OK
+        }
+        Err(e) => e,
+    })
+}
+
+/// HRESULT; updates *current_page and writes *current_page_index.
+#[no_mangle]
+pub unsafe extern "C" fn dime_candidates_adjust_page_index(
+    c: *mut DimeCandidates,
+    page_size: u32,
+    current_page: *mut u32,
+    current_page_index: *mut u32,
+) -> i32 {
+    with_cand(c, candidates::E_FAIL, |c| {
+        let page = if current_page.is_null() { 0 } else { unsafe { *current_page } };
+        let (hr, p, idx) = c.adjust_page_index(page_size, page);
+        unsafe {
+            set(current_page, p);
+            set(current_page_index, idx);
+        }
+        hr
     })
 }
 

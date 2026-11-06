@@ -571,6 +571,9 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64EC'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|ARM64EC'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="..\\RustCandidateListModel.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="..\\CandidateListModel.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
@@ -978,6 +981,15 @@
   <ItemDefinitionGroup Condition="'$(DimeRustEnabled)'=='true' And '$(DimeTestRustConfig)'=='true'">
     <ClCompile>
       <PreprocessorDefinitions>DIME_USE_RUST_CONFIG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <!--
+    /p:DimeTestRustEngine=true builds the product code as DIME.dll with DimeUseRustEngine=true:
+    Rust dictionary engine, settings storage and candidate paging.
+  -->
+  <ItemDefinitionGroup Condition="'$(DimeRustEnabled)'=='true' And '$(DimeTestRustEngine)'=='true'">
+    <ClCompile>
+      <PreprocessorDefinitions>DIME_USE_RUST_ENGINE;DIME_USE_RUST_CONFIG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <Target Name="BuildDimeRust" BeforeTargets="ClCompile" Condition="'$(DimeRustEnabled)'=='true'">

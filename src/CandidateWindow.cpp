@@ -59,7 +59,8 @@ CCandidateWindow::CCandidateWindow(_In_ CANDWNDCALLBACK pfnCallback, _In_ void *
     _SetFillColor(GetSysColor(COLOR_3DHIGHLIGHT));
 
     _pIndexRange = pIndexRange;
-    _model.SetIndexRange(pIndexRange);
+    _model.reset(CCandidateListModel::Create());
+    _model->SetIndexRange(pIndexRange);
 
     _pfnCallback = pfnCallback;
     _pObj = pv;
@@ -652,17 +653,17 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
     case WM_MOUSEWHEEL:
         {
             short zDelta = GET_WHEEL_DELTA_WPARAM(wParam);
-            INT prevSelection = _model.Selection();
+            INT prevSelection = _model->Selection();
             if (zDelta > 0)
                 _SetSelectionOffset(-1);
             else if (zDelta < 0)
                 _SetSelectionOffset(+1);
-            if (_model.Selection() != prevSelection)
+            if (_model->Selection() != prevSelection)
             {
                 if (_pVScrollBarWnd)
                 {
                     _pVScrollBarWnd->_OnScrollActivity();
-                    _pVScrollBarWnd->_ShiftPosition(_model.Selection(), FALSE);
+                    _pVScrollBarWnd->_ShiftPosition(_model->Selection(), FALSE);
                 }
                 _InvalidateRect();
             }
@@ -786,14 +787,14 @@ void CCandidateWindow::_OnLButtonDown(POINT pt)
     }
 
     // Hit test on list items
-    index = _model.PageStart(currentPage);
+    index = _model->PageStart(currentPage);
 
 
 	RECT rc = {0, 0, 0, 0};
 	rc.left = rcWindow.left + _padding;
     rc.right = rcWindow.right  - (_pVScrollBarWnd ? _pVScrollBarWnd->_GetHoverWidth() : MulDiv(SCROLLBAR_HOVER_WIDTH, CConfig::GetDpiForHwnd(_GetWnd()), USER_DEFAULT_SCREEN_DPI)) - CANDWND_BORDER_WIDTH;
 
-    for (UINT pageCount = 0; (index < _model.Count()) && (pageCount < candidateListPageCnt); index++, pageCount++)
+    for (UINT pageCount = 0; (index < _model->Count()) && (pageCount < candidateListPageCnt); index++, pageCount++)
     {	
         rc.top = rcWindow.top + cyLine / 3 + (pageCount * cyLine);
         rc.bottom = rcWindow.top + cyLine / 3 + ((pageCount + 1) * cyLine);
@@ -801,7 +802,7 @@ void CCandidateWindow::_OnLButtonDown(POINT pt)
         if (PtInRect(&rc, pt) && _pfnCallback)
         {
             SetCursor(LoadCursor(NULL, IDC_HAND));
-            _model.SetSelectionRaw(index);
+            _model->SetSelectionRaw(index);
             // Store callback pointer before calling to prevent use-after-free
             CANDWNDCALLBACK pfnCallback = _pfnCallback;
             void* pObj = _pObj;
@@ -923,7 +924,7 @@ void CCandidateWindow::_OnVScroll(DWORD dwSB, _In_ DWORD nPos)
     // _OnVScroll handles scrollbar-originated events only (not keyboard).
     // Scrollbar navigation stops at boundaries (non-circular).
     // Keyboard navigation (via _MovePage directly) wraps circularly.
-    INT prevSelection = _model.Selection();
+    INT prevSelection = _model->Selection();
     switch (dwSB)
     {
     case SB_LINEDOWN:
@@ -936,7 +937,7 @@ void CCandidateWindow::_OnVScroll(DWORD dwSB, _In_ DWORD nPos)
         {
             int currentPage = 0;
             if (SUCCEEDED(_GetCurrentPage(&currentPage)) &&
-                currentPage < static_cast<int>(_model.PageCount()) - 1)
+                currentPage < static_cast<int>(_model->PageCount()) - 1)
                 _MovePage(+1, FALSE);  // only if not on last page
         }
         break;
@@ -955,9 +956,9 @@ void CCandidateWindow::_OnVScroll(DWORD dwSB, _In_ DWORD nPos)
         break;
     }
     // Update scrollbar thumb and repaint only if selection actually changed
-    if (_model.Selection() != prevSelection)
+    if (_model->Selection() != prevSelection)
     {
-        if (_pVScrollBarWnd) _pVScrollBarWnd->_ShiftPosition(_model.Selection(), FALSE);
+        if (_pVScrollBarWnd) _pVScrollBarWnd->_ShiftPosition(_model->Selection(), FALSE);
         _InvalidateRect();
     }
 }
@@ -1016,7 +1017,7 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
     }
 
     for (;
-		(currentPageIndex < _model.Count()) && (indexInPage < candidateListPageCnt);
+		(currentPageIndex < _model->Count()) && (indexInPage < candidateListPageCnt);
 		currentPageIndex++, indexInPage++)
     {
         WCHAR wszNumString[numStringLen] = {'\0'};
@@ -1025,7 +1026,7 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
 		rc.top = prc->top + indexInPage * cyLine + fistLineOffset;
         rc.bottom = rc.top + cyLine;
 
-        BOOL isSelected = (_model.Selection() == (INT)currentPageIndex);
+        BOOL isSelected = (_model->Selection() == (INT)currentPageIndex);
 
         if (isSelected)
         {
@@ -1097,7 +1098,7 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
             SetBkColor(dcHandle, _crBkColor);
         }
 
-		pItemList = _model.ItemAt(currentPageIndex);
+		pItemList = _model->ItemAt(currentPageIndex);
 		if(pItemList == nullptr) continue;
 		SIZE size;
 		WCHAR itemText[MAX_CAND_ITEM_LENGTH + 3] = { '\0' };
@@ -1147,7 +1148,7 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
 //----------------------------------------------------------------------------
 void CCandidateWindow::_DrawPageIndicator(_In_ HDC dcHandle, _In_ UINT currentPage, _In_ RECT *prc)
 {
-	if (_pIndexRange == nullptr || _model.PageCount() <= 1 || prc == nullptr) return;
+	if (_pIndexRange == nullptr || _model->PageCount() <= 1 || prc == nullptr) return;
 
 	int candidateListPageCnt = _pIndexRange->Count();
 	int cyLine = _cyRow;
@@ -1165,7 +1166,7 @@ void CCandidateWindow::_DrawPageIndicator(_In_ HDC dcHandle, _In_ UINT currentPa
 
 	WCHAR wszPageInfo[16] = { L'\0' };
 	StringCchPrintf(wszPageInfo, ARRAYSIZE(wszPageInfo), L"%u/%u",
-		currentPage + 1, (UINT)_model.PageCount());
+		currentPage + 1, (UINT)_model->PageCount());
 
 	// Create a 60% size font for the page indicator
 	LOGFONT lf = { 0 };
@@ -1251,37 +1252,37 @@ void CCandidateWindow::_DrawBorder(_In_ HWND wndHandle, _In_ int cx)
 
 void CCandidateWindow::_AddString(_Inout_ CCandidateListItem *pCandidateItem, _In_ BOOL isAddFindKeyCode)
 {
-	_model.AddItem(pCandidateItem, isAddFindKeyCode);
+	_model->AddItem(pCandidateItem, isAddFindKeyCode);
 }
 
 void CCandidateWindow::_ClearList()
 {
-	_model.Clear();
+	_model->Clear();
 }
 
 DWORD CCandidateWindow::_GetCandidateString(_In_ int iIndex, _Inout_opt_ const WCHAR **ppwchCandidateString)
 {
-	return _model.GetString(iIndex, ppwchCandidateString);
+	return _model->GetString(iIndex, ppwchCandidateString);
 }
 
 DWORD CCandidateWindow::_GetSelectedCandidateString(_Inout_opt_ const WCHAR **ppwchCandidateString)
 {
-	return _model.GetSelectedString(ppwchCandidateString);
+	return _model->GetSelectedString(ppwchCandidateString);
 }
 
 DWORD CCandidateWindow::_GetSelectedCandidateKeyCode(_Inout_opt_ const WCHAR **ppwchCandidateString)
 {
-	return _model.GetSelectedKeyCode(ppwchCandidateString);
+	return _model->GetSelectedKeyCode(ppwchCandidateString);
 }
 
 BOOL CCandidateWindow::_SetSelectionInPage(int nPos)
 {
-	return _model.SetSelectionInPage(nPos);
+	return _model->SetSelectionInPage(nPos);
 }
 
 BOOL CCandidateWindow::_MoveSelection(_In_ int offSet, _In_ BOOL isNotify)
 {
-	if (!_model.MoveSelection(offSet))
+	if (!_model->MoveSelection(offSet))
 		return FALSE;
 	if (_pVScrollBarWnd && isNotify)
 		_pVScrollBarWnd->_ShiftLine(offSet, isNotify);
@@ -1291,7 +1292,7 @@ BOOL CCandidateWindow::_MoveSelection(_In_ int offSet, _In_ BOOL isNotify)
 BOOL CCandidateWindow::_SetSelection(_In_ int selectedIndex, _In_ BOOL isNotify)
 {
 	BOOL applied = FALSE;
-	BOOL ret = _model.SetSelection(selectedIndex, &applied);
+	BOOL ret = _model->SetSelection(selectedIndex, &applied);
 	if (applied && _pVScrollBarWnd && isNotify)
 		_pVScrollBarWnd->_ShiftPosition(selectedIndex, isNotify);
 	return ret;
@@ -1299,7 +1300,7 @@ BOOL CCandidateWindow::_SetSelection(_In_ int selectedIndex, _In_ BOOL isNotify)
 
 void CCandidateWindow::_SetSelection(_In_ int nIndex)
 {
-	_model.SetSelectionRaw(nIndex);
+	_model->SetSelectionRaw(nIndex);
 }
 
 BOOL CCandidateWindow::_MovePage(_In_ int offSet, _In_ BOOL isNotify)
@@ -1307,13 +1308,13 @@ BOOL CCandidateWindow::_MovePage(_In_ int offSet, _In_ BOOL isNotify)
 	if (offSet == 0)
 		return TRUE;
 	BOOL wrapped = FALSE;
-	if (!_model.MovePage(offSet, &wrapped))
+	if (!_model->MovePage(offSet, &wrapped))
 		return FALSE;
 	// adjust scrollbar position
 	if (_pVScrollBarWnd && isNotify)
 	{
 		if (wrapped)
-			_pVScrollBarWnd->_ShiftPosition(_model.Selection(), FALSE);
+			_pVScrollBarWnd->_ShiftPosition(_model->Selection(), FALSE);
 		else
 			_pVScrollBarWnd->_ShiftPage(offSet, isNotify);
 	}
@@ -1322,42 +1323,42 @@ BOOL CCandidateWindow::_MovePage(_In_ int offSet, _In_ BOOL isNotify)
 
 BOOL CCandidateWindow::_SetSelectionOffset(_In_ int offSet)
 {
-	return _model.SetSelectionOffset(offSet);
+	return _model->SetSelectionOffset(offSet);
 }
 
 HRESULT CCandidateWindow::_GetPageIndex(UINT *pIndex, _In_ UINT uSize, _Inout_ UINT *puPageCnt)
 {
-	return _model.GetPageIndex(pIndex, uSize, puPageCnt);
+	return _model->GetPageIndex(pIndex, uSize, puPageCnt);
 }
 
 HRESULT CCandidateWindow::_SetPageIndex(UINT *pIndex, _In_ UINT uPageCnt)
 {
-	return _model.SetPageIndex(pIndex, uPageCnt);
+	return _model->SetPageIndex(pIndex, uPageCnt);
 }
 
 HRESULT CCandidateWindow::_GetCurrentPage(_Inout_ UINT *pCurrentPage)
 {
-	return _model.GetCurrentPage(pCurrentPage);
+	return _model->GetCurrentPage(pCurrentPage);
 }
 
 HRESULT CCandidateWindow::_GetCurrentPage(_Inout_ int *pCurrentPage)
 {
-	return _model.GetCurrentPage(pCurrentPage);
+	return _model->GetCurrentPage(pCurrentPage);
 }
 
 BOOL CCandidateWindow::_AdjustPageIndexForSelection()
 {
-	return _model.AdjustPageIndexForSelection();
+	return _model->AdjustPageIndexForSelection();
 }
 
 HRESULT CCandidateWindow::_CurrentPageHasEmptyItems(_Inout_ BOOL *pfHasEmptyItems)
 {
-	return _model.CurrentPageHasEmptyItems(pfHasEmptyItems);
+	return _model->CurrentPageHasEmptyItems(pfHasEmptyItems);
 }
 
 HRESULT CCandidateWindow::_AdjustPageIndex(_Inout_ UINT & currentPage, _Inout_ UINT & currentPageIndex)
 {
-	return _model.AdjustPageIndex(currentPage, currentPageIndex);
+	return _model->AdjustPageIndex(currentPage, currentPageIndex);
 }
 
 //+---------------------------------------------------------------------------

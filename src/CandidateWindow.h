@@ -59,7 +59,7 @@ public:
 
     BOOL _Create(_In_ UINT wndWidth, _In_ UINT fontSize, _In_opt_ HWND parentWndHandle);
 
-	void _SetCandIndexRange(CCandidateRange* pIndexRange){ _pIndexRange = pIndexRange; _model.SetIndexRange(pIndexRange); }
+	void _SetCandIndexRange(CCandidateRange* pIndexRange){ _pIndexRange = pIndexRange; _model->SetIndexRange(pIndexRange); }
 
 	void _SetCandStringLength(_In_ UINT wndWidth) { _wndWidth = wndWidth; } // in chararacters
 	UINT _GetWidth();
@@ -83,9 +83,9 @@ public:
 
     void _AddString(_Inout_ CCandidateListItem *pCandidateItem, _In_ BOOL isAddFindKeyCode);
     void _ClearList();
-    UINT _GetCount() { return _model.Count(); }
-    INT _GetSelection()  { return _model.Selection();}
-    CCandidateListModel* _GetModel() { return &_model; }
+    UINT _GetCount() { return _model->Count(); }
+    INT _GetSelection()  { return _model->Selection();}
+    CCandidateListModel* _GetModel() { return _model.get(); }
     void _SetScrollInfo(_In_ int nMax, _In_ int nPage);
 
     DWORD _GetCandidateString(_In_ int iIndex, _Inout_opt_ const WCHAR **ppwchCandidateString);
@@ -128,7 +128,7 @@ private:
     friend COLORREF _AdjustTextColor(_In_ COLORREF crColor, _In_ COLORREF crBkColor);
 
 private:
-    CCandidateListModel _model;   // items, selection, pages
+    std::unique_ptr<CCandidateListModel> _model;   // items, selection, pages
 
 	COLORREF _crNumberColor;
     COLORREF _crNumberBkColor;

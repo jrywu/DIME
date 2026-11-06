@@ -16,6 +16,13 @@ CCandidateListModel::~CCandidateListModel()
     Clear();
 }
 
+#ifndef DIME_USE_RUST_ENGINE
+CCandidateListModel* CCandidateListModel::Create()
+{
+    return new (std::nothrow) CCandidateListModel();
+}
+#endif // with DIME_USE_RUST_ENGINE: RustCandidateListModel.cpp
+
 //+---------------------------------------------------------------------------
 // AddItem (former CCandidateWindow::_AddString)
 //----------------------------------------------------------------------------
@@ -131,16 +138,17 @@ DWORD CCandidateListModel::GetString(int iIndex, _Inout_opt_ const WCHAR** ppwch
 
 DWORD CCandidateListModel::GetSelectedString(_Inout_opt_ const WCHAR** ppwchCandidateString)
 {
+    INT selection = Selection();
     CCandidateListItem* pItemList = nullptr;
 
-    if (_currentSelection < 0 || (UINT)_currentSelection >= _candidateList.Count())
+    if (selection < 0 || (UINT)selection >= _candidateList.Count())
     {
         if (ppwchCandidateString)
             *ppwchCandidateString = nullptr;
         return 0;
     }
 
-    pItemList = _candidateList.GetAt(_currentSelection);
+    pItemList = _candidateList.GetAt(selection);
     if (pItemList == nullptr) return 0;
     if (ppwchCandidateString)
     {
@@ -151,16 +159,17 @@ DWORD CCandidateListModel::GetSelectedString(_Inout_opt_ const WCHAR** ppwchCand
 
 DWORD CCandidateListModel::GetSelectedKeyCode(_Inout_opt_ const WCHAR** ppwchCandidateString)
 {
+    INT selection = Selection();
     CCandidateListItem* pItemList = nullptr;
 
-    if (_currentSelection < 0 || (UINT)_currentSelection >= _candidateList.Count())
+    if (selection < 0 || (UINT)selection >= _candidateList.Count())
     {
         if (ppwchCandidateString)
             *ppwchCandidateString = nullptr;
         return 0;
     }
 
-    pItemList = _candidateList.GetAt(_currentSelection);
+    pItemList = _candidateList.GetAt(selection);
     if (pItemList == nullptr) return 0;
     if (ppwchCandidateString)
     {

@@ -236,6 +236,32 @@ DimeBuffer* dime_settings_get_key(const DimeSettings* s, int32_t index);
 int32_t dime_settings_set_key(DimeSettings* s, int32_t index, const uint16_t* value, size_t len,
                               DimeBuffer** error);
 
+/* ---- candidate selection / paging (CCandidateListModel) ------------------- */
+/* Only the selection and page layout; the strings stay with the caller, which
+   calls push_item for every candidate it adds.  page_size = number of select
+   keys (0 = no range).  HRESULTs match the C++ code. */
+typedef struct DimeCandidates DimeCandidates;
+
+DimeCandidates* dime_candidates_new(void);
+void     dime_candidates_free(DimeCandidates* c);
+void     dime_candidates_push_item(DimeCandidates* c);
+void     dime_candidates_clear(DimeCandidates* c);
+int32_t  dime_candidates_selection(DimeCandidates* c);
+void     dime_candidates_set_selection_raw(DimeCandidates* c, int32_t index);
+uint32_t dime_candidates_page_count(DimeCandidates* c);
+uint32_t dime_candidates_page_start(DimeCandidates* c, uint32_t page);
+void     dime_candidates_set_page_index(DimeCandidates* c, const uint32_t* pages, uint32_t count);
+int32_t  dime_candidates_current_page(DimeCandidates* c, uint32_t* page);
+int32_t  dime_candidates_set_selection_in_page(DimeCandidates* c, int32_t pos);
+int32_t  dime_candidates_move_selection(DimeCandidates* c, int32_t offset);
+int32_t  dime_candidates_set_selection(DimeCandidates* c, uint32_t page_size, int32_t index, int32_t* applied);
+int32_t  dime_candidates_move_page(DimeCandidates* c, uint32_t page_size, int32_t offset, int32_t* wrapped);
+int32_t  dime_candidates_set_selection_offset(DimeCandidates* c, uint32_t page_size, int32_t offset);
+int32_t  dime_candidates_adjust_page_index_for_selection(DimeCandidates* c, uint32_t page_size);
+int32_t  dime_candidates_current_page_has_empty_items(DimeCandidates* c, uint32_t page_size, int32_t* has_empty);
+int32_t  dime_candidates_adjust_page_index(DimeCandidates* c, uint32_t page_size, uint32_t* current_page,
+                                           uint32_t* current_page_index);
+
 #ifdef __cplusplus
 }
 #endif

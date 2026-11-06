@@ -7,6 +7,7 @@
 //! by `src/tests/RustParityTest.cpp` in the C++ test project.
 
 pub mod big5;
+pub mod candidates;
 pub mod engine;
 pub mod parser;
 pub mod search;

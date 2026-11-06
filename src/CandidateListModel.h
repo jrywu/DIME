@@ -17,7 +17,11 @@ class CCandidateListModel
 {
 public:
     CCandidateListModel();
-    ~CCandidateListModel();
+    virtual ~CCandidateListModel();
+
+    // The C++ model, or with DIME_USE_RUST_ENGINE the Rust-backed one
+    // (CRustCandidateListModel: selection and paging in rust/crates/dime-core).
+    static CCandidateListModel* Create();
     CCandidateListModel(const CCandidateListModel&) = delete;
     CCandidateListModel& operator=(const CCandidateListModel&) = delete;
 
@@ -26,8 +30,8 @@ public:
     CCandidateRange* IndexRange() const { return _pIndexRange; }
 
     // Items (copied; the key code only when includeKeyCode).
-    void AddItem(_In_ CCandidateListItem* pCandidateItem, BOOL includeKeyCode);
-    void Clear();
+    virtual void AddItem(_In_ CCandidateListItem* pCandidateItem, BOOL includeKeyCode);
+    virtual void Clear();
     UINT Count() { return _candidateList.Count(); }
     CCandidateListItem* ItemAt(UINT index) { return _candidateList.GetAt(index); }
     DWORD GetString(int index, _Inout_opt_ const WCHAR** ppString);
@@ -35,30 +39,33 @@ public:
     DWORD GetSelectedKeyCode(_Inout_opt_ const WCHAR** ppKeyCode);
 
     // Selection (-1: nothing selected, used for associated phrases).
-    INT Selection() const { return _currentSelection; }
-    void SetSelectionRaw(INT index) { _currentSelection = index; }
-    BOOL SetSelectionInPage(int pos);
+    virtual INT Selection() { return _currentSelection; }
+    virtual void SetSelectionRaw(INT index) { _currentSelection = index; }
+    virtual BOOL SetSelectionInPage(int pos);
     // Returns FALSE (nothing changed) when the move would leave the list.
-    BOOL MoveSelection(int offset);
+    virtual BOOL MoveSelection(int offset);
     // index -2 = last item. *pApplied tells whether the index was accepted; the
     // return value is the page-index adjustment result (former _SetSelection).
-    BOOL SetSelection(int index, _Out_opt_ BOOL* pApplied);
+    virtual BOOL SetSelection(int index, _Out_opt_ BOOL* pApplied);
     // Moves by whole pages, wrapping around; *pWrapped tells whether it wrapped.
-    BOOL MovePage(int offset, _Out_opt_ BOOL* pWrapped);
+    virtual BOOL MovePage(int offset, _Out_opt_ BOOL* pWrapped);
     // Scroll-bar style move: stops at the ends, keeps a short last page in place.
-    BOOL SetSelectionOffset(int offset);
+    virtual BOOL SetSelectionOffset(int offset);
 
     // Pages.
-    UINT PageCount() { return _PageIndex.Count(); }
-    UINT PageStart(UINT page) { return *_PageIndex.GetAt(page); }
-    HRESULT GetPageIndex(UINT* pIndex, UINT uSize, _Inout_ UINT* puPageCnt);
-    HRESULT SetPageIndex(UINT* pIndex, UINT uPageCnt);
-    HRESULT GetCurrentPage(_Inout_ UINT* pCurrentPage);
+    virtual UINT PageCount() { return _PageIndex.Count(); }
+    virtual UINT PageStart(UINT page) { return *_PageIndex.GetAt(page); }
+    virtual HRESULT GetPageIndex(UINT* pIndex, UINT uSize, _Inout_ UINT* puPageCnt);
+    virtual HRESULT SetPageIndex(UINT* pIndex, UINT uPageCnt);
+    virtual HRESULT GetCurrentPage(_Inout_ UINT* pCurrentPage);
     HRESULT GetCurrentPage(_Inout_ int* pCurrentPage);
-    BOOL AdjustPageIndexForSelection();
-    HRESULT CurrentPageHasEmptyItems(_Inout_ BOOL* pHasEmptyItems);
+    virtual BOOL AdjustPageIndexForSelection();
+    virtual HRESULT CurrentPageHasEmptyItems(_Inout_ BOOL* pHasEmptyItems);
     // Used while painting: moves a short first/last page so it is full.
-    HRESULT AdjustPageIndex(_Inout_ UINT& currentPage, _Inout_ UINT& currentPageIndex);
+    virtual HRESULT AdjustPageIndex(_Inout_ UINT& currentPage, _Inout_ UINT& currentPageIndex);
+
+protected:
+    UINT PageSize() const { return _pIndexRange ? (UINT)_pIndexRange->Count() : 0; }
 
 private:
     INT _currentSelection;

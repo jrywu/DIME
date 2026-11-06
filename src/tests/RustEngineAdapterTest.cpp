@@ -289,11 +289,15 @@ namespace DIMEUnitTests
     public:
         TEST_METHOD(Factory_DefaultsToCppEngineInTests)
         {
-            // DIMETests is built without DIME_USE_RUST_ENGINE.
+            // C++ engine unless the tests are built with /p:DimeTestRustEngine=true.
             CFile f;
             std::unique_ptr<CTableDictionaryEngine> e(CTableDictionaryEngine::Create(kAdapterLcid, &f, DICTIONARY_TYPE::CIN_DICTIONARY));
             Assert::IsNotNull(e.get());
+#ifdef DIME_USE_RUST_ENGINE
+            Assert::IsNotNull(dynamic_cast<CRustTableDictionaryEngine*>(e.get()));
+#else
             Assert::IsNull(dynamic_cast<CRustTableDictionaryEngine*>(e.get()));
+#endif
         }
 
         TEST_METHOD(ShippedTables_SameResultsThroughCppInterface)

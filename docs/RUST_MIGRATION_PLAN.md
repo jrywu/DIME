@@ -85,7 +85,10 @@
   - 黃金測試找到的問題：
     - **已修正**：自訂模式開「自動組字」時，輸入 `a` 再輸入萬用字元 `*` 會讓宿主程式當掉（`CompositionProcessorEngine.cpp` 增量候選的字碼長度相減下溢，`CCandidateWindow::_AddString` 丟出 `std::bad_array_new_length`）。
     - **尚未修正（已記錄現況，`dayi_phrase_cin` 情境）**：README 格式的自訂 `Phrase.cin` 查不到聯想詞。查詢時若 `Global::hasPhraseSection` 為 FALSE 會在字後加 `*`，但 CIN 的 `CollectWord` 不把 `*` 當萬用字元；這個全域旗標由任一 TTS `[Phrase]` 段落設定且從不清除，所以實際行為取決於行程先前載入過什麼。
-  - ⏳ 2a-2：在黃金測試保護下，把 `KeyEventSink` / `KeyHandler*` / `CandidateHandler` / `SentenceHandler` 重構成「判斷 → 動作」。
+  - ✅ 2a-2（部分）：候選字清單、選擇與翻頁從 `CCandidateWindow` 抽成不依賴 UI 的 `CCandidateListModel`（`CandidateListModelTest` 鎖定規則）；`_IsKeyEaten` 拆成 `_GatherKeyFacts`（TSF/Win32 讀取）與 `_DecideKeyEaten`（不呼叫 TSF）。
+  - **方向調整（2026-11-06）**：handler 不再先完整重構成 C++ 的「判斷 → 動作」，改為**逐塊直接移植到 Rust**，每塊用開關切換、由黃金測試與對拍測試保護，避免重構一次 C++ 再丟掉。
+  - ✅ 2b-1 候選字選擇與翻頁：`dime-core::candidates`（`CandidatePaging`）＋ `CRustCandidateListModel`（字串仍在 C++，Rust 只管總數、選擇、分頁）。`CCandidateListModel::Create()` 在 `DIME_USE_RUST_ENGINE` 時回傳 Rust 版。`RustCandidateListModelParityTest` 以 400 組隨機序列（24,000 個操作）比對 C++ 與 Rust。`DIMETests` 加 `/p:DimeTestRustEngine=true` 可用完整 Rust 組合（字典引擎、設定儲存、候選字翻頁）跑全部測試，40 個黃金情境結果與 C++ 相同。
+  - ⏳ 下一塊：按鍵分類（`_DecideKeyEaten` + `CCompositionProcessorEngine::IsVirtualKeyNeed` 與相關的字根表／選字鍵範圍），再來是組字緩衝與候選字產生，最後是 handler 的動作。
 - **測試**：建立「按鍵序列 → 動作序列」的黃金測試資料：四種模式 × 主要設定組合（`SentenceMode`、`DayiSelkeyMode`、`ArrayScope`、注音鍵盤、空白鍵選字…），用實際 `installer/*.cin` 碼表。同一序列餵給 C++ 與 Rust，逐筆比對。`TSFCoreLogicIntegrationTest`、`SelkeyModeTest`、`SentenceBufferTest` 改接新介面。
 - **風險**：這是整個計畫最難、也最有價值的一段；目前邏輯與 TSF 呼叫交錯（例如 `_HandleCandidateWorker`、`SentenceHandler` 的攔截點），抽離時最容易改到行為。
 
