@@ -205,6 +205,27 @@ void dime_settings_reset_all_defaults(DimeSettings* s, int32_t ime_mode); /* Res
    Free with dime_buffer_free. */
 DimeBuffer* dime_settings_serialize_ini(const DimeSettings* s, int32_t ime_mode);
 
+/* ---- settings key registry (the CLI's --get / --set keys) ----------------- */
+
+/* Matches KeyType in DIMESettings/CLI.h. */
+enum { DIME_KEY_BOOL = 0, DIME_KEY_INT = 1, DIME_KEY_COLOR = 2, DIME_KEY_STRING = 3, DIME_KEY_CLSID = 4 };
+/* Matches CLI_MASK_* in DIMESettings/CLI.h. */
+enum { DIME_KEY_MASK_DAYI = 0x1, DIME_KEY_MASK_ARRAY = 0x2, DIME_KEY_MASK_PHONETIC = 0x4, DIME_KEY_MASK_GENERIC = 0x8 };
+
+int32_t dime_key_count(void);
+/* name is not NUL-terminated and lives for the whole process.  min/max apply to
+   BOOL/INT keys.  Returns 1 if index is valid. */
+int32_t dime_key_info(int32_t index, const uint16_t** name, size_t* name_len, int32_t* key_type,
+                      int32_t* min, int32_t* max, uint32_t* mode_mask);
+int32_t dime_key_find(const uint16_t* name, size_t len);          /* index, or -1; ASCII case-insensitive */
+int32_t dime_key_applicable(int32_t index, int32_t ime_mode);     /* 1 if the key applies to the mode */
+/* The text --get prints.  Free with dime_buffer_free. */
+DimeBuffer* dime_settings_get_key(const DimeSettings* s, int32_t index);
+/* Validate and store a --set value: 0 = ok; 1 = rejected, *error (nullable) gets
+   the message without newline (free with dime_buffer_free); 2 = invalid handle/index. */
+int32_t dime_settings_set_key(DimeSettings* s, int32_t index, const uint16_t* value, size_t len,
+                              DimeBuffer** error);
+
 #ifdef __cplusplus
 }
 #endif

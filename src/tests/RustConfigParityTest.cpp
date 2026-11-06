@@ -53,6 +53,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "../Globals.h"
 #include "../Config.h"
 #include "../DictionarySearch.h"
+#include "../DIMESettings/CLI.h"
 #include "dime_ffi.h"
 #include <fstream>
 #include <iterator>
@@ -437,6 +438,148 @@ namespace DIMEUnitTests
                 AssertSame(FromCpp(), FromRust(r), L"load_missing mode " + std::to_wstring(mode));
                 dime_settings_free(r);
             }
+        }
+    };
+
+    // CLI --get / --set: DIMESettings/CLI.cpp (C++ in this project) vs dime_config::keys.
+    TEST_CLASS(RustCliParityTest)
+    {
+        DimeConfigValues _saved = {};
+        std::wstring _savedDescription;
+        bool _savedHasDescription = false;
+
+        static std::wstring RustText(DimeBuffer* b)
+        {
+            Assert::IsNotNull(b, L"Rust returned NULL buffer");
+            size_t len = 0;
+            const uint16_t* data = dime_buffer_data(b, &len);
+            std::wstring s(reinterpret_cast<const wchar_t*>(data), len);
+            dime_buffer_free(b);
+            return s;
+        }
+
+        // Run C++ ApplyKeyValue and capture what it prints to the error stream.
+        static int CppApply(const KeyInfo* ki, const wchar_t* value, std::wstring& errText)
+        {
+            std::wstring path = TempPath(L"clierr.txt");
+            FILE* err = nullptr;
+            Assert::AreEqual(0, (int)_wfopen_s(&err, path.c_str(), L"w, ccs=UTF-16LE"));
+            int rc = CLI_ApplyKeyValue(ki, value, err);
+            fclose(err);
+            std::vector<uint8_t> bytes = ReadAll(path);
+            DeleteFileW(path.c_str());
+            errText.clear();
+            if (bytes.size() > 2)
+                errText.assign(reinterpret_cast<const wchar_t*>(bytes.data() + 2), (bytes.size() - 2) / 2);
+            for (size_t p; (p = errText.find(L"\r\n")) != std::wstring::npos;) errText.erase(p, 1); // text-mode CRLF
+            return rc;
+        }
+
+    public:
+        TEST_METHOD_INITIALIZE(Setup)
+        {
+            CConfig::ExportValues(&_saved);
+            WCHAR* d = CConfig::GetReverseConversionDescription();
+            _savedHasDescription = d != nullptr;
+            _savedDescription = d ? d : L"";
+        }
+
+        TEST_METHOD_CLEANUP(Cleanup)
+        {
+            CConfig::ImportValues(&_saved);
+            SetDescription(_savedHasDescription ? _savedDescription.c_str() : nullptr);
+        }
+
+        TEST_METHOD(KeyRegistry_Identical)
+        {
+            Assert::AreEqual(CLI_GetKeyCount(), (int)dime_key_count(), L"key count");
+            const KeyInfo* reg = CLI_GetKeyRegistry();
+            for (int i = 0; i < CLI_GetKeyCount(); i++)
+            {
+                const uint16_t* name = nullptr;
+                size_t nameLen = 0;
+                int32_t type = -1, mn = 0, mx = 0;
+                uint32_t mask = 0;
+                Assert::AreEqual(1, (int)dime_key_info(i, &name, &nameLen, &type, &mn, &mx, &mask));
+                std::wstring what = std::wstring(L"key ") + reg[i].name;
+                Assert::AreEqual(std::wstring(reg[i].name), std::wstring(reinterpret_cast<const wchar_t*>(name), nameLen), what.c_str());
+                Assert::AreEqual((int)reg[i].type, (int)type, what.c_str());
+                if (reg[i].type == BOOL_T || reg[i].type == INT_T)
+                {
+                    Assert::AreEqual(reg[i].minVal, (int)mn, what.c_str());
+                    Assert::AreEqual(reg[i].maxVal, (int)mx, what.c_str());
+                }
+                Assert::AreEqual((uint32_t)reg[i].modeMask, mask, what.c_str());
+
+                // lookup is case-insensitive on both sides
+                std::wstring lower(reg[i].name);
+                for (auto& c : lower) c = (wchar_t)towlower(c);
+                Assert::AreEqual(i, (int)dime_key_find(reinterpret_cast<const uint16_t*>(lower.c_str()), lower.size()), what.c_str());
+                Assert::IsTrue(CLI_FindKey(lower.c_str()) == &reg[i], what.c_str());
+                for (int mode = 0; mode <= 4; mode++)
+                    Assert::AreEqual(CLI_KeyApplicableToMode(&reg[i], (IME_MODE)mode), dime_key_applicable(i, mode) != 0, what.c_str());
+            }
+            Assert::AreEqual(-1, (int)dime_key_find(reinterpret_cast<const uint16_t*>(L"NoSuchKey"), 9));
+            Assert::IsNull(CLI_FindKey(L"NoSuchKey"));
+        }
+
+        TEST_METHOD(GetValue_Identical)
+        {
+            const KeyInfo* reg = CLI_GetKeyRegistry();
+            for (int seed = 0; seed < 4; seed++)
+            {
+                if (seed == 0) CConfig::ResetAllDefaults(IME_MODE::IME_MODE_DAYI);
+                else Scramble(seed, seed % 2 ? L"\x6CE8\x97F3" : nullptr);
+                if (seed == 0) SetDescription(nullptr);
+                DimeSettings* r = CConfig::CreateRustSettings();
+                for (int i = 0; i < CLI_GetKeyCount(); i++)
+                {
+                    WCHAR buf[512] = {};
+                    Assert::IsTrue(CLI_GetKeyValue(&reg[i], buf, 512));
+                    std::wstring rust = RustText(dime_settings_get_key(r, i));
+                    Assert::AreEqual(std::wstring(buf), rust, (std::wstring(L"--get ") + reg[i].name + L" seed " + std::to_wstring(seed)).c_str());
+                }
+                dime_settings_free(r);
+            }
+        }
+
+        TEST_METHOD(SetValue_Identical)
+        {
+            const wchar_t* const values[] = {
+                L"0", L"1", L"2", L"3", L"5", L"7", L"8", L"20", L"21", L"72", L"73", L"100", L"900", L"901",
+                L"-1", L"+3", L" 5", L"5 ", L"12px", L"abc", L"", L"99999999999", L"\xFF11",
+                L"0x0A0B0C", L"0X0a0b0c", L"0A0B0C", L"ff00", L"0x", L"0xZZ", L"0x0x12", L"FFFFFFFFF", L"#123456",
+                L"{36FE76BA-0A31-4E01-9E2B-0F4AD5A1C18B}", L"{36fe76ba-0a31-4e01-9e2b-0f4ad5a1c18b}", L"nope",
+                L"Consolas", L"\x5FAE\x8EDF\x6B63\x9ED1\x9AD4",
+                L"1234567890123456789012345678901234567890", // longer than LF_FACESIZE
+            };
+            const KeyInfo* reg = CLI_GetKeyRegistry();
+            int checked = 0;
+            for (int i = 0; i < CLI_GetKeyCount(); i++)
+            {
+                for (const wchar_t* value : values)
+                {
+                    Scramble(checked % 5, checked % 3 ? L"old" : nullptr);
+                    DimeSettings* r = CConfig::CreateRustSettings();
+
+                    std::wstring cppErr;
+                    int cppRc = CppApply(&reg[i], value, cppErr);
+                    State cpp = FromCpp();
+
+                    DimeBuffer* message = nullptr;
+                    int rustRc = dime_settings_set_key(r, i, reinterpret_cast<const uint16_t*>(value), wcslen(value), &message);
+                    std::wstring rustErr = message ? RustText(message) + L"\n" : L"";
+                    State rust = FromRust(r);
+                    dime_settings_free(r);
+
+                    std::wstring what = std::wstring(L"--set ") + reg[i].name + L" '" + value + L"'";
+                    Assert::AreEqual(cppRc, rustRc, (what + L": return code").c_str());
+                    Assert::AreEqual(cppErr, rustErr, (what + L": error text").c_str());
+                    if (cppRc == 0) AssertSame(cpp, rust, what);
+                    checked++;
+                }
+            }
+            Logger::WriteMessage((L"--set cases checked: " + std::to_wstring(checked) + L"\n").c_str());
         }
     };
 }

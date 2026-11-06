@@ -16,7 +16,7 @@ use std::ptr;
 
 use dime_core::big5;
 use dime_core::sentence::{self, Lexicon, Position, UserModel};
-use dime_config::{ini, ConfigValues, Env, ImeMode, Settings};
+use dime_config::{ini, keys, ConfigValues, Env, ImeMode, Settings};
 use dime_core::{CandidateItem, DictionaryType, SearchSection, TableDictionaryEngine, WinTextOps};
 
 pub struct DimeEngine(TableDictionaryEngine<WinTextOps>);
@@ -833,6 +833,105 @@ pub unsafe extern "C" fn dime_settings_serialize_ini(s: *const DimeSettings, mod
     guard(ptr::null_mut(), || match unsafe { s.as_ref() } {
         Some(s) => boxed(DimeBuffer(ini::serialize(&s.settings, ImeMode::from_i32(mode)))),
         None => ptr::null_mut(),
+    })
+}
+
+// ---------------------------------------------------------------------------
+// Settings key registry (dime_config::keys, the CLI's g_keyRegistry)
+// ---------------------------------------------------------------------------
+
+fn key_names() -> &'static [Vec<u16>] {
+    static NAMES: std::sync::OnceLock<Vec<Vec<u16>>> = std::sync::OnceLock::new();
+    NAMES.get_or_init(|| keys::KEYS.iter().map(|k| k.name.encode_utf16().collect()).collect())
+}
+
+fn key_at(index: i32) -> Option<&'static keys::KeyInfo> {
+    usize::try_from(index).ok().and_then(|i| keys::KEYS.get(i))
+}
+
+#[no_mangle]
+pub extern "C" fn dime_key_count() -> i32 {
+    keys::KEYS.len() as i32
+}
+
+/// Returns 1 if `index` is valid.  `name` stays valid for the process lifetime.
+#[no_mangle]
+pub unsafe extern "C" fn dime_key_info(
+    index: i32,
+    name: *mut *const u16,
+    name_len: *mut usize,
+    key_type: *mut i32,
+    min: *mut i32,
+    max: *mut i32,
+    mode_mask: *mut u32,
+) -> i32 {
+    guard(0, || {
+        let Some(k) = key_at(index) else { return 0 };
+        let n = &key_names()[index as usize];
+        let ty = match k.ty {
+            keys::KeyType::Bool => 0,
+            keys::KeyType::Int => 1,
+            keys::KeyType::Color => 2,
+            keys::KeyType::Str => 3,
+            keys::KeyType::Clsid => 4,
+        };
+        unsafe {
+            set(name, n.as_ptr());
+            set(name_len, n.len());
+            set(key_type, ty);
+            set(min, k.min);
+            set(max, k.max);
+            set(mode_mask, k.mode_mask);
+        }
+        1
+    })
+}
+
+/// Case-insensitive (ASCII) lookup; returns the index or -1.
+#[no_mangle]
+pub unsafe extern "C" fn dime_key_find(name: *const u16, len: usize) -> i32 {
+    guard(-1, || {
+        let Some(k) = keys::find_key(unsafe { slice(name, len) }) else { return -1 };
+        keys::KEYS.iter().position(|x| std::ptr::eq(x, k)).map_or(-1, |i| i as i32)
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn dime_key_applicable(index: i32, ime_mode: i32) -> i32 {
+    guard(0, || key_at(index).map_or(0, |k| i32::from(keys::applicable(k, ImeMode::from_i32(ime_mode)))))
+}
+
+/// The `--get` text of a key; NULL for an invalid handle or index.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_get_key(s: *const DimeSettings, index: i32) -> *mut DimeBuffer {
+    guard(ptr::null_mut(), || match (unsafe { s.as_ref() }, key_at(index)) {
+        (Some(s), Some(k)) => boxed(DimeBuffer(keys::get_value(&s.settings, k))),
+        _ => ptr::null_mut(),
+    })
+}
+
+/// Validate and store a `--set` value.  Returns 0 on success, 1 when the
+/// value is rejected (then `*error`, if non-NULL, receives the message
+/// without a trailing newline; free it with dime_buffer_free), 2 on an
+/// invalid handle or index.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_set_key(
+    s: *mut DimeSettings,
+    index: i32,
+    value: *const u16,
+    len: usize,
+    error: *mut *mut DimeBuffer,
+) -> i32 {
+    guard(2, || {
+        unsafe { set(error, ptr::null_mut()) };
+        let (Some(s), Some(k)) = (unsafe { s.as_mut() }, key_at(index)) else { return 2 };
+        match keys::set_value(&mut s.settings, k, unsafe { slice(value, len) }) {
+            Ok(()) => 0,
+            Err(e) => {
+                unsafe { set(error, boxed(DimeBuffer(e.to_string().encode_utf16().collect()))) };
+                1
+            }
+        }
     })
 }
 

@@ -118,4 +118,6 @@ bool CLI_KeyApplicableToMode(const KeyInfo* ki, IME_MODE mode);
 bool CLI_ParseColorValue(const wchar_t* str, COLORREF& out);
 int  CLI_GetKeyCount();
 const KeyInfo* CLI_GetKeyRegistry();
+bool CLI_GetKeyValue(const KeyInfo* ki, WCHAR* outBuf, int bufLen);       // --get text (config loaded)
+int  CLI_ApplyKeyValue(const KeyInfo* ki, const wchar_t* valueStr, FILE* err); // --set: 0 ok, 1 invalid, 2 alloc
 #endif

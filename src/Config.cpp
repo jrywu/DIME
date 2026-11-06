@@ -482,7 +482,7 @@ void CConfig::ImportRustSettings(_In_ const DimeSettings* s)
 	}
 }
 
-#ifdef DIME_USE_RUST_ENGINE
+#ifdef DIME_USE_RUST_CONFIG
 // Run one dime_settings_* operation on the current settings and copy the result back.
 static void RunRustSettingsOp(void (*op)(DimeSettings*, int32_t), IME_MODE imeMode)
 {
@@ -556,7 +556,7 @@ VOID CConfig::WriteConfig(IME_MODE imeMode, BOOL confirmUpdated)
 	}
 	if(!confirmUpdated || failed || !updated)
 	{
-#ifdef DIME_USE_RUST_ENGINE
+#ifdef DIME_USE_RUST_CONFIG
 		DimeSettings* rustSettings = CreateRustSettings();
 		DimeBuffer* text = rustSettings ? dime_settings_serialize_ini(rustSettings, (int32_t)imeMode) : nullptr;
 		if (rustSettings) dime_settings_free(rustSettings);
@@ -738,7 +738,7 @@ void CConfig::SetIMEMode(IME_MODE imeMode)
 //----------------------------------------------------------------------------
 void CConfig::SetIMEModeDefaults(IME_MODE imeMode)
 {
-#ifdef DIME_USE_RUST_ENGINE
+#ifdef DIME_USE_RUST_CONFIG
 	RunRustSettingsOp(dime_settings_set_mode_defaults, imeMode);
 #else
 	if (imeMode == IME_MODE::IME_MODE_ARRAY)
@@ -788,7 +788,7 @@ void CConfig::SetIMEModeDefaults(IME_MODE imeMode)
 //----------------------------------------------------------------------------
 void CConfig::ResetAllDefaults(IME_MODE imeMode)
 {
-#ifdef DIME_USE_RUST_ENGINE
+#ifdef DIME_USE_RUST_CONFIG
 	RunRustSettingsOp(dime_settings_reset_all_defaults, imeMode);
 #else
 	// Global defaults (mirrors the static-member initialisers in Config.cpp)
@@ -879,7 +879,7 @@ BOOL CConfig::LoadConfigFromFile(IME_MODE imeMode, _In_ LPCWSTR pwszINIFileName)
 	CTableDictionaryEngine* iniTableDictionaryEngine = CTableDictionaryEngine::Create(MAKELCID(1028, SORT_DEFAULT), iniDictionaryFile, DICTIONARY_TYPE::INI_DICTIONARY);//CHT:1028
 	if (iniTableDictionaryEngine)
 	{
-#ifdef DIME_USE_RUST_ENGINE
+#ifdef DIME_USE_RUST_CONFIG
 		// _loadTableMode = TRUE, _colorModeKeyFound = false, _colorMode = SYSTEM
 		RunRustSettingsOp(dime_settings_begin_load, imeMode);
 #else
@@ -895,7 +895,7 @@ BOOL CConfig::LoadConfigFromFile(IME_MODE imeMode, _In_ LPCWSTR pwszINIFileName)
 		// palettes were introduced.  If the user had customized those colors,
 		// migrate to CUSTOM to preserve them.  If still factory defaults,
 		// migrate to SYSTEM (or LIGHT on pre-1809 Windows).
-#ifdef DIME_USE_RUST_ENGINE
+#ifdef DIME_USE_RUST_CONFIG
 		RunRustSettingsOp([](DimeSettings* s, int32_t) { dime_settings_finish_load(s); }, imeMode);
 #else
 		if (!_colorModeKeyFound)
@@ -999,7 +999,7 @@ BOOL CConfig::LoadConfig(IME_MODE imeMode)
 		// Config file doesn't exist - set IME-specific defaults
 		// Use SYSTEM only on Win10 1809+; fall back to LIGHT on older Windows
 		// so the combo shows the correct selection when settings first open.
-#ifdef DIME_USE_RUST_ENGINE
+#ifdef DIME_USE_RUST_CONFIG
 		RunRustSettingsOp(dime_settings_load_missing, imeMode);
 #else
 		SetIMEModeDefaults(imeMode);

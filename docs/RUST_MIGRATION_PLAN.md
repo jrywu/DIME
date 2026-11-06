@@ -55,7 +55,7 @@
 - **進度（2026-11-06）**：
   - ✅ 1a：`rust/crates/dime-config`（設定值、預設值、`ApplyIniConfigEntry`、載入流程與 ColorMode 遷移、`WriteConfig` 輸出、CLI key 定義表與驗證）與 FFI（`dime_settings_*`）。`DIME.dll` 在 `DimeUseRustEngine=true` 時，設定的解析、預設值與寫檔改走 Rust；`CConfig` 的 static 成員仍是儲存位置。
   - ✅ 對拍：`src/tests/RustConfigParityTest.cpp`（2,201 組 INI key/值、各模式預設值、20 份 `WriteConfig` 輸出逐位元組、`LoadConfigFromFile`）。對拍時找到並修正一個差異：`CLSIDFromString("")` 會失敗，空字串不會清除 GUID（只有 CLI 會把空字串當成清除）。
-  - ⏳ 1b：`DIMESettings.exe` 連結 `dime_ffi.lib`，CLI 改用 Rust 的 key 定義表與驗證（與第 5a 階段合併處理）。
+  - ✅ 1b：`DIMESettings.exe`（Win32）在 `DimeUseRustEngine=true` 時連結 `dime_ffi.lib`，定義 `DIME_USE_RUST_CONFIG`：設定的預設值與寫檔、CLI `--get`/`--set` 的取值、驗證與錯誤訊息改走 Rust（字典引擎仍是 C++）。C++ 的 `g_keyRegistry` 暫時保留，`RustCliParityTest` 檢查它與 Rust 的 key 表完全一致，並對拍 `--get` 全部 key 與 `--set` 2,014 組 key/值（回傳碼、錯誤訊息、結果）。C++ 與 Rust 版 exe 的實際 CLI 輸出也逐一比對過。`g_keyRegistry` 與 `GetKeyValue`/`ApplyKeyValue` 的 C++ 版本在第 5a 階段 CLI 整個改寫成 Rust 時刪除。
   - ⏳ 1c：把儲存位置從 `CConfig` 的 static 成員移到 Rust（`CConfig` 的 getter/setter 改成轉呼 Rust），經過一個正式版本後再把預設切到 Rust。
 
 ### 第 2 階段：組字核心 → `dime-core::compose`

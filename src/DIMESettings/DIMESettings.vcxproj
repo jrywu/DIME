@@ -148,6 +148,39 @@
     <Image Include="..\image\TSFPhonetic.ico" />
     <Image Include="DIMESettings.ico" />
   </ItemGroup>
+  <!--
+    Rust migration (phase 1b): opt-in Rust settings logic (rust/crates/dime-config via dime-ffi).
+      msbuild DIME.sln /t:DIMESettings /p:Configuration=Release /p:Platform=Win32 /p:DimeUseRustEngine=true
+    Defines DIME_USE_RUST_CONFIG: CConfig defaults / INI writing and the CLI's get/set
+    validation run in Rust. The dictionary engine stays C++ (DIME_USE_RUST_ENGINE is not defined).
+    Release links the static CRT build (matching /MT); Debug uses the dynamic CRT build.
+  -->
+  <PropertyGroup Label="DimeRust">
+    <DimeUseRustEngine Condition="'$(DimeUseRustEngine)'==''">false</DimeUseRustEngine>
+    <DimeRustRoot>$(ProjectDir)..\..\rust\</DimeRustRoot>
+    <DimeRustTarget Condition="'$(Platform)'=='Win32'">i686-pc-windows-msvc</DimeRustTarget>
+    <DimeRustEnabled Condition="'$(DimeUseRustEngine)'=='true' And '$(DimeRustTarget)'!=''">true</DimeRustEnabled>
+    <DimeRustTargetDir Condition="'$(Configuration)'=='Release'">$(DimeRustRoot)target\crt-static\</DimeRustTargetDir>
+    <DimeRustTargetDir Condition="'$(Configuration)'!='Release'">$(DimeRustRoot)target\</DimeRustTargetDir>
+    <DimeRustFlags Condition="'$(Configuration)'=='Release'">-C target-feature=+crt-static</DimeRustFlags>
+    <DimeRustLibDir>$(DimeRustTargetDir)$(DimeRustTarget)\release\</DimeRustLibDir>
+    <DimeCargo Condition="Exists('$(USERPROFILE)\.cargo\bin\cargo.exe')">"$(USERPROFILE)\.cargo\bin\cargo.exe"</DimeCargo>
+    <DimeCargo Condition="'$(DimeCargo)'==''">cargo</DimeCargo>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(DimeRustEnabled)'=='true'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(DimeRustRoot)crates\dime-ffi\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>DIME_RUST_AVAILABLE;DIME_USE_RUST_CONFIG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>$(DimeRustLibDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>dime_ffi.lib;ntdll.lib;userenv.lib;ws2_32.lib;dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <IgnoreSpecificDefaultLibraries Condition="'$(Configuration)'!='Release'">msvcrt.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+    </Link>
+  </ItemDefinitionGroup>
+  <Target Name="BuildDimeRust" BeforeTargets="ClCompile" Condition="'$(DimeRustEnabled)'=='true'">
+    <Exec Command="$(DimeCargo) build --release --locked -p dime-ffi --target $(DimeRustTarget) --target-dir &quot;$(DimeRustTargetDir.TrimEnd('\'))&quot; --manifest-path &quot;$(DimeRustRoot)Cargo.toml&quot;" EnvironmentVariables="RUSTFLAGS=$(DimeRustFlags)" />
+  </Target>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

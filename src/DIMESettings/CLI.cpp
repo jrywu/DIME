@@ -14,6 +14,9 @@
 #include "..\Globals.h"
 #include "..\CompositionProcessorEngine.h"
 #include "SettingsController.h"
+#ifdef DIME_USE_RUST_CONFIG
+#include "dime_ffi.h"
+#endif
 
 // ---------------------------------------------------------------------------
 // Key registry
@@ -166,6 +169,55 @@ static bool ParseColorValue(const wchar_t* str, COLORREF& out)
     return true;
 }
 
+#ifdef DIME_USE_RUST_CONFIG
+// ---------------------------------------------------------------------------
+// Rust implementation (rust/crates/dime-config, keys.rs): value formatting
+// and validation run on a snapshot of CConfig. g_keyRegistry above must stay
+// identical to the Rust registry (checked by RustCliParityTest).
+// ---------------------------------------------------------------------------
+static int RustKeyIndex(const KeyInfo* ki)
+{
+    return dime_key_find(reinterpret_cast<const uint16_t*>(ki->name), wcslen(ki->name));
+}
+
+static bool GetKeyValue(const KeyInfo* ki, WCHAR* outBuf, int bufLen)
+{
+    int index = RustKeyIndex(ki);
+    if (index < 0) return false;
+    DimeSettings* settings = CConfig::CreateRustSettings();
+    if (!settings) return false;
+    DimeBuffer* text = dime_settings_get_key(settings, index);
+    dime_settings_free(settings);
+    if (!text) return false;
+    size_t len = 0;
+    const uint16_t* data = dime_buffer_data(text, &len);
+    outBuf[0] = L'\0';
+    if (len) StringCchCopyNW(outBuf, bufLen, reinterpret_cast<const wchar_t*>(data), len);
+    dime_buffer_free(text);
+    return true;
+}
+
+static int ApplyKeyValue(const KeyInfo* ki, const wchar_t* valueStr, FILE* err)
+{
+    int index = RustKeyIndex(ki);
+    if (index < 0) return 1;
+    DimeSettings* settings = CConfig::CreateRustSettings();
+    if (!settings) return 2;
+    DimeBuffer* message = nullptr;
+    int rc = dime_settings_set_key(settings, index, reinterpret_cast<const uint16_t*>(valueStr), wcslen(valueStr), &message);
+    if (rc == 0)
+        CConfig::ImportRustSettings(settings);
+    dime_settings_free(settings);
+    if (message)
+    {
+        size_t len = 0;
+        const uint16_t* data = dime_buffer_data(message, &len);
+        fwprintf_s(err, L"%.*s\n", (int)len, reinterpret_cast<const wchar_t*>(data));
+        dime_buffer_free(message);
+    }
+    return rc;
+}
+#else
 // ---------------------------------------------------------------------------
 // Read current value of a key into outBuf (config must already be loaded).
 // Returns true on success.
@@ -446,6 +498,7 @@ static int ApplyKeyValue(const KeyInfo* ki, const wchar_t* valueStr, FILE* err)
     }
     return 0;
 }
+#endif // DIME_USE_RUST_CONFIG
 
 // ---------------------------------------------------------------------------
 // Command: --help / -h
@@ -1140,4 +1193,6 @@ bool CLI_KeyApplicableToMode(const KeyInfo* ki, IME_MODE m){ return KeyApplicabl
 bool CLI_ParseColorValue(const wchar_t* str, COLORREF& out){ return ParseColorValue(str, out); }
 int  CLI_GetKeyCount()                                      { return g_keyCount; }
 const KeyInfo* CLI_GetKeyRegistry()                         { return g_keyRegistry; }
+bool CLI_GetKeyValue(const KeyInfo* ki, WCHAR* outBuf, int bufLen) { return GetKeyValue(ki, outBuf, bufLen); }
+int  CLI_ApplyKeyValue(const KeyInfo* ki, const wchar_t* valueStr, FILE* err) { return ApplyKeyValue(ki, valueStr, err); }
 #endif
