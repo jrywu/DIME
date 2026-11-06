@@ -700,6 +700,10 @@ std::vector<std::wstring> RunKeyFlow(const KeyFlowOptions& options, const std::w
     worker.join();
 
     if (!error.empty())
-        throw std::runtime_error(std::string(error.begin(), error.end()));
+    {
+        std::string narrow;
+        for (wchar_t ch : error) narrow += (ch < 0x80) ? static_cast<char>(ch) : '?';
+        throw std::runtime_error(narrow);
+    }
     return lines;
 }

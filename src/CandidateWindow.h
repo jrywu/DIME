@@ -41,6 +41,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ScrollBarWindow.h"
 #include "BaseStructure.h"
 #include "Define.h"
+#include "CandidateListModel.h"
 
 enum class CANDWND_ACTION
 {
@@ -58,7 +59,7 @@ public:
 
     BOOL _Create(_In_ UINT wndWidth, _In_ UINT fontSize, _In_opt_ HWND parentWndHandle);
 
-	void _SetCandIndexRange(CCandidateRange* pIndexRange){ _pIndexRange = pIndexRange; }
+	void _SetCandIndexRange(CCandidateRange* pIndexRange){ _pIndexRange = pIndexRange; _model.SetIndexRange(pIndexRange); }
 
 	void _SetCandStringLength(_In_ UINT wndWidth) { _wndWidth = wndWidth; } // in chararacters
 	UINT _GetWidth();
@@ -82,8 +83,9 @@ public:
 
     void _AddString(_Inout_ CCandidateListItem *pCandidateItem, _In_ BOOL isAddFindKeyCode);
     void _ClearList();
-    UINT _GetCount() { return _candidateList.Count(); }
-    INT _GetSelection()  { return _currentSelection;}
+    UINT _GetCount() { return _model.Count(); }
+    INT _GetSelection()  { return _model.Selection();}
+    CCandidateListModel* _GetModel() { return &_model; }
     void _SetScrollInfo(_In_ int nMax, _In_ int nPage);
 
     DWORD _GetCandidateString(_In_ int iIndex, _Inout_opt_ const WCHAR **ppwchCandidateString);
@@ -126,9 +128,7 @@ private:
     friend COLORREF _AdjustTextColor(_In_ COLORREF crColor, _In_ COLORREF crBkColor);
 
 private:
-    INT _currentSelection;
-    CDIMEArray<CCandidateListItem> _candidateList;
-    CDIMEArray<UINT> _PageIndex;
+    CCandidateListModel _model;   // items, selection, pages
 
 	COLORREF _crNumberColor;
     COLORREF _crNumberBkColor;
@@ -153,7 +153,6 @@ private:
     std::unique_ptr<CShadowWindow> _pShadowWnd;
     std::unique_ptr<CScrollBarWindow> _pVScrollBarWnd;
 
-    BOOL _dontAdjustOnEmptyItemPage;
     BOOL _isStoreAppMode;
     BOOL _isTrackingCandMouse;   // TRUE while TrackMouseEvent(TME_LEAVE) is active
 

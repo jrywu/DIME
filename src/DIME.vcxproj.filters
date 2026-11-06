@@ -89,6 +89,9 @@
     <ClInclude Include="ButtonWindow.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="CandidateListModel.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="CandidateWindow.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -222,6 +225,9 @@
     </ClCompile>
     <ClCompile Include="DictionarySearch.cpp">
       <Filter>Source Files\TextService\IMInterface\Dictionary</Filter>
+    </ClCompile>
+    <ClCompile Include="CandidateListModel.cpp">
+      <Filter>Source Files\UI\Candidate</Filter>
     </ClCompile>
     <ClCompile Include="CandidateWindow.cpp">
       <Filter>Source Files\UI\Candidate</Filter>
