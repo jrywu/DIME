@@ -91,18 +91,60 @@ BOOL CDIME::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pCod
 {
 	debugPrint(L"CDIME::_IsKeyEaten(), codein = %d", codeIn);
     pContext;
+    _KEY_FACTS facts = _GatherKeyFacts(codeIn);
+    return _DecideKeyEaten(facts, codeIn, pCodeOut, pwch, pKeyState);
+}
+
+//+---------------------------------------------------------------------------
+//
+// _GatherKeyFacts
+//
+// Everything _DecideKeyEaten needs from TSF and Win32: compartments, keyboard
+// state, the candidate window. Reading these has no side effects.
+//
+//----------------------------------------------------------------------------
+
+CDIME::_KEY_FACTS CDIME::_GatherKeyFacts(UINT codeIn)
+{
+    _KEY_FACTS facts = {};
+
+    CCompartment CompartmentKeyboardOpen(_pThreadMgr, _tfClientId, Global::DIMEGuidCompartmentIMEMode);
+    CompartmentKeyboardOpen._GetCompartmentBOOL(facts.isOpen);
+
+    CCompartment CompartmentDoubleSingleByte(_pThreadMgr, _tfClientId, Global::DIMEGuidCompartmentDoubleSingleByte);
+    CompartmentDoubleSingleByte._GetCompartmentBOOL(facts.isDoubleSingleByte);
+
+    facts.isKeyboardDisabled = _IsKeyboardDisabled();
+    if (facts.isKeyboardDisabled)
+        return facts;
+
+    facts.wch = ConvertVKey(codeIn);
+    facts.isComposing = _IsComposing();
+    facts.candiSelection = -1;
+    if (_pUIPresenter)
+    {
+        _pUIPresenter->GetCount(&facts.candiCount);
+        facts.candiSelection = _pUIPresenter->_GetCandidateSelection();
+    }
+    return facts;
+}
+
+//+---------------------------------------------------------------------------
+//
+// _DecideKeyEaten
+//
+// Whether the IME wants the key and how it will handle it (pKeyState), from the
+// gathered facts, the IME's own state and the composition engine. No TSF calls.
+//
+//----------------------------------------------------------------------------
+
+BOOL CDIME::_DecideKeyEaten(const _KEY_FACTS& facts, UINT codeIn, _Out_ UINT *pCodeOut, _Out_writes_(1) WCHAR *pwch, _Inout_opt_ _KEYSTROKE_STATE *pKeyState)
+{
     *pCodeOut = codeIn;
 
+    BOOL isOpen = facts.isOpen;
+    BOOL isDoubleSingleByte = facts.isDoubleSingleByte;
 
-    BOOL isOpen = FALSE;
-	CCompartment CompartmentKeyboardOpen(_pThreadMgr, _tfClientId, Global::DIMEGuidCompartmentIMEMode);
-    CompartmentKeyboardOpen._GetCompartmentBOOL(isOpen);
-
-    BOOL isDoubleSingleByte = FALSE;
-    CCompartment CompartmentDoubleSingleByte(_pThreadMgr, _tfClientId, Global::DIMEGuidCompartmentDoubleSingleByte);
-    CompartmentDoubleSingleByte._GetCompartmentBOOL(isDoubleSingleByte);
-
-  
     if (pKeyState)
     {
         pKeyState->Category = KEYSTROKE_CATEGORY::CATEGORY_NONE;
@@ -114,7 +156,7 @@ BOOL CDIME::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pCod
     }
 
     // if the keyboard is disabled, we don't eat keys.
-    if (_IsKeyboardDisabled())
+    if (facts.isKeyboardDisabled)
     {
         return FALSE;
     }
@@ -123,7 +165,7 @@ BOOL CDIME::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pCod
     // Map virtual key to character code
     //
     BOOL isTouchKeyboardSpecialKeys = FALSE;
-    WCHAR wch = ConvertVKey(codeIn);
+    WCHAR wch = facts.wch;
     *pCodeOut = VKeyFromVKPacketAndWchar(codeIn, wch);
     if ((wch == THIRDPARTY_NEXTPAGE) || (wch == THIRDPARTY_PREVPAGE))
     {
@@ -162,13 +204,8 @@ BOOL CDIME::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pCod
 		//
 		// eat only keys that CKeyHandlerEditSession can handles.
 		//
-		UINT candiCount = 0;
-		INT candiSelection = -1;
-		if (_pUIPresenter)
-		{
-			_pUIPresenter->GetCount(&candiCount);
-			candiSelection = _pUIPresenter->_GetCandidateSelection();
-		}
+		UINT candiCount = facts.candiCount;
+		INT candiSelection = facts.candiSelection;
 
 		// Issue #126: stale _candidateMode without an actual candidate window.
 		// Make-phrase sets _candidateMode = PHRASE before _StartCandidateList
@@ -191,7 +228,7 @@ BOOL CDIME::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pCod
 		}
 	
 		// If already in shifted english mode and wildcard char is typed, continue as shifted english
-		if (_isShiftedEnglish && !_IsComposing() && pwch && (*pwch == L'*' || *pwch == L'?') &&
+		if (_isShiftedEnglish && !facts.isComposing && pwch && (*pwch == L'*' || *pwch == L'?') &&
 			(Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_RSHIFT | TF_MOD_SHIFT)) != 0)
 		{
 			debugPrint(L"_IsKeyEaten: wildcard 0x%04X blocked by _isShiftedEnglish=TRUE -> ShiftEnglish output", (UINT)*pwch);
@@ -234,7 +271,7 @@ BOOL CDIME::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pCod
 
 		// Sentence mode: with a pending sentence and nothing being typed, Enter/Space/
 		// Backspace/arrows act on the sentence (see SentenceHandler.cpp).
-		if (_IsSentencePending() && _IsComposing() &&
+		if (_IsSentencePending() && facts.isComposing &&
 			_candidateMode == CANDIDATE_MODE::CANDIDATE_NONE &&
 			pCompositionProcessorEngine->GetVirtualKeyLength() == 0 &&
 			_IsSentenceKeyEaten(*pCodeOut, pKeyState))
@@ -242,7 +279,7 @@ BOOL CDIME::_IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pCod
 			return TRUE;
 		}
 
-		if (pCompositionProcessorEngine->IsVirtualKeyNeed(*pCodeOut, pwch, _IsComposing(), _candidateMode, _isCandidateWithWildcard, candiCount, candiSelection, pKeyState))
+		if (pCompositionProcessorEngine->IsVirtualKeyNeed(*pCodeOut, pwch, facts.isComposing, _candidateMode, _isCandidateWithWildcard, candiCount, candiSelection, pKeyState))
         {
             return TRUE;
 		}

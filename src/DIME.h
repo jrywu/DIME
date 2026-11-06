@@ -296,6 +296,20 @@ private:
 
     BOOL _IsKeyEaten(_In_ ITfContext *pContext, UINT codeIn, _Out_ UINT *pCodeOut, _Out_writes_(1) WCHAR *pwch, _Inout_opt_ _KEYSTROKE_STATE *pKeyState);
 
+    // _IsKeyEaten = _GatherKeyFacts (TSF / Win32 reads) + _DecideKeyEaten (no TSF calls).
+    struct _KEY_FACTS
+    {
+        BOOL isOpen;              // Chinese mode (DIMEGuidCompartmentIMEMode)
+        BOOL isDoubleSingleByte;  // full-shape compartment
+        BOOL isKeyboardDisabled;
+        WCHAR wch;                // character of the key with the current keyboard state
+        BOOL isComposing;         // a composition exists
+        UINT candiCount;          // candidate window items
+        INT candiSelection;       // candidate window selection, -1 = none
+    };
+    _KEY_FACTS _GatherKeyFacts(UINT codeIn);
+    BOOL _DecideKeyEaten(const _KEY_FACTS& facts, UINT codeIn, _Out_ UINT *pCodeOut, _Out_writes_(1) WCHAR *pwch, _Inout_opt_ _KEYSTROKE_STATE *pKeyState);
+
     BOOL _IsRangeCovered(TfEditCookie ec, _In_ ITfRange *pRangeTest, _In_ ITfRange *pRangeCover);
    
 
