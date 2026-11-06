@@ -1,0 +1,10 @@
+[package]
+name = "dime-config"
+description = "DIME settings: defaults, INI parsing/serialisation and the settings key registry (port of CConfig)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+dime-core = { path = "../dime-core" }

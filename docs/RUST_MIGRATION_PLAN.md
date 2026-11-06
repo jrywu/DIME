@@ -52,6 +52,11 @@
 - **作法**：新增 `dime-config`，設定項以一張表（key、型別、預設值、適用模式、範圍）描述，取代目前「GUI、CLI、`CConfig` 三處要一致」的人工同步。`CConfig` 的 static getter/setter 保留，改成讀寫 Rust 端的狀態。ACL（"ALL APPLICATION PACKAGES"）與 `%APPDATA%` 路徑可先留在 C++。
 - **測試**：`ConfigTest.cpp`（2.1k 行）照跑；新增「同一份 INI 由 C++ 與 Rust 讀入後所有欄位相同、寫出位元組相同」的對拍；Rust 端單元測試覆蓋每個 key 的邊界值。
 - **為什麼先做**：相依最少（被大家用、自己不用別人），而且 DLL 與 DIMESettings 共用，做完後第 5 階段的 CLI 可以直接沿用。
+- **進度（2026-11-06）**：
+  - ✅ 1a：`rust/crates/dime-config`（設定值、預設值、`ApplyIniConfigEntry`、載入流程與 ColorMode 遷移、`WriteConfig` 輸出、CLI key 定義表與驗證）與 FFI（`dime_settings_*`）。`DIME.dll` 在 `DimeUseRustEngine=true` 時，設定的解析、預設值與寫檔改走 Rust；`CConfig` 的 static 成員仍是儲存位置。
+  - ✅ 對拍：`src/tests/RustConfigParityTest.cpp`（2,201 組 INI key/值、各模式預設值、20 份 `WriteConfig` 輸出逐位元組、`LoadConfigFromFile`）。對拍時找到並修正一個差異：`CLSIDFromString("")` 會失敗，空字串不會清除 GUID（只有 CLI 會把空字串當成清除）。
+  - ⏳ 1b：`DIMESettings.exe` 連結 `dime_ffi.lib`，CLI 改用 Rust 的 key 定義表與驗證（與第 5a 階段合併處理）。
+  - ⏳ 1c：把儲存位置從 `CConfig` 的 static 成員移到 Rust（`CConfig` 的 getter/setter 改成轉呼 Rust），經過一個正式版本後再把預設切到 Rust。
 
 ### 第 2 階段：組字核心 → `dime-core::compose`
 

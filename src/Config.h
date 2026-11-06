@@ -38,6 +38,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // Forward declare to avoid including CompositionProcessorEngine.h in this header
 class CCompositionProcessorEngine;
+#ifdef DIME_RUST_AVAILABLE
+struct DimeConfigValues; // dime_ffi.h
+struct DimeSettings;
+#endif
 
 // Lightweight dialog context passed to property pages via PROPSHEETPAGE.lParam
 // Holds a pointer to the composition engine and whether the engine is owned
@@ -79,6 +83,7 @@ namespace DIMEUnitTests {
 	class CINParserTest; // UT-07 parseCINFile tests
 	class ConfigTest; // UT-01 config management tests
 	class CustomTableValidationUnitTest; // UT-CV custom table validation tests
+	class RustConfigParityTest; // C++ <-> Rust (dime-config) parity
 }
 namespace DIMEIntegratedTests {
 	class SettingsDialogIntegrationTest; // IT-01 Settings Dialog tests
@@ -107,6 +112,7 @@ class CConfig
 	friend class DIMEUnitTests::CINParserTest;
 	friend class DIMEUnitTests::ConfigTest;
 	friend class DIMEUnitTests::CustomTableValidationUnitTest;
+	friend class DIMEUnitTests::RustConfigParityTest;
 	friend class DIMEIntegratedTests::SettingsDialogIntegrationTest;
 	friend class DIMEIntegratedTests::CustomTableValidationIntegrationTest;
 #endif
@@ -279,6 +285,17 @@ public:
 
 	static VOID WriteConfig(IME_MODE imeMode, BOOL silent = FALSE);
 	static BOOL LoadConfig(IME_MODE imeMode);
+	// Parse an existing INI into the settings (the "file exists" part of LoadConfig:
+	// mode defaults, [Config] entries, legacy ColorMode migration). FALSE if it cannot be opened.
+	static BOOL LoadConfigFromFile(IME_MODE imeMode, _In_ LPCWSTR pwszINIFileName);
+#ifdef DIME_RUST_AVAILABLE
+	// Bridge to the Rust port (rust/crates/dime-config, see docs/RUST_MIGRATION_PLAN.md).
+	// The static members stay the storage; Rust runs the logic on a snapshot.
+	static void ExportValues(_Out_ struct DimeConfigValues* pValues);
+	static void ImportValues(_In_ const struct DimeConfigValues* pValues);
+	static struct DimeSettings* CreateRustSettings();          // snapshot of the current settings
+	static void ImportRustSettings(_In_ const struct DimeSettings* pSettings);
+#endif
 	static struct _stat GetInitTimeStamp() { return _initTimeStamp; }
 	static BOOL parseCINFile(_In_ LPCWSTR pathToLoad, _In_ LPCWSTR pathToWrite, _In_ BOOL customTableMode = FALSE, _In_ BOOL suppressUI = FALSE);
 	static void SetIMEModeDefaults(IME_MODE imeMode);

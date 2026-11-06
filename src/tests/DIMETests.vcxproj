@@ -370,6 +370,7 @@
     <ClCompile Include="RichEditViewportTest.cpp" />
     <ClCompile Include="RustParityTest.cpp" />
     <ClCompile Include="RustEngineAdapterTest.cpp" />
+    <ClCompile Include="RustConfigParityTest.cpp" />
     <ClCompile Include="..\RustTableDictionaryEngine.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>

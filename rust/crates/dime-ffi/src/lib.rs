@@ -16,6 +16,7 @@ use std::ptr;
 
 use dime_core::big5;
 use dime_core::sentence::{self, Lexicon, Position, UserModel};
+use dime_config::{ini, ConfigValues, Env, ImeMode, Settings};
 use dime_core::{CandidateItem, DictionaryType, SearchSection, TableDictionaryEngine, WinTextOps};
 
 pub struct DimeEngine(TableDictionaryEngine<WinTextOps>);
@@ -690,6 +691,148 @@ pub unsafe extern "C" fn dime_user_model_learn(
             .map(|&k| usize::try_from(k).unwrap_or(0))
             .collect();
         i32::from(m.0.learn(&positions, &chosen))
+    })
+}
+
+// ---------------------------------------------------------------------------
+// Settings (dime_config, port of CConfig)
+// ---------------------------------------------------------------------------
+
+/// A settings record plus the host values its defaults depend on.
+pub struct DimeSettings {
+    settings: Settings,
+    env: Env,
+}
+
+// The C header declares the same struct; keep the layouts in lock-step.
+const _: () = assert!(std::mem::size_of::<ConfigValues>() == 308);
+const _: () = assert!(std::mem::size_of::<Env>() == 8);
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_new(values: *const ConfigValues, env: *const Env) -> *mut DimeSettings {
+    guard(ptr::null_mut(), || {
+        let Some(env) = (unsafe { env.as_ref() }).copied() else {
+            return ptr::null_mut();
+        };
+        let mut settings = Settings::initial(&env);
+        if let Some(v) = unsafe { values.as_ref() } {
+            settings.v = *v;
+        }
+        boxed(DimeSettings { settings, env })
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_free(s: *mut DimeSettings) {
+    if !s.is_null() {
+        guard((), || drop(unsafe { Box::from_raw(s) }));
+    }
+}
+
+/// Returns 1 on success.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_get_values(s: *const DimeSettings, out: *mut ConfigValues) -> i32 {
+    guard(0, || match unsafe { s.as_ref() } {
+        Some(s) if !out.is_null() => {
+            unsafe { *out = s.settings.v };
+            1
+        }
+        _ => 0,
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_set_values(s: *mut DimeSettings, values: *const ConfigValues) {
+    guard((), || {
+        if let (Some(s), Some(v)) = (unsafe { s.as_mut() }, unsafe { values.as_ref() }) {
+            s.settings.v = *v;
+        }
+    })
+}
+
+/// Returns 1 and the text when a description is set, 0 when it is NULL.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_get_description(
+    s: *const DimeSettings,
+    text: *mut *const u16,
+    len: *mut usize,
+) -> i32 {
+    guard(0, || {
+        let d = unsafe { s.as_ref() }.and_then(|s| s.settings.reverse_conversion_description.as_ref());
+        unsafe {
+            set(text, d.map_or(ptr::null(), |d| d.as_ptr()));
+            set(len, d.map_or(0, |d| d.len()));
+        }
+        i32::from(d.is_some())
+    })
+}
+
+/// present == 0 stores NULL.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_set_description(s: *mut DimeSettings, text: *const u16, len: usize, present: i32) {
+    guard((), || {
+        if let Some(s) = unsafe { s.as_mut() } {
+            s.settings.reverse_conversion_description = (present != 0).then(|| unsafe { slice(text, len) }.to_vec());
+        }
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_apply_entry(
+    s: *mut DimeSettings,
+    lcid: u32,
+    key: *const u16,
+    key_len: usize,
+    value: *const u16,
+    value_len: usize,
+) {
+    guard((), || {
+        if let Some(s) = unsafe { s.as_mut() } {
+            let ops = WinTextOps { lcid };
+            ini::apply_entry(&ops, &mut s.settings, unsafe { slice(key, key_len) }, unsafe { slice(value, value_len) });
+        }
+    })
+}
+
+fn with_settings(s: *mut DimeSettings, f: impl FnOnce(&mut DimeSettings)) {
+    guard((), || {
+        if let Some(s) = unsafe { s.as_mut() } {
+            f(s);
+        }
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_begin_load(s: *mut DimeSettings, mode: i32) {
+    with_settings(s, |s| ini::begin_load(&mut s.settings, ImeMode::from_i32(mode)));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_finish_load(s: *mut DimeSettings) {
+    with_settings(s, |s| ini::finish_load(&mut s.settings, &s.env));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_load_missing(s: *mut DimeSettings, mode: i32) {
+    with_settings(s, |s| ini::load_missing(&mut s.settings, ImeMode::from_i32(mode), &s.env));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_set_mode_defaults(s: *mut DimeSettings, mode: i32) {
+    with_settings(s, |s| s.settings.v.set_mode_defaults(ImeMode::from_i32(mode)));
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_reset_all_defaults(s: *mut DimeSettings, mode: i32) {
+    with_settings(s, |s| s.settings.reset_all_defaults(ImeMode::from_i32(mode), &s.env));
+}
+
+/// The INI file text (UTF-16 with BOM, CRLF) to write verbatim.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_serialize_ini(s: *const DimeSettings, mode: i32) -> *mut DimeBuffer {
+    guard(ptr::null_mut(), || match unsafe { s.as_ref() } {
+        Some(s) => boxed(DimeBuffer(ini::serialize(&s.settings, ImeMode::from_i32(mode)))),
+        None => ptr::null_mut(),
     })
 }
 

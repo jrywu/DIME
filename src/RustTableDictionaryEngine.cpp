@@ -265,20 +265,21 @@ VOID CRustTableDictionaryEngine::ParseConfig(IME_MODE imeMode)
 	int32_t autoCompose = dime_engine_auto_compose(pRust);
 	if (autoCompose >= 0) CConfig::SetAutoCompose(autoCompose != 0);
 
-	// [Config] entries -> CConfig. Copy into NUL-terminated strings because
-	// ApplyIniConfigEntry parses numbers with _wtoi/wcstoul.
+	// [Config] entries -> CConfig, applied by the Rust port of ApplyIniConfigEntry
+	// (dime_config::ini::apply_entry) on a snapshot of the current settings.
 	size_t entryCount = dime_engine_config_entry_count(pRust);
+	if (entryCount == 0) return;
+	DimeSettings* settings = CConfig::CreateRustSettings();
+	if (!settings) return;
 	for (size_t i = 0; i < entryCount; i++)
 	{
 		const uint16_t *k = nullptr, *v = nullptr;
 		size_t kLen = 0, vLen = 0;
 		if (!dime_engine_config_entry_at(pRust, i, &k, &kLen, &v, &vLen)) continue;
-		std::wstring key(W(k), kLen), value(W(v), vLen);
-		CStringRange keyRange, valueRange;
-		keyRange.Set(key.c_str(), key.length());
-		valueRange.Set(value.c_str(), value.length());
-		ApplyIniConfigEntry(_locale, &keyRange, &valueRange);
+		dime_settings_apply_entry(settings, (uint32_t)_locale, k, kLen, v, vLen);
 	}
+	CConfig::ImportRustSettings(settings);
+	dime_settings_free(settings);
 }
 
 #endif // DIME_RUST_AVAILABLE

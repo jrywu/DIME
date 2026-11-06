@@ -148,6 +148,63 @@ int32_t dime_user_model_learn(DimeUserModel* model, size_t position_count,
                               const uint16_t* const* cands, const size_t* cand_lens, const int32_t* pinned,
                               const int32_t* chosen);
 
+/* ---- settings (dime_config, port of CConfig) ------------------------------ */
+
+/* One six-colour candidate-window palette (COLORREF values). */
+typedef struct DimePalette {
+    uint32_t item, phrase, number, item_bg, selected, selected_bg;
+} DimePalette;
+
+/* CConfig's plain-data settings.  BOOL / enum fields are int32_t, UINT /
+   COLORREF fields uint32_t, GUIDs their 16 in-memory bytes.  Must match
+   dime_config::values::ConfigValues (308 bytes, checked on both sides). */
+typedef struct DimeConfigValues {
+    int32_t auto_compose, space_as_page_down, space_as_first_cand_selkey, arrow_key_sw_pages,
+            clear_on_beep, do_beep, do_beep_notify, do_beep_on_candi, sentence_mode,
+            activated_keyboard_mode, make_phrase, show_notify_desktop, do_han_convert, font_italic,
+            custom_table_priority, dayi_article_mode, array_force_sp, array_notify_sp,
+            array_single_quote_custom_phrase, big5_filter, reload_reverse_conversion,
+            app_permission_set, load_table_mode, color_mode_key_found;
+    uint32_t max_codes, font_size, font_weight;
+    int32_t ime_shift_mode, double_single_byte_mode, shift_english_digit_mode, color_mode,
+            numeric_pad, array_scope, phonetic_keyboard_layout, dayi_selkey_mode;
+    DimePalette custom, light, dark;
+    uint16_t font_face_name[32];              /* NUL-terminated (LF_FACESIZE) */
+    uint8_t  reverse_conversion_clsid[16];
+    uint8_t  reverse_conversion_guid_profile[16];
+} DimeConfigValues;
+
+/* Host facts the defaults depend on. */
+typedef struct DimeConfigEnv {
+    uint32_t sys_3d_highlight;      /* GetSysColor(COLOR_3DHIGHLIGHT) */
+    int32_t  windows_1809_or_later; /* Global::isWindows1809OrLater */
+} DimeConfigEnv;
+
+typedef struct DimeSettings DimeSettings;
+
+/* values NULL: the Config.cpp static initialisers.  env is required. */
+DimeSettings* dime_settings_new(const DimeConfigValues* values, const DimeConfigEnv* env);
+void          dime_settings_free(DimeSettings* s);
+int32_t       dime_settings_get_values(const DimeSettings* s, DimeConfigValues* out); /* 1 = ok */
+void          dime_settings_set_values(DimeSettings* s, const DimeConfigValues* values);
+/* ReverseConversionDescription: returns 0 when it is NULL. */
+int32_t       dime_settings_get_description(const DimeSettings* s, const uint16_t** text, size_t* len);
+void          dime_settings_set_description(DimeSettings* s, const uint16_t* text, size_t len, int32_t present);
+
+/* ApplyIniConfigEntry: one [Config] key/value (keys compared with CompareString(lcid)). */
+void dime_settings_apply_entry(DimeSettings* s, uint32_t lcid, const uint16_t* key, size_t key_len,
+                               const uint16_t* value, size_t value_len);
+/* CConfig::LoadConfig, file present: begin_load, apply every entry, finish_load
+   (legacy ColorMode migration).  File missing: load_missing. */
+void dime_settings_begin_load(DimeSettings* s, int32_t ime_mode);
+void dime_settings_finish_load(DimeSettings* s);
+void dime_settings_load_missing(DimeSettings* s, int32_t ime_mode);
+void dime_settings_set_mode_defaults(DimeSettings* s, int32_t ime_mode);  /* SetIMEModeDefaults */
+void dime_settings_reset_all_defaults(DimeSettings* s, int32_t ime_mode); /* ResetAllDefaults */
+/* CConfig::WriteConfig text: UTF-16 with BOM and CRLF; write the units as-is.
+   Free with dime_buffer_free. */
+DimeBuffer* dime_settings_serialize_ini(const DimeSettings* s, int32_t ime_mode);
+
 #ifdef __cplusplus
 }
 #endif
