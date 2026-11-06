@@ -193,6 +193,11 @@ impl Palette {
 }
 
 impl ConfigValues {
+    /// All zeroes: the state of a constant-initialised static before
+    /// [`ConfigValues::initial`] is applied.
+    // SAFETY: every field is an integer or an array of integers.
+    pub const ZERO: ConfigValues = unsafe { std::mem::zeroed() };
+
     /// The static-member initialisers at the top of `Config.cpp`.
     pub fn initial(env: &Env) -> ConfigValues {
         ConfigValues {

@@ -184,10 +184,12 @@ static bool GetKeyValue(const KeyInfo* ki, WCHAR* outBuf, int bufLen)
 {
     int index = RustKeyIndex(ki);
     if (index < 0) return false;
-    DimeSettings* settings = CConfig::CreateRustSettings();
-    if (!settings) return false;
-    DimeBuffer* text = dime_settings_get_key(settings, index);
-    dime_settings_free(settings);
+    DimeBuffer* text = nullptr;
+    {
+        CRustConfigScope settings;
+        if (!settings.Get()) return false;
+        text = dime_settings_get_key(settings.Get(), index);
+    }
     if (!text) return false;
     size_t len = 0;
     const uint16_t* data = dime_buffer_data(text, &len);
@@ -201,13 +203,14 @@ static int ApplyKeyValue(const KeyInfo* ki, const wchar_t* valueStr, FILE* err)
 {
     int index = RustKeyIndex(ki);
     if (index < 0) return 1;
-    DimeSettings* settings = CConfig::CreateRustSettings();
-    if (!settings) return 2;
     DimeBuffer* message = nullptr;
-    int rc = dime_settings_set_key(settings, index, reinterpret_cast<const uint16_t*>(valueStr), wcslen(valueStr), &message);
-    if (rc == 0)
-        CConfig::ImportRustSettings(settings);
-    dime_settings_free(settings);
+    int rc;
+    {
+        CRustConfigScope settings;
+        if (!settings.Get()) return 2;
+        rc = dime_settings_set_key(settings.Get(), index, reinterpret_cast<const uint16_t*>(valueStr), wcslen(valueStr), &message);
+        if (rc == 0) settings.Commit(); // a rejected value leaves the settings unchanged
+    }
     if (message)
     {
         size_t len = 0;

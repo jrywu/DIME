@@ -702,11 +702,94 @@ pub unsafe extern "C" fn dime_user_model_learn(
 pub struct DimeSettings {
     settings: Settings,
     env: Env,
+    /// NUL-terminated copy of the description for `dime_settings_description_cstr`.
+    description_c: Vec<u16>,
+}
+
+impl DimeSettings {
+    const fn empty() -> DimeSettings {
+        DimeSettings {
+            settings: Settings { v: ConfigValues::ZERO, reverse_conversion_description: None },
+            env: Env { sys_3d_highlight: 0, windows_1809_or_later: 0 },
+            description_c: Vec::new(),
+        }
+    }
+
+    /// Re-derive `description_c`; called after every operation that may change it.
+    fn refresh(&mut self) {
+        self.description_c.clear();
+        if let Some(d) = &self.settings.reverse_conversion_description {
+            self.description_c.extend(d.iter().copied().take_while(|&c| c != 0));
+            self.description_c.push(0);
+        }
+    }
 }
 
 // The C header declares the same struct; keep the layouts in lock-step.
 const _: () = assert!(std::mem::size_of::<ConfigValues>() == 308);
 const _: () = assert!(std::mem::size_of::<Env>() == 8);
+
+/// The process-wide settings used by `CConfig` when it is built with
+/// `DIME_USE_RUST_CONFIG`: its static members become references into
+/// `settings.v`, so the address must never change (it is a constant-initialised
+/// static).  Like the C++ statics it replaces, access is not synchronised: the
+/// host serialises writes, exactly as it did before.
+struct GlobalSettings(std::cell::UnsafeCell<DimeSettings>);
+// SAFETY: see above; this mirrors the unsynchronised C++ static members.
+unsafe impl Sync for GlobalSettings {}
+static GLOBAL_SETTINGS: GlobalSettings = GlobalSettings(std::cell::UnsafeCell::new(DimeSettings::empty()));
+
+fn global_settings() -> *mut DimeSettings {
+    GLOBAL_SETTINGS.0.get()
+}
+
+/// The process-wide settings object.  Never free it (dime_settings_free ignores it).
+#[no_mangle]
+pub extern "C" fn dime_settings_global() -> *mut DimeSettings {
+    global_settings()
+}
+
+/// Reset the process-wide settings to the static initialisers for `env`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_global_init(env: *const Env) {
+    guard((), || {
+        if let Some(env) = unsafe { env.as_ref() } {
+            let g = unsafe { &mut *global_settings() };
+            g.settings = Settings::initial(env);
+            g.env = *env;
+            g.refresh();
+        }
+    })
+}
+
+/// Update the host facts (system colour, Windows version) used by later defaults.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_set_env(s: *mut DimeSettings, env: *const Env) {
+    guard((), || {
+        if let (Some(s), Some(env)) = (unsafe { s.as_mut() }, unsafe { env.as_ref() }) {
+            s.env = *env;
+        }
+    })
+}
+
+/// Direct pointer to the values; valid for the lifetime of `s`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_values_ptr(s: *mut DimeSettings) -> *mut ConfigValues {
+    guard(ptr::null_mut(), || match unsafe { s.as_mut() } {
+        Some(s) => &mut s.settings.v,
+        None => ptr::null_mut(),
+    })
+}
+
+/// NUL-terminated description, or NULL when none is set.  Valid until the
+/// description of `s` next changes.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_description_cstr(s: *const DimeSettings) -> *const u16 {
+    guard(ptr::null(), || match unsafe { s.as_ref() } {
+        Some(s) if !s.description_c.is_empty() => s.description_c.as_ptr(),
+        _ => ptr::null(),
+    })
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn dime_settings_new(values: *const ConfigValues, env: *const Env) -> *mut DimeSettings {
@@ -718,13 +801,13 @@ pub unsafe extern "C" fn dime_settings_new(values: *const ConfigValues, env: *co
         if let Some(v) = unsafe { values.as_ref() } {
             settings.v = *v;
         }
-        boxed(DimeSettings { settings, env })
+        boxed(DimeSettings { settings, env, description_c: Vec::new() })
     })
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn dime_settings_free(s: *mut DimeSettings) {
-    if !s.is_null() {
+    if !s.is_null() && s != global_settings() {
         guard((), || drop(unsafe { Box::from_raw(s) }));
     }
 }
@@ -773,6 +856,7 @@ pub unsafe extern "C" fn dime_settings_set_description(s: *mut DimeSettings, tex
     guard((), || {
         if let Some(s) = unsafe { s.as_mut() } {
             s.settings.reverse_conversion_description = (present != 0).then(|| unsafe { slice(text, len) }.to_vec());
+            s.refresh();
         }
     })
 }
@@ -790,6 +874,7 @@ pub unsafe extern "C" fn dime_settings_apply_entry(
         if let Some(s) = unsafe { s.as_mut() } {
             let ops = WinTextOps { lcid };
             ini::apply_entry(&ops, &mut s.settings, unsafe { slice(key, key_len) }, unsafe { slice(value, value_len) });
+            s.refresh();
         }
     })
 }
@@ -798,6 +883,7 @@ fn with_settings(s: *mut DimeSettings, f: impl FnOnce(&mut DimeSettings)) {
     guard((), || {
         if let Some(s) = unsafe { s.as_mut() } {
             f(s);
+            s.refresh();
         }
     })
 }
@@ -926,7 +1012,10 @@ pub unsafe extern "C" fn dime_settings_set_key(
         unsafe { set(error, ptr::null_mut()) };
         let (Some(s), Some(k)) = (unsafe { s.as_mut() }, key_at(index)) else { return 2 };
         match keys::set_value(&mut s.settings, k, unsafe { slice(value, len) }) {
-            Ok(()) => 0,
+            Ok(()) => {
+                s.refresh();
+                0
+            }
             Err(e) => {
                 unsafe { set(error, boxed(DimeBuffer(e.to_string().encode_utf16().collect()))) };
                 1

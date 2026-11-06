@@ -182,6 +182,16 @@ typedef struct DimeConfigEnv {
 
 typedef struct DimeSettings DimeSettings;
 
+/* Process-wide settings (CConfig's storage when built with DIME_USE_RUST_CONFIG).
+   The object and dime_settings_values_ptr(global) never move; dime_settings_free
+   ignores it.  Access is unsynchronised, like the C++ statics it replaces. */
+DimeSettings*     dime_settings_global(void);
+void              dime_settings_global_init(const DimeConfigEnv* env); /* = static initialisers */
+void              dime_settings_set_env(DimeSettings* s, const DimeConfigEnv* env);
+DimeConfigValues* dime_settings_values_ptr(DimeSettings* s);
+/* NUL-terminated description or NULL; valid until the description changes. */
+const uint16_t*   dime_settings_description_cstr(const DimeSettings* s);
+
 /* values NULL: the Config.cpp static initialisers.  env is required. */
 DimeSettings* dime_settings_new(const DimeConfigValues* values, const DimeConfigEnv* env);
 void          dime_settings_free(DimeSettings* s);

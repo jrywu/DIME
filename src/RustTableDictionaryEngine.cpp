@@ -266,20 +266,19 @@ VOID CRustTableDictionaryEngine::ParseConfig(IME_MODE imeMode)
 	if (autoCompose >= 0) CConfig::SetAutoCompose(autoCompose != 0);
 
 	// [Config] entries -> CConfig, applied by the Rust port of ApplyIniConfigEntry
-	// (dime_config::ini::apply_entry) on a snapshot of the current settings.
+	// (dime_config::ini::apply_entry).
 	size_t entryCount = dime_engine_config_entry_count(pRust);
 	if (entryCount == 0) return;
-	DimeSettings* settings = CConfig::CreateRustSettings();
-	if (!settings) return;
+	CRustConfigScope settings;
+	if (!settings.Get()) return;
 	for (size_t i = 0; i < entryCount; i++)
 	{
 		const uint16_t *k = nullptr, *v = nullptr;
 		size_t kLen = 0, vLen = 0;
 		if (!dime_engine_config_entry_at(pRust, i, &k, &kLen, &v, &vLen)) continue;
-		dime_settings_apply_entry(settings, (uint32_t)_locale, k, kLen, v, vLen);
+		dime_settings_apply_entry(settings.Get(), (uint32_t)_locale, k, kLen, v, vLen);
 	}
-	CConfig::ImportRustSettings(settings);
-	dime_settings_free(settings);
+	settings.Commit();
 }
 
 #endif // DIME_RUST_AVAILABLE

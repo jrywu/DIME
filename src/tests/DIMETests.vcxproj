@@ -965,6 +965,15 @@
       <IgnoreSpecificDefaultLibraries Condition="'$(Configuration)'=='Debug'">msvcrt.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
     </Link>
   </ItemDefinitionGroup>
+  <!--
+    /p:DimeTestRustConfig=true runs the whole suite with CConfig's storage in Rust
+    (DIME_USE_RUST_CONFIG, as in DIME.dll / DIMESettings.exe built with DimeUseRustEngine=true).
+  -->
+  <ItemDefinitionGroup Condition="'$(DimeRustEnabled)'=='true' And '$(DimeTestRustConfig)'=='true'">
+    <ClCompile>
+      <PreprocessorDefinitions>DIME_USE_RUST_CONFIG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
   <Target Name="BuildDimeRust" BeforeTargets="ClCompile" Condition="'$(DimeRustEnabled)'=='true'">
     <Exec Command="$(DimeCargo) build --release --locked -p dime-ffi --target $(DimeRustTarget) --manifest-path &quot;$(DimeRustRoot)Cargo.toml&quot;" />
   </Target>

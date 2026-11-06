@@ -56,7 +56,8 @@
   - ✅ 1a：`rust/crates/dime-config`（設定值、預設值、`ApplyIniConfigEntry`、載入流程與 ColorMode 遷移、`WriteConfig` 輸出、CLI key 定義表與驗證）與 FFI（`dime_settings_*`）。`DIME.dll` 在 `DimeUseRustEngine=true` 時，設定的解析、預設值與寫檔改走 Rust；`CConfig` 的 static 成員仍是儲存位置。
   - ✅ 對拍：`src/tests/RustConfigParityTest.cpp`（2,201 組 INI key/值、各模式預設值、20 份 `WriteConfig` 輸出逐位元組、`LoadConfigFromFile`）。對拍時找到並修正一個差異：`CLSIDFromString("")` 會失敗，空字串不會清除 GUID（只有 CLI 會把空字串當成清除）。
   - ✅ 1b：`DIMESettings.exe`（Win32）在 `DimeUseRustEngine=true` 時連結 `dime_ffi.lib`，定義 `DIME_USE_RUST_CONFIG`：設定的預設值與寫檔、CLI `--get`/`--set` 的取值、驗證與錯誤訊息改走 Rust（字典引擎仍是 C++）。C++ 的 `g_keyRegistry` 暫時保留，`RustCliParityTest` 檢查它與 Rust 的 key 表完全一致，並對拍 `--get` 全部 key 與 `--set` 2,014 組 key/值（回傳碼、錯誤訊息、結果）。C++ 與 Rust 版 exe 的實際 CLI 輸出也逐一比對過。`g_keyRegistry` 與 `GetKeyValue`/`ApplyKeyValue` 的 C++ 版本在第 5a 階段 CLI 整個改寫成 Rust 時刪除。
-  - ⏳ 1c：把儲存位置從 `CConfig` 的 static 成員移到 Rust（`CConfig` 的 getter/setter 改成轉呼 Rust），經過一個正式版本後再把預設切到 Rust。
+  - ✅ 1c：定義 `DIME_USE_RUST_CONFIG` 時，設定值存放在 Rust 的全域物件（`dime_settings_global()`，常數初始化、位址固定）；`CConfig` 的設定成員宣告為 `DIME_CONFIG_VALUE`、定義為 `DIME_CONFIG_DEFINE`，在此模式下變成指向該物件欄位的參考，所有 getter/setter 與 300 多個呼叫點不用改。`ReverseConversionDescription` 改由 `GetReverseConversionDescription()` / `SetReverseConversionDescriptionText()` 存取（字串在 Rust）。Rust 的操作透過 `CRustConfigScope` 直接作用在全域物件上，不再取快照與寫回。`DIMETests` 加上 `/p:DimeTestRustConfig=true` 可在此模式下跑完整測試套件（657 個全部通過，預設模式也是 657 個全部通過）。
+  - ⏳ 切換預設：經過一個正式版本後，把 `DimeUseRustEngine` 改成預設開啟；再下一版刪除 C++ 的儲存、`ExportValues`/`ImportValues`、`ApplyIniConfigEntry` 與 `WriteConfig` 的 C++ 寫法。
 
 ### 第 2 階段：組字核心 → `dime-core::compose`
 

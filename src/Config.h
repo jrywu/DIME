@@ -43,6 +43,16 @@ struct DimeConfigValues; // dime_ffi.h
 struct DimeSettings;
 #endif
 
+// Settings storage. With DIME_USE_RUST_CONFIG the settings live in Rust
+// (dime_settings_global(), rust/crates/dime-config) and these static members
+// are references into that storage, so every accessor keeps working unchanged.
+#ifdef DIME_USE_RUST_CONFIG
+#define DIME_CONFIG_VALUE(type, name) static type& name
+#else
+#define DIME_CONFIG_VALUE(type, name) static type name
+#endif
+typedef WCHAR DimeFontFaceName[LF_FACESIZE];
+
 // Lightweight dialog context passed to property pages via PROPSHEETPAGE.lParam
 // Holds a pointer to the composition engine and whether the engine is owned
 // by the dialog (and therefore should be deleted by the dialog proc).
@@ -212,8 +222,8 @@ public:
 	// color mode (candidate/notify window theming)
 	static void SetColorMode(IME_COLOR_MODE mode) { _colorMode = mode; }
 	static IME_COLOR_MODE GetColorMode() { return _colorMode; }
-	static void SetColorModeKeyFound(bool found) { _colorModeKeyFound = found; }
-	static bool GetColorModeKeyFound() { return _colorModeKeyFound; }
+	static void SetColorModeKeyFound(bool found) { _colorModeKeyFound = found ? TRUE : FALSE; }
+	static bool GetColorModeKeyFound() { return _colorModeKeyFound != FALSE; }
 	// Returns true when the IME windows should render in dark style
 	static bool GetEffectiveDarkMode();
 	// Returns the active candidate window background color for the current color mode
@@ -274,8 +284,16 @@ public:
 	static CLSID GetReverseConverstionCLSID() {return _reverseConverstionCLSID;}
 	static void SetReverseConversionGUIDProfile(GUID reverseConversionGUIDProfile) { _reverseConversionGUIDProfile = reverseConversionGUIDProfile;}
 	static GUID GetReverseConversionGUIDProfile() {return _reverseConversionGUIDProfile;}
+#ifdef DIME_USE_RUST_CONFIG
+	// Takes ownership of a new[]-allocated string, as before; the text is copied into Rust.
+	static void SetReverseConversionDescription(WCHAR* reverseConversionDescription) { SetReverseConversionDescriptionText(reverseConversionDescription); delete[] reverseConversionDescription; }
+	static WCHAR* GetReverseConversionDescription();
+#else
 	static void SetReverseConversionDescription(WCHAR* reverseConversionDescription) { _reverseConversionDescription = reverseConversionDescription;}
 	static WCHAR* GetReverseConversionDescription() {return _reverseConversionDescription;}
+#endif
+	// Replace the description with a copy of text (nullptr clears it).
+	static void SetReverseConversionDescriptionText(_In_opt_ const WCHAR* text);
 
 	static const ColorInfo* GetColors() { return colors; }
 
@@ -290,11 +308,10 @@ public:
 	static BOOL LoadConfigFromFile(IME_MODE imeMode, _In_ LPCWSTR pwszINIFileName);
 #ifdef DIME_RUST_AVAILABLE
 	// Bridge to the Rust port (rust/crates/dime-config, see docs/RUST_MIGRATION_PLAN.md).
-	// The static members stay the storage; Rust runs the logic on a snapshot.
 	static void ExportValues(_Out_ struct DimeConfigValues* pValues);
 	static void ImportValues(_In_ const struct DimeConfigValues* pValues);
-	static struct DimeSettings* CreateRustSettings();          // snapshot of the current settings
-	static void ImportRustSettings(_In_ const struct DimeSettings* pSettings);
+	static struct DimeSettings* CreateRustSettings();          // independent copy of the current settings (free it)
+	static void ImportRustSettings(_In_ const struct DimeSettings* pSettings); // copy a settings object back
 #endif
 	static struct _stat GetInitTimeStamp() { return _initTimeStamp; }
 	static BOOL parseCINFile(_In_ LPCWSTR pathToLoad, _In_ LPCWSTR pathToWrite, _In_ BOOL customTableMode = FALSE, _In_ BOOL suppressUI = FALSE);
@@ -324,81 +341,83 @@ public:
 
 private:
 	//user setting variables
-	static BOOL _loadTableMode;
+	DIME_CONFIG_VALUE(BOOL, _loadTableMode);
 	static IME_MODE _imeMode;
-	static ARRAY_SCOPE _arrayScope;
-	static NUMERIC_PAD _numericPad;
-	static BOOL _autoCompose;
-	static BOOL _customTablePriority;
-	static BOOL _clearOnBeep;
-	static BOOL _doBeep;
-	static BOOL _doBeepNotify;
-	static BOOL _doBeepOnCandi;
-	static BOOL _sentenceMode;
-	static BOOL _appPermissionSet;
-	static BOOL _reloadReverseConversion;
-	static BOOL _activatedKeyboardMode;
-	static BOOL _makePhrase;
-    static UINT _fontSize;
-	static UINT _fontWeight;
-	static BOOL _fontItalic;
-	static BOOL _showNotifyDesktop;
-	static UINT _maxCodes;
-	static WCHAR _pFontFaceName[LF_FACESIZE];
+	DIME_CONFIG_VALUE(ARRAY_SCOPE, _arrayScope);
+	DIME_CONFIG_VALUE(NUMERIC_PAD, _numericPad);
+	DIME_CONFIG_VALUE(BOOL, _autoCompose);
+	DIME_CONFIG_VALUE(BOOL, _customTablePriority);
+	DIME_CONFIG_VALUE(BOOL, _clearOnBeep);
+	DIME_CONFIG_VALUE(BOOL, _doBeep);
+	DIME_CONFIG_VALUE(BOOL, _doBeepNotify);
+	DIME_CONFIG_VALUE(BOOL, _doBeepOnCandi);
+	DIME_CONFIG_VALUE(BOOL, _sentenceMode);
+	DIME_CONFIG_VALUE(BOOL, _appPermissionSet);
+	DIME_CONFIG_VALUE(BOOL, _reloadReverseConversion);
+	DIME_CONFIG_VALUE(BOOL, _activatedKeyboardMode);
+	DIME_CONFIG_VALUE(BOOL, _makePhrase);
+    DIME_CONFIG_VALUE(UINT, _fontSize);
+	DIME_CONFIG_VALUE(UINT, _fontWeight);
+	DIME_CONFIG_VALUE(BOOL, _fontItalic);
+	DIME_CONFIG_VALUE(BOOL, _showNotifyDesktop);
+	DIME_CONFIG_VALUE(UINT, _maxCodes);
+	DIME_CONFIG_VALUE(DimeFontFaceName, _pFontFaceName);
 	static WCHAR _pMlFontFaceName[LF_FACESIZE];
-	static COLORREF _itemColor;
-	static COLORREF _phraseColor;
-	static COLORREF _numberColor;
-	static COLORREF _itemBGColor;
-	static COLORREF _selectedColor;
-	static COLORREF _selectedBGColor;
-	static COLORREF _lightItemColor;
-	static COLORREF _lightPhraseColor;
-	static COLORREF _lightNumberColor;
-	static COLORREF _lightItemBGColor;
-	static COLORREF _lightSelectedColor;
-	static COLORREF _lightSelectedBGColor;
-	static COLORREF _darkItemColor;
-	static COLORREF _darkPhraseColor;
-	static COLORREF _darkNumberColor;
-	static COLORREF _darkItemBGColor;
-	static COLORREF _darkSelectedColor;
-	static COLORREF _darkSelectedBGColor;
-	static IME_COLOR_MODE _colorMode;
-	static bool _colorModeKeyFound;
+	DIME_CONFIG_VALUE(COLORREF, _itemColor);
+	DIME_CONFIG_VALUE(COLORREF, _phraseColor);
+	DIME_CONFIG_VALUE(COLORREF, _numberColor);
+	DIME_CONFIG_VALUE(COLORREF, _itemBGColor);
+	DIME_CONFIG_VALUE(COLORREF, _selectedColor);
+	DIME_CONFIG_VALUE(COLORREF, _selectedBGColor);
+	DIME_CONFIG_VALUE(COLORREF, _lightItemColor);
+	DIME_CONFIG_VALUE(COLORREF, _lightPhraseColor);
+	DIME_CONFIG_VALUE(COLORREF, _lightNumberColor);
+	DIME_CONFIG_VALUE(COLORREF, _lightItemBGColor);
+	DIME_CONFIG_VALUE(COLORREF, _lightSelectedColor);
+	DIME_CONFIG_VALUE(COLORREF, _lightSelectedBGColor);
+	DIME_CONFIG_VALUE(COLORREF, _darkItemColor);
+	DIME_CONFIG_VALUE(COLORREF, _darkPhraseColor);
+	DIME_CONFIG_VALUE(COLORREF, _darkNumberColor);
+	DIME_CONFIG_VALUE(COLORREF, _darkItemBGColor);
+	DIME_CONFIG_VALUE(COLORREF, _darkSelectedColor);
+	DIME_CONFIG_VALUE(COLORREF, _darkSelectedBGColor);
+	DIME_CONFIG_VALUE(IME_COLOR_MODE, _colorMode);
+	DIME_CONFIG_VALUE(BOOL, _colorModeKeyFound);
 
-	static BOOL _spaceAsPageDown;
-	static BOOL _spaceAsFirstCandSelkey;
-	static BOOL _arrowKeySWPages;
+	DIME_CONFIG_VALUE(BOOL, _spaceAsPageDown);
+	DIME_CONFIG_VALUE(BOOL, _spaceAsFirstCandSelkey);
+	DIME_CONFIG_VALUE(BOOL, _arrowKeySWPages);
 
-	static BOOL _arrayNotifySP;
-	static BOOL _arrayForceSP;
+	DIME_CONFIG_VALUE(BOOL, _arrayNotifySP);
+	DIME_CONFIG_VALUE(BOOL, _arrayForceSP);
 
-	static BOOL _doHanConvert;
+	DIME_CONFIG_VALUE(BOOL, _doHanConvert);
 
-	static BOOL _dayiArticleMode;  // Article mode: input full-shaped symbols with address keys
-	static DAYI_SELKEY_MODE _dayiSelkeyMode;  // Candidate select keys in Dayi mode
+	DIME_CONFIG_VALUE(BOOL, _dayiArticleMode);  // Article mode: input full-shaped symbols with address keys
+	DIME_CONFIG_VALUE(DAYI_SELKEY_MODE, _dayiSelkeyMode);  // Candidate select keys in Dayi mode
 
-	static PHONETIC_KEYBOARD_LAYOUT _phoneticKeyboardLayout;
+	DIME_CONFIG_VALUE(PHONETIC_KEYBOARD_LAYOUT, _phoneticKeyboardLayout);
 
-	static IME_SHIFT_MODE _imeShiftMode;
+	DIME_CONFIG_VALUE(IME_SHIFT_MODE, _imeShiftMode);
 
-	static DOUBLE_SINGLE_BYTE_MODE _doubleSingleByteMode;
+	DIME_CONFIG_VALUE(DOUBLE_SINGLE_BYTE_MODE, _doubleSingleByteMode);
 
-	static IME_SHIFT_ENGLISH_DIGIT_MODE _shiftEnglishDigitMode;
+	DIME_CONFIG_VALUE(IME_SHIFT_ENGLISH_DIGIT_MODE, _shiftEnglishDigitMode);
 
 	static BOOL _customTableChanged;
 	
-	static BOOL _arraySingleQuoteCustomPhrase;
+	DIME_CONFIG_VALUE(BOOL, _arraySingleQuoteCustomPhrase);
 
-	static BOOL _big5Filter;   // NEW: CP950 candidate filter for non-Array modes
+	DIME_CONFIG_VALUE(BOOL, _big5Filter);   // NEW: CP950 candidate filter for non-Array modes
 
 	static struct _stat _initTimeStamp;
 
 	static CDIMEArray <LanguageProfileInfo> *_reverseConvervsionInfoList;
-	static CLSID _reverseConverstionCLSID;
-	static GUID _reverseConversionGUIDProfile;
-	static WCHAR* _reverseConversionDescription;
+	DIME_CONFIG_VALUE(CLSID, _reverseConverstionCLSID);
+	DIME_CONFIG_VALUE(GUID, _reverseConversionGUIDProfile);
+#ifndef DIME_USE_RUST_CONFIG
+	static WCHAR* _reverseConversionDescription; // with DIME_USE_RUST_CONFIG it lives in Rust
+#endif
 
 	static WCHAR _pwszINIFileName[MAX_PATH];
 	static IME_MODE _configIMEMode;
@@ -421,6 +440,29 @@ private:
 	static BOOL importCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToLoad);
 	static BOOL exportCustomTableFile(_In_ HWND hDlg, IME_MODE imeMode, _In_ LPCWSTR pathToWrite);
 };
+
+#ifdef DIME_RUST_AVAILABLE
+//---------------------------------------------------------------------
+// CRustConfigScope: the settings object to pass to dime_settings_* calls.
+//   DIME_USE_RUST_CONFIG: the process-wide Rust settings (CConfig's storage);
+//                         changes are visible immediately, Commit() is a no-op.
+//   otherwise:            a copy of the C++ settings, copied back when the
+//                         scope ends if Commit() was called.
+//---------------------------------------------------------------------
+class CRustConfigScope
+{
+public:
+	CRustConfigScope();
+	~CRustConfigScope();
+	CRustConfigScope(const CRustConfigScope&) = delete;
+	CRustConfigScope& operator=(const CRustConfigScope&) = delete;
+	struct DimeSettings* Get() const { return _pSettings; }
+	void Commit() { _commit = true; }
+private:
+	struct DimeSettings* _pSettings;
+	bool _commit;
+};
+#endif
 
 
 #endif

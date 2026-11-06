@@ -65,37 +65,67 @@ static_assert(sizeof(DimeConfigValues) == 308, "DimeConfigValues must match dime
 
 
 #pragma comment(lib, "Shlwapi.lib")
+
+#ifdef DIME_USE_RUST_CONFIG
+// The settings live in Rust (dime_settings_global()). The first use sets them to
+// the static initialisers (dime_config::ConfigValues::initial), which mirror the
+// C++ initial values given to DIME_CONFIG_DEFINE below.
+static DimeConfigEnv CurrentConfigEnv()
+{
+	DimeConfigEnv env = { GetSysColor(COLOR_3DHIGHLIGHT), Global::isWindows1809OrLater ? 1 : 0 };
+	return env;
+}
+
+static DimeConfigValues& RustConfigValues()
+{
+	static DimeConfigValues* values = []() {
+		DimeConfigEnv env = CurrentConfigEnv();
+		dime_settings_global_init(&env);
+		return dime_settings_values_ptr(dime_settings_global());
+	}();
+	return *values;
+}
+
+// type& CConfig::name refers to the matching DimeConfigValues field (same size and
+// representation: BOOL/enum <-> int32_t, UINT/COLORREF <-> uint32_t, GUID <-> 16 bytes).
+#define DIME_CONFIG_DEFINE(type, name, field, init) \
+	static_assert(sizeof(type) == sizeof(RustConfigValues().field), #name " size"); \
+	type& CConfig::name = reinterpret_cast<type&>(RustConfigValues().field)
+#else
+#define DIME_CONFIG_DEFINE(type, name, field, init) type CConfig::name = init
+#endif
+
 //static configuration settings initialization
 IME_MODE CConfig::_imeMode = IME_MODE::IME_MODE_NONE;
-BOOL CConfig::_loadTableMode = FALSE;
-ARRAY_SCOPE CConfig::_arrayScope = ARRAY_SCOPE::ARRAY30_UNICODE_EXT_A;
-NUMERIC_PAD CConfig::_numericPad = NUMERIC_PAD::NUMERIC_PAD_NUMERIC;
-BOOL CConfig::_clearOnBeep = TRUE;
-BOOL CConfig::_doBeep = TRUE;
-BOOL CConfig::_doBeepNotify = TRUE;
-BOOL CConfig::_doBeepOnCandi = FALSE;
-BOOL CConfig::_sentenceMode = FALSE;
-BOOL CConfig::_autoCompose = FALSE;
-BOOL CConfig::_customTablePriority = FALSE;
-BOOL CConfig::_arrayForceSP = FALSE;
-BOOL CConfig::_arrayNotifySP = TRUE;
-BOOL CConfig::_arrowKeySWPages = TRUE;
-BOOL CConfig::_spaceAsPageDown = FALSE;
-BOOL CConfig::_spaceAsFirstCandSelkey = FALSE;
-UINT CConfig::_fontSize = 12;
-UINT CConfig::_fontWeight = FW_NORMAL;
-BOOL CConfig::_fontItalic = FALSE;
-UINT CConfig::_maxCodes = 4;
-BOOL CConfig::_appPermissionSet = FALSE;
-BOOL CConfig::_activatedKeyboardMode = TRUE;
-BOOL CConfig::_makePhrase = TRUE;
-BOOL CConfig::_doHanConvert = FALSE;
-BOOL CConfig::_showNotifyDesktop = TRUE;
-BOOL CConfig::_dayiArticleMode = FALSE;  // Article mode: input full-shaped symbols with address keys
-DAYI_SELKEY_MODE CConfig::_dayiSelkeyMode = DAYI_SELKEY_MODE::DAYI_SELKEY_FROM_TABLE;
+DIME_CONFIG_DEFINE(BOOL, _loadTableMode, load_table_mode, FALSE);
+DIME_CONFIG_DEFINE(ARRAY_SCOPE, _arrayScope, array_scope, ARRAY_SCOPE::ARRAY30_UNICODE_EXT_A);
+DIME_CONFIG_DEFINE(NUMERIC_PAD, _numericPad, numeric_pad, NUMERIC_PAD::NUMERIC_PAD_NUMERIC);
+DIME_CONFIG_DEFINE(BOOL, _clearOnBeep, clear_on_beep, TRUE);
+DIME_CONFIG_DEFINE(BOOL, _doBeep, do_beep, TRUE);
+DIME_CONFIG_DEFINE(BOOL, _doBeepNotify, do_beep_notify, TRUE);
+DIME_CONFIG_DEFINE(BOOL, _doBeepOnCandi, do_beep_on_candi, FALSE);
+DIME_CONFIG_DEFINE(BOOL, _sentenceMode, sentence_mode, FALSE);
+DIME_CONFIG_DEFINE(BOOL, _autoCompose, auto_compose, FALSE);
+DIME_CONFIG_DEFINE(BOOL, _customTablePriority, custom_table_priority, FALSE);
+DIME_CONFIG_DEFINE(BOOL, _arrayForceSP, array_force_sp, FALSE);
+DIME_CONFIG_DEFINE(BOOL, _arrayNotifySP, array_notify_sp, TRUE);
+DIME_CONFIG_DEFINE(BOOL, _arrowKeySWPages, arrow_key_sw_pages, TRUE);
+DIME_CONFIG_DEFINE(BOOL, _spaceAsPageDown, space_as_page_down, FALSE);
+DIME_CONFIG_DEFINE(BOOL, _spaceAsFirstCandSelkey, space_as_first_cand_selkey, FALSE);
+DIME_CONFIG_DEFINE(UINT, _fontSize, font_size, 12);
+DIME_CONFIG_DEFINE(UINT, _fontWeight, font_weight, FW_NORMAL);
+DIME_CONFIG_DEFINE(BOOL, _fontItalic, font_italic, FALSE);
+DIME_CONFIG_DEFINE(UINT, _maxCodes, max_codes, 4);
+DIME_CONFIG_DEFINE(BOOL, _appPermissionSet, app_permission_set, FALSE);
+DIME_CONFIG_DEFINE(BOOL, _activatedKeyboardMode, activated_keyboard_mode, TRUE);
+DIME_CONFIG_DEFINE(BOOL, _makePhrase, make_phrase, TRUE);
+DIME_CONFIG_DEFINE(BOOL, _doHanConvert, do_han_convert, FALSE);
+DIME_CONFIG_DEFINE(BOOL, _showNotifyDesktop, show_notify_desktop, TRUE);
+DIME_CONFIG_DEFINE(BOOL, _dayiArticleMode, dayi_article_mode, FALSE);  // Article mode: input full-shaped symbols with address keys
+DIME_CONFIG_DEFINE(DAYI_SELKEY_MODE, _dayiSelkeyMode, dayi_selkey_mode, DAYI_SELKEY_MODE::DAYI_SELKEY_FROM_TABLE);
 BOOL CConfig::_customTableChanged = FALSE;
-BOOL CConfig::_arraySingleQuoteCustomPhrase = FALSE;
-BOOL CConfig::_big5Filter = FALSE;
+DIME_CONFIG_DEFINE(BOOL, _arraySingleQuoteCustomPhrase, array_single_quote_custom_phrase, FALSE);
+DIME_CONFIG_DEFINE(BOOL, _big5Filter, big5_filter, FALSE);
 
 UINT CConfig::_dpiY = 0;
 _T_GetDpiForMonitor CConfig::_GetDpiForMonitor = nullptr;
@@ -117,43 +147,45 @@ UINT CConfig::GetDpiForHwnd(HWND hWnd)
 	return dpi;
 }
 
-PHONETIC_KEYBOARD_LAYOUT CConfig::_phoneticKeyboardLayout = PHONETIC_KEYBOARD_LAYOUT::PHONETIC_STANDARD_KEYBOARD_LAYOUT;
-IME_SHIFT_MODE CConfig::_imeShiftMode = IME_SHIFT_MODE::IME_BOTH_SHIFT;
-DOUBLE_SINGLE_BYTE_MODE CConfig::_doubleSingleByteMode = DOUBLE_SINGLE_BYTE_MODE::DOUBLE_SINGLE_BYTE_ALWAYS_SINGLE;
-IME_SHIFT_ENGLISH_DIGIT_MODE CConfig::_shiftEnglishDigitMode = IME_SHIFT_ENGLISH_DIGIT_MODE::SHIFT_ENGLISH_DIGIT_CAPS_OFF_SYMBOL;
+DIME_CONFIG_DEFINE(PHONETIC_KEYBOARD_LAYOUT, _phoneticKeyboardLayout, phonetic_keyboard_layout, PHONETIC_KEYBOARD_LAYOUT::PHONETIC_STANDARD_KEYBOARD_LAYOUT);
+DIME_CONFIG_DEFINE(IME_SHIFT_MODE, _imeShiftMode, ime_shift_mode, IME_SHIFT_MODE::IME_BOTH_SHIFT);
+DIME_CONFIG_DEFINE(DOUBLE_SINGLE_BYTE_MODE, _doubleSingleByteMode, double_single_byte_mode, DOUBLE_SINGLE_BYTE_MODE::DOUBLE_SINGLE_BYTE_ALWAYS_SINGLE);
+DIME_CONFIG_DEFINE(IME_SHIFT_ENGLISH_DIGIT_MODE, _shiftEnglishDigitMode, shift_english_digit_mode, IME_SHIFT_ENGLISH_DIGIT_MODE::SHIFT_ENGLISH_DIGIT_CAPS_OFF_SYMBOL);
 
 CDIMEArray <LanguageProfileInfo>* CConfig::_reverseConvervsionInfoList = new (std::nothrow) CDIMEArray <LanguageProfileInfo>;
-CLSID CConfig::_reverseConverstionCLSID = CLSID_NULL;
-GUID CConfig::_reverseConversionGUIDProfile = CLSID_NULL;
+DIME_CONFIG_DEFINE(CLSID, _reverseConverstionCLSID, reverse_conversion_clsid, CLSID_NULL);
+DIME_CONFIG_DEFINE(GUID, _reverseConversionGUIDProfile, reverse_conversion_guid_profile, CLSID_NULL);
+#ifndef DIME_USE_RUST_CONFIG
 WCHAR* CConfig::_reverseConversionDescription = nullptr;
+#endif
 WCHAR CConfig::_pwzsDIMEProfile[] = L"\0";
 WCHAR CConfig::_pwszINIFileName[] = L"\0";
 IME_MODE CConfig::_configIMEMode = IME_MODE::IME_MODE_NONE;
-BOOL CConfig::_reloadReverseConversion = FALSE;
+DIME_CONFIG_DEFINE(BOOL, _reloadReverseConversion, reload_reverse_conversion, FALSE);
 
-WCHAR CConfig::_pFontFaceName[] = { L"微軟正黑體" };
+DIME_CONFIG_DEFINE(DimeFontFaceName, _pFontFaceName, font_face_name, { L"微軟正黑體" });
 WCHAR CConfig::_pMlFontFaceName[] = { L"細明體" };
 
-COLORREF CConfig::_itemColor = CANDWND_ITEM_COLOR;
-COLORREF CConfig::_itemBGColor = GetSysColor(COLOR_3DHIGHLIGHT);
-COLORREF CConfig::_selectedColor = CANDWND_SELECTED_ITEM_COLOR;
-COLORREF CConfig::_selectedBGColor = CANDWND_SELECTED_BK_COLOR;
-COLORREF CConfig::_phraseColor = CANDWND_PHRASE_COLOR;
-COLORREF CConfig::_numberColor = CANDWND_NUM_COLOR;
-COLORREF CConfig::_lightItemColor = CANDWND_ITEM_COLOR;
-COLORREF CConfig::_lightItemBGColor = GetSysColor(COLOR_3DHIGHLIGHT);
-COLORREF CConfig::_lightSelectedColor = CANDWND_SELECTED_ITEM_COLOR;
-COLORREF CConfig::_lightSelectedBGColor = CANDWND_SELECTED_BK_COLOR;
-COLORREF CConfig::_lightPhraseColor = CANDWND_PHRASE_COLOR;
-COLORREF CConfig::_lightNumberColor = CANDWND_NUM_COLOR;
-COLORREF CConfig::_darkItemColor = CANDWND_DARK_ITEM_COLOR;
-COLORREF CConfig::_darkItemBGColor = CANDWND_DARK_ITEM_BG_COLOR;
-COLORREF CConfig::_darkSelectedColor = CANDWND_DARK_SELECTED_COLOR;
-COLORREF CConfig::_darkSelectedBGColor = CANDWND_DARK_SELECTED_BG_COLOR;
-COLORREF CConfig::_darkPhraseColor = CANDWND_DARK_PHRASE_COLOR;
-COLORREF CConfig::_darkNumberColor = CANDWND_DARK_NUM_COLOR;
-IME_COLOR_MODE CConfig::_colorMode = IME_COLOR_MODE::IME_COLOR_MODE_SYSTEM;
-bool CConfig::_colorModeKeyFound = false;
+DIME_CONFIG_DEFINE(COLORREF, _itemColor, custom.item, CANDWND_ITEM_COLOR);
+DIME_CONFIG_DEFINE(COLORREF, _itemBGColor, custom.item_bg, GetSysColor(COLOR_3DHIGHLIGHT));
+DIME_CONFIG_DEFINE(COLORREF, _selectedColor, custom.selected, CANDWND_SELECTED_ITEM_COLOR);
+DIME_CONFIG_DEFINE(COLORREF, _selectedBGColor, custom.selected_bg, CANDWND_SELECTED_BK_COLOR);
+DIME_CONFIG_DEFINE(COLORREF, _phraseColor, custom.phrase, CANDWND_PHRASE_COLOR);
+DIME_CONFIG_DEFINE(COLORREF, _numberColor, custom.number, CANDWND_NUM_COLOR);
+DIME_CONFIG_DEFINE(COLORREF, _lightItemColor, light.item, CANDWND_ITEM_COLOR);
+DIME_CONFIG_DEFINE(COLORREF, _lightItemBGColor, light.item_bg, GetSysColor(COLOR_3DHIGHLIGHT));
+DIME_CONFIG_DEFINE(COLORREF, _lightSelectedColor, light.selected, CANDWND_SELECTED_ITEM_COLOR);
+DIME_CONFIG_DEFINE(COLORREF, _lightSelectedBGColor, light.selected_bg, CANDWND_SELECTED_BK_COLOR);
+DIME_CONFIG_DEFINE(COLORREF, _lightPhraseColor, light.phrase, CANDWND_PHRASE_COLOR);
+DIME_CONFIG_DEFINE(COLORREF, _lightNumberColor, light.number, CANDWND_NUM_COLOR);
+DIME_CONFIG_DEFINE(COLORREF, _darkItemColor, dark.item, CANDWND_DARK_ITEM_COLOR);
+DIME_CONFIG_DEFINE(COLORREF, _darkItemBGColor, dark.item_bg, CANDWND_DARK_ITEM_BG_COLOR);
+DIME_CONFIG_DEFINE(COLORREF, _darkSelectedColor, dark.selected, CANDWND_DARK_SELECTED_COLOR);
+DIME_CONFIG_DEFINE(COLORREF, _darkSelectedBGColor, dark.selected_bg, CANDWND_DARK_SELECTED_BG_COLOR);
+DIME_CONFIG_DEFINE(COLORREF, _darkPhraseColor, dark.phrase, CANDWND_DARK_PHRASE_COLOR);
+DIME_CONFIG_DEFINE(COLORREF, _darkNumberColor, dark.number, CANDWND_DARK_NUM_COLOR);
+DIME_CONFIG_DEFINE(IME_COLOR_MODE, _colorMode, color_mode, IME_COLOR_MODE::IME_COLOR_MODE_SYSTEM);
+DIME_CONFIG_DEFINE(BOOL, _colorModeKeyFound, color_mode_key_found, FALSE);
 ColorInfo CConfig::colors[6] =
 {
 	{ IDC_COL_FR, CANDWND_ITEM_COLOR },
@@ -450,9 +482,9 @@ DimeSettings* CConfig::CreateRustSettings()
 	ExportValues(&values);
 	DimeConfigEnv env = { GetSysColor(COLOR_3DHIGHLIGHT), Global::isWindows1809OrLater ? 1 : 0 };
 	DimeSettings* s = dime_settings_new(&values, &env);
-	if (s && _reverseConversionDescription)
-		dime_settings_set_description(s, reinterpret_cast<const uint16_t*>(_reverseConversionDescription),
-			wcslen(_reverseConversionDescription), 1);
+	const WCHAR* description = GetReverseConversionDescription();
+	if (s && description)
+		dime_settings_set_description(s, reinterpret_cast<const uint16_t*>(description), wcslen(description), 1);
 	return s;
 }
 
@@ -465,32 +497,51 @@ void CConfig::ImportRustSettings(_In_ const DimeSettings* s)
 	const uint16_t* text = nullptr;
 	size_t len = 0;
 	BOOL present = dime_settings_get_description(s, &text, &len);
-	if (present && _reverseConversionDescription
-		&& wcsncmp(_reverseConversionDescription, reinterpret_cast<const wchar_t*>(text), len) == 0
-		&& _reverseConversionDescription[len] == L'\0')
+	const WCHAR* current = GetReverseConversionDescription();
+	if (present && current
+		&& wcsncmp(current, reinterpret_cast<const wchar_t*>(text), len) == 0 && current[len] == L'\0')
 		return; // unchanged: keep the pointer callers may hold
-	delete[] _reverseConversionDescription;
-	_reverseConversionDescription = nullptr;
-	if (present)
+	std::wstring copy(reinterpret_cast<const wchar_t*>(text), present ? len : 0);
+	SetReverseConversionDescriptionText(present ? copy.c_str() : nullptr);
+}
+
+CRustConfigScope::CRustConfigScope() : _pSettings(nullptr), _commit(false)
+{
+#ifdef DIME_USE_RUST_CONFIG
+	RustConfigValues(); // make sure the storage is initialised
+	_pSettings = dime_settings_global();
+	DimeConfigEnv env = CurrentConfigEnv();
+	dime_settings_set_env(_pSettings, &env);
+#else
+	_pSettings = CConfig::CreateRustSettings();
+#endif
+}
+
+CRustConfigScope::~CRustConfigScope()
+{
+#ifndef DIME_USE_RUST_CONFIG
+	if (_pSettings)
 	{
-		_reverseConversionDescription = new (std::nothrow) WCHAR[len + 1];
-		if (_reverseConversionDescription)
-		{
-			if (len) memcpy(_reverseConversionDescription, text, len * sizeof(WCHAR));
-			_reverseConversionDescription[len] = L'\0';
-		}
+		if (_commit) CConfig::ImportRustSettings(_pSettings);
+		dime_settings_free(_pSettings);
 	}
+#endif
 }
 
 #ifdef DIME_USE_RUST_CONFIG
-// Run one dime_settings_* operation on the current settings and copy the result back.
+WCHAR* CConfig::GetReverseConversionDescription()
+{
+	RustConfigValues(); // make sure the storage is initialised
+	return const_cast<WCHAR*>(reinterpret_cast<const WCHAR*>(dime_settings_description_cstr(dime_settings_global())));
+}
+
+// Run one dime_settings_* operation on the settings.
 static void RunRustSettingsOp(void (*op)(DimeSettings*, int32_t), IME_MODE imeMode)
 {
-	DimeSettings* s = CConfig::CreateRustSettings();
-	if (!s) return;
-	op(s, (int32_t)imeMode);
-	CConfig::ImportRustSettings(s);
-	dime_settings_free(s);
+	CRustConfigScope scope;
+	if (!scope.Get()) return;
+	op(scope.Get(), (int32_t)imeMode);
+	scope.Commit();
 }
 #endif
 #endif // DIME_RUST_AVAILABLE
@@ -557,9 +608,11 @@ VOID CConfig::WriteConfig(IME_MODE imeMode, BOOL confirmUpdated)
 	if(!confirmUpdated || failed || !updated)
 	{
 #ifdef DIME_USE_RUST_CONFIG
-		DimeSettings* rustSettings = CreateRustSettings();
-		DimeBuffer* text = rustSettings ? dime_settings_serialize_ini(rustSettings, (int32_t)imeMode) : nullptr;
-		if (rustSettings) dime_settings_free(rustSettings);
+		DimeBuffer* text = nullptr;
+		{
+			CRustConfigScope scope;
+			if (scope.Get()) text = dime_settings_serialize_ini(scope.Get(), (int32_t)imeMode);
+		}
 		if (text)
 		{
 			size_t len = 0;
@@ -633,7 +686,7 @@ VOID CConfig::WriteConfig(IME_MODE imeMode, BOOL confirmUpdated)
 				fwprintf_s(fp, L"ReverseConversionGUIDProfile = %s\n", pbstr);
 			}
 
-			fwprintf_s(fp, L"ReverseConversionDescription = %s\n", _reverseConversionDescription);
+			fwprintf_s(fp, L"ReverseConversionDescription = %s\n", GetReverseConversionDescription());
 			fwprintf_s(fp, L"AppPermissionSet = %d\n", _appPermissionSet ? 1 : 0);
 
 
@@ -1118,29 +1171,39 @@ void CConfig::EnumerateReverseConversionProviders(LANGID langid)
 	if (profile) delete profile;
 }
 
+void CConfig::SetReverseConversionDescriptionText(_In_opt_ const WCHAR* text)
+{
+#ifdef DIME_USE_RUST_CONFIG
+	RustConfigValues(); // make sure the storage is initialised
+	dime_settings_set_description(dime_settings_global(), reinterpret_cast<const uint16_t*>(text),
+		text ? wcslen(text) : 0, text ? 1 : 0);
+#else
+	delete[] _reverseConversionDescription;
+	_reverseConversionDescription = nullptr;
+	if (text)
+	{
+		size_t len = wcslen(text) + 1;
+		_reverseConversionDescription = new (std::nothrow) WCHAR[len];
+		if (_reverseConversionDescription)
+			StringCchCopy(_reverseConversionDescription, len, text);
+	}
+#endif
+}
+
 void CConfig::SetReverseConversionSelection(UINT sel)
 {
-	if (_reverseConversionDescription)
-	{
-		delete[] _reverseConversionDescription;
-		_reverseConversionDescription = nullptr;
-	}
 	if (sel == 0)
 	{
 		_reverseConverstionCLSID = CLSID_NULL;
 		_reverseConversionGUIDProfile = CLSID_NULL;
-		_reverseConversionDescription = new (std::nothrow) WCHAR[4];
-		if(_reverseConversionDescription)
-			StringCchCopy(_reverseConversionDescription, 4, L"(無)");
+		SetReverseConversionDescriptionText(L"(無)");
 	}
 	else
 	{
 		sel--;
 		_reverseConverstionCLSID = _reverseConvervsionInfoList->GetAt(sel)->clsid;
 		_reverseConversionGUIDProfile = _reverseConvervsionInfoList->GetAt(sel)->guidProfile;
-		_reverseConversionDescription = new (std::nothrow) WCHAR[wcslen(_reverseConvervsionInfoList->GetAt(sel)->description) + 1];
-		if(_reverseConversionDescription)
-			StringCchCopy(_reverseConversionDescription, wcslen(_reverseConvervsionInfoList->GetAt(sel)->description) + 1, _reverseConvervsionInfoList->GetAt(sel)->description);
+		SetReverseConversionDescriptionText(_reverseConvervsionInfoList->GetAt(sel)->description);
 	}
 	// Completes REVERSE_CONV_REFACTOR.md item B: any selection change through
 	// this API must mark the IME-side _pITfReverseConversion[] cache for reload.

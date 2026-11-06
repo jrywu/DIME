@@ -150,16 +150,7 @@ namespace DIMEUnitTests
 
         void SetDescription(const wchar_t* d)
         {
-            WCHAR* old = CConfig::GetReverseConversionDescription();
-            WCHAR* p = nullptr;
-            if (d)
-            {
-                size_t n = wcslen(d) + 1;
-                p = new WCHAR[n];
-                StringCchCopyW(p, n, d);
-            }
-            CConfig::SetReverseConversionDescription(p);
-            delete[] old;
+            CConfig::SetReverseConversionDescriptionText(d);
         }
 
         // Set every setting to a distinctive, mostly non-default value.
