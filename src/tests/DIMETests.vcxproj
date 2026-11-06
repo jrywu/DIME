@@ -373,6 +373,7 @@
     <ClCompile Include="RustConfigParityTest.cpp" />
     <ClCompile Include="KeyFlowHarness.cpp" />
     <ClCompile Include="KeyFlowTest.cpp" />
+    <ClCompile Include="CandidateListModelTest.cpp" />
     <ClCompile Include="..\RustTableDictionaryEngine.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
