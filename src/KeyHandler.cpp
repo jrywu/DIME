@@ -239,6 +239,7 @@ Exit:
 HRESULT CDIME::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *pCompositionProcessorEngine, TfEditCookie ec, _In_ ITfContext *pContext)
 {
 #ifdef DIME_USE_RUST_ENGINE
+	UNREFERENCED_PARAMETER(pCompositionProcessorEngine);
 	CRustSessionHost host(this, ec, pContext);
 	return dime_session_handle_composition_input_worker(host.Get());
 #else
