@@ -39,6 +39,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "UIPresenter.h"
 #include "CompositionProcessorEngine.h"
 #include "BaseStructure.h"
+#include "RustSessionHost.h"
 
 //////////////////////////////////////////////////////////////////////
 //
@@ -79,6 +80,16 @@ BOOL CDIME::_IsRangeCovered(TfEditCookie ec, _In_ ITfRange *pRangeTest, _In_ ITf
 
 HRESULT CDIME::_HandleComplete(TfEditCookie ec, _In_ ITfContext *pContext)
 {
+#ifdef DIME_USE_RUST_ENGINE
+	CRustSessionHost host(this, ec, pContext);
+	return dime_session_handle_complete(host.Get());
+#else
+	return _HandleCompleteCpp(ec, pContext);
+#endif
+}
+
+HRESULT CDIME::_HandleCompleteCpp(TfEditCookie ec, _In_ ITfContext *pContext)
+{
 	debugPrint(L"CDIME::_HandleComplete()");
     _DeleteCandidateList(FALSE, pContext);
 
@@ -95,6 +106,16 @@ HRESULT CDIME::_HandleComplete(TfEditCookie ec, _In_ ITfContext *pContext)
 //----------------------------------------------------------------------------
 
 HRESULT CDIME::_HandleCancel(TfEditCookie ec, _In_ ITfContext *pContext)
+{
+#ifdef DIME_USE_RUST_ENGINE
+	CRustSessionHost host(this, ec, pContext);
+	return dime_session_handle_cancel(host.Get());
+#else
+	return _HandleCancelCpp(ec, pContext);
+#endif
+}
+
+HRESULT CDIME::_HandleCancelCpp(TfEditCookie ec, _In_ ITfContext *pContext)
 {
 	debugPrint(L"CDIME::_HandleCancel()");
 
@@ -533,6 +554,16 @@ Exit:
 
 HRESULT CDIME::_HandleCompositionDoubleSingleByte(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch)
 {
+#ifdef DIME_USE_RUST_ENGINE
+	CRustSessionHost host(this, ec, pContext);
+	return dime_session_handle_double_single_byte(host.Get(), wch);
+#else
+	return _HandleCompositionDoubleSingleByteCpp(ec, pContext, wch);
+#endif
+}
+
+HRESULT CDIME::_HandleCompositionDoubleSingleByteCpp(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch)
+{
     HRESULT hr = S_OK;
 
     _SentenceCommitBeforeOutput(ec, pContext);
@@ -565,6 +596,16 @@ HRESULT CDIME::_HandleCompositionDoubleSingleByte(TfEditCookie ec, _In_ ITfConte
 //----------------------------------------------------------------------------
 
 HRESULT CDIME::_HandleCompositionShiftEnglishInput(TfEditCookie ec, _In_ ITfContext *pContext, UINT code, WCHAR wch)
+{
+#ifdef DIME_USE_RUST_ENGINE
+	CRustSessionHost host(this, ec, pContext);
+	return dime_session_handle_shift_english_input(host.Get(), code, wch);
+#else
+	return _HandleCompositionShiftEnglishInputCpp(ec, pContext, code, wch);
+#endif
+}
+
+HRESULT CDIME::_HandleCompositionShiftEnglishInputCpp(TfEditCookie ec, _In_ ITfContext *pContext, UINT code, WCHAR wch)
 {
     HRESULT hr = S_OK;
     const BOOL wasPhraseCandidate = (_candidateMode == CANDIDATE_MODE::CANDIDATE_PHRASE);
@@ -663,6 +704,19 @@ HRESULT CDIME::_HandleCompositionShiftEnglishInput(TfEditCookie ec, _In_ ITfCont
 //----------------------------------------------------------------------------
 
 HRESULT CDIME::_HandleCompositionAddressChar(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch)
+{
+#ifdef DIME_USE_RUST_ENGINE
+	if (_pCompositionProcessorEngine == nullptr) return S_FALSE;
+#endif
+#ifdef DIME_USE_RUST_ENGINE
+	CRustSessionHost host(this, ec, pContext);
+	return dime_session_handle_address_char(host.Get(), wch);
+#else
+	return _HandleCompositionAddressCharCpp(ec, pContext, wch);
+#endif
+}
+
+HRESULT CDIME::_HandleCompositionAddressCharCpp(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch)
 {
 	HRESULT hr = S_OK;
 

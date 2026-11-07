@@ -53,6 +53,7 @@
     <ClInclude Include="ButtonWindow.h" />
     <ClInclude Include="CandidateListModel.h" />
     <ClInclude Include="RustCandidateListModel.h" />
+    <ClInclude Include="RustSessionHost.h" />
     <ClInclude Include="CandidateWindow.h" />
     <ClInclude Include="Compartment.h" />
     <ClInclude Include="CompositionProcessorEngine.h" />
@@ -104,6 +105,7 @@
     <ClCompile Include="CandidateHandler.cpp" />
     <ClCompile Include="CandidateListModel.cpp" />
     <ClCompile Include="RustCandidateListModel.cpp" />
+    <ClCompile Include="RustSessionHost.cpp" />
     <ClCompile Include="CandidateWindow.cpp" />
     <ClCompile Include="Config.cpp" />
     <ClCompile Include="ConfigDialog.cpp" />

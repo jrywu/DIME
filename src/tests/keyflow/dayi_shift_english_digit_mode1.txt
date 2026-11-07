@@ -1,0 +1,5 @@
+# script: Shift+1 Shift+8 Shift+0
+init -> passed text="" sel=0
+Shift+1 -> passed text="" sel=0
+Shift+8 -> passed text="" sel=0
+Shift+0 -> passed text="" sel=0

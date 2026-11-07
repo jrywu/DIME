@@ -11,6 +11,7 @@
 #![cfg(windows)]
 #![allow(clippy::missing_safety_doc)]
 
+use std::ffi::c_void;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::ptr;
 
@@ -20,6 +21,7 @@ use dime_core::candidates::{self, CandidatePaging};
 use dime_core::composition;
 use dime_core::keyclass;
 use dime_core::sentence::{self, Lexicon, Position, UserModel};
+use dime_core::session;
 use dime_config::{ini, keys, ConfigValues, Env, ImeMode, Settings};
 use dime_core::{CandidateItem, DictionaryType, SearchSection, TableDictionaryEngine, WinTextOps};
 
@@ -1587,6 +1589,170 @@ pub unsafe extern "C" fn dime_plan_candidate_search(
         }
         plan.len()
     })
+}
+
+// ---------------------------------------------------------------------------
+// Key handler flow (session): C++ implements the host through a vtable
+// ---------------------------------------------------------------------------
+
+/// The C++ text service as seen by `dime_core::session`.  Every function
+/// receives `ctx`.  Booleans are `int32_t`.
+#[repr(C)]
+pub struct DimeHostVtbl {
+    pub candidate_mode: unsafe extern "C" fn(ctx: *mut c_void) -> u32,
+    pub is_composing: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub is_full_shape: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub virtual_key_length: unsafe extern "C" fn(ctx: *mut c_void) -> usize,
+    pub is_sentence_pending: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub caps_lock_on: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub shift_english_digit_mode: unsafe extern "C" fn(ctx: *mut c_void) -> u32,
+    pub dayi_article_mode: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub is_alpha: unsafe extern "C" fn(ctx: *mut c_void, c: u16) -> i32,
+    /// Returns 1 and sets `*out` when the layout has the character.
+    pub layout_char: unsafe extern "C" fn(ctx: *mut c_void, c: u16, caps_lock_on: i32, out: *mut u16) -> i32,
+
+    pub add_char_and_finalize: unsafe extern "C" fn(ctx: *mut c_void, text: *const u16, len: usize) -> i32,
+    pub remove_dummy_composition: unsafe extern "C" fn(ctx: *mut c_void),
+    pub delete_candidate_list: unsafe extern "C" fn(ctx: *mut c_void, force: i32),
+    pub terminate_composition: unsafe extern "C" fn(ctx: *mut c_void),
+
+    pub handle_candidate_finalize: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub sentence_commit_before_output: unsafe extern "C" fn(ctx: *mut c_void),
+    pub sentence_close_reading: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub sentence_reset: unsafe extern "C" fn(ctx: *mut c_void),
+}
+
+#[repr(C)]
+pub struct DimeHost {
+    pub vtbl: *const DimeHostVtbl,
+    pub ctx: *mut c_void,
+}
+
+struct FfiHost<'a> {
+    v: &'a DimeHostVtbl,
+    ctx: *mut c_void,
+}
+
+impl session::Host for FfiHost<'_> {
+    fn candidate_mode(&self) -> u32 {
+        unsafe { (self.v.candidate_mode)(self.ctx) }
+    }
+    fn is_composing(&self) -> bool {
+        unsafe { (self.v.is_composing)(self.ctx) != 0 }
+    }
+    fn is_full_shape(&self) -> bool {
+        unsafe { (self.v.is_full_shape)(self.ctx) != 0 }
+    }
+    fn virtual_key_length(&self) -> usize {
+        unsafe { (self.v.virtual_key_length)(self.ctx) }
+    }
+    fn is_sentence_pending(&self) -> bool {
+        unsafe { (self.v.is_sentence_pending)(self.ctx) != 0 }
+    }
+    fn caps_lock_on(&self) -> bool {
+        unsafe { (self.v.caps_lock_on)(self.ctx) != 0 }
+    }
+    fn shift_english_digit_mode(&self) -> u32 {
+        unsafe { (self.v.shift_english_digit_mode)(self.ctx) }
+    }
+    fn dayi_article_mode(&self) -> bool {
+        unsafe { (self.v.dayi_article_mode)(self.ctx) != 0 }
+    }
+    fn is_alpha(&self, c: u16) -> bool {
+        unsafe { (self.v.is_alpha)(self.ctx, c) != 0 }
+    }
+    fn layout_char(&self, c: u16, caps_lock_on: bool) -> Option<u16> {
+        let mut out = 0u16;
+        let found = unsafe { (self.v.layout_char)(self.ctx, c, i32::from(caps_lock_on), &mut out) };
+        (found != 0).then_some(out)
+    }
+    fn add_char_and_finalize(&mut self, text: &[u16]) -> i32 {
+        unsafe { (self.v.add_char_and_finalize)(self.ctx, text.as_ptr(), text.len()) }
+    }
+    fn remove_dummy_composition(&mut self) {
+        unsafe { (self.v.remove_dummy_composition)(self.ctx) }
+    }
+    fn delete_candidate_list(&mut self, force: bool) {
+        unsafe { (self.v.delete_candidate_list)(self.ctx, i32::from(force)) }
+    }
+    fn terminate_composition(&mut self) {
+        unsafe { (self.v.terminate_composition)(self.ctx) }
+    }
+    fn handle_candidate_finalize(&mut self) -> i32 {
+        unsafe { (self.v.handle_candidate_finalize)(self.ctx) }
+    }
+    fn sentence_commit_before_output(&mut self) {
+        unsafe { (self.v.sentence_commit_before_output)(self.ctx) }
+    }
+    fn sentence_close_reading(&mut self) -> i32 {
+        unsafe { (self.v.sentence_close_reading)(self.ctx) }
+    }
+    fn sentence_reset(&mut self) {
+        unsafe { (self.v.sentence_reset)(self.ctx) }
+    }
+}
+
+/// `E_UNEXPECTED`, returned when a handler panics or gets a null host.
+const E_UNEXPECTED_HR: i32 = 0x8000_FFFF_u32 as i32;
+
+/// Run a session handler with the C++ host.  A panic (in Rust code; the C++
+/// callbacks must not throw) is turned into `E_UNEXPECTED`.
+unsafe fn with_host(host: *const DimeHost, f: impl FnOnce(&mut FfiHost<'_>) -> i32) -> i32 {
+    guard(E_UNEXPECTED_HR, || {
+        let Some(h) = (unsafe { host.as_ref() }) else {
+            return E_UNEXPECTED_HR;
+        };
+        let Some(v) = (unsafe { h.vtbl.as_ref() }) else {
+            return E_UNEXPECTED_HR;
+        };
+        let mut fh = FfiHost { v, ctx: h.ctx };
+        f(&mut fh)
+    })
+}
+
+/// `_HandleComplete`.
+///
+/// # Safety
+/// `host` must be a valid host whose callbacks stay valid for the call.
+#[no_mangle]
+pub unsafe extern "C" fn dime_session_handle_complete(host: *const DimeHost) -> i32 {
+    unsafe { with_host(host, |h| session::handle_complete(h)) }
+}
+
+/// `_HandleCancel`.
+///
+/// # Safety
+/// See `dime_session_handle_complete`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_session_handle_cancel(host: *const DimeHost) -> i32 {
+    unsafe { with_host(host, |h| session::handle_cancel(h)) }
+}
+
+/// `_HandleCompositionDoubleSingleByte`.
+///
+/// # Safety
+/// See `dime_session_handle_complete`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_session_handle_double_single_byte(host: *const DimeHost, wch: u16) -> i32 {
+    unsafe { with_host(host, |h| session::handle_double_single_byte(h, wch)) }
+}
+
+/// `_HandleCompositionShiftEnglishInput`.
+///
+/// # Safety
+/// See `dime_session_handle_complete`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_session_handle_shift_english_input(host: *const DimeHost, code: u32, wch: u16) -> i32 {
+    unsafe { with_host(host, |h| session::handle_shift_english_input(h, code, wch)) }
+}
+
+/// `_HandleCompositionAddressChar`.
+///
+/// # Safety
+/// See `dime_session_handle_complete`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_session_handle_address_char(host: *const DimeHost, wch: u16) -> i32 {
+    unsafe { with_host(host, |h| session::handle_address_char(h, wch)) }
 }
 
 #[cfg(test)]

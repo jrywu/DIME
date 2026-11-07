@@ -15,6 +15,7 @@ pub mod keyclass;
 pub mod parser;
 pub mod search;
 pub mod sentence;
+pub mod session;
 pub mod text;
 
 pub use engine::{CandidateItem, DictionaryType, TableDictionaryEngine};

@@ -1,0 +1,9 @@
+# script: Shift+a Shift+1 a Space 2 Shift+; Esc
+init -> passed text="" sel=0
+Shift+a -> eaten text="ａ" sel=1
+Shift+1 -> eaten text="ａ！" sel=2
+a -> eaten text="ａ！人" sel=3 comp="人"
+Space -> eaten text="ａ！人" sel=3 comp="人" cand=original[*人 入 八]
+2 -> eaten text="ａ！八" sel=3
+Shift+; -> eaten text="ａ！八；" sel=4
+Esc -> passed text="ａ！八；" sel=4

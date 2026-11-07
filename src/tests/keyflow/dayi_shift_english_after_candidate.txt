@@ -1,0 +1,9 @@
+# script: a Space Shift+b g Space Down Shift+c
+init -> passed text="" sel=0
+a -> eaten text="人" sel=1 comp="人"
+Space -> eaten text="人" sel=1 comp="人" cand=original[*人 入 八]
+Shift+b -> eaten text="人b" sel=2
+g -> eaten text="人b王" sel=3 comp="王"
+Space -> eaten text="人b王" sel=3 comp="王" cand=original[*王 國 主 玉 全 金 理 現 球 班 珠 琴]
+Down -> eaten text="人b王" sel=3 comp="王" cand=original[王 *國 主 玉 全 金 理 現 球 班 珠 琴]
+Shift+c -> eaten text="人b國c" sel=4

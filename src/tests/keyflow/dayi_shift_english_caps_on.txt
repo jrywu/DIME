@@ -1,0 +1,8 @@
+# script: Shift+a Shift+1 Shift+- Shift+; Shift+/ Shift+8
+init -> passed text="" sel=0
+Shift+a -> eaten text="A" sel=1
+Shift+1 -> passed text="A" sel=1
+Shift+- -> eaten text="A_" sel=2
+Shift+; -> eaten text="A_:" sel=3
+Shift+/ -> eaten text="A_:?" sel=4 comp="?"
+Shift+8 -> eaten text="A_:?*" sel=5 comp="?*"

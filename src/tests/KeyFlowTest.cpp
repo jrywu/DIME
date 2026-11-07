@@ -225,6 +225,30 @@ namespace DIMEUnitTests
         TEST_METHOD(Dayi_SymbolPrompt)        { CheckGolden(L"dayi_symbol_prompt", DayiOptions(), L"= 1 Space 2 = 2 Space 1"); }
         TEST_METHOD(Dayi_AutoCompose)         { CheckGolden(L"dayi_auto_compose", DayiOptions({ L"AutoCompose = 1" }), L"a d Back g 3"); }
         TEST_METHOD(Dayi_FullShapeShift)      { CheckGolden(L"dayi_shift_english_caps", DayiOptions(), L"Shift+a Shift+1"); }
+        TEST_METHOD(Dayi_ShiftEnglishCapsOn)
+        {
+            KeyFlowOptions o = DayiOptions();
+            o.capsLock = true;
+            CheckGolden(L"dayi_shift_english_caps_on", o, L"Shift+a Shift+1 Shift+- Shift+; Shift+/ Shift+8");
+        }
+        TEST_METHOD(Dayi_ShiftEnglishSymbols) { CheckGolden(L"dayi_shift_english_symbols", DayiOptions(), L"Shift+- Shift+; Shift+, Shift+. Shift+= Shift+/ Shift+8"); }
+        TEST_METHOD(Dayi_ShiftEnglishDigitMode1)
+        {
+            KeyFlowOptions o = DayiOptions({ L"ShiftEnglishDigitMode = 1" });
+            CheckGolden(L"dayi_shift_english_digit_mode1", o, L"Shift+1 Shift+8 Shift+0");
+            o.capsLock = true;
+            CheckGolden(L"dayi_shift_english_digit_mode1_caps", o, L"Shift+1 Shift+8 Shift+0");
+        }
+        TEST_METHOD(Dayi_ShiftEnglishDigitMode2)
+        {
+            KeyFlowOptions o = DayiOptions({ L"ShiftEnglishDigitMode = 2" });
+            o.capsLock = true;
+            CheckGolden(L"dayi_shift_english_digit_mode2", o, L"Shift+1 Shift+8");
+        }
+        TEST_METHOD(Dayi_ShiftEnglishAfterCandidate) { CheckGolden(L"dayi_shift_english_after_candidate", DayiOptions(), L"a Space Shift+b g Space Down Shift+c"); }
+        TEST_METHOD(Dayi_FullWidth)           { CheckGolden(L"dayi_full_width", DayiOptions({ L"DoubleSingleByteMode = 2" }), L"Shift+a Shift+1 a Space 2 Shift+; Esc"); }
+        TEST_METHOD(Dayi_AddressWhileComposing) { CheckGolden(L"dayi_address_while_composing", DayiOptions(), L"a ' a Space ' a Space Space ' e f"); }
+        TEST_METHOD(Dayi_EscapeAndComplete)   { CheckGolden(L"dayi_escape_and_complete", DayiOptions(), L"a b Esc a Space Esc a Space Space Esc a b Enter"); }
         TEST_METHOD(Dayi_Sentence)
         {
             KeyFlowOptions o = DayiOptions({ L"SentenceMode = 1" });

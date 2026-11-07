@@ -1,0 +1,15 @@
+# script: a b Esc a Space Esc a Space Space Esc a b Enter
+init -> passed text="" sel=0
+a -> eaten text="人" sel=1 comp="人"
+b -> eaten text="人馬" sel=2 comp="人馬"
+Esc -> eaten text="" sel=0
+a -> eaten text="人" sel=1 comp="人"
+Space -> eaten text="人" sel=1 comp="人" cand=original[*人 入 八]
+Esc -> eaten text="" sel=0
+a -> eaten text="人" sel=1 comp="人"
+Space -> eaten text="人" sel=1 comp="人" cand=original[*人 入 八]
+Space -> eaten text="人" sel=1 cand=phrase[民 們 生]
+Esc -> eaten text="人" sel=1
+a -> eaten text="人人" sel=2 comp="人"
+b -> eaten text="人人馬" sel=3 comp="人馬"
+Enter -> eaten text="人從" sel=2

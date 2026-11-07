@@ -173,6 +173,13 @@ public:
     HRESULT _HandleCompositionDoubleSingleByte(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch);
 	HRESULT _HandleCompositionShiftEnglishInput(TfEditCookie ec, _In_ ITfContext *pContext, UINT code, WCHAR wch);
 	HRESULT _HandleCompositionAddressChar(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch);
+	// C++ versions of the handlers ported to Rust (session.rs); the ones above
+	// dispatch to Rust under DIME_USE_RUST_ENGINE.
+	HRESULT _HandleCompleteCpp(TfEditCookie ec, _In_ ITfContext *pContext);
+	HRESULT _HandleCancelCpp(TfEditCookie ec, _In_ ITfContext *pContext);
+	HRESULT _HandleCompositionDoubleSingleByteCpp(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch);
+	HRESULT _HandleCompositionShiftEnglishInputCpp(TfEditCookie ec, _In_ ITfContext *pContext, UINT code, WCHAR wch);
+	HRESULT _HandleCompositionAddressCharCpp(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch);
 
     // sentence mode (SentenceHandler.cpp): keys handled while a sentence is pending
     HRESULT _HandleSentenceCommit(TfEditCookie ec, _In_ ITfContext *pContext);
@@ -326,6 +333,9 @@ private:
     BOOL VerifyDIMECLSID(_In_ REFCLSID clsid);
 
 	//friend LRESULT CALLBACK CDIME_WindowProc(HWND wndHandle, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
+	// The host of the Rust key handler flow (RustSessionHost.cpp).
+	friend class CRustSessionHost;
 
 #ifdef DIME_UNIT_TESTING
 	// Friend declaration for integration tests - allows access to private members for testing

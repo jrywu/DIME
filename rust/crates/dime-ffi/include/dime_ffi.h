@@ -417,6 +417,46 @@ typedef struct DimeCandidateStep {
 /* Writes up to cap steps; returns the total count. */
 size_t dime_plan_candidate_search(const DimeCandidateSearchInput* input, DimeCandidateStep* steps, size_t cap);
 
+/* ---- Key handler flow (rust/crates/dime-core/src/session.rs) ----
+ * The handlers run in Rust and drive the text service through this host,
+ * implemented in C++ (RustSessionHost.cpp). Callbacks must not throw.
+ * Booleans are int32_t; handlers return HRESULT. */
+typedef struct DimeHostVtbl {
+    uint32_t (*candidate_mode)(void* ctx);
+    int32_t  (*is_composing)(void* ctx);
+    int32_t  (*is_full_shape)(void* ctx);
+    size_t   (*virtual_key_length)(void* ctx);
+    int32_t  (*is_sentence_pending)(void* ctx);
+    int32_t  (*caps_lock_on)(void* ctx);
+    uint32_t (*shift_english_digit_mode)(void* ctx);
+    int32_t  (*dayi_article_mode)(void* ctx);
+    int32_t  (*is_alpha)(void* ctx, uint16_t c);
+    /* 1 and *out = base (CapsLock off) / shifted (on) char of the key producing c; 0 if none. */
+    int32_t  (*layout_char)(void* ctx, uint16_t c, int32_t caps_lock_on, uint16_t* out);
+
+    int32_t  (*add_char_and_finalize)(void* ctx, const uint16_t* text, size_t len);
+    void     (*remove_dummy_composition)(void* ctx);
+    void     (*delete_candidate_list)(void* ctx, int32_t force);
+    void     (*terminate_composition)(void* ctx);
+
+    /* handlers not ported yet */
+    int32_t  (*handle_candidate_finalize)(void* ctx);
+    void     (*sentence_commit_before_output)(void* ctx);
+    int32_t  (*sentence_close_reading)(void* ctx);
+    void     (*sentence_reset)(void* ctx);
+} DimeHostVtbl;
+
+typedef struct DimeHost {
+    const DimeHostVtbl* vtbl;
+    void* ctx;
+} DimeHost;
+
+int32_t dime_session_handle_complete(const DimeHost* host);
+int32_t dime_session_handle_cancel(const DimeHost* host);
+int32_t dime_session_handle_double_single_byte(const DimeHost* host, uint16_t wch);
+int32_t dime_session_handle_shift_english_input(const DimeHost* host, uint32_t code, uint16_t wch);
+int32_t dime_session_handle_address_char(const DimeHost* host, uint16_t wch);
+
 #ifdef __cplusplus
 }
 #endif
