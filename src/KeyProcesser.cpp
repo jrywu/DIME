@@ -34,6 +34,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "DIME.h"
 #include "CompositionProcessorEngine.h"
 #include "PhoneticComposition.h"
+#ifdef DIME_RUST_AVAILABLE
+#include "dime_ffi.h"
+#endif
 
 //+---------------------------------------------------------------------------
 //
@@ -500,6 +503,97 @@ BOOL CCompositionProcessorEngine::IsDoubleSingleByte(WCHAR wch)
 //----------------------------------------------------------------------------
 
 BOOL CCompositionProcessorEngine::IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCHAR* pwch, BOOL fComposing, CANDIDATE_MODE candidateMode, BOOL hasCandidateWithWildcard, UINT candiCount, INT candiSelection, _Inout_opt_ _KEYSTROKE_STATE* pKeyState)
+{
+#ifdef DIME_USE_RUST_ENGINE
+	hasCandidateWithWildcard;
+	return _IsVirtualKeyNeedRust(uCode, pwch, fComposing, candidateMode, candiCount, candiSelection, pKeyState);
+#else
+	return _IsVirtualKeyNeedCpp(uCode, pwch, fComposing, candidateMode, hasCandidateWithWildcard, candiCount, candiSelection, pKeyState);
+#endif
+}
+
+#ifdef DIME_RUST_AVAILABLE
+//+---------------------------------------------------------------------------
+//
+// _IsVirtualKeyNeedRust
+//
+// The same decision made by dime_classify_key (rust/crates/dime-core/src/keyclass.rs)
+// from a snapshot of the engine state, globals, config and the Win32 reads the
+// C++ version makes. Parity: KeyClassifyParityTest.
+//----------------------------------------------------------------------------
+
+BOOL CCompositionProcessorEngine::_IsVirtualKeyNeedRust(UINT uCode, _In_reads_(1) WCHAR* pwch, BOOL fComposing, CANDIDATE_MODE candidateMode, UINT candiCount, INT candiSelection, _Inout_opt_ _KEYSTROKE_STATE* pKeyState)
+{
+	WCHAR wch = *pwch;
+
+	uint32_t functions[MAX_RADICAL + 1] = {};
+	UINT keystrokeCount = (UINT)min(_KeystrokeComposition.Count(), (size_t)ARRAYSIZE(functions));
+	for (UINT i = 0; i < keystrokeCount; i++)
+		functions[i] = (uint32_t)_KeystrokeComposition.GetAt(i)->Function;
+
+	DimeSelkey selkeys[MAX_CAND_SELKEY] = {};
+	UINT selkeyCount = 0;
+	if (_pActiveCandidateListIndexRange)
+	{
+		selkeyCount = (UINT)min(_pActiveCandidateListIndexRange->Count(), (int)ARRAYSIZE(selkeys));
+		for (UINT i = 0; i < selkeyCount; i++)
+		{
+			const _KEYSTROKE* pKS = _pActiveCandidateListIndexRange->GetAt(i);
+			selkeys[i].printable = pKS->Printable;
+			selkeys[i].index = pKS->Index;
+			selkeys[i].modifiers = pKS->Modifiers;
+		}
+	}
+
+	DimeKeyInput in = {};
+	in.code = uCode;
+	in.wch = wch;
+	in.base_char = (WCHAR)MapVirtualKey(uCode, MAPVK_VK_TO_CHAR);
+	in.wch_printable = iswprint(wch) ? 1 : 0;
+	in.composing = fComposing ? 1 : 0;
+	in.candidate_mode = (uint32_t)candidateMode;
+	in.candi_count = candiCount;
+	in.candi_selection = candiSelection;
+	in.has_key_state = pKeyState ? 1 : 0;
+	in.modifiers = Global::ModifiersValue;
+	in.caps_on = (GetKeyState(VK_CAPITAL) & 0x0001) ? 1 : 0;
+	in.ime_mode = (uint32_t)Global::imeMode;
+	in.dictionary_available = IsDictionaryAvailable(_imeMode) ? 1 : 0;
+	in.array_scope = (uint32_t)CConfig::GetArrayScope();
+	in.numeric_pad = (uint32_t)CConfig::GetNumericPad();
+	in.space_as_page_down = CConfig::GetSpaceAsPageDown() ? 1 : 0;
+	in.shift_english_digit_mode = (uint32_t)CConfig::GetShiftEnglishDigitMode();
+	in.phonetic_eten = CConfig::getPhoneticKeyboardLayout() == PHONETIC_KEYBOARD_LAYOUT::PHONETIC_ETEN_KEYBOARD_LAYOUT ? 1 : 0;
+	in.candidate_page_size = _candidatePageSize;
+	in.has_wildcard_in_buffer = _hasWildcardIncludedInKeystrokeBuffer ? 1 : 0;
+	in.buffer_null = _keystrokeBuffer.Get() == nullptr ? 1 : 0;
+	in.buffer = (const uint16_t*)_keystrokeBuffer.Get();
+	in.buffer_len = (uint32_t)_keystrokeBuffer.GetLength();
+	in.keystroke_functions = functions;
+	in.keystroke_count = keystrokeCount;
+	in.end_keys = (const uint16_t*)_pEndkey;
+	in.end_keys_len = _pEndkey ? (uint32_t)wcslen(_pEndkey) : 0;
+	in.selkeys = selkeys;
+	in.selkey_count = selkeyCount;
+
+	uint32_t category = 0, function = 0;
+	BOOL eaten = dime_classify_key(&in, &category, &function) ? TRUE : FALSE;
+	if (pKeyState)
+	{
+		pKeyState->Category = (KEYSTROKE_CATEGORY)category;
+		pKeyState->Function = (KEYSTROKE_FUNCTION)function;
+	}
+	return eaten;
+}
+#endif // DIME_RUST_AVAILABLE
+
+//+---------------------------------------------------------------------------
+//
+// _IsVirtualKeyNeedCpp
+//
+//----------------------------------------------------------------------------
+
+BOOL CCompositionProcessorEngine::_IsVirtualKeyNeedCpp(UINT uCode, _In_reads_(1) WCHAR* pwch, BOOL fComposing, CANDIDATE_MODE candidateMode, BOOL hasCandidateWithWildcard, UINT candiCount, INT candiSelection, _Inout_opt_ _KEYSTROKE_STATE* pKeyState)
 {
 	hasCandidateWithWildcard;
 	//debugPrint(L"CCompositionProcessorEngine::IsVirtualKeyNeed() uCode = %d, pwch = %c, pKeyState = %d, fComposing = %d, candidateMode = %d, hasCandidateWithWildcard = %d, candiCount = %d", uCode, *pwch, pKeyState, fComposing, candidateMode, hasCandidateWithWildcard, candiCount);

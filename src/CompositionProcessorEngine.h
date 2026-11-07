@@ -202,6 +202,15 @@ private:
 #ifndef DIMESettings
 
 
+    // IsVirtualKeyNeed dispatches to one of these (Rust under DIME_USE_RUST_ENGINE).
+    BOOL _IsVirtualKeyNeedCpp(UINT uCode, _In_reads_(1) WCHAR *pwch, BOOL fComposing, CANDIDATE_MODE candidateMode, BOOL hasCandidateWithWildcard, UINT candiCount, INT candiSelection, _Inout_opt_ _KEYSTROKE_STATE *pKeyState);
+#ifdef DIME_RUST_AVAILABLE
+    BOOL _IsVirtualKeyNeedRust(UINT uCode, _In_reads_(1) WCHAR *pwch, BOOL fComposing, CANDIDATE_MODE candidateMode, UINT candiCount, INT candiSelection, _Inout_opt_ _KEYSTROKE_STATE *pKeyState);
+#endif
+#ifdef DIME_UNIT_TESTING
+    friend class KeyClassifyParityAccess;
+#endif
+
     BOOL IsVirtualKeyKeystrokeComposition(UINT uCode, PWCH pwch, _Inout_opt_ _KEYSTROKE_STATE *pKeyState, KEYSTROKE_FUNCTION function);
     //BOOL IsVirtualKeyKeystrokeCandidate(UINT uCode, _In_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode, _Out_ BOOL *pfRetCode, _In_ CDIMEArray<_KEYSTROKE> *pKeystrokeMetric);
     BOOL IsKeystrokeRange(UINT uCode, PWCH pwch, _Inout_opt_ _KEYSTROKE_STATE *pKeyState, CANDIDATE_MODE candidateMode);

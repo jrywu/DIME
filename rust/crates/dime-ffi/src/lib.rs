@@ -16,6 +16,7 @@ use std::ptr;
 
 use dime_core::big5;
 use dime_core::candidates::{self, CandidatePaging};
+use dime_core::keyclass;
 use dime_core::sentence::{self, Lexicon, Position, UserModel};
 use dime_config::{ini, keys, ConfigValues, Env, ImeMode, Settings};
 use dime_core::{CandidateItem, DictionaryType, SearchSection, TableDictionaryEngine, WinTextOps};
@@ -1165,6 +1166,125 @@ pub unsafe extern "C" fn dime_candidates_adjust_page_index(
             set(current_page_index, idx);
         }
         hr
+    })
+}
+
+// ---------------------------------------------------------------------------
+// Key classification (CCompositionProcessorEngine::IsVirtualKeyNeed)
+// ---------------------------------------------------------------------------
+
+/// One select key of the active candidate range (`_KEYSTROKE` subset).
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct DimeSelkey {
+    pub printable: u16,
+    pub index: u32,
+    pub modifiers: u32,
+}
+
+/// Snapshot of everything `IsVirtualKeyNeed` reads; see `keyclass::KeyContext`.
+/// Booleans are `BOOL`-style `int32_t` (non-zero = true).
+#[repr(C)]
+pub struct DimeKeyInput {
+    pub code: u32,
+    pub wch: u16,
+    pub base_char: u16,
+    pub wch_printable: i32,
+    pub composing: i32,
+    pub candidate_mode: u32,
+    pub candi_count: u32,
+    pub candi_selection: i32,
+    pub has_key_state: i32,
+    pub modifiers: u32,
+    pub caps_on: i32,
+    pub ime_mode: u32,
+    pub dictionary_available: i32,
+    pub array_scope: u32,
+    pub numeric_pad: u32,
+    pub space_as_page_down: i32,
+    pub shift_english_digit_mode: u32,
+    pub phonetic_eten: i32,
+    pub candidate_page_size: u32,
+    pub has_wildcard_in_buffer: i32,
+    pub buffer_null: i32,
+    pub buffer: *const u16,
+    pub buffer_len: u32,
+    pub keystroke_functions: *const u32,
+    pub keystroke_count: u32,
+    /// `_pEndkey`; null when there is none.
+    pub end_keys: *const u16,
+    pub end_keys_len: u32,
+    pub selkeys: *const DimeSelkey,
+    pub selkey_count: u32,
+}
+
+/// Classify a key.  Returns 1 if the IME eats it, 0 if not; `category` and
+/// `function` (may be null) receive the resulting key state.
+///
+/// # Safety
+/// `input` must be valid; its pointers must reference the given lengths.
+#[no_mangle]
+pub unsafe extern "C" fn dime_classify_key(input: *const DimeKeyInput, category: *mut u32, function: *mut u32) -> i32 {
+    guard(0, || {
+        let Some(i) = (unsafe { input.as_ref() }) else {
+            return 0;
+        };
+        let functions: &[u32] = if i.keystroke_functions.is_null() || i.keystroke_count == 0 {
+            &[]
+        } else {
+            unsafe { std::slice::from_raw_parts(i.keystroke_functions, i.keystroke_count as usize) }
+        };
+        let selkeys_raw: &[DimeSelkey] = if i.selkeys.is_null() || i.selkey_count == 0 {
+            &[]
+        } else {
+            unsafe { std::slice::from_raw_parts(i.selkeys, i.selkey_count as usize) }
+        };
+        let selkeys: Vec<keyclass::Selkey> = selkeys_raw
+            .iter()
+            .map(|k| keyclass::Selkey {
+                printable: k.printable,
+                index: k.index,
+                modifiers: k.modifiers,
+            })
+            .collect();
+        let end_keys = if i.end_keys.is_null() {
+            None
+        } else {
+            Some(unsafe { slice(i.end_keys, i.end_keys_len as usize) })
+        };
+        let ctx = keyclass::KeyContext {
+            code: i.code,
+            wch: i.wch,
+            base_char: i.base_char,
+            wch_printable: i.wch_printable != 0,
+            composing: i.composing != 0,
+            candidate_mode: i.candidate_mode,
+            candi_count: i.candi_count,
+            candi_selection: i.candi_selection,
+            has_key_state: i.has_key_state != 0,
+            modifiers: i.modifiers,
+            caps_on: i.caps_on != 0,
+            ime_mode: i.ime_mode,
+            dictionary_available: i.dictionary_available != 0,
+            array_scope: i.array_scope,
+            numeric_pad: i.numeric_pad,
+            space_as_page_down: i.space_as_page_down != 0,
+            shift_english_digit_mode: i.shift_english_digit_mode,
+            phonetic_eten: i.phonetic_eten != 0,
+            candidate_page_size: i.candidate_page_size,
+            has_wildcard_in_buffer: i.has_wildcard_in_buffer != 0,
+            buffer_null: i.buffer_null != 0,
+            buffer: unsafe { slice(i.buffer, i.buffer_len as usize) },
+            keystroke_functions: functions,
+            end_keys,
+            selkeys: &selkeys,
+        };
+        let (eaten, state) = keyclass::classify_key(&ctx);
+        unsafe {
+            set(category, state.category);
+            set(function, state.function);
+        }
+        i32::from(eaten)
     })
 }
 

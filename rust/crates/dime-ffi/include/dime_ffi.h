@@ -262,6 +262,50 @@ int32_t  dime_candidates_current_page_has_empty_items(DimeCandidates* c, uint32_
 int32_t  dime_candidates_adjust_page_index(DimeCandidates* c, uint32_t page_size, uint32_t* current_page,
                                            uint32_t* current_page_index);
 
+/* ---- Key classification (CCompositionProcessorEngine::IsVirtualKeyNeed) ----
+ * A snapshot of everything IsVirtualKeyNeed reads; enum fields carry the C++
+ * enum values, booleans are BOOL (non-zero = true). */
+typedef struct DimeSelkey {
+    uint16_t printable;
+    uint32_t index;
+    uint32_t modifiers;
+} DimeSelkey;
+
+typedef struct DimeKeyInput {
+    uint32_t code;
+    uint16_t wch;
+    uint16_t base_char;             /* (WCHAR)MapVirtualKey(code, MAPVK_VK_TO_CHAR) */
+    int32_t  wch_printable;         /* iswprint(wch) */
+    int32_t  composing;
+    uint32_t candidate_mode;
+    uint32_t candi_count;
+    int32_t  candi_selection;
+    int32_t  has_key_state;         /* pKeyState != nullptr */
+    uint32_t modifiers;             /* Global::ModifiersValue */
+    int32_t  caps_on;               /* GetKeyState(VK_CAPITAL) & 1 */
+    uint32_t ime_mode;              /* Global::imeMode */
+    int32_t  dictionary_available;  /* IsDictionaryAvailable(_imeMode) */
+    uint32_t array_scope;
+    uint32_t numeric_pad;
+    int32_t  space_as_page_down;
+    uint32_t shift_english_digit_mode;
+    int32_t  phonetic_eten;
+    uint32_t candidate_page_size;
+    int32_t  has_wildcard_in_buffer;
+    int32_t  buffer_null;           /* _keystrokeBuffer.Get() == nullptr */
+    const uint16_t* buffer;
+    uint32_t buffer_len;
+    const uint32_t* keystroke_functions; /* _KeystrokeComposition[i].Function */
+    uint32_t keystroke_count;
+    const uint16_t* end_keys;       /* _pEndkey, NULL when none */
+    uint32_t end_keys_len;
+    const DimeSelkey* selkeys;      /* active candidate range */
+    uint32_t selkey_count;
+} DimeKeyInput;
+
+/* Returns 1 if the IME eats the key; category/function receive the key state. */
+int32_t dime_classify_key(const DimeKeyInput* input, uint32_t* category, uint32_t* function);
+
 #ifdef __cplusplus
 }
 #endif
