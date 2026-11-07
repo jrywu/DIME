@@ -297,6 +297,230 @@ void CCompositionProcessorEngine::_GetReadingStringCpp(_Inout_ CStringRange *pRe
 
 void CCompositionProcessorEngine::GetCandidateList(_Inout_ CDIMEArray<CCandidateListItem> *pCandidateList, BOOL isIncrementalWordSearch, BOOL isWildcardSearch, BOOL isArrayPhraseEnding)
 {
+#ifdef DIME_USE_RUST_ENGINE
+	_GetCandidateListRust(pCandidateList, isIncrementalWordSearch, isWildcardSearch, isArrayPhraseEnding);
+#else
+	_GetCandidateListCpp(pCandidateList, isIncrementalWordSearch, isWildcardSearch, isArrayPhraseEnding);
+#endif
+}
+
+#ifdef DIME_RUST_AVAILABLE
+//+---------------------------------------------------------------------------
+//
+// _GetCandidateListRust
+//
+// dime_plan_candidate_search (rust/crates/dime-core/src/candgen.rs) decides
+// which engines to search, with which keys, and the sorting; this runs the
+// steps against the C++-owned engines. Parity: CandidateGenParityTest.
+//----------------------------------------------------------------------------
+
+void CCompositionProcessorEngine::_GetCandidateListRust(_Inout_ CDIMEArray<CCandidateListItem> *pCandidateList, BOOL isIncrementalWordSearch, BOOL isWildcardSearch, BOOL isArrayPhraseEnding)
+{
+	if (pCandidateList == nullptr || !IsDictionaryAvailable(Global::imeMode) || _keystrokeBuffer.Get() == nullptr)
+		return;
+
+	const UINT mode = (UINT)Global::imeMode;
+	CTableDictionaryEngine* pTable = _pTableDictionaryEngine[mode];
+	CTableDictionaryEngine* pBig5 = _pBig5TableDictionaryEngine[mode];
+
+	DimeCandidateSearchInput in = {};
+	in.ime_mode = mode;
+	in.dictionary_available = 1;
+	in.buffer = (const uint16_t*)_keystrokeBuffer.Get();
+	in.buffer_len = _keystrokeBuffer.GetLength();
+	in.buffer_null = 0;
+	in.incremental = isIncrementalWordSearch ? 1 : 0;
+	in.wildcard_search = isWildcardSearch ? 1 : 0;
+	in.array_phrase_ending = isArrayPhraseEnding ? 1 : 0;
+	in.array_scope = (uint32_t)CConfig::GetArrayScope();
+	in.big5_filter = CConfig::GetBig5Filter() ? 1 : 0;
+	in.custom_table_priority = CConfig::getCustomTablePriority() ? 1 : 0;
+	in.array_single_quote_custom_phrase = CConfig::GetArraySingleQuoteCustomPhrase() ? 1 : 0;
+	in.escape_input = IsEscapeInput() ? 1 : 0;
+	in.table_is_tts = pTable && pTable->GetDictionaryType() == DICTIONARY_TYPE::TTS_DICTIONARY ? 1 : 0;
+	in.big5_is_tts = pBig5 && pBig5->GetDictionaryType() == DICTIONARY_TYPE::TTS_DICTIONARY ? 1 : 0;
+	in.has_big5 = pBig5 ? 1 : 0;
+	in.has_custom = _pCustomTableDictionaryEngine[mode] ? 1 : 0;
+	in.has_array_short_code = _pArrayShortCodeTableDictionaryEngine ? 1 : 0;
+	in.has_array_phrase = _pArrayPhraseTableDictionaryEngine ? 1 : 0;
+	in.has_ext_b = _pArrayExtBTableDictionaryEngine ? 1 : 0;
+	in.has_ext_cd = _pArrayExtCDTableDictionaryEngine ? 1 : 0;
+	in.has_ext_e = _pArrayExtETableDictionaryEngine ? 1 : 0;
+	in.has_freq_table = _pTCFreqTableDictionaryEngine ? 1 : 0;
+	in.keystroke_sort = _isKeystrokeSort ? 1 : 0;
+	in.wildcard_freq_sort = _isWildCardWordFreqSort ? 1 : 0;
+	in.phonetic_syllable = phoneticSyllable;
+
+	DimeCandidateStep steps[64];
+	size_t stepCount = dime_plan_candidate_search(&in, steps, ARRAYSIZE(steps));
+	if (stepCount > ARRAYSIZE(steps))
+		stepCount = ARRAYSIZE(steps);
+
+	auto engineOf = [&](uint32_t e) -> CTableDictionaryEngine* {
+		switch (e)
+		{
+		case DIME_ENGINE_TABLE: return pTable;
+		case DIME_ENGINE_BIG5: return pBig5;
+		case DIME_ENGINE_CUSTOM: return _pCustomTableDictionaryEngine[mode];
+		case DIME_ENGINE_ARRAY_SHORT_CODE: return _pArrayShortCodeTableDictionaryEngine;
+		case DIME_ENGINE_ARRAY_PHRASE: return _pArrayPhraseTableDictionaryEngine;
+		case DIME_ENGINE_ARRAY_EXT_B: return _pArrayExtBTableDictionaryEngine;
+		case DIME_ENGINE_ARRAY_EXT_CD: return _pArrayExtCDTableDictionaryEngine;
+		case DIME_ENGINE_ARRAY_EXT_E: return _pArrayExtETableDictionaryEngine;
+		default: return nullptr;
+		}
+	};
+
+	// Search keys, built on first use (as the C++ version builds them).
+	CStringRange incrementalKey, noToneKey, customPhraseKey;
+	PWCHAR pIncremental = nullptr, pCustomPhrase = nullptr;
+	BOOL noToneBuilt = FALSE;
+	auto keyOf = [&](uint32_t k) -> CStringRange* {
+		DWORD_PTR len = _keystrokeBuffer.GetLength();
+		switch (k)
+		{
+		case DIME_KEY_INCREMENTAL:
+			if (!pIncremental)
+			{
+				pIncremental = new (std::nothrow) WCHAR[len + 3];
+				if (!pIncremental) return nullptr;
+				StringCchCopyN(pIncremental, len + 3, _keystrokeBuffer.Get(), len);
+				BOOL hasWildcard = FALSE;
+				for (DWORD_PTR i = 0; i < len; i++)
+					if (IsWildcardChar(_keystrokeBuffer.Get()[i])) hasWildcard = TRUE;
+				if (!hasWildcard)
+					StringCchCat(pIncremental, len + 3, L"*");
+				incrementalKey.Set(pIncremental, wcslen(pIncremental));
+			}
+			return &incrementalKey;
+		case DIME_KEY_NO_TONE:
+			if (!noToneBuilt)
+			{
+				noToneKey = buildKeyStrokesFromPhoneticSyllable(phoneticSyllable & (~vpToneMask));
+				noToneBuilt = TRUE;
+			}
+			return &noToneKey;
+		case DIME_KEY_CUSTOM_PHRASE:
+			if (!pCustomPhrase)
+			{
+				DWORD_PTR keyLen = len - 1;
+				pCustomPhrase = new (std::nothrow) WCHAR[keyLen + 2];
+				if (!pCustomPhrase) return nullptr;
+				StringCchCopyN(pCustomPhrase, keyLen + 2, _keystrokeBuffer.Get() + 1, keyLen);
+				StringCchCat(pCustomPhrase, keyLen + 2, L"*");
+				customPhraseKey.Set(pCustomPhrase, keyLen + 1);
+			}
+			return &customPhraseKey;
+		default:
+			return &_keystrokeBuffer;
+		}
+	};
+
+	for (size_t n = 0; n < stepCount; n++)
+	{
+		const DimeCandidateStep& st = steps[n];
+		CTableDictionaryEngine* pEngine = engineOf(st.engine);
+		switch (st.op)
+		{
+		case DIME_CANDGEN_SINGLE_WILDCARD_ITEM:
+		{
+			CStringRange readingString;
+			GetReadingString(&readingString, FALSE);
+			CCandidateListItem* pLI = pCandidateList->Append();
+			pLI->_FindKeyCode = _keystrokeBuffer;
+			if (_pTextService && _pTextService->_GetFullShape())
+			{
+				PWCHAR pwch = new (std::nothrow) WCHAR[2];
+				if (pwch)
+				{
+					pwch[0] = IsWildcardAllChar(*_keystrokeBuffer.Get()) ? L'\xFF0A' : L'\xFF1F';
+					pwch[1] = L'\0';
+					pLI->_ItemString.Set(pwch, 1);
+				}
+				else
+					pLI->_ItemString = readingString;
+			}
+			else
+				pLI->_ItemString = readingString;
+			break;
+		}
+		case DIME_CANDGEN_RESET_ACTIVE_RANGE:
+			_pActiveCandidateListIndexRange = &_candidateListIndexRange;
+			break;
+		case DIME_CANDGEN_SET_SECTION:
+			if (pEngine) pEngine->SetSearchSection((SEARCH_SECTION)st.arg);
+			break;
+		case DIME_CANDGEN_COLLECT:
+		{
+			CStringRange* pKey = keyOf(st.key);
+			if (pEngine && pKey) pEngine->CollectWord(pKey, pCandidateList);
+			break;
+		}
+		case DIME_CANDGEN_COLLECT_WILDCARD:
+		{
+			CStringRange* pKey = keyOf(st.key);
+			if (pEngine && pKey)
+				pEngine->CollectWordForWildcard(pKey, pCandidateList, st.arg ? _pTCFreqTableDictionaryEngine : nullptr);
+			break;
+		}
+		case DIME_CANDGEN_RETURN_IF_EMPTY:
+			if (pCandidateList->Count() == 0)
+				n = stepCount;   // stop
+			break;
+		case DIME_CANDGEN_SORT_BY_FIND_KEY_CODE:
+			if (pEngine) pEngine->SortListItemByFindKeyCode(pCandidateList);
+			break;
+		case DIME_CANDGEN_TRIM_FIND_KEY_CODES:
+		{
+			DWORD_PTR keystrokeBufferLen = _keystrokeBuffer.GetLength();
+			for (UINT index = 0; index < pCandidateList->Count(); index++)
+			{
+				CCandidateListItem* pLI = pCandidateList->GetAt(index);
+				if (!pLI) continue;
+				CStringRange newFindKeyCode;
+				DWORD_PTR findKeyCodeLen = pLI->_FindKeyCode.GetLength();
+				if (findKeyCodeLen > keystrokeBufferLen)
+					newFindKeyCode.Set(pLI->_FindKeyCode.Get() + keystrokeBufferLen, findKeyCodeLen - keystrokeBufferLen);
+				else
+					newFindKeyCode.Set(pLI->_FindKeyCode.Get() + findKeyCodeLen, 0);
+				pLI->_FindKeyCode.Set(newFindKeyCode);
+			}
+			break;
+		}
+		case DIME_CANDGEN_SETUP_FREQ_TABLE:
+			SetupTCFreqTable();
+			break;
+		case DIME_CANDGEN_SORT_BY_WORD_FREQUENCY:
+			if (pEngine && _pTCFreqTableDictionaryEngine)
+				pEngine->SortListItemByWordFrequency(pCandidateList);
+			break;
+		case DIME_CANDGEN_UPDATE_WIDTH:
+			_candidateWndWidth = DEFAULT_CAND_ITEM_LENGTH + TRAILING_SPACE;
+			for (UINT index = 0; index < pCandidateList->Count(); index++)
+			{
+				CCandidateListItem* pLI = pCandidateList->GetAt(index);
+				if (!pLI) continue;
+				UINT len = (UINT)pLI->_ItemString.GetLength();
+				if (len > MAX_CAND_ITEM_LENGTH) len = MAX_CAND_ITEM_LENGTH;
+				if (len > _candidateWndWidth - TRAILING_SPACE)
+					_candidateWndWidth = len + TRAILING_SPACE;
+			}
+			break;
+		case DIME_CANDGEN_CLEAR_WILDCARD_FLAG:
+			_hasWildcardIncludedInKeystrokeBuffer = FALSE;
+			break;
+		}
+	}
+
+	delete[] pIncremental;
+	delete[] pCustomPhrase;
+	if (noToneBuilt && noToneKey.Get())
+		delete[] noToneKey.Get();
+}
+#endif // DIME_RUST_AVAILABLE
+
+void CCompositionProcessorEngine::_GetCandidateListCpp(_Inout_ CDIMEArray<CCandidateListItem> *pCandidateList, BOOL isIncrementalWordSearch, BOOL isWildcardSearch, BOOL isArrayPhraseEnding)
+{
 	debugPrint(L"CCompositionProcessorEngine::GetCandidateList(), isIncrementalWordSearch = %d, isWildcardSearch = %d, isArrayPhraseEnding =%d ", isIncrementalWordSearch, isWildcardSearch, isArrayPhraseEnding);
 	if (!IsDictionaryAvailable(Global::imeMode) || pCandidateList == nullptr || _keystrokeBuffer.Get() == nullptr)
 	{

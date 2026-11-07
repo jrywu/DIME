@@ -15,6 +15,7 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::ptr;
 
 use dime_core::big5;
+use dime_core::candgen;
 use dime_core::candidates::{self, CandidatePaging};
 use dime_core::composition;
 use dime_core::keyclass;
@@ -1467,6 +1468,124 @@ pub unsafe extern "C" fn dime_reading_string(
             set(has_wildcard, i32::from(wildcard));
         }
         text.len()
+    })
+}
+
+// ---------------------------------------------------------------------------
+// Candidate generation plan (CCompositionProcessorEngine::GetCandidateList)
+// ---------------------------------------------------------------------------
+
+/// Inputs of `GetCandidateList`'s decisions; see `candgen::SearchInput`.
+#[repr(C)]
+pub struct DimeCandidateSearchInput {
+    pub ime_mode: u32,
+    pub dictionary_available: i32,
+    pub buffer: *const u16,
+    pub buffer_len: usize,
+    pub buffer_null: i32,
+    pub incremental: i32,
+    pub wildcard_search: i32,
+    pub array_phrase_ending: i32,
+    pub array_scope: u32,
+    pub big5_filter: i32,
+    pub custom_table_priority: i32,
+    pub array_single_quote_custom_phrase: i32,
+    pub escape_input: i32,
+    pub table_is_tts: i32,
+    pub big5_is_tts: i32,
+    pub has_big5: i32,
+    pub has_custom: i32,
+    pub has_array_short_code: i32,
+    pub has_array_phrase: i32,
+    pub has_ext_b: i32,
+    pub has_ext_cd: i32,
+    pub has_ext_e: i32,
+    pub has_freq_table: i32,
+    pub keystroke_sort: i32,
+    pub wildcard_freq_sort: i32,
+    pub phonetic_syllable: u32,
+}
+
+/// One step of the plan.  `op` is the `DIME_CANDGEN_*` code.
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+pub struct DimeCandidateStep {
+    pub op: u32,
+    pub engine: u32,
+    pub key: u32,
+    /// Section for SET_SECTION, "with frequency engine" for COLLECT_WILDCARD.
+    pub arg: u32,
+}
+
+fn encode_step(st: candgen::Step) -> DimeCandidateStep {
+    use candgen::Step::*;
+    let (op, engine, key, arg) = match st {
+        SingleWildcardItem => (0, 0, 0, 0),
+        ResetActiveRange => (1, 0, 0, 0),
+        SetSection { engine, section } => (2, engine, 0, section),
+        Collect { engine, key } => (3, engine, key, 0),
+        CollectWildcard { engine, key, with_freq } => (4, engine, key, u32::from(with_freq)),
+        ReturnIfEmpty => (5, 0, 0, 0),
+        SortByFindKeyCode { engine } => (6, engine, 0, 0),
+        TrimFindKeyCodes => (7, 0, 0, 0),
+        SetupFreqTable => (8, 0, 0, 0),
+        SortByWordFrequency { engine } => (9, engine, 0, 0),
+        UpdateWidth => (10, 0, 0, 0),
+        ClearWildcardFlag => (11, 0, 0, 0),
+    };
+    DimeCandidateStep { op, engine, key, arg }
+}
+
+/// Plan `GetCandidateList`.  Writes up to `cap` steps; returns the total count
+/// (larger than `cap` means the buffer was too small).
+///
+/// # Safety
+/// `input` must be valid; `steps` must have room for `cap` entries.
+#[no_mangle]
+pub unsafe extern "C" fn dime_plan_candidate_search(
+    input: *const DimeCandidateSearchInput,
+    steps: *mut DimeCandidateStep,
+    cap: usize,
+) -> usize {
+    guard(0, || {
+        let Some(i) = (unsafe { input.as_ref() }) else {
+            return 0;
+        };
+        let b = |v: i32| v != 0;
+        let si = candgen::SearchInput {
+            ime_mode: i.ime_mode,
+            dictionary_available: b(i.dictionary_available),
+            buffer: unsafe { slice(i.buffer, i.buffer_len) },
+            buffer_null: b(i.buffer_null),
+            incremental: b(i.incremental),
+            wildcard_search: b(i.wildcard_search),
+            array_phrase_ending: b(i.array_phrase_ending),
+            array_scope: i.array_scope,
+            big5_filter: b(i.big5_filter),
+            custom_table_priority: b(i.custom_table_priority),
+            array_single_quote_custom_phrase: b(i.array_single_quote_custom_phrase),
+            escape_input: b(i.escape_input),
+            table_is_tts: b(i.table_is_tts),
+            big5_is_tts: b(i.big5_is_tts),
+            has_big5: b(i.has_big5),
+            has_custom: b(i.has_custom),
+            has_array_short_code: b(i.has_array_short_code),
+            has_array_phrase: b(i.has_array_phrase),
+            has_ext_b: b(i.has_ext_b),
+            has_ext_cd: b(i.has_ext_cd),
+            has_ext_e: b(i.has_ext_e),
+            has_freq_table: b(i.has_freq_table),
+            keystroke_sort: b(i.keystroke_sort),
+            wildcard_freq_sort: b(i.wildcard_freq_sort),
+            phonetic_syllable: i.phonetic_syllable,
+        };
+        let plan = candgen::plan(&si);
+        if !steps.is_null() {
+            for (n, st) in plan.iter().take(cap).enumerate() {
+                unsafe { *steps.add(n) = encode_step(*st) };
+            }
+        }
+        plan.len()
     })
 }
 

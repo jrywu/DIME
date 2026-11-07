@@ -210,6 +210,13 @@ private:
 #ifdef DIME_UNIT_TESTING
     friend class KeyClassifyParityAccess;
     friend class CompositionBufferParityAccess;
+    friend class CandidateGenParityAccess;
+#endif
+
+    // GetCandidateList dispatches to one of these (Rust plan under DIME_USE_RUST_ENGINE).
+    void _GetCandidateListCpp(_Inout_ CDIMEArray<CCandidateListItem> *pCandidateList, BOOL isIncrementalWordSearch, BOOL isWildcardSearch, BOOL isArrayPhraseEnding);
+#ifdef DIME_RUST_AVAILABLE
+    void _GetCandidateListRust(_Inout_ CDIMEArray<CCandidateListItem> *pCandidateList, BOOL isIncrementalWordSearch, BOOL isWildcardSearch, BOOL isArrayPhraseEnding);
 #endif
 
     // Keystroke buffer: the public functions dispatch to these (Rust under

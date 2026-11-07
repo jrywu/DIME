@@ -354,6 +354,69 @@ typedef struct DimeRadical {
 size_t dime_reading_string(const uint16_t* keys, size_t len, int32_t escape_input, const DimeRadical* radicals,
                            size_t radical_count, uint16_t* out, int32_t* has_wildcard);
 
+/* ---- Candidate generation plan (CCompositionProcessorEngine::GetCandidateList) ----
+ * Rust decides the steps; C++ runs them against its dictionary engines. */
+typedef struct DimeCandidateSearchInput {
+    uint32_t ime_mode;                  /* Global::imeMode */
+    int32_t  dictionary_available;      /* IsDictionaryAvailable(Global::imeMode) */
+    const uint16_t* buffer;
+    size_t   buffer_len;
+    int32_t  buffer_null;
+    int32_t  incremental;
+    int32_t  wildcard_search;
+    int32_t  array_phrase_ending;
+    uint32_t array_scope;
+    int32_t  big5_filter;
+    int32_t  custom_table_priority;
+    int32_t  array_single_quote_custom_phrase;
+    int32_t  escape_input;              /* IsEscapeInput() */
+    int32_t  table_is_tts;              /* main engines' GetDictionaryType() == TTS */
+    int32_t  big5_is_tts;
+    int32_t  has_big5;                  /* engine pointers present */
+    int32_t  has_custom;
+    int32_t  has_array_short_code;
+    int32_t  has_array_phrase;
+    int32_t  has_ext_b;
+    int32_t  has_ext_cd;
+    int32_t  has_ext_e;
+    int32_t  has_freq_table;
+    int32_t  keystroke_sort;            /* _isKeystrokeSort */
+    int32_t  wildcard_freq_sort;        /* _isWildCardWordFreqSort */
+    uint32_t phonetic_syllable;
+} DimeCandidateSearchInput;
+
+enum {
+    DIME_CANDGEN_SINGLE_WILDCARD_ITEM = 0,
+    DIME_CANDGEN_RESET_ACTIVE_RANGE = 1,
+    DIME_CANDGEN_SET_SECTION = 2,       /* engine, arg = SEARCH_SECTION */
+    DIME_CANDGEN_COLLECT = 3,           /* engine, key */
+    DIME_CANDGEN_COLLECT_WILDCARD = 4,  /* engine, key, arg = pass the TC frequency engine */
+    DIME_CANDGEN_RETURN_IF_EMPTY = 5,
+    DIME_CANDGEN_SORT_BY_FIND_KEY_CODE = 6,
+    DIME_CANDGEN_TRIM_FIND_KEY_CODES = 7,
+    DIME_CANDGEN_SETUP_FREQ_TABLE = 8,
+    DIME_CANDGEN_SORT_BY_WORD_FREQUENCY = 9, /* engine; only if the frequency table is loaded */
+    DIME_CANDGEN_UPDATE_WIDTH = 10,
+    DIME_CANDGEN_CLEAR_WILDCARD_FLAG = 11,
+};
+enum {
+    DIME_ENGINE_TABLE = 0, DIME_ENGINE_BIG5 = 1, DIME_ENGINE_CUSTOM = 2, DIME_ENGINE_ARRAY_SHORT_CODE = 3,
+    DIME_ENGINE_ARRAY_PHRASE = 4, DIME_ENGINE_ARRAY_EXT_B = 5, DIME_ENGINE_ARRAY_EXT_CD = 6, DIME_ENGINE_ARRAY_EXT_E = 7,
+};
+enum {
+    DIME_KEY_BUFFER = 0, DIME_KEY_INCREMENTAL = 1, DIME_KEY_NO_TONE = 2, DIME_KEY_CUSTOM_PHRASE = 3,
+};
+
+typedef struct DimeCandidateStep {
+    uint32_t op;
+    uint32_t engine;
+    uint32_t key;
+    uint32_t arg;
+} DimeCandidateStep;
+
+/* Writes up to cap steps; returns the total count. */
+size_t dime_plan_candidate_search(const DimeCandidateSearchInput* input, DimeCandidateStep* steps, size_t cap);
+
 #ifdef __cplusplus
 }
 #endif
