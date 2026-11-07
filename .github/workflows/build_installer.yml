@@ -5,9 +5,9 @@ on:
   workflow_dispatch:
     inputs:
       rust_engine:
-        description: 'Build DIME.dll with the Rust dictionary engine (DimeUseRustEngine)'
+        description: 'Build with the Rust core (DimeUseRustEngine); off builds the all-C++ DIME.dll'
         type: boolean
-        default: false
+        default: true
   push:
     branches: [master]
     paths:
@@ -18,6 +18,7 @@ on:
       - 'src/**/*.sln'
       - 'src/**/*.vcxproj'
       - 'src/**/*.vcxproj.filters'
+      - 'rust/**'
       - 'installer/wix/**'
       - 'installer/*.ps1'
   pull_request:
@@ -30,6 +31,7 @@ on:
       - 'src/**/*.sln'
       - 'src/**/*.vcxproj'
       - 'src/**/*.vcxproj.filters'
+      - 'rust/**'
       - 'installer/wix/**'
       - 'installer/*.ps1'
 
@@ -105,8 +107,8 @@ jobs:
             }
           }
 
-      - name: Setup Rust (only when the Rust engine is enabled)
-        if: github.event_name == 'workflow_dispatch' && inputs.rust_engine
+      - name: Setup Rust
+        if: github.event_name != 'workflow_dispatch' || inputs.rust_engine
         shell: pwsh
         run: |
           rustup toolchain install stable --profile minimal
@@ -115,7 +117,7 @@ jobs:
       - name: Build All Platforms (Release)
         shell: pwsh
         env:
-          DIME_USE_RUST_ENGINE: ${{ github.event_name == 'workflow_dispatch' && inputs.rust_engine && 'true' || 'false' }}
+          DIME_USE_RUST_ENGINE: ${{ (github.event_name != 'workflow_dispatch' || inputs.rust_engine) && 'true' || 'false' }}
         run: |
           cd src
           $builds = @(

@@ -13,6 +13,10 @@ This document describes how to build DIME IME from source code.
   - 需安裝「使用 C++ 的桌面開發」Workload / Workload: "Desktop development with C++"
   - 需安裝 Windows SDK (建議 10.0.19041.0 或更新版本) / Windows SDK (Recommended 10.0.19041.0 or later)
   - 需安裝 ARM64 建置工具 (若要編譯 ARM64 版本) / ARM64 build tools (for ARM64 build)
+- **Rust 工具鏈** (輸入法核心以 Rust 撰寫，建置時由 MSBuild 自動呼叫 cargo / The IME core is written in Rust; MSBuild runs cargo automatically)
+  - 安裝 / Install: [rustup](https://rustup.rs/)
+  - 需加入目標平台 / Add the targets: `rustup target add i686-pc-windows-msvc x86_64-pc-windows-msvc aarch64-pc-windows-msvc arm64ec-pc-windows-msvc`
+  - 不需要 Rust 時可建置全 C++ 版本 / To build the all-C++ version without Rust: `/p:DimeUseRustEngine=false`（測試專案 / tests: `/p:DimeTestRustEngine=false`）
 - **Git** (用於版本控制與自動版號生成 / For version control and auto versioning)
 - **PowerShell 5.0 或更新版本** (用於自動產生安裝包 / For automated installer packaging)
 - **WiX 4 CLI** (v1.3+ MSI 安裝程式所需 / Required for v1.3+ MSI installer)

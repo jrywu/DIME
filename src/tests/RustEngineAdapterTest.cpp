@@ -287,15 +287,17 @@ namespace DIMEUnitTests
     TEST_CLASS(RustEngineAdapterTest)
     {
     public:
-        TEST_METHOD(Factory_DefaultsToCppEngineInTests)
+        TEST_METHOD(Factory_MatchesBuildFlavor)
         {
-            // C++ engine unless the tests are built with /p:DimeTestRustEngine=true.
+            // Rust engine by default; C++ with /p:DimeTestRustEngine=false.
             CFile f;
             std::unique_ptr<CTableDictionaryEngine> e(CTableDictionaryEngine::Create(kAdapterLcid, &f, DICTIONARY_TYPE::CIN_DICTIONARY));
             Assert::IsNotNull(e.get());
 #ifdef DIME_USE_RUST_ENGINE
+            Logger::WriteMessage(L"build flavor: Rust core");
             Assert::IsNotNull(dynamic_cast<CRustTableDictionaryEngine*>(e.get()));
 #else
+            Logger::WriteMessage(L"build flavor: C++");
             Assert::IsNull(dynamic_cast<CRustTableDictionaryEngine*>(e.get()));
 #endif
         }

@@ -221,6 +221,8 @@ DIME.VC.db
 *.db-wal
 *.vsidx
 *.lock
+# The Rust builds use cargo --locked
+!rust/Cargo.lock
 *.bin
 
 /.claude

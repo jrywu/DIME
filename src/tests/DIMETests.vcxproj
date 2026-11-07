@@ -961,6 +961,9 @@
     Only Win32/x64 have a matching Rust target here; other platforms skip the parity tests.
   -->
   <PropertyGroup Label="DimeRust">
+    <!-- Like DIME.dll, the tests build the product code with the Rust core by default;
+         /p:DimeTestRustEngine=false tests the all-C++ build. -->
+    <DimeTestRustEngine Condition="'$(DimeTestRustEngine)'==''">true</DimeTestRustEngine>
     <DimeRustRoot>$(ProjectDir)..\..\rust\</DimeRustRoot>
     <DimeRustTarget Condition="'$(Platform)'=='Win32'">i686-pc-windows-msvc</DimeRustTarget>
     <DimeRustTarget Condition="'$(Platform)'=='x64'">x86_64-pc-windows-msvc</DimeRustTarget>
@@ -991,8 +994,8 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <!--
-    /p:DimeTestRustEngine=true builds the product code as DIME.dll with DimeUseRustEngine=true:
-    Rust dictionary engine, settings storage and candidate paging.
+    DimeTestRustEngine (default true) builds the product code as DIME.dll with
+    DimeUseRustEngine=true; /p:DimeTestRustEngine=false as the all-C++ DIME.dll.
   -->
   <ItemDefinitionGroup Condition="'$(DimeRustEnabled)'=='true' And '$(DimeTestRustEngine)'=='true'">
     <ClCompile>

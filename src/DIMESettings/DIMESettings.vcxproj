@@ -149,14 +149,14 @@
     <Image Include="DIMESettings.ico" />
   </ItemGroup>
   <!--
-    Rust migration (phase 1b): opt-in Rust settings logic (rust/crates/dime-config via dime-ffi).
-      msbuild DIME.sln /t:DIMESettings /p:Configuration=Release /p:Platform=Win32 /p:DimeUseRustEngine=true
+    Rust settings logic (rust/crates/dime-config via dime-ffi), on by default; the previous
+    all-C++ build: msbuild DIME.sln /t:DIMESettings /p:Configuration=Release /p:Platform=Win32 /p:DimeUseRustEngine=false
     Defines DIME_USE_RUST_CONFIG: CConfig defaults / INI writing and the CLI's get/set
     validation run in Rust. The dictionary engine stays C++ (DIME_USE_RUST_ENGINE is not defined).
     Release links the static CRT build (matching /MT); Debug uses the dynamic CRT build.
   -->
   <PropertyGroup Label="DimeRust">
-    <DimeUseRustEngine Condition="'$(DimeUseRustEngine)'==''">false</DimeUseRustEngine>
+    <DimeUseRustEngine Condition="'$(DimeUseRustEngine)'==''">true</DimeUseRustEngine>
     <DimeRustRoot>$(ProjectDir)..\..\rust\</DimeRustRoot>
     <DimeRustTarget Condition="'$(Platform)'=='Win32'">i686-pc-windows-msvc</DimeRustTarget>
     <DimeRustEnabled Condition="'$(DimeUseRustEngine)'=='true' And '$(DimeRustTarget)'!=''">true</DimeRustEnabled>
