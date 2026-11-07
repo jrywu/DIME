@@ -19,11 +19,14 @@ pub fn failed(hr: HResult) -> bool {
 /// `CANDIDATE_MODE`.
 pub mod candidate_mode {
     pub const NONE: u32 = 0;
+    pub const ORIGINAL: u32 = 1;
     pub const PHRASE: u32 = 2;
+    pub const INCREMENTAL: u32 = 3;
 }
 
 /// `IME_MODE`.
 pub mod ime_mode {
+    pub const DAYI: u32 = 0;
     pub const ARRAY: u32 = 1;
     pub const PHONETIC: u32 = 2;
 }
@@ -35,6 +38,18 @@ pub const ARRAY40_BIG5: u32 = 4;
 pub mod beep {
     pub const COMPOSITION_ERROR: u32 = 0;
     pub const WARNING: u32 = 1;
+    pub const ON_CANDI: u32 = 2;
+}
+
+/// Where the insertion point is relative to the composition.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Selection {
+    /// No selection could be read.
+    Unavailable,
+    /// Outside the composition (the key is ignored).
+    Outside,
+    /// Inside the composition, or there is no composition range.
+    Covered,
 }
 
 /// `NOTIFY_TYPE`.
@@ -121,14 +136,45 @@ pub trait Host {
 
     // --- more TSF primitives ---
     fn start_composition(&mut self);
-    fn add_composing_and_char(&mut self, text: &[u16]) -> HResult;
+    /// `_AddComposingAndChar`; `None` passes a null string (an unavailable
+    /// dictionary leaves the reading string null).
+    fn add_composing_and_char(&mut self, text: Option<&[u16]>) -> HResult;
     /// `_commitString` (read by the reverse conversion).
     fn set_commit_string(&mut self, text: &[u16]);
     fn async_reverse_conversion(&mut self);
     fn beep(&mut self, kind: u32);
 
+    // --- composing ---
+    /// The default selection and whether the composition covers it.  `strict`
+    /// treats any result but `S_OK` as unavailable (`_HandleCompositionInput`);
+    /// otherwise only failures (`_HandleCompositionBackspace`).
+    fn selection(&mut self, strict: bool) -> Selection;
+    fn add_virtual_key(&mut self, wch: u16) -> bool;
+    fn remove_virtual_key(&mut self, index: usize);
+    fn is_escape_input(&self) -> bool;
+    /// `GetReadingString`: the reading string (`None` when it stays null) and
+    /// the wildcard flag (`None` when it is left untouched).
+    fn reading_string(&mut self) -> (Option<Vec<u16>>, Option<bool>);
+    fn auto_compose(&self) -> bool;
+    fn do_beep_on_candi(&self) -> bool;
+    fn set_candidate_mode(&mut self, mode: u32);
+    fn set_candidate_with_wildcard(&mut self, wildcard: bool);
+    /// `GetCandidateList` into the host's list; returns the count.
+    fn fetch_candidates(&mut self, incremental: bool, wildcard: bool, array_phrase_ending: bool) -> u32;
+    /// `_SetCandidateText` with the fetched list.
+    fn set_candidate_text(&mut self);
+    fn clear_candidate_list(&mut self);
+    fn hide_candidate_window(&mut self);
+    fn create_and_start_candidate(&mut self) -> HResult;
+    /// Arrow keys inside a composition: the incremental candidate list moves
+    /// and the selection is put back.
+    fn composition_arrow_key(&mut self, function: u32);
+
     // --- handlers still in C++ ---
     fn sentence_select_candidate(&mut self, text: &[u16], explicit: bool) -> HResult;
+    fn sentence_render(&mut self, reading: &[u16]) -> HResult;
+    /// `_SentenceAppendFromCandidateList` with the fetched list.
+    fn sentence_append_fetched(&mut self, index: i32) -> HResult;
     fn sentence_commit_before_output(&mut self);
     fn sentence_close_reading(&mut self) -> HResult;
     fn sentence_reset(&mut self);
@@ -362,7 +408,7 @@ pub fn handle_candidate_worker(h: &mut impl Host) -> HResult {
         h.beep(beep::WARNING);
         return S_OK;
     }
-    let hr = h.add_composing_and_char(&converted);
+    let hr = h.add_composing_and_char(Some(&converted));
     if failed(hr) {
         return hr;
     }
@@ -405,7 +451,7 @@ pub fn handle_candidate_select_by_number(h: &mut impl Host, code: u32, wch: u16)
 pub fn handle_phrase_finalize(h: &mut impl Host) -> HResult {
     let phrase = h.selected_candidate();
     if !phrase.is_empty() {
-        let hr = h.add_composing_and_char(&phrase);
+        let hr = h.add_composing_and_char(Some(&phrase));
         if hr != S_OK {
             return hr;
         }
@@ -426,6 +472,169 @@ pub fn handle_phrase_select_by_number(h: &mut impl Host, code: u32, wch: u16) ->
     S_FALSE
 }
 
+/// `_HandleCompositionInput`: a radical key.
+pub fn handle_composition_input(h: &mut impl Host, wch: u16) -> HResult {
+    let mode = h.candidate_mode();
+    if h.has_ui_presenter() && mode != candidate_mode::INCREMENTAL && mode != candidate_mode::NONE {
+        handle_composition_finalize(h, true);
+    }
+    if !h.is_composing() {
+        h.start_composition();
+    }
+    match h.selection(true) {
+        Selection::Unavailable => return S_FALSE,
+        Selection::Outside => return S_OK,
+        Selection::Covered => {}
+    }
+    if h.add_virtual_key(wch) {
+        handle_composition_input_worker(h);
+    } else if h.ime_mode() == ime_mode::PHONETIC {
+        h.beep(beep::WARNING);
+    } else {
+        // Over the code length limit or the like.
+        if h.clear_on_beep() {
+            handle_cancel(h);
+        }
+        h.beep(beep::COMPOSITION_ERROR);
+    }
+    S_OK
+}
+
+/// `_HandleCompositionInputWorker`: show the reading string and, with
+/// AutoCompose, the incremental candidates.
+pub fn handle_composition_input_worker(h: &mut impl Host) -> HResult {
+    let (reading, wildcard) = h.reading_string();
+    let wildcard = wildcard.unwrap_or(true);
+    let hr = if h.is_sentence_pending() {
+        h.sentence_render(reading.as_deref().unwrap_or(&[]))
+    } else {
+        h.add_composing_and_char(reading.as_deref())
+    };
+    if failed(hr) {
+        return hr;
+    }
+    let mut hr = hr;
+    if !h.auto_compose() {
+        return hr;
+    }
+    if h.fetch_candidates(true, wildcard, false) > 0 {
+        hr = h.create_and_start_candidate();
+        if !failed(hr) {
+            h.clear_candidate_list();
+            h.set_candidate_text();
+            h.set_candidate_mode(candidate_mode::INCREMENTAL);
+            h.set_candidate_with_wildcard(false);
+        }
+    } else if h.has_ui_presenter() {
+        // No candidates: hide the window.
+        h.clear_candidate_list();
+        h.hide_candidate_window();
+    } else if reading.as_ref().is_some_and(|r| !r.is_empty()) && wildcard {
+        hr = h.create_and_start_candidate();
+        if !failed(hr) {
+            h.clear_candidate_list();
+            h.set_candidate_mode(candidate_mode::INCREMENTAL);
+            h.set_candidate_with_wildcard(false);
+        }
+    }
+    hr
+}
+
+/// `_HandleCompositionFinalize`.
+pub fn handle_composition_finalize(h: &mut impl Host, is_candidate_list: bool) -> HResult {
+    if h.is_sentence_mode() {
+        // A chosen candidate joins the sentence; anything else commits it first.
+        if is_candidate_list && h.has_ui_presenter() {
+            return handle_candidate_worker(h);
+        }
+        if !is_candidate_list {
+            h.sentence_commit_before_output();
+        }
+    }
+    if is_candidate_list && h.has_ui_presenter() {
+        let candidate = h.selected_candidate();
+        if !candidate.is_empty() {
+            let hr = h.add_char_and_finalize(&candidate);
+            if failed(hr) {
+                return hr;
+            }
+        } else {
+            handle_cancel(h);
+        }
+    } else if h.is_composing() {
+        handle_cancel(h);
+    }
+    S_OK
+}
+
+/// `_HandleCompositionConvert`: open the candidate window for the reading
+/// (or, in sentence mode, add the character to the sentence).
+pub fn handle_composition_convert(h: &mut impl Host, wildcard: bool, array_phrase_ending: bool) -> HResult {
+    if h.is_sentence_mode()
+        && !wildcard
+        && h.virtual_key_length() > 0
+        && !h.is_escape_input_leading()
+        && h.fetch_candidates(false, false, false) > 0
+    {
+        return h.sentence_append_fetched(-1);
+    }
+    let count = h.fetch_candidates(false, wildcard, array_phrase_ending);
+    if count > 0 {
+        if !failed(h.create_and_start_candidate()) {
+            h.set_candidate_mode(candidate_mode::ORIGINAL);
+            h.set_candidate_with_wildcard(wildcard);
+            h.clear_candidate_list();
+            h.set_candidate_text();
+        }
+    } else {
+        beep_no_mapping(h);
+    }
+    if count == 1 {
+        // The only candidate is committed without showing the window.
+        handle_candidate_finalize(h);
+    } else if h.ime_mode() == ime_mode::DAYI && h.do_beep_on_candi() {
+        h.beep(beep::ON_CANDI);
+    }
+    S_OK
+}
+
+/// `_HandleCompositionBackspace`.
+pub fn handle_composition_backspace(h: &mut impl Host) -> HResult {
+    if !h.is_composing() {
+        return S_OK;
+    }
+    match h.selection(false) {
+        Selection::Unavailable => return S_FALSE,
+        Selection::Outside => return S_OK,
+        Selection::Covered => {}
+    }
+    let len = h.virtual_key_length();
+    if len > 0 {
+        let symbol_mode = h.is_escape_input();
+        h.remove_virtual_key(len - 1);
+        let remaining = h.virtual_key_length() > 0 && !symbol_mode;
+        if h.is_sentence_pending() {
+            // The sentence stays when the reading is emptied.
+            if remaining {
+                handle_composition_input_worker(h);
+            } else {
+                h.sentence_close_reading();
+            }
+        } else if remaining && !(h.ime_mode() == ime_mode::PHONETIC && h.candidate_mode() != candidate_mode::NONE) {
+            handle_composition_input_worker(h);
+        } else {
+            handle_cancel(h);
+        }
+    }
+    S_OK
+}
+
+/// `_HandleCompositionArrowKey`.
+pub fn handle_composition_arrow_key(h: &mut impl Host, function: u32) -> HResult {
+    h.composition_arrow_key(function);
+    S_OK
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -442,6 +651,7 @@ mod tests {
         selected: Vec<u16>,
         make_phrase: bool,
         phrases: bool,
+        fetched: u32,
     }
 
     impl Host for Mock {
@@ -569,8 +779,54 @@ mod tests {
         fn start_composition(&mut self) {
             self.calls.push("start".into());
         }
-        fn add_composing_and_char(&mut self, text: &[u16]) -> HResult {
-            self.calls.push(format!("composing {}", String::from_utf16_lossy(text)));
+        fn add_composing_and_char(&mut self, text: Option<&[u16]>) -> HResult {
+            self.calls
+                .push(format!("composing {}", String::from_utf16_lossy(text.unwrap_or(&[]))));
+            S_OK
+        }
+        fn selection(&mut self, _strict: bool) -> Selection {
+            Selection::Covered
+        }
+        fn add_virtual_key(&mut self, wch: u16) -> bool {
+            self.calls.push(format!("add_key {}", String::from_utf16_lossy(&[wch])));
+            true
+        }
+        fn remove_virtual_key(&mut self, _index: usize) {
+            self.vk_len -= 1;
+            self.calls.push("remove_key".into());
+        }
+        fn is_escape_input(&self) -> bool {
+            false
+        }
+        fn reading_string(&mut self) -> (Option<Vec<u16>>, Option<bool>) {
+            (Some("r".encode_utf16().collect()), Some(false))
+        }
+        fn auto_compose(&self) -> bool {
+            false
+        }
+        fn do_beep_on_candi(&self) -> bool {
+            false
+        }
+        fn set_candidate_mode(&mut self, mode: u32) {
+            self.candidate_mode = mode;
+        }
+        fn set_candidate_with_wildcard(&mut self, _wildcard: bool) {}
+        fn fetch_candidates(&mut self, _incremental: bool, _wildcard: bool, _ending: bool) -> u32 {
+            self.fetched
+        }
+        fn set_candidate_text(&mut self) {
+            self.calls.push("candidate_text".into());
+        }
+        fn clear_candidate_list(&mut self) {}
+        fn hide_candidate_window(&mut self) {}
+        fn create_and_start_candidate(&mut self) -> HResult {
+            S_OK
+        }
+        fn composition_arrow_key(&mut self, _function: u32) {}
+        fn sentence_render(&mut self, _reading: &[u16]) -> HResult {
+            S_OK
+        }
+        fn sentence_append_fetched(&mut self, _index: i32) -> HResult {
             S_OK
         }
         fn set_commit_string(&mut self, _text: &[u16]) {}
@@ -639,6 +895,33 @@ mod tests {
         };
         assert_eq!(handle_candidate_worker(&mut m), S_FALSE);
         assert_eq!(m.calls.last().map(String::as_str), Some("beep 0"));
+    }
+
+    #[test]
+    fn convert_opens_window_or_commits_unique() {
+        let mut m = Mock {
+            composing: true,
+            fetched: 3,
+            vk_len: 1,
+            ..Default::default()
+        };
+        handle_composition_convert(&mut m, false, false);
+        assert_eq!(m.candidate_mode, candidate_mode::ORIGINAL);
+        assert_eq!(m.calls, ["candidate_text"]);
+    }
+
+    #[test]
+    fn backspace_on_last_key_cancels() {
+        let mut m = Mock {
+            composing: true,
+            vk_len: 1,
+            ..Default::default()
+        };
+        handle_composition_backspace(&mut m);
+        assert_eq!(
+            m.calls,
+            ["remove_key", "remove_dummy", "delete_candidates true", "terminate"]
+        );
     }
 
     #[test]

@@ -259,6 +259,12 @@ private:
     HRESULT _HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext);
     // C++ versions of the candidate handlers ported to Rust (session.rs).
     HRESULT _HandleCandidateWorkerCpp(TfEditCookie ec, _In_ ITfContext *pContext);
+    HRESULT _HandleCompositionInputCpp(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch);
+    HRESULT _HandleCompositionInputWorkerCpp(_In_ CCompositionProcessorEngine *pCompositionProcessorEngine, TfEditCookie ec, _In_ ITfContext *pContext);
+    HRESULT _HandleCompositionFinalizeCpp(TfEditCookie ec, _In_ ITfContext *pContext, BOOL isCandidateList);
+    HRESULT _HandleCompositionConvertCpp(TfEditCookie ec, _In_ ITfContext *pContext, BOOL isWildcardSearch, BOOL isArrayPhraseEnding);
+    HRESULT _HandleCompositionBackspaceCpp(TfEditCookie ec, _In_ ITfContext *pContext);
+    HRESULT _HandleCompositionArrowKeyCpp(TfEditCookie ec, _In_ ITfContext *pContext, KEYSTROKE_FUNCTION keyFunction);
     HRESULT _HandleCandidateArrowKeyCpp(TfEditCookie ec, _In_ ITfContext *pContext, _In_ KEYSTROKE_FUNCTION keyFunction);
     HRESULT _HandleCandidateSelectByNumberCpp(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode, _In_ WCHAR wch);
     HRESULT _HandlePhraseFinalizeCpp(TfEditCookie ec, _In_ ITfContext *pContext);
@@ -481,6 +487,8 @@ private:
 	int _sentenceEditPos;          // position edited by the candidate window, or -1
 	BOOL _sentencePinNext;         // the next candidate finalize came from a select key
 	std::wstring _sentenceDisplay; // current composition text (backs lastReadingString)
+	std::wstring _rustComposingText[2]; // composing text from Rust (backs lastReadingString, RustSessionHost.cpp)
+	UINT _rustComposingSlot = 0;
 };
 
 

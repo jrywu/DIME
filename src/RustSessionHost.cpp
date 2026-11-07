@@ -62,6 +62,23 @@ const DimeHostVtbl CRustSessionHost::s_vtbl = {
     SentenceCloseReading,
     SentenceReset,
     SentenceSelectCandidate,
+    Selection,
+    AddVirtualKey,
+    RemoveVirtualKey,
+    IsEscapeInput,
+    ReadingString,
+    AutoCompose,
+    DoBeepOnCandi,
+    SetCandidateMode,
+    SetCandidateWithWildcard,
+    FetchCandidates,
+    SetCandidateText,
+    ClearCandidateList,
+    HideCandidateWindow,
+    CreateAndStartCandidate,
+    CompositionArrowKey,
+    SentenceRender,
+    SentenceAppendFetched,
 };
 
 CRustSessionHost::CRustSessionHost(_In_ CDIME* pDime, TfEditCookie ec, _In_ ITfContext* pContext)
@@ -302,12 +319,22 @@ void CRustSessionHost::StartComposition(void* ctx)
     self->_pDime->_StartComposition(self->_pContext);
 }
 
+// _AddComposingAndChar keeps the string in lastReadingString and reads it on
+// the next call, so the text is copied into storage owned by CDIME. Two slots
+// alternate so that the previous string stays valid during the next call.
 int32_t CRustSessionHost::AddComposingAndChar(void* ctx, const uint16_t* text, size_t len)
 {
     CRustSessionHost* self = Self(ctx);
+    CDIME* dime = self->_pDime;
     CStringRange s;
-    s.Set((const WCHAR*)text, len);
-    return self->_pDime->_AddComposingAndChar(self->_ec, self->_pContext, &s);
+    if (text)
+    {
+        dime->_rustComposingSlot ^= 1;
+        std::wstring& buf = dime->_rustComposingText[dime->_rustComposingSlot];
+        buf.assign((const WCHAR*)text, len);
+        s.Set(buf.c_str(), len);
+    }
+    return dime->_AddComposingAndChar(self->_ec, self->_pContext, &s);
 }
 
 void CRustSessionHost::SetCommitString(void* ctx, const uint16_t* text, size_t len)
@@ -345,6 +372,120 @@ int32_t CRustSessionHost::SentenceSelectCandidate(void* ctx, const uint16_t* tex
 {
     CRustSessionHost* self = Self(ctx);
     return self->_pDime->_SentenceSelectCandidate(self->_ec, self->_pContext, std::wstring((const WCHAR*)text, len), isExplicit ? TRUE : FALSE);
+}
+
+// ---- composing ----
+
+// The selection checks of _HandleCompositionInput (strict: anything but S_OK
+// fails) and _HandleCompositionBackspace (only failures). -1 no selection,
+// 0 outside the composition, 1 covered (or no composition range).
+int32_t CRustSessionHost::Selection(void* ctx, int32_t strict)
+{
+    CRustSessionHost* self = Self(ctx);
+    CDIME* dime = self->_pDime;
+    TF_SELECTION tfSelection;
+    ULONG fetched = 0;
+    HRESULT hr = self->_pContext->GetSelection(self->_ec, TF_DEFAULT_SELECTION, 1, &tfSelection, &fetched);
+    if ((strict ? hr != S_OK : FAILED(hr)) || fetched != 1)
+        return -1;
+
+    int32_t result = 1;
+    ITfRange* pRangeComposition = nullptr;
+    if (SUCCEEDED(dime->_pComposition->GetRange(&pRangeComposition)))
+    {
+        BOOL isCovered = dime->_IsRangeCovered(self->_ec, tfSelection.range, pRangeComposition);
+        pRangeComposition->Release();
+        if (!isCovered)
+            result = 0;
+    }
+    tfSelection.range->Release();
+    return result;
+}
+
+int32_t CRustSessionHost::AddVirtualKey(void* ctx, uint16_t wch) { return Self(ctx)->Engine()->AddVirtualKey(wch) ? 1 : 0; }
+void CRustSessionHost::RemoveVirtualKey(void* ctx, size_t index) { Self(ctx)->Engine()->RemoveVirtualKey(index); }
+int32_t CRustSessionHost::IsEscapeInput(void* ctx) { return Self(ctx)->Engine()->IsEscapeInput() ? 1 : 0; }
+
+// GetReadingString; *wildcard stays -1 when it is not set (no dictionary).
+// The returned buffer is the engine's (never freed).
+size_t CRustSessionHost::ReadingString(void* ctx, const uint16_t** out, int32_t* wildcard)
+{
+    CStringRange readingString;
+    BOOL isWildcardIncluded = -1;
+    Self(ctx)->Engine()->GetReadingString(&readingString, &isWildcardIncluded);
+    *wildcard = isWildcardIncluded;
+    *out = (const uint16_t*)readingString.Get();
+    return readingString.Get() ? readingString.GetLength() : 0;
+}
+
+int32_t CRustSessionHost::AutoCompose(void*) { return CConfig::GetAutoCompose() ? 1 : 0; }
+int32_t CRustSessionHost::DoBeepOnCandi(void*) { return CConfig::GetDoBeepOnCandi() ? 1 : 0; }
+void CRustSessionHost::SetCandidateMode(void* ctx, uint32_t mode) { Self(ctx)->_pDime->_candidateMode = (CANDIDATE_MODE)mode; }
+void CRustSessionHost::SetCandidateWithWildcard(void* ctx, int32_t wildcard) { Self(ctx)->_pDime->_isCandidateWithWildcard = wildcard ? TRUE : FALSE; }
+
+uint32_t CRustSessionHost::FetchCandidates(void* ctx, int32_t incremental, int32_t wildcard, int32_t arrayPhraseEnding)
+{
+    CRustSessionHost* self = Self(ctx);
+    self->_fetched.Clear();
+    self->Engine()->GetCandidateList(&self->_fetched, incremental ? TRUE : FALSE, wildcard ? TRUE : FALSE, arrayPhraseEnding ? TRUE : FALSE);
+    return self->_fetched.Count();
+}
+
+void CRustSessionHost::SetCandidateText(void* ctx)
+{
+    CRustSessionHost* self = Self(ctx);
+    CCompositionProcessorEngine* pEngine = self->Engine();
+    self->UI()->_SetCandidateText(&self->_fetched, pEngine->GetCandidateListIndexRange(), TRUE, pEngine->GetCandidateWindowWidth());
+}
+
+// Null-safe: the no-UI branch of _HandleCompositionInputWorker called it on a
+// null presenter.
+void CRustSessionHost::ClearCandidateList(void* ctx)
+{
+    if (Self(ctx)->UI())
+        Self(ctx)->UI()->_ClearCandidateList();
+}
+
+void CRustSessionHost::HideCandidateWindow(void* ctx) { Self(ctx)->UI()->Show(FALSE); }
+
+int32_t CRustSessionHost::CreateAndStartCandidate(void* ctx)
+{
+    CRustSessionHost* self = Self(ctx);
+    return self->_pDime->_CreateAndStartCandidate(self->Engine(), self->_ec, self->_pContext);
+}
+
+// _HandleCompositionArrowKey.
+void CRustSessionHost::CompositionArrowKey(void* ctx, uint32_t function)
+{
+    CRustSessionHost* self = Self(ctx);
+    CDIME* dime = self->_pDime;
+    ITfRange* pRangeComposition = nullptr;
+    TF_SELECTION tfSelection;
+    ULONG fetched = 0;
+
+    if (FAILED(self->_pContext->GetSelection(self->_ec, TF_DEFAULT_SELECTION, 1, &tfSelection, &fetched)) || fetched != 1)
+        return;   // no selection, eat the keystroke
+
+    if (SUCCEEDED(dime->_pComposition->GetRange(&pRangeComposition)))
+    {
+        if (dime->_pUIPresenter)
+            dime->_pUIPresenter->AdviseUIChangedByArrowKey((KEYSTROKE_FUNCTION)function);
+        self->_pContext->SetSelection(self->_ec, 1, &tfSelection);
+        pRangeComposition->Release();
+    }
+    tfSelection.range->Release();
+}
+
+int32_t CRustSessionHost::SentenceRender(void* ctx, const uint16_t* text, size_t len)
+{
+    CRustSessionHost* self = Self(ctx);
+    return self->_pDime->_SentenceRender(self->_ec, self->_pContext, std::wstring((const WCHAR*)text, len));
+}
+
+int32_t CRustSessionHost::SentenceAppendFetched(void* ctx, int32_t index)
+{
+    CRustSessionHost* self = Self(ctx);
+    return self->_pDime->_SentenceAppendFromCandidateList(self->_ec, self->_pContext, &self->_fetched, index);
 }
 
 #endif // DIME_RUST_AVAILABLE

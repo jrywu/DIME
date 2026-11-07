@@ -1,0 +1,10 @@
+# script: a Shift+8 Back Back a Shift+/ Space Esc
+init -> passed text="" sel=0
+a -> eaten text="A" sel=1 comp="A"
+Shift+8 -> eaten text="A*" sel=2 comp="A*"
+Back -> eaten text="A" sel=1 comp="A"
+Back -> eaten text="" sel=0
+a -> eaten text="A" sel=1 comp="A"
+Shift+/ -> eaten text="A?" sel=2 comp="A?"
+Space -> eaten text="A?" sel=2 comp="A?" cand=original[*東 西]
+Esc -> eaten text="" sel=0

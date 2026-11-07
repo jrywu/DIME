@@ -475,6 +475,23 @@ typedef struct DimeHostVtbl {
     int32_t (*sentence_close_reading)(void* ctx);
     void (*sentence_reset)(void* ctx);
     int32_t (*sentence_select_candidate)(void* ctx, const uint16_t* text, size_t len, int32_t is_explicit);
+    int32_t (*selection)(void* ctx, int32_t strict);
+    int32_t (*add_virtual_key)(void* ctx, uint16_t wch);
+    void (*remove_virtual_key)(void* ctx, size_t index);
+    int32_t (*is_escape_input)(void* ctx);
+    size_t (*reading_string)(void* ctx, const uint16_t** out, int32_t* wildcard);
+    int32_t (*auto_compose)(void* ctx);
+    int32_t (*do_beep_on_candi)(void* ctx);
+    void (*set_candidate_mode)(void* ctx, uint32_t mode);
+    void (*set_candidate_with_wildcard)(void* ctx, int32_t wildcard);
+    uint32_t (*fetch_candidates)(void* ctx, int32_t incremental, int32_t wildcard, int32_t array_phrase_ending);
+    void (*set_candidate_text)(void* ctx);
+    void (*clear_candidate_list)(void* ctx);
+    void (*hide_candidate_window)(void* ctx);
+    int32_t (*create_and_start_candidate)(void* ctx);
+    void (*composition_arrow_key)(void* ctx, uint32_t function);
+    int32_t (*sentence_render)(void* ctx, const uint16_t* text, size_t len);
+    int32_t (*sentence_append_fetched)(void* ctx, int32_t index);
 } DimeHostVtbl;
 
 typedef struct DimeHost {
@@ -492,6 +509,12 @@ int32_t dime_session_handle_candidate_arrow_key(const DimeHost* host, uint32_t f
 int32_t dime_session_handle_candidate_select_by_number(const DimeHost* host, uint32_t code, uint16_t wch);
 int32_t dime_session_handle_phrase_finalize(const DimeHost* host);
 int32_t dime_session_handle_phrase_select_by_number(const DimeHost* host, uint32_t code, uint16_t wch);
+int32_t dime_session_handle_composition_input(const DimeHost* host, uint16_t wch);
+int32_t dime_session_handle_composition_input_worker(const DimeHost* host);
+int32_t dime_session_handle_composition_finalize(const DimeHost* host, int32_t is_candidate_list);
+int32_t dime_session_handle_composition_convert(const DimeHost* host, int32_t wildcard, int32_t array_phrase_ending);
+int32_t dime_session_handle_composition_backspace(const DimeHost* host);
+int32_t dime_session_handle_composition_arrow_key(const DimeHost* host, uint32_t function);
 
 #ifdef __cplusplus
 }

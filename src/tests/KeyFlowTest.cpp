@@ -202,6 +202,8 @@ namespace DIMEUnitTests
         TEST_METHOD(Phonetic_SpaceTone)       { CheckGolden(L"phonetic_space_tone", PhoneticOptions(), L"5 j / Space Space Down Enter"); }
         TEST_METHOD(Phonetic_EditReading)     { CheckGolden(L"phonetic_edit_reading", PhoneticOptions(), L"j i Back Back j i 3 Esc j i 4 Back"); }
         TEST_METHOD(Phonetic_Replace)         { CheckGolden(L"phonetic_replace", PhoneticOptions(), L"s j u 3"); }
+        TEST_METHOD(Phonetic_CandidateBackspace) { CheckGolden(L"phonetic_candidate_backspace", PhoneticOptions(), L"5 j / Space Back Back Esc"); }
+        TEST_METHOD(Phonetic_AutoComposeBackspace) { CheckGolden(L"phonetic_auto_compose_backspace", PhoneticOptions({ L"AutoCompose = 1" }), L"5 j / Back Back 3 Back Esc"); }
         TEST_METHOD(Phonetic_Eten)            { CheckGolden(L"phonetic_eten", PhoneticOptions({ L"PhoneticKeyboardLayout = 1" }), L"n e 3 1"); }
 
         // ---- Dayi (synthetic table) --------------------------------------------
@@ -256,6 +258,10 @@ namespace DIMEUnitTests
             o.appDataFiles.push_back({ L"TCSC.cin", Installer(L"TCSC.cin") });
             CheckGolden(L"dayi_han_convert", o, L"a b Space Space a b Space Down Space");
         }
+        TEST_METHOD(Dayi_CompositionArrows)   { CheckGolden(L"dayi_composition_arrows", DayiOptions(), L"a b Left Right Up Down Home End Esc"); }
+        TEST_METHOD(Dayi_AutoComposeNavigate) { CheckGolden(L"dayi_auto_compose_navigate", DayiOptions({ L"AutoCompose = 1" }), L"a Down Down Enter a b Back Back a Esc"); }
+        TEST_METHOD(Dayi_SymbolBackspace)     { CheckGolden(L"dayi_symbol_backspace", DayiOptions(), L"= 1 Back Back = 1 Back 2 Space 1"); }
+        TEST_METHOD(Dayi_CandidateThenType)   { CheckGolden(L"dayi_candidate_then_type", DayiOptions({ L"MakePhrase = 0" }), L"a Space b Space Down d Space"); }
         TEST_METHOD(Dayi_EscapeAndComplete)   { CheckGolden(L"dayi_escape_and_complete", DayiOptions(), L"a b Esc a Space Esc a Space Space Esc a b Enter"); }
         TEST_METHOD(Dayi_Sentence)
         {
@@ -276,6 +282,7 @@ namespace DIMEUnitTests
         TEST_METHOD(Generic_SpaceFirst)       { CheckGolden(L"generic_space_first", GenericOptions({ L"SpaceAsFirstCandSelkey = 1" }), L"a Space Space b Space Space"); }
         TEST_METHOD(Generic_MaxCodes)         { CheckGolden(L"generic_max_codes", GenericOptions({ L"MaxCodes = 2" }), L"a b c Space a b c d"); }
         TEST_METHOD(Generic_AutoComposeWildcard){ CheckGolden(L"generic_auto_compose_wildcard", GenericOptions({ L"AutoCompose = 1" }), L"a Shift+8 Space Esc a Shift+/ Space 1"); }
+        TEST_METHOD(Generic_WildcardBackspace){ CheckGolden(L"generic_wildcard_backspace", GenericOptions(), L"a Shift+8 Back Back a Shift+/ Space Esc"); }
         TEST_METHOD(Generic_ArrowKeySWPages)  { CheckGolden(L"generic_arrow_pages", GenericOptions({ L"ArrowKeySWPages = 1" }), L"a Space Right Right Left 1"); }
         TEST_METHOD(Generic_NoArrowPages)     { CheckGolden(L"generic_no_arrow_pages", GenericOptions({ L"ArrowKeySWPages = 0" }), L"a Space Right Right Left 1"); }
     };

@@ -1,0 +1,12 @@
+# script: = 1 Back Back = 1 Back 2 Space 1
+init -> passed text="" sel=0
+= -> eaten text="=" sel=1 comp="="
+1 -> eaten text="=1" sel=2 comp="=1" cand=original[*， 。]
+Back -> eaten text="" sel=0
+Back -> passed text="" sel=0
+= -> eaten text="=" sel=1 comp="="
+1 -> eaten text="=1" sel=2 comp="=1" cand=original[*， 。]
+Back -> eaten text="" sel=0
+2 -> passed text="" sel=0
+Space -> passed text="" sel=0
+1 -> passed text="" sel=0

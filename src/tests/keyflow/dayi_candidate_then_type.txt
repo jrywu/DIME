@@ -1,0 +1,9 @@
+# script: a Space b Space Down d Space
+init -> passed text="" sel=0
+a -> eaten text="人" sel=1 comp="人"
+Space -> eaten text="人" sel=1 comp="人" cand=original[*人 入 八]
+b -> eaten text="人馬" sel=2 comp="馬"
+Space -> eaten text="人" sel=1
+Down -> passed text="人" sel=1
+d -> eaten text="人言" sel=2 comp="言"
+Space -> eaten text="人言" sel=2 comp="言" cand=original[*言 詞]

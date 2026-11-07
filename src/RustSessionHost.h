@@ -12,6 +12,7 @@
 #include <msctf.h>
 #include <string>
 #include "dime_ffi.h"
+#include "BaseStructure.h"
 
 class CDIME;
 class CCompositionProcessorEngine;
@@ -29,6 +30,7 @@ private:
     ITfContext* _pContext;
     DimeHost _host;
     std::wstring _scratch;      // strings returned to Rust (valid until the next callback)
+    CDIMEArray<CCandidateListItem> _fetched;   // fetch_candidates
 
     static const DimeHostVtbl s_vtbl;
     static CRustSessionHost* Self(void* ctx) { return static_cast<CRustSessionHost*>(ctx); }
@@ -87,6 +89,23 @@ private:
     static int32_t SentenceCloseReading(void* ctx);
     static void SentenceReset(void* ctx);
     static int32_t SentenceSelectCandidate(void* ctx, const uint16_t* text, size_t len, int32_t isExplicit);
+    static int32_t Selection(void* ctx, int32_t strict);
+    static int32_t AddVirtualKey(void* ctx, uint16_t wch);
+    static void RemoveVirtualKey(void* ctx, size_t index);
+    static int32_t IsEscapeInput(void* ctx);
+    static size_t ReadingString(void* ctx, const uint16_t** out, int32_t* wildcard);
+    static int32_t AutoCompose(void* ctx);
+    static int32_t DoBeepOnCandi(void* ctx);
+    static void SetCandidateMode(void* ctx, uint32_t mode);
+    static void SetCandidateWithWildcard(void* ctx, int32_t wildcard);
+    static uint32_t FetchCandidates(void* ctx, int32_t incremental, int32_t wildcard, int32_t arrayPhraseEnding);
+    static void SetCandidateText(void* ctx);
+    static void ClearCandidateList(void* ctx);
+    static void HideCandidateWindow(void* ctx);
+    static int32_t CreateAndStartCandidate(void* ctx);
+    static void CompositionArrowKey(void* ctx, uint32_t function);
+    static int32_t SentenceRender(void* ctx, const uint16_t* text, size_t len);
+    static int32_t SentenceAppendFetched(void* ctx, int32_t index);
 };
 
 #endif // DIME_RUST_AVAILABLE

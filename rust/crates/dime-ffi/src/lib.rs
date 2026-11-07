@@ -1651,6 +1651,23 @@ pub struct DimeHostVtbl {
     pub sentence_close_reading: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
     pub sentence_reset: unsafe extern "C" fn(ctx: *mut c_void),
     pub sentence_select_candidate: unsafe extern "C" fn(ctx: *mut c_void, text: *const u16, len: usize, explicit: i32) -> i32,
+    pub selection: unsafe extern "C" fn(ctx: *mut c_void, strict: i32) -> i32,
+    pub add_virtual_key: unsafe extern "C" fn(ctx: *mut c_void, wch: u16) -> i32,
+    pub remove_virtual_key: unsafe extern "C" fn(ctx: *mut c_void, index: usize),
+    pub is_escape_input: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub reading_string: unsafe extern "C" fn(ctx: *mut c_void, out: *mut *const u16, wildcard: *mut i32) -> usize,
+    pub auto_compose: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub do_beep_on_candi: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub set_candidate_mode: unsafe extern "C" fn(ctx: *mut c_void, mode: u32),
+    pub set_candidate_with_wildcard: unsafe extern "C" fn(ctx: *mut c_void, wildcard: i32),
+    pub fetch_candidates: unsafe extern "C" fn(ctx: *mut c_void, incremental: i32, wildcard: i32, array_phrase_ending: i32) -> u32,
+    pub set_candidate_text: unsafe extern "C" fn(ctx: *mut c_void),
+    pub clear_candidate_list: unsafe extern "C" fn(ctx: *mut c_void),
+    pub hide_candidate_window: unsafe extern "C" fn(ctx: *mut c_void),
+    pub create_and_start_candidate: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub composition_arrow_key: unsafe extern "C" fn(ctx: *mut c_void, function: u32),
+    pub sentence_render: unsafe extern "C" fn(ctx: *mut c_void, text: *const u16, len: usize) -> i32,
+    pub sentence_append_fetched: unsafe extern "C" fn(ctx: *mut c_void, index: i32) -> i32,
 }
 
 #[repr(C)]
@@ -1714,7 +1731,10 @@ impl session::Host for FfiHost<'_> {
         is_ui_less_mode,
         reverse_conversion_active,
         is_escape_input_leading,
-        is_array_short_code
+        is_array_short_code,
+        is_escape_input,
+        auto_compose,
+        do_beep_on_candi
     );
     host_unit!(
         remove_dummy_composition,
@@ -1723,7 +1743,10 @@ impl session::Host for FfiHost<'_> {
         start_composition,
         async_reverse_conversion,
         sentence_commit_before_output,
-        sentence_reset
+        sentence_reset,
+        set_candidate_text,
+        clear_candidate_list,
+        hide_candidate_window
     );
 
     fn virtual_key_length(&self) -> usize {
@@ -1783,8 +1806,58 @@ impl session::Host for FfiHost<'_> {
     fn show_associated_phrases(&mut self, last_char: u16) -> bool {
         unsafe { (self.v.show_associated_phrases)(self.ctx, last_char) != 0 }
     }
-    fn add_composing_and_char(&mut self, text: &[u16]) -> i32 {
-        unsafe { (self.v.add_composing_and_char)(self.ctx, text.as_ptr(), text.len()) }
+    fn add_composing_and_char(&mut self, text: Option<&[u16]>) -> i32 {
+        let (p, len) = text.map_or((ptr::null(), 0), |t| (t.as_ptr(), t.len()));
+        unsafe { (self.v.add_composing_and_char)(self.ctx, p, len) }
+    }
+    fn selection(&mut self, strict: bool) -> session::Selection {
+        match unsafe { (self.v.selection)(self.ctx, i32::from(strict)) } {
+            -1 => session::Selection::Unavailable,
+            0 => session::Selection::Outside,
+            _ => session::Selection::Covered,
+        }
+    }
+    fn add_virtual_key(&mut self, wch: u16) -> bool {
+        unsafe { (self.v.add_virtual_key)(self.ctx, wch) != 0 }
+    }
+    fn remove_virtual_key(&mut self, index: usize) {
+        unsafe { (self.v.remove_virtual_key)(self.ctx, index) }
+    }
+    fn reading_string(&mut self) -> (Option<Vec<u16>>, Option<bool>) {
+        let mut p: *const u16 = ptr::null();
+        let mut wildcard: i32 = -1;
+        let len = unsafe { (self.v.reading_string)(self.ctx, &mut p, &mut wildcard) };
+        let text = (!p.is_null()).then(|| host_string(p, len));
+        let wildcard = (wildcard >= 0).then_some(wildcard != 0);
+        (text, wildcard)
+    }
+    fn set_candidate_mode(&mut self, mode: u32) {
+        unsafe { (self.v.set_candidate_mode)(self.ctx, mode) }
+    }
+    fn set_candidate_with_wildcard(&mut self, wildcard: bool) {
+        unsafe { (self.v.set_candidate_with_wildcard)(self.ctx, i32::from(wildcard)) }
+    }
+    fn fetch_candidates(&mut self, incremental: bool, wildcard: bool, array_phrase_ending: bool) -> u32 {
+        unsafe {
+            (self.v.fetch_candidates)(
+                self.ctx,
+                i32::from(incremental),
+                i32::from(wildcard),
+                i32::from(array_phrase_ending),
+            )
+        }
+    }
+    fn create_and_start_candidate(&mut self) -> i32 {
+        unsafe { (self.v.create_and_start_candidate)(self.ctx) }
+    }
+    fn composition_arrow_key(&mut self, function: u32) {
+        unsafe { (self.v.composition_arrow_key)(self.ctx, function) }
+    }
+    fn sentence_render(&mut self, reading: &[u16]) -> i32 {
+        unsafe { (self.v.sentence_render)(self.ctx, reading.as_ptr(), reading.len()) }
+    }
+    fn sentence_append_fetched(&mut self, index: i32) -> i32 {
+        unsafe { (self.v.sentence_append_fetched)(self.ctx, index) }
     }
     fn set_commit_string(&mut self, text: &[u16]) {
         unsafe { (self.v.set_commit_string)(self.ctx, text.as_ptr(), text.len()) }
@@ -1910,6 +1983,64 @@ pub unsafe extern "C" fn dime_session_handle_phrase_finalize(host: *const DimeHo
 #[no_mangle]
 pub unsafe extern "C" fn dime_session_handle_phrase_select_by_number(host: *const DimeHost, code: u32, wch: u16) -> i32 {
     unsafe { with_host(host, |h| session::handle_phrase_select_by_number(h, code, wch)) }
+}
+
+/// `_HandleCompositionInput`.
+///
+/// # Safety
+/// See `dime_session_handle_complete`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_session_handle_composition_input(host: *const DimeHost, wch: u16) -> i32 {
+    unsafe { with_host(host, |h| session::handle_composition_input(h, wch)) }
+}
+
+/// `_HandleCompositionInputWorker`.
+///
+/// # Safety
+/// See `dime_session_handle_complete`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_session_handle_composition_input_worker(host: *const DimeHost) -> i32 {
+    unsafe { with_host(host, |h| session::handle_composition_input_worker(h)) }
+}
+
+/// `_HandleCompositionFinalize`.
+///
+/// # Safety
+/// See `dime_session_handle_complete`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_session_handle_composition_finalize(host: *const DimeHost, is_candidate_list: i32) -> i32 {
+    unsafe { with_host(host, |h| session::handle_composition_finalize(h, is_candidate_list != 0)) }
+}
+
+/// `_HandleCompositionConvert`.
+///
+/// # Safety
+/// See `dime_session_handle_complete`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_session_handle_composition_convert(
+    host: *const DimeHost,
+    wildcard: i32,
+    array_phrase_ending: i32,
+) -> i32 {
+    unsafe { with_host(host, |h| session::handle_composition_convert(h, wildcard != 0, array_phrase_ending != 0)) }
+}
+
+/// `_HandleCompositionBackspace`.
+///
+/// # Safety
+/// See `dime_session_handle_complete`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_session_handle_composition_backspace(host: *const DimeHost) -> i32 {
+    unsafe { with_host(host, |h| session::handle_composition_backspace(h)) }
+}
+
+/// `_HandleCompositionArrowKey`.
+///
+/// # Safety
+/// See `dime_session_handle_complete`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_session_handle_composition_arrow_key(host: *const DimeHost, function: u32) -> i32 {
+    unsafe { with_host(host, |h| session::handle_composition_arrow_key(h, function)) }
 }
 
 #[cfg(test)]

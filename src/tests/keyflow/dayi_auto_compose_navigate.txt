@@ -1,0 +1,12 @@
+# script: a Down Down Enter a b Back Back a Esc
+init -> passed text="" sel=0
+a -> eaten text="人" sel=1 comp="人" cand=incremental[*人 入 八 從 信]
+Down -> eaten text="人" sel=1 comp="人" cand=incremental[人 *入 八 從 信]
+Down -> eaten text="人" sel=1 comp="人" cand=incremental[人 入 *八 從 信]
+Enter -> eaten text="八" sel=1
+a -> eaten text="八人" sel=2 comp="人" cand=incremental[*人 入 八 從 信]
+b -> eaten text="八人馬" sel=3 comp="人馬" cand=incremental[*從]
+Back -> eaten text="八人" sel=2 comp="人" cand=incremental[*人 入 八 從 信]
+Back -> eaten text="八" sel=1
+a -> eaten text="八人" sel=2 comp="人" cand=incremental[*人 入 八 從 信]
+Esc -> eaten text="八" sel=1

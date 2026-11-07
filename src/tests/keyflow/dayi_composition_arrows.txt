@@ -1,0 +1,11 @@
+# script: a b Left Right Up Down Home End Esc
+init -> passed text="" sel=0
+a -> eaten text="人" sel=1 comp="人"
+b -> eaten text="人馬" sel=2 comp="人馬"
+Left -> eaten text="人馬" sel=2 comp="人馬"
+Right -> eaten text="人馬" sel=2 comp="人馬"
+Up -> eaten text="人馬" sel=2 comp="人馬"
+Down -> eaten text="人馬" sel=2 comp="人馬"
+Home -> eaten text="人馬" sel=2 comp="人馬"
+End -> eaten text="人馬" sel=2 comp="人馬"
+Esc -> eaten text="" sel=0

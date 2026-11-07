@@ -150,6 +150,16 @@ HRESULT CDIME::_HandleCancelCpp(TfEditCookie ec, _In_ ITfContext *pContext)
 
 HRESULT CDIME::_HandleCompositionInput(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch)
 {
+#ifdef DIME_USE_RUST_ENGINE
+	CRustSessionHost host(this, ec, pContext);
+	return dime_session_handle_composition_input(host.Get(), wch);
+#else
+	return _HandleCompositionInputCpp(ec, pContext, wch);
+#endif
+}
+
+HRESULT CDIME::_HandleCompositionInputCpp(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch)
+{
 	debugPrint(L"CDIME::_HandleCompositionInput(), _candidateMode = %d, wch = %c (0x%x)", _candidateMode, wch, wch);
     ITfRange* pRangeComposition = nullptr;
     TF_SELECTION tfSelection;
@@ -227,6 +237,16 @@ Exit:
 //----------------------------------------------------------------------------
 
 HRESULT CDIME::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *pCompositionProcessorEngine, TfEditCookie ec, _In_ ITfContext *pContext)
+{
+#ifdef DIME_USE_RUST_ENGINE
+	CRustSessionHost host(this, ec, pContext);
+	return dime_session_handle_composition_input_worker(host.Get());
+#else
+	return _HandleCompositionInputWorkerCpp(pCompositionProcessorEngine, ec, pContext);
+#endif
+}
+
+HRESULT CDIME::_HandleCompositionInputWorkerCpp(_In_ CCompositionProcessorEngine *pCompositionProcessorEngine, TfEditCookie ec, _In_ ITfContext *pContext)
 {
 	debugPrint(L"CDIME::_HandleCompositionInputWorker()");
     HRESULT hr = S_OK;
@@ -309,6 +329,16 @@ HRESULT CDIME::_HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *p
 
 HRESULT CDIME::_HandleCompositionFinalize(TfEditCookie ec, _In_ ITfContext *pContext, BOOL isCandidateList)
 {
+#ifdef DIME_USE_RUST_ENGINE
+	CRustSessionHost host(this, ec, pContext);
+	return dime_session_handle_composition_finalize(host.Get(), isCandidateList);
+#else
+	return _HandleCompositionFinalizeCpp(ec, pContext, isCandidateList);
+#endif
+}
+
+HRESULT CDIME::_HandleCompositionFinalizeCpp(TfEditCookie ec, _In_ ITfContext *pContext, BOOL isCandidateList)
+{
 	debugPrint(L"CDIME::_HandleCompositionFinalize()");
     HRESULT hr = S_OK;
 
@@ -364,6 +394,16 @@ HRESULT CDIME::_HandleCompositionFinalize(TfEditCookie ec, _In_ ITfContext *pCon
 //----------------------------------------------------------------------------
 
 HRESULT CDIME::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pContext, BOOL isWildcardSearch, BOOL isArrayPhraseEnding)
+{
+#ifdef DIME_USE_RUST_ENGINE
+	CRustSessionHost host(this, ec, pContext);
+	return dime_session_handle_composition_convert(host.Get(), isWildcardSearch, isArrayPhraseEnding);
+#else
+	return _HandleCompositionConvertCpp(ec, pContext, isWildcardSearch, isArrayPhraseEnding);
+#endif
+}
+
+HRESULT CDIME::_HandleCompositionConvertCpp(TfEditCookie ec, _In_ ITfContext *pContext, BOOL isWildcardSearch, BOOL isArrayPhraseEnding)
 {
     debugPrint(L"CDIME::_HandleCompositionConvert() isWildcardSearch = %d, isArrayPhraseEnding =%d. ", isWildcardSearch, isArrayPhraseEnding);
     HRESULT hr = S_OK;
@@ -434,6 +474,16 @@ HRESULT CDIME::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pCont
 //----------------------------------------------------------------------------
 
 HRESULT CDIME::_HandleCompositionBackspace(TfEditCookie ec, _In_ ITfContext *pContext)
+{
+#ifdef DIME_USE_RUST_ENGINE
+	CRustSessionHost host(this, ec, pContext);
+	return dime_session_handle_composition_backspace(host.Get());
+#else
+	return _HandleCompositionBackspaceCpp(ec, pContext);
+#endif
+}
+
+HRESULT CDIME::_HandleCompositionBackspaceCpp(TfEditCookie ec, _In_ ITfContext *pContext)
 {
     ITfRange* pRangeComposition = nullptr;
     TF_SELECTION tfSelection;
@@ -511,6 +561,16 @@ Exit:
 //----------------------------------------------------------------------------
 
 HRESULT CDIME::_HandleCompositionArrowKey(TfEditCookie ec, _In_ ITfContext *pContext, KEYSTROKE_FUNCTION keyFunction)
+{
+#ifdef DIME_USE_RUST_ENGINE
+	CRustSessionHost host(this, ec, pContext);
+	return dime_session_handle_composition_arrow_key(host.Get(), (uint32_t)keyFunction);
+#else
+	return _HandleCompositionArrowKeyCpp(ec, pContext, keyFunction);
+#endif
+}
+
+HRESULT CDIME::_HandleCompositionArrowKeyCpp(TfEditCookie ec, _In_ ITfContext *pContext, KEYSTROKE_FUNCTION keyFunction)
 {
     ITfRange* pRangeComposition = nullptr;
     TF_SELECTION tfSelection;
