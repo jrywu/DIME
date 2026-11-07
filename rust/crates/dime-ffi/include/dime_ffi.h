@@ -516,6 +516,33 @@ int32_t dime_session_handle_composition_convert(const DimeHost* host, int32_t wi
 int32_t dime_session_handle_composition_backspace(const DimeHost* host);
 int32_t dime_session_handle_composition_arrow_key(const DimeHost* host, uint32_t function);
 
+/* ---- Sentence buffer (CSentenceBuffer, rust/crates/dime-core/src/sentence_buffer.rs) ----
+ * Pointers returned for codes / candidates stay valid until the buffer changes. */
+typedef struct DimeSentenceBuffer DimeSentenceBuffer;
+DimeSentenceBuffer* dime_sentence_buffer_new(void);
+void     dime_sentence_buffer_free(DimeSentenceBuffer* b);
+size_t   dime_sentence_buffer_count(DimeSentenceBuffer* b);
+size_t   dime_sentence_buffer_cursor(DimeSentenceBuffer* b);
+void     dime_sentence_buffer_move(DimeSentenceBuffer* b, uint32_t op);   /* 0 left, 1 right, 2 home, 3 end */
+int32_t  dime_sentence_buffer_insert(DimeSentenceBuffer* b, const uint16_t* code, size_t code_len,
+                                     const uint16_t* const* cands, const size_t* cand_lens, size_t count, int32_t pinned);
+int32_t  dime_sentence_buffer_remove_before_cursor(DimeSentenceBuffer* b);
+int32_t  dime_sentence_buffer_remove_at_cursor(DimeSentenceBuffer* b);
+void     dime_sentence_buffer_clear(DimeSentenceBuffer* b);
+size_t   dime_sentence_buffer_edit_target(DimeSentenceBuffer* b);
+int32_t  dime_sentence_buffer_pin(DimeSentenceBuffer* b, size_t pos, int32_t index);
+void     dime_sentence_buffer_convert(DimeSentenceBuffer* b, const DimeLexicon* lex, const DimeUserModel* user);
+int32_t  dime_sentence_buffer_learn(DimeSentenceBuffer* b, DimeUserModel* user);
+const uint16_t* dime_sentence_buffer_position_code(DimeSentenceBuffer* b, size_t pos, size_t* len);
+size_t   dime_sentence_buffer_candidate_count(DimeSentenceBuffer* b, size_t pos);
+const uint16_t* dime_sentence_buffer_candidate(DimeSentenceBuffer* b, size_t pos, size_t i, size_t* len);
+int32_t  dime_sentence_buffer_pinned(DimeSentenceBuffer* b, size_t pos);
+int32_t  dime_sentence_buffer_chosen(DimeSentenceBuffer* b, size_t pos);
+DimeBuffer* dime_sentence_buffer_text(DimeSentenceBuffer* b);
+size_t   dime_sentence_buffer_text_length(DimeSentenceBuffer* b, size_t n);
+DimeBuffer* dime_sentence_buffer_display(DimeSentenceBuffer* b, const uint16_t* reading, size_t len);
+size_t   dime_sentence_buffer_display_caret(DimeSentenceBuffer* b, const uint16_t* reading, size_t len);
+
 #ifdef __cplusplus
 }
 #endif

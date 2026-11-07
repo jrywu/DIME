@@ -21,6 +21,7 @@ use dime_core::candidates::{self, CandidatePaging};
 use dime_core::composition;
 use dime_core::keyclass;
 use dime_core::sentence::{self, Lexicon, Position, UserModel};
+use dime_core::sentence_buffer::SentenceBuffer;
 use dime_core::session;
 use dime_config::{ini, keys, ConfigValues, Env, ImeMode, Settings};
 use dime_core::{CandidateItem, DictionaryType, SearchSection, TableDictionaryEngine, WinTextOps};
@@ -2041,6 +2042,220 @@ pub unsafe extern "C" fn dime_session_handle_composition_backspace(host: *const 
 #[no_mangle]
 pub unsafe extern "C" fn dime_session_handle_composition_arrow_key(host: *const DimeHost, function: u32) -> i32 {
     unsafe { with_host(host, |h| session::handle_composition_arrow_key(h, function)) }
+}
+
+// ---------------------------------------------------------------------------
+// Sentence buffer (CSentenceBuffer)
+// ---------------------------------------------------------------------------
+
+pub struct DimeSentenceBuffer(SentenceBuffer);
+
+/// Run `f` on the buffer, or return `fallback` for a null handle or a panic.
+unsafe fn with_sb<R: Copy>(b: *mut DimeSentenceBuffer, fallback: R, f: impl FnOnce(&mut SentenceBuffer) -> R) -> R {
+    guard(fallback, || match unsafe { b.as_mut() } {
+        Some(b) => f(&mut b.0),
+        None => fallback,
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn dime_sentence_buffer_new() -> *mut DimeSentenceBuffer {
+    guard(ptr::null_mut(), || boxed(DimeSentenceBuffer(SentenceBuffer::new())))
+}
+
+/// # Safety
+/// `b` must come from `dime_sentence_buffer_new` (or be null).
+#[no_mangle]
+pub unsafe extern "C" fn dime_sentence_buffer_free(b: *mut DimeSentenceBuffer) {
+    if !b.is_null() {
+        guard((), || drop(unsafe { Box::from_raw(b) }));
+    }
+}
+
+/// # Safety
+/// `b` must be a valid handle or null (all `dime_sentence_buffer_*`).
+#[no_mangle]
+pub unsafe extern "C" fn dime_sentence_buffer_count(b: *mut DimeSentenceBuffer) -> usize {
+    unsafe { with_sb(b, 0, |b| b.count()) }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_sentence_buffer_cursor(b: *mut DimeSentenceBuffer) -> usize {
+    unsafe { with_sb(b, 0, |b| b.cursor()) }
+}
+
+/// `op`: 0 MoveLeft, 1 MoveRight, 2 Home, 3 End.
+#[no_mangle]
+pub unsafe extern "C" fn dime_sentence_buffer_move(b: *mut DimeSentenceBuffer, op: u32) {
+    unsafe {
+        with_sb(b, (), |b| match op {
+            0 => b.move_left(),
+            1 => b.move_right(),
+            2 => b.home(),
+            3 => b.end(),
+            _ => {}
+        })
+    }
+}
+
+/// `Insert`.  `cands`/`cand_lens` hold `count` candidates.
+///
+/// # Safety
+/// The pointers must reference the given lengths.
+#[no_mangle]
+pub unsafe extern "C" fn dime_sentence_buffer_insert(
+    b: *mut DimeSentenceBuffer,
+    code: *const u16,
+    code_len: usize,
+    cands: *const *const u16,
+    cand_lens: *const usize,
+    count: usize,
+    pinned: i32,
+) -> i32 {
+    unsafe {
+        with_sb(b, 0, |b| {
+            let candidates: Vec<Vec<u16>> = if count == 0 || cands.is_null() || cand_lens.is_null() {
+                Vec::new()
+            } else {
+                let ptrs = std::slice::from_raw_parts(cands, count);
+                let lens = std::slice::from_raw_parts(cand_lens, count);
+                ptrs.iter().zip(lens).map(|(&p, &l)| slice(p, l).to_vec()).collect()
+            };
+            i32::from(b.insert(slice(code, code_len), candidates, pinned))
+        })
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_sentence_buffer_remove_before_cursor(b: *mut DimeSentenceBuffer) -> i32 {
+    unsafe { with_sb(b, 0, |b| i32::from(b.remove_before_cursor())) }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_sentence_buffer_remove_at_cursor(b: *mut DimeSentenceBuffer) -> i32 {
+    unsafe { with_sb(b, 0, |b| i32::from(b.remove_at_cursor())) }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_sentence_buffer_clear(b: *mut DimeSentenceBuffer) {
+    unsafe { with_sb(b, (), |b| b.clear()) }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_sentence_buffer_edit_target(b: *mut DimeSentenceBuffer) -> usize {
+    unsafe { with_sb(b, 0, |b| b.edit_target()) }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_sentence_buffer_pin(b: *mut DimeSentenceBuffer, pos: usize, index: i32) -> i32 {
+    unsafe { with_sb(b, 0, |b| i32::from(b.pin(pos, index))) }
+}
+
+/// `Convert` (lexicon / user model may be null).
+#[no_mangle]
+pub unsafe extern "C" fn dime_sentence_buffer_convert(
+    b: *mut DimeSentenceBuffer,
+    lex: *const DimeLexicon,
+    user: *const DimeUserModel,
+) {
+    unsafe {
+        with_sb(b, (), |b| {
+            b.convert(lex.as_ref().map(|l| &l.0), user.as_ref().map(|u| &u.0));
+        })
+    }
+}
+
+/// `CSentenceUserModel::Learn(buffer)`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_sentence_buffer_learn(b: *mut DimeSentenceBuffer, user: *mut DimeUserModel) -> i32 {
+    unsafe {
+        with_sb(b, 0, |b| match user.as_mut() {
+            Some(u) => i32::from(b.learn_into(&mut u.0)),
+            None => 0,
+        })
+    }
+}
+
+/// The code of position `pos` (null when out of range); valid until the buffer changes.
+#[no_mangle]
+pub unsafe extern "C" fn dime_sentence_buffer_position_code(
+    b: *mut DimeSentenceBuffer,
+    pos: usize,
+    len: *mut usize,
+) -> *const u16 {
+    unsafe {
+        with_sb(b, ptr::null(), |b| match b.positions().get(pos) {
+            Some(p) => {
+                set(len, p.code.len());
+                p.code.as_ptr()
+            }
+            None => ptr::null(),
+        })
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_sentence_buffer_candidate_count(b: *mut DimeSentenceBuffer, pos: usize) -> usize {
+    unsafe { with_sb(b, 0, |b| b.positions().get(pos).map_or(0, |p| p.candidates.len())) }
+}
+
+/// Candidate `i` of position `pos` (null when out of range); valid until the buffer changes.
+#[no_mangle]
+pub unsafe extern "C" fn dime_sentence_buffer_candidate(
+    b: *mut DimeSentenceBuffer,
+    pos: usize,
+    i: usize,
+    len: *mut usize,
+) -> *const u16 {
+    unsafe {
+        with_sb(b, ptr::null(), |b| match b.positions().get(pos).and_then(|p| p.candidates.get(i)) {
+            Some(c) => {
+                set(len, c.len());
+                c.as_ptr()
+            }
+            None => ptr::null(),
+        })
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_sentence_buffer_pinned(b: *mut DimeSentenceBuffer, pos: usize) -> i32 {
+    unsafe { with_sb(b, -1, |b| b.positions().get(pos).map_or(-1, |p| p.pinned)) }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_sentence_buffer_chosen(b: *mut DimeSentenceBuffer, pos: usize) -> i32 {
+    unsafe { with_sb(b, 0, |b| b.positions().get(pos).map_or(0, |p| p.chosen)) }
+}
+
+/// `Text`, freed with `dime_buffer_free`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_sentence_buffer_text(b: *mut DimeSentenceBuffer) -> *mut DimeBuffer {
+    unsafe { with_sb(b, ptr::null_mut(), |b| boxed(DimeBuffer(b.text()))) }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_sentence_buffer_text_length(b: *mut DimeSentenceBuffer, n: usize) -> usize {
+    unsafe { with_sb(b, 0, |b| b.text_length(n)) }
+}
+
+/// `Display(reading)`, freed with `dime_buffer_free`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_sentence_buffer_display(
+    b: *mut DimeSentenceBuffer,
+    reading: *const u16,
+    len: usize,
+) -> *mut DimeBuffer {
+    unsafe { with_sb(b, ptr::null_mut(), |b| boxed(DimeBuffer(b.display(slice(reading, len))))) }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_sentence_buffer_display_caret(
+    b: *mut DimeSentenceBuffer,
+    reading: *const u16,
+    len: usize,
+) -> usize {
+    unsafe { with_sb(b, 0, |b| b.display_caret(slice(reading, len))) }
 }
 
 #[cfg(test)]

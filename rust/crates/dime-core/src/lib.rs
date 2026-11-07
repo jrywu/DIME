@@ -15,6 +15,7 @@ pub mod keyclass;
 pub mod parser;
 pub mod search;
 pub mod sentence;
+pub mod sentence_buffer;
 pub mod session;
 pub mod text;
 

@@ -377,6 +377,7 @@
     <ClCompile Include="KeyClassifyParityTest.cpp" />
     <ClCompile Include="CompositionBufferParityTest.cpp" />
     <ClCompile Include="CandidateGenParityTest.cpp" />
+    <ClCompile Include="SentenceBufferParityTest.cpp" />
     <ClCompile Include="..\RustTableDictionaryEngine.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
