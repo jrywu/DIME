@@ -37,6 +37,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Globals.h"
 #include "Compartment.h"
 #include "LanguageBar.h"
+#ifdef DIME_RUST_AVAILABLE
+#include <vector>
+#include "dime_ffi.h"
+#endif
 
 #define MAX_READINGSTRING 64
 
@@ -171,6 +175,52 @@ BOOL CCompositionProcessorEngine::ValidateCompositionKeyCharFull(WCHAR ch)
 //----------------------------------------------------------------------------
 
 void CCompositionProcessorEngine::GetReadingString(_Inout_ CStringRange *pReadingString, _Inout_opt_ BOOL *pIsWildcardIncluded, _In_opt_ CStringRange *pKeyCode)
+{
+#ifdef DIME_USE_RUST_ENGINE
+	_GetReadingStringRust(pReadingString, pIsWildcardIncluded, pKeyCode);
+#else
+	_GetReadingStringCpp(pReadingString, pIsWildcardIncluded, pKeyCode);
+#endif
+}
+
+#ifdef DIME_RUST_AVAILABLE
+// GetReadingString via dime_reading_string. The result buffer is a C++
+// allocation that is never freed, exactly like the C++ version (callers keep
+// pointers into it, e.g. a candidate item's _ItemString).
+void CCompositionProcessorEngine::_GetReadingStringRust(_Inout_ CStringRange *pReadingString, _Inout_opt_ BOOL *pIsWildcardIncluded, _In_opt_ CStringRange *pKeyCode)
+{
+	if (!IsDictionaryAvailable(Global::imeMode))
+		return;
+
+	CStringRange* pKeyStrokeBuffer = (pKeyCode == nullptr) ? &_keystrokeBuffer : pKeyCode;
+	*pReadingString = *pKeyStrokeBuffer;
+	_hasWildcardIncludedInKeystrokeBuffer = FALSE;
+
+	if (pKeyStrokeBuffer->GetLength())
+	{
+		PWCHAR pwchRadical = new (std::nothrow) WCHAR[MAX_READINGSTRING];
+		if (pwchRadical == NULL) return;
+
+		std::vector<DimeRadical> radicals;
+		_T_RadicalMap* pMap = _pTableDictionaryEngine[(UINT)Global::imeMode]->GetRadicalMap();
+		if (pMap)
+		{
+			radicals.reserve(pMap->size());
+			for (const auto& item : *pMap)
+				radicals.push_back({ (uint16_t)item.first, (const uint16_t*)item.second, item.second ? wcslen(item.second) : 0 });
+		}
+		int32_t hasWildcard = 0;
+		size_t len = dime_reading_string((const uint16_t*)pKeyStrokeBuffer->Get(), pKeyStrokeBuffer->GetLength(),
+			IsEscapeInput() ? 1 : 0, radicals.data(), radicals.size(), (uint16_t*)pwchRadical, &hasWildcard);
+		_hasWildcardIncludedInKeystrokeBuffer = hasWildcard ? TRUE : FALSE;
+		pReadingString->Set(pwchRadical, len);
+	}
+	if (pIsWildcardIncluded)
+		*pIsWildcardIncluded = _hasWildcardIncludedInKeystrokeBuffer;
+}
+#endif
+
+void CCompositionProcessorEngine::_GetReadingStringCpp(_Inout_ CStringRange *pReadingString, _Inout_opt_ BOOL *pIsWildcardIncluded, _In_opt_ CStringRange *pKeyCode)
 {
 	debugPrint(L"CCompositionProcessorEngine::GetReadingStrings() ");
 	if (!IsDictionaryAvailable(Global::imeMode))
@@ -852,6 +902,29 @@ HRESULT CCompositionProcessorEngine::GetReverseConversionResults(IME_MODE imeMod
 
 
 CStringRange CCompositionProcessorEngine::buildKeyStrokesFromPhoneticSyllable(UINT syllable)
+{
+#ifdef DIME_USE_RUST_ENGINE
+	return _BuildKeyStrokesFromPhoneticSyllableRust(syllable);
+#else
+	return _BuildKeyStrokesFromPhoneticSyllableCpp(syllable);
+#endif
+}
+
+#ifdef DIME_RUST_AVAILABLE
+CStringRange CCompositionProcessorEngine::_BuildKeyStrokesFromPhoneticSyllableRust(UINT syllable)
+{
+	CStringRange csr;
+	PWCHAR buf = new (std::nothrow) WCHAR[5];
+	if (buf)
+	{
+		uint32_t len = dime_phonetic_keystrokes(syllable, (uint16_t*)buf);
+		csr.Set(buf, len);
+	}
+	return csr;
+}
+#endif
+
+CStringRange CCompositionProcessorEngine::_BuildKeyStrokesFromPhoneticSyllableCpp(UINT syllable)
 {
 	CStringRange csr;
 	PWCHAR buf = new (std::nothrow) WCHAR[5];

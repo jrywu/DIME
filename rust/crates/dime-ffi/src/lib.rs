@@ -16,6 +16,7 @@ use std::ptr;
 
 use dime_core::big5;
 use dime_core::candidates::{self, CandidatePaging};
+use dime_core::composition;
 use dime_core::keyclass;
 use dime_core::sentence::{self, Lexicon, Position, UserModel};
 use dime_config::{ini, keys, ConfigValues, Env, ImeMode, Settings};
@@ -1285,6 +1286,187 @@ pub unsafe extern "C" fn dime_classify_key(input: *const DimeKeyInput, category:
             set(function, state.function);
         }
         i32::from(eaten)
+    })
+}
+
+// ---------------------------------------------------------------------------
+// Keystroke buffer (AddVirtualKey / RemoveVirtualKey / GetReadingString, phonetic syllable)
+// ---------------------------------------------------------------------------
+
+/// `IsEscapeInput`.  `has_first`/`first_raw`: `*_keystrokeBuffer.Get()` when the
+/// buffer is not null (read even at length zero).
+///
+/// # Safety
+/// `keys` must point to `len` units (or be null with `len == 0`).
+#[no_mangle]
+pub unsafe extern "C" fn dime_is_escape_input(
+    keys: *const u16,
+    len: usize,
+    has_first: i32,
+    first_raw: u16,
+    ime_mode: u32,
+    array_scope: u32,
+) -> i32 {
+    guard(0, || {
+        let keys = unsafe { slice(keys, len) };
+        let first = (has_first != 0).then_some(first_raw);
+        i32::from(composition::is_escape_input(keys, first, ime_mode, array_scope))
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn dime_phonetic_add_key(syllable: u32, wch: u16, eten: i32) -> u32 {
+    guard(syllable, || composition::phonetic_add_key(syllable, wch, eten != 0))
+}
+
+#[no_mangle]
+pub extern "C" fn dime_phonetic_remove_last(syllable: u32) -> u32 {
+    guard(0, || composition::phonetic_remove_last(syllable))
+}
+
+/// Writes the syllable's keys and a terminator to `out` (at least 5 units).
+/// Returns the number of keys.
+///
+/// # Safety
+/// `out` must have room for 5 units.
+#[no_mangle]
+pub unsafe extern "C" fn dime_phonetic_keystrokes(syllable: u32, out: *mut u16) -> u32 {
+    guard(0, || {
+        if out.is_null() {
+            return 0;
+        }
+        let keys = composition::phonetic_keystrokes(syllable);
+        unsafe {
+            ptr::copy_nonoverlapping(keys.as_ptr(), out, keys.len());
+            *out.add(keys.len()) = 0;
+        }
+        keys.len() as u32
+    })
+}
+
+#[repr(C)]
+pub struct DimeAddKeyInput {
+    pub keys: *const u16,
+    pub len: usize,
+    pub null: i32,
+    pub ime_mode: u32,
+    pub array_scope: u32,
+    pub phonetic_eten: i32,
+    pub max_codes: u32,
+    pub syllable: u32,
+}
+
+#[repr(C)]
+pub struct DimeAddKeyResult {
+    pub accepted: i32,
+    /// `BEEP_TYPE`, or -1 for none.
+    pub beep: i32,
+    pub syllable: u32,
+    /// 0 = buffer unchanged, 1 = append `append`, 2 = replace with `replace`.
+    pub action: i32,
+    pub append: u16,
+    pub replace: [u16; 4],
+    pub replace_len: u32,
+}
+
+/// `AddVirtualKey`: what to do with the buffer.
+///
+/// # Safety
+/// `input` and `out` must be valid; `input.keys` must point to `input.len` units.
+#[no_mangle]
+pub unsafe extern "C" fn dime_add_key(input: *const DimeAddKeyInput, wch: u16, out: *mut DimeAddKeyResult) {
+    guard((), || {
+        let (Some(i), Some(o)) = (unsafe { input.as_ref() }, unsafe { out.as_mut() }) else {
+            return;
+        };
+        let ctx = composition::AddKeyContext {
+            keys: unsafe { slice(i.keys, i.len) },
+            null: i.null != 0,
+            ime_mode: i.ime_mode,
+            array_scope: i.array_scope,
+            phonetic_eten: i.phonetic_eten != 0,
+            max_codes: i.max_codes,
+            syllable: i.syllable,
+        };
+        let r = composition::add_key(&ctx, wch);
+        o.accepted = i32::from(r.accepted);
+        o.beep = r.beep.map_or(-1, |b| b as i32);
+        o.syllable = r.syllable;
+        o.append = 0;
+        o.replace = [0; 4];
+        o.replace_len = 0;
+        match r.action {
+            composition::AddAction::None => o.action = 0,
+            composition::AddAction::Append(c) => {
+                o.action = 1;
+                o.append = c;
+            }
+            composition::AddAction::Replace(keys) => {
+                o.action = 2;
+                let n = keys.len().min(4);
+                o.replace[..n].copy_from_slice(&keys[..n]);
+                o.replace_len = n as u32;
+            }
+        }
+    })
+}
+
+/// `RemoveVirtualKey` on the buffer in place; returns the new length.
+///
+/// # Safety
+/// `keys` must point to `len` writable units.
+#[no_mangle]
+pub unsafe extern "C" fn dime_remove_key(keys: *mut u16, len: usize, index: usize) -> usize {
+    guard(len.saturating_sub(1), || {
+        if keys.is_null() || len == 0 {
+            return 0;
+        }
+        let buf = unsafe { std::slice::from_raw_parts_mut(keys, len) };
+        composition::remove_key(buf, index)
+    })
+}
+
+/// One entry of the radical map (`_T_RadicalMap`).
+#[repr(C)]
+pub struct DimeRadical {
+    pub key: u16,
+    pub value: *const u16,
+    pub value_len: usize,
+}
+
+/// `GetReadingString` for a non-empty key code.  Writes the reading string and
+/// a terminator to `out` (`MAX_READINGSTRING` units); returns its length.
+///
+/// # Safety
+/// Pointers must reference the given lengths; `out` must hold 64 units.
+#[no_mangle]
+pub unsafe extern "C" fn dime_reading_string(
+    keys: *const u16,
+    len: usize,
+    escape_input: i32,
+    radicals: *const DimeRadical,
+    radical_count: usize,
+    out: *mut u16,
+    has_wildcard: *mut i32,
+) -> usize {
+    guard(0, || {
+        if out.is_null() {
+            return 0;
+        }
+        let raw: &[DimeRadical] = if radicals.is_null() || radical_count == 0 {
+            &[]
+        } else {
+            unsafe { std::slice::from_raw_parts(radicals, radical_count) }
+        };
+        let map: Vec<(u16, &[u16])> =
+            raw.iter().map(|r| (r.key, unsafe { slice(r.value, r.value_len) })).collect();
+        let (text, wildcard) = composition::reading_string(unsafe { slice(keys, len) }, escape_input != 0, &map);
+        unsafe {
+            ptr::copy_nonoverlapping(text.as_ptr(), out, text.len());
+            *out.add(text.len()) = 0;
+            set(has_wildcard, i32::from(wildcard));
+        }
+        text.len()
     })
 }
 

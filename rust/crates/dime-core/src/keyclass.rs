@@ -102,7 +102,7 @@ pub const MAX_RADICAL: u32 = 96;
 
 /// `vpEtenKeyToStandardKeyTable` (`PhoneticComposition.h`), indexed by `c - 32`.
 #[rustfmt::skip]
-const ETEN_TO_STANDARD: [u8; MAX_RADICAL as usize + 1] = [
+pub(crate) const ETEN_TO_STANDARD: [u8; MAX_RADICAL as usize + 1] = [
     0,
     0, 0, 0, 0, 0, 0, b'H', 0,
     0, 0, 0, b'5', b'/', b'T', b'G', b';',
@@ -182,7 +182,7 @@ pub struct KeyState {
 }
 
 /// `towupper` in the C locale: ASCII letters only.
-fn upper(c: u16) -> u16 {
+pub(crate) fn upper(c: u16) -> u16 {
     if (b'a' as u16..=b'z' as u16).contains(&c) {
         c - 32
     } else {
@@ -226,15 +226,7 @@ impl Classifier<'_, '_> {
     /// `IsEscapeInputLeading`.
     fn is_escape_input_leading(&self) -> bool {
         let c = self.ctx;
-        if c.buffer_null || c.buffer.is_empty() {
-            return false;
-        }
-        let first = c.buffer[0];
-        (c.ime_mode == ime_mode::DAYI && first == w(b'='))
-            || (c.ime_mode == ime_mode::ARRAY
-                && ((!self.array_big5() && upper(first) == w(b'W'))
-                    || (self.array_big5() && (upper(first) == w(b'H') || first == w(b'8')))))
-            || (c.ime_mode == ime_mode::PHONETIC && first == w(b'\\'))
+        crate::composition::is_escape_input_leading(c.buffer, c.buffer_null, c.ime_mode, c.array_scope)
     }
 
     /// `IsEscapeInputChar`.

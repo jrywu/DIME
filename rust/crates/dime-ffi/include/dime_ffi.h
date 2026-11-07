@@ -306,6 +306,54 @@ typedef struct DimeKeyInput {
 /* Returns 1 if the IME eats the key; category/function receive the key state. */
 int32_t dime_classify_key(const DimeKeyInput* input, uint32_t* category, uint32_t* function);
 
+/* ---- Keystroke buffer (CCompositionProcessorEngine) ----
+ * The buffer stays in C++; these return what the C++ code would change. */
+
+/* IsEscapeInput. has_first/first_raw: *_keystrokeBuffer.Get() when the buffer is
+ * not null, read even at length zero. */
+int32_t  dime_is_escape_input(const uint16_t* keys, size_t len, int32_t has_first, uint16_t first_raw,
+                              uint32_t ime_mode, uint32_t array_scope);
+uint32_t dime_phonetic_add_key(uint32_t syllable, uint16_t wch, int32_t eten);   /* addPhoneticKey */
+uint32_t dime_phonetic_remove_last(uint32_t syllable);                         /* removeLastPhoneticSymbol */
+/* buildKeyStrokesFromPhoneticSyllable: keys + terminator into out[5]; returns the count. */
+uint32_t dime_phonetic_keystrokes(uint32_t syllable, uint16_t* out);
+
+typedef struct DimeAddKeyInput {
+    const uint16_t* keys;
+    size_t   len;
+    int32_t  null;                  /* _keystrokeBuffer.Get() == nullptr */
+    uint32_t ime_mode;              /* Global::imeMode */
+    uint32_t array_scope;
+    int32_t  phonetic_eten;
+    uint32_t max_codes;             /* CConfig::GetMaxCodes() */
+    uint32_t syllable;              /* phoneticSyllable */
+} DimeAddKeyInput;
+
+typedef struct DimeAddKeyResult {
+    int32_t  accepted;              /* AddVirtualKey's return value */
+    int32_t  beep;                  /* BEEP_TYPE to sound, -1 for none */
+    uint32_t syllable;              /* new phoneticSyllable */
+    int32_t  action;                /* 0 buffer unchanged, 1 append `append`, 2 replace with `replace` */
+    uint16_t append;
+    uint16_t replace[4];
+    uint32_t replace_len;
+} DimeAddKeyResult;
+
+void   dime_add_key(const DimeAddKeyInput* input, uint16_t wch, DimeAddKeyResult* out);
+/* RemoveVirtualKey on the buffer in place; returns the new length. */
+size_t dime_remove_key(uint16_t* keys, size_t len, size_t index);
+
+typedef struct DimeRadical {
+    uint16_t key;
+    const uint16_t* value;
+    size_t   value_len;
+} DimeRadical;
+
+/* GetReadingString for a non-empty key code: reading string + terminator into
+ * out[64] (MAX_READINGSTRING, truncated like StringCchCat); returns its length. */
+size_t dime_reading_string(const uint16_t* keys, size_t len, int32_t escape_input, const DimeRadical* radicals,
+                           size_t radical_count, uint16_t* out, int32_t* has_wildcard);
+
 #ifdef __cplusplus
 }
 #endif

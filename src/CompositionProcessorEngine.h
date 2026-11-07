@@ -209,6 +209,22 @@ private:
 #endif
 #ifdef DIME_UNIT_TESTING
     friend class KeyClassifyParityAccess;
+    friend class CompositionBufferParityAccess;
+#endif
+
+    // Keystroke buffer: the public functions dispatch to these (Rust under
+    // DIME_USE_RUST_ENGINE). pBeep receives the BEEP_TYPE to sound, or -1.
+    BOOL _AddVirtualKeyCpp(WCHAR wch, _Out_ int* pBeep);
+    void _RemoveVirtualKeyCpp(DWORD_PTR dwIndex);
+    BOOL _IsEscapeInputCpp();
+    void _GetReadingStringCpp(_Inout_ CStringRange *pReadingString, _Inout_opt_ BOOL *pIsWildcardIncluded, _In_opt_ CStringRange *pKeyCode);
+    CStringRange _BuildKeyStrokesFromPhoneticSyllableCpp(UINT syllable);
+#ifdef DIME_RUST_AVAILABLE
+    BOOL _AddVirtualKeyRust(WCHAR wch, _Out_ int* pBeep);
+    void _RemoveVirtualKeyRust(DWORD_PTR dwIndex);
+    BOOL _IsEscapeInputRust();
+    void _GetReadingStringRust(_Inout_ CStringRange *pReadingString, _Inout_opt_ BOOL *pIsWildcardIncluded, _In_opt_ CStringRange *pKeyCode);
+    CStringRange _BuildKeyStrokesFromPhoneticSyllableRust(UINT syllable);
 #endif
 
     BOOL IsVirtualKeyKeystrokeComposition(UINT uCode, PWCH pwch, _Inout_opt_ _KEYSTROKE_STATE *pKeyState, KEYSTROKE_FUNCTION function);

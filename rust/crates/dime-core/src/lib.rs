@@ -8,6 +8,7 @@
 
 pub mod big5;
 pub mod candidates;
+pub mod composition;
 pub mod engine;
 pub mod keyclass;
 pub mod parser;
