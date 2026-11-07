@@ -909,8 +909,20 @@ void CCompositionProcessorEngine::GetCandidateStringInConverted(CStringRange &se
 		return;
 	}
 
+	// The key is the character itself for a CIN phrase table (Phrase.cin, README
+	// format); a TTS table without a [Phrase] section is searched with a trailing '*'.
+	// (Appending '*' for CIN tables made Phrase.cin never match: CIN lookups do not
+	// treat '*' as a wildcard.)
+	BOOL phraseTableIsTts = _pPhraseTableDictionaryEngine &&
+		_pPhraseTableDictionaryEngine->GetDictionaryType() == DICTIONARY_TYPE::TTS_DICTIONARY;
+#ifdef DIME_USE_RUST_ENGINE
+	dime_associated_phrase_key((const uint16_t*)searchString.Get(), searchString.GetLength(), phraseTableIsTts ? 1 : 0,
+		Global::hasPhraseSection ? 1 : 0, Global::hasCINPhraseSection ? 1 : 0, (uint16_t*)pwch);
+#else
 	StringCchCopyN(pwch, srgKeystrokeBufLen, searchString.Get(), searchString.GetLength());
-	if (!(Global::hasPhraseSection || Global::hasCINPhraseSection)) StringCchCat(pwch, srgKeystrokeBufLen, L"*");  // do wild search if no TTS [Phrase]section present
+	if (phraseTableIsTts && !(Global::hasPhraseSection || Global::hasCINPhraseSection))
+		StringCchCat(pwch, srgKeystrokeBufLen, L"*");
+#endif
 
 	// add wildcard char
 	size_t len = 0;

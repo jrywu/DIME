@@ -448,6 +448,11 @@ typedef struct DimeCandidateStep {
 /* Writes up to cap steps; returns the total count. */
 size_t dime_plan_candidate_search(const DimeCandidateSearchInput* input, DimeCandidateStep* steps, size_t cap);
 
+/* GetCandidateStringInConverted: the associated-phrase lookup key for the character just
+ * committed (exact for CIN tables). out needs len + 2 units; returns the key length. */
+size_t dime_associated_phrase_key(const uint16_t* text, size_t len, int32_t phrase_table_is_tts,
+                                  int32_t has_phrase_section, int32_t has_cin_phrase_section, uint16_t* out);
+
 /* ---- Key handler flow (rust/crates/dime-core/src/session.rs) ----
  * The handlers run in Rust and drive the text service through this host,
  * implemented in C++ (RustSessionHost.cpp). Callbacks must not throw.

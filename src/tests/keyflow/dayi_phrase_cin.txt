@@ -2,5 +2,5 @@
 init -> passed text="" sel=0
 a -> eaten text="人" sel=1 comp="人"
 Space -> eaten text="人" sel=1 comp="人" cand=original[*人 入 八]
-Space -> eaten text="人" sel=1
+Space -> eaten text="人" sel=1 cand=phrase[民 們 生]
 2 -> passed text="人" sel=1

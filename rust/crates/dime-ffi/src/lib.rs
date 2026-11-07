@@ -2599,6 +2599,38 @@ pub unsafe extern "C" fn dime_sentence_buffer_display_caret(
     unsafe { with_sb(b, 0, |b| b.display_caret(slice(reading, len))) }
 }
 
+/// `GetCandidateStringInConverted`: the lookup key for associated phrases.
+/// Writes it to `out` (room for `len + 2` units, terminated) and returns its length.
+///
+/// # Safety
+/// `text` must point to `len` units and `out` to `len + 2`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_associated_phrase_key(
+    text: *const u16,
+    len: usize,
+    phrase_table_is_tts: i32,
+    has_phrase_section: i32,
+    has_cin_phrase_section: i32,
+    out: *mut u16,
+) -> usize {
+    guard(0, || {
+        if out.is_null() {
+            return 0;
+        }
+        let key = candgen::associated_phrase_key(
+            unsafe { slice(text, len) },
+            phrase_table_is_tts != 0,
+            has_phrase_section != 0,
+            has_cin_phrase_section != 0,
+        );
+        unsafe {
+            ptr::copy_nonoverlapping(key.as_ptr(), out, key.len());
+            *out.add(key.len()) = 0;
+        }
+        key.len()
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

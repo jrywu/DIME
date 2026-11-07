@@ -212,12 +212,17 @@ namespace DIMEUnitTests
         TEST_METHOD(Dayi_AssociatedPhrase)    { CheckGolden(L"dayi_associated_phrase", DayiOptions(), L"a Space Space 2 a Space Space Esc e f Space a Space Space Down Enter a Space Space Shift+x a Space Space a"); }
         TEST_METHOD(Dayi_PhraseCin)
         {
-            // A user Phrase.cin (README format). Currently yields no associated phrases: the
-            // lookup appends '*' unless a TTS [Phrase] section was parsed, and CIN CollectWord
-            // does not treat '*' as a wildcard. Recorded as-is; see docs/RUST_MIGRATION_PLAN.md.
+            // A user Phrase.cin (README format): the key is the character just committed,
+            // matched exactly (before phase 2c-8 a '*' was appended and nothing matched).
             KeyFlowOptions o = DayiOptions();
             o.appDataFiles = { { L"Dayi.cin", kDayiCin }, { L"Phrase.cin", kPhraseCin } };
             CheckGolden(L"dayi_phrase_cin", o, L"a Space Space 2");
+        }
+        TEST_METHOD(Dayi_PhraseCinSelect)
+        {
+            KeyFlowOptions o = DayiOptions();
+            o.appDataFiles = { { L"Dayi.cin", kDayiCin }, { L"Phrase.cin", kPhraseCin } };
+            CheckGolden(L"dayi_phrase_cin_select", o, L"a Space Space Down Enter d Space Space");
         }
         TEST_METHOD(Dayi_NoPhrase)            { CheckGolden(L"dayi_no_phrase", DayiOptions({ L"MakePhrase = 0" }), L"a Space Space e f Space"); }
         TEST_METHOD(Dayi_PagingTwelve)        { CheckGolden(L"dayi_paging_twelve", DayiOptions(), L"g Space PgDn PgUp Down Down 3"); }

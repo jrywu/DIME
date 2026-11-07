@@ -354,6 +354,31 @@ fn array_extensions(i: &SearchInput<'_>, steps: &mut Vec<Step>, wildcard: bool) 
     }
 }
 
+/// The key `GetCandidateStringInConverted` looks up associated phrases with,
+/// for the character just committed.
+///
+/// A CIN phrase table (`Phrase.cin`, README format: the key is the character)
+/// is matched exactly.  A TTS table is searched in its `[Phrase]` section, with
+/// a trailing `*` when no phrase section was seen (the old behaviour).
+///
+/// Before this port the `*` was also appended for CIN tables unless some
+/// dictionary had a TTS `[Phrase]` or CIN `%phrasedef` section, and CIN
+/// lookups do not treat `*` as a wildcard, so a README-format `Phrase.cin`
+/// never produced associated phrases (and the result depended on what the
+/// process had loaded before).
+pub fn associated_phrase_key(
+    last: &[u16],
+    phrase_table_is_tts: bool,
+    has_phrase_section: bool,
+    has_cin_phrase_section: bool,
+) -> Vec<u16> {
+    let mut key = last.to_vec();
+    if phrase_table_is_tts && !(has_phrase_section || has_cin_phrase_section) {
+        key.push(u16::from(b'*'));
+    }
+    key
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -361,6 +386,17 @@ mod tests {
 
     fn s(t: &str) -> Vec<u16> {
         t.encode_utf16().collect()
+    }
+
+    #[test]
+    fn associated_phrase_key_is_exact_for_cin_tables() {
+        let ren = [0x4EBA];
+        assert_eq!(associated_phrase_key(&ren, false, false, false), ren);
+        assert_eq!(associated_phrase_key(&ren, true, true, false), ren);
+        assert_eq!(
+            associated_phrase_key(&ren, true, false, false),
+            [0x4EBA, u16::from(b'*')]
+        );
     }
 
     #[test]
