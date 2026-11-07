@@ -1595,8 +1595,9 @@ pub unsafe extern "C" fn dime_plan_candidate_search(
 // Key handler flow (session): C++ implements the host through a vtable
 // ---------------------------------------------------------------------------
 
-/// The C++ text service as seen by `dime_core::session`.  Every function
-/// receives `ctx`.  Booleans are `int32_t`.
+/// The C++ text service as seen by `dime_core::session` (see `session::Host`;
+/// strings returned through `out` stay valid until the next callback).
+/// Every function receives `ctx`.  Booleans are `int32_t`.
 #[repr(C)]
 pub struct DimeHostVtbl {
     pub candidate_mode: unsafe extern "C" fn(ctx: *mut c_void) -> u32,
@@ -1608,18 +1609,48 @@ pub struct DimeHostVtbl {
     pub shift_english_digit_mode: unsafe extern "C" fn(ctx: *mut c_void) -> u32,
     pub dayi_article_mode: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
     pub is_alpha: unsafe extern "C" fn(ctx: *mut c_void, c: u16) -> i32,
-    /// Returns 1 and sets `*out` when the layout has the character.
     pub layout_char: unsafe extern "C" fn(ctx: *mut c_void, c: u16, caps_lock_on: i32, out: *mut u16) -> i32,
-
     pub add_char_and_finalize: unsafe extern "C" fn(ctx: *mut c_void, text: *const u16, len: usize) -> i32,
     pub remove_dummy_composition: unsafe extern "C" fn(ctx: *mut c_void),
     pub delete_candidate_list: unsafe extern "C" fn(ctx: *mut c_void, force: i32),
     pub terminate_composition: unsafe extern "C" fn(ctx: *mut c_void),
-
-    pub handle_candidate_finalize: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub has_ui_presenter: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub is_candidate_with_wildcard: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub sentence_pin_next: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub set_sentence_pin_next: unsafe extern "C" fn(ctx: *mut c_void, pin: i32),
+    pub is_sentence_mode: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub ime_mode: unsafe extern "C" fn(ctx: *mut c_void) -> u32,
+    pub array_scope: unsafe extern "C" fn(ctx: *mut c_void) -> u32,
+    pub clear_on_beep: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub array_force_sp: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub array_notify_sp: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub do_han_convert: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub make_phrase: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub is_cmd_shell: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub is_ui_less_mode: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub reverse_conversion_active: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub is_escape_input_leading: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub is_array_short_code: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub selected_candidate: unsafe extern "C" fn(ctx: *mut c_void, out: *mut *const u16) -> usize,
+    pub candidate_selection: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub selkey_index: unsafe extern "C" fn(ctx: *mut c_void, code: u32, wch: u16) -> i32,
+    pub set_candidate_selection_in_page: unsafe extern "C" fn(ctx: *mut c_void, index: i32) -> i32,
+    pub advise_ui_changed_by_arrow_key: unsafe extern "C" fn(ctx: *mut c_void, function: u32),
+    pub array_special_code_matches: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub array_special_code_for: unsafe extern "C" fn(ctx: *mut c_void, text: *const u16, len: usize, out: *mut *const u16, out_len: *mut usize) -> i32,
+    pub sc_from_tc: unsafe extern "C" fn(ctx: *mut c_void, text: *const u16, len: usize, out: *mut *const u16) -> usize,
+    pub show_notify: unsafe extern "C" fn(ctx: *mut c_void, text: *const u16, len: usize, kind: u32),
+    pub notify_selected_key_code: unsafe extern "C" fn(ctx: *mut c_void),
+    pub show_associated_phrases: unsafe extern "C" fn(ctx: *mut c_void, last_char: u16) -> i32,
+    pub start_composition: unsafe extern "C" fn(ctx: *mut c_void),
+    pub add_composing_and_char: unsafe extern "C" fn(ctx: *mut c_void, text: *const u16, len: usize) -> i32,
+    pub set_commit_string: unsafe extern "C" fn(ctx: *mut c_void, text: *const u16, len: usize),
+    pub async_reverse_conversion: unsafe extern "C" fn(ctx: *mut c_void),
+    pub beep: unsafe extern "C" fn(ctx: *mut c_void, kind: u32),
     pub sentence_commit_before_output: unsafe extern "C" fn(ctx: *mut c_void),
     pub sentence_close_reading: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
     pub sentence_reset: unsafe extern "C" fn(ctx: *mut c_void),
+    pub sentence_select_candidate: unsafe extern "C" fn(ctx: *mut c_void, text: *const u16, len: usize, explicit: i32) -> i32,
 }
 
 #[repr(C)]
@@ -1633,30 +1664,70 @@ struct FfiHost<'a> {
     ctx: *mut c_void,
 }
 
+/// Copy a host string (`ptr`, `len`), null meaning empty.
+fn host_string(ptr: *const u16, len: usize) -> Vec<u16> {
+    unsafe { slice(ptr, len) }.to_vec()
+}
+
+macro_rules! host_bool {
+    ($($name:ident),*) => {$(
+        fn $name(&self) -> bool {
+            unsafe { (self.v.$name)(self.ctx) != 0 }
+        }
+    )*};
+}
+
+macro_rules! host_u32 {
+    ($($name:ident),*) => {$(
+        fn $name(&self) -> u32 {
+            unsafe { (self.v.$name)(self.ctx) }
+        }
+    )*};
+}
+
+macro_rules! host_unit {
+    ($($name:ident),*) => {$(
+        fn $name(&mut self) {
+            unsafe { (self.v.$name)(self.ctx) }
+        }
+    )*};
+}
+
 impl session::Host for FfiHost<'_> {
-    fn candidate_mode(&self) -> u32 {
-        unsafe { (self.v.candidate_mode)(self.ctx) }
-    }
-    fn is_composing(&self) -> bool {
-        unsafe { (self.v.is_composing)(self.ctx) != 0 }
-    }
-    fn is_full_shape(&self) -> bool {
-        unsafe { (self.v.is_full_shape)(self.ctx) != 0 }
-    }
+    host_u32!(candidate_mode, shift_english_digit_mode, ime_mode, array_scope);
+    host_bool!(
+        is_composing,
+        is_full_shape,
+        is_sentence_pending,
+        caps_lock_on,
+        dayi_article_mode,
+        has_ui_presenter,
+        is_candidate_with_wildcard,
+        sentence_pin_next,
+        is_sentence_mode,
+        clear_on_beep,
+        array_force_sp,
+        array_notify_sp,
+        do_han_convert,
+        make_phrase,
+        is_cmd_shell,
+        is_ui_less_mode,
+        reverse_conversion_active,
+        is_escape_input_leading,
+        is_array_short_code
+    );
+    host_unit!(
+        remove_dummy_composition,
+        terminate_composition,
+        notify_selected_key_code,
+        start_composition,
+        async_reverse_conversion,
+        sentence_commit_before_output,
+        sentence_reset
+    );
+
     fn virtual_key_length(&self) -> usize {
         unsafe { (self.v.virtual_key_length)(self.ctx) }
-    }
-    fn is_sentence_pending(&self) -> bool {
-        unsafe { (self.v.is_sentence_pending)(self.ctx) != 0 }
-    }
-    fn caps_lock_on(&self) -> bool {
-        unsafe { (self.v.caps_lock_on)(self.ctx) != 0 }
-    }
-    fn shift_english_digit_mode(&self) -> u32 {
-        unsafe { (self.v.shift_english_digit_mode)(self.ctx) }
-    }
-    fn dayi_article_mode(&self) -> bool {
-        unsafe { (self.v.dayi_article_mode)(self.ctx) != 0 }
     }
     fn is_alpha(&self, c: u16) -> bool {
         unsafe { (self.v.is_alpha)(self.ctx, c) != 0 }
@@ -1669,26 +1740,63 @@ impl session::Host for FfiHost<'_> {
     fn add_char_and_finalize(&mut self, text: &[u16]) -> i32 {
         unsafe { (self.v.add_char_and_finalize)(self.ctx, text.as_ptr(), text.len()) }
     }
-    fn remove_dummy_composition(&mut self) {
-        unsafe { (self.v.remove_dummy_composition)(self.ctx) }
-    }
     fn delete_candidate_list(&mut self, force: bool) {
         unsafe { (self.v.delete_candidate_list)(self.ctx, i32::from(force)) }
     }
-    fn terminate_composition(&mut self) {
-        unsafe { (self.v.terminate_composition)(self.ctx) }
+    fn set_sentence_pin_next(&mut self, pin: bool) {
+        unsafe { (self.v.set_sentence_pin_next)(self.ctx, i32::from(pin)) }
     }
-    fn handle_candidate_finalize(&mut self) -> i32 {
-        unsafe { (self.v.handle_candidate_finalize)(self.ctx) }
+    fn selected_candidate(&self) -> Vec<u16> {
+        let mut p: *const u16 = ptr::null();
+        let len = unsafe { (self.v.selected_candidate)(self.ctx, &mut p) };
+        host_string(p, len)
     }
-    fn sentence_commit_before_output(&mut self) {
-        unsafe { (self.v.sentence_commit_before_output)(self.ctx) }
+    fn candidate_selection(&self) -> i32 {
+        unsafe { (self.v.candidate_selection)(self.ctx) }
+    }
+    fn selkey_index(&self, code: u32, wch: u16) -> i32 {
+        unsafe { (self.v.selkey_index)(self.ctx, code, wch) }
+    }
+    fn set_candidate_selection_in_page(&mut self, index: i32) -> bool {
+        unsafe { (self.v.set_candidate_selection_in_page)(self.ctx, index) != 0 }
+    }
+    fn advise_ui_changed_by_arrow_key(&mut self, function: u32) {
+        unsafe { (self.v.advise_ui_changed_by_arrow_key)(self.ctx, function) }
+    }
+    fn array_special_code_matches(&mut self) -> bool {
+        unsafe { (self.v.array_special_code_matches)(self.ctx) != 0 }
+    }
+    fn array_special_code_for(&mut self, text: &[u16]) -> Option<Vec<u16>> {
+        let mut p: *const u16 = ptr::null();
+        let mut len = 0usize;
+        let found = unsafe { (self.v.array_special_code_for)(self.ctx, text.as_ptr(), text.len(), &mut p, &mut len) };
+        (found != 0).then(|| host_string(p, len))
+    }
+    fn sc_from_tc(&mut self, text: &[u16]) -> Vec<u16> {
+        let mut p: *const u16 = ptr::null();
+        let len = unsafe { (self.v.sc_from_tc)(self.ctx, text.as_ptr(), text.len(), &mut p) };
+        host_string(p, len)
+    }
+    fn show_notify(&mut self, text: &[u16], kind: u32) {
+        unsafe { (self.v.show_notify)(self.ctx, text.as_ptr(), text.len(), kind) }
+    }
+    fn show_associated_phrases(&mut self, last_char: u16) -> bool {
+        unsafe { (self.v.show_associated_phrases)(self.ctx, last_char) != 0 }
+    }
+    fn add_composing_and_char(&mut self, text: &[u16]) -> i32 {
+        unsafe { (self.v.add_composing_and_char)(self.ctx, text.as_ptr(), text.len()) }
+    }
+    fn set_commit_string(&mut self, text: &[u16]) {
+        unsafe { (self.v.set_commit_string)(self.ctx, text.as_ptr(), text.len()) }
+    }
+    fn beep(&mut self, kind: u32) {
+        unsafe { (self.v.beep)(self.ctx, kind) }
     }
     fn sentence_close_reading(&mut self) -> i32 {
         unsafe { (self.v.sentence_close_reading)(self.ctx) }
     }
-    fn sentence_reset(&mut self) {
-        unsafe { (self.v.sentence_reset)(self.ctx) }
+    fn sentence_select_candidate(&mut self, text: &[u16], explicit: bool) -> i32 {
+        unsafe { (self.v.sentence_select_candidate)(self.ctx, text.as_ptr(), text.len(), i32::from(explicit)) }
     }
 }
 
@@ -1753,6 +1861,55 @@ pub unsafe extern "C" fn dime_session_handle_shift_english_input(host: *const Di
 #[no_mangle]
 pub unsafe extern "C" fn dime_session_handle_address_char(host: *const DimeHost, wch: u16) -> i32 {
     unsafe { with_host(host, |h| session::handle_address_char(h, wch)) }
+}
+
+/// `_HandleCandidateFinalize` / `_HandleCandidateConvert` / `_HandleCandidateWorker`.
+///
+/// # Safety
+/// See `dime_session_handle_complete`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_session_handle_candidate_finalize(host: *const DimeHost) -> i32 {
+    unsafe { with_host(host, |h| session::handle_candidate_finalize(h)) }
+}
+
+/// `_HandleCandidateArrowKey` / `_HandlePhraseArrowKey`.
+///
+/// # Safety
+/// See `dime_session_handle_complete`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_session_handle_candidate_arrow_key(host: *const DimeHost, function: u32) -> i32 {
+    unsafe { with_host(host, |h| session::handle_candidate_arrow_key(h, function)) }
+}
+
+/// `_HandleCandidateSelectByNumber`.
+///
+/// # Safety
+/// See `dime_session_handle_complete`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_session_handle_candidate_select_by_number(
+    host: *const DimeHost,
+    code: u32,
+    wch: u16,
+) -> i32 {
+    unsafe { with_host(host, |h| session::handle_candidate_select_by_number(h, code, wch)) }
+}
+
+/// `_HandlePhraseFinalize`.
+///
+/// # Safety
+/// See `dime_session_handle_complete`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_session_handle_phrase_finalize(host: *const DimeHost) -> i32 {
+    unsafe { with_host(host, |h| session::handle_phrase_finalize(h)) }
+}
+
+/// `_HandlePhraseSelectByNumber`.
+///
+/// # Safety
+/// See `dime_session_handle_complete`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_session_handle_phrase_select_by_number(host: *const DimeHost, code: u32, wch: u16) -> i32 {
+    unsafe { with_host(host, |h| session::handle_phrase_select_by_number(h, code, wch)) }
 }
 
 #[cfg(test)]

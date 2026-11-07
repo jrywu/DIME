@@ -1,0 +1,18 @@
+# script: a u Space Esc a u 1 Esc a u 2 Esc t a 1 Esc
+init -> passed text="" sel=0
+a -> eaten text="1-" sel=2 comp="1-" cand=incremental[*一]
+u -> eaten text="1-7^" sel=4 comp="1-7^" cand=incremental[*期]
+Space -> eaten text="期" sel=1
+Esc -> passed text="期" sel=1
+a -> eaten text="期1-" sel=3 comp="1-" cand=incremental[*一]
+u -> eaten text="期1-7^" sel=5 comp="1-7^" cand=incremental[*期]
+1 -> eaten text="期期" sel=2
+Esc -> passed text="期期" sel=2
+a -> eaten text="期期1-" sel=4 comp="1-" cand=incremental[*一]
+u -> eaten text="期期1-7^" sel=6 comp="1-7^" cand=incremental[*期]
+2 -> eaten text="期期1-7^" sel=6 comp="1-7^" cand=incremental[*期]
+Esc -> eaten text="期期" sel=2
+t -> eaten text="期期5^" sel=4 comp="5^" cand=incremental[*的]
+a -> eaten text="期期5^1-" sel=6 comp="5^1-" cand=incremental[*界]
+1 -> eaten text="期期界" sel=3
+Esc -> passed text="期期界" sel=3

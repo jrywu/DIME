@@ -420,30 +420,61 @@ size_t dime_plan_candidate_search(const DimeCandidateSearchInput* input, DimeCan
 /* ---- Key handler flow (rust/crates/dime-core/src/session.rs) ----
  * The handlers run in Rust and drive the text service through this host,
  * implemented in C++ (RustSessionHost.cpp). Callbacks must not throw.
- * Booleans are int32_t; handlers return HRESULT. */
+ * Booleans are int32_t; handlers return HRESULT. Strings returned through
+ * `out` must stay valid until the next callback. The field order must match
+ * DimeHostVtbl in rust/crates/dime-ffi/src/lib.rs. */
 typedef struct DimeHostVtbl {
     uint32_t (*candidate_mode)(void* ctx);
-    int32_t  (*is_composing)(void* ctx);
-    int32_t  (*is_full_shape)(void* ctx);
-    size_t   (*virtual_key_length)(void* ctx);
-    int32_t  (*is_sentence_pending)(void* ctx);
-    int32_t  (*caps_lock_on)(void* ctx);
+    int32_t (*is_composing)(void* ctx);
+    int32_t (*is_full_shape)(void* ctx);
+    size_t (*virtual_key_length)(void* ctx);
+    int32_t (*is_sentence_pending)(void* ctx);
+    int32_t (*caps_lock_on)(void* ctx);
     uint32_t (*shift_english_digit_mode)(void* ctx);
-    int32_t  (*dayi_article_mode)(void* ctx);
-    int32_t  (*is_alpha)(void* ctx, uint16_t c);
-    /* 1 and *out = base (CapsLock off) / shifted (on) char of the key producing c; 0 if none. */
-    int32_t  (*layout_char)(void* ctx, uint16_t c, int32_t caps_lock_on, uint16_t* out);
-
-    int32_t  (*add_char_and_finalize)(void* ctx, const uint16_t* text, size_t len);
-    void     (*remove_dummy_composition)(void* ctx);
-    void     (*delete_candidate_list)(void* ctx, int32_t force);
-    void     (*terminate_composition)(void* ctx);
-
-    /* handlers not ported yet */
-    int32_t  (*handle_candidate_finalize)(void* ctx);
-    void     (*sentence_commit_before_output)(void* ctx);
-    int32_t  (*sentence_close_reading)(void* ctx);
-    void     (*sentence_reset)(void* ctx);
+    int32_t (*dayi_article_mode)(void* ctx);
+    int32_t (*is_alpha)(void* ctx, uint16_t c);
+    int32_t (*layout_char)(void* ctx, uint16_t c, int32_t caps_lock_on, uint16_t* out);
+    int32_t (*add_char_and_finalize)(void* ctx, const uint16_t* text, size_t len);
+    void (*remove_dummy_composition)(void* ctx);
+    void (*delete_candidate_list)(void* ctx, int32_t force);
+    void (*terminate_composition)(void* ctx);
+    int32_t (*has_ui_presenter)(void* ctx);
+    int32_t (*is_candidate_with_wildcard)(void* ctx);
+    int32_t (*sentence_pin_next)(void* ctx);
+    void (*set_sentence_pin_next)(void* ctx, int32_t pin);
+    int32_t (*is_sentence_mode)(void* ctx);
+    uint32_t (*ime_mode)(void* ctx);
+    uint32_t (*array_scope)(void* ctx);
+    int32_t (*clear_on_beep)(void* ctx);
+    int32_t (*array_force_sp)(void* ctx);
+    int32_t (*array_notify_sp)(void* ctx);
+    int32_t (*do_han_convert)(void* ctx);
+    int32_t (*make_phrase)(void* ctx);
+    int32_t (*is_cmd_shell)(void* ctx);
+    int32_t (*is_ui_less_mode)(void* ctx);
+    int32_t (*reverse_conversion_active)(void* ctx);
+    int32_t (*is_escape_input_leading)(void* ctx);
+    int32_t (*is_array_short_code)(void* ctx);
+    size_t (*selected_candidate)(void* ctx, const uint16_t** out);
+    int32_t (*candidate_selection)(void* ctx);
+    int32_t (*selkey_index)(void* ctx, uint32_t code, uint16_t wch);
+    int32_t (*set_candidate_selection_in_page)(void* ctx, int32_t index);
+    void (*advise_ui_changed_by_arrow_key)(void* ctx, uint32_t function);
+    int32_t (*array_special_code_matches)(void* ctx);
+    int32_t (*array_special_code_for)(void* ctx, const uint16_t* text, size_t len, const uint16_t** out, size_t* out_len);
+    size_t (*sc_from_tc)(void* ctx, const uint16_t* text, size_t len, const uint16_t** out);
+    void (*show_notify)(void* ctx, const uint16_t* text, size_t len, uint32_t kind);
+    void (*notify_selected_key_code)(void* ctx);
+    int32_t (*show_associated_phrases)(void* ctx, uint16_t last_char);
+    void (*start_composition)(void* ctx);
+    int32_t (*add_composing_and_char)(void* ctx, const uint16_t* text, size_t len);
+    void (*set_commit_string)(void* ctx, const uint16_t* text, size_t len);
+    void (*async_reverse_conversion)(void* ctx);
+    void (*beep)(void* ctx, uint32_t kind);
+    void (*sentence_commit_before_output)(void* ctx);
+    int32_t (*sentence_close_reading)(void* ctx);
+    void (*sentence_reset)(void* ctx);
+    int32_t (*sentence_select_candidate)(void* ctx, const uint16_t* text, size_t len, int32_t is_explicit);
 } DimeHostVtbl;
 
 typedef struct DimeHost {
@@ -456,6 +487,11 @@ int32_t dime_session_handle_cancel(const DimeHost* host);
 int32_t dime_session_handle_double_single_byte(const DimeHost* host, uint16_t wch);
 int32_t dime_session_handle_shift_english_input(const DimeHost* host, uint32_t code, uint16_t wch);
 int32_t dime_session_handle_address_char(const DimeHost* host, uint16_t wch);
+int32_t dime_session_handle_candidate_finalize(const DimeHost* host);
+int32_t dime_session_handle_candidate_arrow_key(const DimeHost* host, uint32_t function);
+int32_t dime_session_handle_candidate_select_by_number(const DimeHost* host, uint32_t code, uint16_t wch);
+int32_t dime_session_handle_phrase_finalize(const DimeHost* host);
+int32_t dime_session_handle_phrase_select_by_number(const DimeHost* host, uint32_t code, uint16_t wch);
 
 #ifdef __cplusplus
 }

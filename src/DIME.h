@@ -257,6 +257,13 @@ private:
     HRESULT _HandleCompositionInputWorker(_In_ CCompositionProcessorEngine *pCompositionProcessorEngine, TfEditCookie ec, _In_ ITfContext *pContext);
     HRESULT _CreateAndStartCandidate(_In_ CCompositionProcessorEngine *pCompositionProcessorEngine, TfEditCookie ec, _In_ ITfContext *pContext);
     HRESULT _HandleCandidateWorker(TfEditCookie ec, _In_ ITfContext *pContext);
+    // C++ versions of the candidate handlers ported to Rust (session.rs).
+    HRESULT _HandleCandidateWorkerCpp(TfEditCookie ec, _In_ ITfContext *pContext);
+    HRESULT _HandleCandidateArrowKeyCpp(TfEditCookie ec, _In_ ITfContext *pContext, _In_ KEYSTROKE_FUNCTION keyFunction);
+    HRESULT _HandleCandidateSelectByNumberCpp(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode, _In_ WCHAR wch);
+    HRESULT _HandlePhraseFinalizeCpp(TfEditCookie ec, _In_ ITfContext *pContext);
+    HRESULT _HandlePhraseArrowKeyCpp(TfEditCookie ec, _In_ ITfContext *pContext, _In_ KEYSTROKE_FUNCTION keyFunction);
+    HRESULT _HandlePhraseSelectByNumberCpp(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode, _In_ WCHAR wch);
 
 	//for probing the composition range to get correct caret position
 	

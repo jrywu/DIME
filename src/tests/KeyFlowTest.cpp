@@ -193,6 +193,8 @@ namespace DIMEUnitTests
         TEST_METHOD(Array_MaxCodesNoClear)    { CheckGolden(L"array_max_codes_no_clear", ArrayOptions({ L"ClearOnBeep = 0" }), L"a a a a a a Esc"); }
         TEST_METHOD(Array_ForceSpecialCode)   { CheckGolden(L"array_force_special_code", ArrayOptions({ L"ArrayForceSP = 1" }), L"t a Space y d Space"); }
         TEST_METHOD(Array40)                  { CheckGolden(L"array40", ArrayOptions({ L"ArrayScope = 4" }), L"t a Space a Space 2"); }
+        TEST_METHOD(Array_ShortCodeEmptySlot) { CheckGolden(L"array_short_code_empty_slot", ArrayOptions(), L"a u Space Esc a u 1 Esc a u 2 Esc t a 1 Esc"); }
+        TEST_METHOD(Array_NotifySpecialCode)  { CheckGolden(L"array_notify_special_code", ArrayOptions({ L"ArrayNotifySP = 1" }), L"t a Space y d Space"); }
         TEST_METHOD(Array_Punctuation)        { CheckGolden(L"array_punctuation", ArrayOptions(), L", . / ; Space Enter"); }
 
         // ---- Phonetic (installer table) ----------------------------------------
@@ -248,6 +250,12 @@ namespace DIMEUnitTests
         TEST_METHOD(Dayi_ShiftEnglishAfterCandidate) { CheckGolden(L"dayi_shift_english_after_candidate", DayiOptions(), L"a Space Shift+b g Space Down Shift+c"); }
         TEST_METHOD(Dayi_FullWidth)           { CheckGolden(L"dayi_full_width", DayiOptions({ L"DoubleSingleByteMode = 2" }), L"Shift+a Shift+1 a Space 2 Shift+; Esc"); }
         TEST_METHOD(Dayi_AddressWhileComposing) { CheckGolden(L"dayi_address_while_composing", DayiOptions(), L"a ' a Space ' a Space Space ' e f"); }
+        TEST_METHOD(Dayi_HanConvert)
+        {
+            KeyFlowOptions o = DayiOptions({ L"DoHanConvert = 1" });
+            o.appDataFiles.push_back({ L"TCSC.cin", Installer(L"TCSC.cin") });
+            CheckGolden(L"dayi_han_convert", o, L"a b Space Space a b Space Down Space");
+        }
         TEST_METHOD(Dayi_EscapeAndComplete)   { CheckGolden(L"dayi_escape_and_complete", DayiOptions(), L"a b Esc a Space Esc a Space Space Esc a b Enter"); }
         TEST_METHOD(Dayi_Sentence)
         {
