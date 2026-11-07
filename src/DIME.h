@@ -183,6 +183,9 @@ public:
 
     // sentence mode (SentenceHandler.cpp): keys handled while a sentence is pending
     HRESULT _HandleSentenceCommit(TfEditCookie ec, _In_ ITfContext *pContext);
+    HRESULT _HandleSentenceCommitCpp(TfEditCookie ec, _In_ ITfContext *pContext);
+    HRESULT _HandleSentenceBackspaceCpp(TfEditCookie ec, _In_ ITfContext *pContext, UINT code);
+    HRESULT _HandleSentenceArrowKeyCpp(TfEditCookie ec, _In_ ITfContext *pContext, KEYSTROKE_FUNCTION keyFunction);
     HRESULT _HandleSentenceBackspace(TfEditCookie ec, _In_ ITfContext *pContext, UINT code);
     HRESULT _HandleSentenceArrowKey(TfEditCookie ec, _In_ ITfContext *pContext, KEYSTROKE_FUNCTION keyFunction);
 
@@ -360,7 +363,11 @@ private:
 
 	// sentence mode (SentenceHandler.cpp)
 	BOOL _IsSentenceMode();
+#ifdef DIME_USE_RUST_ENGINE
+	BOOL _IsSentencePending();     // the sentence is in the Rust session
+#else
 	BOOL _IsSentencePending() { return !_sentence.IsEmpty(); }
+#endif
 	BOOL _IsSentenceKeyEaten(UINT code, _Inout_opt_ _KEYSTROKE_STATE *pKeyState);
 	CSentenceLexicon* _GetSentenceLexicon();
 	void _SentenceConvert();
@@ -480,6 +487,9 @@ private:
 
 	// sentence mode state
 	CSentenceBuffer _sentence;
+#ifdef DIME_USE_RUST_ENGINE
+	struct DimeSession* _pRustSession; // Rust-owned state (sentence mode), see RustSessionHost.cpp
+#endif
 	CSentenceLexicon* _pSentenceLexicon;
 	CSentenceUserModel* _pSentenceUser;     // learned data: file + this process
 	CSentenceUserModel* _pSentencePending;  // learned by this process since the last save

@@ -1598,14 +1598,14 @@ pub unsafe extern "C" fn dime_plan_candidate_search(
 
 /// The C++ text service as seen by `dime_core::session` (see `session::Host`;
 /// strings returned through `out` stay valid until the next callback).
-/// Every function receives `ctx`.  Booleans are `int32_t`.
+/// Every function receives `ctx`.  Booleans are `int32_t`.  The field order
+/// must match `s_vtbl` in `src/RustSessionHost.cpp` and `dime_ffi.h`.
 #[repr(C)]
 pub struct DimeHostVtbl {
     pub candidate_mode: unsafe extern "C" fn(ctx: *mut c_void) -> u32,
     pub is_composing: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
     pub is_full_shape: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
     pub virtual_key_length: unsafe extern "C" fn(ctx: *mut c_void) -> usize,
-    pub is_sentence_pending: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
     pub caps_lock_on: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
     pub shift_english_digit_mode: unsafe extern "C" fn(ctx: *mut c_void) -> u32,
     pub dayi_article_mode: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
@@ -1617,8 +1617,6 @@ pub struct DimeHostVtbl {
     pub terminate_composition: unsafe extern "C" fn(ctx: *mut c_void),
     pub has_ui_presenter: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
     pub is_candidate_with_wildcard: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
-    pub sentence_pin_next: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
-    pub set_sentence_pin_next: unsafe extern "C" fn(ctx: *mut c_void, pin: i32),
     pub is_sentence_mode: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
     pub ime_mode: unsafe extern "C" fn(ctx: *mut c_void) -> u32,
     pub array_scope: unsafe extern "C" fn(ctx: *mut c_void) -> u32,
@@ -1648,10 +1646,6 @@ pub struct DimeHostVtbl {
     pub set_commit_string: unsafe extern "C" fn(ctx: *mut c_void, text: *const u16, len: usize),
     pub async_reverse_conversion: unsafe extern "C" fn(ctx: *mut c_void),
     pub beep: unsafe extern "C" fn(ctx: *mut c_void, kind: u32),
-    pub sentence_commit_before_output: unsafe extern "C" fn(ctx: *mut c_void),
-    pub sentence_close_reading: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
-    pub sentence_reset: unsafe extern "C" fn(ctx: *mut c_void),
-    pub sentence_select_candidate: unsafe extern "C" fn(ctx: *mut c_void, text: *const u16, len: usize, explicit: i32) -> i32,
     pub selection: unsafe extern "C" fn(ctx: *mut c_void, strict: i32) -> i32,
     pub add_virtual_key: unsafe extern "C" fn(ctx: *mut c_void, wch: u16) -> i32,
     pub remove_virtual_key: unsafe extern "C" fn(ctx: *mut c_void, index: usize),
@@ -1667,19 +1661,33 @@ pub struct DimeHostVtbl {
     pub hide_candidate_window: unsafe extern "C" fn(ctx: *mut c_void),
     pub create_and_start_candidate: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
     pub composition_arrow_key: unsafe extern "C" fn(ctx: *mut c_void, function: u32),
-    pub sentence_render: unsafe extern "C" fn(ctx: *mut c_void, text: *const u16, len: usize) -> i32,
-    pub sentence_append_fetched: unsafe extern "C" fn(ctx: *mut c_void, index: i32) -> i32,
+    pub sentence_write: unsafe extern "C" fn(ctx: *mut c_void, text: *const u16, len: usize, caret: usize, with_attributes: i32) -> i32,
+    pub sentence_models: unsafe extern "C" fn(ctx: *mut c_void, lexicon: *mut *const DimeLexicon, user: *mut *const DimeUserModel),
+    pub sentence_learn: unsafe extern "C" fn(ctx: *mut c_void),
+    pub sentence_clear_display: unsafe extern "C" fn(ctx: *mut c_void),
+    pub keystroke_code: unsafe extern "C" fn(ctx: *mut c_void, out: *mut *const u16) -> usize,
+    pub fetched_count: unsafe extern "C" fn(ctx: *mut c_void) -> u32,
+    pub fetched_string: unsafe extern "C" fn(ctx: *mut c_void, index: u32, out: *mut *const u16) -> usize,
+    pub show_sentence_candidates: unsafe extern "C" fn(ctx: *mut c_void, candidates: *const *const u16, lens: *const usize, count: usize, code: *const u16, code_len: usize, selection: i32),
 }
+
+/// IME state owned by Rust, kept by `CDIME` across edit sessions.
+pub struct DimeSession(session::SessionState);
 
 #[repr(C)]
 pub struct DimeHost {
     pub vtbl: *const DimeHostVtbl,
     pub ctx: *mut c_void,
+    pub session: *mut DimeSession,
 }
 
 struct FfiHost<'a> {
     v: &'a DimeHostVtbl,
     ctx: *mut c_void,
+    /// Raw so that C++ callbacks may read the session (through
+    /// `dime_session_*`) while a handler runs; Rust never keeps a borrow of it
+    /// across a callback (every access goes through `state()` / `state_ref()`).
+    state: *mut session::SessionState,
 }
 
 /// Copy a host string (`ptr`, `len`), null meaning empty.
@@ -1716,12 +1724,10 @@ impl session::Host for FfiHost<'_> {
     host_bool!(
         is_composing,
         is_full_shape,
-        is_sentence_pending,
         caps_lock_on,
         dayi_article_mode,
         has_ui_presenter,
         is_candidate_with_wildcard,
-        sentence_pin_next,
         is_sentence_mode,
         clear_on_beep,
         array_force_sp,
@@ -1743,11 +1749,11 @@ impl session::Host for FfiHost<'_> {
         notify_selected_key_code,
         start_composition,
         async_reverse_conversion,
-        sentence_commit_before_output,
-        sentence_reset,
         set_candidate_text,
         clear_candidate_list,
-        hide_candidate_window
+        hide_candidate_window,
+        sentence_learn,
+        sentence_clear_display
     );
 
     fn virtual_key_length(&self) -> usize {
@@ -1766,9 +1772,6 @@ impl session::Host for FfiHost<'_> {
     }
     fn delete_candidate_list(&mut self, force: bool) {
         unsafe { (self.v.delete_candidate_list)(self.ctx, i32::from(force)) }
-    }
-    fn set_sentence_pin_next(&mut self, pin: bool) {
-        unsafe { (self.v.set_sentence_pin_next)(self.ctx, i32::from(pin)) }
     }
     fn selected_candidate(&self) -> Vec<u16> {
         let mut p: *const u16 = ptr::null();
@@ -1810,6 +1813,12 @@ impl session::Host for FfiHost<'_> {
     fn add_composing_and_char(&mut self, text: Option<&[u16]>) -> i32 {
         let (p, len) = text.map_or((ptr::null(), 0), |t| (t.as_ptr(), t.len()));
         unsafe { (self.v.add_composing_and_char)(self.ctx, p, len) }
+    }
+    fn set_commit_string(&mut self, text: &[u16]) {
+        unsafe { (self.v.set_commit_string)(self.ctx, text.as_ptr(), text.len()) }
+    }
+    fn beep(&mut self, kind: u32) {
+        unsafe { (self.v.beep)(self.ctx, kind) }
     }
     fn selection(&mut self, strict: bool) -> session::Selection {
         match unsafe { (self.v.selection)(self.ctx, i32::from(strict)) } {
@@ -1854,23 +1863,56 @@ impl session::Host for FfiHost<'_> {
     fn composition_arrow_key(&mut self, function: u32) {
         unsafe { (self.v.composition_arrow_key)(self.ctx, function) }
     }
-    fn sentence_render(&mut self, reading: &[u16]) -> i32 {
-        unsafe { (self.v.sentence_render)(self.ctx, reading.as_ptr(), reading.len()) }
+
+    fn state(&mut self) -> &mut session::SessionState {
+        // SAFETY: `with_host` checked the pointer; see the field comment.
+        unsafe { &mut *self.state }
     }
-    fn sentence_append_fetched(&mut self, index: i32) -> i32 {
-        unsafe { (self.v.sentence_append_fetched)(self.ctx, index) }
+    fn state_ref(&self) -> &session::SessionState {
+        unsafe { &*self.state }
     }
-    fn set_commit_string(&mut self, text: &[u16]) {
-        unsafe { (self.v.set_commit_string)(self.ctx, text.as_ptr(), text.len()) }
+    fn sentence_write(&mut self, text: &[u16], caret: usize, with_attributes: bool) -> i32 {
+        unsafe { (self.v.sentence_write)(self.ctx, text.as_ptr(), text.len(), caret, i32::from(with_attributes)) }
     }
-    fn beep(&mut self, kind: u32) {
-        unsafe { (self.v.beep)(self.ctx, kind) }
+    fn convert_sentence(&mut self) {
+        let mut lex: *const DimeLexicon = ptr::null();
+        let mut user: *const DimeUserModel = ptr::null();
+        unsafe { (self.v.sentence_models)(self.ctx, &mut lex, &mut user) };
+        let (lex, user) = unsafe { (lex.as_ref().map(|l| &l.0), user.as_ref().map(|u| &u.0)) };
+        self.state().sentence.convert(lex, user);
     }
-    fn sentence_close_reading(&mut self) -> i32 {
-        unsafe { (self.v.sentence_close_reading)(self.ctx) }
+    fn keystroke_code(&self) -> Vec<u16> {
+        let mut p: *const u16 = ptr::null();
+        let len = unsafe { (self.v.keystroke_code)(self.ctx, &mut p) };
+        host_string(p, len)
     }
-    fn sentence_select_candidate(&mut self, text: &[u16], explicit: bool) -> i32 {
-        unsafe { (self.v.sentence_select_candidate)(self.ctx, text.as_ptr(), text.len(), i32::from(explicit)) }
+    fn fetched_strings(&self) -> Vec<Vec<u16>> {
+        let count = unsafe { (self.v.fetched_count)(self.ctx) };
+        (0..count)
+            .map(|i| {
+                let mut p: *const u16 = ptr::null();
+                let len = unsafe { (self.v.fetched_string)(self.ctx, i, &mut p) };
+                host_string(p, len)
+            })
+            .collect()
+    }
+    fn show_sentence_candidates(&mut self, pos: usize) {
+        // The window keeps these pointers: they point into the session's
+        // sentence, which does not change while the window is open.
+        let position = unsafe { (*self.state).sentence.at(pos) };
+        let ptrs: Vec<*const u16> = position.candidates.iter().map(|c| c.as_ptr()).collect();
+        let lens: Vec<usize> = position.candidates.iter().map(Vec::len).collect();
+        unsafe {
+            (self.v.show_sentence_candidates)(
+                self.ctx,
+                ptrs.as_ptr(),
+                lens.as_ptr(),
+                ptrs.len(),
+                position.code.as_ptr(),
+                position.code.len(),
+                position.chosen,
+            )
+        }
     }
 }
 
@@ -1887,7 +1929,14 @@ unsafe fn with_host(host: *const DimeHost, f: impl FnOnce(&mut FfiHost<'_>) -> i
         let Some(v) = (unsafe { h.vtbl.as_ref() }) else {
             return E_UNEXPECTED_HR;
         };
-        let mut fh = FfiHost { v, ctx: h.ctx };
+        let Some(session) = (unsafe { h.session.as_mut() }) else {
+            return E_UNEXPECTED_HR;
+        };
+        let mut fh = FfiHost {
+            v,
+            ctx: h.ctx,
+            state: &mut session.0,
+        };
         f(&mut fh)
     })
 }
@@ -2042,6 +2091,94 @@ pub unsafe extern "C" fn dime_session_handle_composition_backspace(host: *const 
 #[no_mangle]
 pub unsafe extern "C" fn dime_session_handle_composition_arrow_key(host: *const DimeHost, function: u32) -> i32 {
     unsafe { with_host(host, |h| session::handle_composition_arrow_key(h, function)) }
+}
+
+/// `_HandleSentenceCommit`.
+///
+/// # Safety
+/// See `dime_session_handle_complete`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_session_handle_sentence_commit(host: *const DimeHost) -> i32 {
+    unsafe { with_host(host, |h| session::handle_sentence_commit(h)) }
+}
+
+/// `_HandleSentenceBackspace` (`code`: `VK_BACK` or `VK_DELETE`).
+///
+/// # Safety
+/// See `dime_session_handle_complete`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_session_handle_sentence_backspace(host: *const DimeHost, code: u32) -> i32 {
+    unsafe { with_host(host, |h| session::handle_sentence_backspace(h, code)) }
+}
+
+/// `_HandleSentenceArrowKey`.
+///
+/// # Safety
+/// See `dime_session_handle_complete`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_session_handle_sentence_arrow_key(host: *const DimeHost, function: u32) -> i32 {
+    unsafe { with_host(host, |h| session::handle_sentence_arrow_key(h, function)) }
+}
+
+/// The Rust session state a `CDIME` keeps.
+#[no_mangle]
+pub extern "C" fn dime_session_new() -> *mut DimeSession {
+    guard(ptr::null_mut(), || boxed(DimeSession(session::SessionState::new())))
+}
+
+/// # Safety
+/// `s` must come from `dime_session_new` (or be null).
+#[no_mangle]
+pub unsafe extern "C" fn dime_session_free(s: *mut DimeSession) {
+    if !s.is_null() {
+        guard((), || drop(unsafe { Box::from_raw(s) }));
+    }
+}
+
+/// A sentence is pending (`_IsSentencePending`).
+///
+/// # Safety
+/// `s` must be a valid session or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_session_sentence_pending(s: *const DimeSession) -> i32 {
+    guard(0, || unsafe { s.as_ref() }.map_or(0, |s| i32::from(!s.0.sentence.is_empty())))
+}
+
+/// Learn the pending sentence into `user` (`CSentenceUserModel::Learn`).
+///
+/// # Safety
+/// `s` and `user` must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_session_sentence_learn(s: *const DimeSession, user: *mut DimeUserModel) -> i32 {
+    guard(0, || match (unsafe { s.as_ref() }, unsafe { user.as_mut() }) {
+        (Some(s), Some(u)) => i32::from(s.0.sentence.learn_into(&mut u.0)),
+        _ => 0,
+    })
+}
+
+/// The converted sentence text, freed with `dime_buffer_free`.
+///
+/// # Safety
+/// `s` must be a valid session or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_session_sentence_text(s: *const DimeSession) -> *mut DimeBuffer {
+    guard(ptr::null_mut(), || match unsafe { s.as_ref() } {
+        Some(s) => boxed(DimeBuffer(s.0.sentence.text())),
+        None => ptr::null_mut(),
+    })
+}
+
+/// The Rust part of `_SentenceReset`.
+///
+/// # Safety
+/// `s` must be a valid session or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_session_sentence_reset(s: *mut DimeSession) {
+    guard((), || {
+        if let Some(s) = unsafe { s.as_mut() } {
+            s.0.reset_sentence();
+        }
+    })
 }
 
 // ---------------------------------------------------------------------------

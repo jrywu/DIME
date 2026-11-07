@@ -42,7 +42,6 @@ private:
     static int32_t IsComposing(void* ctx);
     static int32_t IsFullShape(void* ctx);
     static size_t VirtualKeyLength(void* ctx);
-    static int32_t IsSentencePending(void* ctx);
     static int32_t CapsLockOn(void* ctx);
     static uint32_t ShiftEnglishDigitMode(void* ctx);
     static int32_t DayiArticleMode(void* ctx);
@@ -54,8 +53,6 @@ private:
     static void TerminateComposition(void* ctx);
     static int32_t HasUiPresenter(void* ctx);
     static int32_t IsCandidateWithWildcard(void* ctx);
-    static int32_t SentencePinNext(void* ctx);
-    static void SetSentencePinNext(void* ctx, int32_t pin);
     static int32_t IsSentenceMode(void* ctx);
     static uint32_t ImeMode(void* ctx);
     static uint32_t ArrayScope(void* ctx);
@@ -85,10 +82,6 @@ private:
     static void SetCommitString(void* ctx, const uint16_t* text, size_t len);
     static void AsyncReverseConversion(void* ctx);
     static void Beep(void* ctx, uint32_t kind);
-    static void SentenceCommitBeforeOutput(void* ctx);
-    static int32_t SentenceCloseReading(void* ctx);
-    static void SentenceReset(void* ctx);
-    static int32_t SentenceSelectCandidate(void* ctx, const uint16_t* text, size_t len, int32_t isExplicit);
     static int32_t Selection(void* ctx, int32_t strict);
     static int32_t AddVirtualKey(void* ctx, uint16_t wch);
     static void RemoveVirtualKey(void* ctx, size_t index);
@@ -104,8 +97,14 @@ private:
     static void HideCandidateWindow(void* ctx);
     static int32_t CreateAndStartCandidate(void* ctx);
     static void CompositionArrowKey(void* ctx, uint32_t function);
-    static int32_t SentenceRender(void* ctx, const uint16_t* text, size_t len);
-    static int32_t SentenceAppendFetched(void* ctx, int32_t index);
+    static int32_t SentenceWrite(void* ctx, const uint16_t* text, size_t len, size_t caret, int32_t withAttributes);
+    static void SentenceModels(void* ctx, const DimeLexicon** lexicon, const DimeUserModel** user);
+    static void SentenceLearn(void* ctx);
+    static void SentenceClearDisplay(void* ctx);
+    static size_t KeystrokeCode(void* ctx, const uint16_t** out);
+    static uint32_t FetchedCount(void* ctx);
+    static size_t FetchedString(void* ctx, uint32_t index, const uint16_t** out);
+    static void ShowSentenceCandidates(void* ctx, const uint16_t* const* candidates, const size_t* lens, size_t count, const uint16_t* code, size_t codeLen, int32_t selection);
 };
 
 #endif // DIME_RUST_AVAILABLE

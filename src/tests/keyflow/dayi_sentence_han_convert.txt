@@ -1,0 +1,8 @@
+# script: a b Space d Space Enter
+init -> passed text="" sel=0
+a -> eaten text="人" sel=1 comp="人"
+b -> eaten text="人馬" sel=2 comp="人馬"
+Space -> eaten text="從" sel=1 comp="從"
+d -> eaten text="從言" sel=2 comp="從言"
+Space -> eaten text="從言" sel=2 comp="從言"
+Enter -> eaten text="从言" sel=2

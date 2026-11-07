@@ -1,0 +1,11 @@
+# script: a Space Shift+b d Space ' g Space Shift+1
+init -> passed text="" sel=0
+a -> eaten text="人" sel=1 comp="人"
+Space -> eaten text="人" sel=1 comp="人"
+Shift+b -> passed text="人" sel=1
+d -> eaten text="人言" sel=2 comp="言"
+Space -> eaten text="人言" sel=2 comp="言"
+' -> eaten text="人言號" sel=3
+g -> eaten text="人言號王" sel=4 comp="王"
+Space -> eaten text="人言號王" sel=4 comp="王"
+Shift+1 -> passed text="人言號王" sel=4

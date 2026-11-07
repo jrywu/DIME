@@ -15,7 +15,6 @@ const DimeHostVtbl CRustSessionHost::s_vtbl = {
     IsComposing,
     IsFullShape,
     VirtualKeyLength,
-    IsSentencePending,
     CapsLockOn,
     ShiftEnglishDigitMode,
     DayiArticleMode,
@@ -27,8 +26,6 @@ const DimeHostVtbl CRustSessionHost::s_vtbl = {
     TerminateComposition,
     HasUiPresenter,
     IsCandidateWithWildcard,
-    SentencePinNext,
-    SetSentencePinNext,
     IsSentenceMode,
     ImeMode,
     ArrayScope,
@@ -58,10 +55,6 @@ const DimeHostVtbl CRustSessionHost::s_vtbl = {
     SetCommitString,
     AsyncReverseConversion,
     Beep,
-    SentenceCommitBeforeOutput,
-    SentenceCloseReading,
-    SentenceReset,
-    SentenceSelectCandidate,
     Selection,
     AddVirtualKey,
     RemoveVirtualKey,
@@ -77,8 +70,14 @@ const DimeHostVtbl CRustSessionHost::s_vtbl = {
     HideCandidateWindow,
     CreateAndStartCandidate,
     CompositionArrowKey,
-    SentenceRender,
-    SentenceAppendFetched,
+    SentenceWrite,
+    SentenceModels,
+    SentenceLearn,
+    SentenceClearDisplay,
+    KeystrokeCode,
+    FetchedCount,
+    FetchedString,
+    ShowSentenceCandidates,
 };
 
 CRustSessionHost::CRustSessionHost(_In_ CDIME* pDime, TfEditCookie ec, _In_ ITfContext* pContext)
@@ -86,6 +85,11 @@ CRustSessionHost::CRustSessionHost(_In_ CDIME* pDime, TfEditCookie ec, _In_ ITfC
 {
     _host.vtbl = &s_vtbl;
     _host.ctx = this;
+#ifdef DIME_USE_RUST_ENGINE
+    _host.session = pDime->_pRustSession;
+#else
+    _host.session = nullptr;
+#endif
 }
 
 CCompositionProcessorEngine* CRustSessionHost::Engine() const { return _pDime->_pCompositionProcessorEngine; }
@@ -103,7 +107,6 @@ size_t CRustSessionHost::VirtualKeyLength(void* ctx)
     return pEngine ? pEngine->GetVirtualKeyLength() : 0;
 }
 
-int32_t CRustSessionHost::IsSentencePending(void* ctx) { return Self(ctx)->_pDime->_IsSentencePending() ? 1 : 0; }
 int32_t CRustSessionHost::CapsLockOn(void*) { return (GetKeyState(VK_CAPITAL) & 0x0001) != 0 ? 1 : 0; }
 uint32_t CRustSessionHost::ShiftEnglishDigitMode(void*) { return (uint32_t)CConfig::GetShiftEnglishDigitMode(); }
 int32_t CRustSessionHost::DayiArticleMode(void*) { return CConfig::getDayiArticleMode() ? 1 : 0; }
@@ -165,8 +168,6 @@ void CRustSessionHost::TerminateComposition(void* ctx)
 
 int32_t CRustSessionHost::HasUiPresenter(void* ctx) { return Self(ctx)->UI() ? 1 : 0; }
 int32_t CRustSessionHost::IsCandidateWithWildcard(void* ctx) { return Self(ctx)->_pDime->_isCandidateWithWildcard ? 1 : 0; }
-int32_t CRustSessionHost::SentencePinNext(void* ctx) { return Self(ctx)->_pDime->_sentencePinNext ? 1 : 0; }
-void CRustSessionHost::SetSentencePinNext(void* ctx, int32_t pin) { Self(ctx)->_pDime->_sentencePinNext = pin ? TRUE : FALSE; }
 int32_t CRustSessionHost::IsSentenceMode(void* ctx) { return Self(ctx)->_pDime->_IsSentenceMode() ? 1 : 0; }
 uint32_t CRustSessionHost::ImeMode(void*) { return (uint32_t)Global::imeMode; }
 uint32_t CRustSessionHost::ArrayScope(void*) { return (uint32_t)CConfig::GetArrayScope(); }
@@ -354,25 +355,6 @@ void CRustSessionHost::Beep(void* ctx, uint32_t kind) { Self(ctx)->_pDime->DoBee
 
 // ---- handlers still in C++ ----
 
-void CRustSessionHost::SentenceCommitBeforeOutput(void* ctx)
-{
-    CRustSessionHost* self = Self(ctx);
-    self->_pDime->_SentenceCommitBeforeOutput(self->_ec, self->_pContext);
-}
-
-int32_t CRustSessionHost::SentenceCloseReading(void* ctx)
-{
-    CRustSessionHost* self = Self(ctx);
-    return self->_pDime->_SentenceCloseReading(self->_ec, self->_pContext);
-}
-
-void CRustSessionHost::SentenceReset(void* ctx) { Self(ctx)->_pDime->_SentenceReset(); }
-
-int32_t CRustSessionHost::SentenceSelectCandidate(void* ctx, const uint16_t* text, size_t len, int32_t isExplicit)
-{
-    CRustSessionHost* self = Self(ctx);
-    return self->_pDime->_SentenceSelectCandidate(self->_ec, self->_pContext, std::wstring((const WCHAR*)text, len), isExplicit ? TRUE : FALSE);
-}
 
 // ---- composing ----
 
@@ -476,16 +458,68 @@ void CRustSessionHost::CompositionArrowKey(void* ctx, uint32_t function)
     tfSelection.range->Release();
 }
 
-int32_t CRustSessionHost::SentenceRender(void* ctx, const uint16_t* text, size_t len)
+// ---- sentence mode (the state is in the Rust session) ----
+
+int32_t CRustSessionHost::SentenceWrite(void* ctx, const uint16_t* text, size_t len, size_t caret, int32_t withAttributes)
 {
     CRustSessionHost* self = Self(ctx);
-    return self->_pDime->_SentenceRender(self->_ec, self->_pContext, std::wstring((const WCHAR*)text, len));
+    return self->_pDime->_SentenceWrite(self->_ec, self->_pContext, std::wstring((const WCHAR*)text, len), caret, withAttributes ? TRUE : FALSE);
 }
 
-int32_t CRustSessionHost::SentenceAppendFetched(void* ctx, int32_t index)
+// The lexicon (and the user model with it) is loaded on first use, as in _SentenceConvert.
+void CRustSessionHost::SentenceModels(void* ctx, const DimeLexicon** lexicon, const DimeUserModel** user)
+{
+    CDIME* dime = Self(ctx)->_pDime;
+    CSentenceLexicon* pLexicon = dime->_GetSentenceLexicon();
+    *lexicon = pLexicon ? pLexicon->Handle() : nullptr;
+    *user = dime->_pSentenceUser ? dime->_pSentenceUser->Handle() : nullptr;
+}
+
+void CRustSessionHost::SentenceLearn(void* ctx) { Self(ctx)->_pDime->_SentenceLearn(); }
+
+void CRustSessionHost::SentenceClearDisplay(void* ctx)
+{
+    CDIME* dime = Self(ctx)->_pDime;
+    dime->_sentenceDisplay.clear();
+    dime->lastReadingString.Set(nullptr, 0);
+}
+
+size_t CRustSessionHost::KeystrokeCode(void* ctx, const uint16_t** out)
 {
     CRustSessionHost* self = Self(ctx);
-    return self->_pDime->_SentenceAppendFromCandidateList(self->_ec, self->_pContext, &self->_fetched, index);
+    self->_scratch = self->_pDime->_GetKeystrokeCode();
+    *out = (const uint16_t*)self->_scratch.c_str();
+    return self->_scratch.size();
+}
+
+uint32_t CRustSessionHost::FetchedCount(void* ctx) { return Self(ctx)->_fetched.Count(); }
+
+size_t CRustSessionHost::FetchedString(void* ctx, uint32_t index, const uint16_t** out)
+{
+    CCandidateListItem* pItem = Self(ctx)->_fetched.GetAt(index);
+    *out = pItem ? (const uint16_t*)pItem->_ItemString.Get() : nullptr;
+    return (pItem && pItem->_ItemString.Get()) ? pItem->_ItemString.GetLength() : 0;
+}
+
+// _SentenceOpenCandidates: the window keeps the pointers, which point into the
+// Rust session's sentence (unchanged while the window is open).
+void CRustSessionHost::ShowSentenceCandidates(void* ctx, const uint16_t* const* candidates, const size_t* lens, size_t count,
+    const uint16_t* code, size_t codeLen, int32_t selection)
+{
+    CRustSessionHost* self = Self(ctx);
+    CDIME* dime = self->_pDime;
+    CDIMEArray<CCandidateListItem> candidateList;
+    for (size_t i = 0; i < count; i++)
+    {
+        CCandidateListItem* pItem = candidateList.Append();
+        if (pItem == nullptr) return;
+        pItem->_ItemString.Set((const WCHAR*)candidates[i], lens[i]);
+        pItem->_FindKeyCode.Set((const WCHAR*)code, codeLen);
+    }
+    dime->_pUIPresenter->_ClearCandidateList();
+    dime->_pUIPresenter->_SetCandidateText(&candidateList, self->Engine()->GetCandidateListIndexRange(),
+        FALSE, self->Engine()->GetCandidateWindowWidth());
+    dime->_pUIPresenter->_SetCandidateSelection(selection, FALSE);
 }
 
 #endif // DIME_RUST_AVAILABLE

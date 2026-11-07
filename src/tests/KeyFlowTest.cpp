@@ -277,6 +277,26 @@ namespace DIMEUnitTests
             CheckGolden(L"dayi_sentence_edit", o, L"a Space e Space Back d Space Del Left Left Del Esc a Space , Esc");
         }
 
+        KeyFlowOptions SentenceOptions(std::vector<std::wstring> config)
+        {
+            config.push_back(L"SentenceMode = 1");
+            KeyFlowOptions o = DayiOptions(config);
+            o.appDataFiles.push_back({ L"TCFreq.cin", Installer(L"TCFreq.cin") });
+            o.appDataFiles.push_back({ L"Array-Phrase.cin", Installer(L"Array-Phrase.cin") });
+            return o;
+        }
+        TEST_METHOD(Dayi_SentenceWildcardSymbol) { CheckGolden(L"dayi_sentence_wildcard_symbol", SentenceOptions({}), L"a Shift+8 Space Down Space = 1 Space Space Enter"); }
+        TEST_METHOD(Dayi_SentenceSelectKeyEdit)  { CheckGolden(L"dayi_sentence_select_key_edit", SentenceOptions({ L"DayiSelkeyMode = 1" }), L"a Space a 2 Left Down 3 Home End Down Esc Enter"); }
+        TEST_METHOD(Dayi_SentenceOutputCommits)  { CheckGolden(L"dayi_sentence_output_commits", SentenceOptions({}), L"a Space Shift+b d Space ' g Space Shift+1"); }
+        TEST_METHOD(Dayi_SentenceHanConvert)
+        {
+            KeyFlowOptions o = SentenceOptions({ L"DoHanConvert = 1" });
+            o.appDataFiles.push_back({ L"TCSC.cin", Installer(L"TCSC.cin") });
+            CheckGolden(L"dayi_sentence_han_convert", o, L"a b Space d Space Enter");
+        }
+        TEST_METHOD(Dayi_SentenceReadingBackspace) { CheckGolden(L"dayi_sentence_reading_backspace", SentenceOptions({}), L"a Space d Back Back a b Esc Back Back Back"); }
+        TEST_METHOD(Dayi_SentenceFortyCommits)   { CheckGolden(L"dayi_sentence_forty_commits", SentenceOptions({}), L"a Space a Space a Space a Space a Space a Space a Space a Space a Space a Space a Space a Space a Space a Space a Space a Space a Space a Space a Space a Space a Space a Space a Space a Space a Space a Space a Space a Space a Space a Space a Space a Space a Space a Space a Space a Space a Space a Space a Space a Space a Space"); }
+
         // ---- Generic (synthetic table) -----------------------------------------
         TEST_METHOD(Generic_EndKey)           { CheckGolden(L"generic_end_key", GenericOptions(), L"a b ; b ; 2"); }
         TEST_METHOD(Generic_SpaceFirst)       { CheckGolden(L"generic_space_first", GenericOptions({ L"SpaceAsFirstCandSelkey = 1" }), L"a Space Space b Space Space"); }

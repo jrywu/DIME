@@ -1,0 +1,12 @@
+# script: a Shift+8 Space Down Space = 1 Space Space Enter
+init -> passed text="" sel=0
+a -> eaten text="人" sel=1 comp="人"
+Shift+8 -> eaten text="人*" sel=2 comp="人*"
+Space -> eaten text="人*" sel=2 comp="人*" cand=original[*人 信 入 從 八]
+Down -> eaten text="人*" sel=2 comp="人*" cand=original[人 *信 入 從 八]
+Space -> eaten text="信" sel=1 comp="信"
+= -> eaten text="信=" sel=2 comp="信="
+1 -> eaten text="信=1" sel=3 comp="信=1" cand=original[*， 。]
+Space -> eaten text="信，" sel=2 comp="信，"
+Space -> eaten text="信，" sel=2
+Enter -> passed text="信，" sel=2

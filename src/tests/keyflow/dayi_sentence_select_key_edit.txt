@@ -1,0 +1,14 @@
+# script: a Space a 2 Left Down 3 Home End Down Esc Enter
+init -> passed text="" sel=0
+a -> eaten text="人" sel=1 comp="人"
+Space -> eaten text="人" sel=1 comp="人"
+a -> eaten text="人人" sel=2 comp="人人"
+2 -> eaten text="人人" sel=2 comp="人人"
+Left -> eaten text="人人" sel=2 comp="人人"
+Down -> eaten text="人人" sel=2 comp="人人"
+3 -> eaten text="人人" sel=2 comp="人人"
+Home -> eaten text="人人" sel=2 comp="人人"
+End -> eaten text="人人" sel=2 comp="人人"
+Down -> eaten text="人人" sel=2 comp="人人"
+Esc -> eaten text="人" sel=1 comp="人"
+Enter -> eaten text="人" sel=1

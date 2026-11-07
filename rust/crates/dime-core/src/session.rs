@@ -7,6 +7,36 @@
 //! host calls is the C++ order; the golden key-flow tests
 //! (`src/tests/KeyFlowTest.cpp`) check the result end to end.
 
+use crate::sentence_buffer::{SentenceBuffer, MAX_POSITIONS};
+
+/// IME state owned by Rust (the rest still lives in `CDIME`).
+#[derive(Debug, Default)]
+pub struct SessionState {
+    /// The pending sentence of sentence mode.
+    pub sentence: SentenceBuffer,
+    /// Position being edited through the candidate window, or -1.
+    pub sentence_edit_pos: i32,
+    /// The next candidate finalize came from a select key (pins the character).
+    pub sentence_pin_next: bool,
+}
+
+impl SessionState {
+    pub fn new() -> Self {
+        Self {
+            sentence: SentenceBuffer::new(),
+            sentence_edit_pos: -1,
+            sentence_pin_next: false,
+        }
+    }
+
+    /// `_SentenceReset` (the Rust part).
+    pub fn reset_sentence(&mut self) {
+        self.sentence.clear();
+        self.sentence_edit_pos = -1;
+        self.sentence_pin_next = false;
+    }
+}
+
 /// `HRESULT`.
 pub type HResult = i32;
 pub const S_OK: HResult = 0;
@@ -73,7 +103,6 @@ pub trait Host {
     fn is_composing(&self) -> bool;
     fn is_full_shape(&self) -> bool;
     fn virtual_key_length(&self) -> usize;
-    fn is_sentence_pending(&self) -> bool;
     fn caps_lock_on(&self) -> bool;
     /// `CConfig::GetShiftEnglishDigitMode()`.
     fn shift_english_digit_mode(&self) -> u32;
@@ -94,8 +123,6 @@ pub trait Host {
     // --- state (candidate handling) ---
     fn has_ui_presenter(&self) -> bool;
     fn is_candidate_with_wildcard(&self) -> bool;
-    fn sentence_pin_next(&self) -> bool;
-    fn set_sentence_pin_next(&mut self, pin: bool);
     fn is_sentence_mode(&self) -> bool;
     /// `Global::imeMode`.
     fn ime_mode(&self) -> u32;
@@ -171,13 +198,26 @@ pub trait Host {
     fn composition_arrow_key(&mut self, function: u32);
 
     // --- handlers still in C++ ---
-    fn sentence_select_candidate(&mut self, text: &[u16], explicit: bool) -> HResult;
-    fn sentence_render(&mut self, reading: &[u16]) -> HResult;
-    /// `_SentenceAppendFromCandidateList` with the fetched list.
-    fn sentence_append_fetched(&mut self, index: i32) -> HResult;
-    fn sentence_commit_before_output(&mut self);
-    fn sentence_close_reading(&mut self) -> HResult;
-    fn sentence_reset(&mut self);
+    // --- sentence mode ---
+    fn state(&mut self) -> &mut SessionState;
+    fn state_ref(&self) -> &SessionState;
+    /// Replace the composition text with `text` and put the caret at `caret`
+    /// (`_SentenceWrite`).
+    fn sentence_write(&mut self, text: &[u16], caret: usize, with_attributes: bool) -> HResult;
+    /// Re-convert the sentence with the lexicon and the user model (loaded on first use).
+    fn convert_sentence(&mut self);
+    /// Learn from the sentence about to be committed and save (`_SentenceLearn`).
+    fn sentence_learn(&mut self);
+    /// The C++ part of `_SentenceReset`: the displayed text and `lastReadingString`.
+    fn sentence_clear_display(&mut self);
+    /// The keys typed so far (`_GetKeystrokeCode`).
+    fn keystroke_code(&self) -> Vec<u16>;
+    /// The item strings of the fetched candidate list.
+    fn fetched_strings(&self) -> Vec<Vec<u16>>;
+    /// Show the candidates of sentence position `pos` (key code: the
+    /// position's code) and highlight the chosen one.  The window keeps
+    /// pointers into the position's strings.
+    fn show_sentence_candidates(&mut self, pos: usize);
 }
 
 /// `Global::FullWidthCharTable[c - 0x20]` for printable ASCII.
@@ -218,11 +258,11 @@ pub fn handle_complete(h: &mut impl Host) -> HResult {
 /// `_HandleCancel`.  In sentence mode, cancelling a reading or a candidate
 /// window keeps the sentence; cancelling with nothing else pending discards it.
 pub fn handle_cancel(h: &mut impl Host) -> HResult {
-    if h.is_sentence_pending() {
+    if is_sentence_pending(h) {
         if h.virtual_key_length() > 0 || h.candidate_mode() != candidate_mode::NONE {
-            return h.sentence_close_reading();
+            return sentence_close_reading(h);
         }
-        h.sentence_reset();
+        sentence_reset(h);
     }
     h.remove_dummy_composition();
     h.delete_candidate_list(true);
@@ -243,7 +283,7 @@ fn output_char(h: &mut impl Host, c: u16) -> HResult {
 
 /// `_HandleCompositionDoubleSingleByte`: full-width output of printable ASCII.
 pub fn handle_double_single_byte(h: &mut impl Host, wch: u16) -> HResult {
-    h.sentence_commit_before_output();
+    sentence_commit_before_output(h);
     output_char(h, full_width(wch))
 }
 
@@ -255,7 +295,7 @@ pub fn handle_shift_english_input(h: &mut impl Host, code: u32, wch: u16) -> HRe
     if h.candidate_mode() != candidate_mode::NONE {
         handle_candidate_finalize(h);
     }
-    h.sentence_commit_before_output();
+    sentence_commit_before_output(h);
 
     let caps = h.caps_lock_on();
     let mut out = wch;
@@ -311,7 +351,7 @@ pub fn handle_shift_english_input(h: &mut impl Host, code: u32, wch: u16) -> HRe
 
 /// `_HandleCompositionAddressChar`: Dayi address keys (or article-mode punctuation).
 pub fn handle_address_char(h: &mut impl Host, wch: u16) -> HResult {
-    h.sentence_commit_before_output();
+    sentence_commit_before_output(h);
     if h.is_composing() {
         handle_cancel(h);
     }
@@ -364,12 +404,12 @@ pub fn handle_candidate_worker(h: &mut impl Host) -> HResult {
     // Sentence mode: the candidate joins (or edits) the pending sentence; it is
     // pinned when the user picked it explicitly.
     if h.is_sentence_mode() && h.candidate_mode() != candidate_mode::PHRASE {
-        let explicit = h.sentence_pin_next()
+        let explicit = h.state_ref().sentence_pin_next
             || h.is_candidate_with_wildcard()
             || h.candidate_selection() > 0
             || h.is_escape_input_leading();
-        h.set_sentence_pin_next(false);
-        return h.sentence_select_candidate(&candidate, explicit);
+        h.state().sentence_pin_next = false;
+        return sentence_select_candidate(h, &candidate, explicit);
     }
 
     if h.is_array_short_code() && candidate.len() == 1 && candidate[0] == ARRAY_SHORT_CODE_EMPTY {
@@ -439,9 +479,9 @@ pub fn handle_candidate_select_by_number(h: &mut impl Host, code: u32, wch: u16)
         return S_FALSE;
     }
     if h.has_ui_presenter() && h.set_candidate_selection_in_page(index) {
-        h.set_sentence_pin_next(true);
+        h.state().sentence_pin_next = true;
         let hr = handle_candidate_finalize(h);
-        h.set_sentence_pin_next(false);
+        h.state().sentence_pin_next = false;
         return hr;
     }
     S_FALSE
@@ -505,8 +545,8 @@ pub fn handle_composition_input(h: &mut impl Host, wch: u16) -> HResult {
 pub fn handle_composition_input_worker(h: &mut impl Host) -> HResult {
     let (reading, wildcard) = h.reading_string();
     let wildcard = wildcard.unwrap_or(true);
-    let hr = if h.is_sentence_pending() {
-        h.sentence_render(reading.as_deref().unwrap_or(&[]))
+    let hr = if is_sentence_pending(h) {
+        sentence_render(h, reading.as_deref().unwrap_or(&[]))
     } else {
         h.add_composing_and_char(reading.as_deref())
     };
@@ -548,7 +588,7 @@ pub fn handle_composition_finalize(h: &mut impl Host, is_candidate_list: bool) -
             return handle_candidate_worker(h);
         }
         if !is_candidate_list {
-            h.sentence_commit_before_output();
+            sentence_commit_before_output(h);
         }
     }
     if is_candidate_list && h.has_ui_presenter() {
@@ -576,7 +616,7 @@ pub fn handle_composition_convert(h: &mut impl Host, wildcard: bool, array_phras
         && !h.is_escape_input_leading()
         && h.fetch_candidates(false, false, false) > 0
     {
-        return h.sentence_append_fetched(-1);
+        return sentence_append_fetched(h, -1);
     }
     let count = h.fetch_candidates(false, wildcard, array_phrase_ending);
     if count > 0 {
@@ -613,12 +653,12 @@ pub fn handle_composition_backspace(h: &mut impl Host) -> HResult {
         let symbol_mode = h.is_escape_input();
         h.remove_virtual_key(len - 1);
         let remaining = h.virtual_key_length() > 0 && !symbol_mode;
-        if h.is_sentence_pending() {
+        if is_sentence_pending(h) {
             // The sentence stays when the reading is emptied.
             if remaining {
                 handle_composition_input_worker(h);
             } else {
-                h.sentence_close_reading();
+                sentence_close_reading(h);
             }
         } else if remaining && !(h.ime_mode() == ime_mode::PHONETIC && h.candidate_mode() != candidate_mode::NONE) {
             handle_composition_input_worker(h);
@@ -635,6 +675,202 @@ pub fn handle_composition_arrow_key(h: &mut impl Host, function: u32) -> HResult
     S_OK
 }
 
+// --- sentence mode (SentenceHandler.cpp) ---------------------------------------
+
+/// `VK_DELETE`.
+const VK_DELETE: u32 = 0x2E;
+
+/// `_IsSentencePending`.
+pub fn is_sentence_pending(h: &impl Host) -> bool {
+    !h.state_ref().sentence.is_empty()
+}
+
+/// `_SentenceRender`: the sentence with the reading at the cursor.
+pub fn sentence_render(h: &mut impl Host, reading: &[u16]) -> HResult {
+    let st = h.state_ref();
+    let text = st.sentence.display(reading);
+    let caret = st.sentence.display_caret(reading);
+    h.sentence_write(&text, caret, true)
+}
+
+/// `_SentenceReset`.
+pub fn sentence_reset(h: &mut impl Host) {
+    h.state().reset_sentence();
+    h.sentence_clear_display();
+}
+
+/// `_SentenceAppend`: add the character for the current reading at the cursor,
+/// re-convert and show the sentence.  The reading and any candidate window
+/// are cleared.
+pub fn sentence_append(h: &mut impl Host, candidates: Vec<Vec<u16>>, pinned: i32) -> HResult {
+    let code = h.keystroke_code();
+    if !h.is_composing() {
+        h.start_composition();
+    }
+    h.delete_candidate_list(true); // purges the reading too
+    h.state().sentence_edit_pos = -1;
+
+    if !h.state().sentence.insert(&code, candidates, pinned) {
+        return sentence_render(h, &[]);
+    }
+    h.convert_sentence();
+    if h.state_ref().sentence.count() >= MAX_POSITIONS {
+        return handle_sentence_commit(h);
+    }
+    sentence_render(h, &[])
+}
+
+/// `_SentenceAppendFromCandidateList` with the fetched list.
+pub fn sentence_append_fetched(h: &mut impl Host, pinned: i32) -> HResult {
+    let candidates: Vec<Vec<u16>> = h.fetched_strings().into_iter().filter(|c| !c.is_empty()).collect();
+    sentence_append(h, candidates, pinned)
+}
+
+/// `_SentenceSelectCandidate`: a candidate was finalized from the window.
+/// It fixes the character being edited (Down), or adds the character for the
+/// current reading; `explicit` pins it.
+pub fn sentence_select_candidate(h: &mut impl Host, selected: &[u16], explicit: bool) -> HResult {
+    let edit_pos = h.state_ref().sentence_edit_pos;
+    if edit_pos >= 0 {
+        let pos = edit_pos as usize;
+        h.state().sentence_edit_pos = -1;
+        let st = h.state();
+        if pos < st.sentence.count() {
+            if let Some(i) = st
+                .sentence
+                .at(pos)
+                .candidates
+                .iter()
+                .position(|c| c.as_slice() == selected)
+            {
+                st.sentence.pin(pos, i as i32);
+            }
+        }
+        h.delete_candidate_list(true);
+        h.convert_sentence();
+        return sentence_render(h, &[]);
+    }
+
+    let mut candidates: Vec<Vec<u16>> = Vec::new();
+    let mut index: i32 = -1;
+    if !h.is_candidate_with_wildcard() && !h.is_escape_input_leading() {
+        h.fetch_candidates(false, false, false);
+        for c in h.fetched_strings() {
+            if c.is_empty() {
+                continue;
+            }
+            if index < 0 && c.as_slice() == selected {
+                index = candidates.len() as i32;
+            }
+            candidates.push(c);
+        }
+    }
+    let mut explicit = explicit;
+    if index < 0 {
+        // Wildcard, symbol, or incremental (prefix) match: keep exactly what was chosen.
+        candidates = vec![selected.to_vec()];
+        index = 0;
+        explicit = true;
+    }
+    sentence_append(h, candidates, if explicit { index } else { -1 })
+}
+
+/// `_SentenceOpenCandidates`: Down shows the candidates of the character under the cursor.
+pub fn sentence_open_candidates(h: &mut impl Host) -> HResult {
+    if h.state_ref().sentence.is_empty() || !h.has_ui_presenter() {
+        return S_OK;
+    }
+    let pos = h.state_ref().sentence.edit_target();
+    if h.state_ref().sentence.at(pos).candidates.len() < 2 {
+        h.beep(beep::WARNING);
+        return S_OK;
+    }
+    let hr = h.create_and_start_candidate();
+    if !failed(hr) {
+        // The window keeps pointers into the sentence's strings, as the C++
+        // version did; the sentence does not change while it is open.
+        h.show_sentence_candidates(pos);
+        h.set_candidate_mode(candidate_mode::ORIGINAL);
+        h.set_candidate_with_wildcard(false);
+        h.state().sentence_edit_pos = pos as i32;
+    }
+    hr
+}
+
+/// `_SentenceCloseReading`: drop the reading / candidate window but keep the sentence.
+pub fn sentence_close_reading(h: &mut impl Host) -> HResult {
+    h.delete_candidate_list(true);
+    let st = h.state();
+    st.sentence_edit_pos = -1;
+    st.sentence_pin_next = false;
+    sentence_render(h, &[])
+}
+
+/// `_HandleSentenceCommit`: write the sentence into the document and end the composition.
+pub fn handle_sentence_commit(h: &mut impl Host) -> HResult {
+    if h.state_ref().sentence.is_empty() {
+        return S_OK;
+    }
+    h.sentence_learn();
+    let mut text = h.state_ref().sentence.text();
+    if h.do_han_convert() {
+        text = h.sc_from_tc(&text);
+    }
+    h.sentence_write(&text, text.len(), false);
+    sentence_reset(h);
+    handle_complete(h)
+}
+
+/// `_SentenceCommitBeforeOutput`: keys that output text commit the sentence first.
+pub fn sentence_commit_before_output(h: &mut impl Host) -> HResult {
+    if !is_sentence_pending(h) {
+        return S_OK;
+    }
+    h.delete_candidate_list(true);
+    handle_sentence_commit(h)
+}
+
+/// `_HandleSentenceBackspace`: Backspace / Delete remove a character.
+pub fn handle_sentence_backspace(h: &mut impl Host, code: u32) -> HResult {
+    let st = h.state();
+    let removed = if code == VK_DELETE {
+        st.sentence.remove_at_cursor()
+    } else {
+        st.sentence.remove_before_cursor()
+    };
+    if !removed {
+        return S_OK;
+    }
+    if h.state_ref().sentence.is_empty() {
+        return handle_cancel(h); // nothing left: drop the composition
+    }
+    h.convert_sentence();
+    sentence_render(h, &[])
+}
+
+/// `KEYSTROKE_FUNCTION` values of the sentence arrow keys.
+pub mod sentence_key {
+    pub const MOVE_LEFT: u32 = 15;
+    pub const MOVE_RIGHT: u32 = 16;
+    pub const MOVE_DOWN: u32 = 18;
+    pub const MOVE_PAGE_TOP: u32 = 21;
+    pub const MOVE_PAGE_BOTTOM: u32 = 22;
+}
+
+/// `_HandleSentenceArrowKey`.
+pub fn handle_sentence_arrow_key(h: &mut impl Host, function: u32) -> HResult {
+    let st = h.state();
+    match function {
+        sentence_key::MOVE_LEFT => st.sentence.move_left(),
+        sentence_key::MOVE_RIGHT => st.sentence.move_right(),
+        sentence_key::MOVE_PAGE_TOP => st.sentence.home(),
+        sentence_key::MOVE_PAGE_BOTTOM => st.sentence.end(),
+        sentence_key::MOVE_DOWN => return sentence_open_candidates(h),
+        _ => return S_OK,
+    }
+    sentence_render(h, &[])
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -646,12 +882,12 @@ mod tests {
         composing: bool,
         full_shape: bool,
         caps: bool,
-        sentence_pending: bool,
         vk_len: usize,
         selected: Vec<u16>,
         make_phrase: bool,
         phrases: bool,
         fetched: u32,
+        state: SessionState,
     }
 
     impl Host for Mock {
@@ -666,9 +902,6 @@ mod tests {
         }
         fn virtual_key_length(&self) -> usize {
             self.vk_len
-        }
-        fn is_sentence_pending(&self) -> bool {
-            self.sentence_pending
         }
         fn caps_lock_on(&self) -> bool {
             self.caps
@@ -698,16 +931,37 @@ mod tests {
         fn terminate_composition(&mut self) {
             self.calls.push("terminate".into());
         }
+        fn state(&mut self) -> &mut SessionState {
+            &mut self.state
+        }
+        fn state_ref(&self) -> &SessionState {
+            &self.state
+        }
+        fn sentence_write(&mut self, text: &[u16], caret: usize, _attrs: bool) -> HResult {
+            self.calls
+                .push(format!("write {} @{caret}", String::from_utf16_lossy(text)));
+            S_OK
+        }
+        fn convert_sentence(&mut self) {}
+        fn sentence_learn(&mut self) {
+            self.calls.push("learn".into());
+        }
+        fn sentence_clear_display(&mut self) {}
+        fn keystroke_code(&self) -> Vec<u16> {
+            "a".encode_utf16().collect()
+        }
+        fn fetched_strings(&self) -> Vec<Vec<u16>> {
+            Vec::new()
+        }
+        fn show_sentence_candidates(&mut self, pos: usize) {
+            self.calls.push(format!("show {pos}"));
+        }
         fn has_ui_presenter(&self) -> bool {
             true
         }
         fn is_candidate_with_wildcard(&self) -> bool {
             false
         }
-        fn sentence_pin_next(&self) -> bool {
-            false
-        }
-        fn set_sentence_pin_next(&mut self, _pin: bool) {}
         fn is_sentence_mode(&self) -> bool {
             false
         }
@@ -823,41 +1077,22 @@ mod tests {
             S_OK
         }
         fn composition_arrow_key(&mut self, _function: u32) {}
-        fn sentence_render(&mut self, _reading: &[u16]) -> HResult {
-            S_OK
-        }
-        fn sentence_append_fetched(&mut self, _index: i32) -> HResult {
-            S_OK
-        }
         fn set_commit_string(&mut self, _text: &[u16]) {}
         fn async_reverse_conversion(&mut self) {}
         fn beep(&mut self, kind: u32) {
             self.calls.push(format!("beep {kind}"));
-        }
-        fn sentence_select_candidate(&mut self, _text: &[u16], _explicit: bool) -> HResult {
-            S_OK
-        }
-        fn sentence_commit_before_output(&mut self) {
-            self.calls.push("sentence_commit".into());
-        }
-        fn sentence_close_reading(&mut self) -> HResult {
-            self.calls.push("sentence_close_reading".into());
-            S_OK
-        }
-        fn sentence_reset(&mut self) {
-            self.calls.push("sentence_reset".into());
         }
     }
 
     #[test]
     fn cancel_keeps_sentence_while_reading() {
         let mut m = Mock {
-            sentence_pending: true,
             vk_len: 1,
             ..Default::default()
         };
+        m.state.sentence.insert(&[0x61], vec![vec![0x4EBA]], -1);
         handle_cancel(&mut m);
-        assert_eq!(m.calls, ["sentence_close_reading"]);
+        assert_eq!(m.calls, ["delete_candidates true", "write \u{4EBA} @1"]);
     }
 
     #[test]
@@ -867,8 +1102,8 @@ mod tests {
             ..Default::default()
         };
         handle_shift_english_input(&mut m, 0xBD, u16::from(b'_'));
-        assert_eq!(m.calls[1], "commit \u{FF0D}");
-        assert_eq!(&m.calls[2..], ["remove_dummy", "delete_candidates true", "terminate"]);
+        assert_eq!(m.calls[0], "commit \u{FF0D}");
+        assert_eq!(&m.calls[1..], ["remove_dummy", "delete_candidates true", "terminate"]);
     }
 
     #[test]
@@ -922,6 +1157,25 @@ mod tests {
             m.calls,
             ["remove_key", "remove_dummy", "delete_candidates true", "terminate"]
         );
+    }
+
+    #[test]
+    fn sentence_commit_learns_writes_and_completes() {
+        let mut m = Mock::default();
+        m.state.sentence.insert(&[0x61], vec![vec![0x4EBA], vec![0x5165]], 1);
+        assert_eq!(handle_sentence_commit(&mut m), S_OK);
+        assert_eq!(m.calls[..2], ["learn", "write \u{5165} @1"]);
+        assert!(m.state.sentence.is_empty());
+    }
+
+    #[test]
+    fn sentence_down_opens_candidates_of_edit_target() {
+        let mut m = Mock::default();
+        m.state.sentence.insert(&[0x61], vec![vec![0x4EBA], vec![0x5165]], -1);
+        handle_sentence_arrow_key(&mut m, sentence_key::MOVE_DOWN);
+        assert_eq!(m.calls, ["show 0"]);
+        assert_eq!(m.state.sentence_edit_pos, 0);
+        assert_eq!(m.candidate_mode, candidate_mode::ORIGINAL);
     }
 
     #[test]

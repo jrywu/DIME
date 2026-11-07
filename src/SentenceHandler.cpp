@@ -62,6 +62,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "CompositionProcessorEngine.h"
 #include "BaseStructure.h"
 #include "File.h"
+#ifdef DIME_USE_RUST_ENGINE
+#include "RustSessionHost.h"
+#endif
 
 namespace
 {
@@ -101,6 +104,13 @@ namespace
 // _IsSentenceMode
 //
 //----------------------------------------------------------------------------
+
+#ifdef DIME_USE_RUST_ENGINE
+BOOL CDIME::_IsSentencePending()
+{
+	return (_pRustSession && dime_session_sentence_pending(_pRustSession)) ? TRUE : FALSE;
+}
+#endif
 
 BOOL CDIME::_IsSentenceMode()
 {
@@ -224,11 +234,17 @@ void CDIME::_SentenceConvert()
 
 void CDIME::_SentenceLearn()
 {
-	if (_sentence.IsEmpty() || _pSentenceUser == nullptr || _pSentencePending == nullptr)
+	if (!_IsSentencePending() || _pSentenceUser == nullptr || _pSentencePending == nullptr)
 		return;
+#ifdef DIME_USE_RUST_ENGINE
+	if (!dime_session_sentence_learn(_pRustSession, _pSentenceUser->Handle()))
+		return;
+	dime_session_sentence_learn(_pRustSession, _pSentencePending->Handle());
+#else
 	if (!_pSentenceUser->Learn(_sentence))
 		return;
 	_pSentencePending->Learn(_sentence);
+#endif
 
 	if (_IsStoreAppMode() || isLowIntegrityProcess())
 		return;
@@ -482,6 +498,16 @@ HRESULT CDIME::_SentenceCloseReading(TfEditCookie ec, _In_ ITfContext *pContext)
 
 HRESULT CDIME::_HandleSentenceCommit(TfEditCookie ec, _In_ ITfContext *pContext)
 {
+#ifdef DIME_USE_RUST_ENGINE
+	CRustSessionHost host(this, ec, pContext);
+	return dime_session_handle_sentence_commit(host.Get());
+#else
+	return _HandleSentenceCommitCpp(ec, pContext);
+#endif
+}
+
+HRESULT CDIME::_HandleSentenceCommitCpp(TfEditCookie ec, _In_ ITfContext *pContext)
+{
 	if (_sentence.IsEmpty())
 		return S_OK;
 
@@ -520,6 +546,16 @@ HRESULT CDIME::_SentenceCommitBeforeOutput(TfEditCookie ec, _In_ ITfContext *pCo
 
 HRESULT CDIME::_HandleSentenceBackspace(TfEditCookie ec, _In_ ITfContext *pContext, UINT code)
 {
+#ifdef DIME_USE_RUST_ENGINE
+	CRustSessionHost host(this, ec, pContext);
+	return dime_session_handle_sentence_backspace(host.Get(), code);
+#else
+	return _HandleSentenceBackspaceCpp(ec, pContext, code);
+#endif
+}
+
+HRESULT CDIME::_HandleSentenceBackspaceCpp(TfEditCookie ec, _In_ ITfContext *pContext, UINT code)
+{
 	BOOL removed = (code == VK_DELETE) ? _sentence.RemoveAtCursor() : _sentence.RemoveBeforeCursor();
 	if (!removed)
 		return S_OK;
@@ -538,6 +574,16 @@ HRESULT CDIME::_HandleSentenceBackspace(TfEditCookie ec, _In_ ITfContext *pConte
 //----------------------------------------------------------------------------
 
 HRESULT CDIME::_HandleSentenceArrowKey(TfEditCookie ec, _In_ ITfContext *pContext, KEYSTROKE_FUNCTION keyFunction)
+{
+#ifdef DIME_USE_RUST_ENGINE
+	CRustSessionHost host(this, ec, pContext);
+	return dime_session_handle_sentence_arrow_key(host.Get(), (uint32_t)keyFunction);
+#else
+	return _HandleSentenceArrowKeyCpp(ec, pContext, keyFunction);
+#endif
+}
+
+HRESULT CDIME::_HandleSentenceArrowKeyCpp(TfEditCookie ec, _In_ ITfContext *pContext, KEYSTROKE_FUNCTION keyFunction)
 {
 	switch (keyFunction)
 	{
@@ -562,7 +608,7 @@ HRESULT CDIME::_HandleSentenceArrowKey(TfEditCookie ec, _In_ ITfContext *pContex
 
 void CDIME::_SentenceFinalizeInComposition(TfEditCookie ec)
 {
-	if (_sentence.IsEmpty() || _pComposition == nullptr)
+	if (!_IsSentencePending() || _pComposition == nullptr)
 		return;
 
 	_SentenceLearn();
@@ -570,7 +616,18 @@ void CDIME::_SentenceFinalizeInComposition(TfEditCookie ec)
 	ITfRange* pRange = nullptr;
 	if (SUCCEEDED(_pComposition->GetRange(&pRange)) && pRange)
 	{
+#ifdef DIME_USE_RUST_ENGINE
+		std::wstring text;
+		if (DimeBuffer* pText = dime_session_sentence_text(_pRustSession))
+		{
+			size_t len = 0;
+			const uint16_t* p = dime_buffer_data(pText, &len);
+			if (p) text.assign((const WCHAR*)p, len);
+			dime_buffer_free(pText);
+		}
+#else
 		std::wstring text = _sentence.Text();
+#endif
 		pRange->SetText(ec, 0, text.c_str(), (LONG)text.length());
 		pRange->Release();
 	}
@@ -579,6 +636,9 @@ void CDIME::_SentenceFinalizeInComposition(TfEditCookie ec)
 
 void CDIME::_SentenceReset()
 {
+#ifdef DIME_USE_RUST_ENGINE
+	dime_session_sentence_reset(_pRustSession);
+#endif
 	_sentence.Clear();
 	_sentenceEditPos = -1;
 	_sentencePinNext = FALSE;

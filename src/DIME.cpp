@@ -42,6 +42,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "TfInputProcessorProfile.h"
 #include <Prsht.h>
 #include <Psapi.h>
+#ifdef DIME_USE_RUST_ENGINE
+#include "dime_ffi.h"
+#endif
 //////////////////////////////////////////////////////////////////////
 //
 // CDIME implementation.
@@ -326,6 +329,9 @@ CDIME::CDIME()
 	_sentenceLexiconLoaded = FALSE;
 	_sentenceEditPos = -1;
 	_sentencePinNext = FALSE;
+#ifdef DIME_USE_RUST_ENGINE
+	_pRustSession = dime_session_new();
+#endif
 }
 
 //+---------------------------------------------------------------------------
@@ -337,6 +343,10 @@ CDIME::CDIME()
 CDIME::~CDIME()
 {
 	debugPrint(L"CDIME:~CDIME() destructor");
+#ifdef DIME_USE_RUST_ENGINE
+	dime_session_free(_pRustSession);
+	_pRustSession = nullptr;
+#endif
 	if (_pSentenceLexicon)
 	{
 		delete _pSentenceLexicon;

@@ -428,7 +428,6 @@ typedef struct DimeHostVtbl {
     int32_t (*is_composing)(void* ctx);
     int32_t (*is_full_shape)(void* ctx);
     size_t (*virtual_key_length)(void* ctx);
-    int32_t (*is_sentence_pending)(void* ctx);
     int32_t (*caps_lock_on)(void* ctx);
     uint32_t (*shift_english_digit_mode)(void* ctx);
     int32_t (*dayi_article_mode)(void* ctx);
@@ -440,8 +439,6 @@ typedef struct DimeHostVtbl {
     void (*terminate_composition)(void* ctx);
     int32_t (*has_ui_presenter)(void* ctx);
     int32_t (*is_candidate_with_wildcard)(void* ctx);
-    int32_t (*sentence_pin_next)(void* ctx);
-    void (*set_sentence_pin_next)(void* ctx, int32_t pin);
     int32_t (*is_sentence_mode)(void* ctx);
     uint32_t (*ime_mode)(void* ctx);
     uint32_t (*array_scope)(void* ctx);
@@ -471,10 +468,6 @@ typedef struct DimeHostVtbl {
     void (*set_commit_string)(void* ctx, const uint16_t* text, size_t len);
     void (*async_reverse_conversion)(void* ctx);
     void (*beep)(void* ctx, uint32_t kind);
-    void (*sentence_commit_before_output)(void* ctx);
-    int32_t (*sentence_close_reading)(void* ctx);
-    void (*sentence_reset)(void* ctx);
-    int32_t (*sentence_select_candidate)(void* ctx, const uint16_t* text, size_t len, int32_t is_explicit);
     int32_t (*selection)(void* ctx, int32_t strict);
     int32_t (*add_virtual_key)(void* ctx, uint16_t wch);
     void (*remove_virtual_key)(void* ctx, size_t index);
@@ -490,13 +483,23 @@ typedef struct DimeHostVtbl {
     void (*hide_candidate_window)(void* ctx);
     int32_t (*create_and_start_candidate)(void* ctx);
     void (*composition_arrow_key)(void* ctx, uint32_t function);
-    int32_t (*sentence_render)(void* ctx, const uint16_t* text, size_t len);
-    int32_t (*sentence_append_fetched)(void* ctx, int32_t index);
+    int32_t (*sentence_write)(void* ctx, const uint16_t* text, size_t len, size_t caret, int32_t with_attributes);
+    void (*sentence_models)(void* ctx, const DimeLexicon** lexicon, const DimeUserModel** user);
+    void (*sentence_learn)(void* ctx);
+    void (*sentence_clear_display)(void* ctx);
+    size_t (*keystroke_code)(void* ctx, const uint16_t** out);
+    uint32_t (*fetched_count)(void* ctx);
+    size_t (*fetched_string)(void* ctx, uint32_t index, const uint16_t** out);
+    void (*show_sentence_candidates)(void* ctx, const uint16_t* const* candidates, const size_t* lens, size_t count, const uint16_t* code, size_t code_len, int32_t selection);
 } DimeHostVtbl;
+
+/* IME state owned by Rust, kept by CDIME across edit sessions. */
+typedef struct DimeSession DimeSession;
 
 typedef struct DimeHost {
     const DimeHostVtbl* vtbl;
     void* ctx;
+    DimeSession* session;
 } DimeHost;
 
 int32_t dime_session_handle_complete(const DimeHost* host);
@@ -515,6 +518,16 @@ int32_t dime_session_handle_composition_finalize(const DimeHost* host, int32_t i
 int32_t dime_session_handle_composition_convert(const DimeHost* host, int32_t wildcard, int32_t array_phrase_ending);
 int32_t dime_session_handle_composition_backspace(const DimeHost* host);
 int32_t dime_session_handle_composition_arrow_key(const DimeHost* host, uint32_t function);
+int32_t dime_session_handle_sentence_commit(const DimeHost* host);
+int32_t dime_session_handle_sentence_backspace(const DimeHost* host, uint32_t code);
+int32_t dime_session_handle_sentence_arrow_key(const DimeHost* host, uint32_t function);
+
+DimeSession* dime_session_new(void);
+void        dime_session_free(DimeSession* s);
+int32_t     dime_session_sentence_pending(const DimeSession* s);
+int32_t     dime_session_sentence_learn(const DimeSession* s, DimeUserModel* user);
+DimeBuffer* dime_session_sentence_text(const DimeSession* s);
+void        dime_session_sentence_reset(DimeSession* s);
 
 /* ---- Sentence buffer (CSentenceBuffer, rust/crates/dime-core/src/sentence_buffer.rs) ----
  * Pointers returned for codes / candidates stay valid until the buffer changes. */
