@@ -11,7 +11,6 @@
 
 // Must follow the field order of DimeHostVtbl (dime_ffi.h / dime-ffi lib.rs).
 const DimeHostVtbl CRustSessionHost::s_vtbl = {
-    CandidateMode,
     IsComposing,
     IsFullShape,
     VirtualKeyLength,
@@ -25,7 +24,6 @@ const DimeHostVtbl CRustSessionHost::s_vtbl = {
     DeleteCandidateList,
     TerminateComposition,
     HasUiPresenter,
-    IsCandidateWithWildcard,
     IsSentenceMode,
     ImeMode,
     ArrayScope,
@@ -62,8 +60,6 @@ const DimeHostVtbl CRustSessionHost::s_vtbl = {
     ReadingString,
     AutoCompose,
     DoBeepOnCandi,
-    SetCandidateMode,
-    SetCandidateWithWildcard,
     FetchCandidates,
     SetCandidateText,
     ClearCandidateList,
@@ -97,7 +93,6 @@ CUIPresenter* CRustSessionHost::UI() const { return _pDime->_pUIPresenter; }
 
 // ---- state ----
 
-uint32_t CRustSessionHost::CandidateMode(void* ctx) { return (uint32_t)Self(ctx)->_pDime->_candidateMode; }
 int32_t CRustSessionHost::IsComposing(void* ctx) { return Self(ctx)->_pDime->_IsComposing() ? 1 : 0; }
 int32_t CRustSessionHost::IsFullShape(void* ctx) { return Self(ctx)->_pDime->_isFullShape ? 1 : 0; }
 
@@ -167,7 +162,6 @@ void CRustSessionHost::TerminateComposition(void* ctx)
 // ---- state (candidate handling) ----
 
 int32_t CRustSessionHost::HasUiPresenter(void* ctx) { return Self(ctx)->UI() ? 1 : 0; }
-int32_t CRustSessionHost::IsCandidateWithWildcard(void* ctx) { return Self(ctx)->_pDime->_isCandidateWithWildcard ? 1 : 0; }
 int32_t CRustSessionHost::IsSentenceMode(void* ctx) { return Self(ctx)->_pDime->_IsSentenceMode() ? 1 : 0; }
 uint32_t CRustSessionHost::ImeMode(void*) { return (uint32_t)Global::imeMode; }
 uint32_t CRustSessionHost::ArrayScope(void*) { return (uint32_t)CConfig::GetArrayScope(); }
@@ -402,8 +396,6 @@ size_t CRustSessionHost::ReadingString(void* ctx, const uint16_t** out, int32_t*
 
 int32_t CRustSessionHost::AutoCompose(void*) { return CConfig::GetAutoCompose() ? 1 : 0; }
 int32_t CRustSessionHost::DoBeepOnCandi(void*) { return CConfig::GetDoBeepOnCandi() ? 1 : 0; }
-void CRustSessionHost::SetCandidateMode(void* ctx, uint32_t mode) { Self(ctx)->_pDime->_candidateMode = (CANDIDATE_MODE)mode; }
-void CRustSessionHost::SetCandidateWithWildcard(void* ctx, int32_t wildcard) { Self(ctx)->_pDime->_isCandidateWithWildcard = wildcard ? TRUE : FALSE; }
 
 uint32_t CRustSessionHost::FetchCandidates(void* ctx, int32_t incremental, int32_t wildcard, int32_t arrayPhraseEnding)
 {

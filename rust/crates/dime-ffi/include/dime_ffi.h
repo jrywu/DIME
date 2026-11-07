@@ -455,7 +455,6 @@ size_t dime_plan_candidate_search(const DimeCandidateSearchInput* input, DimeCan
  * `out` must stay valid until the next callback. The field order must match
  * DimeHostVtbl in rust/crates/dime-ffi/src/lib.rs. */
 typedef struct DimeHostVtbl {
-    uint32_t (*candidate_mode)(void* ctx);
     int32_t (*is_composing)(void* ctx);
     int32_t (*is_full_shape)(void* ctx);
     size_t (*virtual_key_length)(void* ctx);
@@ -469,7 +468,6 @@ typedef struct DimeHostVtbl {
     void (*delete_candidate_list)(void* ctx, int32_t force);
     void (*terminate_composition)(void* ctx);
     int32_t (*has_ui_presenter)(void* ctx);
-    int32_t (*is_candidate_with_wildcard)(void* ctx);
     int32_t (*is_sentence_mode)(void* ctx);
     uint32_t (*ime_mode)(void* ctx);
     uint32_t (*array_scope)(void* ctx);
@@ -506,8 +504,6 @@ typedef struct DimeHostVtbl {
     size_t (*reading_string)(void* ctx, const uint16_t** out, int32_t* wildcard);
     int32_t (*auto_compose)(void* ctx);
     int32_t (*do_beep_on_candi)(void* ctx);
-    void (*set_candidate_mode)(void* ctx, uint32_t mode);
-    void (*set_candidate_with_wildcard)(void* ctx, int32_t wildcard);
     uint32_t (*fetch_candidates)(void* ctx, int32_t incremental, int32_t wildcard, int32_t array_phrase_ending);
     void (*set_candidate_text)(void* ctx);
     void (*clear_candidate_list)(void* ctx);
@@ -559,6 +555,9 @@ int32_t     dime_session_sentence_pending(const DimeSession* s);
 int32_t     dime_session_sentence_learn(const DimeSession* s, DimeUserModel* user);
 DimeBuffer* dime_session_sentence_text(const DimeSession* s);
 void        dime_session_sentence_reset(DimeSession* s);
+/* Addresses of session fields that CDIME binds references to (live as long as the session). */
+uint32_t*   dime_session_candidate_mode_ptr(DimeSession* s);          /* CANDIDATE_MODE */
+int32_t*    dime_session_candidate_with_wildcard_ptr(DimeSession* s); /* BOOL */
 
 /* ---- Sentence buffer (CSentenceBuffer, rust/crates/dime-core/src/sentence_buffer.rs) ----
  * Pointers returned for codes / candidates stay valid until the buffer changes. */

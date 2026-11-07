@@ -452,9 +452,18 @@ private:
     TfGuidAtom _gaDisplayAttributeInput;
     TfGuidAtom _gaDisplayAttributeConverted;
 
+#ifdef DIME_USE_RUST_ENGINE
+    // Rust-owned state (session.rs SessionState). Declared before the references
+    // below, which the constructor binds to fields of it.
+    struct DimeSession* _pRustSession;
+    CANDIDATE_MODE& _candidateMode;
+    CUIPresenter *_pUIPresenter;
+    BOOL& _isCandidateWithWildcard;
+#else
     CANDIDATE_MODE _candidateMode;
     CUIPresenter *_pUIPresenter;
     BOOL _isCandidateWithWildcard : 1;
+#endif
 
     ITfDocumentMgr* _pDocMgrLastFocused;
 
@@ -491,9 +500,6 @@ private:
 
 	// sentence mode state
 	CSentenceBuffer _sentence;
-#ifdef DIME_USE_RUST_ENGINE
-	struct DimeSession* _pRustSession; // Rust-owned state (sentence mode), see RustSessionHost.cpp
-#endif
 	CSentenceLexicon* _pSentenceLexicon;
 	CSentenceUserModel* _pSentenceUser;     // learned data: file + this process
 	CSentenceUserModel* _pSentencePending;  // learned by this process since the last save

@@ -190,7 +190,17 @@ HRESULT CDIME::CreateInstance(_In_ IUnknown *pUnkOuter, REFIID riid, _Outptr_ vo
 //
 //----------------------------------------------------------------------------
 
+#ifdef DIME_USE_RUST_ENGINE
+static_assert(sizeof(CANDIDATE_MODE) == sizeof(uint32_t), "CDIME::_candidateMode is bound to a u32");
+static_assert(sizeof(BOOL) == sizeof(int32_t), "CDIME::_isCandidateWithWildcard is bound to an i32");
+#endif
+
 CDIME::CDIME()
+#ifdef DIME_USE_RUST_ENGINE
+    : _pRustSession(dime_session_new()),
+      _candidateMode(*reinterpret_cast<CANDIDATE_MODE*>(dime_session_candidate_mode_ptr(_pRustSession))),
+      _isCandidateWithWildcard(*reinterpret_cast<BOOL*>(dime_session_candidate_with_wildcard_ptr(_pRustSession)))
+#endif
 {
 	debugPrint(L"CDIME:CDIME() constructor");
     DllAddRef();
@@ -329,9 +339,6 @@ CDIME::CDIME()
 	_sentenceLexiconLoaded = FALSE;
 	_sentenceEditPos = -1;
 	_sentencePinNext = FALSE;
-#ifdef DIME_USE_RUST_ENGINE
-	_pRustSession = dime_session_new();
-#endif
 }
 
 //+---------------------------------------------------------------------------

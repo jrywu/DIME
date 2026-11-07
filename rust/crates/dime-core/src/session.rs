@@ -22,6 +22,11 @@ pub struct SessionState {
     pub shifted_english: bool,
     /// A wildcard was typed with Shift held (`_pendingWildcardInput`).
     pub pending_wildcard: bool,
+    /// `CDIME::_candidateMode` (`CANDIDATE_MODE`).  `CDIME` binds a reference
+    /// to this field, so C++ and Rust share one value.
+    pub candidate_mode: u32,
+    /// `CDIME::_isCandidateWithWildcard` (`BOOL`, bound like `candidate_mode`).
+    pub candidate_with_wildcard: i32,
 }
 
 impl SessionState {
@@ -32,6 +37,8 @@ impl SessionState {
             sentence_pin_next: false,
             shifted_english: false,
             pending_wildcard: false,
+            candidate_mode: candidate_mode::NONE,
+            candidate_with_wildcard: 0,
         }
     }
 
@@ -105,7 +112,6 @@ pub mod shift_english_digit {
 /// What the handlers need from the C++ text service.
 pub trait Host {
     // --- state ---
-    fn candidate_mode(&self) -> u32;
     fn is_composing(&self) -> bool;
     fn is_full_shape(&self) -> bool;
     fn virtual_key_length(&self) -> usize;
@@ -128,7 +134,6 @@ pub trait Host {
 
     // --- state (candidate handling) ---
     fn has_ui_presenter(&self) -> bool;
-    fn is_candidate_with_wildcard(&self) -> bool;
     fn is_sentence_mode(&self) -> bool;
     /// `Global::imeMode`.
     fn ime_mode(&self) -> u32;
@@ -190,8 +195,6 @@ pub trait Host {
     fn reading_string(&mut self) -> (Option<Vec<u16>>, Option<bool>);
     fn auto_compose(&self) -> bool;
     fn do_beep_on_candi(&self) -> bool;
-    fn set_candidate_mode(&mut self, mode: u32);
-    fn set_candidate_with_wildcard(&mut self, wildcard: bool);
     /// `GetCandidateList` into the host's list; returns the count.
     fn fetch_candidates(&mut self, incremental: bool, wildcard: bool, array_phrase_ending: bool) -> u32;
     /// `_SetCandidateText` with the fetched list.
@@ -224,6 +227,20 @@ pub trait Host {
     /// position's code) and highlight the chosen one.  The window keeps
     /// pointers into the position's strings.
     fn show_sentence_candidates(&mut self, pos: usize);
+
+    // --- candidate state (in the session, shared with CDIME) ---
+    fn candidate_mode(&self) -> u32 {
+        self.state_ref().candidate_mode
+    }
+    fn set_candidate_mode(&mut self, mode: u32) {
+        self.state().candidate_mode = mode;
+    }
+    fn is_candidate_with_wildcard(&self) -> bool {
+        self.state_ref().candidate_with_wildcard != 0
+    }
+    fn set_candidate_with_wildcard(&mut self, wildcard: bool) {
+        self.state().candidate_with_wildcard = i32::from(wildcard);
+    }
 }
 
 /// `Global::FullWidthCharTable[c - 0x20]` for printable ASCII.
@@ -884,7 +901,6 @@ mod tests {
     #[derive(Default)]
     struct Mock {
         calls: Vec<String>,
-        candidate_mode: u32,
         composing: bool,
         full_shape: bool,
         caps: bool,
@@ -897,9 +913,6 @@ mod tests {
     }
 
     impl Host for Mock {
-        fn candidate_mode(&self) -> u32 {
-            self.candidate_mode
-        }
         fn is_composing(&self) -> bool {
             self.composing
         }
@@ -964,9 +977,6 @@ mod tests {
         }
         fn has_ui_presenter(&self) -> bool {
             true
-        }
-        fn is_candidate_with_wildcard(&self) -> bool {
-            false
         }
         fn is_sentence_mode(&self) -> bool {
             false
@@ -1067,10 +1077,6 @@ mod tests {
         fn do_beep_on_candi(&self) -> bool {
             false
         }
-        fn set_candidate_mode(&mut self, mode: u32) {
-            self.candidate_mode = mode;
-        }
-        fn set_candidate_with_wildcard(&mut self, _wildcard: bool) {}
         fn fetch_candidates(&mut self, _incremental: bool, _wildcard: bool, _ending: bool) -> u32 {
             self.fetched
         }
@@ -1147,7 +1153,7 @@ mod tests {
             ..Default::default()
         };
         handle_composition_convert(&mut m, false, false);
-        assert_eq!(m.candidate_mode, candidate_mode::ORIGINAL);
+        assert_eq!(m.state.candidate_mode, candidate_mode::ORIGINAL);
         assert_eq!(m.calls, ["candidate_text"]);
     }
 
@@ -1181,7 +1187,7 @@ mod tests {
         handle_sentence_arrow_key(&mut m, sentence_key::MOVE_DOWN);
         assert_eq!(m.calls, ["show 0"]);
         assert_eq!(m.state.sentence_edit_pos, 0);
-        assert_eq!(m.candidate_mode, candidate_mode::ORIGINAL);
+        assert_eq!(m.state.candidate_mode, candidate_mode::ORIGINAL);
     }
 
     #[test]

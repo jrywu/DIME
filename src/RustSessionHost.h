@@ -38,7 +38,6 @@ private:
     CUIPresenter* UI() const;
 
     // In DimeHostVtbl order.
-    static uint32_t CandidateMode(void* ctx);
     static int32_t IsComposing(void* ctx);
     static int32_t IsFullShape(void* ctx);
     static size_t VirtualKeyLength(void* ctx);
@@ -52,7 +51,6 @@ private:
     static void DeleteCandidateList(void* ctx, int32_t force);
     static void TerminateComposition(void* ctx);
     static int32_t HasUiPresenter(void* ctx);
-    static int32_t IsCandidateWithWildcard(void* ctx);
     static int32_t IsSentenceMode(void* ctx);
     static uint32_t ImeMode(void* ctx);
     static uint32_t ArrayScope(void* ctx);
@@ -89,8 +87,6 @@ private:
     static size_t ReadingString(void* ctx, const uint16_t** out, int32_t* wildcard);
     static int32_t AutoCompose(void* ctx);
     static int32_t DoBeepOnCandi(void* ctx);
-    static void SetCandidateMode(void* ctx, uint32_t mode);
-    static void SetCandidateWithWildcard(void* ctx, int32_t wildcard);
     static uint32_t FetchCandidates(void* ctx, int32_t incremental, int32_t wildcard, int32_t arrayPhraseEnding);
     static void SetCandidateText(void* ctx);
     static void ClearCandidateList(void* ctx);

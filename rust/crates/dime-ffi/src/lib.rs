@@ -1789,7 +1789,6 @@ pub unsafe extern "C" fn dime_plan_candidate_search(
 /// must match `s_vtbl` in `src/RustSessionHost.cpp` and `dime_ffi.h`.
 #[repr(C)]
 pub struct DimeHostVtbl {
-    pub candidate_mode: unsafe extern "C" fn(ctx: *mut c_void) -> u32,
     pub is_composing: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
     pub is_full_shape: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
     pub virtual_key_length: unsafe extern "C" fn(ctx: *mut c_void) -> usize,
@@ -1803,7 +1802,6 @@ pub struct DimeHostVtbl {
     pub delete_candidate_list: unsafe extern "C" fn(ctx: *mut c_void, force: i32),
     pub terminate_composition: unsafe extern "C" fn(ctx: *mut c_void),
     pub has_ui_presenter: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
-    pub is_candidate_with_wildcard: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
     pub is_sentence_mode: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
     pub ime_mode: unsafe extern "C" fn(ctx: *mut c_void) -> u32,
     pub array_scope: unsafe extern "C" fn(ctx: *mut c_void) -> u32,
@@ -1840,8 +1838,6 @@ pub struct DimeHostVtbl {
     pub reading_string: unsafe extern "C" fn(ctx: *mut c_void, out: *mut *const u16, wildcard: *mut i32) -> usize,
     pub auto_compose: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
     pub do_beep_on_candi: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
-    pub set_candidate_mode: unsafe extern "C" fn(ctx: *mut c_void, mode: u32),
-    pub set_candidate_with_wildcard: unsafe extern "C" fn(ctx: *mut c_void, wildcard: i32),
     pub fetch_candidates: unsafe extern "C" fn(ctx: *mut c_void, incremental: i32, wildcard: i32, array_phrase_ending: i32) -> u32,
     pub set_candidate_text: unsafe extern "C" fn(ctx: *mut c_void),
     pub clear_candidate_list: unsafe extern "C" fn(ctx: *mut c_void),
@@ -1907,14 +1903,13 @@ macro_rules! host_unit {
 }
 
 impl session::Host for FfiHost<'_> {
-    host_u32!(candidate_mode, shift_english_digit_mode, ime_mode, array_scope);
+    host_u32!(shift_english_digit_mode, ime_mode, array_scope);
     host_bool!(
         is_composing,
         is_full_shape,
         caps_lock_on,
         dayi_article_mode,
         has_ui_presenter,
-        is_candidate_with_wildcard,
         is_sentence_mode,
         clear_on_beep,
         array_force_sp,
@@ -2028,12 +2023,6 @@ impl session::Host for FfiHost<'_> {
         let wildcard = (wildcard >= 0).then_some(wildcard != 0);
         (text, wildcard)
     }
-    fn set_candidate_mode(&mut self, mode: u32) {
-        unsafe { (self.v.set_candidate_mode)(self.ctx, mode) }
-    }
-    fn set_candidate_with_wildcard(&mut self, wildcard: bool) {
-        unsafe { (self.v.set_candidate_with_wildcard)(self.ctx, i32::from(wildcard)) }
-    }
     fn fetch_candidates(&mut self, incremental: bool, wildcard: bool, array_phrase_ending: bool) -> u32 {
         unsafe {
             (self.v.fetch_candidates)(
@@ -2116,13 +2105,15 @@ unsafe fn with_host(host: *const DimeHost, f: impl FnOnce(&mut FfiHost<'_>) -> i
         let Some(v) = (unsafe { h.vtbl.as_ref() }) else {
             return E_UNEXPECTED_HR;
         };
-        let Some(session) = (unsafe { h.session.as_mut() }) else {
+        if h.session.is_null() {
             return E_UNEXPECTED_HR;
-        };
+        }
+        // No `&mut` is created here: C++ reads and writes fields of the session
+        // through references of its own (`CDIME::_candidateMode`) during callbacks.
         let mut fh = FfiHost {
             v,
             ctx: h.ctx,
-            state: &mut session.0,
+            state: unsafe { ptr::addr_of_mut!((*h.session).0) },
         };
         f(&mut fh)
     })
@@ -2353,6 +2344,32 @@ pub unsafe extern "C" fn dime_session_sentence_text(s: *const DimeSession) -> *m
         Some(s) => boxed(DimeBuffer(s.0.sentence.text())),
         None => ptr::null_mut(),
     })
+}
+
+/// Address of the session's candidate mode (`CANDIDATE_MODE`, 32 bits);
+/// `CDIME::_candidateMode` is a reference to it.
+///
+/// # Safety
+/// `s` must be a valid session; the pointer lives as long as the session.
+#[no_mangle]
+pub unsafe extern "C" fn dime_session_candidate_mode_ptr(s: *mut DimeSession) -> *mut u32 {
+    if s.is_null() {
+        return ptr::null_mut();
+    }
+    unsafe { ptr::addr_of_mut!((*s).0.candidate_mode) }
+}
+
+/// Address of the session's "candidates came from a wildcard" flag (`BOOL`);
+/// `CDIME::_isCandidateWithWildcard` is a reference to it.
+///
+/// # Safety
+/// As `dime_session_candidate_mode_ptr`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_session_candidate_with_wildcard_ptr(s: *mut DimeSession) -> *mut i32 {
+    if s.is_null() {
+        return ptr::null_mut();
+    }
+    unsafe { ptr::addr_of_mut!((*s).0.candidate_with_wildcard) }
 }
 
 /// The Rust part of `_SentenceReset`.
