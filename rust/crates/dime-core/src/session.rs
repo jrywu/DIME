@@ -18,6 +18,10 @@ pub struct SessionState {
     pub sentence_edit_pos: i32,
     /// The next candidate finalize came from a select key (pins the character).
     pub sentence_pin_next: bool,
+    /// The last key was Shift English (`_isShiftedEnglish`).
+    pub shifted_english: bool,
+    /// A wildcard was typed with Shift held (`_pendingWildcardInput`).
+    pub pending_wildcard: bool,
 }
 
 impl SessionState {
@@ -26,6 +30,8 @@ impl SessionState {
             sentence: SentenceBuffer::new(),
             sentence_edit_pos: -1,
             sentence_pin_next: false,
+            shifted_english: false,
+            pending_wildcard: false,
         }
     }
 

@@ -54,6 +54,24 @@ std::vector<KeyFlowKey> ParseKeyScript(const std::wstring& script)
         {
             k.shift = true;
             body = body.substr(6);
+            // "Shift+a,8,Back": more keys typed while Shift is held. A lone ","
+            // is the comma key itself.
+            if (body != L"," && body.find(L',') != std::wstring::npos)
+            {
+                std::vector<std::wstring> items;
+                std::wstring item;
+                std::wistringstream parts(body);
+                while (std::getline(parts, item, L','))
+                    items.push_back(item);
+                body = items[0];
+                for (size_t n = 1; n < items.size(); n++)
+                {
+                    UINT vk = 0;
+                    if (!KeyFromToken(items[n], vk))
+                        throw std::invalid_argument("unknown key token");
+                    k.more.push_back(vk);
+                }
+            }
         }
         if (!KeyFromToken(body, k.vk))
             throw std::invalid_argument("unknown key token");
@@ -562,12 +580,18 @@ namespace
             SetKeyboardState(ks);
             Deliver(s, VK_SHIFT, true);
         }
-        SetKeyState(ks, k.vk, true);
-        SetKeyboardState(ks);
-        bool eaten = Deliver(s, k.vk, true);
-        SetKeyState(ks, k.vk, false);
-        SetKeyboardState(ks);
-        Deliver(s, k.vk, false);
+        bool eaten = false;
+        std::vector<UINT> vks(1, k.vk);
+        vks.insert(vks.end(), k.more.begin(), k.more.end());
+        for (UINT vk : vks)
+        {
+            SetKeyState(ks, vk, true);
+            SetKeyboardState(ks);
+            eaten = Deliver(s, vk, true);
+            SetKeyState(ks, vk, false);
+            SetKeyboardState(ks);
+            Deliver(s, vk, false);
+        }
         if (k.shift)
         {
             SetKeyState(ks, VK_SHIFT, false);

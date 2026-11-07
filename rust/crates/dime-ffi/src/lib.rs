@@ -20,6 +20,7 @@ use dime_core::candgen;
 use dime_core::candidates::{self, CandidatePaging};
 use dime_core::composition;
 use dime_core::keyclass;
+use dime_core::keyevent;
 use dime_core::sentence::{self, Lexicon, Position, UserModel};
 use dime_core::sentence_buffer::SentenceBuffer;
 use dime_core::session;
@@ -1223,6 +1224,63 @@ pub struct DimeKeyInput {
     pub selkey_count: u32,
 }
 
+/// Selkeys of a `DimeKeyInput` (kept alive alongside the context).
+unsafe fn key_selkeys(i: &DimeKeyInput) -> Vec<keyclass::Selkey> {
+    let raw: &[DimeSelkey] = if i.selkeys.is_null() || i.selkey_count == 0 {
+        &[]
+    } else {
+        unsafe { std::slice::from_raw_parts(i.selkeys, i.selkey_count as usize) }
+    };
+    raw.iter()
+        .map(|k| keyclass::Selkey {
+            printable: k.printable,
+            index: k.index,
+            modifiers: k.modifiers,
+        })
+        .collect()
+}
+
+/// The `KeyContext` described by a `DimeKeyInput`.
+unsafe fn key_context<'a>(i: &'a DimeKeyInput, selkeys: &'a [keyclass::Selkey]) -> keyclass::KeyContext<'a> {
+    let functions: &[u32] = if i.keystroke_functions.is_null() || i.keystroke_count == 0 {
+        &[]
+    } else {
+        unsafe { std::slice::from_raw_parts(i.keystroke_functions, i.keystroke_count as usize) }
+    };
+    let end_keys = if i.end_keys.is_null() {
+        None
+    } else {
+        Some(unsafe { slice(i.end_keys, i.end_keys_len as usize) })
+    };
+    keyclass::KeyContext {
+        code: i.code,
+        wch: i.wch,
+        base_char: i.base_char,
+        wch_printable: i.wch_printable != 0,
+        composing: i.composing != 0,
+        candidate_mode: i.candidate_mode,
+        candi_count: i.candi_count,
+        candi_selection: i.candi_selection,
+        has_key_state: i.has_key_state != 0,
+        modifiers: i.modifiers,
+        caps_on: i.caps_on != 0,
+        ime_mode: i.ime_mode,
+        dictionary_available: i.dictionary_available != 0,
+        array_scope: i.array_scope,
+        numeric_pad: i.numeric_pad,
+        space_as_page_down: i.space_as_page_down != 0,
+        shift_english_digit_mode: i.shift_english_digit_mode,
+        phonetic_eten: i.phonetic_eten != 0,
+        candidate_page_size: i.candidate_page_size,
+        has_wildcard_in_buffer: i.has_wildcard_in_buffer != 0,
+        buffer_null: i.buffer_null != 0,
+        buffer: unsafe { slice(i.buffer, i.buffer_len as usize) },
+        keystroke_functions: functions,
+        end_keys,
+        selkeys,
+    }
+}
+
 /// Classify a key.  Returns 1 if the IME eats it, 0 if not; `category` and
 /// `function` (may be null) receive the resulting key state.
 ///
@@ -1234,62 +1292,191 @@ pub unsafe extern "C" fn dime_classify_key(input: *const DimeKeyInput, category:
         let Some(i) = (unsafe { input.as_ref() }) else {
             return 0;
         };
-        let functions: &[u32] = if i.keystroke_functions.is_null() || i.keystroke_count == 0 {
-            &[]
-        } else {
-            unsafe { std::slice::from_raw_parts(i.keystroke_functions, i.keystroke_count as usize) }
-        };
-        let selkeys_raw: &[DimeSelkey] = if i.selkeys.is_null() || i.selkey_count == 0 {
-            &[]
-        } else {
-            unsafe { std::slice::from_raw_parts(i.selkeys, i.selkey_count as usize) }
-        };
-        let selkeys: Vec<keyclass::Selkey> = selkeys_raw
-            .iter()
-            .map(|k| keyclass::Selkey {
-                printable: k.printable,
-                index: k.index,
-                modifiers: k.modifiers,
-            })
-            .collect();
-        let end_keys = if i.end_keys.is_null() {
-            None
-        } else {
-            Some(unsafe { slice(i.end_keys, i.end_keys_len as usize) })
-        };
-        let ctx = keyclass::KeyContext {
-            code: i.code,
-            wch: i.wch,
-            base_char: i.base_char,
-            wch_printable: i.wch_printable != 0,
-            composing: i.composing != 0,
-            candidate_mode: i.candidate_mode,
-            candi_count: i.candi_count,
-            candi_selection: i.candi_selection,
-            has_key_state: i.has_key_state != 0,
-            modifiers: i.modifiers,
-            caps_on: i.caps_on != 0,
-            ime_mode: i.ime_mode,
-            dictionary_available: i.dictionary_available != 0,
-            array_scope: i.array_scope,
-            numeric_pad: i.numeric_pad,
-            space_as_page_down: i.space_as_page_down != 0,
-            shift_english_digit_mode: i.shift_english_digit_mode,
-            phonetic_eten: i.phonetic_eten != 0,
-            candidate_page_size: i.candidate_page_size,
-            has_wildcard_in_buffer: i.has_wildcard_in_buffer != 0,
-            buffer_null: i.buffer_null != 0,
-            buffer: unsafe { slice(i.buffer, i.buffer_len as usize) },
-            keystroke_functions: functions,
-            end_keys,
-            selkeys: &selkeys,
-        };
+        let selkeys = unsafe { key_selkeys(i) };
+        let ctx = unsafe { key_context(i, &selkeys) };
         let (eaten, state) = keyclass::classify_key(&ctx);
         unsafe {
             set(category, state.category);
             set(function, state.function);
         }
         i32::from(eaten)
+    })
+}
+
+// ---------------------------------------------------------------------------
+// Key events (KeyEventSink): _DecideKeyEaten and the Shift flags
+// ---------------------------------------------------------------------------
+
+/// The facts `_DecideKeyEaten` reads; `key` is filled as for
+/// `dime_classify_key` (only when there is an engine).
+#[repr(C)]
+pub struct DimeDecideInput {
+    pub keyboard_disabled: i32,
+    pub is_open: i32,
+    pub is_double_single_byte: i32,
+    pub has_engine: i32,
+    pub is_composing: i32,
+    pub candi_count: u32,
+    pub virtual_key_length: usize,
+    pub key: DimeKeyInput,
+}
+
+#[repr(C)]
+pub struct DimeDecideOutput {
+    pub eaten: i32,
+    pub wch: u16,
+    pub category: u32,
+    pub function: u32,
+    /// Reset `_candidateMode` to NONE and `_isCandidateWithWildcard` to FALSE.
+    pub reset_candidate_mode: i32,
+}
+
+/// `_DecideKeyEaten`.
+///
+/// # Safety
+/// `session`, `input` and `output` must be valid.
+#[no_mangle]
+pub unsafe extern "C" fn dime_decide_key_eaten(
+    session: *const DimeSession,
+    input: *const DimeDecideInput,
+    output: *mut DimeDecideOutput,
+) {
+    guard((), || {
+        let (Some(s), Some(i), Some(o)) = (unsafe { session.as_ref() }, unsafe { input.as_ref() }, unsafe {
+            output.as_mut()
+        }) else {
+            return;
+        };
+        let selkeys = unsafe { key_selkeys(&i.key) };
+        let d = keyevent::DecideInput {
+            keyboard_disabled: i.keyboard_disabled != 0,
+            is_open: i.is_open != 0,
+            is_double_single_byte: i.is_double_single_byte != 0,
+            has_engine: i.has_engine != 0,
+            is_composing: i.is_composing != 0,
+            candi_count: i.candi_count,
+            virtual_key_length: i.virtual_key_length,
+            key: unsafe { key_context(&i.key, &selkeys) },
+        };
+        let r = keyevent::decide_key_eaten(&s.0, &d);
+        o.eaten = i32::from(r.eaten);
+        o.wch = r.wch;
+        o.category = r.state.category;
+        o.function = r.state.function;
+        o.reset_candidate_mode = i32::from(r.reset_candidate_mode);
+    })
+}
+
+/// `OnTestKeyDown`: a fresh Shift press clears the Shift flags.
+///
+/// # Safety
+/// `session` must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_session_on_test_key_down(session: *mut DimeSession, code: u32, lparam: isize) {
+    guard((), || {
+        if let Some(s) = unsafe { session.as_mut() } {
+            keyevent::on_test_key_down(&mut s.0, code, lparam);
+        }
+    })
+}
+
+/// `OnKeyUp`: Shift released.
+///
+/// # Safety
+/// `session` must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_session_on_key_up(session: *mut DimeSession, code: u32) {
+    guard((), || {
+        if let Some(s) = unsafe { session.as_mut() } {
+            keyevent::on_key_up(&mut s.0, code);
+        }
+    })
+}
+
+/// End of `OnKeyDown`: update the Shift English / pending wildcard flags.
+///
+/// # Safety
+/// `session` must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_session_after_key_down(
+    session: *mut DimeSession,
+    function: u32,
+    code: u32,
+    wch: u16,
+    modifiers: u32,
+) {
+    guard((), || {
+        if let Some(s) = unsafe { session.as_mut() } {
+            keyevent::after_key_down(&mut s.0, function, code, wch, modifiers);
+        }
+    })
+}
+
+/// The Shift English flag (for logging).
+///
+/// # Safety
+/// `session` must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_session_shifted_english(session: *const DimeSession) -> i32 {
+    guard(0, || unsafe { session.as_ref() }.map_or(0, |s| i32::from(s.0.shifted_english)))
+}
+
+/// The pending wildcard flag (for logging).
+///
+/// # Safety
+/// `session` must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_session_pending_wildcard(session: *const DimeSession) -> i32 {
+    guard(0, || unsafe { session.as_ref() }.map_or(0, |s| i32::from(s.0.pending_wildcard)))
+}
+
+/// `OnTestKeyDown`: 1 and the key state to invoke the handler with, or 0.
+///
+/// # Safety
+/// `category` and `function` must be valid.
+#[no_mangle]
+pub unsafe extern "C" fn dime_test_key_down_invoke(eaten: i32, category: *mut u32, function: *mut u32) -> i32 {
+    guard(0, || {
+        let (Some(c), Some(f)) = (unsafe { category.as_mut() }, unsafe { function.as_mut() }) else {
+            return 0;
+        };
+        match keyevent::test_key_down_invoke(eaten != 0, keyclass::KeyState { category: *c, function: *f }) {
+            Some(k) => {
+                *c = k.category;
+                *f = k.function;
+                1
+            }
+            None => 0,
+        }
+    })
+}
+
+/// `OnKeyDown`: 1 and the key state to invoke the handler with, or 0.
+///
+/// # Safety
+/// `category` and `function` must be valid.
+#[no_mangle]
+pub unsafe extern "C" fn dime_key_down_invoke(
+    eaten: i32,
+    category: *mut u32,
+    function: *mut u32,
+    code: u32,
+    wch: u16,
+    candidate_mode: u32,
+) -> i32 {
+    guard(0, || {
+        let (Some(c), Some(f)) = (unsafe { category.as_mut() }, unsafe { function.as_mut() }) else {
+            return 0;
+        };
+        let state = keyclass::KeyState { category: *c, function: *f };
+        match keyevent::key_down_invoke(eaten != 0, state, code, wch, candidate_mode) {
+            Some(k) => {
+                *c = k.category;
+                *f = k.function;
+                1
+            }
+            None => 0,
+        }
     })
 }
 

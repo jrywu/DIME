@@ -12,6 +12,7 @@ pub mod candidates;
 pub mod composition;
 pub mod engine;
 pub mod keyclass;
+pub mod keyevent;
 pub mod parser;
 pub mod search;
 pub mod sentence;

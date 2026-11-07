@@ -1,0 +1,7 @@
+# script: Shift+/,8,a 5 Space Esc Shift+8,/
+init -> passed text="" sel=0
+Shift+/,8,a -> eaten text="?" sel=1 comp="?"
+5 -> eaten text="ㄓ" sel=1 comp="ㄓ"
+Space -> eaten text="ㄓ" sel=1 comp="ㄓ" cand=original[*之 知 隻 織 支 枝 汁 只 吱 芝 脂 肢 蜘 祇 梔 祗 氏 枳 ㄓ 胝 鴟 卮 搘 秖 跖 泜 鳷 汥 秪 榰 胑 衼 椥]
+Esc -> eaten text="" sel=0
+Shift+8,/ -> eaten text="*/" sel=2

@@ -34,6 +34,7 @@ struct KeyFlowKey
 {
     UINT vk = 0;
     bool shift = false;
+    std::vector<UINT> more;  // "Shift+a,8,Back": further keys typed while Shift stays down
     std::wstring label;      // how it appears in the trace, e.g. "a", "Space", "Shift+1"
 };
 

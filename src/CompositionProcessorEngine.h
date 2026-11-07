@@ -42,6 +42,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "BaseStructure.h"
 #include "File.h"
 #include "define.h"
+#if defined(DIME_RUST_AVAILABLE) && !defined(DIMESettings)
+#include "dime_ffi.h"
+#endif
 
 class CCompositionProcessorEngine
 {
@@ -82,6 +85,17 @@ public:
   
 
 #ifndef DIMESettings
+#ifdef DIME_RUST_AVAILABLE
+    // What IsVirtualKeyNeed reads, for dime_classify_key / dime_decide_key_eaten.
+    // The input points into the arrays, so keep the snapshot alive while it is used.
+    struct CKeyInputSnapshot
+    {
+        DimeKeyInput in;
+        uint32_t functions[MAX_RADICAL + 1];
+        DimeSelkey selkeys[MAX_CAND_SELKEY];
+    };
+    void FillKeyInput(_Out_ CKeyInputSnapshot& snapshot, UINT uCode, WCHAR wch, BOOL fComposing, CANDIDATE_MODE candidateMode, UINT candiCount, INT candiSelection, BOOL hasKeyState);
+#endif
 	BOOL IsVirtualKeyNeed(UINT uCode, _In_reads_(1) WCHAR *pwch, BOOL fComposing, CANDIDATE_MODE candidateMode, BOOL hasCandidateWithWildcard, UINT candiCount, INT candiSelection, _Inout_opt_ _KEYSTROKE_STATE *pKeyState);
 
     BOOL AddVirtualKey(WCHAR wch);

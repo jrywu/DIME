@@ -306,6 +306,37 @@ typedef struct DimeKeyInput {
 /* Returns 1 if the IME eats the key; category/function receive the key state. */
 int32_t dime_classify_key(const DimeKeyInput* input, uint32_t* category, uint32_t* function);
 
+/* ---- Key events (KeyEventSink, rust/crates/dime-core/src/keyevent.rs) ---- */
+typedef struct DimeSession DimeSession;
+typedef struct DimeDecideInput {
+    int32_t  keyboard_disabled;
+    int32_t  is_open;                /* IME-mode compartment */
+    int32_t  is_double_single_byte;  /* double/single-byte compartment */
+    int32_t  has_engine;
+    int32_t  is_composing;
+    uint32_t candi_count;
+    size_t   virtual_key_length;
+    DimeKeyInput key;                /* code = VKeyFromVKPacketAndWchar(...), wch, current candidate mode */
+} DimeDecideInput;
+
+typedef struct DimeDecideOutput {
+    int32_t  eaten;
+    uint16_t wch;                    /* *pwch */
+    uint32_t category;
+    uint32_t function;
+    int32_t  reset_candidate_mode;   /* stale mode: _candidateMode = NONE, _isCandidateWithWildcard = FALSE */
+} DimeDecideOutput;
+
+void    dime_decide_key_eaten(const DimeSession* session, const DimeDecideInput* input, DimeDecideOutput* output);
+void    dime_session_on_test_key_down(DimeSession* session, uint32_t code, intptr_t lparam);
+void    dime_session_on_key_up(DimeSession* session, uint32_t code);
+void    dime_session_after_key_down(DimeSession* session, uint32_t function, uint32_t code, uint16_t wch, uint32_t modifiers);
+int32_t dime_session_shifted_english(const DimeSession* session);
+int32_t dime_session_pending_wildcard(const DimeSession* session);
+/* 1 and the key state (in/out) to invoke the handler with, or 0. */
+int32_t dime_test_key_down_invoke(int32_t eaten, uint32_t* category, uint32_t* function);
+int32_t dime_key_down_invoke(int32_t eaten, uint32_t* category, uint32_t* function, uint32_t code, uint16_t wch, uint32_t candidate_mode);
+
 /* ---- Keystroke buffer (CCompositionProcessorEngine) ----
  * The buffer stays in C++; these return what the C++ code would change. */
 

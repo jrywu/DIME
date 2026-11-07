@@ -262,6 +262,10 @@ namespace DIMEUnitTests
         TEST_METHOD(Dayi_AutoComposeNavigate) { CheckGolden(L"dayi_auto_compose_navigate", DayiOptions({ L"AutoCompose = 1" }), L"a Down Down Enter a b Back Back a Esc"); }
         TEST_METHOD(Dayi_SymbolBackspace)     { CheckGolden(L"dayi_symbol_backspace", DayiOptions(), L"= 1 Back Back = 1 Back 2 Space 1"); }
         TEST_METHOD(Dayi_CandidateThenType)   { CheckGolden(L"dayi_candidate_then_type", DayiOptions({ L"MakePhrase = 0" }), L"a Space b Space Down d Space"); }
+        // Shift held across several keys: Shift English continues into wildcard keys
+        // (also across Shift+Backspace); a wildcard typed first waits for radicals.
+        TEST_METHOD(Dayi_ShiftHeldSequences)  { CheckGolden(L"dayi_shift_held_sequences", DayiOptions(), L"Shift+a,8 Shift+a,Back,8 Esc Shift+8,a,/ a Space Esc Shift+/,b,8 Esc"); }
+        TEST_METHOD(Phonetic_ShiftHeldWildcard) { CheckGolden(L"phonetic_shift_held_wildcard", PhoneticOptions(), L"Shift+/,8,a 5 Space Esc Shift+8,/"); }
         TEST_METHOD(Dayi_EscapeAndComplete)   { CheckGolden(L"dayi_escape_and_complete", DayiOptions(), L"a b Esc a Space Esc a Space Space Esc a b Enter"); }
         TEST_METHOD(Dayi_Sentence)
         {

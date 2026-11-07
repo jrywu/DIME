@@ -1,0 +1,11 @@
+# script: Shift+a,8 Shift+a,Back,8 Esc Shift+8,a,/ a Space Esc Shift+/,b,8 Esc
+init -> passed text="" sel=0
+Shift+a,8 -> eaten text="a*" sel=2
+Shift+a,Back,8 -> eaten text="a*a*" sel=4
+Esc -> passed text="a*a*" sel=4
+Shift+8,a,/ -> eaten text="a*a**?" sel=6 comp="*?"
+a -> eaten text="a*a**?人" sel=7 comp="*?人"
+Space -> eaten text="a*a*" sel=4
+Esc -> passed text="a*a*" sel=4
+Shift+/,b,8 -> eaten text="a*a*?*" sel=6 comp="?*"
+Esc -> eaten text="a*a*" sel=4

@@ -39,6 +39,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "CompositionProcessorEngine.h"
 #include "KeyHandlerEditSession.h"
 #include "Compartment.h"
+#ifdef DIME_USE_RUST_ENGINE
+#include "dime_ffi.h"
+#endif
 
 // 0xF003, 0xF004 are the keys that the touch keyboard sends for next/previous
 #define THIRDPARTY_NEXTPAGE  static_cast<WORD>(0xF003)
@@ -139,6 +142,74 @@ CDIME::_KEY_FACTS CDIME::_GatherKeyFacts(UINT codeIn)
 //----------------------------------------------------------------------------
 
 BOOL CDIME::_DecideKeyEaten(const _KEY_FACTS& facts, UINT codeIn, _Out_ UINT *pCodeOut, _Out_writes_(1) WCHAR *pwch, _Inout_opt_ _KEYSTROKE_STATE *pKeyState)
+{
+#ifdef DIME_USE_RUST_ENGINE
+    return _DecideKeyEatenRust(facts, codeIn, pCodeOut, pwch, pKeyState);
+#else
+    return _DecideKeyEatenCpp(facts, codeIn, pCodeOut, pwch, pKeyState);
+#endif
+}
+
+#ifdef DIME_USE_RUST_ENGINE
+//+---------------------------------------------------------------------------
+//
+// _DecideKeyEatenRust
+//
+// dime_decide_key_eaten (rust/crates/dime-core/src/keyevent.rs) decides from
+// the facts, the engine snapshot and the Rust session (sentence, Shift flags).
+//----------------------------------------------------------------------------
+
+BOOL CDIME::_DecideKeyEatenRust(const _KEY_FACTS& facts, UINT codeIn, _Out_ UINT *pCodeOut, _Out_writes_(1) WCHAR *pwch, _Inout_opt_ _KEYSTROKE_STATE *pKeyState)
+{
+    UINT codeOut = facts.isKeyboardDisabled ? codeIn : VKeyFromVKPacketAndWchar(codeIn, facts.wch);
+    CCompositionProcessorEngine *pEngine = _pCompositionProcessorEngine;
+
+    DimeDecideInput in = {};
+    in.keyboard_disabled = facts.isKeyboardDisabled ? 1 : 0;
+    in.is_open = facts.isOpen ? 1 : 0;
+    in.is_double_single_byte = facts.isDoubleSingleByte ? 1 : 0;
+    in.has_engine = pEngine ? 1 : 0;
+    in.is_composing = facts.isComposing ? 1 : 0;
+    in.candi_count = facts.candiCount;
+    in.virtual_key_length = pEngine ? pEngine->GetVirtualKeyLength() : 0;
+
+    CCompositionProcessorEngine::CKeyInputSnapshot snapshot;
+    if (pEngine && !facts.isKeyboardDisabled)
+    {
+        pEngine->FillKeyInput(snapshot, codeOut, facts.wch, facts.isComposing, _candidateMode,
+            facts.candiCount, facts.candiSelection, pKeyState != nullptr);
+        in.key = snapshot.in;
+    }
+    else
+    {
+        in.key.code = codeOut;
+        in.key.wch = facts.wch;
+        in.key.has_key_state = pKeyState ? 1 : 0;
+        in.key.candidate_mode = (uint32_t)_candidateMode;
+    }
+
+    DimeDecideOutput out = {};
+    dime_decide_key_eaten(_pRustSession, &in, &out);
+
+    if (out.reset_candidate_mode)
+    {
+        debugPrint(L"_IsKeyEaten: stale _candidateMode=%d with candiCount=0, resetting to NONE", (int)_candidateMode);
+        _candidateMode = CANDIDATE_MODE::CANDIDATE_NONE;
+        _isCandidateWithWildcard = FALSE;
+    }
+    *pCodeOut = codeOut;
+    if (pwch)
+        *pwch = out.wch;
+    if (pKeyState)
+    {
+        pKeyState->Category = (KEYSTROKE_CATEGORY)out.category;
+        pKeyState->Function = (KEYSTROKE_FUNCTION)out.function;
+    }
+    return out.eaten ? TRUE : FALSE;
+}
+#endif
+
+BOOL CDIME::_DecideKeyEatenCpp(const _KEY_FACTS& facts, UINT codeIn, _Out_ UINT *pCodeOut, _Out_writes_(1) WCHAR *pwch, _Inout_opt_ _KEYSTROKE_STATE *pKeyState)
 {
     *pCodeOut = codeIn;
 
@@ -421,12 +492,16 @@ STDAPI CDIME::OnTestKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, 
     // lParam bit 30 (previous key-state: 0 = key was up, 1 = was already down / auto-repeat).
     // A fresh press means the user released and re-pressed Shift, ending the Shift gesture;
     // clear _isShiftedEnglish so that the subsequent Shift+wildcard enters composition.
+#ifdef DIME_USE_RUST_ENGINE
+    dime_session_on_test_key_down(_pRustSession, (uint32_t)wParam, (intptr_t)lParam);
+#else
     if (wParam == VK_SHIFT && _isShiftedEnglish && !(lParam & 0x40000000))
     {
         debugPrint(L"OnTestKeyDown: fresh VK_SHIFT press detected, clearing _isShiftedEnglish and _pendingWildcardInput");
         _isShiftedEnglish = FALSE;
         _pendingWildcardInput = FALSE;
     }
+#endif
 
 	_KEYSTROKE_STATE KeystrokeState = { KEYSTROKE_CATEGORY::CATEGORY_NONE, KEYSTROKE_FUNCTION::FUNCTION_NONE };
     WCHAR wch = '\0';
@@ -442,6 +517,16 @@ STDAPI CDIME::OnTestKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, 
 
     *pIsEaten = _IsKeyEaten(pContext, (UINT)wParam, &code, &wch, &KeystrokeState);
 
+#ifdef DIME_USE_RUST_ENGINE
+    uint32_t category = (uint32_t)KeystrokeState.Category, function = (uint32_t)KeystrokeState.Function;
+    if (dime_test_key_down_invoke(*pIsEaten, &category, &function))
+    {
+        KeystrokeState.Category = (KEYSTROKE_CATEGORY)category;
+        KeystrokeState.Function = (KEYSTROKE_FUNCTION)function;
+        _InvokeKeyHandler(pContext, code, wch, (DWORD)lParam, KeystrokeState);
+    }
+    return S_OK;
+#else
     if (KeystrokeState.Category == KEYSTROKE_CATEGORY::CATEGORY_INVOKE_COMPOSITION_EDIT_SESSION)
     {
         //
@@ -457,6 +542,7 @@ STDAPI CDIME::OnTestKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, 
 		_InvokeKeyHandler(pContext, code, wch, (DWORD)lParam, KeystrokeState);
 	}
     return S_OK;
+#endif
 }
 
 //+---------------------------------------------------------------------------
@@ -483,6 +569,17 @@ STDAPI CDIME::OnKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL
 	}
 
     *pIsEaten = _IsKeyEaten(pContext, (UINT)wParam, &code, &wch, &KeystrokeState);
+
+#ifdef DIME_USE_RUST_ENGINE
+    uint32_t category = (uint32_t)KeystrokeState.Category, function = (uint32_t)KeystrokeState.Function;
+    if (dime_key_down_invoke(*pIsEaten, &category, &function, code, wch, (uint32_t)_candidateMode))
+    {
+        KeystrokeState.Category = (KEYSTROKE_CATEGORY)category;
+        KeystrokeState.Function = (KEYSTROKE_FUNCTION)function;
+        _InvokeKeyHandler(pContext, code, wch, (DWORD)lParam, KeystrokeState);
+    }
+    dime_session_after_key_down(_pRustSession, (uint32_t)KeystrokeState.Function, code, wch, Global::ModifiersValue);
+#else
 
     if (*pIsEaten)
     {
@@ -542,6 +639,7 @@ STDAPI CDIME::OnKeyDown(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL
     else if (!(Global::ModifiersValue & (TF_MOD_LSHIFT | TF_MOD_RSHIFT | TF_MOD_SHIFT)))
         _pendingWildcardInput = FALSE;
 
+#endif
     return S_OK;
 }
 
@@ -588,12 +686,16 @@ STDAPI CDIME::OnKeyUp(ITfContext *pContext, WPARAM wParam, LPARAM lParam, BOOL *
     // OnKeyDown and OnKeyUp for non-eaten keys).  The primary fix is in OnTestKeyDown
     // via the lParam bit-30 fresh-press detection.  This block handles any platform
     // where OnKeyUp(VK_SHIFT) does fire (e.g., future TSF changes or other edge cases).
+#ifdef DIME_USE_RUST_ENGINE
+    dime_session_on_key_up(_pRustSession, (uint32_t)wParam);
+#else
     if (wParam == VK_SHIFT && _isShiftedEnglish)
     {
         debugPrint(L"OnKeyUp: VK_SHIFT released, clearing _isShiftedEnglish and _pendingWildcardInput");
         _isShiftedEnglish = FALSE;
         _pendingWildcardInput = FALSE;
     }
+#endif
 
     WCHAR wch = '\0';
     UINT code = 0;
