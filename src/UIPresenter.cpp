@@ -1503,41 +1503,42 @@ BOOL CUIPresenter::_AnyHintSlotVisible() const
 	return ((rl && rl->_IsWindowVisible()) || (sc && sc->_IsWindowVisible())) ? TRUE : FALSE;
 }
 
+// The notify slots as UILayout sees them (a missing window: not visible, height 0).
+template <typename Windows>
+static void _NotifySlots(const Windows& wnds, std::vector<UILayout::NotifySlot>& slots)
+{
+	slots.clear();
+	for (auto& w : wnds)
+	{
+		UILayout::NotifySlot slot = { 0, 0, 0 };
+		if (w)
+		{
+			slot.visible = w->_IsWindowVisible() ? 1 : 0;
+			slot.width = (int)w->_GetWidth();
+			slot.height = (int)w->_GetHeight();
+		}
+		slots.push_back(slot);
+	}
+}
+
 BOOL CUIPresenter::_DecideStackGrowUp() const
 {
-	if (_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())
-	{
-		RECT cr = { 0,0,0,0 };
+	BOOL candVisible = (_pCandidateWnd && _pCandidateWnd->_IsWindowVisible());
+	RECT cr = { 0,0,0,0 };
+	if (candVisible)
 		_pCandidateWnd->_GetWindowRect(&cr);
-		return (cr.top < _notifyLocation.y) ? TRUE : FALSE;
-	}
-	// No candidate: only flip up if downward stack would overflow screen bottom.
-	int totalH = 0;
-	for (auto& w : _pNotifyWnds)
-	{
-		if (w && w->_IsWindowVisible())
-			totalH += w->_GetHeight() + SHADOW_SPREAD / 2;
-	}
-	int screenBottom = GetSystemMetrics(SM_CYSCREEN);
-	return (_notifyLocation.y + totalH > screenBottom) ? TRUE : FALSE;
+	std::vector<UILayout::NotifySlot> slots;
+	_NotifySlots(_pNotifyWnds, slots);
+	// Without a candidate: only flip up if the downward stack would overflow the screen bottom.
+	return UILayout::DecideStackGrowUp(candVisible, cr.top, _notifyLocation.y, slots.data(), slots.size(),
+		candVisible ? 0 : GetSystemMetrics(SM_CYSCREEN));
 }
 
 POINT CUIPresenter::_ComputeStackPosForNewSlot(_In_ NOTIFY_TYPE newSlot, _In_ BOOL growUp) const
 {
-	POINT p = _notifyLocation;
-	int offset = 0;
-	for (size_t i = 0; i < _pNotifyWnds.size(); ++i)
-	{
-		if (i == (size_t)newSlot) continue;
-		auto& w = _pNotifyWnds[i];
-		if (w && w->_IsWindowVisible())
-			offset += (int)w->_GetHeight() + SHADOW_SPREAD / 2;
-	}
-	auto& self = _pNotifyWnds[(size_t)newSlot];
-	int h = (self ? (int)self->_GetHeight() : 0);
-	p.y = growUp ? (_notifyLocation.y - h - offset)
-	             : (_notifyLocation.y + offset);
-	return p;
+	std::vector<UILayout::NotifySlot> slots;
+	_NotifySlots(_pNotifyWnds, slots);
+	return UILayout::ComputeStackPosForNewSlot(_notifyLocation, slots.data(), slots.size(), (size_t)newSlot, growUp);
 }
 
 void CUIPresenter::_RestackVisibleSlots(_In_ BOOL growUp)
@@ -1548,34 +1549,22 @@ void CUIPresenter::_RestackVisibleSlots(_In_ BOOL growUp)
 	//   growUp=false → first slot's TOP at candidate's TOP, stack grows down.
 	//   growUp=true  → first slot's BOTTOM at candidate's BOTTOM, stack grows up.
 	// Y rule (no candidate): anchor y is _notifyLocation.y as set by caller.
+	// Slots are placed in index order (0 → N): slot 0 (CHN_ENG) lands nearest the
+	// candidate / composition either way.
 	BOOL candVisible = (_pCandidateWnd && _pCandidateWnd->_IsWindowVisible());
-	int candLeft = 0;
-	int anchorY = _notifyLocation.y;
+	RECT cr = { 0,0,0,0 };
 	if (candVisible)
-	{
-		RECT cr = { 0,0,0,0 };
 		_pCandidateWnd->_GetWindowRect(&cr);
-		candLeft = _candLocation.x - SHADOW_SPREAD / 2;
-		anchorY = growUp ? cr.bottom : _candLocation.y;
-	}
-
-	// Always iterate slots in index order (0 → N). When growing down, slot 0
-	// (CHN_ENG) lands at the top nearest the candidate/composition; when growing
-	// up (flipped), slot 0 lands at the bottom nearest the composition — the
-	// visual order reverses naturally, mirroring the candidate-flipped behaviour.
-	int offset = 0;
-	int n = (int)_pNotifyWnds.size();
-	for (int i = 0; i < n; ++i)
+	std::vector<UILayout::NotifySlot> slots;
+	_NotifySlots(_pNotifyWnds, slots);
+	std::vector<POINT> positions(slots.size());
+	std::vector<BOOL> placed(slots.size());
+	UILayout::RestackVisibleSlots(candVisible, cr, _candLocation, _notifyLocation, slots.data(), slots.size(), growUp,
+		positions.data(), placed.data());
+	for (size_t i = 0; i < slots.size(); ++i)
 	{
-		auto& w = _pNotifyWnds[i];
-		if (!w || !w->_IsWindowVisible()) continue;
-		int h = (int)w->_GetHeight();
-		int slotX = candVisible ? (candLeft - (int)w->_GetWidth())
-		                        : _notifyLocation.x;
-		int slotY = growUp ? (anchorY - h - offset)
-		                   : (anchorY + offset);
-		w->_Move(slotX, slotY);
-		offset += h + SHADOW_SPREAD / 2;
+		if (placed[i])
+			_pNotifyWnds[i]->_Move(positions[i].x, positions[i].y);
 	}
 }
 void CUIPresenter::ResetCompRange()

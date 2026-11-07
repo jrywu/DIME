@@ -17,6 +17,7 @@ use std::ptr;
 
 use dime_core::big5;
 use dime_core::candgen;
+use dime_ui::layout;
 use dime_core::candidates::{self, CandidatePaging};
 use dime_core::composition;
 use dime_core::keyclass;
@@ -2628,6 +2629,136 @@ pub unsafe extern "C" fn dime_associated_phrase_key(
             *out.add(key.len()) = 0;
         }
         key.len()
+    })
+}
+
+// ---------------------------------------------------------------------------
+// UI layout (dime-ui): window placement and the notify-window stack
+// ---------------------------------------------------------------------------
+
+/// `RectInRect`.  `RECT` and `DimeRect` have the same layout.
+///
+/// # Safety
+/// The pointers must be valid.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_rect_in_rect(limit: *const layout::Rect, target: *const layout::Rect) -> u32 {
+    guard(0, || match (unsafe { limit.as_ref() }, unsafe { target.as_ref() }) {
+        (Some(l), Some(t)) => layout::rect_in_rect(l, t),
+        _ => 0,
+    })
+}
+
+/// The point whose monitor work area `_GetWindowExtent` uses.
+///
+/// # Safety
+/// The pointers must be valid.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_work_area_probe(
+    text: *const layout::Rect,
+    window: *const layout::Rect,
+    out: *mut layout::Point,
+) {
+    guard((), || {
+        if let (Some(t), Some(w)) = (unsafe { text.as_ref() }, unsafe { window.as_ref() }) {
+            unsafe { set(out, layout::work_area_probe(t, w)) };
+        }
+    })
+}
+
+/// `CalcFitPointAroundTextExtent`.
+///
+/// # Safety
+/// The pointers must be valid.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_fit_point(
+    text: *const layout::Rect,
+    work: *const layout::Rect,
+    window: *const layout::Rect,
+    out: *mut layout::Point,
+) {
+    guard((), || {
+        if let (Some(t), Some(a), Some(w)) = (unsafe { text.as_ref() }, unsafe { work.as_ref() }, unsafe {
+            window.as_ref()
+        }) {
+            unsafe { set(out, layout::fit_point_around_text_extent(t, a, w)) };
+        }
+    })
+}
+
+unsafe fn notify_slots<'a>(slots: *const layout::NotifySlot, count: usize) -> &'a [layout::NotifySlot] {
+    if slots.is_null() || count == 0 {
+        &[]
+    } else {
+        unsafe { std::slice::from_raw_parts(slots, count) }
+    }
+}
+
+/// `_DecideStackGrowUp`.
+///
+/// # Safety
+/// `slots` must point to `count` entries.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_stack_grow_up(
+    has_candidate: i32,
+    candidate_top: i32,
+    notify_y: i32,
+    slots: *const layout::NotifySlot,
+    count: usize,
+    screen_bottom: i32,
+) -> i32 {
+    guard(0, || {
+        let top = (has_candidate != 0).then_some(candidate_top);
+        i32::from(layout::stack_grow_up(top, notify_y, unsafe { notify_slots(slots, count) }, screen_bottom))
+    })
+}
+
+/// `_ComputeStackPosForNewSlot`.
+///
+/// # Safety
+/// `slots` must point to `count` entries; `out` must be valid.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_stack_pos_for_new_slot(
+    notify: layout::Point,
+    slots: *const layout::NotifySlot,
+    count: usize,
+    new_slot: usize,
+    grow_up: i32,
+    out: *mut layout::Point,
+) {
+    guard((), || {
+        let p = layout::stack_pos_for_new_slot(notify, unsafe { notify_slots(slots, count) }, new_slot, grow_up != 0);
+        unsafe { set(out, p) };
+    })
+}
+
+/// `_RestackVisibleSlots`: `positions[i]` and `placed[i]` (1 for visible slots).
+///
+/// # Safety
+/// `slots`, `positions` and `placed` must have `count` entries.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_restack(
+    has_candidate: i32,
+    candidate_rect: layout::Rect,
+    candidate_location: layout::Point,
+    notify: layout::Point,
+    slots: *const layout::NotifySlot,
+    count: usize,
+    grow_up: i32,
+    positions: *mut layout::Point,
+    placed: *mut i32,
+) {
+    guard((), || {
+        if positions.is_null() || placed.is_null() {
+            return;
+        }
+        let candidate = (has_candidate != 0).then_some((candidate_rect, candidate_location));
+        let out = layout::restack(candidate, notify, unsafe { notify_slots(slots, count) }, grow_up != 0);
+        for (i, p) in out.into_iter().enumerate() {
+            unsafe {
+                *placed.add(i) = i32::from(p.is_some());
+                *positions.add(i) = p.unwrap_or_default();
+            }
+        }
     })
 }
 

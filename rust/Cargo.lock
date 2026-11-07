@@ -19,4 +19,9 @@ version = "0.1.0"
 dependencies = [
  "dime-config",
  "dime-core",
+ "dime-ui",
 ]
+
+[[package]]
+name = "dime-ui"
+version = "0.1.0"

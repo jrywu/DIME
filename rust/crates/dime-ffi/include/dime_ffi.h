@@ -591,6 +591,22 @@ size_t   dime_sentence_buffer_text_length(DimeSentenceBuffer* b, size_t n);
 DimeBuffer* dime_sentence_buffer_display(DimeSentenceBuffer* b, const uint16_t* reading, size_t len);
 size_t   dime_sentence_buffer_display_caret(DimeSentenceBuffer* b, const uint16_t* reading, size_t len);
 
+/* ---- UI layout (rust/crates/dime-ui/src/layout.rs) ----
+ * DimeRect / DimePoint have the layout of RECT / POINT. */
+typedef struct DimeRect { int32_t left, top, right, bottom; } DimeRect;
+typedef struct DimePoint { int32_t x, y; } DimePoint;
+typedef struct DimeNotifySlot { int32_t visible, width, height; } DimeNotifySlot;  /* missing window: 0, 0, 0 */
+
+uint32_t dime_ui_rect_in_rect(const DimeRect* limit, const DimeRect* target);                 /* RectInRect */
+void     dime_ui_work_area_probe(const DimeRect* text, const DimeRect* window, DimePoint* out);  /* _GetWindowExtent */
+void     dime_ui_fit_point(const DimeRect* text, const DimeRect* work, const DimeRect* window, DimePoint* out); /* CalcFitPointAroundTextExtent */
+int32_t  dime_ui_stack_grow_up(int32_t has_candidate, int32_t candidate_top, int32_t notify_y,
+                               const DimeNotifySlot* slots, size_t count, int32_t screen_bottom);
+void     dime_ui_stack_pos_for_new_slot(DimePoint notify, const DimeNotifySlot* slots, size_t count, size_t new_slot,
+                                        int32_t grow_up, DimePoint* out);
+void     dime_ui_restack(int32_t has_candidate, DimeRect candidate_rect, DimePoint candidate_location, DimePoint notify,
+                         const DimeNotifySlot* slots, size_t count, int32_t grow_up, DimePoint* positions, int32_t* placed);
+
 #ifdef __cplusplus
 }
 #endif

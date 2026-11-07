@@ -1,0 +1,9 @@
+[package]
+name = "dime-ui"
+description = "UI of the DIME IME: window layout (and, later, the candidate / notify windows)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]

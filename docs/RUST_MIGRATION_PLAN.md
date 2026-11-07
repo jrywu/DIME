@@ -110,6 +110,10 @@
 - **作法**：用 `windows` crate 直接呼叫 Win32／GDI，維持與現在相同的繪圖方式（`ExtTextOut` 等），不在這一步換成 Direct2D／DirectWrite，避免外觀變化與移植混在一起。版面計算抽成純函式（輸入字型度量、DPI、工作區；輸出矩形），可單元測試。
 - **測試**：版面純函式做對拍；繪圖結果用「固定 DPI／主題／候選字 → 截圖」比對 C++ 版本（允許少量像素差、需人工確認）。`CandidateWindowIntegrationTest`、`NotificationWindowIntegrationTest`、`UIPresenterIntegrationTest` 改寫。
 - **相關文件**：`CANDI_WINDOW.md`、`CANDI_HORIZONTAL.md`、`CANDI_SCROLL_BAR.md`、`ADAPTIVE_SHADOW.md`、`DPI_AWARE.md`、`LIGHT_DARK_THEME.md`、`MULTI_NOTIFY.md`、`LAYOUT_RENDERER.md`。
+- **繪圖技術**：維持 GDI（第 6 節的建議做法），外觀不變；Direct2D／DirectWrite 另開議題。
+- **進度（2026-11-08）**：
+  - ✅ 3a 版面計算：新增 `dime-ui` crate（純計算，無外部相依）。`layout.rs` 移植視窗相對組字範圍的定位（`CBaseWindow` 的 `RectInRect`、查工作區用的點、`CalcFitPointAroundTextExtent`：下方放不下改放上方、超出左右邊界、上下都放不下時貼齊工作區）與提示窗堆疊（`CUIPresenter` 的往上或往下長、新增一格的位置、重排可見格）。C++ 原本的計算原封不動搬到 `src/UILayout.cpp` 的 `UILayout::Cpp`，`CBaseWindow`／`CUIPresenter` 改呼叫依建置開關分派的 `UILayout::` 函式。`UILayoutParityTest` 對拍：186,942 組矩形、200,000 次定位（含負座標的多螢幕）、100,000 組提示窗堆疊；植入錯誤（貼齊底部時少減視窗高度）被抓到。工作區（`GetMonitorInfo`）、螢幕高度與視窗本身仍在 C++。
+  - ⏳ 3b：候選字窗的版面（列高、寬度、捲軸位置、橫式排列、DPI 縮放）抽成純函式；字型量測仍由 GDI 提供。之後才是視窗、繪圖與訊息處理。
 
 ### 第 4 階段：TSF COM 外殼 — 精簡為薄 C++ 層（全面改寫為選做）
 

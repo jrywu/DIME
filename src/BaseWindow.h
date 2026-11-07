@@ -36,14 +36,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once
 
-#define RECT_INSIDE      (0x0001)
-#define RECT_OVER_LEFT   (0x0002)
-#define RECT_OVER_TOP    (0x0004)
-#define RECT_OVER_RIGHT  (0x0008)
-#define RECT_OVER_BOTTOM (0x0010)
-#define RECT_TOO_WIDE    (0x0020)
-#define RECT_TOO_TALL    (0x0040)
-#define RECT_ERROR       (0x0080)
+#include "UILayout.h"   // RECT_* flags and the layout calculations
 
 
 
