@@ -8,9 +8,9 @@
 *    peak alphas.
 *  - BehaviorMatchesCpp: two real candidate windows, one shadow per
 *    implementation, through random owner moves / resizes, show / hide, owner
-*    moved notifications, settings changes and WM_PAINT / WM_APP+1 /
-*    WM_SETTINGCHANGE: the shadow's rectangle relative to its owner, visibility,
-*    layered style, color, offset and gradient flag.
+*    moved notifications and settings changes: the shadow's rectangle relative
+*    to its owner, visibility, layered style, color, offset and gradient flag.
+*    (Its messages never reach either implementation: ShadowMessagesAreNotDispatched.)
 ********************************************************************************/
 #include "pch.h"
 #include "CppUnitTest.h"
@@ -99,6 +99,31 @@ namespace DIMEUnitTests
                 pixels += (long long)c.size();
             }
             Logger::WriteMessage((std::to_wstring(pixels) + L" shadow pixels compared").c_str());
+        }
+
+        // CBaseWindow::_WindowProc only forwards to _WindowProcCallback when the object's
+        // _pUIWnd is set; the shadow never sets it, so after WM_CREATE every shadow message
+        // returns S_FALSE without reaching either implementation (or DefWindowProc). Its
+        // WM_PAINT / WM_SETTINGCHANGE / WM_APP+1 handling is dead code; this pins that down
+        // (and keeps the Rust-owned shadow of phase 3c-5 from "fixing" it).
+        TEST_METHOD(ShadowMessagesAreNotDispatched)
+        {
+            EnsureWindowClassesRegistered();
+            CCandidateRange range;
+            range.Append()->CandIndex = L'1';
+            for (int k = 0; k < 2; k++)
+            {
+                CCandidateWindow* w = new CCandidateWindow(NoCallback, nullptr, &range, FALSE);
+                Assert::IsTrue(w->_Create(2, 12, nullptr) != FALSE);
+                CShadowWindow* sh = w->_GetShadowForTest();
+                Assert::IsNotNull(sh);
+                sh->_SetUseRustForTest(k == 1);
+                HWND h = sh->_GetWnd();
+                Assert::AreEqual((LRESULT)S_FALSE, SendMessage(h, WM_APP + 1, 0, 0), L"WM_APP+1 (dispatched: 0)");
+                Assert::AreEqual((LRESULT)S_FALSE, SendMessage(h, WM_PAINT, 0, 0), L"WM_PAINT (dispatched: 0)");
+                Assert::AreEqual((LRESULT)S_FALSE, SendMessage(h, WM_SETTINGCHANGE, 0, 0), L"WM_SETTINGCHANGE");
+                DestroyAndDelete(w);
+            }
         }
 
         TEST_METHOD(BehaviorMatchesCpp)

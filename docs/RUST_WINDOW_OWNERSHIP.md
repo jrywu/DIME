@@ -32,6 +32,7 @@
 - **物件對應**：`GWLP_USERDATA` 存 `*mut WindowCell`，`WM_NCCREATE` 時設定、`WM_NCDESTROY` 時清除並釋放。視窗物件只有一個擁有者（外部 handle），HWND 被銷毀時物件標記為已銷毀，handle 之後的呼叫一律是 no-op。
 - **重入**：訊息處理會重入（捲軸通知候選字窗、回呼可能銷毀視窗）。狀態放在 `Cell`／短暫的 `RefCell` 借用裡，任何會送訊息或呼叫回呼的動作之前先釋放借用；回呼一律是處理流程的最後一步（現有規則）。
 - **capture／timer**：照 `CBaseWindow` 的語意重做：擁有者記在最上層視窗，`WM_TIMER` 轉給登記的子物件。
+- **分派語意照舊**（`CBaseWindow::_WindowProc`）：`WM_CREATE` 之前的訊息給 `DefWindowProc`；`WM_TIMER` 一律攔下、轉給 timer 物件後回傳 0，不進視窗自己的處理；**沒有設定 UI 視窗的物件（陰影窗）在 `WM_CREATE` 之後所有訊息都回傳 `S_FALSE`、不呼叫 `DefWindowProc`**（陰影窗的訊息處理因此是死碼，`ShadowMessagesAreNotDispatched` 釘住）。
 - **建立時的 DPI context**：照搬 `_Create` 的判斷（`GetWindowDpiAwarenessContext`／`AreDpiAwarenessContextsEqual` 動態載入）。
 
 ### 3.2 視窗物件搬進 Rust，`UIPresenter` 直接使用
