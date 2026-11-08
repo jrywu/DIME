@@ -163,6 +163,10 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID pvReserved)
         {
             debugPrint(L"DllMain() DLL_PROCESS_DETACH");
 
+#ifdef DIME_USE_RUST_ENGINE
+            Global::UnregisterWindowClass();
+#endif
+
             if (Global::hShcore)
             {
                 FreeLibrary(Global::hShcore);

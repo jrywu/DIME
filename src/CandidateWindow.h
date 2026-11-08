@@ -38,6 +38,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "private.h"
 #include "BaseWindow.h"
 #include "ShadowWindow.h"
+#include "RustShadowWindow.h"
 #include "ScrollBarWindow.h"
 #include "BaseStructure.h"
 #include "Define.h"
@@ -90,7 +91,7 @@ public:
     LayoutStateForTest _GetLayoutStateForTest() const { return { _cxTitle, _cyRow, _padding, _wndWidth }; }
     void _SetLayoutStateForTest(const LayoutStateForTest& s) { _cxTitle = s.cxTitle; _cyRow = s.cyRow; _padding = s.padding; _wndWidth = s.wndWidth; }
     CScrollBarWindow* _GetScrollBarForTest() { return _pVScrollBarWnd.get(); }
-    CShadowWindow* _GetShadowForTest() { return _pShadowWnd.get(); }
+    DimeShadowWindow* _GetShadowForTest() { return _pShadowWnd.get(); }
     // Which message handling a window uses (set before _Create; CandidateProcParityTest).
     void _SetUseRustProcForTest(BOOL useRust) { _useRustProc = useRust; }
     BOOL _IsTrackingMouseForTest() const { return _isTrackingCandMouse; }
@@ -171,7 +172,7 @@ private:
     CANDWNDCALLBACK _pfnCallback;
     void* _pObj;
 
-    std::unique_ptr<CShadowWindow> _pShadowWnd;
+    std::unique_ptr<DimeShadowWindow> _pShadowWnd;
     std::unique_ptr<CScrollBarWindow> _pVScrollBarWnd;
 
     BOOL _isStoreAppMode;

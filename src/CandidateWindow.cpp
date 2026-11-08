@@ -169,7 +169,7 @@ BOOL CCandidateWindow::_CreateMainWindow(_In_opt_ HWND parentWndHandle)
 
 BOOL CCandidateWindow::_CreateBackGroundShadowWindow()
 {
-    _pShadowWnd = std::make_unique<CShadowWindow>(this);
+    _pShadowWnd = std::make_unique<DimeShadowWindow>(this);
     if (!_pShadowWnd)
     {
         return FALSE;

@@ -114,7 +114,7 @@ namespace
             o.sbEnabled = sb->_IsEnabled();
             o.sbVisible = IsWindowVisible(sb->_GetWnd());
         }
-        if (CShadowWindow* sh = s.w->_GetShadowForTest())
+        if (auto* sh = s.w->_GetShadowForTest())
             o.shadowVisible = IsWindowVisible(sh->_GetWnd());
         o.state = s.w->_GetLayoutStateForTest();
         o.wpFlags = wpFlags;

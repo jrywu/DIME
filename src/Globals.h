@@ -189,6 +189,9 @@ extern ATOM AtomNotifyWindow;
 extern ATOM AtomNotifyShadowWindow;
 
 BOOL RegisterWindowClass();
+#ifdef DIME_USE_RUST_ENGINE
+void UnregisterWindowClass();
+#endif
 
 extern LONG dllRefCount;
 

@@ -54,7 +54,7 @@
 | 步驟 | 內容 | 風險 |
 |---|---|---|
 | ✅ 3c-5a | `dime-ui::win`：類別註冊／反註冊（同名稱與樣式）、`Window`（`GWLP_USERDATA` 指向裝箱的 `Rc<Window>`，`WM_CREATE` 存入、`WM_NCDESTROY` 釋放；每次訊息處理自持一份 `Rc`，視窗在自己的訊息中被銷毀也安全）、`CBaseWindow::_WindowProc` 的分派語意（`WM_TIMER` 攔下、非分派視窗回 `S_FALSE`）、建立時的 DPI context（動態載入）。capture／timer 的繞道留給各視窗型別（候選字窗把計時器轉給捲軸）。單元測試以真實視窗驗證分派、計時器、`S_FALSE`、在自己的訊息中銷毀、物件在視窗與外部參考都消失後才釋放、重複註冊失敗與反註冊（x64 與 i686） | 中：生命週期與重入 |
-| 3c-5b | 陰影窗由 Rust 擁有（最小、只依賴擁有者的 HWND） | 低 |
+| ✅ 3c-5b | 陰影窗由 Rust 擁有：`shadow::ShadowWindow`（`win::Window` + 存在 `Cell` 的狀態，沿用 3c-4 的計算經 `StateHost`），`CRustShadowWindow`（`src/RustShadowWindow.*`）是候選字窗／提示窗持有的薄 C++ 型別（`DimeShadowWindow` 依建置開關選它或 `CShadowWindow`）；兩個陰影類別在 Rust 建置下由 `dime_ui_register_window_class` 註冊（名稱不變），五個類別在 `DLL_PROCESS_DETACH` 反註冊（`Global::UnregisterWindowClass`，僅 Rust 建置）。3c-4 的 `DimeShadowHostVtbl` 與 `CShadowWindow` 內的 Rust 分派移除（C++ 建置回到純 C++ 原版，`ShadowCpp` 保留給影像對拍）。`ShadowParityTest` 的行為與分派測試改為 C++ `CShadowWindow` 與 `CRustShadowWindow` 並排（各用自己註冊的測試類別）；植入錯誤（建立時不做 `_Initialize`）被抓到 | 低 |
 | 3c-5c | 捲軸窗由 Rust 擁有（候選字窗的子視窗，仍在 C++ 的候選字窗經 FFI 操作它） | 中 |
 | 3c-5d | 候選字窗由 Rust 擁有；`UIPresenter` 在 Rust 建置下直接用 handle；模型改由 `UIPresenter` 持有、經 host 給 Rust | 高：介面最多、和 `UIPresenter` 互動最多 |
 | 3c-5e | 提示窗由 Rust 擁有；`UIPresenter` 的提示窗堆疊改用 handle | 中 |

@@ -47,6 +47,9 @@ enum class NOTIFY_WND
 
 typedef HRESULT (*NOTIFYWNDCALLBACK)(void *pv, enum NOTIFY_WND action, _In_ WPARAM wParam, _In_ LPARAM lParam);
 
+#include "ShadowWindow.h"
+#include "RustShadowWindow.h"
+
 class CNotifyWindow : public CBaseWindow
 {
 public:
@@ -72,7 +75,7 @@ public:
     void _SetUseRustForTest(BOOL useRust) { _useRust = useRust; }
     struct StateForTest { int cxTitle; int cyTitle; int x; int y; UINT delayShow; UINT timeToHide; };
     StateForTest _GetStateForTest() const { return { _cxTitle, _cyTitle, _x, _y, _delayShow, _timeToHide }; }
-    CShadowWindow* _GetShadowForTest() { return _pShadowWnd.get(); }
+    DimeShadowWindow* _GetShadowForTest() { return _pShadowWnd.get(); }
 #endif
 	virtual void _OnTimerID(UINT_PTR timerID);
     
@@ -131,7 +134,7 @@ private:
 
 	UINT _fontSize;
 
-    std::unique_ptr<CShadowWindow> _pShadowWnd;
+    std::unique_ptr<DimeShadowWindow> _pShadowWnd;
 
 	BYTE _animationStage;
 	BOOL _useRust;   // drawing and behavior in Rust (DIME_USE_RUST_ENGINE) or C++

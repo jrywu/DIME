@@ -37,51 +37,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "UIConstants.h"
 #include "BaseWindow.h"
 #include "ShadowWindow.h"
-#ifdef DIME_RUST_AVAILABLE
-#include "dime_ffi.h"
-#endif
-
-#ifdef DIME_RUST_AVAILABLE
-//+---------------------------------------------------------------------------
-//
-// The shadow's behavior in Rust (dime-ui::shadow); the state stays in this
-// object and is read and written through this host. Parity: ShadowParityTest.
-//
-//----------------------------------------------------------------------------
-
-struct CShadowWindowRustHost
-{
-    static CShadowWindow* S(void* ctx) { return static_cast<CShadowWindow*>(ctx); }
-
-    static void* Hwnd(void* ctx) { return S(ctx)->_GetWnd(); }
-    static void* OwnerHwnd(void* ctx) { return S(ctx)->_pWndOwner ? S(ctx)->_pWndOwner->_GetWnd() : nullptr; }
-    static int32_t OwnerCornerRadiusBase(void* ctx) { return S(ctx)->_pWndOwner ? S(ctx)->_pWndOwner->_GetCornerRadiusBase() : 0; }
-    static int32_t IsGradient(void* ctx) { return S(ctx)->_isGradient ? 1 : 0; }
-    static void SetIsGradient(void* ctx, int32_t on) { S(ctx)->_isGradient = on ? TRUE : FALSE; }
-    static uint32_t Color(void* ctx) { return S(ctx)->_color; }
-    static void SetColor(void* ctx, uint32_t color) { S(ctx)->_color = color; }
-    static void SizeShift(void* ctx, DimePoint* out) { *out = { S(ctx)->_sizeShift.cx, S(ctx)->_sizeShift.cy }; }
-    static void SetSizeShift(void* ctx, DimePoint shift) { S(ctx)->_sizeShift = { shift.x, shift.y }; }
-    static int32_t IsVisible(void* ctx) { return S(ctx)->_IsWindowVisible() ? 1 : 0; }
-    static void BaseShow(void* ctx, int32_t on) { S(ctx)->CBaseWindow::_Show(on ? TRUE : FALSE); }
-    static uint32_t Dpi(void* ctx) { return CConfig::GetDpiForHwnd(S(ctx)->_GetWnd()); }
-    static int32_t Dark(void*) { return CConfig::GetEffectiveDarkMode() ? 1 : 0; }
-    static uint32_t SysWindowColor(void*) { return GetSysColor(COLOR_WINDOW); }
-
-    static const DimeShadowHostVtbl s_vtbl;
-};
-
-const DimeShadowHostVtbl CShadowWindowRustHost::s_vtbl = {
-    Hwnd, OwnerHwnd, OwnerCornerRadiusBase, IsGradient, SetIsGradient, Color, SetColor, SizeShift, SetSizeShift,
-    IsVisible, BaseShow, Dpi, Dark, SysWindowColor,
-};
-
-void CShadowWindow::_RustEvent(UINT op, int a)
-{
-    DimeShadowHost host = { &CShadowWindowRustHost::s_vtbl, this };
-    dime_ui_shadow_event(&host, op, a);
-}
-#endif
 
 // All-around soft shadow (VS Code style)
 // SHADOW_SPREAD defined in ShadowWindow.h
@@ -114,13 +69,6 @@ BOOL CShadowWindow::_Create(ATOM atom, DWORD dwExStyle, DWORD dwStyle, _In_opt_ 
 
 LRESULT CALLBACK CShadowWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-#ifdef DIME_RUST_AVAILABLE
-    if (_useRust)
-    {
-        DimeShadowHost host = { &CShadowWindowRustHost::s_vtbl, this };
-        return (LRESULT)dime_ui_shadow_window_proc(&host, wndHandle, uMsg, (uintptr_t)wParam, (intptr_t)lParam);
-    }
-#endif
     switch (uMsg)
     {
     case WM_PAINT:
@@ -158,13 +106,6 @@ LRESULT CALLBACK CShadowWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT uM
 
 void CShadowWindow::_OnSettingChange()
 {
-#ifdef DIME_RUST_AVAILABLE
-    if (_useRust)
-    {
-        _RustEvent(3, 0);
-        return;
-    }
-#endif
     _InitSettings();
 
     DWORD dwWndStyleEx = GetWindowLong(_GetWnd(), GWL_EXSTYLE);
@@ -190,13 +131,6 @@ void CShadowWindow::_OnSettingChange()
 
 void CShadowWindow::_OnOwnerWndMoved(BOOL isResized)
 {
-#ifdef DIME_RUST_AVAILABLE
-    if (_useRust)
-    {
-        _RustEvent(4, isResized ? 1 : 0);
-        return;
-    }
-#endif
     if (IsWindow(_GetWnd()) && _IsWindowVisible())
     {
         _AdjustWindowPos();
@@ -216,13 +150,6 @@ void CShadowWindow::_OnOwnerWndMoved(BOOL isResized)
 
 void CShadowWindow::_Show(BOOL isShowWnd)
 {
-#ifdef DIME_RUST_AVAILABLE
-    if (_useRust)
-    {
-        _RustEvent(5, isShowWnd ? 1 : 0);
-        return;
-    }
-#endif
     // Position shadow before it appears (or before hiding).
     _AdjustWindowPos();
     // Show/hide the window — on show, this enters the DWM composition tree.
@@ -256,13 +183,6 @@ BOOL CShadowWindow::_Initialize()
 
 void CShadowWindow::_InitSettings()
 {
-#ifdef DIME_RUST_AVAILABLE
-    if (_useRust)
-    {
-        _RustEvent(0, 0);
-        return;
-    }
-#endif
     HDC dcHandle = GetDC(nullptr);
     int cBitsPixelScreen = GetDeviceCaps(dcHandle, BITSPIXEL);
     _isGradient = cBitsPixelScreen > 8;
@@ -282,13 +202,6 @@ void CShadowWindow::_InitSettings()
 
 void CShadowWindow::_AdjustWindowPos()
 {
-#ifdef DIME_RUST_AVAILABLE
-    if (_useRust)
-    {
-        _RustEvent(1, 0);
-        return;
-    }
-#endif
     if (!IsWindow(_GetWnd()) || _pWndOwner==nullptr)
     {
         return;
@@ -467,9 +380,6 @@ void FillPixels(_Out_writes_bytes_(cx * cy * 4) void* bits, int cx, int cy, int 
 
 void CShadowWindow::_InitShadow()
 {
-#ifdef DIME_RUST_AVAILABLE
-    if (_useRust) { _RustEvent(2, 0); return; }
-#endif
     if (!_isGradient)
         return;
 

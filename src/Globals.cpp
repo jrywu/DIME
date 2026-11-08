@@ -43,6 +43,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Private.h"
 #include "resource.h"
 #include "BaseWindow.h"
+#ifdef DIME_USE_RUST_ENGINE
+#include "dime_ffi.h"
+#endif
 #include "define.h"
 #include "BaseStructure.h"
 
@@ -292,10 +295,19 @@ BOOL RegisterWindowClass()
     {
         return FALSE;
     }
+#ifdef DIME_USE_RUST_ENGINE
+    // Shadow windows are owned by Rust (dime-ui::shadow, CRustShadowWindow): its window procedure.
+    AtomCandidateShadowWindow = dime_ui_register_window_class(dllInstanceHandle, (const uint16_t*)CandidateShadowClassName, 0);
+    if (AtomCandidateShadowWindow == 0)
+    {
+        return FALSE;
+    }
+#else
     if (!CBaseWindow::_InitWindowClass(CandidateShadowClassName, &AtomCandidateShadowWindow))
     {
         return FALSE;
     }
+#endif
     if (!CBaseWindow::_InitWindowClass(CandidateScrollBarClassName, &AtomCandidateScrollBarWindow))
     {
         return FALSE;
@@ -305,13 +317,37 @@ BOOL RegisterWindowClass()
     {
         return FALSE;
     }
+#ifdef DIME_USE_RUST_ENGINE
+    // Shadow windows are owned by Rust (dime-ui::shadow, CRustShadowWindow): its window procedure.
+    AtomNotifyShadowWindow = dime_ui_register_window_class(dllInstanceHandle, (const uint16_t*)NotifyShadowClassName, 0);
+    if (AtomNotifyShadowWindow == 0)
+    {
+        return FALSE;
+    }
+#else
     if (!CBaseWindow::_InitWindowClass(NotifyShadowClassName, &AtomNotifyShadowWindow))
     {
         return FALSE;
     }
+#endif
 
     return TRUE;
 }
+
+#ifdef DIME_USE_RUST_ENGINE
+// The window classes are unregistered at DLL_PROCESS_DETACH in the Rust build
+// (docs/RUST_WINDOW_OWNERSHIP.md); the C++ build keeps them registered as before.
+void UnregisterWindowClass()
+{
+    ATOM* atoms[] = { &AtomCandidateWindow, &AtomCandidateShadowWindow, &AtomCandidateScrollBarWindow,
+                      &AtomNotifyWindow, &AtomNotifyShadowWindow };
+    for (ATOM* atom : atoms)
+    {
+        CBaseWindow::_UninitWindowClass(*atom);
+        *atom = 0;
+    }
+}
+#endif
 
 //---------------------------------------------------------------------
 // defined full width characters for Double/Single byte conversion

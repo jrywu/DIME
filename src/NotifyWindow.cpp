@@ -236,7 +236,7 @@ BOOL CNotifyWindow::_CreateMainWindow(_In_opt_ HWND parentWndHandle)
 
 BOOL CNotifyWindow::_CreateBackGroundShadowWindow()
 {
-    _pShadowWnd = std::make_unique<CShadowWindow>(this); // Use std::make_unique
+    _pShadowWnd = std::make_unique<DimeShadowWindow>(this); // Use std::make_unique
     if (!_pShadowWnd->_Create(Global::AtomNotifyShadowWindow,
         WS_EX_TOPMOST | 
         WS_EX_TOOLWINDOW | WS_EX_LAYERED,

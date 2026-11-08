@@ -19,8 +19,10 @@
 
 use std::cell::Cell;
 use std::rc::Rc;
-use windows::core::{s, w, PCWSTR};
-use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, WPARAM};
+pub use windows::core::PCWSTR;
+use windows::core::{s, w};
+pub use windows::Win32::Foundation::HINSTANCE;
+use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::Graphics::Gdi::{GetStockObject, HBRUSH, LTGRAY_BRUSH};
 use windows::Win32::System::LibraryLoader::{GetModuleHandleW, GetProcAddress};
 use windows::Win32::UI::WindowsAndMessaging::{
@@ -76,6 +78,22 @@ impl Window {
             }
             self.hwnd.set(HWND::default());
         }
+    }
+}
+
+/// `CBaseWindow::_Show` for a real window: show or hide without moving,
+/// sizing, activating or changing the z-order.
+pub fn base_show(hwnd: HWND, on: bool) {
+    use windows::Win32::UI::WindowsAndMessaging::{
+        SetWindowPos, SWP_HIDEWINDOW, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SWP_SHOWWINDOW,
+    };
+    if hwnd.is_invalid() {
+        return;
+    }
+    let flags =
+        SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE | SWP_NOZORDER | if on { SWP_SHOWWINDOW } else { SWP_HIDEWINDOW };
+    unsafe {
+        let _ = SetWindowPos(hwnd, None, 0, 0, 0, 0, flags);
     }
 }
 

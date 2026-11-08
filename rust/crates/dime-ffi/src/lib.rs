@@ -17,7 +17,8 @@ use std::ptr;
 
 use dime_core::big5;
 use dime_core::candgen;
-use dime_ui::{candpaint, candproc, candwnd, layout, notify, sbpaint, sbproc, shadow};
+use dime_ui::{candpaint, candproc, candwnd, layout, notify, sbpaint, sbproc, shadow, win};
+use dime_ui::win::{HINSTANCE, PCWSTR};
 use dime_core::candidates::{self, CandidatePaging};
 use dime_core::composition;
 use dime_core::keyclass;
@@ -3823,137 +3824,156 @@ pub unsafe extern "C" fn dime_ui_shadow_pixels(
     })
 }
 
-/// The C++ side of the shadow window (`CShadowWindowRustHost` in
-/// `src/ShadowWindow.cpp`); field order must match `dime_ffi.h`.
+// ---------------------------------------------------------------------------
+// Windows owned by Rust (dime-ui::win, phase 3c-5)
+// ---------------------------------------------------------------------------
+
+/// Registers a window class with the Rust window procedure (`popup`: the
+/// candidate / notify class styles, else the child / shadow ones with
+/// `CS_IME`); 0 on failure.
+///
+/// # Safety
+/// `name` must be a NUL-terminated UTF-16 string; `hinstance` the module.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_register_window_class(hinstance: *mut c_void, name: *const u16, popup: i32) -> u16 {
+    guard(0, || {
+        if name.is_null() {
+            return 0;
+        }
+        let kind = if popup != 0 { win::ClassKind::Popup } else { win::ClassKind::Child };
+        unsafe { win::register_class(HINSTANCE(hinstance), PCWSTR(name), kind) }
+    })
+}
+
+/// The shadow window's environment (C++ `CConfig`).
 #[repr(C)]
-pub struct DimeShadowHostVtbl {
-    pub hwnd: unsafe extern "C" fn(ctx: *mut c_void) -> *mut c_void,
-    pub owner_hwnd: unsafe extern "C" fn(ctx: *mut c_void) -> *mut c_void,
-    pub owner_corner_radius_base: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
-    pub is_gradient: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
-    pub set_is_gradient: unsafe extern "C" fn(ctx: *mut c_void, on: i32),
-    pub color: unsafe extern "C" fn(ctx: *mut c_void) -> u32,
-    pub set_color: unsafe extern "C" fn(ctx: *mut c_void, color: u32),
-    pub size_shift: unsafe extern "C" fn(ctx: *mut c_void, out: *mut layout::Point),
-    pub set_size_shift: unsafe extern "C" fn(ctx: *mut c_void, shift: layout::Point),
-    pub is_visible: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
-    pub base_show: unsafe extern "C" fn(ctx: *mut c_void, on: i32),
-    pub dpi: unsafe extern "C" fn(ctx: *mut c_void) -> u32,
-    pub dark: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
-    pub sys_window_color: unsafe extern "C" fn(ctx: *mut c_void) -> u32,
+pub struct DimeShadowEnv {
+    pub dpi_for_hwnd: unsafe extern "C" fn(hwnd: *mut c_void) -> u32,
+    pub dark: unsafe extern "C" fn() -> i32,
 }
 
-/// `DimeShadowHost`.
-#[repr(C)]
-pub struct DimeShadowHost {
-    pub vtbl: *const DimeShadowHostVtbl,
-    pub ctx: *mut c_void,
-}
+/// A shadow window owned by Rust (`CRustShadowWindow`).
+pub struct DimeShadow(shadow::ShadowWindow);
 
-struct ShadowHostFfi<'a> {
-    v: &'a DimeShadowHostVtbl,
-    ctx: *mut c_void,
-}
-
-impl shadow::ShadowHost for ShadowHostFfi<'_> {
-    fn hwnd(&mut self) -> candproc::HWND {
-        candproc::HWND(unsafe { (self.v.hwnd)(self.ctx) })
-    }
-    fn owner_hwnd(&mut self) -> Option<candproc::HWND> {
-        let h = unsafe { (self.v.owner_hwnd)(self.ctx) };
-        (!h.is_null()).then_some(candproc::HWND(h))
-    }
-    fn owner_corner_radius_base(&mut self) -> i32 {
-        unsafe { (self.v.owner_corner_radius_base)(self.ctx) }
-    }
-    fn is_gradient(&mut self) -> bool {
-        unsafe { (self.v.is_gradient)(self.ctx) != 0 }
-    }
-    fn set_is_gradient(&mut self, on: bool) {
-        unsafe { (self.v.set_is_gradient)(self.ctx, i32::from(on)) }
-    }
-    fn color(&mut self) -> u32 {
-        unsafe { (self.v.color)(self.ctx) }
-    }
-    fn set_color(&mut self, color: u32) {
-        unsafe { (self.v.set_color)(self.ctx, color) }
-    }
-    fn size_shift(&mut self) -> (i32, i32) {
-        let mut p = layout::Point::default();
-        unsafe { (self.v.size_shift)(self.ctx, &mut p) };
-        (p.x, p.y)
-    }
-    fn set_size_shift(&mut self, shift: (i32, i32)) {
-        unsafe { (self.v.set_size_shift)(self.ctx, layout::Point { x: shift.0, y: shift.1 }) }
-    }
-    fn is_visible(&mut self) -> bool {
-        unsafe { (self.v.is_visible)(self.ctx) != 0 }
-    }
-    fn base_show(&mut self, on: bool) {
-        unsafe { (self.v.base_show)(self.ctx, i32::from(on)) }
-    }
-    fn dpi(&mut self) -> u32 {
-        unsafe { (self.v.dpi)(self.ctx) }
-    }
-    fn dark(&mut self) -> bool {
-        unsafe { (self.v.dark)(self.ctx) != 0 }
-    }
-    fn sys_window_color(&mut self) -> u32 {
-        unsafe { (self.v.sys_window_color)(self.ctx) }
-    }
-}
-
-unsafe fn with_shadow_host<R: Copy>(
-    host: *const DimeShadowHost,
-    fallback: R,
-    f: impl FnOnce(&mut ShadowHostFfi) -> R,
-) -> R {
-    guard(fallback, || {
-        let h = unsafe { host.as_ref() };
-        match h.and_then(|h| unsafe { h.vtbl.as_ref() }.map(|v| (v, h.ctx))) {
-            Some((v, ctx)) => f(&mut ShadowHostFfi { v, ctx }),
-            None => fallback,
+/// `CShadowWindow::_Create`: null when the window could not be created.
+///
+/// # Safety
+/// `atom` must be registered by `dime_ui_register_window_class`; `env` valid.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_shadow_create(
+    hinstance: *mut c_void,
+    atom: u16,
+    ex_style: u32,
+    style: u32,
+    owner: *mut c_void,
+    owner_corner_radius_base: i32,
+    env: *const DimeShadowEnv,
+) -> *mut DimeShadow {
+    guard(ptr::null_mut(), || {
+        let Some(e) = (unsafe { env.as_ref() }) else {
+            return ptr::null_mut();
+        };
+        let env = shadow::Env { dpi_for_hwnd: e.dpi_for_hwnd, dark: e.dark };
+        match unsafe {
+            shadow::ShadowWindow::create(
+                HINSTANCE(hinstance),
+                atom,
+                ex_style,
+                style,
+                candproc::HWND(owner),
+                owner_corner_radius_base,
+                env,
+            )
+        } {
+            Some(w) => Box::into_raw(Box::new(DimeShadow(w))),
+            None => ptr::null_mut(),
         }
     })
 }
 
-/// Shadow window operations: 0 `_InitSettings`, 1 `_AdjustWindowPos`,
-/// 2 `_InitShadow`, 3 `_OnSettingChange`, 4 `_OnOwnerWndMoved(a)`, 5 `_Show(a)`.
+/// Destroys the shadow window (if it still exists) and frees it.
 ///
 /// # Safety
-/// `host` must be valid with a complete vtable.
+/// `s` must come from `dime_ui_shadow_create` (or be null) and not be used again.
 #[no_mangle]
-pub unsafe extern "C" fn dime_ui_shadow_event(host: *const DimeShadowHost, op: u32, a: i32) {
-    unsafe {
-        with_shadow_host(host, (), |h| match op {
-            0 => shadow::init_settings(h),
-            1 => shadow::adjust_window_pos(h),
-            2 => shadow::init_shadow(h),
-            3 => shadow::on_setting_change(h),
-            4 => shadow::on_owner_moved(h, a != 0),
-            5 => shadow::show(h, a != 0),
-            _ => {}
-        });
-    }
+pub unsafe extern "C" fn dime_ui_shadow_free(s: *mut DimeShadow) {
+    guard((), || {
+        if !s.is_null() {
+            drop(unsafe { Box::from_raw(s) });
+        }
+    })
 }
 
-/// `CShadowWindow::_WindowProcCallback`.
+/// The shadow's window (null once destroyed).
 ///
 /// # Safety
-/// `host` must be valid with a complete vtable; `hwnd` is the shadow window.
+/// `s` must be valid or null.
 #[no_mangle]
-pub unsafe extern "C" fn dime_ui_shadow_window_proc(
-    host: *const DimeShadowHost,
-    hwnd: *mut c_void,
-    msg: u32,
-    wparam: usize,
-    lparam: isize,
-) -> isize {
-    unsafe {
-        with_shadow_host(host, 0, |h| {
-            shadow::window_proc(h, candproc::HWND(hwnd), msg, candproc::WPARAM(wparam), candproc::LPARAM(lparam)).0
-        })
-    }
+pub unsafe extern "C" fn dime_ui_shadow_hwnd(s: *const DimeShadow) -> *mut c_void {
+    guard(ptr::null_mut(), || unsafe { s.as_ref() }.map_or(ptr::null_mut(), |s| s.0.hwnd().0))
+}
+
+/// `_Show`.
+///
+/// # Safety
+/// `s` must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_shadow_show(s: *const DimeShadow, on: i32) {
+    guard((), || {
+        if let Some(s) = unsafe { s.as_ref() } {
+            s.0.show(on != 0);
+        }
+    })
+}
+
+/// `_OnOwnerWndMoved`.
+///
+/// # Safety
+/// `s` must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_shadow_owner_moved(s: *const DimeShadow, resized: i32) {
+    guard((), || {
+        if let Some(s) = unsafe { s.as_ref() } {
+            s.0.owner_moved(resized != 0);
+        }
+    })
+}
+
+/// `_OnSettingChange`.
+///
+/// # Safety
+/// `s` must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_shadow_setting_change(s: *const DimeShadow) {
+    guard((), || {
+        if let Some(s) = unsafe { s.as_ref() } {
+            s.0.setting_change();
+        }
+    })
+}
+
+/// The shadow's state (tests): color, offset, gradient flag.
+///
+/// # Safety
+/// `s` must be valid or null; the out-pointers valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_shadow_state(
+    s: *const DimeShadow,
+    color: *mut u32,
+    shift: *mut layout::Point,
+    gradient: *mut i32,
+) {
+    guard((), || {
+        if let Some(s) = unsafe { s.as_ref() } {
+            let st = s.0.state();
+            let (x, y) = st.size_shift();
+            unsafe {
+                set(color, st.color());
+                set(shift, layout::Point { x, y });
+                set(gradient, i32::from(st.is_gradient()));
+            }
+        }
+    })
 }
 
 // ---------------------------------------------------------------------------

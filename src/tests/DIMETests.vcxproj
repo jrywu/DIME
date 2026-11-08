@@ -584,6 +584,9 @@
     <ClCompile Include="..\UILayout.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="..\RustShadowWindow.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="..\RustSessionHost.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>

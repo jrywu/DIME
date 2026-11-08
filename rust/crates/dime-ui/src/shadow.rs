@@ -14,14 +14,13 @@ use crate::layout::{Rect, SHADOW_SPREAD};
 use windows::Win32::Foundation::{COLORREF, HWND, LPARAM, LRESULT, POINT, RECT, SIZE, WPARAM};
 #[cfg(windows)]
 use windows::Win32::Graphics::Gdi::{
-    BeginPaint, CreateCompatibleDC, CreateDIBSection, CreateSolidBrush, DeleteDC, DeleteObject, EndPaint, FillRect,
-    GetDC, GetDeviceCaps, ReleaseDC, SelectObject, AC_SRC_ALPHA, AC_SRC_OVER, BITMAPINFO, BITMAPINFOHEADER, BITSPIXEL,
-    BI_RGB, BLENDFUNCTION, DIB_RGB_COLORS, PAINTSTRUCT,
+    CreateCompatibleDC, CreateDIBSection, DeleteDC, DeleteObject, GetDC, GetDeviceCaps, ReleaseDC, SelectObject,
+    AC_SRC_ALPHA, AC_SRC_OVER, BITMAPINFO, BITMAPINFOHEADER, BITSPIXEL, BI_RGB, BLENDFUNCTION, DIB_RGB_COLORS,
 };
 #[cfg(windows)]
 use windows::Win32::UI::WindowsAndMessaging::{
-    DefWindowProcW, GetWindowLongW, GetWindowRect, IsWindow, SetWindowLongW, SetWindowPos, UpdateLayeredWindow,
-    GWL_EXSTYLE, SWP_NOACTIVATE, SWP_NOOWNERZORDER, ULW_ALPHA, WM_APP, WM_PAINT, WM_SETTINGCHANGE, WS_EX_LAYERED,
+    GetWindowLongW, GetWindowRect, IsWindow, SetWindowLongW, SetWindowPos, UpdateLayeredWindow, GWL_EXSTYLE,
+    SWP_NOACTIVATE, SWP_NOOWNERZORDER, ULW_ALPHA, WS_EX_LAYERED,
 };
 
 /// `SHADOW_MAX_ALPHA`: peak alpha of a light shadow on a dark background.
@@ -329,33 +328,192 @@ pub fn show(host: &mut dyn ShadowHost, on: bool) {
     }
 }
 
-/// `_WindowProcCallback`.
-///
-/// # Safety
-/// `hwnd` is the shadow window.
+// ---------------------------------------------------------------------------
+// The shadow window owned by Rust (phase 3c-5b)
+// ---------------------------------------------------------------------------
+
+/// What the shadow needs from its environment (C++ `CConfig`).
 #[cfg(windows)]
-pub unsafe fn window_proc(host: &mut dyn ShadowHost, hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
-    match msg {
-        WM_PAINT => {
-            unsafe {
-                let mut ps = PAINTSTRUCT::default();
-                let dc = BeginPaint(hwnd, &mut ps);
-                let brush = CreateSolidBrush(COLORREF(host.color()));
-                FillRect(dc, &ps.rcPaint, brush);
-                let _ = DeleteObject(brush.into());
-                let _ = EndPaint(hwnd, &ps);
-            }
-            LRESULT(0)
-        }
-        WM_SETTINGCHANGE => {
-            on_setting_change(host);
-            unsafe { DefWindowProcW(hwnd, msg, wparam, lparam) }
-        }
-        m if m == WM_APP + 1 => {
-            init_shadow(host);
-            LRESULT(0)
-        }
-        _ => unsafe { DefWindowProcW(hwnd, msg, wparam, lparam) },
+#[derive(Clone, Copy)]
+pub struct Env {
+    /// `CConfig::GetDpiForHwnd`.
+    pub dpi_for_hwnd: unsafe extern "C" fn(hwnd: *mut core::ffi::c_void) -> u32,
+    /// `CConfig::GetEffectiveDarkMode`.
+    pub dark: unsafe extern "C" fn() -> i32,
+}
+
+/// The state of a shadow window (the former `CShadowWindow` members).
+#[cfg(windows)]
+pub struct State {
+    hwnd: std::cell::Cell<HWND>,
+    owner: HWND,
+    owner_corner_radius_base: i32,
+    is_gradient: std::cell::Cell<bool>,
+    color: std::cell::Cell<u32>,
+    shift: std::cell::Cell<(i32, i32)>,
+    env: Env,
+}
+
+#[cfg(windows)]
+impl State {
+    pub fn color(&self) -> u32 {
+        self.color.get()
+    }
+    pub fn size_shift(&self) -> (i32, i32) {
+        self.shift.get()
+    }
+    pub fn is_gradient(&self) -> bool {
+        self.is_gradient.get()
+    }
+}
+
+/// [`ShadowHost`] over the state (each call is short; nothing is borrowed across calls).
+#[cfg(windows)]
+struct StateHost<'a>(&'a State);
+
+#[cfg(windows)]
+impl ShadowHost for StateHost<'_> {
+    fn hwnd(&mut self) -> HWND {
+        self.0.hwnd.get()
+    }
+    fn owner_hwnd(&mut self) -> Option<HWND> {
+        (!self.0.owner.is_invalid()).then_some(self.0.owner)
+    }
+    fn owner_corner_radius_base(&mut self) -> i32 {
+        self.0.owner_corner_radius_base
+    }
+    fn is_gradient(&mut self) -> bool {
+        self.0.is_gradient.get()
+    }
+    fn set_is_gradient(&mut self, on: bool) {
+        self.0.is_gradient.set(on);
+    }
+    fn color(&mut self) -> u32 {
+        self.0.color.get()
+    }
+    fn set_color(&mut self, color: u32) {
+        self.0.color.set(color);
+    }
+    fn size_shift(&mut self) -> (i32, i32) {
+        self.0.shift.get()
+    }
+    fn set_size_shift(&mut self, shift: (i32, i32)) {
+        self.0.shift.set(shift);
+    }
+    fn is_visible(&mut self) -> bool {
+        let h = self.0.hwnd.get();
+        !h.is_invalid() && unsafe { windows::Win32::UI::WindowsAndMessaging::IsWindowVisible(h) }.as_bool()
+    }
+    fn base_show(&mut self, on: bool) {
+        crate::win::base_show(self.0.hwnd.get(), on);
+    }
+    fn dpi(&mut self) -> u32 {
+        unsafe { (self.0.env.dpi_for_hwnd)(self.0.hwnd.get().0) }
+    }
+    fn dark(&mut self) -> bool {
+        unsafe { (self.0.env.dark)() != 0 }
+    }
+    fn sys_window_color(&mut self) -> u32 {
+        unsafe { windows::Win32::Graphics::Gdi::GetSysColor(windows::Win32::Graphics::Gdi::COLOR_WINDOW) }
+    }
+}
+
+/// The shadow's message handling: none. `CShadowWindow` never sets its UI
+/// window, so `CBaseWindow::_WindowProc` answers `S_FALSE` to every message.
+#[cfg(windows)]
+struct ShadowHandler;
+
+#[cfg(windows)]
+impl crate::win::Handler for ShadowHandler {
+    fn message(&self, _: HWND, _: u32, _: WPARAM, _: LPARAM) -> Option<LRESULT> {
+        None
+    }
+    fn dispatches(&self) -> bool {
+        false
+    }
+}
+
+/// A shadow window owned by Rust.
+#[cfg(windows)]
+pub struct ShadowWindow {
+    window: std::rc::Rc<crate::win::Window>,
+    state: State,
+}
+
+#[cfg(windows)]
+impl ShadowWindow {
+    /// `CShadowWindow::_Create`: the window around `owner`, then `_Initialize`.
+    ///
+    /// # Safety
+    /// `class` must be registered by [`crate::win::register_class`].
+    #[allow(clippy::too_many_arguments)]
+    pub unsafe fn create(
+        hinstance: windows::Win32::Foundation::HINSTANCE,
+        class: u16,
+        ex_style: u32,
+        style: u32,
+        owner: HWND,
+        owner_corner_radius_base: i32,
+        env: Env,
+    ) -> Option<ShadowWindow> {
+        use windows::Win32::UI::WindowsAndMessaging::{WINDOW_EX_STYLE, WINDOW_STYLE};
+        let window = unsafe {
+            crate::win::create(
+                hinstance,
+                class,
+                WINDOW_EX_STYLE(ex_style),
+                WINDOW_STYLE(style),
+                (!owner.is_invalid()).then_some(owner),
+                0,
+                0,
+                Box::new(ShadowHandler),
+            )
+        }?;
+        let state = State {
+            hwnd: std::cell::Cell::new(window.hwnd()),
+            owner,
+            owner_corner_radius_base,
+            is_gradient: std::cell::Cell::new(false),
+            color: std::cell::Cell::new(0),
+            shift: std::cell::Cell::new((0, 0)),
+            env,
+        };
+        let shadow = ShadowWindow { window, state };
+        init_settings(&mut StateHost(&shadow.state)); // _Initialize
+        Some(shadow)
+    }
+
+    fn sync(&self) {
+        self.state.hwnd.set(self.window.hwnd());
+    }
+
+    pub fn hwnd(&self) -> HWND {
+        self.window.hwnd()
+    }
+    pub fn state(&self) -> &State {
+        &self.state
+    }
+    /// `_Show`.
+    pub fn show(&self, on: bool) {
+        self.sync();
+        show(&mut StateHost(&self.state), on);
+    }
+    /// `_OnOwnerWndMoved`.
+    pub fn owner_moved(&self, resized: bool) {
+        self.sync();
+        on_owner_moved(&mut StateHost(&self.state), resized);
+    }
+    /// `_OnSettingChange`.
+    pub fn setting_change(&self) {
+        self.sync();
+        on_setting_change(&mut StateHost(&self.state));
+    }
+}
+
+#[cfg(windows)]
+impl Drop for ShadowWindow {
+    fn drop(&mut self) {
+        self.window.destroy();
     }
 }
 

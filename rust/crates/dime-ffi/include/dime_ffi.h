@@ -825,32 +825,26 @@ void dime_ui_shadow_color(int32_t dark, uint32_t sys_window_color, uint8_t* gray
 void dime_ui_shadow_pixels(int32_t cx, int32_t cy, int32_t spread, int32_t owner_radius, uint8_t gray, uint8_t max_alpha,
                            uint32_t* out, size_t count);
 
-/* The C++ side (CShadowWindowRustHost in src/ShadowWindow.cpp); order must match dime-ffi. */
-typedef struct DimeShadowHostVtbl {
-    void*    (*hwnd)(void* ctx);
-    void*    (*owner_hwnd)(void* ctx);
-    int32_t  (*owner_corner_radius_base)(void* ctx);
-    int32_t  (*is_gradient)(void* ctx);
-    void     (*set_is_gradient)(void* ctx, int32_t on);
-    uint32_t (*color)(void* ctx);
-    void     (*set_color)(void* ctx, uint32_t color);
-    void     (*size_shift)(void* ctx, DimePoint* out);
-    void     (*set_size_shift)(void* ctx, DimePoint shift);
-    int32_t  (*is_visible)(void* ctx);
-    void     (*base_show)(void* ctx, int32_t on);       /* CBaseWindow::_Show */
-    uint32_t (*dpi)(void* ctx);
-    int32_t  (*dark)(void* ctx);                        /* CConfig::GetEffectiveDarkMode() */
-    uint32_t (*sys_window_color)(void* ctx);            /* GetSysColor(COLOR_WINDOW) */
-} DimeShadowHostVtbl;
+/* ---- Windows owned by Rust (rust/crates/dime-ui/src/win.rs, phase 3c-5) ---- */
+/* Registers a window class with the Rust window procedure (popup: candidate / notify styles;
+ * else the child / shadow styles with CS_IME). 0 on failure. */
+uint16_t dime_ui_register_window_class(void* hinstance, const uint16_t* name, int32_t popup);
 
-typedef struct DimeShadowHost {
-    const DimeShadowHostVtbl* vtbl;
-    void* ctx;
-} DimeShadowHost;
-
-/* op: 0 _InitSettings  1 _AdjustWindowPos  2 _InitShadow  3 _OnSettingChange  4 _OnOwnerWndMoved(a)  5 _Show(a) */
-void     dime_ui_shadow_event(const DimeShadowHost* host, uint32_t op, int32_t a);
-intptr_t dime_ui_shadow_window_proc(const DimeShadowHost* host, void* hwnd, uint32_t msg, uintptr_t wparam, intptr_t lparam);
+/* The shadow window owned by Rust (CRustShadowWindow). */
+typedef struct DimeShadowEnv {
+    uint32_t (*dpi_for_hwnd)(void* hwnd);   /* CConfig::GetDpiForHwnd */
+    int32_t  (*dark)(void);                 /* CConfig::GetEffectiveDarkMode */
+} DimeShadowEnv;
+typedef struct DimeShadow DimeShadow;
+/* CShadowWindow::_Create; NULL on failure. */
+DimeShadow* dime_ui_shadow_create(void* hinstance, uint16_t atom, uint32_t ex_style, uint32_t style, void* owner,
+                                  int32_t owner_corner_radius_base, const DimeShadowEnv* env);
+void  dime_ui_shadow_free(DimeShadow* s);                        /* destroys the window if it still exists */
+void* dime_ui_shadow_hwnd(const DimeShadow* s);
+void  dime_ui_shadow_show(const DimeShadow* s, int32_t on);
+void  dime_ui_shadow_owner_moved(const DimeShadow* s, int32_t resized);
+void  dime_ui_shadow_setting_change(const DimeShadow* s);
+void  dime_ui_shadow_state(const DimeShadow* s, uint32_t* color, DimePoint* shift, int32_t* gradient);   /* tests */
 
 /* ---- Notify window (rust/crates/dime-ui/src/notify.rs) ---- */
 typedef struct DimeNotifyPaint {

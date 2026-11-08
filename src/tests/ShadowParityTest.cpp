@@ -6,11 +6,13 @@
 *  - PixelsMatchCpp: the premultiplied shadow image (rounded-rectangle SDF,
 *    double precision) byte for byte over window sizes, corner radii, grays and
 *    peak alphas.
-*  - BehaviorMatchesCpp: two real candidate windows, one shadow per
-*    implementation, through random owner moves / resizes, show / hide, owner
+*  - BehaviorMatchesCpp: a C++ CShadowWindow and a Rust-owned shadow
+*    (CRustShadowWindow, phase 3c-5b) around two real candidate windows,
+*    through random owner moves / resizes / show / hide, shadow show, owner
 *    moved notifications and settings changes: the shadow's rectangle relative
 *    to its owner, visibility, layered style, color, offset and gradient flag.
-*    (Its messages never reach either implementation: ShadowMessagesAreNotDispatched.)
+*  - ShadowMessagesAreNotDispatched: both answer S_FALSE to every message (the
+*    C++ shadow never sets its UI window, so CBaseWindow never dispatches).
 ********************************************************************************/
 #include "pch.h"
 #include "CppUnitTest.h"
@@ -25,6 +27,7 @@
 #include "../BaseStructure.h"
 #include "../Config.h"
 #include "../Define.h"
+#include "../RustShadowWindow.h"
 #include "WindowClassTestHelper.h"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
@@ -36,14 +39,14 @@ namespace
 {
     HRESULT NoCallback(void*, enum CANDWND_ACTION) { return S_OK; }
 
-    std::wstring ShadowState(CCandidateWindow* w)
+    template <class Shadow>
+    std::wstring ShadowState(Shadow* sh, CCandidateWindow* owner)
     {
-        CShadowWindow* sh = w->_GetShadowForTest();
-        RECT rc = { 0, 0, 0, 0 }, owner = { 0, 0, 0, 0 };
+        RECT rc = { 0, 0, 0, 0 }, orc = { 0, 0, 0, 0 };
         GetWindowRect(sh->_GetWnd(), &rc);
-        GetWindowRect(w->_GetWnd(), &owner);
+        GetWindowRect(owner->_GetWnd(), &orc);
         SIZE shift = sh->_GetSizeShiftForTest();
-        return L"rect=" + std::to_wstring(rc.left - owner.left) + L"," + std::to_wstring(rc.top - owner.top) + L"," +
+        return L"rect=" + std::to_wstring(rc.left - orc.left) + L"," + std::to_wstring(rc.top - orc.top) + L"," +
             std::to_wstring(rc.right - rc.left) + L"x" + std::to_wstring(rc.bottom - rc.top) +
             L" visible=" + std::to_wstring(IsWindowVisible(sh->_GetWnd())) +
             L" layered=" + std::to_wstring((GetWindowLong(sh->_GetWnd(), GWL_EXSTYLE) & WS_EX_LAYERED) != 0) +
@@ -51,6 +54,24 @@ namespace
             L" shift=" + std::to_wstring(shift.cx) + L"," + std::to_wstring(shift.cy) +
             L" gradient=" + std::to_wstring(sh->_IsGradientForTest());
     }
+
+    // A class for C++ CShadowWindow (CBaseWindow's window procedure) and one for the
+    // Rust-owned shadow (dime-ui's), whatever the build registered for the real ones.
+    ATOM ClassAtom(const wchar_t* name, bool rust)
+    {
+        EnsureWindowClassesRegistered();
+        WNDCLASSEXW wc = {};
+        wc.cbSize = sizeof(wc);
+        ATOM atom = (ATOM)GetClassInfoExW(Global::dllInstanceHandle, name, &wc);
+        if (atom) return atom;
+        if (rust) return dime_ui_register_window_class(Global::dllInstanceHandle, (const uint16_t*)name, 0);
+        CBaseWindow::_InitWindowClass(name, &atom);
+        return atom;
+    }
+    ATOM CppShadowAtom() { return ClassAtom(L"DIME.Test.CppShadowWindow", false); }
+    ATOM RustShadowAtom() { return ClassAtom(L"DIME.Test.RustShadowWindow", true); }
+    const DWORD kShadowExStyle = WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_LAYERED;
+    const DWORD kShadowStyle = WS_DISABLED | WS_POPUP;
 }
 
 namespace DIMEUnitTests
@@ -111,19 +132,23 @@ namespace DIMEUnitTests
             EnsureWindowClassesRegistered();
             CCandidateRange range;
             range.Append()->CandIndex = L'1';
-            for (int k = 0; k < 2; k++)
+            CCandidateWindow* w = new CCandidateWindow(NoCallback, nullptr, &range, FALSE);
+            Assert::IsTrue(w->_Create(2, 12, nullptr) != FALSE);
+            CShadowWindow cpp(w);
+            CRustShadowWindow rust(w);
+            Assert::IsTrue(cpp._Create(CppShadowAtom(), kShadowExStyle, kShadowStyle, w) != FALSE);
+            Assert::IsTrue(rust._Create(RustShadowAtom(), kShadowExStyle, kShadowStyle, w) != FALSE);
+            for (HWND h : { cpp._GetWnd(), rust._GetWnd() })
             {
-                CCandidateWindow* w = new CCandidateWindow(NoCallback, nullptr, &range, FALSE);
-                Assert::IsTrue(w->_Create(2, 12, nullptr) != FALSE);
-                CShadowWindow* sh = w->_GetShadowForTest();
-                Assert::IsNotNull(sh);
-                sh->_SetUseRustForTest(k == 1);
-                HWND h = sh->_GetWnd();
+                Assert::IsNotNull(h);
                 Assert::AreEqual((LRESULT)S_FALSE, SendMessage(h, WM_APP + 1, 0, 0), L"WM_APP+1 (dispatched: 0)");
                 Assert::AreEqual((LRESULT)S_FALSE, SendMessage(h, WM_PAINT, 0, 0), L"WM_PAINT (dispatched: 0)");
                 Assert::AreEqual((LRESULT)S_FALSE, SendMessage(h, WM_SETTINGCHANGE, 0, 0), L"WM_SETTINGCHANGE");
-                DestroyAndDelete(w);
             }
+            // The candidate's own shadow (Rust-owned in the Rust build) too.
+            Assert::AreEqual((LRESULT)S_FALSE, SendMessage(w->_GetShadowForTest()->_GetWnd(), WM_APP + 1, 0, 0), L"candidate's shadow");
+            cpp._Destroy();
+            DestroyAndDelete(w);
         }
 
         TEST_METHOD(BehaviorMatchesCpp)
@@ -146,11 +171,14 @@ namespace DIMEUnitTests
                     w[k] = new CCandidateWindow(NoCallback, nullptr, &range[k], FALSE);
                     Assert::IsTrue(w[k]->_Create(2, 12, nullptr) != FALSE);
                     Assert::IsNotNull(w[k]->_GetWnd(), L"a real window (not a virtual one)");
-                    Assert::IsNotNull(w[k]->_GetShadowForTest());
-                    w[k]->_GetShadowForTest()->_SetUseRustForTest(k == 1);
                     w[k]->_Move(300, 200);
                     w[k]->_ResizeWindow();
                 }
+                // Shadows of our own around the two owners: C++ and Rust-owned.
+                CShadowWindow* cpp = new CShadowWindow(w[0]);
+                CRustShadowWindow* rust = new CRustShadowWindow(w[1]);
+                Assert::IsTrue(cpp->_Create(CppShadowAtom(), kShadowExStyle, kShadowStyle, w[0]) != FALSE);
+                Assert::IsTrue(rust->_Create(RustShadowAtom(), kShadowExStyle, kShadowStyle, w[1]) != FALSE);
                 for (int step = 0; step < 60; step++)
                 {
                     int op = (int)(rng() % 9);
@@ -162,27 +190,29 @@ namespace DIMEUnitTests
                     std::wstring st[2];
                     for (int k = 0; k < 2; k++)
                     {
-                        CShadowWindow* sh = w[k]->_GetShadowForTest();
-                        switch (op)
-                        {
-                        case 0: w[k]->_Move(x, y); break;
-                        case 1: SetWindowPos(w[k]->_GetWnd(), nullptr, x, y, cx, cy, SWP_NOZORDER | SWP_NOACTIVATE); break;
-                        case 2: sh->_Show(flag); break;
-                        case 3: sh->_OnOwnerWndMoved(flag); break;
-                        case 4: sh->_OnSettingChange(); break;
-                        case 5: SendMessage(sh->_GetWnd(), WM_PAINT, 0, 0); break;
-                        case 6: SendMessage(sh->_GetWnd(), WM_APP + 1, 0, 0); break;
-                        case 7: SendMessage(sh->_GetWnd(), WM_SETTINGCHANGE, 0, 0); break;
-                        case 8: SetWindowPos(w[k]->_GetWnd(), nullptr, 0, 0, 0, 0,
-                                    SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | (flag ? SWP_SHOWWINDOW : SWP_HIDEWINDOW)); break;
-                        }
-                        st[k] = ShadowState(w[k]);
+                        auto act = [&](auto* sh) {
+                            switch (op)
+                            {
+                            case 0: w[k]->_Move(x, y); break;
+                            case 1: SetWindowPos(w[k]->_GetWnd(), nullptr, x, y, cx, cy, SWP_NOZORDER | SWP_NOACTIVATE); break;
+                            case 2: sh->_Show(flag); break;
+                            case 3: case 5: case 6: case 7: sh->_OnOwnerWndMoved(flag); break;
+                            case 4: sh->_OnSettingChange(); break;
+                            case 8: SetWindowPos(w[k]->_GetWnd(), nullptr, 0, 0, 0, 0,
+                                        SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE | (flag ? SWP_SHOWWINDOW : SWP_HIDEWINDOW)); break;
+                            }
+                            return ShadowState(sh, w[k]);
+                        };
+                        st[k] = (k == 0) ? act(cpp) : act(rust);
                     }
                     if (st[0] != st[1])
                         Assert::Fail((L"scenario " + std::to_wstring(scenario) + L" step " + std::to_wstring(step) + L" op " + std::to_wstring(op) +
                             L"\nC++  " + st[0] + L"\nRust " + st[1]).c_str());
                     compared++;
                 }
+                cpp->_Destroy();
+                delete cpp;
+                delete rust;
                 for (int k = 0; k < 2; k++) DestroyAndDelete(w[k]);
             }
             CConfig::SetColorMode(savedMode);
