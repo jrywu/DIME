@@ -37,6 +37,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "BaseWindow.h"
 #include "ScrollBarWindow.h"
 #include "UIConstants.h"
+#include "UILayout.h"
+
+// CScrollInfo as UILayout sees it.
+static UILayout::ScrollInfo _LayoutScrollInfo(const CScrollInfo& si)
+{
+    return { si.nMax, si.nPage, si.nPos };
+}
 
 //////////////////////////////////////////////////////////////////////
 //
@@ -283,45 +290,26 @@ void CScrollBarWindow::_OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps)
         HBRUSH hOldBrA = (HBRUSH)SelectObject(dcHandle, hArrowBrush);
         HPEN hOldPenA = (HPEN)SelectObject(dcHandle, hArrowPen);
 
-        RECT rcUp = {0,0,0,0};
-        _GetBtnUpRect(&rcUp);
-        int btnW = rcUp.right - rcUp.left;
-        // Win11 Explorer style: triangle spans ~60% of button width, flat wedge aspect
-        // Triangle fits within button width with 1px margin each side; equilateral proportions
-        int aw = max(2, btnW / 3);
-        int ah = max(MulDiv(2, dpi, USER_DEFAULT_SCREEN_DPI), aw * 87 / 100); // equilateral: ah = aw * sqrt(3)/2
-        int acx = (rcUp.left + rcUp.right) / 2;
-        int acy = rcUp.top + ah + 1;             // apex 1px inside top edge
-        POINT upTri[3] = { {acx, acy - ah}, {acx - aw, acy + ah}, {acx + aw, acy + ah} };
-        Polygon(dcHandle, upTri, 3);
-
-        RECT rcDn = {0,0,0,0};
-        _GetBtnDnRect(&rcDn);
-        acx = (rcDn.left + rcDn.right) / 2;
-        acy = rcDn.bottom - ah - 1;              // apex 1px inside bottom edge
-        POINT dnTri[3] = { {acx, acy + ah}, {acx - aw, acy - ah}, {acx + aw, acy - ah} };
-        Polygon(dcHandle, dnTri, 3);
+        // Win11 Explorer style triangles (equilateral, 1px inside the button edges): UILayout::ScrollBarArrows.
+        RECT rcArrowClient = {0,0,0,0};
+        _GetClientRect(&rcArrowClient);
+        UILayout::ScrollArrows arrows = UILayout::ScrollBarArrows(rcArrowClient, dpi);
+        Polygon(dcHandle, arrows.up, 3);
+        Polygon(dcHandle, arrows.down, 3);
 
         SelectObject(dcHandle, hOldBrA);
         SelectObject(dcHandle, hOldPenA);
         DeleteObject(hArrowBrush);
 
-        // Pill thumb — single-point top aligned with triangle apex at acx.
-        // RoundRect corner ellipse: left arc center = left + radius/2, right arc center = right - radius/2.
-        // For both to equal acx (single pixel at top matching triangle apex):
-        //   left + radius/2 = acx  AND  right - radius/2 = acx
-        //   → left = acx - aw, right = acx + aw, radius = 2*aw (full pill width as ellipse diameter).
+        // Pill thumb — single-point top aligned with the triangle apex, 1px inside each
+        // triangle side (see UILayout::Cpp::ScrollBarArrows).
         RECT rcThumb = {0,0,0,0};
         _GetThumbRect(&rcThumb);
-        // Pill narrower than triangle: use (aw-1) as half-width so pill insets 1px inside each triangle side.
-        // GDI half-integer rule: center=(left+right-1)/2 must be acx+0.5 → left+right=2*acx+2.
-        // With half-width pw=aw-1: left=acx-pw+1, right=acx+pw+1. Topmost pixel at x=acx. ✓
-        int pw = max(2, aw - 1);
-        rcThumb.left  = acx - pw + 1;
-        rcThumb.right = acx + pw + 1;
+        rcThumb.left  = arrows.pillLeft;
+        rcThumb.right = arrows.pillRight;
 
         COLORREF thumbColor = isDark ? RGB(180, 180, 180) : RGB(128, 128, 128);
-        int radius = 2 * pw;  // full-width corner ellipse → capsule shape
+        int radius = arrows.pillRadius;  // full-width corner ellipse → capsule shape
         HBRUSH hThumb = CreateSolidBrush(thumbColor);
         HPEN hPen = (HPEN)GetStockObject(NULL_PEN);
         HBRUSH hOldBr = (HBRUSH)SelectObject(dcHandle, hThumb);
@@ -337,27 +325,10 @@ void CScrollBarWindow::_OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps)
         // Use full client rect as track so thumb spans the entire scrollbar height.
         RECT rcClient = {0,0,0,0};
         _GetClientRect(&rcClient);
-        int trackH = rcClient.bottom - rcClient.top;
-        if (trackH <= 0) return;
-
-        int thumbMinH = MulDiv(SCROLLBAR_THUMB_MIN_H, dpi, USER_DEFAULT_SCREEN_DPI);
-        int thumbH = MulDiv(trackH, _scrollInfo.nPage, _scrollInfo.nMax);
-        thumbH = max(thumbH, thumbMinH);
-        thumbH = min(thumbH, trackH);
-
-        int posRange = _scrollInfo.nMax - _scrollInfo.nPage;
-        int thumbY = (posRange > 0) ? MulDiv(trackH - thumbH, _scrollInfo.nPos, posRange) : 0;
-        thumbY = max(thumbY, 0);
-        thumbY = min(thumbY, trackH - thumbH);
-
-        // Center a narrow line within the idle scrollbar width
-        int lineW = max(MulDiv(SCROLLBAR_IDLE_THUMB_W, dpi, USER_DEFAULT_SCREEN_DPI), 2);
-        int cx = (rcClient.left + rcClient.right) / 2;
-        RECT rcLine;
-        rcLine.left   = cx - lineW / 2;
-        rcLine.right  = rcLine.left + lineW;
-        rcLine.top    = rcClient.top + thumbY;
-        rcLine.bottom = rcLine.top + thumbH;
+        // A narrow line centered within the idle scrollbar width.
+        RECT rcLine = {0,0,0,0};
+        if (!UILayout::ScrollBarIdleThumb(rcClient, dpi, _LayoutScrollInfo(_scrollInfo), &rcLine)) return;
+        int lineW = rcLine.right - rcLine.left;
 
         COLORREF thumbColor = isDark ? RGB(160, 160, 160) : RGB(160, 160, 160);
         int radius = lineW / 2;
@@ -496,27 +467,17 @@ void CScrollBarWindow::_OnMouseMove(POINT pt)
 
     if (_isDragging)
     {
-        RECT rcTrack = {0,0,0,0};
-        _GetTrackRect(&rcTrack);
-        int trackH = rcTrack.bottom - rcTrack.top;
+        // Get cursor in scrollbar client coords
+        POINT ptClient;
+        GetCursorPos(&ptClient);
+        MapWindowPoints(HWND_DESKTOP, _GetWnd(), &ptClient, 1);
 
-        RECT rcThumb = {0,0,0,0};
-        _GetThumbRect(&rcThumb);
-        int thumbH = rcThumb.bottom - rcThumb.top;
-
-        int slideRange = trackH - thumbH;
-        if (slideRange > 0)
+        RECT rc = {0,0,0,0};
+        _GetClientRect(&rc);
+        int newPos = 0;
+        if (UILayout::ScrollBarDragPos(rc, CConfig::GetDpiForHwnd(_GetWnd()), _LayoutScrollInfo(_scrollInfo),
+                _dragStartPos, ptClient.y - _dragStartY, &newPos))
         {
-            // Get cursor in scrollbar client coords
-            POINT ptClient;
-            GetCursorPos(&ptClient);
-            MapWindowPoints(HWND_DESKTOP, _GetWnd(), &ptClient, 1);
-
-            int deltaY = ptClient.y - _dragStartY;
-            int posRange = _scrollInfo.nMax - _scrollInfo.nPage;
-            int newPos = _dragStartPos + MulDiv(deltaY, posRange, slideRange);
-            newPos = max(newPos, 0);
-            newPos = min(newPos, posRange);
             _SetCurPos(newPos, SB_THUMBTRACK);
         }
     }
@@ -601,13 +562,9 @@ void CScrollBarWindow::_AdjustWindowPos()
 
     GetWindowRect(pParent->_GetWnd(), &rc);
 	int sbWidth = _GetHoverWidth();  // always hover width; idle vs hover is paint-only
-	int parentW = rc.right - rc.left;
-	int parentH = rc.bottom - rc.top;
+	RECT rcSB = UILayout::ScrollBarAttachedRect(rc.right - rc.left, rc.bottom - rc.top, sbWidth);
 	SetWindowPos(_GetWnd(), pParent->_GetWnd(),
-		parentW - sbWidth - CANDWND_BORDER_WIDTH,
-        CANDWND_BORDER_WIDTH,
-		sbWidth,
-		parentH - CANDWND_BORDER_WIDTH * 2,
+		rcSB.left, rcSB.top, rcSB.right - rcSB.left, rcSB.bottom - rcSB.top,
         SWP_NOOWNERZORDER | SWP_NOACTIVATE);
 }
 
@@ -652,31 +609,25 @@ void CScrollBarWindow::_GetScrollInfo(_Out_ CScrollInfo *lpsi)
 //
 //----------------------------------------------------------------------------
 
+// The parts of the scroll bar in client coordinates: UILayout::ScrollBarParts.
+UILayout::ScrollParts CScrollBarWindow::_GetParts()
+{
+    RECT rc = {0,0,0,0};
+    _GetClientRect(&rc);
+    return UILayout::ScrollBarParts(rc, CConfig::GetDpiForHwnd(_GetWnd()), _LayoutScrollInfo(_scrollInfo));
+}
+
 BOOL CScrollBarWindow::_GetBtnUpRect(_Out_ RECT *prc)
 {
     if (prc == nullptr) return FALSE;
-    RECT rc = {0,0,0,0};
-    _GetClientRect(&rc);
-    UINT dpi = CConfig::GetDpiForHwnd(_GetWnd());
-    int btnH = MulDiv(SCROLLBAR_BTN_HEIGHT, dpi, USER_DEFAULT_SCREEN_DPI);
-    prc->left = rc.left;
-    prc->top = rc.top;
-    prc->right = rc.right;
-    prc->bottom = rc.top + min(btnH, (rc.bottom - rc.top) / 3);
+    *prc = _GetParts().up;
     return TRUE;
 }
 
 BOOL CScrollBarWindow::_GetBtnDnRect(_Out_ RECT *prc)
 {
     if (prc == nullptr) return FALSE;
-    RECT rc = {0,0,0,0};
-    _GetClientRect(&rc);
-    UINT dpi = CConfig::GetDpiForHwnd(_GetWnd());
-    int btnH = MulDiv(SCROLLBAR_BTN_HEIGHT, dpi, USER_DEFAULT_SCREEN_DPI);
-    prc->left = rc.left;
-    prc->top = rc.bottom - min(btnH, (rc.bottom - rc.top) / 3);
-    prc->right = rc.right;
-    prc->bottom = rc.bottom;
+    *prc = _GetParts().down;
     return TRUE;
 }
 
@@ -696,15 +647,7 @@ void CScrollBarWindow::_GetScrollArea(_Out_ RECT *prc)
 BOOL CScrollBarWindow::_GetTrackRect(_Out_ RECT *prc)
 {
     if (prc == nullptr) return FALSE;
-    RECT rcUp = {0,0,0,0}, rcDn = {0,0,0,0};
-    _GetBtnUpRect(&rcUp);
-    _GetBtnDnRect(&rcDn);
-    RECT rc = {0,0,0,0};
-    _GetClientRect(&rc);
-    prc->left   = rc.left;
-    prc->top    = rcUp.bottom;
-    prc->right  = rc.right;
-    prc->bottom = rcDn.top;
+    *prc = _GetParts().track;
     return TRUE;
 }
 
@@ -717,34 +660,7 @@ BOOL CScrollBarWindow::_GetTrackRect(_Out_ RECT *prc)
 BOOL CScrollBarWindow::_GetThumbRect(_Out_ RECT *prc)
 {
     if (prc == nullptr) return FALSE;
-
-    RECT rcTrack = {0,0,0,0};
-    _GetTrackRect(&rcTrack);
-
-    int trackH = rcTrack.bottom - rcTrack.top;
-    if (trackH <= 0 || _scrollInfo.nMax <= 0 || _scrollInfo.nMax <= _scrollInfo.nPage)
-    {
-        // Thumb fills entire track when everything fits in one page
-        *prc = rcTrack;
-        return TRUE;
-    }
-
-    UINT dpi = CConfig::GetDpiForHwnd(_GetWnd());
-    int thumbMinH = MulDiv(SCROLLBAR_THUMB_MIN_H, dpi, USER_DEFAULT_SCREEN_DPI);
-
-    int thumbH = MulDiv(trackH, _scrollInfo.nPage, _scrollInfo.nMax);
-    thumbH = max(thumbH, thumbMinH);
-    thumbH = min(thumbH, trackH);
-
-    int posRange = _scrollInfo.nMax - _scrollInfo.nPage;
-    int thumbY = (posRange > 0) ? MulDiv(trackH - thumbH, _scrollInfo.nPos, posRange) : 0;
-    thumbY = max(thumbY, 0);
-    thumbY = min(thumbY, trackH - thumbH);
-
-    prc->left   = rcTrack.left;
-    prc->top    = rcTrack.top + thumbY;
-    prc->right  = rcTrack.right;
-    prc->bottom = rcTrack.top + thumbY + thumbH;
+    *prc = _GetParts().thumb;
     return TRUE;
 }
 
@@ -756,26 +672,9 @@ BOOL CScrollBarWindow::_GetThumbRect(_Out_ RECT *prc)
 
 SCROLLBAR_HITTEST CScrollBarWindow::_HitTest(POINT pt)
 {
-    RECT rcUp = {0,0,0,0};
-    _GetBtnUpRect(&rcUp);
-    if (PtInRect(&rcUp, pt)) return SB_HIT_BTN_UP;
-
-    RECT rcDn = {0,0,0,0};
-    _GetBtnDnRect(&rcDn);
-    if (PtInRect(&rcDn, pt)) return SB_HIT_BTN_DOWN;
-
-    RECT rcThumb = {0,0,0,0};
-    _GetThumbRect(&rcThumb);
-    if (PtInRect(&rcThumb, pt)) return SB_HIT_THUMB;
-
-    RECT rcTrack = {0,0,0,0};
-    _GetTrackRect(&rcTrack);
-    if (PtInRect(&rcTrack, pt))
-    {
-        return (pt.y < rcThumb.top) ? SB_HIT_TRACK_ABOVE : SB_HIT_TRACK_BELOW;
-    }
-
-    return SB_HIT_NONE;
+    RECT rc = {0,0,0,0};
+    _GetClientRect(&rc);
+    return (SCROLLBAR_HITTEST)UILayout::ScrollBarHitTest(rc, CConfig::GetDpiForHwnd(_GetWnd()), _LayoutScrollInfo(_scrollInfo), pt);
 }
 
 //+---------------------------------------------------------------------------
@@ -791,8 +690,7 @@ void CScrollBarWindow::_SetCurPos(int nPos, int dwSB)
 	debugPrint(L"CScrollButtonWindow::_SetCurPos() nPos = %d, dwSB = %d", nPos, dwSB);
     //int posMax = (_scrollInfo.nMax <= _scrollInfo.nPage) ? 0 : _scrollInfo.nMax - _scrollInfo.nPage;
 
-	nPos = min(nPos, _scrollInfo.nMax-1);// posMax);
-    nPos = max(nPos, 0);
+	nPos = UILayout::ScrollBarClampPos(nPos, _scrollInfo.nMax);
 
     _scrollInfo.nPos = nPos;
 
@@ -927,14 +825,14 @@ int CScrollBarWindow::_GetIdleWidth()
 {
     UINT dpi = CConfig::GetDpiForHwnd(_GetWnd());
     return CConfig::GetAlwaysShowScrollbars()
-        ? MulDiv(SCROLLBAR_HOVER_WIDTH, dpi, USER_DEFAULT_SCREEN_DPI)
-        : MulDiv(SCROLLBAR_THIN_WIDTH, dpi, USER_DEFAULT_SCREEN_DPI);
+        ? UILayout::ScaleForDpi(SCROLLBAR_HOVER_WIDTH, dpi)
+        : UILayout::ScaleForDpi(SCROLLBAR_THIN_WIDTH, dpi);
 }
 
 int CScrollBarWindow::_GetHoverWidth()
 {
     UINT dpi = CConfig::GetDpiForHwnd(_GetWnd());
-    return MulDiv(SCROLLBAR_HOVER_WIDTH, dpi, USER_DEFAULT_SCREEN_DPI);
+    return UILayout::ScaleForDpi(SCROLLBAR_HOVER_WIDTH, dpi);
 }
 
 //////////////////////////////////////////////////////////////////////

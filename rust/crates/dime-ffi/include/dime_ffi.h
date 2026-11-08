@@ -607,6 +607,45 @@ void     dime_ui_stack_pos_for_new_slot(DimePoint notify, const DimeNotifySlot* 
 void     dime_ui_restack(int32_t has_candidate, DimeRect candidate_rect, DimePoint candidate_location, DimePoint notify,
                          const DimeNotifySlot* slots, size_t count, int32_t grow_up, DimePoint* positions, int32_t* placed);
 
+/* ---- Candidate window / scroll bar layout (rust/crates/dime-ui/src/candwnd.rs) ---- */
+typedef struct DimeCandMetrics {
+    int32_t cx_line, cy_line, first_line_offset, left_padding, cx_title, padding, cy_offset;
+} DimeCandMetrics;
+typedef struct DimeCandRow {
+    DimeRect row, highlight, number, text;
+    int32_t corner_radius, number_x, text_x, text_y;
+} DimeCandRow;
+typedef struct DimeScrollInfo { int32_t max, page, pos; } DimeScrollInfo;  /* CScrollInfo */
+typedef struct DimeScrollParts { DimeRect up, down, track, thumb; } DimeScrollParts;
+typedef struct DimeScrollArrows {
+    DimePoint up[3], down[3];
+    int32_t pill_left, pill_right, pill_radius;
+} DimeScrollArrows;
+
+int32_t  dime_ui_mul_div(int32_t a, int32_t b, int32_t c);                                  /* MulDiv */
+void     dime_ui_cand_initial_metrics(int32_t cx, int32_t cy, uint32_t wnd_width,
+                                      int32_t* cx_title, int32_t* cy_row, int32_t* padding);  /* WM_CREATE */
+void     dime_ui_cand_metrics(int32_t cx, int32_t cy, int32_t ave_char_width, uint32_t wnd_width, DimeCandMetrics* out);
+void     dime_ui_cand_window_size(int32_t cx_title, int32_t cy_row, int32_t padding, int32_t rows, int32_t sb_width,
+                                  int32_t* width, int32_t* height);
+void     dime_ui_cand_scrollbar_rect(const DimeRect* client, int32_t sb_width, uint32_t dpi, int32_t corner_radius_base, DimeRect* out);
+void     dime_ui_cand_row(const DimeRect* paint, int32_t index, const DimeCandMetrics* m, int32_t sb_width, uint32_t dpi, DimeCandRow* out);
+int32_t  dime_ui_cand_truncate(int32_t length, int32_t* tail_offset);                       /* tail_offset -1: not truncated */
+int32_t  dime_ui_cand_item_needs_measure(int32_t display_length, uint32_t wnd_width);
+int32_t  dime_ui_cand_widen(int32_t display_length, int32_t measured_cx, int32_t text_left, int32_t* cx_title, uint32_t* wnd_width);
+int32_t  dime_ui_cand_needs_resize(int32_t cx_title, const DimeRect* paint, int32_t sb_width);
+int32_t  dime_ui_cand_hit_row(const DimeRect* client, int32_t padding, int32_t sb_width, int32_t cy_row,
+                              uint32_t rows_in_page, uint32_t page_start, uint32_t count, DimePoint pt);  /* -1: none */
+void     dime_ui_cand_mouse_area(const DimeRect* client, int32_t sb_width, int32_t which, DimeRect* out); /* 0 scroll column, 1 list */
+void     dime_ui_cand_page_indicator(const DimeRect* client, int32_t cy_row, int32_t rows, int32_t sb_width, uint32_t dpi, DimeRect* out);
+void     dime_ui_sb_parts(const DimeRect* client, uint32_t dpi, const DimeScrollInfo* si, DimeScrollParts* out);
+int32_t  dime_ui_sb_hit_test(const DimeRect* client, uint32_t dpi, const DimeScrollInfo* si, DimePoint pt); /* SCROLLBAR_HITTEST */
+int32_t  dime_ui_sb_idle_thumb(const DimeRect* client, uint32_t dpi, const DimeScrollInfo* si, DimeRect* out);
+void     dime_ui_sb_arrows(const DimeRect* client, uint32_t dpi, DimeScrollArrows* out);
+int32_t  dime_ui_sb_drag_pos(const DimeRect* client, uint32_t dpi, const DimeScrollInfo* si, int32_t start_pos, int32_t delta_y, int32_t* out);
+int32_t  dime_ui_sb_clamp_pos(int32_t pos, int32_t max);
+void     dime_ui_sb_attached_rect(int32_t parent_w, int32_t parent_h, int32_t sb_width, DimeRect* out);
+
 #ifdef __cplusplus
 }
 #endif

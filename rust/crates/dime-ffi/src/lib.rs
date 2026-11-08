@@ -17,7 +17,7 @@ use std::ptr;
 
 use dime_core::big5;
 use dime_core::candgen;
-use dime_ui::layout;
+use dime_ui::{candwnd, layout};
 use dime_core::candidates::{self, CandidatePaging};
 use dime_core::composition;
 use dime_core::keyclass;
@@ -2760,6 +2760,356 @@ pub unsafe extern "C" fn dime_ui_restack(
             }
         }
     })
+}
+
+// ---------------------------------------------------------------------------
+// UI layout (dime-ui): candidate window and scroll bar (phase 3b)
+// ---------------------------------------------------------------------------
+
+/// Win32 `MulDiv`.
+#[no_mangle]
+pub extern "C" fn dime_ui_mul_div(a: i32, b: i32, c: i32) -> i32 {
+    guard(-1, || candwnd::mul_div(a, b, c))
+}
+
+/// `WM_CREATE` metrics of the candidate window.
+///
+/// # Safety
+/// The out-pointers must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_cand_initial_metrics(
+    cx: i32,
+    cy: i32,
+    wnd_width: u32,
+    cx_title: *mut i32,
+    cy_row: *mut i32,
+    padding: *mut i32,
+) {
+    guard((), || {
+        let (t, r, p) = candwnd::initial_metrics(cx, cy, wnd_width);
+        unsafe {
+            set(cx_title, t);
+            set(cy_row, r);
+            set(padding, p);
+        }
+    })
+}
+
+/// `_DrawList` metrics.
+///
+/// # Safety
+/// `out` must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_cand_metrics(
+    cx: i32,
+    cy: i32,
+    ave_char_width: i32,
+    wnd_width: u32,
+    out: *mut candwnd::CandMetrics,
+) {
+    guard((), || unsafe { set(out, candwnd::metrics(cx, cy, ave_char_width, wnd_width)) })
+}
+
+/// Candidate window size.
+///
+/// # Safety
+/// The out-pointers must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_cand_window_size(
+    cx_title: i32,
+    cy_row: i32,
+    padding: i32,
+    rows: i32,
+    sb_width: i32,
+    width: *mut i32,
+    height: *mut i32,
+) {
+    guard((), || {
+        let (w, h) = candwnd::window_size(cx_title, cy_row, padding, rows, sb_width);
+        unsafe {
+            set(width, w);
+            set(height, h);
+        }
+    })
+}
+
+/// The scroll bar inside the candidate window.
+///
+/// # Safety
+/// The pointers must be valid.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_cand_scrollbar_rect(
+    client: *const layout::Rect,
+    sb_width: i32,
+    dpi: u32,
+    corner_radius_base: i32,
+    out: *mut layout::Rect,
+) {
+    guard((), || {
+        if let Some(c) = unsafe { client.as_ref() } {
+            unsafe { set(out, candwnd::scrollbar_rect(c, sb_width, dpi, corner_radius_base)) };
+        }
+    })
+}
+
+/// One row of the candidate list.
+///
+/// # Safety
+/// The pointers must be valid.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_cand_row(
+    paint: *const layout::Rect,
+    index: i32,
+    metrics: *const candwnd::CandMetrics,
+    sb_width: i32,
+    dpi: u32,
+    out: *mut candwnd::CandRow,
+) {
+    guard((), || {
+        if let (Some(p), Some(m)) = (unsafe { paint.as_ref() }, unsafe { metrics.as_ref() }) {
+            unsafe { set(out, candwnd::row(p, index, m, sb_width, dpi)) };
+        }
+    })
+}
+
+/// Item truncation: returns the shown length; `*tail_offset` is where the
+/// tail starts, or -1 when the item is not truncated.
+///
+/// # Safety
+/// `tail_offset` must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_cand_truncate(length: i32, tail_offset: *mut i32) -> i32 {
+    guard(length, || {
+        let (shown, tail) = candwnd::truncate_item(length);
+        unsafe { set(tail_offset, tail.unwrap_or(-1)) };
+        shown
+    })
+}
+
+/// Whether an item is measured to widen the window.
+#[no_mangle]
+pub extern "C" fn dime_ui_cand_item_needs_measure(display_length: i32, wnd_width: u32) -> i32 {
+    guard(0, || i32::from(candwnd::item_needs_measure(display_length, wnd_width)))
+}
+
+/// Widen for a measured item: returns 1 and updates `*cx_title` / `*wnd_width`
+/// when it widens.
+///
+/// # Safety
+/// The pointers must be valid.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_cand_widen(
+    display_length: i32,
+    measured_cx: i32,
+    text_left: i32,
+    cx_title: *mut i32,
+    wnd_width: *mut u32,
+) -> i32 {
+    guard(0, || {
+        if cx_title.is_null() || wnd_width.is_null() {
+            return 0;
+        }
+        match candwnd::widen_for_item(display_length, measured_cx, text_left, unsafe { *cx_title }) {
+            Some((t, w)) => {
+                unsafe {
+                    *cx_title = t;
+                    *wnd_width = w;
+                }
+                1
+            }
+            None => 0,
+        }
+    })
+}
+
+/// Whether the candidate window is resized after drawing.
+///
+/// # Safety
+/// `paint` must be valid.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_cand_needs_resize(cx_title: i32, paint: *const layout::Rect, sb_width: i32) -> i32 {
+    guard(0, || match unsafe { paint.as_ref() } {
+        Some(p) => i32::from(candwnd::needs_resize(cx_title, p, sb_width)),
+        None => 0,
+    })
+}
+
+/// The row under `pt`, or -1.
+///
+/// # Safety
+/// `client` must be valid.
+#[no_mangle]
+#[allow(clippy::too_many_arguments)]
+pub unsafe extern "C" fn dime_ui_cand_hit_row(
+    client: *const layout::Rect,
+    padding: i32,
+    sb_width: i32,
+    cy_row: i32,
+    rows_in_page: u32,
+    page_start: u32,
+    count: u32,
+    pt: layout::Point,
+) -> i32 {
+    guard(-1, || match unsafe { client.as_ref() } {
+        Some(c) => candwnd::hit_row(c, padding, sb_width, cy_row, rows_in_page, page_start, count, pt)
+            .map_or(-1, |r| r as i32),
+        None => -1,
+    })
+}
+
+/// The scroll bar column (`which` 0) or the list area (`which` 1).
+///
+/// # Safety
+/// The pointers must be valid.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_cand_mouse_area(
+    client: *const layout::Rect,
+    sb_width: i32,
+    which: i32,
+    out: *mut layout::Rect,
+) {
+    guard((), || {
+        if let Some(c) = unsafe { client.as_ref() } {
+            let r = if which == 0 {
+                candwnd::scroll_column(c, sb_width)
+            } else {
+                candwnd::list_area(c, sb_width)
+            };
+            unsafe { set(out, r) };
+        }
+    })
+}
+
+/// The page indicator rectangle.
+///
+/// # Safety
+/// The pointers must be valid.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_cand_page_indicator(
+    client: *const layout::Rect,
+    cy_row: i32,
+    rows: i32,
+    sb_width: i32,
+    dpi: u32,
+    out: *mut layout::Rect,
+) {
+    guard((), || {
+        if let Some(c) = unsafe { client.as_ref() } {
+            unsafe { set(out, candwnd::page_indicator(c, cy_row, rows, sb_width, dpi)) };
+        }
+    })
+}
+
+/// The scroll bar parts.
+///
+/// # Safety
+/// The pointers must be valid.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_sb_parts(
+    client: *const layout::Rect,
+    dpi: u32,
+    si: *const candwnd::ScrollInfo,
+    out: *mut candwnd::ScrollParts,
+) {
+    guard((), || {
+        if let (Some(c), Some(s)) = (unsafe { client.as_ref() }, unsafe { si.as_ref() }) {
+            unsafe { set(out, candwnd::parts(c, dpi, s)) };
+        }
+    })
+}
+
+/// `SCROLLBAR_HITTEST` of `pt`.
+///
+/// # Safety
+/// The pointers must be valid.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_sb_hit_test(
+    client: *const layout::Rect,
+    dpi: u32,
+    si: *const candwnd::ScrollInfo,
+    pt: layout::Point,
+) -> i32 {
+    guard(candwnd::hit::NONE, || match (unsafe { client.as_ref() }, unsafe { si.as_ref() }) {
+        (Some(c), Some(s)) => candwnd::hit_test(c, dpi, s, pt),
+        _ => candwnd::hit::NONE,
+    })
+}
+
+/// The idle thin-line thumb: returns 0 when there is none.
+///
+/// # Safety
+/// The pointers must be valid.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_sb_idle_thumb(
+    client: *const layout::Rect,
+    dpi: u32,
+    si: *const candwnd::ScrollInfo,
+    out: *mut layout::Rect,
+) -> i32 {
+    guard(0, || match (unsafe { client.as_ref() }, unsafe { si.as_ref() }) {
+        (Some(c), Some(s)) => match candwnd::idle_thumb(c, dpi, s) {
+            Some(r) => {
+                unsafe { set(out, r) };
+                1
+            }
+            None => 0,
+        },
+        _ => 0,
+    })
+}
+
+/// The arrows and pill thumb of the hovered scroll bar.
+///
+/// # Safety
+/// The pointers must be valid.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_sb_arrows(client: *const layout::Rect, dpi: u32, out: *mut candwnd::ScrollArrows) {
+    guard((), || {
+        if let Some(c) = unsafe { client.as_ref() } {
+            unsafe { set(out, candwnd::arrows(c, dpi)) };
+        }
+    })
+}
+
+/// The position while dragging the thumb: returns 0 when the thumb cannot
+/// slide.
+///
+/// # Safety
+/// The pointers must be valid.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_sb_drag_pos(
+    client: *const layout::Rect,
+    dpi: u32,
+    si: *const candwnd::ScrollInfo,
+    start_pos: i32,
+    delta_y: i32,
+    out: *mut i32,
+) -> i32 {
+    guard(0, || match (unsafe { client.as_ref() }, unsafe { si.as_ref() }) {
+        (Some(c), Some(s)) => match candwnd::drag_position(c, dpi, s, start_pos, delta_y) {
+            Some(p) => {
+                unsafe { set(out, p) };
+                1
+            }
+            None => 0,
+        },
+        _ => 0,
+    })
+}
+
+/// `_SetCurPos` clamp.
+#[no_mangle]
+pub extern "C" fn dime_ui_sb_clamp_pos(pos: i32, max: i32) -> i32 {
+    guard(0, || candwnd::clamp_pos(pos, max))
+}
+
+/// The scroll bar relative to its parent.
+///
+/// # Safety
+/// `out` must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_sb_attached_rect(parent_w: i32, parent_h: i32, sb_width: i32, out: *mut layout::Rect) {
+    guard((), || unsafe { set(out, candwnd::attached_rect(parent_w, parent_h, sb_width)) })
 }
 
 #[cfg(test)]

@@ -35,6 +35,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "BaseWindow.h"
 #include "ButtonWindow.h"
+#include "UILayout.h"
 
 class CScrollButtonWindow;
 
@@ -143,6 +144,7 @@ public:
     BOOL _GetTrackRect(_Out_ RECT *prc);
     BOOL _GetThumbRect(_Out_ RECT *prc);
     SCROLLBAR_HITTEST _HitTest(POINT pt);
+    UILayout::ScrollParts _GetParts();
 
     virtual void _ShiftLine(int nLine, BOOL isNotify)
     {

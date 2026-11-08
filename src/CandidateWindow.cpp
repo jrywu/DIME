@@ -37,6 +37,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "UIConstants.h"
 #include "BaseWindow.h"
 #include "CandidateWindow.h"
+#include "UILayout.h"
 #include <memory> // Include for smart pointers
 
 #define NO_ANIMATION
@@ -211,14 +212,15 @@ Exit:
     return ret;
 }
 
-const int PageCountPosition = 1;
-const int StringPosition = 2;
-
+// The scroll bar column width (hover width, also without a scroll bar window).
+int CCandidateWindow::_GetScrollBarWidth()
+{
+	return _pVScrollBarWnd ? _pVScrollBarWnd->_GetHoverWidth() : UILayout::ScaleForDpi(SCROLLBAR_HOVER_WIDTH, CConfig::GetDpiForHwnd(_GetWnd()));
+}
 
 UINT CCandidateWindow::_GetWidth()
 {
-	int sbWidth = _pVScrollBarWnd ? _pVScrollBarWnd->_GetHoverWidth() : MulDiv(SCROLLBAR_HOVER_WIDTH, CConfig::GetDpiForHwnd(_GetWnd()), USER_DEFAULT_SCREEN_DPI);
-	return _cxTitle + sbWidth + CANDWND_BORDER_WIDTH *2;
+	return UILayout::CandWindowSize(_cxTitle, _cyRow, _padding, 0, _GetScrollBarWidth()).cx;
 }
 
 void CCandidateWindow::_ResizeWindow()
@@ -226,29 +228,20 @@ void CCandidateWindow::_ResizeWindow()
 
 	if(_pIndexRange == nullptr) return;
     int candidateListPageCnt = _pIndexRange->Count();
-	int VScrollWidth = _pVScrollBarWnd ? _pVScrollBarWnd->_GetHoverWidth() : MulDiv(SCROLLBAR_HOVER_WIDTH, CConfig::GetDpiForHwnd(_GetWnd()), USER_DEFAULT_SCREEN_DPI);
-	int topPadding = _cyRow / 3;
-	int bottomPadding = _padding;
-	int totalW = _cxTitle + VScrollWidth + CANDWND_BORDER_WIDTH*2;
-	int totalH = topPadding + _cyRow * candidateListPageCnt + bottomPadding + CANDWND_BORDER_WIDTH*2;
-	debugPrint(L"CCandidateWindow::_ResizeWindow() _cxTitle=%d pageCnt=%d w=%d h=%d pos=(%d,%d)", _cxTitle, candidateListPageCnt, totalW, totalH, _x, _y);
-	CBaseWindow::_Resize(_x, _y, totalW, totalH);
+	int VScrollWidth = _GetScrollBarWidth();
+	SIZE total = UILayout::CandWindowSize(_cxTitle, _cyRow, _padding, candidateListPageCnt, VScrollWidth);
+	debugPrint(L"CCandidateWindow::_ResizeWindow() _cxTitle=%d pageCnt=%d w=%d h=%d pos=(%d,%d)", _cxTitle, candidateListPageCnt, total.cx, total.cy, _x, _y);
+	CBaseWindow::_Resize(_x, _y, total.cx, total.cy);
 
     RECT rcCandRect = {0, 0, 0, 0};
     _GetClientRect(&rcCandRect);
-
-    UINT dpi = CConfig::GetDpiForHwnd(_GetWnd());
-    int arcRadius = MulDiv(_cornerRadiusBase / 2, dpi, USER_DEFAULT_SCREEN_DPI);
-    int left = rcCandRect.right - VScrollWidth;
-    int top = rcCandRect.top + arcRadius;
-    int width = VScrollWidth;
-    int height = rcCandRect.bottom - rcCandRect.top - arcRadius * 2;
 
 	if(_pVScrollBarWnd)
 	{
 		// Shorten scrollbar vertically by the corner arc radius at top and bottom so it
 		// never overlaps the rounded corner areas. No SetWindowRgn needed on the scrollbar.
-		_pVScrollBarWnd->_Resize(left, top, width, height);
+		RECT rcSB = UILayout::CandScrollBarRect(rcCandRect, VScrollWidth, CConfig::GetDpiForHwnd(_GetWnd()), _cornerRadiusBase);
+		_pVScrollBarWnd->_Resize(rcSB.left, rcSB.top, rcSB.right - rcSB.left, rcSB.bottom - rcSB.top);
 	}
 }
 
@@ -320,7 +313,7 @@ void CCandidateWindow::_Show(BOOL isShowWnd)
         if (cx > 0 && cy > 0)
         {
             UINT dpi = CConfig::GetDpiForHwnd(_GetWnd());
-            int radius = MulDiv(_cornerRadiusBase, dpi, USER_DEFAULT_SCREEN_DPI);
+            int radius = UILayout::ScaleForDpi(_cornerRadiusBase, dpi);
             HRGN hRgn = CreateRoundRectRgn(0, 0, cx + 1, cy + 1, radius, radius);
             SetWindowRgn(_GetWnd(), hRgn, TRUE);
         }
@@ -475,9 +468,8 @@ LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT
 				GetTextExtentPoint32(dcHandle, pwszTestString, _wndWidth, &candSize); //don't trust the TextMetrics. Measurement the font height and width directly.
 				delete[]pwszTestString;
 
-				_cxTitle = candSize.cx + StringPosition * (candSize.cx / _wndWidth);
-				_cyRow = candSize.cy * 5 / 4;
-				_padding = _cyRow / 2;  // match _DrawList (line 947) so _ResizeWindow produces consistent height
+				// _padding matches _DrawList so _ResizeWindow produces consistent height
+				UILayout::CandInitialMetrics(candSize, _wndWidth, &_cxTitle, &_cyRow, &_padding);
 
                 SelectObject(dcHandle, hFontOld);
                 ReleaseDC(wndHandle, dcHandle);
@@ -775,10 +767,7 @@ void CCandidateWindow::_OnLButtonDown(POINT pt)
     RECT rcWindow = {0, 0, 0, 0};;
     _GetClientRect(&rcWindow);
 
-    int cyLine = _cyRow;
-    
     UINT candidateListPageCnt = _pIndexRange->Count();
-    UINT index = 0;
     int currentPage = 0;
 
     if (FAILED(_GetCurrentPage(&currentPage)))
@@ -787,35 +776,24 @@ void CCandidateWindow::_OnLButtonDown(POINT pt)
     }
 
     // Hit test on list items
-    index = _model->PageStart(currentPage);
-
-
-	RECT rc = {0, 0, 0, 0};
-	rc.left = rcWindow.left + _padding;
-    rc.right = rcWindow.right  - (_pVScrollBarWnd ? _pVScrollBarWnd->_GetHoverWidth() : MulDiv(SCROLLBAR_HOVER_WIDTH, CConfig::GetDpiForHwnd(_GetWnd()), USER_DEFAULT_SCREEN_DPI)) - CANDWND_BORDER_WIDTH;
-
-    for (UINT pageCount = 0; (index < _model->Count()) && (pageCount < candidateListPageCnt); index++, pageCount++)
-    {	
-        rc.top = rcWindow.top + cyLine / 3 + (pageCount * cyLine);
-        rc.bottom = rcWindow.top + cyLine / 3 + ((pageCount + 1) * cyLine);
-
-        if (PtInRect(&rc, pt) && _pfnCallback)
-        {
-            SetCursor(LoadCursor(NULL, IDC_HAND));
-            _model->SetSelectionRaw(index);
-            // Store callback pointer before calling to prevent use-after-free
-            CANDWNDCALLBACK pfnCallback = _pfnCallback;
-            void* pObj = _pObj;
-            pfnCallback(pObj, CANDWND_ACTION::CAND_ITEM_SELECT);
-            return;
-        }
+    UINT pageStart = _model->PageStart(currentPage);
+    int row = UILayout::CandHitRow(rcWindow, _padding, _GetScrollBarWidth(), _cyRow, candidateListPageCnt, pageStart, _model->Count(), pt);
+    if (row >= 0 && _pfnCallback)
+    {
+        SetCursor(LoadCursor(NULL, IDC_HAND));
+        _model->SetSelectionRaw(pageStart + row);
+        // Store callback pointer before calling to prevent use-after-free
+        CANDWNDCALLBACK pfnCallback = _pfnCallback;
+        void* pObj = _pObj;
+        pfnCallback(pObj, CANDWND_ACTION::CAND_ITEM_SELECT);
+        return;
     }
 
     SetCursor(LoadCursor(NULL, IDC_ARROW));
 
     if (_pVScrollBarWnd && _pVScrollBarWnd->_IsEnabled())
     {
-        rc = {0, 0, 0, 0};
+        RECT rc = {0, 0, 0, 0};
 
         _pVScrollBarWnd->_GetClientRect(&rc);
         MapWindowPoints(_GetWnd(), _pVScrollBarWnd->_GetWnd(), &pt, 1);
@@ -871,11 +849,11 @@ void CCandidateWindow::_OnMouseMove(POINT pt)
 	RECT rcWindow = { 0, 0, 0, 0 }, rc = { 0, 0, 0, 0 };
 	_GetClientRect(&rcWindow);
 
-	int scrollWidth = (_pVScrollBarWnd ? _pVScrollBarWnd->_GetHoverWidth() : MulDiv(SCROLLBAR_HOVER_WIDTH, CConfig::GetDpiForHwnd(_GetWnd()), USER_DEFAULT_SCREEN_DPI));
+	int scrollWidth = _GetScrollBarWidth();
 	// Mouse in scrollbar column → full scrollbar; outside → thin line after 2s delay (handled in scrollbar).
 	if (_pVScrollBarWnd)
 	{
-		RECT rcScroll = { rcWindow.right - scrollWidth - CANDWND_BORDER_WIDTH, rcWindow.top, rcWindow.right, rcWindow.bottom };
+		RECT rcScroll = UILayout::CandScrollColumnRect(rcWindow, scrollWidth);
 		_pVScrollBarWnd->_SetCandidateMouseIn(PtInRect(&rcScroll, pt));
 	}
 
@@ -886,11 +864,7 @@ void CCandidateWindow::_OnMouseMove(POINT pt)
 		_isTrackingCandMouse = TRUE;
 	}
 
-	rc.left = rcWindow.left;
-	rc.right = rcWindow.right - scrollWidth - CANDWND_BORDER_WIDTH;
-
-	rc.top = rcWindow.top;
-	rc.bottom = rcWindow.bottom;
+	rc = UILayout::CandListAreaRect(rcWindow, scrollWidth);
 
 	if (PtInRect(&rc, pt))
 	{
@@ -974,14 +948,14 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
 	debugPrint(L"CCandidateWindow::_DrawList(), _wndWidth = %d", _wndWidth);
 
 	if(_pIndexRange == nullptr || prc == nullptr) return;
-	
+
     int indexInPage = 0;
     int candidateListPageCnt = _pIndexRange->Count();
-	int VScrollWidth = (_pVScrollBarWnd ? _pVScrollBarWnd->_GetHoverWidth() : MulDiv(SCROLLBAR_HOVER_WIDTH, CConfig::GetDpiForHwnd(_GetWnd()), USER_DEFAULT_SCREEN_DPI));
+	int VScrollWidth = _GetScrollBarWidth();
+	UINT dpi = CConfig::GetDpiForHwnd(_GetWnd());
 
-    RECT rc = { 0,0,0,0 };
-	const size_t numStringLen = 2;
-	
+    const size_t numStringLen = 2;
+
 	GetTextMetrics(dcHandle, &_TextMetric);
 	SIZE candSize = { 0,0 };
 	PWCHAR pwszTestString = new (std::nothrow) WCHAR[_wndWidth + 1];
@@ -994,19 +968,11 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
 
 	}
 
-	
-	int cxLine = max((int)_TextMetric.tmAveCharWidth, (int)candSize.cx / (int)_wndWidth);
-	int cyLine = candSize.cy * 5 / 4; 
-
-	int fistLineOffset = cyLine / 3;
-	int leftPadding = cyLine / 2;
-
-	_cxTitle = candSize.cx + (leftPadding + cxLine);
-	_cyRow = cyLine;
-	_padding = cyLine / 2;
-
-	int cyOffset = candSize.cy / 8 + fistLineOffset; //offset in line + blank before 1st line.
-	
+	// Row metrics, rectangles, truncation and widening: UILayout (CandMeasureMetrics, CandRowLayout, ...).
+	const UILayout::CandMetrics m = UILayout::CandMeasureMetrics(candSize, (int)_TextMetric.tmAveCharWidth, _wndWidth);
+	_cxTitle = m.cxTitle;
+	_cyRow = m.cyLine;
+	_padding = m.padding;
 
     // RC26: Reset scrollbar selection highlight before drawing rows (non-layered only)
     if (_pVScrollBarWnd && _pVScrollBarWnd->_GetWnd() &&
@@ -1023,26 +989,21 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
         WCHAR wszNumString[numStringLen] = {'\0'};
         CCandidateListItem* pItemList = nullptr;
 
-		rc.top = prc->top + indexInPage * cyLine + fistLineOffset;
-        rc.bottom = rc.top + cyLine;
+        const UILayout::CandRow row = UILayout::CandRowLayout(*prc, indexInPage, m, VScrollWidth, dpi);
+        RECT rc = row.number;
 
         BOOL isSelected = (_model->Selection() == (INT)currentPageIndex);
 
         if (isSelected)
         {
             // Selected row: fill entire row with normal bg, then draw rounded highlight
-            // Symmetric margins: same as padding on both sides
-            int hMargin = leftPadding;
-            RECT rcFullRow = { prc->left, rc.top, prc->right, rc.bottom };
+            RECT rcFullRow = row.row;
             if (_brshBkColor) FillRect(dcHandle, &rcFullRow, _brshBkColor);
 
-            UINT dpiSel = CConfig::GetDpiForHwnd(_GetWnd());
-            int vInset = MulDiv(1, dpiSel, USER_DEFAULT_SCREEN_DPI);
-            int cornerR = MulDiv(4, dpiSel, USER_DEFAULT_SCREEN_DPI);
+            int cornerR = row.cornerRadius;
 
             // Rounded selection highlight with symmetric left/right margin
-            RECT rcHighlight = { prc->left + hMargin, rc.top + vInset,
-                                 prc->right - hMargin, rc.bottom - vInset };
+            RECT rcHighlight = row.highlight;
             HBRUSH hSelBrush = CreateSolidBrush(_crSelectedBkColor);
             HPEN hSelPen = (HPEN)GetStockObject(NULL_PEN);
             HBRUSH hOldBr = (HBRUSH)SelectObject(dcHandle, hSelBrush);
@@ -1071,29 +1032,23 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
             // Draw number with transparent background
             SetBkMode(dcHandle, TRANSPARENT);
             SetTextColor(dcHandle, _crSelectedTextColor);
-            rc.left = prc->left + leftPadding;
-            rc.right = prc->left + (leftPadding + cxLine);
             StringCchPrintf(wszNumString, ARRAYSIZE(wszNumString), L"%c", _pIndexRange->GetAt(indexInPage)->CandIndex);
-            ExtTextOut(dcHandle, leftPadding, indexInPage * cyLine + cyOffset, 0, &rc, wszNumString, numStringLen, NULL);
+            ExtTextOut(dcHandle, row.numberX, row.textY, 0, &rc, wszNumString, numStringLen, NULL);
 
             // Set up for candidate text (transparent bg)
-            rc.left = prc->left + (leftPadding + cxLine);
-            rc.right = prc->right - VScrollWidth;
+            rc = row.text;
             SetTextColor(dcHandle, _crSelectedTextColor);
         }
         else
         {
             // Non-selected row: standard opaque drawing
-            rc.left = prc->left + leftPadding;
-            rc.right = prc->left + (leftPadding + cxLine);
             SetTextColor(dcHandle, _crNumberColor);
             SetBkColor(dcHandle, _crNumberBkColor);
             SetBkMode(dcHandle, OPAQUE);
             StringCchPrintf(wszNumString, ARRAYSIZE(wszNumString), L"%c", _pIndexRange->GetAt(indexInPage)->CandIndex);
-            ExtTextOut(dcHandle, leftPadding, indexInPage * cyLine + cyOffset, ETO_OPAQUE, &rc, wszNumString, numStringLen, NULL);
+            ExtTextOut(dcHandle, row.numberX, row.textY, ETO_OPAQUE, &rc, wszNumString, numStringLen, NULL);
 
-            rc.left = prc->left + (leftPadding + cxLine);
-            rc.right = prc->right - VScrollWidth;
+            rc = row.text;
             SetTextColor(dcHandle, _crTextColor);
             SetBkColor(dcHandle, _crBkColor);
         }
@@ -1102,43 +1057,34 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
 		if(pItemList == nullptr) continue;
 		SIZE size;
 		WCHAR itemText[MAX_CAND_ITEM_LENGTH + 3] = { '\0' };
-		int itemLength = (int)pItemList->_ItemString.GetLength();
-		if (itemLength > MAX_CAND_ITEM_LENGTH) // if the length of item text > MAX_CAND_ITEM_LENGTH (13) , truncate the item text as "First 6 chars of itemtext"+"..."+"last 6 chars of itemtext"
+		int tailOffset = -1;
+		int itemLength = UILayout::CandTruncateItem((int)pItemList->_ItemString.GetLength(), &tailOffset);
+		if (tailOffset >= 0) // "First 6 chars of itemtext"+"..."+"last 6 chars of itemtext"
 		{
 			StringCchCatN(itemText, MAX_CAND_ITEM_LENGTH + 3, pItemList->_ItemString.Get(), 6);
             StringCchCatN(itemText, MAX_CAND_ITEM_LENGTH + 3, L"…", 1);
-			StringCchCatN(itemText, MAX_CAND_ITEM_LENGTH + 3, (pItemList->_ItemString.Get() + itemLength - 6), 6);
-			itemLength = MAX_CAND_ITEM_LENGTH;
+			StringCchCatN(itemText, MAX_CAND_ITEM_LENGTH + 3, (pItemList->_ItemString.Get() + tailOffset), 6);
 		}
 		else
 			StringCchCopyN(itemText, MAX_CAND_ITEM_LENGTH + 3, pItemList->_ItemString.Get(), itemLength);
 
-		if (itemLength > (int)_wndWidth)
+		if (UILayout::CandItemNeedsMeasure(itemLength, _wndWidth))
 		{
 			GetTextExtentPoint32(dcHandle, pItemList->_ItemString.Get(), (int)pItemList->_ItemString.GetLength(), &size);
-			if (_cxTitle < (int)size.cx + (leftPadding + cxLine))
-			{
-				_cxTitle = size.cx + (leftPadding + cxLine);
-				_wndWidth = itemLength;
-			}
+			UILayout::CandWidenForItem(itemLength, (int)size.cx, row.textX, &_cxTitle, &_wndWidth);
 		}
 
-		ExtTextOut(dcHandle, (leftPadding + cxLine), indexInPage * cyLine + cyOffset, isSelected ? 0 : ETO_OPAQUE, &rc, itemText, (DWORD)itemLength, NULL);
+		ExtTextOut(dcHandle, row.textX, row.textY, isSelected ? 0 : ETO_OPAQUE, &rc, itemText, (DWORD)itemLength, NULL);
 		if (isSelected) SetBkMode(dcHandle, OPAQUE); // restore for next row
-	
+
     }
 	for (; (indexInPage < candidateListPageCnt); indexInPage++)
     {
-		rc.top = prc->top + indexInPage * cyLine + fistLineOffset;
-        rc.bottom = rc.top + cyLine;
-
-        rc.left   = prc->left + leftPadding;
-        rc.right  = prc->left + (leftPadding + cxLine);
-
+        RECT rc = UILayout::CandRowLayout(*prc, indexInPage, m, VScrollWidth, dpi).number;
         if(_brshBkColor) FillRect(dcHandle, &rc, _brshBkColor);
     }
 
-	if(_cxTitle != prc->right - prc->left - VScrollWidth) _ResizeWindow();
+	if (UILayout::CandNeedsResize(_cxTitle, *prc, VScrollWidth)) _ResizeWindow();
 }
 
 //+---------------------------------------------------------------------------
@@ -1151,18 +1097,11 @@ void CCandidateWindow::_DrawPageIndicator(_In_ HDC dcHandle, _In_ UINT currentPa
 	if (_pIndexRange == nullptr || _model->PageCount() <= 1 || prc == nullptr) return;
 
 	int candidateListPageCnt = _pIndexRange->Count();
-	int cyLine = _cyRow;
 
 	// Use absolute client coordinates — do not rely on prc (the paint dirty rect),
 	// which may reflect a stale window size when _ResizeWindow() was called mid-paint.
 	RECT rcClient = { 0, 0, 0, 0 };
 	_GetClientRect(&rcClient);
-
-	RECT rcIndicator;
-	rcIndicator.left   = rcClient.left;
-	rcIndicator.right  = rcClient.right;
-	rcIndicator.top    = cyLine / 3 + candidateListPageCnt * cyLine;
-	rcIndicator.bottom = rcClient.bottom;
 
 	WCHAR wszPageInfo[16] = { L'\0' };
 	StringCchPrintf(wszPageInfo, ARRAYSIZE(wszPageInfo), L"%u/%u",
@@ -1172,17 +1111,15 @@ void CCandidateWindow::_DrawPageIndicator(_In_ HDC dcHandle, _In_ UINT currentPa
 	LOGFONT lf = { 0 };
 	if (GetObject(Global::defaultlFontHandle, sizeof(LOGFONT), &lf))
 	{
-		lf.lfHeight = MulDiv(lf.lfHeight, 70, 100);
+		lf.lfHeight = UILayout::CandPageIndicatorFontHeight(lf.lfHeight);
 		HFONT hSmallFont = CreateFontIndirect(&lf);
 		if (hSmallFont)
 		{
 			SelectObject(dcHandle, hSmallFont);
 
 			// Right-aligned, compact, with padding from edges
-			int VScrollWidth = (_pVScrollBarWnd ? _pVScrollBarWnd->_GetHoverWidth() : MulDiv(SCROLLBAR_HOVER_WIDTH, CConfig::GetDpiForHwnd(_GetWnd()), USER_DEFAULT_SCREEN_DPI));
-			UINT dpiInd = CConfig::GetDpiForHwnd(_GetWnd());
-			int hPad = MulDiv(4, dpiInd, USER_DEFAULT_SCREEN_DPI);
-			rcIndicator.right -= (VScrollWidth + hPad);
+			RECT rcIndicator = UILayout::CandPageIndicatorRect(rcClient, _cyRow, candidateListPageCnt,
+				_GetScrollBarWidth(), CConfig::GetDpiForHwnd(_GetWnd()));
 			SetTextColor(dcHandle, _crNumberColor);
 			SetBkMode(dcHandle, TRANSPARENT);
 			DrawText(dcHandle, wszPageInfo, -1, &rcIndicator, DT_RIGHT | DT_VCENTER | DT_SINGLELINE);

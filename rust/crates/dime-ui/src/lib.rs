@@ -2,6 +2,8 @@
 //!
 //! Phase 3a: the pure layout calculations of the C++ windows (`CBaseWindow`
 //! placement around the composition, the notify-window stack of
-//! `CUIPresenter`).  The windows themselves are still C++.
+//! `CUIPresenter`).  Phase 3b: the candidate window and scroll bar layout
+//! (`candwnd`).  The windows themselves are still C++.
 
+pub mod candwnd;
 pub mod layout;

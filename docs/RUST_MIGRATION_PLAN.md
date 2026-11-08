@@ -113,7 +113,7 @@
 - **繪圖技術**：維持 GDI（第 6 節的建議做法），外觀不變；Direct2D／DirectWrite 另開議題。
 - **進度（2026-11-08）**：
   - ✅ 3a 版面計算：新增 `dime-ui` crate（純計算，無外部相依）。`layout.rs` 移植視窗相對組字範圍的定位（`CBaseWindow` 的 `RectInRect`、查工作區用的點、`CalcFitPointAroundTextExtent`：下方放不下改放上方、超出左右邊界、上下都放不下時貼齊工作區）與提示窗堆疊（`CUIPresenter` 的往上或往下長、新增一格的位置、重排可見格）。C++ 原本的計算原封不動搬到 `src/UILayout.cpp` 的 `UILayout::Cpp`，`CBaseWindow`／`CUIPresenter` 改呼叫依建置開關分派的 `UILayout::` 函式。`UILayoutParityTest` 對拍：186,942 組矩形、200,000 次定位（含負座標的多螢幕）、100,000 組提示窗堆疊；植入錯誤（貼齊底部時少減視窗高度）被抓到。工作區（`GetMonitorInfo`）、螢幕高度與視窗本身仍在 C++。
-  - ⏳ 3b：候選字窗的版面（列高、寬度、捲軸位置、橫式排列、DPI 縮放）抽成純函式；字型量測仍由 GDI 提供。之後才是視窗、繪圖與訊息處理。
+  - ✅ 3b 候選字窗與捲軸版面：`dime-ui::candwnd` 移植 `CCandidateWindow` 的計算（由量得的字型寬高推出列高、數字欄寬、上下留白與文字偏移；視窗大小；捲軸在圓角內的位置；每列的整列／選取圓角框／數字欄／文字欄矩形與 `ExtTextOut` 原點；超過 13 字的「前 6＋…＋後 6」截斷與依實際寬度加寬；點擊命中哪一列；滑鼠在捲軸欄或清單區；頁碼位置與字級）以及 `CScrollBarWindow` 的計算（上下按鈕、軌道、依比例的滑塊、命中測試、閒置細線、三角形箭頭與膠囊滑塊、拖曳換算位置、`_SetCurPos` 夾限、貼附父視窗的位置），全部依 DPI 縮放。C++ 原版搬到 `UILayout::Cpp`，兩個視窗改呼叫分派版本；字型量測（`GetTextExtentPoint32`／`GetTextMetrics`）、client 矩形、DPI 與繪圖仍在 C++。`MulDiv` 也在 Rust 端重做：四捨五入（遠離零）、分母 0 或溢位回傳 -1；實測 32 位元與 64 位元的 `kernel32` 在 `INT_MIN` 上不同（x64：乘數為 `INT_MIN` 回傳 -1；x86：乘數正常計算，分母為 `INT_MIN` 時是 `(|a·b| + 3·2³⁰) / 2³¹`、正負號取 a、b、c 的 XOR），Rust 依目標架構選用，對拍在 Win32 與 x64 各直接與系統 `MulDiv` 比對約 90 萬次。`UILayoutParityTest` 新增 10 萬組候選字窗版面（含非標準 DPI）、20 萬組捲軸版面；植入錯誤（點擊範圍右界少減邊框）被抓到。程式碼中沒有橫式候選字窗，故無對應移植。下一步（3c）：視窗本身（`windows` crate 的視窗類別、訊息處理、GDI 繪圖）。
 
 ### 第 4 階段：TSF COM 外殼 — 精簡為薄 C++ 層（全面改寫為選做）
 
