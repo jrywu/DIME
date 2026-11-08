@@ -53,7 +53,7 @@
 
 | 步驟 | 內容 | 風險 |
 |---|---|---|
-| 3c-5a | `dime-ui::win`：類別註冊／反註冊、`WindowCell`、WndProc 分派、capture／timer、DPI context；單元測試 | 中：生命週期與重入 |
+| ✅ 3c-5a | `dime-ui::win`：類別註冊／反註冊（同名稱與樣式）、`Window`（`GWLP_USERDATA` 指向裝箱的 `Rc<Window>`，`WM_CREATE` 存入、`WM_NCDESTROY` 釋放；每次訊息處理自持一份 `Rc`，視窗在自己的訊息中被銷毀也安全）、`CBaseWindow::_WindowProc` 的分派語意（`WM_TIMER` 攔下、非分派視窗回 `S_FALSE`）、建立時的 DPI context（動態載入）。capture／timer 的繞道留給各視窗型別（候選字窗把計時器轉給捲軸）。單元測試以真實視窗驗證分派、計時器、`S_FALSE`、在自己的訊息中銷毀、物件在視窗與外部參考都消失後才釋放、重複註冊失敗與反註冊（x64 與 i686） | 中：生命週期與重入 |
 | 3c-5b | 陰影窗由 Rust 擁有（最小、只依賴擁有者的 HWND） | 低 |
 | 3c-5c | 捲軸窗由 Rust 擁有（候選字窗的子視窗，仍在 C++ 的候選字窗經 FFI 操作它） | 中 |
 | 3c-5d | 候選字窗由 Rust 擁有；`UIPresenter` 在 Rust 建置下直接用 handle；模型改由 `UIPresenter` 持有、經 host 給 Rust | 高：介面最多、和 `UIPresenter` 互動最多 |

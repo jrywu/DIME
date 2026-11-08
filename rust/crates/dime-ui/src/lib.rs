@@ -8,8 +8,9 @@
 //! (`candproc`, Windows only).  Phase 3c-3a: the scroll bar drawing
 //! (`sbpaint`, Windows only).  Phase 3c-3b: the scroll bar events
 //! (`sbproc`, Windows only).  Phase 3c-4: the drop shadow (`shadow`).
-//! Phase 3c-6: the notify window (`notify`, Windows only).  The window
-//! objects themselves are still C++.
+//! Phase 3c-6: the notify window (`notify`, Windows only).  Phase 3c-5a:
+//! the window infrastructure (`win`, Windows only): classes, creation and
+//! dispatch for windows owned by Rust.
 
 #[cfg(windows)]
 pub mod candpaint;
@@ -24,3 +25,5 @@ pub mod sbpaint;
 #[cfg(windows)]
 pub mod sbproc;
 pub mod shadow;
+#[cfg(windows)]
+pub mod win;
