@@ -16,6 +16,8 @@
 pub mod candpaint;
 #[cfg(windows)]
 pub mod candproc;
+#[cfg(windows)]
+pub mod candwin;
 pub mod candwnd;
 pub mod layout;
 #[cfg(windows)]

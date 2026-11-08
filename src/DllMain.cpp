@@ -34,6 +34,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <mutex>
 #include <sal.h> // Include SAL annotations
 #include "Globals.h"
+#ifdef DIME_RUST_AVAILABLE
+#include "dime_ffi.h"
+#endif
 //#include <VersionHelpers.h> // Include VersionHelpers for IsWindows* macros
 #pragma warning(disable : 4996)
 
@@ -141,7 +144,12 @@ BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID pvReserved)
                     auto setThreadDpiCtx = reinterpret_cast<_T_SetThreadDpiAwarenessContext>(
                         GetProcAddress(hUser32, "SetThreadDpiAwarenessContext"));
                     if (setThreadDpiCtx)
+                    {
                         CConfig::SetSetThreadDpiAwarenessContext(setThreadDpiCtx);
+#ifdef DIME_RUST_AVAILABLE
+                        dime_ui_set_thread_dpi_context_function((void*)setThreadDpiCtx);   // the windows owned by Rust
+#endif
+                    }
                 }
             }
 

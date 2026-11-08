@@ -808,6 +808,57 @@ void    dime_ui_scrollbar_highlight(const DimeScrollBar* s, DimeRect* rect, int3
 void    dime_ui_scrollbar_snapshot(const DimeScrollBar* s, DimeSbSnapshot* out);                              /* tests */
 void    dime_ui_scrollbar_paint(const DimeScrollBar* s, void* dc, const DimeRect* paint);                     /* tests; paint NULL: no PAINTSTRUCT */
 
+/* ---- The candidate window owned by Rust (rust/crates/dime-ui/src/candwin.rs, phase 3c-5d) ---- */
+typedef struct DimeCandEnv {
+    uint32_t (*dpi_for_hwnd)(void* hwnd);           /* CConfig::GetDpiForHwnd */
+    int32_t  (*dark)(void);                         /* CConfig::GetEffectiveDarkMode */
+    int32_t  (*always_show)(void);                  /* CConfig::GetAlwaysShowScrollbars */
+    void*    (*font)(void);                         /* Global::defaultlFontHandle */
+    void     (*set_default_text_font)(void* hwnd);  /* CConfig::SetDefaultTextFont (WM_DPICHANGED) */
+} DimeCandEnv;
+typedef struct DimeCandClasses {
+    uint16_t candidate, candidate_shadow, scroll_bar, notify, notify_shadow;   /* class atoms */
+} DimeCandClasses;
+/* The C++ candidate list (CCandidateListModel + the index range) and the selection callback. */
+typedef struct DimeCandModel {
+    void* ctx;
+    int32_t         (*selection)(void* ctx);
+    void            (*set_selection_raw)(void* ctx, uint32_t index);
+    void            (*set_selection_offset)(void* ctx, int32_t offset);
+    void            (*set_selection)(void* ctx, int32_t index);          /* without the scroll bar */
+    void            (*move_page)(void* ctx, int32_t offset);             /* without the scroll bar */
+    int32_t         (*current_page)(void* ctx, int32_t* page);           /* 0: GetCurrentPage failed */
+    int32_t         (*paint_page)(void* ctx, uint32_t* page, uint32_t* start);   /* GetCurrentPage + AdjustPageIndex */
+    uint32_t        (*page_count)(void* ctx);
+    uint32_t        (*page_start)(void* ctx, int32_t page);
+    uint32_t        (*count)(void* ctx);
+    int32_t         (*rows_in_page)(void* ctx);                          /* -1: no index range */
+    uint16_t        (*index_char)(void* ctx, int32_t row);               /* CandIndex */
+    const uint16_t* (*item)(void* ctx, uint32_t index, uint32_t* len);   /* NULL: no item */
+    int32_t         (*has_callback)(void* ctx);
+    void            (*invoke)(void* ctx, int32_t action);                /* CANDWND_ACTION; may destroy the window */
+} DimeCandModel;
+typedef struct DimeCandidate DimeCandidate;
+/* CCandidateWindow + _Create; NULL on failure. colors: the initial colors; fill: the initial fill. */
+DimeCandidate* dime_ui_candidate_create(void* hinstance, const DimeCandClasses* classes, void* parent, uint32_t wnd_width,
+                                        const DimeCandEnv* env, const DimeCandModel* model,
+                                        const DimeCandColors* colors, uint32_t fill);
+void    dime_ui_candidate_free(DimeCandidate* c);                 /* destroys the window if it still exists */
+void*   dime_ui_candidate_hwnd(const DimeCandidate* c);
+int32_t dime_ui_candidate_is_visible(const DimeCandidate* c);
+int32_t dime_ui_candidate_width(const DimeCandidate* c);         /* _GetWidth */
+void    dime_ui_candidate_rect(const DimeCandidate* c, int32_t client, DimeRect* out);   /* 0: window, 1: client */
+void    dime_ui_candidate_window_extent(const DimeCandidate* c, const DimeRect* text, const DimeRect* window, DimePoint* out);
+/* op: 0 _Show(a)  1 _Move(a, b)  2 _ResizeWindow  3 _InvalidateRect  4 _SetCandStringLength(a)  5 _SetFillColor(a)
+ *     6 scroll bar _ShiftLine(a, b)  7 _ShiftPage(a, b)  8 _ShiftPosition(a, b)  9 _SetScrollInfo(nMax a, nPage b) */
+void    dime_ui_candidate_op(const DimeCandidate* c, uint32_t op, int32_t a, int32_t b);
+void    dime_ui_candidate_set_color(const DimeCandidate* c, int32_t which, uint32_t color, uint32_t bk);   /* 0 number, 1 text, 2 selected */
+/* tests */
+void    dime_ui_candidate_layout_state(const DimeCandidate* c, int32_t set, int32_t* state);   /* cxTitle, cyRow, padding, wndWidth */
+void    dime_ui_candidate_paint(const DimeCandidate* c, void* dc, const DimeRect* paint);
+void*   dime_ui_candidate_child(const DimeCandidate* c, int32_t which);   /* 0 scroll bar HWND, 1 shadow HWND, 2 tracking mouse (0/1) */
+int32_t dime_ui_candidate_sb_state(const DimeCandidate* c, DimeSbSnapshot* snapshot, DimeRect* highlight, int32_t* radius, uint32_t* color);
+
 /* ---- Drop shadow (rust/crates/dime-ui/src/shadow.rs) ---- */
 void dime_ui_shadow_color(int32_t dark, uint32_t sys_window_color, uint8_t* gray, uint8_t* max_alpha);
 /* 0xAARRGGBB premultiplied, bitmap memory order; out has count = cx * cy entries. */
@@ -818,6 +869,9 @@ void dime_ui_shadow_pixels(int32_t cx, int32_t cy, int32_t spread, int32_t owner
 /* Registers a window class with the Rust window procedure (popup: candidate / notify styles;
  * else the child / shadow styles with CS_IME). 0 on failure. */
 uint16_t dime_ui_register_window_class(void* hinstance, const uint16_t* name, int32_t popup);
+/* CConfig::SetSetThreadDpiAwarenessContext: Rust-owned windows switch the thread DPI context with it
+ * (per-monitor v2, as CBaseWindow::_Create) only when it is set (DllMain). */
+void dime_ui_set_thread_dpi_context_function(void* fn);
 
 /* The shadow window owned by Rust (CRustShadowWindow). */
 typedef struct DimeShadowEnv {

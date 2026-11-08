@@ -17,7 +17,7 @@ use std::ptr;
 
 use dime_core::big5;
 use dime_core::candgen;
-use dime_ui::{candpaint, candproc, candwnd, layout, notify, sbpaint, sbwin, shadow, win};
+use dime_ui::{candpaint, candproc, candwin, candwnd, layout, notify, sbpaint, sbwin, shadow, win};
 use dime_ui::win::{HINSTANCE, PCWSTR};
 use dime_core::candidates::{self, CandidatePaging};
 use dime_core::composition;
@@ -3829,6 +3829,13 @@ pub unsafe extern "C" fn dime_ui_register_window_class(hinstance: *mut c_void, n
     })
 }
 
+/// `CConfig::SetSetThreadDpiAwarenessContext`: the function windows owned by
+/// Rust are created with (as `CBaseWindow::_Create`); null: no switch.
+#[no_mangle]
+pub extern "C" fn dime_ui_set_thread_dpi_context_function(f: *mut c_void) {
+    guard((), || win::set_thread_dpi_context_function(f as usize))
+}
+
 /// The shadow window's environment (C++ `CConfig`).
 #[repr(C)]
 pub struct DimeShadowEnv {
@@ -4193,6 +4200,316 @@ pub unsafe extern "C" fn dime_ui_notify_window_proc(
             notify::window_proc(h, candproc::HWND(hwnd), msg, candproc::WPARAM(wparam), candproc::LPARAM(lparam)).0
         })
     }
+}
+
+// ---------------------------------------------------------------------------
+// The candidate window owned by Rust (dime-ui::candwin, phase 3c-5d)
+// ---------------------------------------------------------------------------
+
+/// `DimeCandEnv` (C++ `CConfig` / `Global`).
+#[repr(C)]
+pub struct DimeCandEnv {
+    pub dpi_for_hwnd: unsafe extern "C" fn(hwnd: *mut c_void) -> u32,
+    pub dark: unsafe extern "C" fn() -> i32,
+    pub always_show: unsafe extern "C" fn() -> i32,
+    pub font: unsafe extern "C" fn() -> *mut c_void,
+    pub set_default_text_font: unsafe extern "C" fn(hwnd: *mut c_void),
+}
+
+/// `DimeCandClasses`: the window classes (registered by `dime_ui_register_window_class`).
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct DimeCandClasses {
+    pub candidate: u16,
+    pub candidate_shadow: u16,
+    pub scroll_bar: u16,
+    pub notify: u16,
+    pub notify_shadow: u16,
+}
+
+/// `DimeCandModel`: the C++ candidate list and the selection callback.
+#[repr(C)]
+pub struct DimeCandModel {
+    pub ctx: *mut c_void,
+    pub selection: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub set_selection_raw: unsafe extern "C" fn(ctx: *mut c_void, index: u32),
+    pub set_selection_offset: unsafe extern "C" fn(ctx: *mut c_void, offset: i32),
+    pub set_selection: unsafe extern "C" fn(ctx: *mut c_void, index: i32),
+    pub move_page: unsafe extern "C" fn(ctx: *mut c_void, offset: i32),
+    pub current_page: unsafe extern "C" fn(ctx: *mut c_void, page: *mut i32) -> i32,
+    pub paint_page: unsafe extern "C" fn(ctx: *mut c_void, page: *mut u32, start: *mut u32) -> i32,
+    pub page_count: unsafe extern "C" fn(ctx: *mut c_void) -> u32,
+    pub page_start: unsafe extern "C" fn(ctx: *mut c_void, page: i32) -> u32,
+    pub count: unsafe extern "C" fn(ctx: *mut c_void) -> u32,
+    pub rows_in_page: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub index_char: unsafe extern "C" fn(ctx: *mut c_void, row: i32) -> u16,
+    pub item: unsafe extern "C" fn(ctx: *mut c_void, index: u32, len: *mut u32) -> *const u16,
+    pub has_callback: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub invoke: unsafe extern "C" fn(ctx: *mut c_void, action: i32),
+}
+
+/// A candidate window owned by Rust.
+pub struct DimeCandidate(candwin::CandidateWindow);
+
+/// `CCandidateWindow` + `_Create`: null when the window could not be created.
+///
+/// # Safety
+/// All pointers valid; the callbacks valid for the window's life.
+#[no_mangle]
+#[allow(clippy::too_many_arguments)]
+pub unsafe extern "C" fn dime_ui_candidate_create(
+    hinstance: *mut c_void,
+    classes: *const DimeCandClasses,
+    parent: *mut c_void,
+    wnd_width: u32,
+    env: *const DimeCandEnv,
+    model: *const DimeCandModel,
+    colors: *const candpaint::Colors,
+    fill: u32,
+) -> *mut DimeCandidate {
+    guard(ptr::null_mut(), || {
+        let (Some(c), Some(e), Some(m), Some(col)) =
+            (unsafe { classes.as_ref() }, unsafe { env.as_ref() }, unsafe { model.as_ref() }, unsafe { colors.as_ref() })
+        else {
+            return ptr::null_mut();
+        };
+        let classes = candwin::Classes {
+            candidate: c.candidate,
+            candidate_shadow: c.candidate_shadow,
+            scroll_bar: c.scroll_bar,
+            notify: c.notify,
+            notify_shadow: c.notify_shadow,
+        };
+        let env = candwin::Env {
+            dpi_for_hwnd: e.dpi_for_hwnd,
+            dark: e.dark,
+            always_show: e.always_show,
+            font: e.font,
+            set_default_text_font: e.set_default_text_font,
+        };
+        let model = candwin::Model {
+            ctx: m.ctx,
+            selection: m.selection,
+            set_selection_raw: m.set_selection_raw,
+            set_selection_offset: m.set_selection_offset,
+            set_selection: m.set_selection,
+            move_page: m.move_page,
+            current_page: m.current_page,
+            paint_page: m.paint_page,
+            page_count: m.page_count,
+            page_start: m.page_start,
+            count: m.count,
+            rows_in_page: m.rows_in_page,
+            index_char: m.index_char,
+            item: m.item,
+            has_callback: m.has_callback,
+            invoke: m.invoke,
+        };
+        let parent = (!parent.is_null()).then_some(candproc::HWND(parent));
+        match unsafe {
+            candwin::CandidateWindow::create(HINSTANCE(hinstance), classes, parent, wnd_width, env, model, *col, fill)
+        } {
+            Some(w) => Box::into_raw(Box::new(DimeCandidate(w))),
+            None => ptr::null_mut(),
+        }
+    })
+}
+
+/// Destroys the window (if it still exists) and frees it.
+///
+/// # Safety
+/// `c` must come from `dime_ui_candidate_create` (or be null) and not be used again.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_candidate_free(c: *mut DimeCandidate) {
+    guard((), || {
+        if !c.is_null() {
+            drop(unsafe { Box::from_raw(c) });
+        }
+    })
+}
+
+/// The window (null once destroyed).
+///
+/// # Safety
+/// `c` must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_candidate_hwnd(c: *const DimeCandidate) -> *mut c_void {
+    guard(ptr::null_mut(), || unsafe { c.as_ref() }.map_or(ptr::null_mut(), |c| c.0.hwnd().0))
+}
+
+/// `_IsWindowVisible`.
+///
+/// # Safety
+/// `c` must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_candidate_is_visible(c: *const DimeCandidate) -> i32 {
+    guard(0, || unsafe { c.as_ref() }.map_or(0, |c| i32::from(c.0.is_visible())))
+}
+
+/// `_GetWidth`.
+///
+/// # Safety
+/// `c` must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_candidate_width(c: *const DimeCandidate) -> i32 {
+    guard(0, || unsafe { c.as_ref() }.map_or(0, |c| c.0.width()))
+}
+
+/// `_GetWindowRect` (`client` 0) / `_GetClientRect` (`client` 1).
+///
+/// # Safety
+/// `c` must be valid or null; `out` valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_candidate_rect(c: *const DimeCandidate, client: i32, out: *mut layout::Rect) {
+    guard((), || {
+        if let Some(c) = unsafe { c.as_ref() } {
+            let r = if client != 0 { c.0.client_rect() } else { c.0.window_rect() };
+            unsafe { set(out, r) };
+        }
+    })
+}
+
+/// `CBaseWindow::_GetWindowExtent`.
+///
+/// # Safety
+/// `c` must be valid or null; the pointers valid.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_candidate_window_extent(
+    c: *const DimeCandidate,
+    text: *const layout::Rect,
+    window: *const layout::Rect,
+    out: *mut layout::Point,
+) {
+    guard((), || {
+        if let (Some(c), Some(t), Some(w)) = (unsafe { c.as_ref() }, unsafe { text.as_ref() }, unsafe { window.as_ref() }) {
+            unsafe { set(out, c.0.window_extent(t, w)) };
+        }
+    })
+}
+
+/// Candidate window operations: 0 `_Show(a)`, 1 `_Move(a, b)`, 2 `_ResizeWindow`,
+/// 3 `_InvalidateRect`, 4 `_SetCandStringLength(a)`, 5 `_SetFillColor(a)`,
+/// 6 scroll bar `_ShiftLine(a, b)`, 7 `_ShiftPage(a, b)`, 8 `_ShiftPosition(a, b)`,
+/// 9 `_SetScrollInfo(nMax a, nPage b)`.
+///
+/// # Safety
+/// `c` must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_candidate_op(c: *const DimeCandidate, op: u32, a: i32, b: i32) {
+    guard((), || {
+        let Some(c) = (unsafe { c.as_ref() }) else {
+            return;
+        };
+        let w = &c.0;
+        match op {
+            0 => w.show(a != 0),
+            1 => w.move_to(a, b),
+            2 => w.resize_window(),
+            3 => w.invalidate(),
+            4 => w.set_cand_string_length(a as u32),
+            5 => w.set_fill_color(a as u32),
+            6 => w.sb_shift_line(a, b != 0),
+            7 => w.sb_shift_page(a, b != 0),
+            8 => w.sb_shift_position(a, b != 0),
+            9 => w.set_scroll_info(a, b),
+            _ => {}
+        }
+    })
+}
+
+/// `_SetNumberColor` (`which` 0), `_SetTextColor` (1), `_SetSelectedTextColor` (2).
+///
+/// # Safety
+/// `c` must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_candidate_set_color(c: *const DimeCandidate, which: i32, color: u32, bk: u32) {
+    guard((), || {
+        if let Some(c) = unsafe { c.as_ref() } {
+            match which {
+                0 => c.0.set_number_color(color, bk),
+                1 => c.0.set_text_color(color, bk),
+                _ => c.0.set_selected_text_color(color, bk),
+            }
+        }
+    })
+}
+
+/// The layout members `(cx_title, cy_row, padding, wnd_width)` (tests); `set` 1 writes them.
+///
+/// # Safety
+/// `c` must be valid or null; `state` valid (4 entries).
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_candidate_layout_state(c: *const DimeCandidate, set_state: i32, state: *mut i32) {
+    guard((), || {
+        let (Some(c), false) = (unsafe { c.as_ref() }, state.is_null()) else {
+            return;
+        };
+        let s = unsafe { std::slice::from_raw_parts_mut(state, 4) };
+        if set_state != 0 {
+            c.0.set_layout_state(s[0], s[1], s[2], s[3] as u32);
+        } else {
+            let (a, b, p, w) = c.0.layout_state();
+            s.copy_from_slice(&[a, b, p, w as i32]);
+        }
+    })
+}
+
+/// `_OnPaint` into `dc` (tests).
+///
+/// # Safety
+/// `c` must be valid or null; `dc` a valid device context; `paint` valid.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_candidate_paint(c: *const DimeCandidate, dc: *mut c_void, paint: *const layout::Rect) {
+    guard((), || {
+        if let (Some(c), Some(p)) = (unsafe { c.as_ref() }, unsafe { paint.as_ref() }) {
+            unsafe { c.0.paint(candpaint::HDC(dc), *p) };
+        }
+    })
+}
+
+/// The scroll bar's / shadow's windows, mouse tracking (tests).
+///
+/// # Safety
+/// `c` must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_candidate_child(c: *const DimeCandidate, which: i32) -> *mut c_void {
+    guard(ptr::null_mut(), || {
+        let Some(c) = (unsafe { c.as_ref() }) else {
+            return ptr::null_mut();
+        };
+        match which {
+            0 => c.0.scroll_bar().map_or(ptr::null_mut(), |s| s.hwnd().0),
+            1 => c.0.shadow().map_or(ptr::null_mut(), |s| s.hwnd().0),
+            _ => c.0.is_tracking_mouse() as usize as *mut c_void,
+        }
+    })
+}
+
+/// The scroll bar's state and RC26 highlight (tests).
+///
+/// # Safety
+/// `c` must be valid or null; the out-pointers valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_candidate_sb_state(
+    c: *const DimeCandidate,
+    snapshot: *mut sbwin::Snapshot,
+    highlight: *mut layout::Rect,
+    radius: *mut i32,
+    color: *mut u32,
+) -> i32 {
+    guard(0, || {
+        let Some(sb) = (unsafe { c.as_ref() }).and_then(|c| c.0.scroll_bar()) else {
+            return 0;
+        };
+        let (r, rad, col) = sb.selection_highlight();
+        unsafe {
+            set(snapshot, sb.snapshot());
+            set(highlight, r);
+            set(radius, rad);
+            set(color, col);
+        }
+        1
+    })
 }
 
 #[cfg(test)]

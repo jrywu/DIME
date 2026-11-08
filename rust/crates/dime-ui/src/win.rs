@@ -149,7 +149,18 @@ type AreDpiAwarenessContextsEqual = unsafe extern "system" fn(isize, isize) -> i
 const DPI_CONTEXT_UNAWARE: isize = -1;
 const DPI_CONTEXT_PER_MONITOR_AWARE_V2: isize = -4;
 
-/// The Windows 10 1607+ DPI functions, loaded dynamically as `CBaseWindow` does.
+/// `CConfig`'s `SetThreadDpiAwarenessContext` (set by `DllMain`, null when the
+/// system lacks it or in tests): windows are created per-monitor aware only when
+/// it is set, exactly as `CBaseWindow::_Create`.
+static SET_THREAD_DPI_CONTEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
+/// Sets the function `create` switches the thread DPI context with (`CConfig::SetSetThreadDpiAwarenessContext`).
+pub fn set_thread_dpi_context_function(f: usize) {
+    SET_THREAD_DPI_CONTEXT.store(f, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// The Windows 10 1607+ DPI functions: the switch from `CConfig`, the
+/// window queries loaded dynamically as `CBaseWindow` does.
 fn dpi_functions() -> (
     Option<SetThreadDpiAwarenessContext>,
     Option<GetWindowDpiAwarenessContext>,
@@ -159,11 +170,11 @@ fn dpi_functions() -> (
         let Ok(user32) = GetModuleHandleW(w!("user32.dll")) else {
             return (None, None, None);
         };
-        let set = GetProcAddress(user32, s!("SetThreadDpiAwarenessContext"));
+        let set = SET_THREAD_DPI_CONTEXT.load(std::sync::atomic::Ordering::Relaxed);
         let get = GetProcAddress(user32, s!("GetWindowDpiAwarenessContext"));
         let eq = GetProcAddress(user32, s!("AreDpiAwarenessContextsEqual"));
         (
-            set.map(|f| std::mem::transmute::<_, SetThreadDpiAwarenessContext>(f)),
+            (set != 0).then(|| std::mem::transmute::<usize, SetThreadDpiAwarenessContext>(set)),
             get.map(|f| std::mem::transmute::<_, GetWindowDpiAwarenessContext>(f)),
             eq.map(|f| std::mem::transmute::<_, AreDpiAwarenessContextsEqual>(f)),
         )

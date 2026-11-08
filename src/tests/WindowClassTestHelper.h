@@ -55,17 +55,19 @@ inline void EnsureWindowClassesRegistered()
 #ifdef DIME_RUST_AVAILABLE
 // A window class registered by one implementation (CBaseWindow's window procedure or dime-ui's),
 // whatever the build registered for the real classes; child / shadow class styles.
-inline ATOM TestClassAtom(const wchar_t* name, bool rust)
+inline ATOM TestClassAtomKind(const wchar_t* name, bool rust, bool popup)
 {
     EnsureWindowClassesRegistered();
     WNDCLASSEXW wc = {};
     wc.cbSize = sizeof(wc);
     ATOM atom = (ATOM)GetClassInfoExW(Global::dllInstanceHandle, name, &wc);
     if (atom) return atom;
-    if (rust) return dime_ui_register_window_class(Global::dllInstanceHandle, (const uint16_t*)name, 0);
-    CBaseWindow::_InitWindowClass(name, &atom);
+    if (rust) return dime_ui_register_window_class(Global::dllInstanceHandle, (const uint16_t*)name, popup ? 1 : 0);
+    if (popup) CBaseWindow::_InitPopupWindowClass(name, &atom);
+    else CBaseWindow::_InitWindowClass(name, &atom);
     return atom;
 }
+inline ATOM TestClassAtom(const wchar_t* name, bool rust) { return TestClassAtomKind(name, rust, false); }
 inline ATOM CppScrollBarTestAtom() { return TestClassAtom(L"DIME.Test.CppScrollBarWindow", false); }
 inline ATOM RustScrollBarTestAtom() { return TestClassAtom(L"DIME.Test.RustScrollBarWindow", true); }
 #endif
