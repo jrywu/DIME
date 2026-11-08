@@ -200,7 +200,7 @@ namespace DIMEUnitTests
                 {
                     g_watched[k] = nullptr;
                     ReleaseCapture();
-                    delete sides[k].w;
+                    DestroyAndDelete(sides[k].w);
                 }
             }
             g_baseWindowTimerTestHook = nullptr;

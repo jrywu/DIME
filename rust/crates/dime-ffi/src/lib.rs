@@ -17,7 +17,7 @@ use std::ptr;
 
 use dime_core::big5;
 use dime_core::candgen;
-use dime_ui::{candpaint, candproc, candwnd, layout, sbpaint, sbproc, shadow};
+use dime_ui::{candpaint, candproc, candwnd, layout, notify, sbpaint, sbproc, shadow};
 use dime_core::candidates::{self, CandidatePaging};
 use dime_core::composition;
 use dime_core::keyclass;
@@ -3952,6 +3952,241 @@ pub unsafe extern "C" fn dime_ui_shadow_window_proc(
     unsafe {
         with_shadow_host(host, 0, |h| {
             shadow::window_proc(h, candproc::HWND(hwnd), msg, candproc::WPARAM(wparam), candproc::LPARAM(lparam)).0
+        })
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Notify window (dime-ui::notify, phase 3c-6)
+// ---------------------------------------------------------------------------
+
+/// `DimeNotifyPaint`.
+#[repr(C)]
+pub struct DimeNotifyPaint {
+    pub font: *mut c_void,
+    pub bk_brush: *mut c_void,
+    pub has_paint: i32,
+    pub paint: layout::Rect,
+    pub text: *const u16,
+    pub text_len: u32,
+    pub text_color: u32,
+    pub bk_color: u32,
+    pub cx_title: i32,
+}
+
+/// `CNotifyWindow::_OnPaint`: returns 1 and the new `_cxTitle` / `_cyTitle`
+/// (`*resize`: `_ResizeWindow` follows) when the text was measured.
+///
+/// # Safety
+/// `dc` must be a valid device context; `input` valid with `text_len`
+/// characters at `text`; the out-pointers valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_notify_paint(
+    dc: *mut c_void,
+    input: *const DimeNotifyPaint,
+    cx_title: *mut i32,
+    cy_title: *mut i32,
+    resize: *mut i32,
+) -> i32 {
+    guard(0, || {
+        let Some(i) = (unsafe { input.as_ref() }) else {
+            return 0;
+        };
+        let pi = notify::PaintInput {
+            font: candpaint::HFONT(i.font),
+            bk_brush: candpaint::HBRUSH(i.bk_brush),
+            paint: (i.has_paint != 0).then_some(i.paint),
+            text: unsafe { slice(i.text, i.text_len as usize) },
+            text_color: i.text_color,
+            bk_color: i.bk_color,
+            cx_title: i.cx_title,
+        };
+        match unsafe { notify::paint(candpaint::HDC(dc), &pi) } {
+            Some(o) => {
+                unsafe {
+                    set(cx_title, o.cx_title);
+                    set(cy_title, o.cy_title);
+                    set(resize, i32::from(o.resize));
+                }
+                1
+            }
+            None => 0,
+        }
+    })
+}
+
+/// The C++ side of the notify window (`CNotifyWindowRustHost` in
+/// `src/NotifyWindow.cpp`); field order must match `dime_ffi.h`.
+#[repr(C)]
+pub struct DimeNotifyHostVtbl {
+    pub hwnd: unsafe extern "C" fn(ctx: *mut c_void) -> *mut c_void,
+    pub text: unsafe extern "C" fn(ctx: *mut c_void, len: *mut u32) -> *const u16,
+    pub font: unsafe extern "C" fn(ctx: *mut c_void) -> *mut c_void,
+    pub notify_type: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub text_metric: unsafe extern "C" fn(ctx: *mut c_void, max_w: *mut i32, ave_w: *mut i32, height: *mut i32),
+    pub set_title_size: unsafe extern "C" fn(ctx: *mut c_void, cx: i32, cy: i32),
+    pub set_position: unsafe extern "C" fn(ctx: *mut c_void, x: i32, y: i32),
+    pub set_show_times: unsafe extern "C" fn(ctx: *mut c_void, delay_show: u32, time_to_hide: u32),
+    pub time_to_hide: unsafe extern "C" fn(ctx: *mut c_void) -> u32,
+    pub corner_radius_base: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub dpi: unsafe extern "C" fn(ctx: *mut c_void) -> u32,
+    pub invoke: unsafe extern "C" fn(ctx: *mut c_void, action: i32, wparam: usize, lparam: isize),
+    pub paint: unsafe extern "C" fn(ctx: *mut c_void, dc: *mut c_void, ps: *mut c_void),
+    pub dpi_changed: unsafe extern "C" fn(ctx: *mut c_void, hwnd: *mut c_void),
+    pub base_show: unsafe extern "C" fn(ctx: *mut c_void, on: i32),
+    pub is_capture: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub end_capture: unsafe extern "C" fn(ctx: *mut c_void),
+    pub is_timer: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub start_timer: unsafe extern "C" fn(ctx: *mut c_void, elapse: u32, id: usize),
+    pub end_timer: unsafe extern "C" fn(ctx: *mut c_void, id: usize),
+    pub has_shadow: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub shadow_hwnd: unsafe extern "C" fn(ctx: *mut c_void) -> *mut c_void,
+    pub shadow_show: unsafe extern "C" fn(ctx: *mut c_void, show: i32),
+    pub shadow_owner_moved: unsafe extern "C" fn(ctx: *mut c_void, resized: i32),
+    pub delete_shadow: unsafe extern "C" fn(ctx: *mut c_void),
+}
+
+/// `DimeNotifyHost`.
+#[repr(C)]
+pub struct DimeNotifyHost {
+    pub vtbl: *const DimeNotifyHostVtbl,
+    pub ctx: *mut c_void,
+}
+
+struct NotifyHostFfi<'a> {
+    v: &'a DimeNotifyHostVtbl,
+    ctx: *mut c_void,
+}
+
+impl notify::NotifyHost for NotifyHostFfi<'_> {
+    fn hwnd(&mut self) -> candproc::HWND {
+        candproc::HWND(unsafe { (self.v.hwnd)(self.ctx) })
+    }
+    fn text(&mut self) -> Vec<u16> {
+        let mut len = 0u32;
+        let p = unsafe { (self.v.text)(self.ctx, &mut len) };
+        unsafe { slice(p, len as usize) }.to_vec()
+    }
+    fn font(&mut self) -> candpaint::HFONT {
+        candpaint::HFONT(unsafe { (self.v.font)(self.ctx) })
+    }
+    fn notify_type(&mut self) -> i32 {
+        unsafe { (self.v.notify_type)(self.ctx) }
+    }
+    fn text_metric(&mut self) -> (i32, i32, i32) {
+        let (mut a, mut b, mut c) = (0, 0, 0);
+        unsafe { (self.v.text_metric)(self.ctx, &mut a, &mut b, &mut c) };
+        (a, b, c)
+    }
+    fn set_title_size(&mut self, cx: i32, cy: i32) {
+        unsafe { (self.v.set_title_size)(self.ctx, cx, cy) }
+    }
+    fn set_position(&mut self, x: i32, y: i32) {
+        unsafe { (self.v.set_position)(self.ctx, x, y) }
+    }
+    fn set_show_times(&mut self, delay_show: u32, time_to_hide: u32) {
+        unsafe { (self.v.set_show_times)(self.ctx, delay_show, time_to_hide) }
+    }
+    fn time_to_hide(&mut self) -> u32 {
+        unsafe { (self.v.time_to_hide)(self.ctx) }
+    }
+    fn corner_radius_base(&mut self) -> i32 {
+        unsafe { (self.v.corner_radius_base)(self.ctx) }
+    }
+    fn dpi(&mut self) -> u32 {
+        unsafe { (self.v.dpi)(self.ctx) }
+    }
+    fn invoke(&mut self, action: i32, wparam: usize, lparam: isize) {
+        unsafe { (self.v.invoke)(self.ctx, action, wparam, lparam) }
+    }
+    fn paint(&mut self, dc: candpaint::HDC, ps: &mut candproc::PAINTSTRUCT) {
+        unsafe { (self.v.paint)(self.ctx, dc.0, ps as *mut _ as *mut c_void) }
+    }
+    fn dpi_changed(&mut self, hwnd: candproc::HWND) {
+        unsafe { (self.v.dpi_changed)(self.ctx, hwnd.0) }
+    }
+    fn base_show(&mut self, on: bool) {
+        unsafe { (self.v.base_show)(self.ctx, i32::from(on)) }
+    }
+    fn is_capture(&mut self) -> bool {
+        unsafe { (self.v.is_capture)(self.ctx) != 0 }
+    }
+    fn end_capture(&mut self) {
+        unsafe { (self.v.end_capture)(self.ctx) }
+    }
+    fn is_timer(&mut self) -> bool {
+        unsafe { (self.v.is_timer)(self.ctx) != 0 }
+    }
+    fn start_timer(&mut self, elapse: u32, id: usize) {
+        unsafe { (self.v.start_timer)(self.ctx, elapse, id) }
+    }
+    fn end_timer(&mut self, id: usize) {
+        unsafe { (self.v.end_timer)(self.ctx, id) }
+    }
+    fn has_shadow(&mut self) -> bool {
+        unsafe { (self.v.has_shadow)(self.ctx) != 0 }
+    }
+    fn shadow_hwnd(&mut self) -> candproc::HWND {
+        candproc::HWND(unsafe { (self.v.shadow_hwnd)(self.ctx) })
+    }
+    fn shadow_show(&mut self, show: i32) {
+        unsafe { (self.v.shadow_show)(self.ctx, show) }
+    }
+    fn shadow_owner_moved(&mut self, resized: bool) {
+        unsafe { (self.v.shadow_owner_moved)(self.ctx, i32::from(resized)) }
+    }
+    fn delete_shadow(&mut self) {
+        unsafe { (self.v.delete_shadow)(self.ctx) }
+    }
+}
+
+unsafe fn with_notify_host<R: Copy>(
+    host: *const DimeNotifyHost,
+    fallback: R,
+    f: impl FnOnce(&mut NotifyHostFfi) -> R,
+) -> R {
+    guard(fallback, || {
+        let h = unsafe { host.as_ref() };
+        match h.and_then(|h| unsafe { h.vtbl.as_ref() }.map(|v| (v, h.ctx))) {
+            Some((v, ctx)) => f(&mut NotifyHostFfi { v, ctx }),
+            None => fallback,
+        }
+    })
+}
+
+/// `CNotifyWindow::_Show(on, delay_show, time_to_hide)`.
+///
+/// # Safety
+/// `host` must be valid with a complete vtable.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_notify_show(host: *const DimeNotifyHost, on: i32, delay_show: u32, time_to_hide: u32) {
+    unsafe { with_notify_host(host, (), |h| notify::show(h, on != 0, delay_show, time_to_hide)) }
+}
+
+/// `CNotifyWindow::_OnTimerID`.
+///
+/// # Safety
+/// `host` must be valid with a complete vtable.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_notify_timer(host: *const DimeNotifyHost, id: usize) {
+    unsafe { with_notify_host(host, (), |h| notify::on_timer_id(h, id)) }
+}
+
+/// `CNotifyWindow::_WindowProcCallback`.
+///
+/// # Safety
+/// `host` must be valid with a complete vtable; `hwnd` is the notify window.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_notify_window_proc(
+    host: *const DimeNotifyHost,
+    hwnd: *mut c_void,
+    msg: u32,
+    wparam: usize,
+    lparam: isize,
+) -> isize {
+    unsafe {
+        with_notify_host(host, 0, |h| {
+            notify::window_proc(h, candproc::HWND(hwnd), msg, candproc::WPARAM(wparam), candproc::LPARAM(lparam)).0
         })
     }
 }

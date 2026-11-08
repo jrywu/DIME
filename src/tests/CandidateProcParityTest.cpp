@@ -173,7 +173,7 @@ namespace DIMEUnitTests
                 }
                 if (!ok)
                 {
-                    for (Side& s : sides) delete s.w;
+                    for (Side& s : sides) DestroyAndDelete(s.w);
                     Logger::WriteMessage("SKIP: window creation failed (no GUI context)");
                     break;
                 }
@@ -251,7 +251,7 @@ namespace DIMEUnitTests
                     compared++;
                 }
                 for (int a : sides[0].rec.actions) (a == 0 ? selects : cancels)++;
-                for (Side& s : sides) delete s.w;
+                for (Side& s : sides) DestroyAndDelete(s.w);
             }
             Global::defaultlFontHandle = savedFont;
             DeleteObject(font);

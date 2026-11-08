@@ -513,7 +513,7 @@ fn on_vscroll(host: &mut dyn CandHost, code: u32, pos: u32) {
 }
 
 /// `_FireMessageToLightDismiss`: tell LightDismiss about the IME window.
-fn fire_light_dismiss(hwnd: HWND, wp: &WINDOWPOS) {
+pub(crate) fn fire_light_dismiss(hwnd: HWND, wp: &WINDOWPOS) {
     let f = wp.flags.0;
     let show = (f & SWP_SHOWWINDOW.0) != 0;
     let hide = (f & SWP_HIDEWINDOW.0) != 0;

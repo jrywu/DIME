@@ -158,7 +158,7 @@ namespace DIMEUnitTests
                             L"\nC++  " + st[0] + L"\nRust " + st[1]).c_str());
                     compared++;
                 }
-                for (int k = 0; k < 2; k++) delete w[k];
+                for (int k = 0; k < 2; k++) DestroyAndDelete(w[k]);
             }
             CConfig::SetColorMode(savedMode);
             Global::defaultlFontHandle = savedFont;

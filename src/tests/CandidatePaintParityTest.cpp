@@ -144,7 +144,7 @@ namespace DIMEUnitTests
                     CCandidateWindow* w = new CCandidateWindow(NoCallback, nullptr, &range, FALSE);
                     if (!w->_Create(wndWidth, 12, nullptr))
                     {
-                        delete w;
+                        DestroyAndDelete(w);
                         Logger::WriteMessage("SKIP: window creation failed (no GUI context)");
                         Global::defaultlFontHandle = savedFont;
                         DeleteObject(font);
@@ -199,7 +199,7 @@ namespace DIMEUnitTests
                         if (c.state.wndWidth != wndWidth) truncatedOrWidened++;
                         compared++;
                     }
-                    delete w;
+                    DestroyAndDelete(w);
                     scenarios++;
                 }
                 Global::defaultlFontHandle = savedFont;
@@ -299,7 +299,7 @@ namespace DIMEUnitTests
                     compared++;
                 }
                 SetWindowLong(sbh, GWL_EXSTYLE, style);
-                delete w;
+                DestroyAndDelete(w);
             }
             CConfig::SetColorMode(savedMode);
             Global::defaultlFontHandle = savedFont;

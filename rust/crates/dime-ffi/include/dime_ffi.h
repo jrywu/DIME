@@ -852,6 +852,60 @@ typedef struct DimeShadowHost {
 void     dime_ui_shadow_event(const DimeShadowHost* host, uint32_t op, int32_t a);
 intptr_t dime_ui_shadow_window_proc(const DimeShadowHost* host, void* hwnd, uint32_t msg, uintptr_t wparam, intptr_t lparam);
 
+/* ---- Notify window (rust/crates/dime-ui/src/notify.rs) ---- */
+typedef struct DimeNotifyPaint {
+    void* font;                 /* HFONT */
+    void* bk_brush;             /* HBRUSH, may be NULL */
+    int32_t has_paint;          /* 0: no PAINTSTRUCT */
+    DimeRect paint;             /* pps->rcPaint */
+    const uint16_t* text;
+    uint32_t text_len;
+    uint32_t text_color, bk_color;
+    int32_t cx_title;           /* before painting */
+} DimeNotifyPaint;
+/* CNotifyWindow::_OnPaint. Returns 1 with the new _cxTitle / _cyTitle (resize: _ResizeWindow follows)
+ * when the text was measured; 0 for an empty text (the C++ original divides by zero there). */
+int32_t dime_ui_notify_paint(void* dc, const DimeNotifyPaint* input, int32_t* cx_title, int32_t* cy_title, int32_t* resize);
+
+/* The C++ side (CNotifyWindowRustHost in src/NotifyWindow.cpp); order must match dime-ffi.
+ * invoke may destroy the window (it is always the last call). */
+typedef struct DimeNotifyHostVtbl {
+    void*           (*hwnd)(void* ctx);
+    const uint16_t* (*text)(void* ctx, uint32_t* len);
+    void*           (*font)(void* ctx);
+    int32_t         (*notify_type)(void* ctx);                  /* NOTIFY_TYPE */
+    void            (*text_metric)(void* ctx, int32_t* max_w, int32_t* ave_w, int32_t* height);
+    void            (*set_title_size)(void* ctx, int32_t cx, int32_t cy);
+    void            (*set_position)(void* ctx, int32_t x, int32_t y);
+    void            (*set_show_times)(void* ctx, uint32_t delay_show, uint32_t time_to_hide);
+    uint32_t        (*time_to_hide)(void* ctx);
+    int32_t         (*corner_radius_base)(void* ctx);
+    uint32_t        (*dpi)(void* ctx);
+    void            (*invoke)(void* ctx, int32_t action, uintptr_t wparam, intptr_t lparam);   /* NOTIFY_WND */
+    void            (*paint)(void* ctx, void* dc, void* ps);    /* _OnPaint */
+    void            (*dpi_changed)(void* ctx, void* hwnd);
+    void            (*base_show)(void* ctx, int32_t on);        /* CBaseWindow::_Show */
+    int32_t         (*is_capture)(void* ctx);
+    void            (*end_capture)(void* ctx);
+    int32_t         (*is_timer)(void* ctx);
+    void            (*start_timer)(void* ctx, uint32_t elapse, uintptr_t id);
+    void            (*end_timer)(void* ctx, uintptr_t id);
+    int32_t         (*has_shadow)(void* ctx);
+    void*           (*shadow_hwnd)(void* ctx);
+    void            (*shadow_show)(void* ctx, int32_t show);
+    void            (*shadow_owner_moved)(void* ctx, int32_t resized);
+    void            (*delete_shadow)(void* ctx);
+} DimeNotifyHostVtbl;
+
+typedef struct DimeNotifyHost {
+    const DimeNotifyHostVtbl* vtbl;
+    void* ctx;
+} DimeNotifyHost;
+
+void     dime_ui_notify_show(const DimeNotifyHost* host, int32_t on, uint32_t delay_show, uint32_t time_to_hide);
+void     dime_ui_notify_timer(const DimeNotifyHost* host, uintptr_t id);
+intptr_t dime_ui_notify_window_proc(const DimeNotifyHost* host, void* hwnd, uint32_t msg, uintptr_t wparam, intptr_t lparam);
+
 #ifdef __cplusplus
 }
 #endif

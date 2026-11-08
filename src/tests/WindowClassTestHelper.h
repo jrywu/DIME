@@ -12,6 +12,19 @@
 
 extern "C" IMAGE_DOS_HEADER __ImageBase;
 
+// Tear a test window down as production does (UIPresenter: _Destroy, then delete), so no
+// HWND, visible window or timer of it outlives the test (KeyFlow tests pump messages later).
+template <class W>
+inline void DestroyAndDelete(W*& w)
+{
+    if (w)
+    {
+        w->_Destroy();
+        delete w;
+        w = nullptr;
+    }
+}
+
 inline void EnsureWindowClassesRegistered()
 {
     if (!Global::dllInstanceHandle)

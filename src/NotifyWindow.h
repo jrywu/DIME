@@ -63,6 +63,17 @@ public:
 
     LRESULT CALLBACK _WindowProcCallback(_In_ HWND wndHandle, UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam);
     void _OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps);
+    void _OnPaintCpp(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps);     // the C++ original
+#ifdef DIME_RUST_AVAILABLE
+    void _OnPaintRust(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps);    // dime-ui::notify
+#endif
+#ifdef DIME_UNIT_TESTING
+    // Which implementation handles the window (the state is shared; NotifyParityTest).
+    void _SetUseRustForTest(BOOL useRust) { _useRust = useRust; }
+    struct StateForTest { int cxTitle; int cyTitle; int x; int y; UINT delayShow; UINT timeToHide; };
+    StateForTest _GetStateForTest() const { return { _cxTitle, _cyTitle, _x, _y, _delayShow, _timeToHide }; }
+    CShadowWindow* _GetShadowForTest() { return _pShadowWnd.get(); }
+#endif
 	virtual void _OnTimerID(UINT_PTR timerID);
     
 	void _OnLButtonDown(POINT pt);
@@ -94,6 +105,7 @@ private:
     void _DeleteShadowWnd();
     
     friend COLORREF _AdjustTextColor(_In_ COLORREF crColor, _In_ COLORREF crBkColor);
+    friend struct CNotifyWindowRustHost;
 
 private:
     COLORREF _crTextColor;
@@ -122,4 +134,5 @@ private:
     std::unique_ptr<CShadowWindow> _pShadowWnd;
 
 	BYTE _animationStage;
+	BOOL _useRust;   // drawing and behavior in Rust (DIME_USE_RUST_ENGINE) or C++
 };
