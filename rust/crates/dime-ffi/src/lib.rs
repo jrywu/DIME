@@ -17,7 +17,7 @@ use std::ptr;
 
 use dime_core::big5;
 use dime_core::candgen;
-use dime_ui::{candpaint, candproc, candwnd, layout, sbpaint};
+use dime_ui::{candpaint, candproc, candwnd, layout, sbpaint, sbproc};
 use dime_core::candidates::{self, CandidatePaging};
 use dime_core::composition;
 use dime_core::keyclass;
@@ -3535,6 +3535,247 @@ pub unsafe extern "C" fn dime_ui_sb_paint(dc: *mut c_void, input: *const DimeSbP
             unsafe { sbpaint::paint(candpaint::HDC(dc), &ii) };
         }
     })
+}
+
+// ---------------------------------------------------------------------------
+// Scroll bar events (dime-ui::sbproc, phase 3c-3b)
+// ---------------------------------------------------------------------------
+
+/// The C++ side of the scroll bar (`CScrollBarWindowRustHost` in
+/// `src/ScrollBarWindow.cpp`).  Field order must match `DimeSbHostVtbl` in
+/// `dime_ffi.h` and `s_vtbl` there.  Callbacks must not throw.
+#[repr(C)]
+pub struct DimeSbHostVtbl {
+    pub hwnd: unsafe extern "C" fn(ctx: *mut c_void) -> *mut c_void,
+    pub parent_hwnd: unsafe extern "C" fn(ctx: *mut c_void) -> *mut c_void,
+    pub client_rect: unsafe extern "C" fn(ctx: *mut c_void, out: *mut layout::Rect),
+    pub dpi: unsafe extern "C" fn(ctx: *mut c_void) -> u32,
+    pub hover_width: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub scroll_info: unsafe extern "C" fn(ctx: *mut c_void, out: *mut candwnd::ScrollInfo),
+    pub set_scroll_info: unsafe extern "C" fn(ctx: *mut c_void, si: *const candwnd::ScrollInfo),
+    pub dragging: unsafe extern "C" fn(ctx: *mut c_void, start_y: *mut i32, start_pos: *mut i32) -> i32,
+    pub set_dragging: unsafe extern "C" fn(ctx: *mut c_void, on: i32, start_y: i32, start_pos: i32),
+    pub alpha: unsafe extern "C" fn(ctx: *mut c_void) -> u8,
+    pub set_alpha: unsafe extern "C" fn(ctx: *mut c_void, alpha: u8),
+    pub fading: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub set_fading: unsafe extern "C" fn(ctx: *mut c_void, on: i32),
+    pub hovered: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub set_hovered: unsafe extern "C" fn(ctx: *mut c_void, on: i32),
+    pub tracking_mouse: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub set_tracking_mouse: unsafe extern "C" fn(ctx: *mut c_void, on: i32),
+    pub held_button: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub set_held_button: unsafe extern "C" fn(ctx: *mut c_void, button: i32),
+    pub repeat_started: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub set_repeat_started: unsafe extern "C" fn(ctx: *mut c_void, on: i32),
+    pub is_enabled: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub base_enable: unsafe extern "C" fn(ctx: *mut c_void, on: i32),
+    pub is_visible: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub base_show: unsafe extern "C" fn(ctx: *mut c_void, on: i32),
+    pub invalidate: unsafe extern "C" fn(ctx: *mut c_void),
+    pub is_capture: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub start_capture: unsafe extern "C" fn(ctx: *mut c_void),
+    pub end_capture: unsafe extern "C" fn(ctx: *mut c_void),
+    pub start_timer: unsafe extern "C" fn(ctx: *mut c_void, elapse: u32, id: usize),
+    pub end_timer: unsafe extern "C" fn(ctx: *mut c_void, id: usize),
+    pub notify_command: unsafe extern "C" fn(ctx: *mut c_void, msg: u32, code: i32, pos: i32),
+    pub shift_page: unsafe extern "C" fn(ctx: *mut c_void, pages: i32, notify: i32),
+    pub paint: unsafe extern "C" fn(ctx: *mut c_void, dc: *mut c_void, ps: *mut c_void),
+}
+
+/// `DimeSbHost`.
+#[repr(C)]
+pub struct DimeSbHost {
+    pub vtbl: *const DimeSbHostVtbl,
+    pub ctx: *mut c_void,
+}
+
+struct SbHostFfi<'a> {
+    v: &'a DimeSbHostVtbl,
+    ctx: *mut c_void,
+}
+
+impl sbproc::SbHost for SbHostFfi<'_> {
+    fn hwnd(&mut self) -> candproc::HWND {
+        candproc::HWND(unsafe { (self.v.hwnd)(self.ctx) })
+    }
+    fn parent_hwnd(&mut self) -> Option<candproc::HWND> {
+        let h = unsafe { (self.v.parent_hwnd)(self.ctx) };
+        (!h.is_null()).then_some(candproc::HWND(h))
+    }
+    fn client_rect(&mut self) -> layout::Rect {
+        let mut r = layout::Rect::default();
+        unsafe { (self.v.client_rect)(self.ctx, &mut r) };
+        r
+    }
+    fn dpi(&mut self) -> u32 {
+        unsafe { (self.v.dpi)(self.ctx) }
+    }
+    fn hover_width(&mut self) -> i32 {
+        unsafe { (self.v.hover_width)(self.ctx) }
+    }
+    fn scroll_info(&mut self) -> candwnd::ScrollInfo {
+        let mut si = candwnd::ScrollInfo::default();
+        unsafe { (self.v.scroll_info)(self.ctx, &mut si) };
+        si
+    }
+    fn set_scroll_info(&mut self, si: candwnd::ScrollInfo) {
+        unsafe { (self.v.set_scroll_info)(self.ctx, &si) }
+    }
+    fn dragging(&mut self) -> Option<(i32, i32)> {
+        let (mut y, mut p) = (0, 0);
+        (unsafe { (self.v.dragging)(self.ctx, &mut y, &mut p) } != 0).then_some((y, p))
+    }
+    fn set_dragging(&mut self, drag: Option<(i32, i32)>) {
+        let (on, y, p) = drag.map_or((0, 0, 0), |(y, p)| (1, y, p));
+        unsafe { (self.v.set_dragging)(self.ctx, on, y, p) }
+    }
+    fn alpha(&mut self) -> u8 {
+        unsafe { (self.v.alpha)(self.ctx) }
+    }
+    fn set_alpha(&mut self, alpha: u8) {
+        unsafe { (self.v.set_alpha)(self.ctx, alpha) }
+    }
+    fn fading(&mut self) -> bool {
+        unsafe { (self.v.fading)(self.ctx) != 0 }
+    }
+    fn set_fading(&mut self, on: bool) {
+        unsafe { (self.v.set_fading)(self.ctx, i32::from(on)) }
+    }
+    fn hovered(&mut self) -> bool {
+        unsafe { (self.v.hovered)(self.ctx) != 0 }
+    }
+    fn set_hovered(&mut self, on: bool) {
+        unsafe { (self.v.set_hovered)(self.ctx, i32::from(on)) }
+    }
+    fn tracking_mouse(&mut self) -> bool {
+        unsafe { (self.v.tracking_mouse)(self.ctx) != 0 }
+    }
+    fn set_tracking_mouse(&mut self, on: bool) {
+        unsafe { (self.v.set_tracking_mouse)(self.ctx, i32::from(on)) }
+    }
+    fn held_button(&mut self) -> i32 {
+        unsafe { (self.v.held_button)(self.ctx) }
+    }
+    fn set_held_button(&mut self, button: i32) {
+        unsafe { (self.v.set_held_button)(self.ctx, button) }
+    }
+    fn repeat_started(&mut self) -> bool {
+        unsafe { (self.v.repeat_started)(self.ctx) != 0 }
+    }
+    fn set_repeat_started(&mut self, on: bool) {
+        unsafe { (self.v.set_repeat_started)(self.ctx, i32::from(on)) }
+    }
+    fn is_enabled(&mut self) -> bool {
+        unsafe { (self.v.is_enabled)(self.ctx) != 0 }
+    }
+    fn base_enable(&mut self, on: bool) {
+        unsafe { (self.v.base_enable)(self.ctx, i32::from(on)) }
+    }
+    fn is_visible(&mut self) -> bool {
+        unsafe { (self.v.is_visible)(self.ctx) != 0 }
+    }
+    fn base_show(&mut self, on: bool) {
+        unsafe { (self.v.base_show)(self.ctx, i32::from(on)) }
+    }
+    fn invalidate(&mut self) {
+        unsafe { (self.v.invalidate)(self.ctx) }
+    }
+    fn is_capture(&mut self) -> bool {
+        unsafe { (self.v.is_capture)(self.ctx) != 0 }
+    }
+    fn start_capture(&mut self) {
+        unsafe { (self.v.start_capture)(self.ctx) }
+    }
+    fn end_capture(&mut self) {
+        unsafe { (self.v.end_capture)(self.ctx) }
+    }
+    fn start_timer(&mut self, elapse: u32, id: usize) {
+        unsafe { (self.v.start_timer)(self.ctx, elapse, id) }
+    }
+    fn end_timer(&mut self, id: usize) {
+        unsafe { (self.v.end_timer)(self.ctx, id) }
+    }
+    fn notify_command(&mut self, msg: u32, code: i32, pos: i32) {
+        unsafe { (self.v.notify_command)(self.ctx, msg, code, pos) }
+    }
+    fn shift_page(&mut self, pages: i32, notify: bool) {
+        unsafe { (self.v.shift_page)(self.ctx, pages, i32::from(notify)) }
+    }
+    fn paint(&mut self, dc: candpaint::HDC, ps: &mut candproc::PAINTSTRUCT) {
+        unsafe { (self.v.paint)(self.ctx, dc.0, ps as *mut _ as *mut c_void) }
+    }
+}
+
+/// Runs `f` with the host behind `host` (`fallback` for a null host or vtable, or a panic).
+unsafe fn with_sb_host<R: Copy>(host: *const DimeSbHost, fallback: R, f: impl FnOnce(&mut SbHostFfi) -> R) -> R {
+    guard(fallback, || {
+        let h = unsafe { host.as_ref() };
+        match h.and_then(|h| unsafe { h.vtbl.as_ref() }.map(|v| (v, h.ctx))) {
+            Some((v, ctx)) => f(&mut SbHostFfi { v, ctx }),
+            None => fallback,
+        }
+    })
+}
+
+/// Scroll bar events.  `op` picks the handler; `a` / `b` are its arguments:
+/// 0 `_SetCurPos(a, b)`, 1 `_ShiftLine(a, b)`, 2 `_ShiftPage(a, b)`,
+/// 3 `_ShiftPosition(a, b)`, 4 `_OnScrollActivity`, 5 `_SetCandidateMouseIn(a)`,
+/// 6 `_OnLButtonDown(a, b)`, 7 `_OnLButtonUp`, 8 `_OnMouseMove`,
+/// 9 `_OnTimerID(a)`, 10 `_OnOwnerWndMoved`, 11 `_Show(a)`, 12 `_Enable(a)`.
+///
+/// # Safety
+/// `host` must be valid with a complete vtable.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_sb_event(host: *const DimeSbHost, op: u32, a: i32, b: i32) {
+    unsafe {
+        with_sb_host(host, (), |h| match op {
+                0 => sbproc::set_cur_pos(h, a, b),
+                1 => sbproc::shift_line(h, a, b != 0),
+                2 => sbproc::shift_page(h, a, b != 0),
+                3 => sbproc::shift_position(h, a, b != 0),
+                4 => sbproc::on_scroll_activity(h),
+                5 => sbproc::set_candidate_mouse_in(h, a != 0),
+                6 => sbproc::on_lbutton_down(h, layout::Point { x: a, y: b }),
+                7 => sbproc::on_lbutton_up(h),
+                8 => sbproc::on_mouse_move(h),
+                9 => sbproc::on_timer_id(h, a as u32 as usize),
+                10 => sbproc::on_owner_moved(h),
+                11 => sbproc::show(h, a != 0),
+                12 => sbproc::enable(h, a != 0),
+                _ => {}
+        });
+    }
+}
+
+/// `_SetScrollInfo`.
+///
+/// # Safety
+/// `host` must be valid with a complete vtable; `si` valid.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_sb_set_scroll_info(host: *const DimeSbHost, si: *const candwnd::ScrollInfo) {
+    let Some(si) = (unsafe { si.as_ref() }).copied() else {
+        return;
+    };
+    unsafe { with_sb_host(host, (), |h| sbproc::set_scroll_info(h, si)) }
+}
+
+/// `CScrollBarWindow::_WindowProcCallback`.
+///
+/// # Safety
+/// `host` must be valid with a complete vtable; `hwnd` is the scroll bar.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_sb_window_proc(
+    host: *const DimeSbHost,
+    hwnd: *mut c_void,
+    msg: u32,
+    wparam: usize,
+    lparam: isize,
+) -> isize {
+    unsafe {
+        with_sb_host(host, 0, |h| {
+            sbproc::window_proc(h, candproc::HWND(hwnd), msg, candproc::WPARAM(wparam), candproc::LPARAM(lparam)).0
+        })
+    }
 }
 
 #[cfg(test)]

@@ -41,6 +41,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 class CStringRange;
+class CBaseWindow;
+
+#ifdef DIME_UNIT_TESTING
+// Called on every CBaseWindow::_SetTimerObject (start: pUIObj != nullptr); parity tests
+// compare the timers each implementation starts and stops.
+extern void (*g_baseWindowTimerTestHook)(CBaseWindow* pWindow, BOOL start, UINT uElapse, UINT_PTR timerID);
+#endif
 
 //+---------------------------------------------------------------------------
 //

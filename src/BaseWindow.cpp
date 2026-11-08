@@ -547,8 +547,16 @@ void CBaseWindow::_SetCaptureObject(_In_opt_ CBaseWindow *pUIObj)
 //
 //----------------------------------------------------------------------------
 
+#ifdef DIME_UNIT_TESTING
+void (*g_baseWindowTimerTestHook)(CBaseWindow* pWindow, BOOL start, UINT uElapse, UINT_PTR timerID) = nullptr;
+#endif
+
 void CBaseWindow::_SetTimerObject(_In_opt_ CBaseWindow *pUIObj, UINT uElapse, _In_opt_ UINT_PTR timerID)
 {
+#ifdef DIME_UNIT_TESTING
+    if (g_baseWindowTimerTestHook)
+        g_baseWindowTimerTestHook(this, pUIObj != nullptr, uElapse, timerID);
+#endif
     CBaseWindow* pUIWnd = _GetTopmostUIWnd();
     if (nullptr == pUIWnd)
     {

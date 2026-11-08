@@ -152,6 +152,9 @@ public:
 
     virtual void _ShiftLine(int nLine, BOOL isNotify)
     {
+#ifdef DIME_RUST_AVAILABLE
+        if (_useRust) { _RustEvent(1, nLine, isNotify); return; }
+#endif
         DWORD dwSB = 0;
 
         dwSB = (nLine > 0 ? SB_LINEDOWN :
@@ -162,6 +165,9 @@ public:
 
     virtual void _ShiftPage(int nPage, BOOL isNotify)
     {
+#ifdef DIME_RUST_AVAILABLE
+        if (_useRust) { _RustEvent(2, nPage, isNotify); return; }
+#endif
         DWORD dwSB = 0;
 
         dwSB = (nPage > 0 ? SB_PAGEDOWN :
@@ -172,6 +178,9 @@ public:
 
     virtual void _ShiftPosition(int iPos, BOOL isNotify)
     {
+#ifdef DIME_RUST_AVAILABLE
+        if (_useRust) { _RustEvent(3, iPos, isNotify); return; }
+#endif
         _SetCurPos(iPos, isNotify ? SB_THUMBPOSITION : -1);
     }
 
@@ -199,10 +208,27 @@ public:
         *prc = _selHighlightRect; *pRadius = _selHighlightRadius; *pColor = _selHighlightColor;
     }
     void _SetHoveredForTest(BOOL hovered) { _isHovered = hovered; }
+    // Which implementation handles the events (the state is shared; ScrollBarProcParityTest).
+    void _SetUseRustForTest(BOOL useRust) { _useRust = useRust; }
+    struct StateForTest
+    {
+        CScrollInfo si; BOOL dragging; int dragStartY; int dragStartPos; BYTE alpha;
+        BOOL fading; BOOL hovered; BOOL tracking; int held; BOOL repeatStarted;
+    };
+    StateForTest _GetStateForTest() const
+    {
+        return { _scrollInfo, _isDragging, _dragStartY, _dragStartPos, _currentAlpha,
+                 _isFading, _isHovered, _isTrackingMouse, (int)_heldButton, _repeatStarted };
+    }
 #endif
 
 private:
     void _AdjustWindowPos();
+#ifdef DIME_RUST_AVAILABLE
+    void _RustEvent(UINT op, int a, int b);   // dime-ui::sbproc
+#endif
+    friend struct CScrollBarWindowRustHost;
+    BOOL _useRust;   // events in Rust (DIME_USE_RUST_ENGINE) or C++
 
     CScrollInfo _scrollInfo;
     SCROLLBAR_DIRECTION _scrollDir;

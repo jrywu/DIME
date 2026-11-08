@@ -120,7 +120,8 @@
     - 順便修正測試基礎設施：`Global::RegisterWindowClass()` 在類別已註冊時失敗並把該 atom 設為 0，之後 `CBaseWindow::_Create` 會靜默建立沒有 HWND 的虛擬視窗，訊息送到 NULL、兩邊比對「當然相同」。各測試改用 `tests/WindowClassTestHelper.h` 的 `EnsureWindowClassesRegistered()`（失敗時以 `GetClassInfoExW` 取回 atom），`KeyFlowHarness` 也改用；兩個對拍測試會斷言視窗確實有 HWND。
   - 3c-3 捲軸窗（3c-4 陰影窗之後，Rust 才能擁有候選字窗的 HWND）：
     - ✅ 3c-3a 捲軸繪圖：`dime-ui::sbpaint` 移植 `CScrollBarWindow::_OnPaint`：背景（layered 視窗用洋紅色 color key；非 layered 時向父視窗送 `WM_CTLCOLORSCROLLBAR` 取筆刷，沒有就用黑色）、hover 或「一律顯示捲軸」時的三角箭頭與膠囊滑塊、閒置時的細線、非 layered 時疊上候選字窗的選取框（RC26）。C++ 原版保留為 `_OnPaintCpp`。`CandidatePaintParityTest::ScrollBarPaintMatchesCpp`：20 個候選字窗的捲軸 × 16 種狀態（捲動範圍含「一頁就放得下」、hover、亮／暗、layered／非 layered、選取框有無、無 `PAINTSTRUCT`）共 320 次繪製逐像素相同；植入錯誤（閒置細線顏色差 1）被抓到。
-    - ⏳ 3c-3b 捲軸的狀態與事件（拖曳、按住重複、hover 收合、淡出計時器、`_SetCurPos`／`_Shift*` 通知候選字窗）。
+    - ✅ 3c-3b 捲軸事件：`dime-ui::sbproc` 移植 `_OnLButtonDown`（按鈕翻頁並啟動按住重複、拖曳滑塊、點軌道翻頁）、`_OnLButtonUp`、`_OnMouseMove`（hover、拖曳換算位置）、`_OnTimerID`（按住重複由 400 ms 轉 50 ms、hover 收合）、`_OnScrollActivity`、`_SetScrollInfo`、`_SetCurPos`（夾限、啟用、通知候選字窗）、`_ShiftLine`／`_ShiftPage`／`_ShiftPosition`、`_SetCandidateMouseIn`、`_Show`／`_Enable`、`_OnOwnerWndMoved` 與 `_WindowProcCallback`（雙緩衝、`WM_MOUSELEAVE`、淡出計時器）。狀態仍是 C++ 成員，經 `DimeSbHostVtbl`（34 個欄位，`CScrollBarWindowRustHost`）讀寫：`_NotifyCommand` 會送 `WM_VSCROLL` 給候選字窗，而候選字窗又回呼捲軸的 `_ShiftPosition`，Rust 不能在 host 呼叫期間持有狀態的借用。每個捲軸依 `_useRust`（預設跟著 `DIME_USE_RUST_ENGINE`）分派，C++ 原版照舊保留在同一個函式內。`ScrollBarProcParityTest`：兩個真實候選字窗、一個捲軸走 C++ 一個走 Rust，20 組內容（一半顯示）× 150 步隨機操作（捲動資訊、各種通知碼的 `_SetCurPos`、`_Shift*`、按鈕／軌道／滑塊點擊、拖曳、放開、hover、兩種計時器、顯示／啟用、跟隨移動、`WM_MOUSELEAVE`／`WM_PAINT`／`WM_TIMER`），每步比對整個捲軸狀態、啟用／可見／位置／layered alpha、capture、啟動與停止的計時器（`CBaseWindow` 新增僅測試建置的 `g_baseWindowTimerTestHook`）與候選字窗的選取和頁：3,000 步相同（2,350 步帶動了候選字窗的選取）；植入錯誤（放開按鈕不釋放 capture）被抓到。
+  - ⏳ 3c-4 陰影窗，之後 3c-5 由 Rust 擁有候選字窗、捲軸窗、陰影窗的 HWND 與視窗類別。
 
 ### 第 4 階段：TSF COM 外殼 — 精簡為薄 C++ 層（全面改寫為選做）
 

@@ -767,6 +767,58 @@ typedef struct DimeSbPaint {
 
 void dime_ui_sb_paint(void* dc, const DimeSbPaint* input);   /* CScrollBarWindow::_OnPaint */
 
+/* ---- Scroll bar events (rust/crates/dime-ui/src/sbproc.rs) ----
+ * The state stays in CScrollBarWindow; CScrollBarWindowRustHost (src/ScrollBarWindow.cpp)
+ * reads and writes it. Field order must match DimeSbHostVtbl in dime-ffi. */
+typedef struct DimeSbHostVtbl {
+    void*    (*hwnd)(void* ctx);
+    void*    (*parent_hwnd)(void* ctx);                 /* the candidate window or NULL */
+    void     (*client_rect)(void* ctx, DimeRect* out);
+    uint32_t (*dpi)(void* ctx);
+    int32_t  (*hover_width)(void* ctx);
+    void     (*scroll_info)(void* ctx, DimeScrollInfo* out);
+    void     (*set_scroll_info)(void* ctx, const DimeScrollInfo* si);
+    int32_t  (*dragging)(void* ctx, int32_t* start_y, int32_t* start_pos);
+    void     (*set_dragging)(void* ctx, int32_t on, int32_t start_y, int32_t start_pos);
+    uint8_t  (*alpha)(void* ctx);
+    void     (*set_alpha)(void* ctx, uint8_t alpha);
+    int32_t  (*fading)(void* ctx);
+    void     (*set_fading)(void* ctx, int32_t on);
+    int32_t  (*hovered)(void* ctx);
+    void     (*set_hovered)(void* ctx, int32_t on);
+    int32_t  (*tracking_mouse)(void* ctx);
+    void     (*set_tracking_mouse)(void* ctx, int32_t on);
+    int32_t  (*held_button)(void* ctx);                 /* SCROLLBAR_HITTEST */
+    void     (*set_held_button)(void* ctx, int32_t button);
+    int32_t  (*repeat_started)(void* ctx);
+    void     (*set_repeat_started)(void* ctx, int32_t on);
+    int32_t  (*is_enabled)(void* ctx);
+    void     (*base_enable)(void* ctx, int32_t on);     /* CBaseWindow::_Enable */
+    int32_t  (*is_visible)(void* ctx);
+    void     (*base_show)(void* ctx, int32_t on);       /* CBaseWindow::_Show */
+    void     (*invalidate)(void* ctx);
+    int32_t  (*is_capture)(void* ctx);
+    void     (*start_capture)(void* ctx);
+    void     (*end_capture)(void* ctx);
+    void     (*start_timer)(void* ctx, uint32_t elapse, uintptr_t id);
+    void     (*end_timer)(void* ctx, uintptr_t id);
+    void     (*notify_command)(void* ctx, uint32_t msg, int32_t code, int32_t pos);   /* re-enters the scroll bar */
+    void     (*shift_page)(void* ctx, int32_t pages, int32_t notify);                 /* the virtual _ShiftPage */
+    void     (*paint)(void* ctx, void* dc, void* ps);                                 /* _OnPaint */
+} DimeSbHostVtbl;
+
+typedef struct DimeSbHost {
+    const DimeSbHostVtbl* vtbl;
+    void* ctx;
+} DimeSbHost;
+
+/* op: 0 _SetCurPos(a, b)  1 _ShiftLine(a, b)  2 _ShiftPage(a, b)  3 _ShiftPosition(a, b)
+ *     4 _OnScrollActivity  5 _SetCandidateMouseIn(a)  6 _OnLButtonDown(a, b)  7 _OnLButtonUp
+ *     8 _OnMouseMove  9 _OnTimerID(a)  10 _OnOwnerWndMoved  11 _Show(a)  12 _Enable(a) */
+void     dime_ui_sb_event(const DimeSbHost* host, uint32_t op, int32_t a, int32_t b);
+void     dime_ui_sb_set_scroll_info(const DimeSbHost* host, const DimeScrollInfo* si);
+intptr_t dime_ui_sb_window_proc(const DimeSbHost* host, void* hwnd, uint32_t msg, uintptr_t wparam, intptr_t lparam);
+
 #ifdef __cplusplus
 }
 #endif
