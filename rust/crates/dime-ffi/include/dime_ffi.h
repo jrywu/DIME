@@ -646,6 +646,55 @@ int32_t  dime_ui_sb_drag_pos(const DimeRect* client, uint32_t dpi, const DimeScr
 int32_t  dime_ui_sb_clamp_pos(int32_t pos, int32_t max);
 void     dime_ui_sb_attached_rect(int32_t parent_w, int32_t parent_h, int32_t sb_width, DimeRect* out);
 
+/* ---- Candidate window drawing (rust/crates/dime-ui/src/candpaint.rs) ----
+ * GDI handles are passed as void*. The same GDI calls as CCandidateWindow::_OnPaintCpp. */
+typedef struct DimeCandPaintRow {
+    const uint16_t* text;
+    uint32_t len;
+    uint16_t index_char;   /* CandIndex */
+    uint16_t has_text;     /* 0: no item */
+} DimeCandPaintRow;
+typedef struct DimeCandColors {
+    uint32_t number, number_bk, text, bk, selected_text, selected_bk;  /* COLORREF */
+} DimeCandColors;
+typedef struct DimeCandPaintList {
+    void* font;                 /* HFONT */
+    void* bk_brush;             /* HBRUSH, may be NULL */
+    DimeRect paint;             /* pps->rcPaint */
+    int32_t draw_list;          /* _DrawList runs */
+    uint32_t wnd_width;
+    int32_t sb_width;
+    uint32_t dpi;
+    int32_t rows_in_page;
+    int32_t selected_row;       /* -1: none on this page */
+    const DimeCandPaintRow* rows;
+    uint32_t row_count;
+    DimeCandColors colors;
+    int32_t has_sb_origin;      /* non-layered scroll bar (RC26) */
+    DimePoint sb_origin;        /* its origin in candidate client coordinates */
+} DimeCandPaintList;
+typedef struct DimeCandPaintListOut {
+    void* old_font;             /* give back to dime_ui_cand_paint_end */
+    int32_t drew_list;
+    int32_t cx_title, cy_row, padding;
+    uint32_t wnd_width;
+    int32_t needs_resize;
+    int32_t highlight_state;    /* 0: leave; 1: reset; 2: reset, then set highlight */
+    DimeRect highlight;
+    int32_t highlight_radius;
+    uint32_t highlight_color;
+} DimeCandPaintListOut;
+typedef struct DimeCandPaintIndicator {
+    void* font;
+    DimeRect client;
+    int32_t cy_row, rows_in_page, sb_width;
+    uint32_t dpi, current_page, page_count, number_color;
+} DimeCandPaintIndicator;
+
+void dime_ui_cand_paint_list(void* dc, const DimeCandPaintList* input, DimeCandPaintListOut* out);
+void dime_ui_cand_paint_indicator(void* dc, const DimeCandPaintIndicator* input);
+void dime_ui_cand_paint_end(void* dc, void* old_font);
+
 #ifdef __cplusplus
 }
 #endif

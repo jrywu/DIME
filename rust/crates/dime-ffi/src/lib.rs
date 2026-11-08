@@ -17,7 +17,7 @@ use std::ptr;
 
 use dime_core::big5;
 use dime_core::candgen;
-use dime_ui::{candwnd, layout};
+use dime_ui::{candpaint, candwnd, layout};
 use dime_core::candidates::{self, CandidatePaging};
 use dime_core::composition;
 use dime_core::keyclass;
@@ -3110,6 +3110,170 @@ pub extern "C" fn dime_ui_sb_clamp_pos(pos: i32, max: i32) -> i32 {
 #[no_mangle]
 pub unsafe extern "C" fn dime_ui_sb_attached_rect(parent_w: i32, parent_h: i32, sb_width: i32, out: *mut layout::Rect) {
     guard((), || unsafe { set(out, candwnd::attached_rect(parent_w, parent_h, sb_width)) })
+}
+
+// ---------------------------------------------------------------------------
+// Candidate window drawing (dime-ui::candpaint, phase 3c-1)
+// ---------------------------------------------------------------------------
+
+/// One row of the current page (`DimeCandPaintRow`).
+#[repr(C)]
+pub struct DimeCandPaintRow {
+    pub text: *const u16,
+    pub len: u32,
+    pub index_char: u16,
+    /// 0 when the model has no item there.
+    pub has_text: u16,
+}
+
+/// `DimeCandPaintList`.
+#[repr(C)]
+pub struct DimeCandPaintList {
+    pub font: *mut c_void,
+    pub bk_brush: *mut c_void,
+    pub paint: layout::Rect,
+    pub draw_list: i32,
+    pub wnd_width: u32,
+    pub sb_width: i32,
+    pub dpi: u32,
+    pub rows_in_page: i32,
+    /// -1: no selected row on this page.
+    pub selected_row: i32,
+    pub rows: *const DimeCandPaintRow,
+    pub row_count: u32,
+    pub colors: candpaint::Colors,
+    pub has_sb_origin: i32,
+    pub sb_origin: layout::Point,
+}
+
+/// `DimeCandPaintListOut`.
+#[repr(C)]
+pub struct DimeCandPaintListOut {
+    pub old_font: *mut c_void,
+    pub drew_list: i32,
+    pub cx_title: i32,
+    pub cy_row: i32,
+    pub padding: i32,
+    pub wnd_width: u32,
+    pub needs_resize: i32,
+    /// 0: leave the scroll bar highlight; 1: reset it; 2: reset, then set `highlight`.
+    pub highlight_state: i32,
+    pub highlight: layout::Rect,
+    pub highlight_radius: i32,
+    pub highlight_color: u32,
+}
+
+/// `DimeCandPaintIndicator`.
+#[repr(C)]
+pub struct DimeCandPaintIndicator {
+    pub font: *mut c_void,
+    pub client: layout::Rect,
+    pub cy_row: i32,
+    pub rows_in_page: i32,
+    pub sb_width: i32,
+    pub dpi: u32,
+    pub current_page: u32,
+    pub page_count: u32,
+    pub number_color: u32,
+}
+
+/// `_OnPaint` up to the page indicator (background and `_DrawList`).
+///
+/// # Safety
+/// `dc` must be a valid device context; `input` valid with `row_count` rows
+/// whose `text` points to `len` characters; `out` valid.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_cand_paint_list(
+    dc: *mut c_void,
+    input: *const DimeCandPaintList,
+    out: *mut DimeCandPaintListOut,
+) {
+    guard((), || {
+        let (Some(i), Some(o)) = (unsafe { input.as_ref() }, unsafe { out.as_mut() }) else {
+            return;
+        };
+        let raw: &[DimeCandPaintRow] = if i.rows.is_null() || i.row_count == 0 {
+            &[]
+        } else {
+            unsafe { std::slice::from_raw_parts(i.rows, i.row_count as usize) }
+        };
+        let rows: Vec<candpaint::Row> = raw
+            .iter()
+            .map(|r| candpaint::Row {
+                index_char: r.index_char,
+                text: (r.has_text != 0).then(|| unsafe { slice(r.text, r.len as usize) }),
+            })
+            .collect();
+        let li = candpaint::ListInput {
+            font: candpaint::HFONT(i.font),
+            bk_brush: candpaint::HBRUSH(i.bk_brush),
+            paint: i.paint,
+            draw_list: i.draw_list != 0,
+            wnd_width: i.wnd_width,
+            sb_width: i.sb_width,
+            dpi: i.dpi,
+            rows_in_page: i.rows_in_page,
+            rows: &rows,
+            selected: usize::try_from(i.selected_row).ok(),
+            colors: i.colors,
+            sb_origin: (i.has_sb_origin != 0).then_some((i.sb_origin.x, i.sb_origin.y)),
+        };
+        let r = unsafe { candpaint::paint_list(candpaint::HDC(dc), &li) };
+        o.old_font = r.old_font.0;
+        o.drew_list = 0;
+        o.highlight_state = 0;
+        if let Some(m) = r.metrics {
+            o.drew_list = 1;
+            o.cx_title = m.cx_title;
+            o.cy_row = m.cy_row;
+            o.padding = m.padding;
+            o.wnd_width = m.wnd_width;
+            o.needs_resize = i32::from(m.needs_resize);
+        }
+        match r.highlight {
+            None => {}
+            Some(None) => o.highlight_state = 1,
+            Some(Some(h)) => {
+                o.highlight_state = 2;
+                o.highlight = h.rect;
+                o.highlight_radius = h.radius;
+                o.highlight_color = h.color;
+            }
+        }
+    })
+}
+
+/// `_DrawPageIndicator`.
+///
+/// # Safety
+/// `dc` must be a valid device context; `input` valid.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_cand_paint_indicator(dc: *mut c_void, input: *const DimeCandPaintIndicator) {
+    guard((), || {
+        if let Some(i) = unsafe { input.as_ref() } {
+            let ii = candpaint::IndicatorInput {
+                font: candpaint::HFONT(i.font),
+                client: i.client,
+                cy_row: i.cy_row,
+                rows_in_page: i.rows_in_page,
+                sb_width: i.sb_width,
+                dpi: i.dpi,
+                current_page: i.current_page,
+                page_count: i.page_count,
+                number_color: i.number_color,
+            };
+            unsafe { candpaint::paint_page_indicator(candpaint::HDC(dc), &ii) };
+        }
+    })
+}
+
+/// The end of `_OnPaint`: select `old_font` back.
+///
+/// # Safety
+/// `dc` must be a valid device context.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_cand_paint_end(dc: *mut c_void, old_font: *mut c_void) {
+    guard((), || unsafe { candpaint::paint_end(candpaint::HDC(dc), candpaint::HGDIOBJ(old_font)) })
 }
 
 #[cfg(test)]

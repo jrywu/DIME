@@ -189,6 +189,12 @@ public:
     // On non-layered windows, _OnPaint draws the same RoundRect so the
     // highlight visually extends over the scrollbar with its original shape.
     void _SetSelectionHighlight(RECT rc, int cornerRadius, COLORREF color);
+#ifdef DIME_UNIT_TESTING
+    void _GetSelectionHighlightForTest(RECT* prc, int* pRadius, COLORREF* pColor) const
+    {
+        *prc = _selHighlightRect; *pRadius = _selHighlightRadius; *pColor = _selHighlightColor;
+    }
+#endif
 
 private:
     void _AdjustWindowPos();

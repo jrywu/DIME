@@ -39,6 +39,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "CandidateWindow.h"
 #include "UILayout.h"
 #include <memory> // Include for smart pointers
+#include <vector>
+#ifdef DIME_RUST_AVAILABLE
+#include "dime_ffi.h"
+#endif
 
 #define NO_ANIMATION
 //#define NO_WINDOW_SHADOW
@@ -718,7 +722,139 @@ void CCandidateWindow::_HandleMouseMsg(_In_ UINT mouseMsg, _In_ POINT point)
 void CCandidateWindow::_OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pPaintStruct)
 {
 	debugPrint(L"CCandidateWindow::_OnPaint()\n");
+#ifdef DIME_USE_RUST_ENGINE
+	_OnPaintRust(dcHandle, pPaintStruct);
+#else
+	_OnPaintCpp(dcHandle, pPaintStruct);
+#endif
+}
 
+#ifdef DIME_RUST_AVAILABLE
+//+---------------------------------------------------------------------------
+//
+// _OnPaintRust: the same drawing by dime-ui::candpaint (GDI from Rust). C++
+// gathers the rows and applies the results (layout members, the scroll bar's
+// selection highlight, _ResizeWindow between the list and the page indicator,
+// as _DrawList does). Parity: CandidatePaintParityTest.
+//
+//----------------------------------------------------------------------------
+
+static_assert(sizeof(DimeCandColors) == 6 * sizeof(COLORREF), "DimeCandColors layout");
+
+void CCandidateWindow::_OnPaintRust(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pPaintStruct)
+{
+	if(pPaintStruct == nullptr) return;
+
+	UINT currentPageIndex = 0;
+	UINT currentPage = 0;
+	BOOL hasPage = SUCCEEDED(_GetCurrentPage(&currentPage));
+	if (hasPage)
+		_AdjustPageIndex(currentPage, currentPageIndex);
+	BOOL drawList = hasPage && _pIndexRange != nullptr;
+
+	int VScrollWidth = _GetScrollBarWidth();
+	UINT dpi = CConfig::GetDpiForHwnd(_GetWnd());
+
+	DimeCandPaintList in = {};
+	in.font = Global::defaultlFontHandle;
+	in.bk_brush = _brshBkColor;
+	in.paint = { pPaintStruct->rcPaint.left, pPaintStruct->rcPaint.top, pPaintStruct->rcPaint.right, pPaintStruct->rcPaint.bottom };
+	in.draw_list = drawList ? 1 : 0;
+	in.wnd_width = _wndWidth;
+	in.sb_width = VScrollWidth;
+	in.dpi = dpi;
+	in.selected_row = -1;
+	in.colors = { _crNumberColor, _crNumberBkColor, _crTextColor, _crBkColor, _crSelectedTextColor, _crSelectedBkColor };
+
+	std::vector<DimeCandPaintRow> rows;
+	if (drawList)
+	{
+		int candidateListPageCnt = _pIndexRange->Count();
+		in.rows_in_page = candidateListPageCnt;
+		for (UINT index = currentPageIndex; index < _model->Count() && (int)rows.size() < candidateListPageCnt; index++)
+		{
+			DimeCandPaintRow row = {};
+			row.index_char = (uint16_t)_pIndexRange->GetAt((int)rows.size())->CandIndex;
+			CCandidateListItem* pItem = _model->ItemAt(index);
+			if (pItem)
+			{
+				row.text = (const uint16_t*)pItem->_ItemString.Get();
+				row.len = (uint32_t)pItem->_ItemString.GetLength();
+				row.has_text = 1;
+			}
+			if (_model->Selection() == (INT)index)
+				in.selected_row = (int32_t)rows.size();
+			rows.push_back(row);
+		}
+
+		// RC26: the selection highlight is mirrored on a non-layered scroll bar.
+		if (_pVScrollBarWnd && _pVScrollBarWnd->_GetWnd() &&
+			!(GetWindowLong(_pVScrollBarWnd->_GetWnd(), GWL_EXSTYLE) & WS_EX_LAYERED))
+		{
+			RECT rcSB = {0};
+			_pVScrollBarWnd->_GetWindowRect(&rcSB);
+			POINT ptSB = { rcSB.left, rcSB.top };
+			ScreenToClient(_GetWnd(), &ptSB);
+			in.has_sb_origin = 1;
+			in.sb_origin = { ptSB.x, ptSB.y };
+		}
+	}
+	in.rows = rows.empty() ? nullptr : rows.data();
+	in.row_count = (uint32_t)rows.size();
+
+	DimeCandPaintListOut out = {};
+	dime_ui_cand_paint_list(dcHandle, &in, &out);
+
+	if (out.highlight_state != 0 && _pVScrollBarWnd)
+	{
+		RECT rcEmpty = {0};
+		_pVScrollBarWnd->_SetSelectionHighlight(rcEmpty, -1, 0);
+		if (out.highlight_state == 2)
+		{
+			RECT rcSelSB = { out.highlight.left, out.highlight.top, out.highlight.right, out.highlight.bottom };
+			_pVScrollBarWnd->_SetSelectionHighlight(rcSelSB, out.highlight_radius, out.highlight_color);
+		}
+	}
+
+	if (out.drew_list)
+	{
+		_cxTitle = out.cx_title;
+		_cyRow = out.cy_row;
+		_padding = out.padding;
+		_wndWidth = out.wnd_width;
+		if (out.needs_resize) _ResizeWindow();
+
+		// _DrawPageIndicator: absolute client coordinates, after any resize.
+		if (_model->PageCount() > 1)
+		{
+			RECT rcClient = { 0, 0, 0, 0 };
+			_GetClientRect(&rcClient);
+			DimeCandPaintIndicator ind = {};
+			ind.font = Global::defaultlFontHandle;
+			ind.client = { rcClient.left, rcClient.top, rcClient.right, rcClient.bottom };
+			ind.cy_row = _cyRow;
+			ind.rows_in_page = _pIndexRange->Count();
+			ind.sb_width = _GetScrollBarWidth();
+			ind.dpi = CConfig::GetDpiForHwnd(_GetWnd());
+			ind.current_page = currentPage;
+			ind.page_count = (uint32_t)_model->PageCount();
+			ind.number_color = _crNumberColor;
+			dime_ui_cand_paint_indicator(dcHandle, &ind);
+		}
+	}
+
+	dime_ui_cand_paint_end(dcHandle, out.old_font);
+}
+#endif
+
+//+---------------------------------------------------------------------------
+//
+// _OnPaintCpp: the C++ original.
+//
+//----------------------------------------------------------------------------
+
+void CCandidateWindow::_OnPaintCpp(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pPaintStruct)
+{
 	if(pPaintStruct == nullptr) return;
 
     SetBkMode(dcHandle, TRANSPARENT);

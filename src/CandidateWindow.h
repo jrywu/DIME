@@ -76,6 +76,17 @@ public:
 
     LRESULT CALLBACK _WindowProcCallback(_In_ HWND wndHandle, UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam);
     void _OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps);
+    void _OnPaintCpp(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps);     // the C++ original
+#ifdef DIME_RUST_AVAILABLE
+    void _OnPaintRust(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps);    // dime-ui::candpaint
+#endif
+#ifdef DIME_UNIT_TESTING
+    // The layout members painting updates (CandidatePaintParityTest).
+    struct LayoutStateForTest { int cxTitle; int cyRow; int padding; UINT wndWidth; };
+    LayoutStateForTest _GetLayoutStateForTest() const { return { _cxTitle, _cyRow, _padding, _wndWidth }; }
+    void _SetLayoutStateForTest(const LayoutStateForTest& s) { _cxTitle = s.cxTitle; _cyRow = s.cyRow; _padding = s.padding; _wndWidth = s.wndWidth; }
+    CScrollBarWindow* _GetScrollBarForTest() { return _pVScrollBarWnd.get(); }
+#endif
     void _OnLButtonDown(POINT pt);
     void _OnLButtonUp(POINT pt);
     void _OnMouseMove(POINT pt);
