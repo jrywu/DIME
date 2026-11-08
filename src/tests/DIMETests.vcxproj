@@ -382,6 +382,7 @@
     <ClCompile Include="CandidatePaintParityTest.cpp" />
     <ClCompile Include="CandidateProcParityTest.cpp" />
     <ClCompile Include="ScrollBarProcParityTest.cpp" />
+    <ClCompile Include="ShadowParityTest.cpp" />
     <ClCompile Include="..\RustTableDictionaryEngine.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>

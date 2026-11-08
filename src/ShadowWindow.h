@@ -38,6 +38,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // SHADOW_SPREAD is defined in Define.h
 
+// The shadow color and image (C++ originals; the Rust port is dime-ui::shadow).
+namespace ShadowCpp
+{
+    void Color(bool dark, COLORREF sysWndColor, _Out_ BYTE* pGray, _Out_ BYTE* pMaxAlpha);
+    void FillPixels(_Out_writes_bytes_(cx * cy * 4) void* bits, int cx, int cy, int spread, int ownerRadius, BYTE gray, BYTE maxAlpha);
+}
+
 class CShadowWindow : public CBaseWindow
 {
 public:
@@ -50,6 +57,11 @@ public:
         _isGradient = FALSE;
         _skipRoundedRegion = TRUE;  // Shadow uses UpdateLayeredWindow — SetWindowRgn not needed
         _cornerRadiusBase = 10;
+#ifdef DIME_USE_RUST_ENGINE
+        _useRust = TRUE;
+#else
+        _useRust = FALSE;
+#endif
     }
     virtual ~CShadowWindow()
     {
@@ -63,8 +75,19 @@ public:
 
     void _OnSettingChange();
     void _OnOwnerWndMoved(BOOL isResized);
+#ifdef DIME_UNIT_TESTING
+    // Which implementation handles the shadow (the state is shared; ShadowParityTest).
+    void _SetUseRustForTest(BOOL useRust) { _useRust = useRust; }
+    COLORREF _GetColorForTest() const { return _color; }
+    SIZE _GetSizeShiftForTest() const { return _sizeShift; }
+    BOOL _IsGradientForTest() const { return _isGradient; }
+#endif
 
 private:
+#ifdef DIME_RUST_AVAILABLE
+    void _RustEvent(UINT op, int a);   // dime-ui::shadow
+#endif
+    friend struct CShadowWindowRustHost;
     BOOL _Initialize();
     void _InitSettings();
     void _AdjustWindowPos();
@@ -75,4 +98,5 @@ private:
     COLORREF _color;
     SIZE _sizeShift;
     BOOL _isGradient;
+    BOOL _useRust;   // shadow behavior in Rust (DIME_USE_RUST_ENGINE) or C++
 };

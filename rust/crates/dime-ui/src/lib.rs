@@ -7,7 +7,8 @@
 //! (`candpaint`, Windows only).  Phase 3c-2: its message handling
 //! (`candproc`, Windows only).  Phase 3c-3a: the scroll bar drawing
 //! (`sbpaint`, Windows only).  Phase 3c-3b: the scroll bar events
-//! (`sbproc`, Windows only).  The window objects themselves are still C++.
+//! (`sbproc`, Windows only).  Phase 3c-4: the drop shadow (`shadow`).
+//! The window objects themselves are still C++.
 
 #[cfg(windows)]
 pub mod candpaint;
@@ -19,3 +20,4 @@ pub mod layout;
 pub mod sbpaint;
 #[cfg(windows)]
 pub mod sbproc;
+pub mod shadow;

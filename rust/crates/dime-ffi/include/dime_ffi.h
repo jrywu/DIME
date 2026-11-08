@@ -819,6 +819,39 @@ void     dime_ui_sb_event(const DimeSbHost* host, uint32_t op, int32_t a, int32_
 void     dime_ui_sb_set_scroll_info(const DimeSbHost* host, const DimeScrollInfo* si);
 intptr_t dime_ui_sb_window_proc(const DimeSbHost* host, void* hwnd, uint32_t msg, uintptr_t wparam, intptr_t lparam);
 
+/* ---- Drop shadow (rust/crates/dime-ui/src/shadow.rs) ---- */
+void dime_ui_shadow_color(int32_t dark, uint32_t sys_window_color, uint8_t* gray, uint8_t* max_alpha);
+/* 0xAARRGGBB premultiplied, bitmap memory order; out has count = cx * cy entries. */
+void dime_ui_shadow_pixels(int32_t cx, int32_t cy, int32_t spread, int32_t owner_radius, uint8_t gray, uint8_t max_alpha,
+                           uint32_t* out, size_t count);
+
+/* The C++ side (CShadowWindowRustHost in src/ShadowWindow.cpp); order must match dime-ffi. */
+typedef struct DimeShadowHostVtbl {
+    void*    (*hwnd)(void* ctx);
+    void*    (*owner_hwnd)(void* ctx);
+    int32_t  (*owner_corner_radius_base)(void* ctx);
+    int32_t  (*is_gradient)(void* ctx);
+    void     (*set_is_gradient)(void* ctx, int32_t on);
+    uint32_t (*color)(void* ctx);
+    void     (*set_color)(void* ctx, uint32_t color);
+    void     (*size_shift)(void* ctx, DimePoint* out);
+    void     (*set_size_shift)(void* ctx, DimePoint shift);
+    int32_t  (*is_visible)(void* ctx);
+    void     (*base_show)(void* ctx, int32_t on);       /* CBaseWindow::_Show */
+    uint32_t (*dpi)(void* ctx);
+    int32_t  (*dark)(void* ctx);                        /* CConfig::GetEffectiveDarkMode() */
+    uint32_t (*sys_window_color)(void* ctx);            /* GetSysColor(COLOR_WINDOW) */
+} DimeShadowHostVtbl;
+
+typedef struct DimeShadowHost {
+    const DimeShadowHostVtbl* vtbl;
+    void* ctx;
+} DimeShadowHost;
+
+/* op: 0 _InitSettings  1 _AdjustWindowPos  2 _InitShadow  3 _OnSettingChange  4 _OnOwnerWndMoved(a)  5 _Show(a) */
+void     dime_ui_shadow_event(const DimeShadowHost* host, uint32_t op, int32_t a);
+intptr_t dime_ui_shadow_window_proc(const DimeShadowHost* host, void* hwnd, uint32_t msg, uintptr_t wparam, intptr_t lparam);
+
 #ifdef __cplusplus
 }
 #endif
