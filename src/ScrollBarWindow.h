@@ -128,6 +128,10 @@ public:
 
     LRESULT CALLBACK _WindowProcCallback(_In_ HWND wndHandle, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam);
     virtual void _OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps);
+    void _OnPaintCpp(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps);     // the C++ original
+#ifdef DIME_RUST_AVAILABLE
+    void _OnPaintRust(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps);    // dime-ui::sbpaint
+#endif
     virtual void _OnLButtonDown(POINT pt);
     virtual void _OnLButtonUp(POINT pt);
     virtual void _OnMouseMove(POINT pt);
@@ -194,6 +198,7 @@ public:
     {
         *prc = _selHighlightRect; *pRadius = _selHighlightRadius; *pColor = _selHighlightColor;
     }
+    void _SetHoveredForTest(BOOL hovered) { _isHovered = hovered; }
 #endif
 
 private:

@@ -6,7 +6,7 @@
 * window size (_ResizeWindow) and the scroll bar's selection highlight must be
 * identical. Scenarios: several fonts and sizes, candidate widths, page sizes,
 * item lengths (truncation and widening), selections on every page, colors,
-* missing items.
+* missing items. The scroll bar likewise (ScrollBarPaintMatchesCpp).
 ********************************************************************************/
 #include "pch.h"
 #include "CppUnitTest.h"
@@ -18,6 +18,7 @@
 #include "../Globals.h"
 #include "../CandidateWindow.h"
 #include "../BaseStructure.h"
+#include "../Config.h"
 #include "WindowClassTestHelper.h"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
@@ -207,6 +208,105 @@ namespace DIMEUnitTests
             Logger::WriteMessage((std::to_wstring(scenarios) + L" windows, " + std::to_wstring(compared) + L" paints compared, " +
                 std::to_wstring(withIndicator) + L" with a page indicator, " + std::to_wstring(truncatedOrWidened) + L" widened").c_str());
             Assert::IsTrue(withIndicator > 0 && truncatedOrWidened > 0, L"coverage");
+        }
+
+        // The scroll bar (CScrollBarWindow::_OnPaintCpp vs _OnPaintRust): background (color key /
+        // the candidate's brush), hovered arrows + pill thumb or the idle line, the RC26 highlight;
+        // light / dark, layered / not, scroll ranges including "everything fits".
+        TEST_METHOD(ScrollBarPaintMatchesCpp)
+        {
+            EnsureWindowClassesRegistered();
+            HFONT savedFont = Global::defaultlFontHandle;
+            IME_COLOR_MODE savedMode = CConfig::GetColorMode();
+            HFONT font = CreateFont(-24, 0, 0, 0, FW_NORMAL, FALSE, 0, 0, DEFAULT_CHARSET, 0, 0, 0, 0, L"Microsoft JhengHei");
+            Global::defaultlFontHandle = font;
+
+            std::mt19937 rng(37);
+            int compared = 0, layeredPaints = 0, plainPaints = 0;
+            for (int s = 0; s < 20; s++)
+            {
+                int rowsInPage = 1 + (int)(rng() % 9);
+                CCandidateRange range;
+                for (int k = 0; k < rowsInPage; k++) range.Append()->CandIndex = L'1' + (wchar_t)k;
+                CCandidateWindow* w = new CCandidateWindow(NoCallback, nullptr, &range, FALSE);
+                Assert::IsTrue(w->_Create(1 + rng() % 4, 12, nullptr) != FALSE);
+                Assert::IsNotNull(w->_GetWnd(), L"a real window (not a virtual one)");
+                w->_SetFillColor((COLORREF)(rng() & 0xFFFFFF));
+                w->_ResizeWindow();
+                CScrollBarWindow* sb = w->_GetScrollBarForTest();
+                Assert::IsNotNull(sb);
+                HWND sbh = sb->_GetWnd();
+                LONG style = GetWindowLong(sbh, GWL_EXSTYLE);
+
+                for (int v = 0; v < 16; v++)
+                {
+                    CScrollInfo si;
+                    si.nMax = (int)(rng() % 60);
+                    si.nPage = 1 + (int)(rng() % 12);
+                    si.nPos = (int)(rng() % 70);
+                    sb->_SetScrollInfo(&si);
+                    sb->_SetHoveredForTest(rng() % 2);
+                    CConfig::SetColorMode((rng() % 2) ? IME_COLOR_MODE::IME_COLOR_MODE_DARK : IME_COLOR_MODE::IME_COLOR_MODE_LIGHT);
+                    RECT hl = { -(LONG)(rng() % 200), (LONG)(rng() % 100), (LONG)(rng() % 40), 0 };
+                    hl.bottom = hl.top + 10 + (LONG)(rng() % 30);
+                    sb->_SetSelectionHighlight(hl, (rng() % 3) ? (int)(rng() % 9) : -1, (COLORREF)(rng() & 0xFFFFFF));
+                    SetWindowLong(sbh, GWL_EXSTYLE, (rng() % 2) ? (style | WS_EX_LAYERED) : (style & ~WS_EX_LAYERED));
+                    bool layered = (GetWindowLong(sbh, GWL_EXSTYLE) & WS_EX_LAYERED) != 0;
+                    (layered ? layeredPaints : plainPaints)++;
+                    bool withPaintStruct = (v != 0);
+
+                    RECT rc = { 0, 0, 0, 0 };
+                    GetClientRect(sbh, &rc);
+                    int cx = max(1, (int)rc.right), cy = max(1, (int)rc.bottom);
+                    std::vector<DWORD> pixels[2];
+                    for (int impl = 0; impl < 2; impl++)
+                    {
+                        HDC screen = GetDC(nullptr);
+                        HDC mem = CreateCompatibleDC(screen);
+                        BITMAPINFO bi = {};
+                        bi.bmiHeader.biSize = sizeof(bi.bmiHeader);
+                        bi.bmiHeader.biWidth = cx;
+                        bi.bmiHeader.biHeight = -cy;
+                        bi.bmiHeader.biPlanes = 1;
+                        bi.bmiHeader.biBitCount = 32;
+                        bi.bmiHeader.biCompression = BI_RGB;
+                        void* bits = nullptr;
+                        HBITMAP dib = CreateDIBSection(mem, &bi, DIB_RGB_COLORS, &bits, nullptr, 0);
+                        HGDIOBJ oldBmp = SelectObject(mem, dib);
+                        RECT all = { 0, 0, cx, cy };
+                        HBRUSH sentinel = CreateSolidBrush(RGB(0x12, 0x34, 0x56));
+                        FillRect(mem, &all, sentinel);
+                        DeleteObject(sentinel);
+                        PAINTSTRUCT ps = {};
+                        ps.hdc = mem;
+                        ps.rcPaint = rc;
+                        PAINTSTRUCT* pps = withPaintStruct ? &ps : nullptr;
+                        if (impl == 0) sb->_OnPaintCpp(mem, pps);
+                        else sb->_OnPaintRust(mem, pps);
+                        GdiFlush();
+                        pixels[impl].assign((DWORD*)bits, (DWORD*)bits + (size_t)cx * cy);
+                        SelectObject(mem, oldBmp);
+                        DeleteObject(dib);
+                        DeleteDC(mem);
+                        ReleaseDC(nullptr, screen);
+                    }
+                    for (size_t i = 0; i < pixels[0].size(); i++)
+                    {
+                        if (pixels[0][i] != pixels[1][i])
+                            Assert::Fail((L"scroll bar " + std::to_wstring(s) + L"/" + std::to_wstring(v) + L" max=" + std::to_wstring(si.nMax) +
+                                L" page=" + std::to_wstring(si.nPage) + L" layered=" + std::to_wstring(layered) + L": pixel " + std::to_wstring(i) + L" differs").c_str());
+                    }
+                    compared++;
+                }
+                SetWindowLong(sbh, GWL_EXSTYLE, style);
+                delete w;
+            }
+            CConfig::SetColorMode(savedMode);
+            Global::defaultlFontHandle = savedFont;
+            DeleteObject(font);
+            Logger::WriteMessage((std::to_wstring(compared) + L" scroll bar paints compared (" + std::to_wstring(layeredPaints) +
+                L" layered, " + std::to_wstring(plainPaints) + L" not)").c_str());
+            Assert::IsTrue(layeredPaints > 0 && plainPaints > 0, L"coverage");
         }
     };
 }

@@ -17,7 +17,7 @@ use std::ptr;
 
 use dime_core::big5;
 use dime_core::candgen;
-use dime_ui::{candpaint, candproc, candwnd, layout};
+use dime_ui::{candpaint, candproc, candwnd, layout, sbpaint};
 use dime_core::candidates::{self, CandidatePaging};
 use dime_core::composition;
 use dime_core::keyclass;
@@ -3488,6 +3488,51 @@ pub unsafe extern "C" fn dime_ui_cand_window_proc(
         let mut ffi = CandHostFfi { v, ctx: h.ctx };
         unsafe {
             candproc::window_proc(&mut ffi, candproc::HWND(hwnd), msg, candproc::WPARAM(wparam), candproc::LPARAM(lparam)).0
+        }
+    })
+}
+
+// ---------------------------------------------------------------------------
+// Scroll bar drawing (dime-ui::sbpaint, phase 3c-3a)
+// ---------------------------------------------------------------------------
+
+/// `DimeSbPaint`.
+#[repr(C)]
+pub struct DimeSbPaint {
+    pub hwnd: *mut c_void,
+    pub has_paint: i32,
+    pub paint: layout::Rect,
+    pub client: layout::Rect,
+    pub dpi: u32,
+    pub si: candwnd::ScrollInfo,
+    pub dark: i32,
+    pub full: i32,
+    pub highlight: layout::Rect,
+    pub highlight_radius: i32,
+    pub highlight_color: u32,
+}
+
+/// `CScrollBarWindow::_OnPaint`.
+///
+/// # Safety
+/// `dc` must be a valid device context; `input` valid, its `hwnd` the scroll bar.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_sb_paint(dc: *mut c_void, input: *const DimeSbPaint) {
+    guard((), || {
+        if let Some(i) = unsafe { input.as_ref() } {
+            let ii = sbpaint::Input {
+                hwnd: candproc::HWND(i.hwnd),
+                paint: (i.has_paint != 0).then_some(i.paint),
+                client: i.client,
+                dpi: i.dpi,
+                si: i.si,
+                dark: i.dark != 0,
+                full: i.full != 0,
+                highlight: i.highlight,
+                highlight_radius: i.highlight_radius,
+                highlight_color: i.highlight_color,
+            };
+            unsafe { sbpaint::paint(candpaint::HDC(dc), &ii) };
         }
     })
 }

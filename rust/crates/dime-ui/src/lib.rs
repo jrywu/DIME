@@ -5,7 +5,8 @@
 //! `CUIPresenter`).  Phase 3b: the candidate window and scroll bar layout
 //! (`candwnd`).  Phase 3c-1: the GDI drawing of the candidate window
 //! (`candpaint`, Windows only).  Phase 3c-2: its message handling
-//! (`candproc`, Windows only).  The window objects themselves are still C++.
+//! (`candproc`, Windows only).  Phase 3c-3a: the scroll bar drawing
+//! (`sbpaint`, Windows only).  The window objects themselves are still C++.
 
 #[cfg(windows)]
 pub mod candpaint;
@@ -13,3 +14,5 @@ pub mod candpaint;
 pub mod candproc;
 pub mod candwnd;
 pub mod layout;
+#[cfg(windows)]
+pub mod sbpaint;

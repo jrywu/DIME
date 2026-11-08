@@ -750,6 +750,23 @@ typedef struct DimeCandHost {
 /* CCandidateWindow::_WindowProcCallback (LRESULT). */
 intptr_t dime_ui_cand_window_proc(const DimeCandHost* host, void* hwnd, uint32_t msg, uintptr_t wparam, intptr_t lparam);
 
+/* ---- Scroll bar drawing (rust/crates/dime-ui/src/sbpaint.rs) ---- */
+typedef struct DimeSbPaint {
+    void* hwnd;                 /* the scroll bar */
+    int32_t has_paint;          /* 0: no PAINTSTRUCT (no background) */
+    DimeRect paint;             /* pps->rcPaint */
+    DimeRect client;
+    uint32_t dpi;
+    DimeScrollInfo si;
+    int32_t dark;               /* CConfig::GetEffectiveDarkMode() */
+    int32_t full;               /* hovered or "always show scrollbars" */
+    DimeRect highlight;         /* RC26 selection highlight, scroll bar coordinates */
+    int32_t highlight_radius;   /* -1: none */
+    uint32_t highlight_color;
+} DimeSbPaint;
+
+void dime_ui_sb_paint(void* dc, const DimeSbPaint* input);   /* CScrollBarWindow::_OnPaint */
+
 #ifdef __cplusplus
 }
 #endif

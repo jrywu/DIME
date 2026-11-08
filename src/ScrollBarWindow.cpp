@@ -38,6 +38,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ScrollBarWindow.h"
 #include "UIConstants.h"
 #include "UILayout.h"
+#ifdef DIME_RUST_AVAILABLE
+#include "dime_ffi.h"
+#endif
 
 // CScrollInfo as UILayout sees it.
 static UILayout::ScrollInfo _LayoutScrollInfo(const CScrollInfo& si)
@@ -253,6 +256,38 @@ LRESULT CALLBACK CScrollBarWindow::_WindowProcCallback(_In_ HWND wndHandle, _In_
 void CScrollBarWindow::_OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps)
 {
 	debugPrint(L"CScrollBarWindow::_OnPaint()\n");
+#ifdef DIME_USE_RUST_ENGINE
+    _OnPaintRust(dcHandle, pps);
+#else
+    _OnPaintCpp(dcHandle, pps);
+#endif
+}
+
+#ifdef DIME_RUST_AVAILABLE
+// _OnPaintRust: the same drawing by dime-ui::sbpaint. Parity: CandidatePaintParityTest.
+void CScrollBarWindow::_OnPaintRust(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps)
+{
+    RECT rcClient = {0,0,0,0};
+    _GetClientRect(&rcClient);
+    DimeSbPaint in = {};
+    in.hwnd = _GetWnd();
+    in.has_paint = pps ? 1 : 0;
+    if (pps) in.paint = { pps->rcPaint.left, pps->rcPaint.top, pps->rcPaint.right, pps->rcPaint.bottom };
+    in.client = { rcClient.left, rcClient.top, rcClient.right, rcClient.bottom };
+    in.dpi = CConfig::GetDpiForHwnd(_GetWnd());
+    in.si = { _scrollInfo.nMax, _scrollInfo.nPage, _scrollInfo.nPos };
+    in.dark = CConfig::GetEffectiveDarkMode() ? 1 : 0;
+    in.full = (_isHovered || CConfig::GetAlwaysShowScrollbars()) ? 1 : 0;
+    in.highlight = { _selHighlightRect.left, _selHighlightRect.top, _selHighlightRect.right, _selHighlightRect.bottom };
+    in.highlight_radius = _selHighlightRadius;
+    in.highlight_color = _selHighlightColor;
+    dime_ui_sb_paint(dcHandle, &in);
+}
+#endif
+
+// _OnPaintCpp: the C++ original.
+void CScrollBarWindow::_OnPaintCpp(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps)
+{
 
     // RC26: Fill background — layered windows use magenta color key (becomes transparent);
     // non-layered windows (legacy apps where WS_EX_LAYERED failed) ask the parent for its bg brush.
