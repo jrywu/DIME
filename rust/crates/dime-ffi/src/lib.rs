@@ -17,7 +17,7 @@ use std::ptr;
 
 use dime_core::big5;
 use dime_core::candgen;
-use dime_ui::{candpaint, candproc, candwnd, layout, notify, sbpaint, sbproc, shadow, win};
+use dime_ui::{candpaint, candproc, candwnd, layout, notify, sbpaint, sbwin, shadow, win};
 use dime_ui::win::{HINSTANCE, PCWSTR};
 use dime_core::candidates::{self, CandidatePaging};
 use dime_core::composition;
@@ -3539,244 +3539,228 @@ pub unsafe extern "C" fn dime_ui_sb_paint(dc: *mut c_void, input: *const DimeSbP
 }
 
 // ---------------------------------------------------------------------------
-// Scroll bar events (dime-ui::sbproc, phase 3c-3b)
+// The scroll bar owned by Rust (dime-ui::sbwin, phase 3c-5c)
 // ---------------------------------------------------------------------------
 
-/// The C++ side of the scroll bar (`CScrollBarWindowRustHost` in
-/// `src/ScrollBarWindow.cpp`).  Field order must match `DimeSbHostVtbl` in
-/// `dime_ffi.h` and `s_vtbl` there.  Callbacks must not throw.
+/// `DimeSbEnv` (C++ `CConfig`).
 #[repr(C)]
-pub struct DimeSbHostVtbl {
-    pub hwnd: unsafe extern "C" fn(ctx: *mut c_void) -> *mut c_void,
-    pub parent_hwnd: unsafe extern "C" fn(ctx: *mut c_void) -> *mut c_void,
-    pub client_rect: unsafe extern "C" fn(ctx: *mut c_void, out: *mut layout::Rect),
-    pub dpi: unsafe extern "C" fn(ctx: *mut c_void) -> u32,
-    pub hover_width: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
-    pub scroll_info: unsafe extern "C" fn(ctx: *mut c_void, out: *mut candwnd::ScrollInfo),
-    pub set_scroll_info: unsafe extern "C" fn(ctx: *mut c_void, si: *const candwnd::ScrollInfo),
-    pub dragging: unsafe extern "C" fn(ctx: *mut c_void, start_y: *mut i32, start_pos: *mut i32) -> i32,
-    pub set_dragging: unsafe extern "C" fn(ctx: *mut c_void, on: i32, start_y: i32, start_pos: i32),
-    pub alpha: unsafe extern "C" fn(ctx: *mut c_void) -> u8,
-    pub set_alpha: unsafe extern "C" fn(ctx: *mut c_void, alpha: u8),
-    pub fading: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
-    pub set_fading: unsafe extern "C" fn(ctx: *mut c_void, on: i32),
-    pub hovered: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
-    pub set_hovered: unsafe extern "C" fn(ctx: *mut c_void, on: i32),
-    pub tracking_mouse: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
-    pub set_tracking_mouse: unsafe extern "C" fn(ctx: *mut c_void, on: i32),
-    pub held_button: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
-    pub set_held_button: unsafe extern "C" fn(ctx: *mut c_void, button: i32),
-    pub repeat_started: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
-    pub set_repeat_started: unsafe extern "C" fn(ctx: *mut c_void, on: i32),
-    pub is_enabled: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
-    pub base_enable: unsafe extern "C" fn(ctx: *mut c_void, on: i32),
-    pub is_visible: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
-    pub base_show: unsafe extern "C" fn(ctx: *mut c_void, on: i32),
-    pub invalidate: unsafe extern "C" fn(ctx: *mut c_void),
+pub struct DimeSbEnv {
+    pub dpi_for_hwnd: unsafe extern "C" fn(hwnd: *mut c_void) -> u32,
+    pub dark: unsafe extern "C" fn() -> i32,
+    pub always_show: unsafe extern "C" fn() -> i32,
+}
+
+/// `DimeSbParent`: the candidate window's capture and timers.
+#[repr(C)]
+pub struct DimeSbParent {
+    pub ctx: *mut c_void,
+    pub hwnd: *mut c_void,
     pub is_capture: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
     pub start_capture: unsafe extern "C" fn(ctx: *mut c_void),
     pub end_capture: unsafe extern "C" fn(ctx: *mut c_void),
     pub start_timer: unsafe extern "C" fn(ctx: *mut c_void, elapse: u32, id: usize),
     pub end_timer: unsafe extern "C" fn(ctx: *mut c_void, id: usize),
-    pub notify_command: unsafe extern "C" fn(ctx: *mut c_void, msg: u32, code: i32, pos: i32),
-    pub shift_page: unsafe extern "C" fn(ctx: *mut c_void, pages: i32, notify: i32),
-    pub paint: unsafe extern "C" fn(ctx: *mut c_void, dc: *mut c_void, ps: *mut c_void),
 }
 
-/// `DimeSbHost`.
-#[repr(C)]
-pub struct DimeSbHost {
-    pub vtbl: *const DimeSbHostVtbl,
-    pub ctx: *mut c_void,
-}
+/// A scroll bar owned by Rust (`CRustScrollBarWindow`).
+pub struct DimeScrollBar(sbwin::ScrollBarWindow);
 
-struct SbHostFfi<'a> {
-    v: &'a DimeSbHostVtbl,
-    ctx: *mut c_void,
-}
-
-impl sbproc::SbHost for SbHostFfi<'_> {
-    fn hwnd(&mut self) -> candproc::HWND {
-        candproc::HWND(unsafe { (self.v.hwnd)(self.ctx) })
-    }
-    fn parent_hwnd(&mut self) -> Option<candproc::HWND> {
-        let h = unsafe { (self.v.parent_hwnd)(self.ctx) };
-        (!h.is_null()).then_some(candproc::HWND(h))
-    }
-    fn client_rect(&mut self) -> layout::Rect {
-        let mut r = layout::Rect::default();
-        unsafe { (self.v.client_rect)(self.ctx, &mut r) };
-        r
-    }
-    fn dpi(&mut self) -> u32 {
-        unsafe { (self.v.dpi)(self.ctx) }
-    }
-    fn hover_width(&mut self) -> i32 {
-        unsafe { (self.v.hover_width)(self.ctx) }
-    }
-    fn scroll_info(&mut self) -> candwnd::ScrollInfo {
-        let mut si = candwnd::ScrollInfo::default();
-        unsafe { (self.v.scroll_info)(self.ctx, &mut si) };
-        si
-    }
-    fn set_scroll_info(&mut self, si: candwnd::ScrollInfo) {
-        unsafe { (self.v.set_scroll_info)(self.ctx, &si) }
-    }
-    fn dragging(&mut self) -> Option<(i32, i32)> {
-        let (mut y, mut p) = (0, 0);
-        (unsafe { (self.v.dragging)(self.ctx, &mut y, &mut p) } != 0).then_some((y, p))
-    }
-    fn set_dragging(&mut self, drag: Option<(i32, i32)>) {
-        let (on, y, p) = drag.map_or((0, 0, 0), |(y, p)| (1, y, p));
-        unsafe { (self.v.set_dragging)(self.ctx, on, y, p) }
-    }
-    fn alpha(&mut self) -> u8 {
-        unsafe { (self.v.alpha)(self.ctx) }
-    }
-    fn set_alpha(&mut self, alpha: u8) {
-        unsafe { (self.v.set_alpha)(self.ctx, alpha) }
-    }
-    fn fading(&mut self) -> bool {
-        unsafe { (self.v.fading)(self.ctx) != 0 }
-    }
-    fn set_fading(&mut self, on: bool) {
-        unsafe { (self.v.set_fading)(self.ctx, i32::from(on)) }
-    }
-    fn hovered(&mut self) -> bool {
-        unsafe { (self.v.hovered)(self.ctx) != 0 }
-    }
-    fn set_hovered(&mut self, on: bool) {
-        unsafe { (self.v.set_hovered)(self.ctx, i32::from(on)) }
-    }
-    fn tracking_mouse(&mut self) -> bool {
-        unsafe { (self.v.tracking_mouse)(self.ctx) != 0 }
-    }
-    fn set_tracking_mouse(&mut self, on: bool) {
-        unsafe { (self.v.set_tracking_mouse)(self.ctx, i32::from(on)) }
-    }
-    fn held_button(&mut self) -> i32 {
-        unsafe { (self.v.held_button)(self.ctx) }
-    }
-    fn set_held_button(&mut self, button: i32) {
-        unsafe { (self.v.set_held_button)(self.ctx, button) }
-    }
-    fn repeat_started(&mut self) -> bool {
-        unsafe { (self.v.repeat_started)(self.ctx) != 0 }
-    }
-    fn set_repeat_started(&mut self, on: bool) {
-        unsafe { (self.v.set_repeat_started)(self.ctx, i32::from(on)) }
-    }
-    fn is_enabled(&mut self) -> bool {
-        unsafe { (self.v.is_enabled)(self.ctx) != 0 }
-    }
-    fn base_enable(&mut self, on: bool) {
-        unsafe { (self.v.base_enable)(self.ctx, i32::from(on)) }
-    }
-    fn is_visible(&mut self) -> bool {
-        unsafe { (self.v.is_visible)(self.ctx) != 0 }
-    }
-    fn base_show(&mut self, on: bool) {
-        unsafe { (self.v.base_show)(self.ctx, i32::from(on)) }
-    }
-    fn invalidate(&mut self) {
-        unsafe { (self.v.invalidate)(self.ctx) }
-    }
-    fn is_capture(&mut self) -> bool {
-        unsafe { (self.v.is_capture)(self.ctx) != 0 }
-    }
-    fn start_capture(&mut self) {
-        unsafe { (self.v.start_capture)(self.ctx) }
-    }
-    fn end_capture(&mut self) {
-        unsafe { (self.v.end_capture)(self.ctx) }
-    }
-    fn start_timer(&mut self, elapse: u32, id: usize) {
-        unsafe { (self.v.start_timer)(self.ctx, elapse, id) }
-    }
-    fn end_timer(&mut self, id: usize) {
-        unsafe { (self.v.end_timer)(self.ctx, id) }
-    }
-    fn notify_command(&mut self, msg: u32, code: i32, pos: i32) {
-        unsafe { (self.v.notify_command)(self.ctx, msg, code, pos) }
-    }
-    fn shift_page(&mut self, pages: i32, notify: bool) {
-        unsafe { (self.v.shift_page)(self.ctx, pages, i32::from(notify)) }
-    }
-    fn paint(&mut self, dc: candpaint::HDC, ps: &mut candproc::PAINTSTRUCT) {
-        unsafe { (self.v.paint)(self.ctx, dc.0, ps as *mut _ as *mut c_void) }
-    }
-}
-
-/// Runs `f` with the host behind `host` (`fallback` for a null host or vtable, or a panic).
-unsafe fn with_sb_host<R: Copy>(host: *const DimeSbHost, fallback: R, f: impl FnOnce(&mut SbHostFfi) -> R) -> R {
-    guard(fallback, || {
-        let h = unsafe { host.as_ref() };
-        match h.and_then(|h| unsafe { h.vtbl.as_ref() }.map(|v| (v, h.ctx))) {
-            Some((v, ctx)) => f(&mut SbHostFfi { v, ctx }),
-            None => fallback,
+/// `CScrollBarWindow::_Create`; null on failure.
+///
+/// # Safety
+/// `atom` must be registered by `dime_ui_register_window_class`; `env` and
+/// `parent` valid, the parent's callbacks valid for the scroll bar's life.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_scrollbar_create(
+    hinstance: *mut c_void,
+    atom: u16,
+    ex_style: u32,
+    style: u32,
+    env: *const DimeSbEnv,
+    parent: *const DimeSbParent,
+) -> *mut DimeScrollBar {
+    guard(ptr::null_mut(), || {
+        let (Some(e), Some(p)) = (unsafe { env.as_ref() }, unsafe { parent.as_ref() }) else {
+            return ptr::null_mut();
+        };
+        let env = sbwin::Env { dpi_for_hwnd: e.dpi_for_hwnd, dark: e.dark, always_show: e.always_show };
+        let parent = sbwin::Parent {
+            ctx: p.ctx,
+            hwnd: candproc::HWND(p.hwnd),
+            is_capture: p.is_capture,
+            start_capture: p.start_capture,
+            end_capture: p.end_capture,
+            start_timer: p.start_timer,
+            end_timer: p.end_timer,
+        };
+        match unsafe { sbwin::ScrollBarWindow::create(HINSTANCE(hinstance), atom, ex_style, style, env, parent) } {
+            Some(w) => Box::into_raw(Box::new(DimeScrollBar(w))),
+            None => ptr::null_mut(),
         }
     })
 }
 
-/// Scroll bar events.  `op` picks the handler; `a` / `b` are its arguments:
-/// 0 `_SetCurPos(a, b)`, 1 `_ShiftLine(a, b)`, 2 `_ShiftPage(a, b)`,
-/// 3 `_ShiftPosition(a, b)`, 4 `_OnScrollActivity`, 5 `_SetCandidateMouseIn(a)`,
-/// 6 `_OnLButtonDown(a, b)`, 7 `_OnLButtonUp`, 8 `_OnMouseMove`,
-/// 9 `_OnTimerID(a)`, 10 `_OnOwnerWndMoved`, 11 `_Show(a)`, 12 `_Enable(a)`.
+/// Destroys the scroll bar (if its window still exists) and frees it.
 ///
 /// # Safety
-/// `host` must be valid with a complete vtable.
+/// `s` must come from `dime_ui_scrollbar_create` (or be null) and not be used again.
 #[no_mangle]
-pub unsafe extern "C" fn dime_ui_sb_event(host: *const DimeSbHost, op: u32, a: i32, b: i32) {
-    unsafe {
-        with_sb_host(host, (), |h| match op {
-                0 => sbproc::set_cur_pos(h, a, b),
-                1 => sbproc::shift_line(h, a, b != 0),
-                2 => sbproc::shift_page(h, a, b != 0),
-                3 => sbproc::shift_position(h, a, b != 0),
-                4 => sbproc::on_scroll_activity(h),
-                5 => sbproc::set_candidate_mouse_in(h, a != 0),
-                6 => sbproc::on_lbutton_down(h, layout::Point { x: a, y: b }),
-                7 => sbproc::on_lbutton_up(h),
-                8 => sbproc::on_mouse_move(h),
-                9 => sbproc::on_timer_id(h, a as u32 as usize),
-                10 => sbproc::on_owner_moved(h),
-                11 => sbproc::show(h, a != 0),
-                12 => sbproc::enable(h, a != 0),
-                _ => {}
-        });
-    }
+pub unsafe extern "C" fn dime_ui_scrollbar_free(s: *mut DimeScrollBar) {
+    guard((), || {
+        if !s.is_null() {
+            drop(unsafe { Box::from_raw(s) });
+        }
+    })
+}
+
+/// The scroll bar's window (null once destroyed).
+///
+/// # Safety
+/// `s` must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_scrollbar_hwnd(s: *const DimeScrollBar) -> *mut c_void {
+    guard(ptr::null_mut(), || unsafe { s.as_ref() }.map_or(ptr::null_mut(), |s| s.0.hwnd().0))
+}
+
+/// `_GetHoverWidth`.
+///
+/// # Safety
+/// `s` must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_scrollbar_hover_width(s: *const DimeScrollBar) -> i32 {
+    guard(0, || unsafe { s.as_ref() }.map_or(0, |s| s.0.hover_width()))
+}
+
+/// `_IsEnabled`.
+///
+/// # Safety
+/// `s` must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_scrollbar_is_enabled(s: *const DimeScrollBar) -> i32 {
+    guard(0, || unsafe { s.as_ref() }.map_or(0, |s| i32::from(s.0.is_enabled())))
+}
+
+/// `_Resize`.
+///
+/// # Safety
+/// `s` must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_scrollbar_resize(s: *const DimeScrollBar, x: i32, y: i32, cx: i32, cy: i32) {
+    guard((), || {
+        if let Some(s) = unsafe { s.as_ref() } {
+            s.0.resize(x, y, cx, cy);
+        }
+    })
+}
+
+/// Scroll bar operations: 0 `_Show(a)`, 1 `_ShiftLine(a, b)`, 2 `_ShiftPage(a, b)`,
+/// 3 `_ShiftPosition(a, b)`, 4 `_SetCandidateMouseIn(a)`, 5 `_OnScrollActivity`,
+/// 6 `_OnOwnerWndMoved`, 7 `_OnLButtonDown(a, b)`, 8 `_OnLButtonUp`,
+/// 9 `_OnMouseMove`, 10 `_OnTimerID(a)`, 11 hovered = `a` (tests), 12 `_SetCurPos(a, b)` (tests),
+/// 13 `_Enable(a)` (tests).
+///
+/// # Safety
+/// `s` must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_scrollbar_op(s: *const DimeScrollBar, op: u32, a: i32, b: i32) {
+    guard((), || {
+        let Some(s) = (unsafe { s.as_ref() }) else {
+            return;
+        };
+        let w = &s.0;
+        match op {
+            0 => w.show(a != 0),
+            1 => w.shift_line(a, b != 0),
+            2 => w.shift_page(a, b != 0),
+            3 => w.shift_position(a, b != 0),
+            4 => w.set_candidate_mouse_in(a != 0),
+            5 => w.on_scroll_activity(),
+            6 => w.owner_moved(),
+            7 => w.lbutton_down(layout::Point { x: a, y: b }),
+            8 => w.lbutton_up(),
+            9 => w.mouse_move(),
+            10 => w.timer(a as u32 as usize),
+            11 => w.set_hovered(a != 0),
+            12 => w.set_cur_pos(a, b),
+            13 => w.enable(a != 0),
+            _ => {}
+        }
+    })
 }
 
 /// `_SetScrollInfo`.
 ///
 /// # Safety
-/// `host` must be valid with a complete vtable; `si` valid.
+/// `s` and `si` must be valid or null.
 #[no_mangle]
-pub unsafe extern "C" fn dime_ui_sb_set_scroll_info(host: *const DimeSbHost, si: *const candwnd::ScrollInfo) {
-    let Some(si) = (unsafe { si.as_ref() }).copied() else {
-        return;
-    };
-    unsafe { with_sb_host(host, (), |h| sbproc::set_scroll_info(h, si)) }
+pub unsafe extern "C" fn dime_ui_scrollbar_set_scroll_info(s: *const DimeScrollBar, si: *const candwnd::ScrollInfo) {
+    guard((), || {
+        if let (Some(s), Some(si)) = (unsafe { s.as_ref() }, unsafe { si.as_ref() }) {
+            s.0.set_scroll_info(*si);
+        }
+    })
 }
 
-/// `CScrollBarWindow::_WindowProcCallback`.
+/// `_SetSelectionHighlight` (RC26).
 ///
 /// # Safety
-/// `host` must be valid with a complete vtable; `hwnd` is the scroll bar.
+/// `s` must be valid or null.
 #[no_mangle]
-pub unsafe extern "C" fn dime_ui_sb_window_proc(
-    host: *const DimeSbHost,
-    hwnd: *mut c_void,
-    msg: u32,
-    wparam: usize,
-    lparam: isize,
-) -> isize {
-    unsafe {
-        with_sb_host(host, 0, |h| {
-            sbproc::window_proc(h, candproc::HWND(hwnd), msg, candproc::WPARAM(wparam), candproc::LPARAM(lparam)).0
-        })
-    }
+pub unsafe extern "C" fn dime_ui_scrollbar_set_highlight(s: *const DimeScrollBar, rect: layout::Rect, radius: i32, color: u32) {
+    guard((), || {
+        if let Some(s) = unsafe { s.as_ref() } {
+            s.0.set_selection_highlight(rect, radius, color);
+        }
+    })
+}
+
+/// The RC26 highlight (tests).
+///
+/// # Safety
+/// `s` must be valid or null; the out-pointers valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_scrollbar_highlight(
+    s: *const DimeScrollBar,
+    rect: *mut layout::Rect,
+    radius: *mut i32,
+    color: *mut u32,
+) {
+    guard((), || {
+        if let Some(s) = unsafe { s.as_ref() } {
+            let (r, rad, c) = s.0.selection_highlight();
+            unsafe {
+                set(rect, r);
+                set(radius, rad);
+                set(color, c);
+            }
+        }
+    })
+}
+
+/// The state (tests).
+///
+/// # Safety
+/// `s` must be valid or null; `out` valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_scrollbar_snapshot(s: *const DimeScrollBar, out: *mut sbwin::Snapshot) {
+    guard((), || {
+        if let Some(s) = unsafe { s.as_ref() } {
+            unsafe { set(out, s.0.snapshot()) };
+        }
+    })
+}
+
+/// `_OnPaint` into `dc` (tests; `paint` null: no `PAINTSTRUCT`).
+///
+/// # Safety
+/// `s` must be valid or null; `dc` a valid device context; `paint` valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_scrollbar_paint(s: *const DimeScrollBar, dc: *mut c_void, paint: *const layout::Rect) {
+    guard((), || {
+        if let Some(s) = unsafe { s.as_ref() } {
+            unsafe { s.0.paint(candpaint::HDC(dc), paint.as_ref().copied()) };
+        }
+    })
 }
 
 // ---------------------------------------------------------------------------

@@ -308,10 +308,19 @@ BOOL RegisterWindowClass()
         return FALSE;
     }
 #endif
+#ifdef DIME_USE_RUST_ENGINE
+    // The candidate scroll bar is owned by Rust (dime-ui::sbwin, CRustScrollBarWindow).
+    AtomCandidateScrollBarWindow = dime_ui_register_window_class(dllInstanceHandle, (const uint16_t*)CandidateScrollBarClassName, 0);
+    if (AtomCandidateScrollBarWindow == 0)
+    {
+        return FALSE;
+    }
+#else
     if (!CBaseWindow::_InitWindowClass(CandidateScrollBarClassName, &AtomCandidateScrollBarWindow))
     {
         return FALSE;
     }
+#endif
 
     if (!CBaseWindow::_InitPopupWindowClass(NotifyClassName, &AtomNotifyWindow))
     {

@@ -114,7 +114,52 @@ constexpr BYTE FADE_ALPHA_VISIBLE = 255;    // full visibility alpha (fully opaq
 constexpr BYTE FADE_ALPHA_STEP = 20;        // alpha decrease per step
 constexpr COLORREF SCROLLBAR_COLORKEY = RGB(255, 0, 255);  // magenta — transparent pixels
 
-class CScrollBarWindow : public CBaseWindow
+// The scroll bar as the candidate window uses it (phase 3c-5c): CScrollBarWindow
+// (C++) and CRustScrollBarWindow (Rust-owned, RustScrollBarWindow.h).
+struct SbStateForTest
+{
+    CScrollInfo si; BOOL dragging; int dragStartY; int dragStartPos; BYTE alpha;
+    BOOL fading; BOOL hovered; BOOL tracking; int held; BOOL repeatStarted;
+};
+
+class IDimeScrollBar
+{
+public:
+    virtual ~IDimeScrollBar() { }
+    // _SetUIWnd(pParent) + _Create (the candidate window is the parent and UI window).
+    virtual BOOL SbCreate(ATOM atom, DWORD dwExStyle, DWORD dwStyle, _In_ CBaseWindow* pParent) = 0;
+    virtual HWND SbWnd() = 0;
+    virtual void SbShow(BOOL isShowWnd) = 0;
+    virtual BOOL SbIsEnabled() = 0;
+    virtual BOOL SbGetClientRect(_Inout_ LPRECT lpRect) = 0;
+    virtual BOOL SbGetWindowRect(_Inout_ LPRECT lpRect) = 0;
+    virtual void SbResize(int x, int y, int cx, int cy) = 0;
+    virtual int SbHoverWidth() = 0;
+    virtual void SbSetScrollInfo(_In_ CScrollInfo* lpsi) = 0;
+    virtual void SbShiftLine(int nLine, BOOL isNotify) = 0;
+    virtual void SbShiftPage(int nPage, BOOL isNotify) = 0;
+    virtual void SbShiftPosition(int iPos, BOOL isNotify) = 0;
+    virtual void SbSetCandidateMouseIn(BOOL isIn) = 0;
+    virtual void SbOnScrollActivity() = 0;
+    virtual void SbOnOwnerWndMoved(BOOL isResized) = 0;
+    virtual void SbLButtonDown(POINT pt) = 0;
+    virtual void SbLButtonUp(POINT pt) = 0;
+    virtual void SbMouseMove(POINT pt) = 0;
+    // A WM_TIMER the candidate window received for the scroll bar (Rust-owned scroll bars
+    // put their timers on the candidate; CScrollBarWindow gets them from CBaseWindow).
+    virtual void SbOnTimer(UINT_PTR timerID) = 0;
+    virtual void SbSetSelectionHighlight(RECT rc, int cornerRadius, COLORREF color) = 0;
+#ifdef DIME_UNIT_TESTING
+    virtual SbStateForTest SbGetStateForTest() = 0;
+    virtual void SbGetSelectionHighlightForTest(RECT* prc, int* pRadius, COLORREF* pColor) = 0;
+    virtual void SbSetHoveredForTest(BOOL hovered) = 0;
+    virtual void SbPaintForTest(HDC dc, PAINTSTRUCT* pps) = 0;
+    virtual void SbSetCurPosForTest(int nPos, int dwSB) = 0;
+    virtual void SbEnableForTest(BOOL isEnable) = 0;
+#endif
+};
+
+class CScrollBarWindow : public CBaseWindow, public IDimeScrollBar
 {
 public:
     CScrollBarWindow();
@@ -128,10 +173,6 @@ public:
 
     LRESULT CALLBACK _WindowProcCallback(_In_ HWND wndHandle, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam);
     virtual void _OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps);
-    void _OnPaintCpp(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps);     // the C++ original
-#ifdef DIME_RUST_AVAILABLE
-    void _OnPaintRust(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps);    // dime-ui::sbpaint
-#endif
     virtual void _OnLButtonDown(POINT pt);
     virtual void _OnLButtonUp(POINT pt);
     virtual void _OnMouseMove(POINT pt);
@@ -152,9 +193,6 @@ public:
 
     virtual void _ShiftLine(int nLine, BOOL isNotify)
     {
-#ifdef DIME_RUST_AVAILABLE
-        if (_useRust) { _RustEvent(1, nLine, isNotify); return; }
-#endif
         DWORD dwSB = 0;
 
         dwSB = (nLine > 0 ? SB_LINEDOWN :
@@ -165,9 +203,6 @@ public:
 
     virtual void _ShiftPage(int nPage, BOOL isNotify)
     {
-#ifdef DIME_RUST_AVAILABLE
-        if (_useRust) { _RustEvent(2, nPage, isNotify); return; }
-#endif
         DWORD dwSB = 0;
 
         dwSB = (nPage > 0 ? SB_PAGEDOWN :
@@ -178,9 +213,6 @@ public:
 
     virtual void _ShiftPosition(int iPos, BOOL isNotify)
     {
-#ifdef DIME_RUST_AVAILABLE
-        if (_useRust) { _RustEvent(3, iPos, isNotify); return; }
-#endif
         _SetCurPos(iPos, isNotify ? SB_THUMBPOSITION : -1);
     }
 
@@ -202,33 +234,50 @@ public:
     // On non-layered windows, _OnPaint draws the same RoundRect so the
     // highlight visually extends over the scrollbar with its original shape.
     void _SetSelectionHighlight(RECT rc, int cornerRadius, COLORREF color);
-#ifdef DIME_UNIT_TESTING
-    void _GetSelectionHighlightForTest(RECT* prc, int* pRadius, COLORREF* pColor) const
+
+    // IDimeScrollBar
+    BOOL SbCreate(ATOM atom, DWORD dwExStyle, DWORD dwStyle, _In_ CBaseWindow* pParent) override
     {
-        *prc = _selHighlightRect; *pRadius = _selHighlightRadius; *pColor = _selHighlightColor;
+        _SetUIWnd(pParent);
+        return _Create(atom, dwExStyle, dwStyle, pParent);
     }
-    void _SetHoveredForTest(BOOL hovered) { _isHovered = hovered; }
-    // Which implementation handles the events (the state is shared; ScrollBarProcParityTest).
-    void _SetUseRustForTest(BOOL useRust) { _useRust = useRust; }
-    struct StateForTest
-    {
-        CScrollInfo si; BOOL dragging; int dragStartY; int dragStartPos; BYTE alpha;
-        BOOL fading; BOOL hovered; BOOL tracking; int held; BOOL repeatStarted;
-    };
-    StateForTest _GetStateForTest() const
+    HWND SbWnd() override { return _GetWnd(); }
+    void SbShow(BOOL isShowWnd) override { _Show(isShowWnd); }
+    BOOL SbIsEnabled() override { return _IsEnabled(); }
+    BOOL SbGetClientRect(_Inout_ LPRECT lpRect) override { return _GetClientRect(lpRect); }
+    BOOL SbGetWindowRect(_Inout_ LPRECT lpRect) override { return _GetWindowRect(lpRect); }
+    void SbResize(int x, int y, int cx, int cy) override { _Resize(x, y, cx, cy); }
+    int SbHoverWidth() override { return _GetHoverWidth(); }
+    void SbSetScrollInfo(_In_ CScrollInfo* lpsi) override { _SetScrollInfo(lpsi); }
+    void SbShiftLine(int nLine, BOOL isNotify) override { _ShiftLine(nLine, isNotify); }
+    void SbShiftPage(int nPage, BOOL isNotify) override { _ShiftPage(nPage, isNotify); }
+    void SbShiftPosition(int iPos, BOOL isNotify) override { _ShiftPosition(iPos, isNotify); }
+    void SbSetCandidateMouseIn(BOOL isIn) override { _SetCandidateMouseIn(isIn); }
+    void SbOnScrollActivity() override { _OnScrollActivity(); }
+    void SbOnOwnerWndMoved(BOOL isResized) override { _OnOwnerWndMoved(isResized); }
+    void SbLButtonDown(POINT pt) override { _OnLButtonDown(pt); }
+    void SbLButtonUp(POINT pt) override { _OnLButtonUp(pt); }
+    void SbMouseMove(POINT pt) override { _OnMouseMove(pt); }
+    void SbOnTimer(UINT_PTR timerID) override { _OnTimerID(timerID); }
+    void SbSetSelectionHighlight(RECT rc, int cornerRadius, COLORREF color) override { _SetSelectionHighlight(rc, cornerRadius, color); }
+#ifdef DIME_UNIT_TESTING
+    SbStateForTest SbGetStateForTest() override
     {
         return { _scrollInfo, _isDragging, _dragStartY, _dragStartPos, _currentAlpha,
                  _isFading, _isHovered, _isTrackingMouse, (int)_heldButton, _repeatStarted };
     }
+    void SbGetSelectionHighlightForTest(RECT* prc, int* pRadius, COLORREF* pColor) override
+    {
+        *prc = _selHighlightRect; *pRadius = _selHighlightRadius; *pColor = _selHighlightColor;
+    }
+    void SbSetHoveredForTest(BOOL hovered) override { _isHovered = hovered; }
+    void SbPaintForTest(HDC dc, PAINTSTRUCT* pps) override { _OnPaint(dc, pps); }
+    void SbSetCurPosForTest(int nPos, int dwSB) override { _SetCurPos(nPos, dwSB); }
+    void SbEnableForTest(BOOL isEnable) override { _Enable(isEnable); }
 #endif
 
 private:
     void _AdjustWindowPos();
-#ifdef DIME_RUST_AVAILABLE
-    void _RustEvent(UINT op, int a, int b);   // dime-ui::sbproc
-#endif
-    friend struct CScrollBarWindowRustHost;
-    BOOL _useRust;   // events in Rust (DIME_USE_RUST_ENGINE) or C++
 
     CScrollInfo _scrollInfo;
     SCROLLBAR_DIRECTION _scrollDir;

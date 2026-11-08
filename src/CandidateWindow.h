@@ -39,6 +39,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "BaseWindow.h"
 #include "ShadowWindow.h"
 #include "RustShadowWindow.h"
+#include "RustScrollBarWindow.h"
 #include "ScrollBarWindow.h"
 #include "BaseStructure.h"
 #include "Define.h"
@@ -90,7 +91,10 @@ public:
     struct LayoutStateForTest { int cxTitle; int cyRow; int padding; UINT wndWidth; };
     LayoutStateForTest _GetLayoutStateForTest() const { return { _cxTitle, _cyRow, _padding, _wndWidth }; }
     void _SetLayoutStateForTest(const LayoutStateForTest& s) { _cxTitle = s.cxTitle; _cyRow = s.cyRow; _padding = s.padding; _wndWidth = s.wndWidth; }
-    CScrollBarWindow* _GetScrollBarForTest() { return _pVScrollBarWnd.get(); }
+    IDimeScrollBar* _GetScrollBarForTest() { return _pVScrollBarWnd.get(); }
+    // Which scroll bar the window creates and with which class (before _Create; the class
+    // must belong to the implementation: CBaseWindow's or dime-ui's window procedure).
+    void _SetScrollBarForTest(BOOL useRust, ATOM atom) { _useRustScrollBar = useRust; _scrollBarAtomForTest = atom; }
     DimeShadowWindow* _GetShadowForTest() { return _pShadowWnd.get(); }
     // Which message handling a window uses (set before _Create; CandidateProcParityTest).
     void _SetUseRustProcForTest(BOOL useRust) { _useRustProc = useRust; }
@@ -148,6 +152,7 @@ private:
 
     friend COLORREF _AdjustTextColor(_In_ COLORREF crColor, _In_ COLORREF crBkColor);
     friend struct CCandidateWindowRustHost;
+    friend struct CCandidateWindowSbParent;
 
 private:
     std::unique_ptr<CCandidateListModel> _model;   // items, selection, pages
@@ -173,11 +178,13 @@ private:
     void* _pObj;
 
     std::unique_ptr<DimeShadowWindow> _pShadowWnd;
-    std::unique_ptr<CScrollBarWindow> _pVScrollBarWnd;
+    std::unique_ptr<IDimeScrollBar> _pVScrollBarWnd;
 
     BOOL _isStoreAppMode;
     BOOL _isTrackingCandMouse;   // TRUE while TrackMouseEvent(TME_LEAVE) is active
     BOOL _useRustProc;           // _WindowProcRust (DIME_USE_RUST_ENGINE) or _WindowProcCpp
+    BOOL _useRustScrollBar;      // CRustScrollBarWindow (DIME_USE_RUST_ENGINE) or CScrollBarWindow
+    ATOM _scrollBarAtomForTest;  // 0: Global::AtomCandidateScrollBarWindow
 
 	BYTE _animationStage;
 

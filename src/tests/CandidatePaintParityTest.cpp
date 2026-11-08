@@ -6,7 +6,8 @@
 * window size (_ResizeWindow) and the scroll bar's selection highlight must be
 * identical. Scenarios: several fonts and sizes, candidate widths, page sizes,
 * item lengths (truncation and widening), selections on every page, colors,
-* missing items. The scroll bar likewise (ScrollBarPaintMatchesCpp).
+* missing items. The scroll bar: CScrollBarWindow vs the Rust-owned one
+* (ScrollBarPaintMatchesCpp).
 ********************************************************************************/
 #include "pch.h"
 #include "CppUnitTest.h"
@@ -46,11 +47,11 @@ namespace
         // Same starting point for both: layout members, window size, scroll bar highlight.
         w->_SetLayoutStateForTest(start);
         w->_ResizeWindow();
-        CScrollBarWindow* sb = w->_GetScrollBarForTest();
+        IDimeScrollBar* sb = w->_GetScrollBarForTest();
         if (sb)
         {
             RECT sentinel = { -7, -7, 7, 7 };
-            sb->_SetSelectionHighlight(sentinel, 77, RGB(1, 2, 3));
+            sb->SbSetSelectionHighlight(sentinel, 77, RGB(1, 2, 3));
         }
 
         RECT rc = { 0, 0, 0, 0 };
@@ -85,7 +86,7 @@ namespace
         r.pixels.assign((DWORD*)bits, (DWORD*)bits + (size_t)cx * cy);
         r.state = w->_GetLayoutStateForTest();
         GetWindowRect(w->_GetWnd(), &r.window);
-        if (sb) sb->_GetSelectionHighlightForTest(&r.highlight, &r.highlightRadius, &r.highlightColor);
+        if (sb) sb->SbGetSelectionHighlightForTest(&r.highlight, &r.highlightRadius, &r.highlightColor);
 
         SelectObject(mem, oldBmp);
         DeleteObject(dib);
@@ -210,8 +211,9 @@ namespace DIMEUnitTests
             Assert::IsTrue(withIndicator > 0 && truncatedOrWidened > 0, L"coverage");
         }
 
-        // The scroll bar (CScrollBarWindow::_OnPaintCpp vs _OnPaintRust): background (color key /
-        // the candidate's brush), hovered arrows + pill thumb or the idle line, the RC26 highlight;
+        // The scroll bar: CScrollBarWindow vs the Rust-owned scroll bar (CRustScrollBarWindow,
+        // phase 3c-5c) in two candidate windows set up alike: background (color key / the
+        // candidate's brush), hovered arrows + pill thumb or the idle line, the RC26 highlight;
         // light / dark, layered / not, scroll ranges including "everything fits".
         TEST_METHOD(ScrollBarPaintMatchesCpp)
         {
@@ -226,17 +228,27 @@ namespace DIMEUnitTests
             for (int s = 0; s < 20; s++)
             {
                 int rowsInPage = 1 + (int)(rng() % 9);
-                CCandidateRange range;
-                for (int k = 0; k < rowsInPage; k++) range.Append()->CandIndex = L'1' + (wchar_t)k;
-                CCandidateWindow* w = new CCandidateWindow(NoCallback, nullptr, &range, FALSE);
-                Assert::IsTrue(w->_Create(1 + rng() % 4, 12, nullptr) != FALSE);
-                Assert::IsNotNull(w->_GetWnd(), L"a real window (not a virtual one)");
-                w->_SetFillColor((COLORREF)(rng() & 0xFFFFFF));
-                w->_ResizeWindow();
-                CScrollBarWindow* sb = w->_GetScrollBarForTest();
-                Assert::IsNotNull(sb);
-                HWND sbh = sb->_GetWnd();
-                LONG style = GetWindowLong(sbh, GWL_EXSTYLE);
+                UINT width = 1 + rng() % 4;
+                COLORREF fill = (COLORREF)(rng() & 0xFFFFFF);
+                CCandidateRange range[2];
+                CCandidateWindow* w[2] = {};
+                IDimeScrollBar* sb[2] = {};
+                HWND sbh[2] = {};
+                LONG style[2] = {};
+                for (int k = 0; k < 2; k++)
+                {
+                    for (int r = 0; r < rowsInPage; r++) range[k].Append()->CandIndex = L'1' + (wchar_t)r;
+                    w[k] = new CCandidateWindow(NoCallback, nullptr, &range[k], FALSE);
+                    w[k]->_SetScrollBarForTest(k == 1, k == 1 ? RustScrollBarTestAtom() : CppScrollBarTestAtom());
+                    Assert::IsTrue(w[k]->_Create(width, 12, nullptr) != FALSE);
+                    Assert::IsNotNull(w[k]->_GetWnd(), L"a real window (not a virtual one)");
+                    w[k]->_SetFillColor(fill);
+                    w[k]->_ResizeWindow();
+                    sb[k] = w[k]->_GetScrollBarForTest();
+                    Assert::IsNotNull(sb[k]);
+                    sbh[k] = sb[k]->SbWnd();
+                    style[k] = GetWindowLong(sbh[k], GWL_EXSTYLE);
+                }
 
                 for (int v = 0; v < 16; v++)
                 {
@@ -244,23 +256,29 @@ namespace DIMEUnitTests
                     si.nMax = (int)(rng() % 60);
                     si.nPage = 1 + (int)(rng() % 12);
                     si.nPos = (int)(rng() % 70);
-                    sb->_SetScrollInfo(&si);
-                    sb->_SetHoveredForTest(rng() % 2);
+                    BOOL hovered = rng() % 2;
                     CConfig::SetColorMode((rng() % 2) ? IME_COLOR_MODE::IME_COLOR_MODE_DARK : IME_COLOR_MODE::IME_COLOR_MODE_LIGHT);
                     RECT hl = { -(LONG)(rng() % 200), (LONG)(rng() % 100), (LONG)(rng() % 40), 0 };
                     hl.bottom = hl.top + 10 + (LONG)(rng() % 30);
-                    sb->_SetSelectionHighlight(hl, (rng() % 3) ? (int)(rng() % 9) : -1, (COLORREF)(rng() & 0xFFFFFF));
-                    SetWindowLong(sbh, GWL_EXSTYLE, (rng() % 2) ? (style | WS_EX_LAYERED) : (style & ~WS_EX_LAYERED));
-                    bool layered = (GetWindowLong(sbh, GWL_EXSTYLE) & WS_EX_LAYERED) != 0;
+                    int radius = (rng() % 3) ? (int)(rng() % 9) : -1;
+                    COLORREF hlColor = (COLORREF)(rng() & 0xFFFFFF);
+                    bool layered = rng() % 2;
                     (layered ? layeredPaints : plainPaints)++;
                     bool withPaintStruct = (v != 0);
 
-                    RECT rc = { 0, 0, 0, 0 };
-                    GetClientRect(sbh, &rc);
-                    int cx = max(1, (int)rc.right), cy = max(1, (int)rc.bottom);
                     std::vector<DWORD> pixels[2];
-                    for (int impl = 0; impl < 2; impl++)
+                    for (int k = 0; k < 2; k++)
                     {
+                        CScrollInfo copy = si;
+                        sb[k]->SbSetScrollInfo(&copy);
+                        sb[k]->SbSetHoveredForTest(hovered);
+                        sb[k]->SbSetSelectionHighlight(hl, radius, hlColor);
+                        SetWindowLong(sbh[k], GWL_EXSTYLE, layered ? (style[k] | WS_EX_LAYERED) : (style[k] & ~WS_EX_LAYERED));
+                        Assert::AreEqual(layered, (GetWindowLong(sbh[k], GWL_EXSTYLE) & WS_EX_LAYERED) != 0, L"layered style");
+
+                        RECT rc = { 0, 0, 0, 0 };
+                        GetClientRect(sbh[k], &rc);
+                        int cx = max(1, (int)rc.right), cy = max(1, (int)rc.bottom);
                         HDC screen = GetDC(nullptr);
                         HDC mem = CreateCompatibleDC(screen);
                         BITMAPINFO bi = {};
@@ -280,16 +298,15 @@ namespace DIMEUnitTests
                         PAINTSTRUCT ps = {};
                         ps.hdc = mem;
                         ps.rcPaint = rc;
-                        PAINTSTRUCT* pps = withPaintStruct ? &ps : nullptr;
-                        if (impl == 0) sb->_OnPaintCpp(mem, pps);
-                        else sb->_OnPaintRust(mem, pps);
+                        sb[k]->SbPaintForTest(mem, withPaintStruct ? &ps : nullptr);
                         GdiFlush();
-                        pixels[impl].assign((DWORD*)bits, (DWORD*)bits + (size_t)cx * cy);
+                        pixels[k].assign((DWORD*)bits, (DWORD*)bits + (size_t)cx * cy);
                         SelectObject(mem, oldBmp);
                         DeleteObject(dib);
                         DeleteDC(mem);
                         ReleaseDC(nullptr, screen);
                     }
+                    Assert::AreEqual(pixels[0].size(), pixels[1].size(), L"scroll bar size");
                     for (size_t i = 0; i < pixels[0].size(); i++)
                     {
                         if (pixels[0][i] != pixels[1][i])
@@ -298,8 +315,11 @@ namespace DIMEUnitTests
                     }
                     compared++;
                 }
-                SetWindowLong(sbh, GWL_EXSTYLE, style);
-                DestroyAndDelete(w);
+                for (int k = 0; k < 2; k++)
+                {
+                    SetWindowLong(sbh[k], GWL_EXSTYLE, style[k]);
+                    DestroyAndDelete(w[k]);
+                }
             }
             CConfig::SetColorMode(savedMode);
             Global::defaultlFontHandle = savedFont;

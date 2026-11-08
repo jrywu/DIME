@@ -85,9 +85,12 @@ CCandidateWindow::CCandidateWindow(_In_ CANDWNDCALLBACK pfnCallback, _In_ void *
     _isTrackingCandMouse = FALSE;
 #ifdef DIME_USE_RUST_ENGINE
     _useRustProc = TRUE;
+    _useRustScrollBar = TRUE;
 #else
     _useRustProc = FALSE;
+    _useRustScrollBar = FALSE;
 #endif
+    _scrollBarAtomForTest = 0;
 
 	_fontSize = _TextMetric.tmHeight;
 
@@ -188,43 +191,70 @@ BOOL CCandidateWindow::_CreateBackGroundShadowWindow()
     return TRUE;
 }
 
+#ifdef DIME_RUST_AVAILABLE
+//+---------------------------------------------------------------------------
+//
+// The candidate window's side of a Rust-owned scroll bar (CRustScrollBarWindow):
+// CBaseWindow keeps a scroll bar's capture and timers on this window.
+//
+//----------------------------------------------------------------------------
+
+struct CCandidateWindowSbParent
+{
+    static CCandidateWindow* W(void* ctx) { return static_cast<CCandidateWindow*>(ctx); }
+    static int32_t IsCapture(void* ctx) { return W(ctx)->_IsCapture() ? 1 : 0; }
+    static void StartCapture(void* ctx) { W(ctx)->_StartCapture(); }
+    static void EndCapture(void* ctx) { W(ctx)->_EndCapture(); }
+    static void StartTimer(void* ctx, uint32_t elapse, uintptr_t id) { W(ctx)->_StartTimer(elapse, id); }
+    static void EndTimer(void* ctx, uintptr_t id) { W(ctx)->_EndTimer(id); }
+
+    static DimeSbParent For(CCandidateWindow* w)
+    {
+        return { w, w->_GetWnd(), IsCapture, StartCapture, EndCapture, StartTimer, EndTimer };
+    }
+};
+#endif
+
 BOOL CCandidateWindow::_CreateVScrollWindow()
 {
     BOOL ret = FALSE;
+    ATOM atom = _scrollBarAtomForTest ? _scrollBarAtomForTest : Global::AtomCandidateScrollBarWindow;
 
-    SHELL_MODE shellMode = _isStoreAppMode ? STOREAPP : DESKTOP;
-    CScrollBarWindowFactory* pFactory = CScrollBarWindowFactory::Instance();
-	if(pFactory == nullptr) return ret;
-    _pVScrollBarWnd = std::unique_ptr<CScrollBarWindow>(pFactory->MakeScrollBarWindow(shellMode));
+#ifdef DIME_RUST_AVAILABLE
+    if (_useRustScrollBar)
+    {
+        _pVScrollBarWnd = std::make_unique<CRustScrollBarWindow>(CCandidateWindowSbParent::For(this));
+    }
+    else
+#endif
+    {
+        SHELL_MODE shellMode = _isStoreAppMode ? STOREAPP : DESKTOP;
+        CScrollBarWindowFactory* pFactory = CScrollBarWindowFactory::Instance();
+        if (pFactory == nullptr) return ret;
+        _pVScrollBarWnd = std::unique_ptr<IDimeScrollBar>(pFactory->MakeScrollBarWindow(shellMode));
+        pFactory->Release();
+    }
 
     if (!_pVScrollBarWnd)
     {
-        goto Exit;
+        return ret;
     }
 
-    _pVScrollBarWnd->_SetUIWnd(this);
-
-    debugPrint(L"CCandidateWindow::_CreateVScrollWindow() atom=%d parentHwnd=%p", Global::AtomCandidateScrollBarWindow, _GetWnd());
+    debugPrint(L"CCandidateWindow::_CreateVScrollWindow() atom=%d parentHwnd=%p", atom, _GetWnd());
     SetLastError(0);
-    if (!_pVScrollBarWnd->_Create(Global::AtomCandidateScrollBarWindow,
-		WS_EX_TOPMOST | WS_EX_TOOLWINDOW , WS_CHILD , this))
+    if (!_pVScrollBarWnd->SbCreate(atom, WS_EX_TOPMOST | WS_EX_TOOLWINDOW, WS_CHILD, this))
     {
         debugPrint(L"CCandidateWindow::_CreateVScrollWindow() FAILED, GetLastError=%d", GetLastError());
         _DeleteVScrollBarWnd();
-        goto Exit;
+        return ret;
     }
-    
-    ret = TRUE;
-
-Exit:
-    pFactory->Release();
-    return ret;
+    return TRUE;
 }
 
 // The scroll bar column width (hover width, also without a scroll bar window).
 int CCandidateWindow::_GetScrollBarWidth()
 {
-	return _pVScrollBarWnd ? _pVScrollBarWnd->_GetHoverWidth() : UILayout::ScaleForDpi(SCROLLBAR_HOVER_WIDTH, CConfig::GetDpiForHwnd(_GetWnd()));
+	return _pVScrollBarWnd ? _pVScrollBarWnd->SbHoverWidth() : UILayout::ScaleForDpi(SCROLLBAR_HOVER_WIDTH, CConfig::GetDpiForHwnd(_GetWnd()));
 }
 
 UINT CCandidateWindow::_GetWidth()
@@ -250,7 +280,7 @@ void CCandidateWindow::_ResizeWindow()
 		// Shorten scrollbar vertically by the corner arc radius at top and bottom so it
 		// never overlaps the rounded corner areas. No SetWindowRgn needed on the scrollbar.
 		RECT rcSB = UILayout::CandScrollBarRect(rcCandRect, VScrollWidth, CConfig::GetDpiForHwnd(_GetWnd()), _cornerRadiusBase);
-		_pVScrollBarWnd->_Resize(rcSB.left, rcSB.top, rcSB.right - rcSB.left, rcSB.bottom - rcSB.top);
+		_pVScrollBarWnd->SbResize(rcSB.left, rcSB.top, rcSB.right - rcSB.left, rcSB.bottom - rcSB.top);
 	}
 }
 
@@ -281,6 +311,10 @@ void CCandidateWindow::_OnTimerID(UINT_PTR timerID)
 	case UI::ANIMATION_TIMER_ID:
 		_EndTimer(UI::ANIMATION_TIMER_ID);
 		break;
+	default:
+		// A Rust-owned scroll bar's timers are on this window (CScrollBarWindow gets its own).
+		if (_pVScrollBarWnd) _pVScrollBarWnd->SbOnTimer(timerID);
+		break;
 	}
 }
 
@@ -309,7 +343,7 @@ void CCandidateWindow::_Show(BOOL isShowWnd)
     if (_pShadowWnd)
 		_pShadowWnd->_Show(isShowWnd);
 	if (_pVScrollBarWnd)
-		_pVScrollBarWnd->_Show(isShowWnd && _pVScrollBarWnd->_IsEnabled());
+		_pVScrollBarWnd->SbShow(isShowWnd && _pVScrollBarWnd->SbIsEnabled());
     CBaseWindow::_Show(isShowWnd);
     if (isShowWnd)
     {
@@ -523,29 +557,29 @@ struct CCandidateWindowRustHost
     static void ShadowOwnerMoved(void* ctx, int32_t resized) { if (W(ctx)->_pShadowWnd) W(ctx)->_pShadowWnd->_OnOwnerWndMoved((BOOL)resized); }
     static void DeleteShadow(void* ctx) { W(ctx)->_DeleteShadowWnd(); }
     static int32_t HasScrollBar(void* ctx) { return W(ctx)->_pVScrollBarWnd != nullptr; }
-    static void* SbHwnd(void* ctx) { return W(ctx)->_pVScrollBarWnd ? W(ctx)->_pVScrollBarWnd->_GetWnd() : nullptr; }
+    static void* SbHwnd(void* ctx) { return W(ctx)->_pVScrollBarWnd ? W(ctx)->_pVScrollBarWnd->SbWnd() : nullptr; }
     static void SbClientRect(void* ctx, DimeRect* out)
     {
         RECT rc = { 0, 0, 0, 0 };
-        if (W(ctx)->_pVScrollBarWnd) W(ctx)->_pVScrollBarWnd->_GetClientRect(&rc);
+        if (W(ctx)->_pVScrollBarWnd) W(ctx)->_pVScrollBarWnd->SbGetClientRect(&rc);
         *out = { rc.left, rc.top, rc.right, rc.bottom };
     }
-    static int32_t SbIsEnabled(void* ctx) { return W(ctx)->_pVScrollBarWnd && W(ctx)->_pVScrollBarWnd->_IsEnabled() ? 1 : 0; }
-    static void SbShow(void* ctx, int32_t show) { if (W(ctx)->_pVScrollBarWnd) W(ctx)->_pVScrollBarWnd->_Show((BOOL)show); }
-    static void SbOwnerMoved(void* ctx, int32_t resized) { if (W(ctx)->_pVScrollBarWnd) W(ctx)->_pVScrollBarWnd->_OnOwnerWndMoved((BOOL)resized); }
-    static void SbSetCandidateMouseIn(void* ctx, int32_t inside) { if (W(ctx)->_pVScrollBarWnd) W(ctx)->_pVScrollBarWnd->_SetCandidateMouseIn((BOOL)inside); }
-    static void SbOnScrollActivity(void* ctx) { if (W(ctx)->_pVScrollBarWnd) W(ctx)->_pVScrollBarWnd->_OnScrollActivity(); }
-    static void SbShiftPosition(void* ctx, int32_t position) { if (W(ctx)->_pVScrollBarWnd) W(ctx)->_pVScrollBarWnd->_ShiftPosition(position, FALSE); }
+    static int32_t SbIsEnabled(void* ctx) { return W(ctx)->_pVScrollBarWnd && W(ctx)->_pVScrollBarWnd->SbIsEnabled() ? 1 : 0; }
+    static void SbShow(void* ctx, int32_t show) { if (W(ctx)->_pVScrollBarWnd) W(ctx)->_pVScrollBarWnd->SbShow((BOOL)show); }
+    static void SbOwnerMoved(void* ctx, int32_t resized) { if (W(ctx)->_pVScrollBarWnd) W(ctx)->_pVScrollBarWnd->SbOnOwnerWndMoved((BOOL)resized); }
+    static void SbSetCandidateMouseIn(void* ctx, int32_t inside) { if (W(ctx)->_pVScrollBarWnd) W(ctx)->_pVScrollBarWnd->SbSetCandidateMouseIn((BOOL)inside); }
+    static void SbOnScrollActivity(void* ctx) { if (W(ctx)->_pVScrollBarWnd) W(ctx)->_pVScrollBarWnd->SbOnScrollActivity(); }
+    static void SbShiftPosition(void* ctx, int32_t position) { if (W(ctx)->_pVScrollBarWnd) W(ctx)->_pVScrollBarWnd->SbShiftPosition(position, FALSE); }
     static void SbMouse(void* ctx, uint32_t msg, DimePoint pt)
     {
-        CScrollBarWindow* sb = W(ctx)->_pVScrollBarWnd.get();
+        IDimeScrollBar* sb = W(ctx)->_pVScrollBarWnd.get();
         if (!sb) return;
         POINT p = { pt.x, pt.y };
         switch (msg)
         {
-        case WM_LBUTTONDOWN: sb->_OnLButtonDown(p); break;
-        case WM_LBUTTONUP: sb->_OnLButtonUp(p); break;
-        case WM_MOUSEMOVE: sb->_OnMouseMove(p); break;
+        case WM_LBUTTONDOWN: sb->SbLButtonDown(p); break;
+        case WM_LBUTTONUP: sb->SbLButtonUp(p); break;
+        case WM_MOUSEMOVE: sb->SbMouseMove(p); break;
         }
     }
 
@@ -625,7 +659,7 @@ LRESULT CCandidateWindow::_WindowProcCpp(_In_ HWND wndHandle, UINT uMsg, _In_ WP
             // move v-scroll
             if (_pVScrollBarWnd && pWndPos)
             {
-                _pVScrollBarWnd->_OnOwnerWndMoved((pWndPos->flags & SWP_NOSIZE) == 0);
+                _pVScrollBarWnd->SbOnOwnerWndMoved((pWndPos->flags & SWP_NOSIZE) == 0);
             }
 			if(pWndPos)
 				_FireMessageToLightDismiss(wndHandle, pWndPos);
@@ -658,10 +692,10 @@ LRESULT CCandidateWindow::_WindowProcCpp(_In_ HWND wndHandle, UINT uMsg, _In_ WP
             {
                 if ((pWndPos->flags & SWP_HIDEWINDOW) != 0)
                 {
-                    _pVScrollBarWnd->_Show(FALSE);
+                    _pVScrollBarWnd->SbShow(FALSE);
                 }
 
-                _pVScrollBarWnd->_OnOwnerWndMoved((pWndPos->flags & SWP_NOSIZE) == 0);
+                _pVScrollBarWnd->SbOnOwnerWndMoved((pWndPos->flags & SWP_NOSIZE) == 0);
             }
         }
         break;
@@ -675,7 +709,7 @@ LRESULT CCandidateWindow::_WindowProcCpp(_In_ HWND wndHandle, UINT uMsg, _In_ WP
 		if (_pVScrollBarWnd)
 		{
 			// Only show scrollbar if multi-page; always hide when candidate hides
-			_pVScrollBarWnd->_Show((BOOL)wParam && _pVScrollBarWnd->_IsEnabled());
+			_pVScrollBarWnd->SbShow((BOOL)wParam && _pVScrollBarWnd->SbIsEnabled());
 		}
         break;
 
@@ -736,7 +770,7 @@ LRESULT CCandidateWindow::_WindowProcCpp(_In_ HWND wndHandle, UINT uMsg, _In_ WP
     case WM_MOUSELEAVE:
         _isTrackingCandMouse = FALSE;
         if (_pVScrollBarWnd)
-            _pVScrollBarWnd->_SetCandidateMouseIn(FALSE);
+            _pVScrollBarWnd->SbSetCandidateMouseIn(FALSE);
         return 0;
 
     case WM_MOUSEMOVE:
@@ -784,8 +818,8 @@ LRESULT CCandidateWindow::_WindowProcCpp(_In_ HWND wndHandle, UINT uMsg, _In_ WP
             {
                 if (_pVScrollBarWnd)
                 {
-                    _pVScrollBarWnd->_OnScrollActivity();
-                    _pVScrollBarWnd->_ShiftPosition(_model->Selection(), FALSE);
+                    _pVScrollBarWnd->SbOnScrollActivity();
+                    _pVScrollBarWnd->SbShiftPosition(_model->Selection(), FALSE);
                 }
                 _InvalidateRect();
             }
@@ -914,11 +948,11 @@ void CCandidateWindow::_OnPaintRust(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pPaintS
 		}
 
 		// RC26: the selection highlight is mirrored on a non-layered scroll bar.
-		if (_pVScrollBarWnd && _pVScrollBarWnd->_GetWnd() &&
-			!(GetWindowLong(_pVScrollBarWnd->_GetWnd(), GWL_EXSTYLE) & WS_EX_LAYERED))
+		if (_pVScrollBarWnd && _pVScrollBarWnd->SbWnd() &&
+			!(GetWindowLong(_pVScrollBarWnd->SbWnd(), GWL_EXSTYLE) & WS_EX_LAYERED))
 		{
 			RECT rcSB = {0};
-			_pVScrollBarWnd->_GetWindowRect(&rcSB);
+			_pVScrollBarWnd->SbGetWindowRect(&rcSB);
 			POINT ptSB = { rcSB.left, rcSB.top };
 			ScreenToClient(_GetWnd(), &ptSB);
 			in.has_sb_origin = 1;
@@ -934,11 +968,11 @@ void CCandidateWindow::_OnPaintRust(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pPaintS
 	if (out.highlight_state != 0 && _pVScrollBarWnd)
 	{
 		RECT rcEmpty = {0};
-		_pVScrollBarWnd->_SetSelectionHighlight(rcEmpty, -1, 0);
+		_pVScrollBarWnd->SbSetSelectionHighlight(rcEmpty, -1, 0);
 		if (out.highlight_state == 2)
 		{
 			RECT rcSelSB = { out.highlight.left, out.highlight.top, out.highlight.right, out.highlight.bottom };
-			_pVScrollBarWnd->_SetSelectionHighlight(rcSelSB, out.highlight_radius, out.highlight_color);
+			_pVScrollBarWnd->SbSetSelectionHighlight(rcSelSB, out.highlight_radius, out.highlight_color);
 		}
 	}
 
@@ -1053,16 +1087,16 @@ void CCandidateWindow::_OnLButtonDown(POINT pt)
 
     SetCursor(LoadCursor(NULL, IDC_ARROW));
 
-    if (_pVScrollBarWnd && _pVScrollBarWnd->_IsEnabled())
+    if (_pVScrollBarWnd && _pVScrollBarWnd->SbIsEnabled())
     {
         RECT rc = {0, 0, 0, 0};
 
-        _pVScrollBarWnd->_GetClientRect(&rc);
-        MapWindowPoints(_GetWnd(), _pVScrollBarWnd->_GetWnd(), &pt, 1);
+        _pVScrollBarWnd->SbGetClientRect(&rc);
+        MapWindowPoints(_GetWnd(), _pVScrollBarWnd->SbWnd(), &pt, 1);
 
         if (PtInRect(&rc, pt))
         {
-            _pVScrollBarWnd->_OnLButtonDown(pt);
+            _pVScrollBarWnd->SbLButtonDown(pt);
 			return;
         }
     }
@@ -1083,16 +1117,16 @@ void CCandidateWindow::_OnLButtonUp(POINT pt)
     }
 
     RECT rc = {0, 0, 0, 0};
-    _pVScrollBarWnd->_GetClientRect(&rc);
-    MapWindowPoints(_GetWnd(), _pVScrollBarWnd->_GetWnd(), &pt, 1);
+    _pVScrollBarWnd->SbGetClientRect(&rc);
+    MapWindowPoints(_GetWnd(), _pVScrollBarWnd->SbWnd(), &pt, 1);
 
     if (_IsCapture())
     {
-        _pVScrollBarWnd->_OnLButtonUp(pt);
+        _pVScrollBarWnd->SbLButtonUp(pt);
     }
     else if (PtInRect(&rc, pt))
     {
-        _pVScrollBarWnd->_OnLButtonUp(pt);
+        _pVScrollBarWnd->SbLButtonUp(pt);
     }
 }
 
@@ -1116,7 +1150,7 @@ void CCandidateWindow::_OnMouseMove(POINT pt)
 	if (_pVScrollBarWnd)
 	{
 		RECT rcScroll = UILayout::CandScrollColumnRect(rcWindow, scrollWidth);
-		_pVScrollBarWnd->_SetCandidateMouseIn(PtInRect(&rcScroll, pt));
+		_pVScrollBarWnd->SbSetCandidateMouseIn(PtInRect(&rcScroll, pt));
 	}
 
 	if (!_isTrackingCandMouse)
@@ -1138,12 +1172,12 @@ void CCandidateWindow::_OnMouseMove(POINT pt)
 
 		if (_pVScrollBarWnd)
 		{
-			_pVScrollBarWnd->_GetClientRect(&rc);
-			MapWindowPoints(_GetWnd(), _pVScrollBarWnd->_GetWnd(), &pt, 1);
+			_pVScrollBarWnd->SbGetClientRect(&rc);
+			MapWindowPoints(_GetWnd(), _pVScrollBarWnd->SbWnd(), &pt, 1);
 
 			if (PtInRect(&rc, pt))
 			{
-				_pVScrollBarWnd->_OnMouseMove(pt);
+				_pVScrollBarWnd->SbMouseMove(pt);
 			}
 		}
 	}
@@ -1194,7 +1228,7 @@ void CCandidateWindow::_OnVScroll(DWORD dwSB, _In_ DWORD nPos)
     // Update scrollbar thumb and repaint only if selection actually changed
     if (_model->Selection() != prevSelection)
     {
-        if (_pVScrollBarWnd) _pVScrollBarWnd->_ShiftPosition(_model->Selection(), FALSE);
+        if (_pVScrollBarWnd) _pVScrollBarWnd->SbShiftPosition(_model->Selection(), FALSE);
         _InvalidateRect();
     }
 }
@@ -1237,11 +1271,11 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
 	_padding = m.padding;
 
     // RC26: Reset scrollbar selection highlight before drawing rows (non-layered only)
-    if (_pVScrollBarWnd && _pVScrollBarWnd->_GetWnd() &&
-        !(GetWindowLong(_pVScrollBarWnd->_GetWnd(), GWL_EXSTYLE) & WS_EX_LAYERED))
+    if (_pVScrollBarWnd && _pVScrollBarWnd->SbWnd() &&
+        !(GetWindowLong(_pVScrollBarWnd->SbWnd(), GWL_EXSTYLE) & WS_EX_LAYERED))
     {
         RECT rcEmpty = {0};
-        _pVScrollBarWnd->_SetSelectionHighlight(rcEmpty, -1, 0);
+        _pVScrollBarWnd->SbSetSelectionHighlight(rcEmpty, -1, 0);
     }
 
     for (;
@@ -1279,16 +1313,16 @@ void CCandidateWindow::_DrawList(_In_ HDC dcHandle, _In_ UINT currentPageIndex, 
             // RC26: Pass full selection RoundRect to scrollbar (in scrollbar client coords)
             // so the highlight visually extends over the scrollbar with its original shape.
             // Only needed on non-layered windows (legacy apps).
-            if (_pVScrollBarWnd && _pVScrollBarWnd->_GetWnd() &&
-                !(GetWindowLong(_pVScrollBarWnd->_GetWnd(), GWL_EXSTYLE) & WS_EX_LAYERED))
+            if (_pVScrollBarWnd && _pVScrollBarWnd->SbWnd() &&
+                !(GetWindowLong(_pVScrollBarWnd->SbWnd(), GWL_EXSTYLE) & WS_EX_LAYERED))
             {
                 RECT rcSB = {0};
-                _pVScrollBarWnd->_GetWindowRect(&rcSB);
+                _pVScrollBarWnd->SbGetWindowRect(&rcSB);
                 POINT ptSB = { rcSB.left, rcSB.top };
                 ScreenToClient(_GetWnd(), &ptSB);
                 RECT rcSelSB = { rcHighlight.left - ptSB.x, rcHighlight.top - ptSB.y,
                                  rcHighlight.right - ptSB.x, rcHighlight.bottom - ptSB.y };
-                _pVScrollBarWnd->_SetSelectionHighlight(rcSelSB, cornerR, _crSelectedBkColor);
+                _pVScrollBarWnd->SbSetSelectionHighlight(rcSelSB, cornerR, _crSelectedBkColor);
             }
 
             // Draw number with transparent background
@@ -1484,7 +1518,7 @@ BOOL CCandidateWindow::_MoveSelection(_In_ int offSet, _In_ BOOL isNotify)
 	if (!_model->MoveSelection(offSet))
 		return FALSE;
 	if (_pVScrollBarWnd && isNotify)
-		_pVScrollBarWnd->_ShiftLine(offSet, isNotify);
+		_pVScrollBarWnd->SbShiftLine(offSet, isNotify);
 	return TRUE;
 }
 
@@ -1493,7 +1527,7 @@ BOOL CCandidateWindow::_SetSelection(_In_ int selectedIndex, _In_ BOOL isNotify)
 	BOOL applied = FALSE;
 	BOOL ret = _model->SetSelection(selectedIndex, &applied);
 	if (applied && _pVScrollBarWnd && isNotify)
-		_pVScrollBarWnd->_ShiftPosition(selectedIndex, isNotify);
+		_pVScrollBarWnd->SbShiftPosition(selectedIndex, isNotify);
 	return ret;
 }
 
@@ -1513,9 +1547,9 @@ BOOL CCandidateWindow::_MovePage(_In_ int offSet, _In_ BOOL isNotify)
 	if (_pVScrollBarWnd && isNotify)
 	{
 		if (wrapped)
-			_pVScrollBarWnd->_ShiftPosition(_model->Selection(), FALSE);
+			_pVScrollBarWnd->SbShiftPosition(_model->Selection(), FALSE);
 		else
-			_pVScrollBarWnd->_ShiftPage(offSet, isNotify);
+			_pVScrollBarWnd->SbShiftPage(offSet, isNotify);
 	}
 	return TRUE;
 }
@@ -1575,7 +1609,7 @@ void CCandidateWindow::_SetScrollInfo(_In_ int nMax, _In_ int nPage)
 
     if (_pVScrollBarWnd)
     {
-        _pVScrollBarWnd->_SetScrollInfo(&si);
+        _pVScrollBarWnd->SbSetScrollInfo(&si);
     }
 }
 

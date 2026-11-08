@@ -1,8 +1,9 @@
 ﻿/********************************************************************************
 * ScrollBarProcParityTest: the candidate scroll bar's events, C++ vs Rust
 * (dime-ui::sbproc). Two real candidate windows with the same contents; one
-* scroll bar handles its events in C++, the other in Rust (the state is the
-* C++ object's either way). Both receive the same random sequences: scroll
+* scroll bar is CScrollBarWindow, the other the Rust-owned scroll bar
+* (CRustScrollBarWindow, phase 3c-5c), each created with a class of its own
+* implementation. Both receive the same random sequences: scroll
 * info, _SetCurPos with every notification code, _ShiftLine / _ShiftPage /
 * _ShiftPosition, clicks on the buttons / track / thumb, drags, button-up,
 * hover, _SetCandidateMouseIn, the repeat and collapse timers,
@@ -53,13 +54,13 @@ namespace
         CCandidateRange range;
         std::vector<CCandidateListItem> items;
         CCandidateWindow* w = nullptr;
-        CScrollBarWindow* sb = nullptr;
+        IDimeScrollBar* sb = nullptr;
     };
 
     std::wstring Snapshot(Side& s, int k)
     {
-        CScrollBarWindow::StateForTest st = s.sb->_GetStateForTest();
-        HWND h = s.sb->_GetWnd();
+        SbStateForTest st = s.sb->SbGetStateForTest();
+        HWND h = s.sb->SbWnd();
         RECT rc = { 0, 0, 0, 0 };
         GetWindowRect(h, &rc);
         RECT pr = { 0, 0, 0, 0 };
@@ -111,11 +112,12 @@ namespace DIMEUnitTests
                     Side& s = sides[k];
                     for (int r = 0; r < rowsInPage; r++) s.range.Append()->CandIndex = L'1' + (wchar_t)r;
                     s.w = new CCandidateWindow(NoCallback, nullptr, &s.range, FALSE);
+                    // Side 0: CScrollBarWindow; side 1: the Rust-owned scroll bar (phase 3c-5c).
+                    s.w->_SetScrollBarForTest(k == 1, k == 1 ? RustScrollBarTestAtom() : CppScrollBarTestAtom());
                     Assert::IsTrue(s.w->_Create(2, 12, nullptr) != FALSE);
                     Assert::IsNotNull(s.w->_GetWnd(), L"a real window (not a virtual one)");
                     s.sb = s.w->_GetScrollBarForTest();
                     Assert::IsNotNull(s.sb);
-                    s.sb->_SetUseRustForTest(k == 1);
                     s.items.resize(count);
                     for (UINT i = 0; i < count; i++)
                     {
@@ -128,7 +130,8 @@ namespace DIMEUnitTests
                     if (pages) s.w->_SetPageIndex(pageIndex.data(), pages);
                     s.w->_Move(400, 300);
                     s.w->_ResizeWindow();
-                    g_watched[k] = s.sb;
+                    // CScrollBarWindow starts its own timers; the Rust scroll bar asks the candidate window.
+                    g_watched[k] = (k == 0) ? static_cast<CBaseWindow*>(dynamic_cast<CScrollBarWindow*>(s.sb)) : static_cast<CBaseWindow*>(s.w);
                     g_timers[k].clear();
                 }
                 // Same starting point: _SetScrollInfo as the presenter does.
@@ -141,12 +144,12 @@ namespace DIMEUnitTests
 
                 HWND capture[2] = { nullptr, nullptr };
                 RECT sbClient = { 0, 0, 0, 0 };
-                GetClientRect(sides[0].sb->_GetWnd(), &sbClient);
+                GetClientRect(sides[0].sb->SbWnd(), &sbClient);
                 int sw = max(1, (int)sbClient.right), sh = max(1, (int)sbClient.bottom);
 
                 for (int step = 0; step < 150; step++)
                 {
-                    int op = (int)(rng() % 20);
+                    int op = (int)(rng() % 21);
                     int a = (int)(rng() % (count + 10)) - 5, b = (int)(rng() % 8) - 1;
                     POINT pt = { (LONG)(rng() % (sw + 6)) - 3, (LONG)(rng() % (sh + 10)) - 5 };
                     CScrollInfo si;
@@ -162,29 +165,31 @@ namespace DIMEUnitTests
                     for (int k = 0; k < 2; k++)
                     {
                         Side& s = sides[k];
-                        CScrollBarWindow* sb = s.sb;
+                        IDimeScrollBar* sb = s.sb;
                         // Mouse capture is global: give each side the capture it left.
                         if (capture[k]) SetCapture(capture[k]); else ReleaseCapture();
                         switch (op)
                         {
-                        case 0: if (setInfo) sb->_SetScrollInfo(&si); break;
-                        case 1: sb->_SetCurPos(a, b); break;
-                        case 2: sb->_ShiftLine(b - 2, flag); break;
-                        case 3: sb->_ShiftPage(b - 2, flag); break;
-                        case 4: sb->_ShiftPosition(a, flag); break;
-                        case 5: case 6: sb->_OnLButtonDown(pt); break;
-                        case 7: sb->_OnLButtonUp(pt); break;
-                        case 8: case 9: sb->_OnMouseMove(pt); break;
-                        case 10: sb->_SetCandidateMouseIn(flag); break;
-                        case 11: sb->_OnTimerID(timer); break;
-                        case 12: sb->_OnScrollActivity(); break;
-                        case 13: sb->_Show(flag); break;
-                        case 14: sb->_Enable(flag); break;
-                        case 15: sb->_OnOwnerWndMoved(flag); break;
-                        case 16: SendMessage(sb->_GetWnd(), 0x02A3 /* WM_MOUSELEAVE */, 0, 0); break;
-                        case 17: SendMessage(sb->_GetWnd(), paintMsg, 0, 0); break;
-                        case 18: SendMessage(sb->_GetWnd(), WM_TIMER, timer, 0); break;
-                        case 19: sb->_SetSelectionHighlight({ 0, 0, 5, 5 }, radius, 0); break;
+                        case 0: if (setInfo) sb->SbSetScrollInfo(&si); break;
+                        case 1: sb->SbSetCurPosForTest(a, b); break;
+                        case 2: sb->SbShiftLine(b - 2, flag); break;
+                        case 3: sb->SbShiftPage(b - 2, flag); break;
+                        case 4: sb->SbShiftPosition(a, flag); break;
+                        case 5: case 6: sb->SbLButtonDown(pt); break;
+                        case 7: sb->SbLButtonUp(pt); break;
+                        case 8: case 9: sb->SbMouseMove(pt); break;
+                        case 10: sb->SbSetCandidateMouseIn(flag); break;
+                        case 11: sb->SbOnTimer(timer); break;
+                        case 12: sb->SbOnScrollActivity(); break;
+                        case 13: sb->SbShow(flag); break;
+                        case 14: sb->SbEnableForTest(flag); break;
+                        case 15: sb->SbOnOwnerWndMoved(flag); break;
+                        case 16: SendMessage(sb->SbWnd(), 0x02A3 /* WM_MOUSELEAVE */, 0, 0); break;
+                        case 17: SendMessage(sb->SbWnd(), paintMsg, 0, 0); break;
+                        case 18: SendMessage(sb->SbWnd(), WM_TIMER, timer, 0); break;
+                        case 19: sb->SbSetSelectionHighlight({ 0, 0, 5, 5 }, radius, 0); break;
+                        // The timer as Windows delivers it: to the candidate window, routed by CBaseWindow.
+                        case 20: SendMessage(s.w->_GetWnd(), WM_TIMER, timer, 0); break;
                         }
                         snap[k] = Snapshot(s, k);
                         capture[k] = GetCapture();

@@ -106,13 +106,12 @@ namespace
         o.cursor = GetCursor();
         o.captured = GetCapture() == s.w->_GetWnd();
         o.tracking = s.w->_IsTrackingMouseForTest();
-        if (CScrollBarWindow* sb = s.w->_GetScrollBarForTest())
+        if (IDimeScrollBar* sb = s.w->_GetScrollBarForTest())
         {
-            CScrollInfo si;
-            sb->_GetScrollInfo(&si);
+            CScrollInfo si = sb->SbGetStateForTest().si;
             o.sbPos = si.nPos; o.sbMax = si.nMax; o.sbPage = si.nPage;
-            o.sbEnabled = sb->_IsEnabled();
-            o.sbVisible = IsWindowVisible(sb->_GetWnd());
+            o.sbEnabled = sb->SbIsEnabled();
+            o.sbVisible = IsWindowVisible(sb->SbWnd());
         }
         if (auto* sh = s.w->_GetShadowForTest())
             o.shadowVisible = IsWindowVisible(sh->_GetWnd());

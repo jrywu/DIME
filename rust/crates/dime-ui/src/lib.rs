@@ -24,6 +24,8 @@ pub mod notify;
 pub mod sbpaint;
 #[cfg(windows)]
 pub mod sbproc;
+#[cfg(windows)]
+pub mod sbwin;
 pub mod shadow;
 #[cfg(windows)]
 pub mod win;

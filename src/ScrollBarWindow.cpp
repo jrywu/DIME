@@ -38,9 +38,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ScrollBarWindow.h"
 #include "UIConstants.h"
 #include "UILayout.h"
-#ifdef DIME_RUST_AVAILABLE
-#include "dime_ffi.h"
-#endif
 
 // CScrollInfo as UILayout sees it.
 static UILayout::ScrollInfo _LayoutScrollInfo(const CScrollInfo& si)
@@ -48,93 +45,6 @@ static UILayout::ScrollInfo _LayoutScrollInfo(const CScrollInfo& si)
     return { si.nMax, si.nPage, si.nPos };
 }
 
-#ifdef DIME_RUST_AVAILABLE
-//+---------------------------------------------------------------------------
-//
-// The scroll bar's events in Rust (dime-ui::sbproc). The state stays in this
-// object; Rust reads and writes it through this host (the notifications to the
-// candidate window re-enter the scroll bar). Parity: ScrollBarProcParityTest.
-//
-//----------------------------------------------------------------------------
-
-struct CScrollBarWindowRustHost
-{
-    static CScrollBarWindow* S(void* ctx) { return static_cast<CScrollBarWindow*>(ctx); }
-
-    static void* Hwnd(void* ctx) { return S(ctx)->_GetWnd(); }
-    static void* ParentHwnd(void* ctx) { return S(ctx)->_GetParent() ? S(ctx)->_GetParent()->_GetWnd() : nullptr; }
-    static void ClientRect(void* ctx, DimeRect* out)
-    {
-        RECT rc = { 0, 0, 0, 0 };
-        S(ctx)->_GetClientRect(&rc);
-        *out = { rc.left, rc.top, rc.right, rc.bottom };
-    }
-    static uint32_t Dpi(void* ctx) { return CConfig::GetDpiForHwnd(S(ctx)->_GetWnd()); }
-    static int32_t HoverWidth(void* ctx) { return S(ctx)->_GetHoverWidth(); }
-    static void GetInfo(void* ctx, DimeScrollInfo* out) { *out = { S(ctx)->_scrollInfo.nMax, S(ctx)->_scrollInfo.nPage, S(ctx)->_scrollInfo.nPos }; }
-    static void SetInfo(void* ctx, const DimeScrollInfo* si)
-    {
-        S(ctx)->_scrollInfo.nMax = si->max;
-        S(ctx)->_scrollInfo.nPage = si->page;
-        S(ctx)->_scrollInfo.nPos = si->pos;
-    }
-    static int32_t Dragging(void* ctx, int32_t* startY, int32_t* startPos)
-    {
-        *startY = S(ctx)->_dragStartY;
-        *startPos = S(ctx)->_dragStartPos;
-        return S(ctx)->_isDragging ? 1 : 0;
-    }
-    static void SetDragging(void* ctx, int32_t on, int32_t startY, int32_t startPos)
-    {
-        S(ctx)->_isDragging = on ? TRUE : FALSE;
-        if (on)
-        {
-            S(ctx)->_dragStartY = startY;
-            S(ctx)->_dragStartPos = startPos;
-        }
-    }
-    static uint8_t Alpha(void* ctx) { return S(ctx)->_currentAlpha; }
-    static void SetAlpha(void* ctx, uint8_t alpha) { S(ctx)->_currentAlpha = alpha; }
-    static int32_t Fading(void* ctx) { return S(ctx)->_isFading ? 1 : 0; }
-    static void SetFading(void* ctx, int32_t on) { S(ctx)->_isFading = on ? TRUE : FALSE; }
-    static int32_t Hovered(void* ctx) { return S(ctx)->_isHovered ? 1 : 0; }
-    static void SetHovered(void* ctx, int32_t on) { S(ctx)->_isHovered = on ? TRUE : FALSE; }
-    static int32_t TrackingMouse(void* ctx) { return S(ctx)->_isTrackingMouse ? 1 : 0; }
-    static void SetTrackingMouse(void* ctx, int32_t on) { S(ctx)->_isTrackingMouse = on ? TRUE : FALSE; }
-    static int32_t HeldButton(void* ctx) { return (int32_t)S(ctx)->_heldButton; }
-    static void SetHeldButton(void* ctx, int32_t button) { S(ctx)->_heldButton = (SCROLLBAR_HITTEST)button; }
-    static int32_t RepeatStarted(void* ctx) { return S(ctx)->_repeatStarted ? 1 : 0; }
-    static void SetRepeatStarted(void* ctx, int32_t on) { S(ctx)->_repeatStarted = on ? TRUE : FALSE; }
-    static int32_t IsEnabled(void* ctx) { return S(ctx)->_IsEnabled() ? 1 : 0; }
-    static void BaseEnable(void* ctx, int32_t on) { S(ctx)->CBaseWindow::_Enable(on ? TRUE : FALSE); }
-    static int32_t IsVisible(void* ctx) { return S(ctx)->_IsWindowVisible() ? 1 : 0; }
-    static void BaseShow(void* ctx, int32_t on) { S(ctx)->CBaseWindow::_Show(on ? TRUE : FALSE); }
-    static void Invalidate(void* ctx) { S(ctx)->_InvalidateRect(); }
-    static int32_t IsCapture(void* ctx) { return S(ctx)->_IsCapture() ? 1 : 0; }
-    static void StartCapture(void* ctx) { S(ctx)->_StartCapture(); }
-    static void EndCapture(void* ctx) { S(ctx)->_EndCapture(); }
-    static void StartTimer(void* ctx, uint32_t elapse, uintptr_t id) { S(ctx)->_StartTimer(elapse, id); }
-    static void EndTimer(void* ctx, uintptr_t id) { S(ctx)->_EndTimer(id); }
-    static void NotifyCommand(void* ctx, uint32_t msg, int32_t code, int32_t pos) { S(ctx)->_NotifyCommand(msg, (DWORD)code, pos); }
-    static void ShiftPage(void* ctx, int32_t pages, int32_t notify) { S(ctx)->_ShiftPage(pages, notify ? TRUE : FALSE); }
-    static void Paint(void* ctx, void* dc, void* ps) { S(ctx)->_OnPaint((HDC)dc, (PAINTSTRUCT*)ps); }
-
-    static const DimeSbHostVtbl s_vtbl;
-};
-
-const DimeSbHostVtbl CScrollBarWindowRustHost::s_vtbl = {
-    Hwnd, ParentHwnd, ClientRect, Dpi, HoverWidth, GetInfo, SetInfo, Dragging, SetDragging, Alpha, SetAlpha,
-    Fading, SetFading, Hovered, SetHovered, TrackingMouse, SetTrackingMouse, HeldButton, SetHeldButton,
-    RepeatStarted, SetRepeatStarted, IsEnabled, BaseEnable, IsVisible, BaseShow, Invalidate, IsCapture,
-    StartCapture, EndCapture, StartTimer, EndTimer, NotifyCommand, ShiftPage, Paint,
-};
-
-void CScrollBarWindow::_RustEvent(UINT op, int a, int b)
-{
-    DimeSbHost host = { &CScrollBarWindowRustHost::s_vtbl, this };
-    dime_ui_sb_event(&host, op, a, b);
-}
-#endif
 
 //////////////////////////////////////////////////////////////////////
 //
@@ -217,11 +127,6 @@ CScrollBarWindow::CScrollBarWindow()
 
     _heldButton = SB_HIT_NONE;
     _repeatStarted = FALSE;
-#ifdef DIME_USE_RUST_ENGINE
-    _useRust = TRUE;
-#else
-    _useRust = FALSE;
-#endif
 
     SetRectEmpty(&_selHighlightRect);
     _selHighlightRadius = -1;
@@ -278,13 +183,6 @@ BOOL CScrollBarWindow::_Create(ATOM atom, DWORD dwExStyle, DWORD dwStyle, CBaseW
 
 LRESULT CALLBACK CScrollBarWindow::_WindowProcCallback(_In_ HWND wndHandle, _In_ UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam)
 {
-#ifdef DIME_RUST_AVAILABLE
-    if (_useRust)
-    {
-        DimeSbHost host = { &CScrollBarWindowRustHost::s_vtbl, this };
-        return (LRESULT)dime_ui_sb_window_proc(&host, wndHandle, uMsg, (uintptr_t)wParam, (intptr_t)lParam);
-    }
-#endif
 	
     switch (uMsg)
     {
@@ -356,38 +254,6 @@ LRESULT CALLBACK CScrollBarWindow::_WindowProcCallback(_In_ HWND wndHandle, _In_
 void CScrollBarWindow::_OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps)
 {
 	debugPrint(L"CScrollBarWindow::_OnPaint()\n");
-#ifdef DIME_USE_RUST_ENGINE
-    _OnPaintRust(dcHandle, pps);
-#else
-    _OnPaintCpp(dcHandle, pps);
-#endif
-}
-
-#ifdef DIME_RUST_AVAILABLE
-// _OnPaintRust: the same drawing by dime-ui::sbpaint. Parity: CandidatePaintParityTest.
-void CScrollBarWindow::_OnPaintRust(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps)
-{
-    RECT rcClient = {0,0,0,0};
-    _GetClientRect(&rcClient);
-    DimeSbPaint in = {};
-    in.hwnd = _GetWnd();
-    in.has_paint = pps ? 1 : 0;
-    if (pps) in.paint = { pps->rcPaint.left, pps->rcPaint.top, pps->rcPaint.right, pps->rcPaint.bottom };
-    in.client = { rcClient.left, rcClient.top, rcClient.right, rcClient.bottom };
-    in.dpi = CConfig::GetDpiForHwnd(_GetWnd());
-    in.si = { _scrollInfo.nMax, _scrollInfo.nPage, _scrollInfo.nPos };
-    in.dark = CConfig::GetEffectiveDarkMode() ? 1 : 0;
-    in.full = (_isHovered || CConfig::GetAlwaysShowScrollbars()) ? 1 : 0;
-    in.highlight = { _selHighlightRect.left, _selHighlightRect.top, _selHighlightRect.right, _selHighlightRect.bottom };
-    in.highlight_radius = _selHighlightRadius;
-    in.highlight_color = _selHighlightColor;
-    dime_ui_sb_paint(dcHandle, &in);
-}
-#endif
-
-// _OnPaintCpp: the C++ original.
-void CScrollBarWindow::_OnPaintCpp(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps)
-{
 
     // RC26: Fill background — layered windows use magenta color key (becomes transparent);
     // non-layered windows (legacy apps where WS_EX_LAYERED failed) ask the parent for its bg brush.
@@ -504,13 +370,6 @@ void CScrollBarWindow::_OnPaintCpp(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps)
 
 void CScrollBarWindow::_OnLButtonDown(POINT pt)
 {
-#ifdef DIME_RUST_AVAILABLE
-    if (_useRust)
-    {
-        _RustEvent(6, pt.x, pt.y);
-        return;
-    }
-#endif
     _StartCapture();
 
     SCROLLBAR_HITTEST hit = _HitTest(pt);
@@ -560,13 +419,6 @@ void CScrollBarWindow::_OnLButtonDown(POINT pt)
 
 void CScrollBarWindow::_OnLButtonUp(POINT pt)
 {
-#ifdef DIME_RUST_AVAILABLE
-    if (_useRust)
-    {
-        _RustEvent(7, 0, 0);
-        return;
-    }
-#endif
     pt;
     if (_isDragging)
     {
@@ -598,13 +450,6 @@ void CScrollBarWindow::_OnLButtonUp(POINT pt)
 
 void CScrollBarWindow::_OnMouseMove(POINT pt)
 {
-#ifdef DIME_RUST_AVAILABLE
-    if (_useRust)
-    {
-        _RustEvent(8, 0, 0);
-        return;
-    }
-#endif
     pt;
     // Register for WM_MOUSELEAVE if not already tracking
     if (!_isTrackingMouse)
@@ -647,13 +492,6 @@ void CScrollBarWindow::_OnMouseMove(POINT pt)
 
 void CScrollBarWindow::_OnOwnerWndMoved(BOOL isResized)
 {
-#ifdef DIME_RUST_AVAILABLE
-    if (_useRust)
-    {
-        _RustEvent(10, 0, 0);
-        return;
-    }
-#endif
     isResized;
 
     if (IsWindow(_GetWnd()) && IsWindowVisible(_GetWnd()))
@@ -681,13 +519,6 @@ void CScrollBarWindow::_Resize(int x, int y, int cx, int cy)
 
 void CScrollBarWindow::_Show(BOOL isShowWnd)
 {
-#ifdef DIME_RUST_AVAILABLE
-    if (_useRust)
-    {
-        _RustEvent(11, isShowWnd ? 1 : 0, 0);
-        return;
-    }
-#endif
     if (_IsWindowVisible() != isShowWnd)
     {
         CBaseWindow::_Show(isShowWnd);
@@ -702,13 +533,6 @@ void CScrollBarWindow::_Show(BOOL isShowWnd)
 
 void CScrollBarWindow::_Enable(BOOL isEnable)
 {
-#ifdef DIME_RUST_AVAILABLE
-    if (_useRust)
-    {
-        _RustEvent(12, isEnable ? 1 : 0, 0);
-        return;
-    }
-#endif
 	debugPrint(L"CScrollBarWindow::_Enable(), isEnable = %d, _scrollInfo.nMax = %d, _scrollInfo.nPage =%d, _scrollInfo.nPos = %d ",
 		isEnable, _scrollInfo.nMax, _scrollInfo.nPage, _scrollInfo.nPos);
     if (_IsEnabled() != isEnable)
@@ -753,15 +577,6 @@ void CScrollBarWindow::_AdjustWindowPos()
 
 void CScrollBarWindow::_SetScrollInfo(_In_ CScrollInfo *lpsi)
 {
-#ifdef DIME_RUST_AVAILABLE
-    if (_useRust)
-    {
-        DimeSbHost host = { &CScrollBarWindowRustHost::s_vtbl, this };
-        DimeScrollInfo si = { lpsi->nMax, lpsi->nPage, lpsi->nPos };
-        dime_ui_sb_set_scroll_info(&host, &si);
-        return;
-    }
-#endif
     _scrollInfo = *lpsi;
 
     BOOL isEnable = (_scrollInfo.nMax > _scrollInfo.nPage);
@@ -873,13 +688,6 @@ SCROLLBAR_HITTEST CScrollBarWindow::_HitTest(POINT pt)
 
 void CScrollBarWindow::_SetCurPos(int nPos, int dwSB)
 {
-#ifdef DIME_RUST_AVAILABLE
-    if (_useRust)
-    {
-        _RustEvent(0, nPos, dwSB);
-        return;
-    }
-#endif
 	debugPrint(L"CScrollButtonWindow::_SetCurPos() nPos = %d, dwSB = %d", nPos, dwSB);
     //int posMax = (_scrollInfo.nMax <= _scrollInfo.nPage) ? 0 : _scrollInfo.nMax - _scrollInfo.nPage;
 
@@ -909,13 +717,6 @@ void CScrollBarWindow::_SetCurPos(int nPos, int dwSB)
 
 void CScrollBarWindow::_SetCandidateMouseIn(BOOL isIn)
 {
-#ifdef DIME_RUST_AVAILABLE
-    if (_useRust)
-    {
-        _RustEvent(5, isIn ? 1 : 0, 0);
-        return;
-    }
-#endif
     if (isIn)
     {
         // Mouse entered scrollbar column: show full scrollbar immediately.
@@ -954,13 +755,6 @@ void CScrollBarWindow::_SetSelectionHighlight(RECT rc, int cornerRadius, COLORRE
 
 void CScrollBarWindow::_OnTimerID(UINT_PTR timerID)
 {
-#ifdef DIME_RUST_AVAILABLE
-    if (_useRust)
-    {
-        _RustEvent(9, (int)timerID, 0);
-        return;
-    }
-#endif
     if (timerID == BTNREPEAT_TIMER_ID)
     {
         if (!_repeatStarted)
@@ -999,13 +793,6 @@ void CScrollBarWindow::_OnTimerID(UINT_PTR timerID)
 
 void CScrollBarWindow::_OnScrollActivity()
 {
-#ifdef DIME_RUST_AVAILABLE
-    if (_useRust)
-    {
-        _RustEvent(4, 0, 0);
-        return;
-    }
-#endif
     // Don't show scrollbar for single-page candidate lists
     if (!_IsEnabled()) return;
 
