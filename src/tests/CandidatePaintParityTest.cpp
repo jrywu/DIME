@@ -18,25 +18,16 @@
 #include "../Globals.h"
 #include "../CandidateWindow.h"
 #include "../BaseStructure.h"
+#include "WindowClassTestHelper.h"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 #ifdef DIME_RUST_AVAILABLE
-extern "C" IMAGE_DOS_HEADER __ImageBase;
 
 namespace
 {
     HRESULT NoCallback(void*, enum CANDWND_ACTION) { return S_OK; }
 
-    void RegisterClassesOnce()
-    {
-        static bool done = false;
-        if (done) return;
-        done = true;
-        if (!Global::dllInstanceHandle)
-            Global::dllInstanceHandle = reinterpret_cast<HINSTANCE>(&__ImageBase);
-        Global::RegisterWindowClass(); // may already be registered by other tests
-    }
 
     struct PaintResult
     {
@@ -116,7 +107,7 @@ namespace DIMEUnitTests
     public:
         TEST_METHOD(PaintMatchesCpp)
         {
-            RegisterClassesOnce();
+            EnsureWindowClassesRegistered();
             HFONT savedFont = Global::defaultlFontHandle;
 
             const wchar_t* faces[] = { L"Microsoft JhengHei", L"PMingLiU", L"Segoe UI" };
@@ -158,6 +149,7 @@ namespace DIMEUnitTests
                         DeleteObject(font);
                         return;
                     }
+                    Assert::IsNotNull(w->_GetWnd(), L"a real window (not a virtual one)");
                     w->_SetCandStringLength(wndWidth);
 
                     std::vector<CCandidateListItem> items(count);

@@ -695,6 +695,61 @@ void dime_ui_cand_paint_list(void* dc, const DimeCandPaintList* input, DimeCandP
 void dime_ui_cand_paint_indicator(void* dc, const DimeCandPaintIndicator* input);
 void dime_ui_cand_paint_end(void* dc, void* old_font);
 
+/* ---- Candidate window message handling (rust/crates/dime-ui/src/candproc.rs) ----
+ * The C++ side (CCandidateWindowRustHost in src/CandidateWindow.cpp). Field order
+ * must match DimeCandHostVtbl in rust/crates/dime-ffi/src/lib.rs. Callbacks must
+ * not throw; invoke may destroy the window (it is always the last call). */
+typedef struct DimeCandHostVtbl {
+    int32_t  (*selection)(void* ctx);
+    void     (*set_selection_raw)(void* ctx, uint32_t index);
+    void     (*set_selection_offset)(void* ctx, int32_t offset);   /* _SetSelectionOffset */
+    void     (*set_selection)(void* ctx, int32_t index);           /* _SetSelection(index, FALSE) */
+    void     (*move_page)(void* ctx, int32_t offset);              /* _MovePage(offset, FALSE) */
+    int32_t  (*current_page)(void* ctx, int32_t* page);            /* 0: _GetCurrentPage failed */
+    uint32_t (*page_count)(void* ctx);
+    uint32_t (*page_start)(void* ctx, int32_t page);
+    uint32_t (*count)(void* ctx);
+    int32_t  (*rows_in_page)(void* ctx);                           /* -1: no index range */
+    int32_t  (*padding)(void* ctx);
+    int32_t  (*cy_row)(void* ctx);
+    uint32_t (*wnd_width)(void* ctx);
+    void     (*set_initial_metrics)(void* ctx, int32_t cx_title, int32_t cy_row, int32_t padding);
+    int32_t  (*sb_width)(void* ctx);
+    void*    (*font)(void* ctx);                                   /* HFONT */
+    void*    (*bk_brush)(void* ctx);                               /* HBRUSH or NULL */
+    int32_t  (*has_callback)(void* ctx);
+    void     (*invoke)(void* ctx, int32_t action);                 /* CANDWND_ACTION */
+    void     (*paint)(void* ctx, void* dc, void* ps);              /* _OnPaint(HDC, PAINTSTRUCT*) */
+    void     (*invalidate)(void* ctx);
+    void     (*dpi_changed)(void* ctx, void* hwnd);
+    int32_t  (*is_capture)(void* ctx);
+    int32_t  (*tracking_mouse)(void* ctx);
+    void     (*set_tracking_mouse)(void* ctx, int32_t on);
+    int32_t  (*has_shadow)(void* ctx);
+    void*    (*shadow_hwnd)(void* ctx);
+    void     (*shadow_show)(void* ctx, int32_t show);
+    void     (*shadow_owner_moved)(void* ctx, int32_t resized);
+    void     (*delete_shadow)(void* ctx);
+    int32_t  (*has_scroll_bar)(void* ctx);
+    void*    (*sb_hwnd)(void* ctx);
+    void     (*sb_client_rect)(void* ctx, DimeRect* out);
+    int32_t  (*sb_is_enabled)(void* ctx);
+    void     (*sb_show)(void* ctx, int32_t show);
+    void     (*sb_owner_moved)(void* ctx, int32_t resized);
+    void     (*sb_set_candidate_mouse_in)(void* ctx, int32_t inside);
+    void     (*sb_on_scroll_activity)(void* ctx);
+    void     (*sb_shift_position)(void* ctx, int32_t position);
+    void     (*sb_mouse)(void* ctx, uint32_t msg, DimePoint pt);   /* WM_LBUTTONDOWN / UP / MOUSEMOVE */
+} DimeCandHostVtbl;
+
+typedef struct DimeCandHost {
+    const DimeCandHostVtbl* vtbl;
+    void* ctx;
+} DimeCandHost;
+
+/* CCandidateWindow::_WindowProcCallback (LRESULT). */
+intptr_t dime_ui_cand_window_proc(const DimeCandHost* host, void* hwnd, uint32_t msg, uintptr_t wparam, intptr_t lparam);
+
 #ifdef __cplusplus
 }
 #endif

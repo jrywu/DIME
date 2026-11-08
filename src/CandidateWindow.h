@@ -75,6 +75,10 @@ public:
     VOID _SetFillColor(_In_ COLORREF fiColor);
 
     LRESULT CALLBACK _WindowProcCallback(_In_ HWND wndHandle, UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam);
+    LRESULT _WindowProcCpp(_In_ HWND wndHandle, UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam);    // the C++ original
+#ifdef DIME_RUST_AVAILABLE
+    LRESULT _WindowProcRust(_In_ HWND wndHandle, UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam);   // dime-ui::candproc
+#endif
     void _OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps);
     void _OnPaintCpp(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps);     // the C++ original
 #ifdef DIME_RUST_AVAILABLE
@@ -86,6 +90,10 @@ public:
     LayoutStateForTest _GetLayoutStateForTest() const { return { _cxTitle, _cyRow, _padding, _wndWidth }; }
     void _SetLayoutStateForTest(const LayoutStateForTest& s) { _cxTitle = s.cxTitle; _cyRow = s.cyRow; _padding = s.padding; _wndWidth = s.wndWidth; }
     CScrollBarWindow* _GetScrollBarForTest() { return _pVScrollBarWnd.get(); }
+    CShadowWindow* _GetShadowForTest() { return _pShadowWnd.get(); }
+    // Which message handling a window uses (set before _Create; CandidateProcParityTest).
+    void _SetUseRustProcForTest(BOOL useRust) { _useRustProc = useRust; }
+    BOOL _IsTrackingMouseForTest() const { return _isTrackingCandMouse; }
 #endif
     void _OnLButtonDown(POINT pt);
     void _OnLButtonUp(POINT pt);
@@ -138,6 +146,7 @@ private:
     void _DeleteVScrollBarWnd();
 
     friend COLORREF _AdjustTextColor(_In_ COLORREF crColor, _In_ COLORREF crBkColor);
+    friend struct CCandidateWindowRustHost;
 
 private:
     std::unique_ptr<CCandidateListModel> _model;   // items, selection, pages
@@ -167,6 +176,7 @@ private:
 
     BOOL _isStoreAppMode;
     BOOL _isTrackingCandMouse;   // TRUE while TrackMouseEvent(TME_LEAVE) is active
+    BOOL _useRustProc;           // _WindowProcRust (DIME_USE_RUST_ENGINE) or _WindowProcCpp
 
 	BYTE _animationStage;
 

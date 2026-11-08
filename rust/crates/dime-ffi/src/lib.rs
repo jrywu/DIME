@@ -17,7 +17,7 @@ use std::ptr;
 
 use dime_core::big5;
 use dime_core::candgen;
-use dime_ui::{candpaint, candwnd, layout};
+use dime_ui::{candpaint, candproc, candwnd, layout};
 use dime_core::candidates::{self, CandidatePaging};
 use dime_core::composition;
 use dime_core::keyclass;
@@ -3274,6 +3274,222 @@ pub unsafe extern "C" fn dime_ui_cand_paint_indicator(dc: *mut c_void, input: *c
 #[no_mangle]
 pub unsafe extern "C" fn dime_ui_cand_paint_end(dc: *mut c_void, old_font: *mut c_void) {
     guard((), || unsafe { candpaint::paint_end(candpaint::HDC(dc), candpaint::HGDIOBJ(old_font)) })
+}
+
+// ---------------------------------------------------------------------------
+// Candidate window message handling (dime-ui::candproc, phase 3c-2)
+// ---------------------------------------------------------------------------
+
+/// The C++ side of the candidate window (`CCandidateWindowRustHost` in
+/// `src/CandidateWindow.cpp`).  Field order must match `DimeCandHostVtbl` in
+/// `dime_ffi.h` and `s_vtbl` there.  Callbacks must not throw.
+#[repr(C)]
+pub struct DimeCandHostVtbl {
+    pub selection: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub set_selection_raw: unsafe extern "C" fn(ctx: *mut c_void, index: u32),
+    pub set_selection_offset: unsafe extern "C" fn(ctx: *mut c_void, offset: i32),
+    pub set_selection: unsafe extern "C" fn(ctx: *mut c_void, index: i32),
+    pub move_page: unsafe extern "C" fn(ctx: *mut c_void, offset: i32),
+    pub current_page: unsafe extern "C" fn(ctx: *mut c_void, page: *mut i32) -> i32,
+    pub page_count: unsafe extern "C" fn(ctx: *mut c_void) -> u32,
+    pub page_start: unsafe extern "C" fn(ctx: *mut c_void, page: i32) -> u32,
+    pub count: unsafe extern "C" fn(ctx: *mut c_void) -> u32,
+    pub rows_in_page: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub padding: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub cy_row: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub wnd_width: unsafe extern "C" fn(ctx: *mut c_void) -> u32,
+    pub set_initial_metrics: unsafe extern "C" fn(ctx: *mut c_void, cx_title: i32, cy_row: i32, padding: i32),
+    pub sb_width: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub font: unsafe extern "C" fn(ctx: *mut c_void) -> *mut c_void,
+    pub bk_brush: unsafe extern "C" fn(ctx: *mut c_void) -> *mut c_void,
+    pub has_callback: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub invoke: unsafe extern "C" fn(ctx: *mut c_void, action: i32),
+    pub paint: unsafe extern "C" fn(ctx: *mut c_void, dc: *mut c_void, ps: *mut c_void),
+    pub invalidate: unsafe extern "C" fn(ctx: *mut c_void),
+    pub dpi_changed: unsafe extern "C" fn(ctx: *mut c_void, hwnd: *mut c_void),
+    pub is_capture: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub tracking_mouse: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub set_tracking_mouse: unsafe extern "C" fn(ctx: *mut c_void, on: i32),
+    pub has_shadow: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub shadow_hwnd: unsafe extern "C" fn(ctx: *mut c_void) -> *mut c_void,
+    pub shadow_show: unsafe extern "C" fn(ctx: *mut c_void, show: i32),
+    pub shadow_owner_moved: unsafe extern "C" fn(ctx: *mut c_void, resized: i32),
+    pub delete_shadow: unsafe extern "C" fn(ctx: *mut c_void),
+    pub has_scroll_bar: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub sb_hwnd: unsafe extern "C" fn(ctx: *mut c_void) -> *mut c_void,
+    pub sb_client_rect: unsafe extern "C" fn(ctx: *mut c_void, out: *mut layout::Rect),
+    pub sb_is_enabled: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub sb_show: unsafe extern "C" fn(ctx: *mut c_void, show: i32),
+    pub sb_owner_moved: unsafe extern "C" fn(ctx: *mut c_void, resized: i32),
+    pub sb_set_candidate_mouse_in: unsafe extern "C" fn(ctx: *mut c_void, inside: i32),
+    pub sb_on_scroll_activity: unsafe extern "C" fn(ctx: *mut c_void),
+    pub sb_shift_position: unsafe extern "C" fn(ctx: *mut c_void, position: i32),
+    pub sb_mouse: unsafe extern "C" fn(ctx: *mut c_void, msg: u32, pt: layout::Point),
+}
+
+/// `DimeCandHost`.
+#[repr(C)]
+pub struct DimeCandHost {
+    pub vtbl: *const DimeCandHostVtbl,
+    pub ctx: *mut c_void,
+}
+
+struct CandHostFfi<'a> {
+    v: &'a DimeCandHostVtbl,
+    ctx: *mut c_void,
+}
+
+impl candproc::CandHost for CandHostFfi<'_> {
+    fn selection(&mut self) -> i32 {
+        unsafe { (self.v.selection)(self.ctx) }
+    }
+    fn set_selection_raw(&mut self, index: u32) {
+        unsafe { (self.v.set_selection_raw)(self.ctx, index) }
+    }
+    fn set_selection_offset(&mut self, offset: i32) {
+        unsafe { (self.v.set_selection_offset)(self.ctx, offset) }
+    }
+    fn set_selection(&mut self, index: i32) {
+        unsafe { (self.v.set_selection)(self.ctx, index) }
+    }
+    fn move_page(&mut self, offset: i32) {
+        unsafe { (self.v.move_page)(self.ctx, offset) }
+    }
+    fn current_page(&mut self) -> Option<i32> {
+        let mut page = 0;
+        (unsafe { (self.v.current_page)(self.ctx, &mut page) } != 0).then_some(page)
+    }
+    fn page_count(&mut self) -> u32 {
+        unsafe { (self.v.page_count)(self.ctx) }
+    }
+    fn page_start(&mut self, page: i32) -> u32 {
+        unsafe { (self.v.page_start)(self.ctx, page) }
+    }
+    fn count(&mut self) -> u32 {
+        unsafe { (self.v.count)(self.ctx) }
+    }
+    fn rows_in_page(&mut self) -> Option<u32> {
+        u32::try_from(unsafe { (self.v.rows_in_page)(self.ctx) }).ok()
+    }
+    fn padding(&mut self) -> i32 {
+        unsafe { (self.v.padding)(self.ctx) }
+    }
+    fn cy_row(&mut self) -> i32 {
+        unsafe { (self.v.cy_row)(self.ctx) }
+    }
+    fn wnd_width(&mut self) -> u32 {
+        unsafe { (self.v.wnd_width)(self.ctx) }
+    }
+    fn set_initial_metrics(&mut self, cx_title: i32, cy_row: i32, padding: i32) {
+        unsafe { (self.v.set_initial_metrics)(self.ctx, cx_title, cy_row, padding) }
+    }
+    fn sb_width(&mut self) -> i32 {
+        unsafe { (self.v.sb_width)(self.ctx) }
+    }
+    fn font(&mut self) -> candpaint::HFONT {
+        candpaint::HFONT(unsafe { (self.v.font)(self.ctx) })
+    }
+    fn bk_brush(&mut self) -> candpaint::HBRUSH {
+        candpaint::HBRUSH(unsafe { (self.v.bk_brush)(self.ctx) })
+    }
+    fn has_callback(&mut self) -> bool {
+        unsafe { (self.v.has_callback)(self.ctx) != 0 }
+    }
+    fn invoke(&mut self, action: i32) {
+        unsafe { (self.v.invoke)(self.ctx, action) }
+    }
+    fn paint(&mut self, dc: candpaint::HDC, ps: &mut candproc::PAINTSTRUCT) {
+        unsafe { (self.v.paint)(self.ctx, dc.0, ps as *mut _ as *mut c_void) }
+    }
+    fn invalidate(&mut self) {
+        unsafe { (self.v.invalidate)(self.ctx) }
+    }
+    fn dpi_changed(&mut self, hwnd: candproc::HWND) {
+        unsafe { (self.v.dpi_changed)(self.ctx, hwnd.0) }
+    }
+    fn is_capture(&mut self) -> bool {
+        unsafe { (self.v.is_capture)(self.ctx) != 0 }
+    }
+    fn tracking_mouse(&mut self) -> bool {
+        unsafe { (self.v.tracking_mouse)(self.ctx) != 0 }
+    }
+    fn set_tracking_mouse(&mut self, on: bool) {
+        unsafe { (self.v.set_tracking_mouse)(self.ctx, i32::from(on)) }
+    }
+    fn has_shadow(&mut self) -> bool {
+        unsafe { (self.v.has_shadow)(self.ctx) != 0 }
+    }
+    fn shadow_hwnd(&mut self) -> candproc::HWND {
+        candproc::HWND(unsafe { (self.v.shadow_hwnd)(self.ctx) })
+    }
+    fn shadow_show(&mut self, show: i32) {
+        unsafe { (self.v.shadow_show)(self.ctx, show) }
+    }
+    fn shadow_owner_moved(&mut self, resized: bool) {
+        unsafe { (self.v.shadow_owner_moved)(self.ctx, i32::from(resized)) }
+    }
+    fn delete_shadow(&mut self) {
+        unsafe { (self.v.delete_shadow)(self.ctx) }
+    }
+    fn has_scroll_bar(&mut self) -> bool {
+        unsafe { (self.v.has_scroll_bar)(self.ctx) != 0 }
+    }
+    fn sb_hwnd(&mut self) -> candproc::HWND {
+        candproc::HWND(unsafe { (self.v.sb_hwnd)(self.ctx) })
+    }
+    fn sb_client_rect(&mut self) -> layout::Rect {
+        let mut r = layout::Rect::default();
+        unsafe { (self.v.sb_client_rect)(self.ctx, &mut r) };
+        r
+    }
+    fn sb_is_enabled(&mut self) -> bool {
+        unsafe { (self.v.sb_is_enabled)(self.ctx) != 0 }
+    }
+    fn sb_show(&mut self, show: bool) {
+        unsafe { (self.v.sb_show)(self.ctx, i32::from(show)) }
+    }
+    fn sb_owner_moved(&mut self, resized: bool) {
+        unsafe { (self.v.sb_owner_moved)(self.ctx, i32::from(resized)) }
+    }
+    fn sb_set_candidate_mouse_in(&mut self, inside: bool) {
+        unsafe { (self.v.sb_set_candidate_mouse_in)(self.ctx, i32::from(inside)) }
+    }
+    fn sb_on_scroll_activity(&mut self) {
+        unsafe { (self.v.sb_on_scroll_activity)(self.ctx) }
+    }
+    fn sb_shift_position(&mut self, position: i32) {
+        unsafe { (self.v.sb_shift_position)(self.ctx, position) }
+    }
+    fn sb_mouse(&mut self, msg: u32, pt: layout::Point) {
+        unsafe { (self.v.sb_mouse)(self.ctx, msg, pt) }
+    }
+}
+
+/// `CCandidateWindow::_WindowProcCallback`.  A panic returns 0.
+///
+/// # Safety
+/// `host` must be valid with a complete vtable; `hwnd` is the candidate
+/// window and `lparam` follows `msg`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_cand_window_proc(
+    host: *const DimeCandHost,
+    hwnd: *mut c_void,
+    msg: u32,
+    wparam: usize,
+    lparam: isize,
+) -> isize {
+    guard(0, || {
+        let Some(h) = (unsafe { host.as_ref() }) else {
+            return 0;
+        };
+        let Some(v) = (unsafe { h.vtbl.as_ref() }) else {
+            return 0;
+        };
+        let mut ffi = CandHostFfi { v, ctx: h.ctx };
+        unsafe {
+            candproc::window_proc(&mut ffi, candproc::HWND(hwnd), msg, candproc::WPARAM(wparam), candproc::LPARAM(lparam)).0
+        }
+    })
 }
 
 #[cfg(test)]

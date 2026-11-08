@@ -83,6 +83,11 @@ CCandidateWindow::CCandidateWindow(_In_ CANDWNDCALLBACK pfnCallback, _In_ void *
 
     _isStoreAppMode = isStoreAppMode;
     _isTrackingCandMouse = FALSE;
+#ifdef DIME_USE_RUST_ENGINE
+    _useRustProc = TRUE;
+#else
+    _useRustProc = FALSE;
+#endif
 
 	_fontSize = _TextMetric.tmHeight;
 
@@ -448,6 +453,127 @@ VOID CCandidateWindow::_SetFillColor(_In_ COLORREF fiColor)
 //----------------------------------------------------------------------------
 
 LRESULT CALLBACK CCandidateWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam)
+{
+#ifdef DIME_RUST_AVAILABLE
+    if (_useRustProc)
+        return _WindowProcRust(wndHandle, uMsg, wParam, lParam);
+#endif
+    return _WindowProcCpp(wndHandle, uMsg, wParam, lParam);
+}
+
+#ifdef DIME_RUST_AVAILABLE
+//+---------------------------------------------------------------------------
+//
+// _WindowProcRust: the message handling of dime-ui::candproc. The C++ objects
+// it needs (model, shadow, scroll bar, callback, painting) are reached through
+// this host. Parity: CandidateProcParityTest.
+//
+//----------------------------------------------------------------------------
+
+struct CCandidateWindowRustHost
+{
+    static CCandidateWindow* W(void* ctx) { return static_cast<CCandidateWindow*>(ctx); }
+
+    static int32_t Selection(void* ctx) { return W(ctx)->_model->Selection(); }
+    static void SetSelectionRaw(void* ctx, uint32_t index) { W(ctx)->_model->SetSelectionRaw(index); }
+    static void SetSelectionOffset(void* ctx, int32_t offset) { W(ctx)->_SetSelectionOffset(offset); }
+    static void SetSelection(void* ctx, int32_t index) { W(ctx)->_SetSelection(index, FALSE); }
+    static void MovePage(void* ctx, int32_t offset) { W(ctx)->_MovePage(offset, FALSE); }
+    static int32_t CurrentPage(void* ctx, int32_t* page)
+    {
+        int p = 0;
+        if (FAILED(W(ctx)->_GetCurrentPage(&p))) return 0;
+        *page = p;
+        return 1;
+    }
+    static uint32_t PageCount(void* ctx) { return (uint32_t)W(ctx)->_model->PageCount(); }
+    static uint32_t PageStart(void* ctx, int32_t page) { return (uint32_t)W(ctx)->_model->PageStart(page); }
+    static uint32_t Count(void* ctx) { return W(ctx)->_model->Count(); }
+    static int32_t RowsInPage(void* ctx) { return W(ctx)->_pIndexRange ? W(ctx)->_pIndexRange->Count() : -1; }
+    static int32_t Padding(void* ctx) { return W(ctx)->_padding; }
+    static int32_t CyRow(void* ctx) { return W(ctx)->_cyRow; }
+    static uint32_t WndWidth(void* ctx) { return W(ctx)->_wndWidth; }
+    static void SetInitialMetrics(void* ctx, int32_t cxTitle, int32_t cyRow, int32_t padding)
+    {
+        W(ctx)->_cxTitle = cxTitle;
+        W(ctx)->_cyRow = cyRow;
+        W(ctx)->_padding = padding;
+    }
+    static int32_t SbWidth(void* ctx) { return W(ctx)->_GetScrollBarWidth(); }
+    static void* Font(void*) { return Global::defaultlFontHandle; }
+    static void* BkBrush(void* ctx) { return W(ctx)->_brshBkColor; }
+    static int32_t HasCallback(void* ctx) { return W(ctx)->_pfnCallback != nullptr; }
+    static void Invoke(void* ctx, int32_t action)
+    {
+        // Copy before calling: the callback may destroy the window.
+        CANDWNDCALLBACK pfnCallback = W(ctx)->_pfnCallback;
+        void* pObj = W(ctx)->_pObj;
+        if (pfnCallback)
+            pfnCallback(pObj, action == 0 ? CANDWND_ACTION::CAND_ITEM_SELECT : CANDWND_ACTION::CAND_CANCEL);
+    }
+    static void Paint(void* ctx, void* dc, void* ps) { W(ctx)->_OnPaint((HDC)dc, (PAINTSTRUCT*)ps); }
+    static void Invalidate(void* ctx) { W(ctx)->_InvalidateRect(); }
+    static void DpiChanged(void*, void* hwnd) { CConfig::SetDefaultTextFont((HWND)hwnd); }
+    static int32_t IsCapture(void* ctx) { return W(ctx)->_IsCapture() ? 1 : 0; }
+    static int32_t TrackingMouse(void* ctx) { return W(ctx)->_isTrackingCandMouse ? 1 : 0; }
+    static void SetTrackingMouse(void* ctx, int32_t on) { W(ctx)->_isTrackingCandMouse = on ? TRUE : FALSE; }
+    static int32_t HasShadow(void* ctx) { return W(ctx)->_pShadowWnd != nullptr; }
+    static void* ShadowHwnd(void* ctx) { return W(ctx)->_pShadowWnd ? W(ctx)->_pShadowWnd->_GetWnd() : nullptr; }
+    static void ShadowShow(void* ctx, int32_t show) { if (W(ctx)->_pShadowWnd) W(ctx)->_pShadowWnd->_Show((BOOL)show); }
+    static void ShadowOwnerMoved(void* ctx, int32_t resized) { if (W(ctx)->_pShadowWnd) W(ctx)->_pShadowWnd->_OnOwnerWndMoved((BOOL)resized); }
+    static void DeleteShadow(void* ctx) { W(ctx)->_DeleteShadowWnd(); }
+    static int32_t HasScrollBar(void* ctx) { return W(ctx)->_pVScrollBarWnd != nullptr; }
+    static void* SbHwnd(void* ctx) { return W(ctx)->_pVScrollBarWnd ? W(ctx)->_pVScrollBarWnd->_GetWnd() : nullptr; }
+    static void SbClientRect(void* ctx, DimeRect* out)
+    {
+        RECT rc = { 0, 0, 0, 0 };
+        if (W(ctx)->_pVScrollBarWnd) W(ctx)->_pVScrollBarWnd->_GetClientRect(&rc);
+        *out = { rc.left, rc.top, rc.right, rc.bottom };
+    }
+    static int32_t SbIsEnabled(void* ctx) { return W(ctx)->_pVScrollBarWnd && W(ctx)->_pVScrollBarWnd->_IsEnabled() ? 1 : 0; }
+    static void SbShow(void* ctx, int32_t show) { if (W(ctx)->_pVScrollBarWnd) W(ctx)->_pVScrollBarWnd->_Show((BOOL)show); }
+    static void SbOwnerMoved(void* ctx, int32_t resized) { if (W(ctx)->_pVScrollBarWnd) W(ctx)->_pVScrollBarWnd->_OnOwnerWndMoved((BOOL)resized); }
+    static void SbSetCandidateMouseIn(void* ctx, int32_t inside) { if (W(ctx)->_pVScrollBarWnd) W(ctx)->_pVScrollBarWnd->_SetCandidateMouseIn((BOOL)inside); }
+    static void SbOnScrollActivity(void* ctx) { if (W(ctx)->_pVScrollBarWnd) W(ctx)->_pVScrollBarWnd->_OnScrollActivity(); }
+    static void SbShiftPosition(void* ctx, int32_t position) { if (W(ctx)->_pVScrollBarWnd) W(ctx)->_pVScrollBarWnd->_ShiftPosition(position, FALSE); }
+    static void SbMouse(void* ctx, uint32_t msg, DimePoint pt)
+    {
+        CScrollBarWindow* sb = W(ctx)->_pVScrollBarWnd.get();
+        if (!sb) return;
+        POINT p = { pt.x, pt.y };
+        switch (msg)
+        {
+        case WM_LBUTTONDOWN: sb->_OnLButtonDown(p); break;
+        case WM_LBUTTONUP: sb->_OnLButtonUp(p); break;
+        case WM_MOUSEMOVE: sb->_OnMouseMove(p); break;
+        }
+    }
+
+    static const DimeCandHostVtbl s_vtbl;
+};
+
+const DimeCandHostVtbl CCandidateWindowRustHost::s_vtbl = {
+    Selection, SetSelectionRaw, SetSelectionOffset, SetSelection, MovePage, CurrentPage, PageCount, PageStart, Count,
+    RowsInPage, Padding, CyRow, WndWidth, SetInitialMetrics, SbWidth, Font, BkBrush, HasCallback, Invoke, Paint,
+    Invalidate, DpiChanged, IsCapture, TrackingMouse, SetTrackingMouse, HasShadow, ShadowHwnd, ShadowShow,
+    ShadowOwnerMoved, DeleteShadow, HasScrollBar, SbHwnd, SbClientRect, SbIsEnabled, SbShow, SbOwnerMoved,
+    SbSetCandidateMouseIn, SbOnScrollActivity, SbShiftPosition, SbMouse,
+};
+
+LRESULT CCandidateWindow::_WindowProcRust(_In_ HWND wndHandle, UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam)
+{
+    DimeCandHost host = { &CCandidateWindowRustHost::s_vtbl, this };
+    return (LRESULT)dime_ui_cand_window_proc(&host, wndHandle, uMsg, (uintptr_t)wParam, (intptr_t)lParam);
+}
+#endif
+
+//+---------------------------------------------------------------------------
+//
+// _WindowProcCpp: the C++ original.
+//
+//----------------------------------------------------------------------------
+
+LRESULT CCandidateWindow::_WindowProcCpp(_In_ HWND wndHandle, UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam)
 {
     switch (uMsg)
     {

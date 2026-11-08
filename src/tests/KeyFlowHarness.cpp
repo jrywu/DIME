@@ -13,6 +13,7 @@
 #include "../Globals.h"
 #include "../DIME.h"
 #include "../UIPresenter.h"
+#include "WindowClassTestHelper.h"
 #include "../Config.h"
 #include "../CompositionProcessorEngine.h"
 
@@ -607,9 +608,7 @@ namespace
         static bool done = false;
         if (done) return;
         done = true;
-        if (!Global::dllInstanceHandle)
-            Global::dllInstanceHandle = reinterpret_cast<HINSTANCE>(&__ImageBase);
-        Global::RegisterWindowClass(); // may already be registered by other tests
+        EnsureWindowClassesRegistered(); // recovers the atoms when other tests registered first
     }
 }
 
