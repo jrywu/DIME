@@ -1,6 +1,6 @@
 # 第 4 階段：把 TSF 外殼縮成薄 C++ 層（設計提案）
 
-狀態：提案（2026-11-10），待決定（見第 6 節）。屬於 `RUST_MIGRATION_PLAN.md` 第 4 階段的必要部分；外殼本身改寫成 Rust（COM `#[implement]`、`cdylib`）仍是選做，不在本文件範圍。
+狀態：已決定（2026-11-10，見第 6 節），進行中。屬於 `RUST_MIGRATION_PLAN.md` 第 4 階段的必要部分；外殼本身改寫成 Rust（COM `#[implement]`、`cdylib`）仍是選做，不在本文件範圍。
 
 ## 1. 現況
 
@@ -21,7 +21,7 @@
 
 ### 1.1 「≤ 5k 行」目標的現實下限
 
-把上表的邏輯全部移走之後，剩下的純 COM／TSF 介面檔（`Register`、`Server`、`DllMain`、各 sink、`EditSession` 系列、`Composition`／`Start`／`EndComposition`、`Compartment`、`DisplayAttribute*`、`Tip*`、`EnumTfCandidates`、`ReverseConversion*`、`SearchCandidateProvider`、`TfTextLayoutSink`、`UIACaretTracker`、`TfInputProcessorProfile`）目前合計約 **6.4k 行**；再加上 `CDIME` 類別本體、`UIPresenter` 的 `ITfCandidateListUIElement`、語言列按鈕的 COM，以及 Rust 轉接檔（`RustSessionHost` 等約 1.8k），**下限約 9～10k 行**。計畫第 0 節的「≤ 5k」只有在把部分 COM 也搬到 Rust（選做）時才達得到。見第 6 節決定 1。
+把上表的邏輯全部移走之後，剩下的純 COM／TSF 介面檔（`Register`、`Server`、`DllMain`、各 sink、`EditSession` 系列、`Composition`／`Start`／`EndComposition`、`Compartment`、`DisplayAttribute*`、`Tip*`、`EnumTfCandidates`、`ReverseConversion*`、`SearchCandidateProvider`、`TfTextLayoutSink`、`UIACaretTracker`、`TfInputProcessorProfile`）目前合計約 **6.4k 行**；再加上 `CDIME` 類別本體、`UIPresenter` 的 `ITfCandidateListUIElement`、語言列按鈕的 COM，以及 Rust 轉接檔（`RustSessionHost` 等約 1.8k），**下限約 9～10k 行**。計畫第 0 節原本的「≤ 5k」只有在把部分 COM 也搬到 Rust（選做）時才達得到；已改成實際下限（第 6 節決定 1）。
 
 ## 2. 目標
 
@@ -78,9 +78,9 @@
 - 游標來源的應用程式差異（Firefox 的 `rcCaret` 全 0、浮動組字窗的舊程式、Store app）無法在單元測試重現，4b 結束時需要手動清單：記事本、Word、Edge／Chrome、Firefox、Store app、命令提示字元、多螢幕／混合 DPI（`TEST_PLAN.md`、`CARET_TRACKING*.md`）。
 - 4d 的 compartment 事件：`LanguageBarIntegrationTest` 只測按鈕本身，需要補一組透過真實 thread manager 切換中英／全半形並檢查設定、compartment 與提示的測試（目前只有 KeyFlow 間接涵蓋）。
 
-## 6. 待決定
+## 6. 決定（2026-11-10，使用者）
 
-1. **C++ 行數目標**：(a) 改成實際的「Rust 建置下 C++ 只剩 TSF／COM 介面與轉接，約 9～10k 行」；或 (b) 維持 ≤ 5k，代表之後要把部分 COM（例如 display attribute、`Tip*`、反查）也改成 Rust（選做部分提前）。
-2. **順序**：建議 4a → 4b → 4c → 4d → 4e（先做風險低、能讓之後的 handler 改動更單純的按鍵路由；呈現器最大，緊接著做）。也可以先做 4b。
-3. **呈現器的切法**：建議 3.3（Rust 擁有狀態並直接呼叫 Win32，C++ 只提供 TSF）；另一個選擇是只把位置計算抽成純函式（4b-1 為止），狀態留在 C++。後者風險小，但 `UIPresenter` 會留下約 1.5k 行 C++。
-4. **舊版設定對話框**：`ShowConfig.cpp` 在找不到 `DIMESettings.exe` 時退回 DLL 內的舊 PropertySheet（`ConfigDialog.cpp`，2.6k 行，第 0 節已決定「直接刪除，不移植」）。要在 4e 就從 `DIME.dll` 移除（找不到 exe 時改為不做事或顯示訊息），還是等第 5b 階段？
+1. **C++ 行數目標**：改成實際下限——Rust 建置下 C++ 只剩 TSF／COM 介面與轉接，約 9～10k 行；COM 介面維持 C++（外殼改寫仍是選做）。
+2. **順序**：4a → 4b → 4c → 4d → 4e。
+3. **呈現器**：Rust 擁有狀態（3.3）：`dime-ui::presenter` 擁有位置、提示窗 slot、候選清單記帳與 Rust 視窗並直接呼叫 Win32；C++ `CUIPresenter` 只留 TSF 介面與 host callback。
+4. **舊版設定對話框**：4e 從 `DIME.dll` 移除（`ShowConfig.cpp` 找不到 `DIMESettings.exe` 時改為顯示錯誤訊息）；`DIMESettings.exe` 共用的 `ConfigDialog.cpp` 程式碼留到第 5b 階段。

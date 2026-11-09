@@ -8,11 +8,11 @@
 |---|---|---|
 | 與上游 `jrywu/DIME` 的關係 | 不追上游 | 不需要為了方便合併而保留 C++ 結構，可以直接重構或刪除 |
 | 設定 GUI（DIMESettings） | 改成 Rust | 第 5b 階段要做；`DIMESettings.exe` 最終是純 Rust |
-| 最終形態 | Rust 核心 + 少量 C++ | 第 4 階段不強求全部改寫：TSF 外殼可以保留為薄 C++ 層，只負責把 Rust 產生的動作套用到 TSF |
+| 最終形態 | Rust 核心 + 少量 C++ | 第 4 階段不強求全部改寫：TSF 外殼可以保留為薄 C++ 層，只負責把 Rust 產生的動作套用到 TSF（2026-11-10：C++ 目標改為實際下限約 9～10k 行，見 `RUST_TSF_SHELL.md`） |
 
 最終架構：
 
-- `DIME.dll`：所有邏輯（設定、組字、候選字、整句、字典）與 UI 視窗在 Rust；C++ 只剩 COM 進入點、TSF sink 與 edit session 的轉接（目標 ≤ 5k 行）。
+- `DIME.dll`：所有邏輯（設定、組字、候選字、整句、字典）與 UI 視窗在 Rust；C++ 只剩 COM 進入點、TSF／COM 介面、sink 與 edit session 的轉接（目標約 9～10k 行；原訂 ≤ 5k 需要把部分 COM 也改成 Rust，見 `RUST_TSF_SHELL.md` 1.1 節）。
 - `DIMESettings.exe`：純 Rust（CLI + GUI）。
 - 舊版 `ConfigDialog.cpp`（2.6k 行）：DLL 已改成啟動 `DIMESettings.exe`（`ShowConfig.cpp`），直接刪除，不移植。
 
@@ -128,7 +128,7 @@
 
 ### 第 4 階段：TSF COM 外殼 — 精簡為薄 C++ 層（全面改寫為選做）
 
-設計與分步見 `docs/RUST_TSF_SHELL.md`（2026-11-10 提案，待決定）。
+設計與分步見 `docs/RUST_TSF_SHELL.md`（2026-11-10 決定：C++ 目標改為約 9～10k 行、順序 4a → 4e、`UIPresenter` 的狀態搬進 Rust、舊版設定對話框在 4e 從 DLL 移除）。
 
 依「Rust 核心 + 少量 C++」的決定，本階段的必要部分是**把 C++ 外殼縮到只剩轉接**：第 2、3 階段完成後，`KeyHandler*`、`CandidateHandler`、`SentenceHandler`、`UIPresenter` 中的邏輯已移到 Rust，C++ 只保留 COM 進入點、class factory、`Register`、各 sink 的 TSF 介面實作、edit session，以及把 Rust `Action` 套用到 TSF 的程式碼。`Globals`、`BaseStructure` 中已無人使用的部分刪除。
 
@@ -174,7 +174,7 @@
 | 1 設定 | ≈ 1.5k 行 | 低 | INI 寫出格式、與 DIMESettings 共用 |
 | 2 組字核心 | ≈ 9k 行（含重構） | **高** | 行為差異，按鍵邏輯與 TSF 交錯 |
 | 3 UI | ≈ 9.5k 行 | 中高 | 外觀差異、DPI／主題、多螢幕 |
-| 4 精簡 TSF 外殼 | 刪減 ≈ 3k 行，保留 ≈ 5k 行 C++ | 中 | 動作套用順序、edit session 重入 |
+| 4 精簡 TSF 外殼 | 邏輯移到 Rust，保留 ≈ 9～10k 行 C++（TSF／COM 介面與轉接） | 中 | 動作套用順序、edit session 重入 |
 | 4 選做：外殼改 Rust | ≈ 5k 行 | **高** | COM 生命週期、宿主程式穩定性 |
 | 5a CLI | ≈ 1.3k 行 | 低 | — |
 | 5b 設定 GUI | ≈ 5.8k 行（另刪除 `ConfigDialog` 2.6k 行） | 中 | 外觀、RichEdit 行為、DPI |
