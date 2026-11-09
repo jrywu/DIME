@@ -1,12 +1,11 @@
 ﻿/********************************************************************************
 * CandidateWindowParityTest: the candidate window owned by Rust (dime-ui::candwin,
-* phase 3c-5d) vs the C++ CCandidateWindow (C++ message handling and drawing, a
-* C++ scroll bar), side by side with the same contents. The Rust window gets the
-* candidate list through the same C++ CCandidateListModel (the DimeCandModel
-* callbacks below, as UIPresenter provides them).
+* phase 3c-5d, through CRustCandidateWindow as UIPresenter holds it) vs the C++
+* CCandidateWindow (with a C++ scroll bar), side by side with the same contents.
 *  - PaintMatchesCpp: pixels, layout members, window size, scroll bar highlight.
 *  - MessagesMatchCpp: random messages (mouse on rows / the scroll bar / outside,
-*    wheel, WM_SETCURSOR, WM_VSCROLL, activation, WINDOWPOS, show, paint, ...):
+*    right / middle clicks, wheel, WM_SETCURSOR, WM_VSCROLL, activation,
+*    WINDOWPOS, show, WM_PAINT, ...):
 *    results, selection, page, callbacks, cursor, capture, mouse tracking,
 *    scroll bar state / visibility, shadow visibility, layout members.
 *  - OperationsMatchCpp: _Show / _Move / _ResizeWindow / _SetCandStringLength /
@@ -56,12 +55,7 @@ namespace
         bool Create(UINT wndWidth, const DimeCandColors& colors, COLORREF fill)
         {
             w = std::make_unique<CRustCandidateWindow>(RecordAction, &rec, &range, FALSE);
-            DimeCandClasses classes = {
-                TestClassAtomKind(L"DIME.Test.RustCandidateWindow", true, true),
-                TestClassAtom(L"DIME.Test.RustShadowWindow", true),
-                RustScrollBarTestAtom(),
-                Global::AtomNotifyWindow, Global::AtomNotifyShadowWindow };
-            w->_SetClassesForTest(classes);
+            w->_SetClassesForTest(RustCandidateTestClasses());
             if (!w->_Create(wndWidth, 12, nullptr)) return false;
             c = w->_GetRustWindow();
             model = w->_GetModel();
@@ -92,7 +86,6 @@ namespace
                 rust.range.Append()->CandIndex = keys[r % 10];
             }
             cpp = new CCandidateWindow(RecordAction, &cppRec, &cppRange, FALSE);
-            cpp->_SetUseRustProcForTest(FALSE);
             cpp->_SetScrollBarForTest(FALSE, CppScrollBarTestAtom());
             DimeCandColors colors = { (uint32_t)(rng() & 0xFFFFFF), (uint32_t)(rng() & 0xFFFFFF), (uint32_t)(rng() & 0xFFFFFF),
                                       (uint32_t)(rng() & 0xFFFFFF), (uint32_t)(rng() & 0xFFFFFF), (uint32_t)(rng() & 0xFFFFFF) };
@@ -276,7 +269,7 @@ namespace DIMEUnitTests
                         PAINTSTRUCT ps = {};
                         ps.hdc = dc;
                         ps.rcPaint = rc;
-                        p.cpp->_OnPaintCpp(dc, &ps);
+                        p.cpp->_OnPaint(dc, &ps);
                     });
                     std::vector<DWORD> r = PaintInto(cx, cy, [&](HDC dc) {
                         DimeRect pr = { rc.left, rc.top, rc.right, rc.bottom };
@@ -319,7 +312,7 @@ namespace DIMEUnitTests
                     bool useWindowPos = false;
                     WINDOWPOS pos = {};
                     int x = (int)(rng() % (cw + 20)) - 10, y = (int)(rng() % (ch + 20)) - 10;
-                    switch (rng() % 14)
+                    switch (rng() % 16)
                     {
                     case 0: case 1: msg = WM_MOUSEMOVE; lp = MAKELPARAM(x, y); break;
                     case 2: msg = WM_LBUTTONDOWN; lp = MAKELPARAM(x, y); break;
@@ -345,6 +338,8 @@ namespace DIMEUnitTests
                     case 11: msg = 0x02A3 /* WM_MOUSELEAVE */; break;
                     case 12: msg = WM_CTLCOLORSCROLLBAR; break;
                     case 13: msg = 0x024B /* WM_POINTERACTIVATE */; break;
+                    case 14: msg = (rng() % 2) ? WM_RBUTTONDOWN : WM_MBUTTONUP; lp = MAKELPARAM(x, y); break;
+                    case 15: msg = WM_PAINT; break;
                     }
                     std::wstring obs[2];
                     for (int k = 0; k < 2; k++)

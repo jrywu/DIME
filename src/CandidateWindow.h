@@ -83,15 +83,7 @@ public:
     VOID _SetFillColor(_In_ COLORREF fiColor);
 
     LRESULT CALLBACK _WindowProcCallback(_In_ HWND wndHandle, UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam);
-    LRESULT _WindowProcCpp(_In_ HWND wndHandle, UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam);    // the C++ original
-#ifdef DIME_RUST_AVAILABLE
-    LRESULT _WindowProcRust(_In_ HWND wndHandle, UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam);   // dime-ui::candproc
-#endif
     void _OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps);
-    void _OnPaintCpp(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps);     // the C++ original
-#ifdef DIME_RUST_AVAILABLE
-    void _OnPaintRust(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps);    // dime-ui::candpaint
-#endif
 #ifdef DIME_UNIT_TESTING
     // The layout members painting updates (CandidatePaintParityTest).
     struct LayoutStateForTest { int cxTitle; int cyRow; int padding; UINT wndWidth; };
@@ -102,8 +94,6 @@ public:
     // must belong to the implementation: CBaseWindow's or dime-ui's window procedure).
     void _SetScrollBarForTest(BOOL useRust, ATOM atom) { _useRustScrollBar = useRust; _scrollBarAtomForTest = atom; }
     DimeShadowWindow* _GetShadowForTest() { return _pShadowWnd.get(); }
-    // Which message handling a window uses (set before _Create; CandidateProcParityTest).
-    void _SetUseRustProcForTest(BOOL useRust) { _useRustProc = useRust; }
     BOOL _IsTrackingMouseForTest() const { return _isTrackingCandMouse; }
 #endif
     void _OnLButtonDown(POINT pt);
@@ -157,7 +147,6 @@ private:
     void _DeleteVScrollBarWnd();
 
     friend COLORREF _AdjustTextColor(_In_ COLORREF crColor, _In_ COLORREF crBkColor);
-    friend struct CCandidateWindowRustHost;
     friend struct CCandidateWindowSbParent;
 
 private:
@@ -188,7 +177,6 @@ private:
 
     BOOL _isStoreAppMode;
     BOOL _isTrackingCandMouse;   // TRUE while TrackMouseEvent(TME_LEAVE) is active
-    BOOL _useRustProc;           // _WindowProcRust (DIME_USE_RUST_ENGINE) or _WindowProcCpp
     BOOL _useRustScrollBar;      // CRustScrollBarWindow (DIME_USE_RUST_ENGINE) or CScrollBarWindow
     ATOM _scrollBarAtomForTest;  // 0: Global::AtomCandidateScrollBarWindow
 

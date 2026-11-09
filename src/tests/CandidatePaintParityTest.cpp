@@ -1,9 +1,10 @@
 ﻿/********************************************************************************
 * CandidatePaintParityTest: the candidate window drawing, C++
-* (CCandidateWindow::_OnPaintCpp) vs Rust (_OnPaintRust, dime-ui::candpaint).
-* Both paint a real candidate window into a 32-bpp DIB section; the pixels, the
-* layout members painting updates (_cxTitle, _cyRow, _padding, _wndWidth), the
-* window size (_ResizeWindow) and the scroll bar's selection highlight must be
+* (CCandidateWindow::_OnPaint, a C++ scroll bar) vs Rust (the Rust-owned window,
+* dime-ui::candwin / candpaint, through CRustCandidateWindow). Two real windows
+* with the same contents paint into 32-bpp DIB sections; the pixels, the layout
+* members painting updates (_cxTitle, _cyRow, _padding, _wndWidth), the window
+* size (_ResizeWindow) and the scroll bar's selection highlight must be
 * identical. Scenarios: several fonts and sizes, candidate widths, page sizes,
 * item lengths (truncation and widening), selections on every page, colors,
 * missing items. The scroll bar: CScrollBarWindow vs the Rust-owned one
@@ -18,6 +19,7 @@
 
 #include "../Globals.h"
 #include "../CandidateWindow.h"
+#include "../RustCandidateWindow.h"
 #include "../BaseStructure.h"
 #include "../Config.h"
 #include "WindowClassTestHelper.h"
@@ -41,21 +43,33 @@ namespace
         COLORREF highlightColor = 0;
     };
 
-    // Paint like WM_PAINT does (off-screen, rcPaint = client), with either implementation.
-    PaintResult Paint(CCandidateWindow* w, bool rust, const CCandidateWindow::LayoutStateForTest& start)
+    // One side: the C++ window or the Rust one.
+    struct Target
     {
-        // Same starting point for both: layout members, window size, scroll bar highlight.
-        w->_SetLayoutStateForTest(start);
-        w->_ResizeWindow();
-        IDimeScrollBar* sb = w->_GetScrollBarForTest();
-        if (sb)
+        CCandidateWindow* cpp = nullptr;
+        CRustCandidateWindow* rust = nullptr;
+        HWND Wnd() const { return cpp ? cpp->_GetWnd() : rust->_GetWnd(); }
+    };
+
+    // Paint like WM_PAINT does (off-screen, rcPaint = client), with either implementation.
+    PaintResult Paint(const Target& t, const CCandidateWindow::LayoutStateForTest& start)
+    {
+        // Same starting point for both: layout members, window size.
+        DimeCandidate* c = t.rust ? t.rust->_GetRustWindow() : nullptr;
+        if (t.cpp)
         {
-            RECT sentinel = { -7, -7, 7, 7 };
-            sb->SbSetSelectionHighlight(sentinel, 77, RGB(1, 2, 3));
+            t.cpp->_SetLayoutStateForTest(start);
+            t.cpp->_ResizeWindow();
+        }
+        else
+        {
+            int32_t st[4] = { start.cxTitle, start.cyRow, start.padding, (int32_t)start.wndWidth };
+            dime_ui_candidate_layout_state(c, 1, st);
+            t.rust->_ResizeWindow();
         }
 
         RECT rc = { 0, 0, 0, 0 };
-        GetClientRect(w->_GetWnd(), &rc);
+        GetClientRect(t.Wnd(), &rc);
         int cx = max(1, (int)(rc.right - rc.left)), cy = max(1, (int)(rc.bottom - rc.top));
 
         HDC screen = GetDC(nullptr);
@@ -75,18 +89,45 @@ namespace
         FillRect(mem, &all, sentinelBrush);
         DeleteObject(sentinelBrush);
 
-        PAINTSTRUCT ps = {};
-        ps.hdc = mem;
-        ps.rcPaint = rc;
-        if (rust) w->_OnPaintRust(mem, &ps);
-        else w->_OnPaintCpp(mem, &ps);
+        if (t.cpp)
+        {
+            PAINTSTRUCT ps = {};
+            ps.hdc = mem;
+            ps.rcPaint = rc;
+            t.cpp->_OnPaint(mem, &ps);
+        }
+        else
+        {
+            DimeRect pr = { rc.left, rc.top, rc.right, rc.bottom };
+            dime_ui_candidate_paint(c, mem, &pr);
+        }
         GdiFlush();
 
         PaintResult r;
         r.pixels.assign((DWORD*)bits, (DWORD*)bits + (size_t)cx * cy);
-        r.state = w->_GetLayoutStateForTest();
-        GetWindowRect(w->_GetWnd(), &r.window);
-        if (sb) sb->SbGetSelectionHighlightForTest(&r.highlight, &r.highlightRadius, &r.highlightColor);
+        GetWindowRect(t.Wnd(), &r.window);
+        if (t.cpp)
+        {
+            r.state = t.cpp->_GetLayoutStateForTest();
+            IDimeScrollBar* sb = t.cpp->_GetScrollBarForTest();
+            if (sb) sb->SbGetSelectionHighlightForTest(&r.highlight, &r.highlightRadius, &r.highlightColor);
+        }
+        else
+        {
+            int32_t st[4] = {};
+            dime_ui_candidate_layout_state(c, 0, st);
+            r.state = { st[0], st[1], st[2], (UINT)st[3] };
+            DimeSbSnapshot ss = {};
+            DimeRect hl = {};
+            int32_t radius = 0;
+            uint32_t color = 0;
+            if (dime_ui_candidate_sb_state(c, &ss, &hl, &radius, &color))
+            {
+                r.highlight = { hl.left, hl.top, hl.right, hl.bottom };
+                r.highlightRadius = radius;
+                r.highlightColor = color;
+            }
+        }
 
         SelectObject(mem, oldBmp);
         DeleteObject(dib);
@@ -143,45 +184,63 @@ namespace DIMEUnitTests
                         range.Append()->CandIndex = keys[k % 10];
 
                     CCandidateWindow* w = new CCandidateWindow(NoCallback, nullptr, &range, FALSE);
-                    if (!w->_Create(wndWidth, 12, nullptr))
-                    {
-                        DestroyAndDelete(w);
-                        Logger::WriteMessage("SKIP: window creation failed (no GUI context)");
-                        Global::defaultlFontHandle = savedFont;
-                        DeleteObject(font);
-                        return;
-                    }
-                    Assert::IsNotNull(w->_GetWnd(), L"a real window (not a virtual one)");
+                    w->_SetScrollBarForTest(FALSE, CppScrollBarTestAtom());
+                    Assert::IsTrue(w->_Create(wndWidth, 12, nullptr) != FALSE);
+                    Assert::IsNotNull(w->_GetWnd(), L"a real C++ window (not a virtual one)");
+                    CRustCandidateWindow rw(NoCallback, nullptr, &range, FALSE);
+                    rw._SetClassesForTest(RustCandidateTestClasses());
+                    rw._Create(wndWidth, 12, nullptr);
+                    Assert::IsNotNull(rw._GetWnd(), L"a real Rust window");
                     w->_SetCandStringLength(wndWidth);
+                    rw._SetCandStringLength(wndWidth);
 
-                    std::vector<CCandidateListItem> items(count);
+                    std::vector<CCandidateListItem> items(count), rustItems(count);
                     for (UINT i = 0; i < count; i++)
                     {
                         const std::wstring& t = pool[rng() % ARRAYSIZE(pool)];
                         items[i]._ItemString.Set(t.c_str(), t.size());
+                        rustItems[i]._ItemString.Set(t.c_str(), t.size());
                         w->_AddString(&items[i], FALSE);
+                        rw._AddString(&rustItems[i], FALSE);
                     }
                     UINT pages = count ? (count + rowsInPage - 1) / rowsInPage : 0;
                     std::vector<UINT> pageIndex(pages);
                     for (UINT p = 0; p < pages; p++) pageIndex[p] = p * rowsInPage;
-                    if (pages) w->_SetPageIndex(pageIndex.data(), pages);
+                    if (pages)
+                    {
+                        w->_SetPageIndex(pageIndex.data(), pages);
+                        rw._SetPageIndex(pageIndex.data(), pages);
+                    }
                     w->_SetScrollInfo(count, rowsInPage);
+                    rw._SetScrollInfo(count, rowsInPage);
 
-                    auto color = [&]() { return (COLORREF)(rng() & 0xFFFFFF); };
-                    w->_SetNumberColor(color(), color());
-                    w->_SetTextColor(color(), color());
-                    w->_SetSelectedTextColor(color(), color());
-                    w->_SetFillColor(color());
+                    COLORREF colors[7];
+                    for (COLORREF& cc : colors) cc = (COLORREF)(rng() & 0xFFFFFF);
+                    w->_SetNumberColor(colors[0], colors[1]);
+                    w->_SetTextColor(colors[2], colors[3]);
+                    w->_SetSelectedTextColor(colors[4], colors[5]);
+                    w->_SetFillColor(colors[6]);
+                    rw._SetNumberColor(colors[0], colors[1]);
+                    rw._SetTextColor(colors[2], colors[3]);
+                    rw._SetSelectedTextColor(colors[4], colors[5]);
+                    rw._SetFillColor(colors[6]);
 
                     // A few selections per window: first item, random ones (any page), none.
                     for (int sel = 0; sel < 4; sel++)
                     {
                         if (count)
-                            w->_SetSelection(sel == 0 ? 0 : (int)(rng() % count), FALSE);
+                        {
+                            int index = sel == 0 ? 0 : (int)(rng() % count);
+                            w->_SetSelection(index, FALSE);
+                            rw._SetSelection(index, FALSE);
+                        }
                         CCandidateWindow::LayoutStateForTest start = { (int)(rng() % 300), 20, 10, wndWidth };
 
-                        PaintResult c = Paint(w, false, start);
-                        PaintResult r = Paint(w, true, start);
+                        Target ct, rt;
+                        ct.cpp = w;
+                        rt.rust = &rw;
+                        PaintResult c = Paint(ct, start);
+                        PaintResult r = Paint(rt, start);
 
                         std::wstring where = std::wstring(face) + L" " + std::to_wstring(height) + L" rows=" + std::to_wstring(rowsInPage) +
                             L" count=" + std::to_wstring(count) + L" width=" + std::to_wstring(wndWidth) + L" sel=" + std::to_wstring(w->_GetSelection());
@@ -200,6 +259,7 @@ namespace DIMEUnitTests
                         if (c.state.wndWidth != wndWidth) truncatedOrWidened++;
                         compared++;
                     }
+                    rw._Destroy();
                     DestroyAndDelete(w);
                     scenarios++;
                 }
