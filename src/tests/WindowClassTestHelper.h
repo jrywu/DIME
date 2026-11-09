@@ -11,6 +11,7 @@
 #include "../Globals.h"
 #include "../BaseWindow.h"
 #include "../CandidateWindow.h"
+#include "../NotifyWindow.h"
 #ifdef DIME_RUST_AVAILABLE
 #include "dime_ffi.h"
 #endif
@@ -61,6 +62,16 @@ inline void EnsureWindowClassesRegistered()
         ATOM atom = static_cast<ATOM>(GetClassInfoExW(Global::dllInstanceHandle, name, &wc));
         if (!atom) CBaseWindow::_InitPopupWindowClass(name, &atom);
         g_cppCandidateWindowAtomForTest = atom;
+    }
+    // Likewise DIME.NotifyWindow: C++ CNotifyWindow objects get their own class.
+    if (g_cppNotifyWindowAtomForTest == 0)
+    {
+        const wchar_t* name = L"DIME.Test.CppNotifyWindow";
+        WNDCLASSEXW wc = {};
+        wc.cbSize = sizeof(wc);
+        ATOM atom = static_cast<ATOM>(GetClassInfoExW(Global::dllInstanceHandle, name, &wc));
+        if (!atom) CBaseWindow::_InitPopupWindowClass(name, &atom);
+        g_cppNotifyWindowAtomForTest = atom;
     }
 #endif
 }

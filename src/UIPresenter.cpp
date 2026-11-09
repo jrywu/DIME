@@ -975,7 +975,7 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall)
 	// Find the slot to use as the "anchor" for max-width calc and stack-vs-candidate
 	// positioning. Use the first visible slot (index order) — typically slot 0
 	// (CHN_ENG) when only mode-state is visible, otherwise the lowest hint slot.
-	CNotifyWindow* anchorWnd = nullptr;
+	DimeNotifyWindow* anchorWnd = nullptr;
 	UINT stackMaxWidth = 0;
 	for (auto& w : _pNotifyWnds)
 	{
@@ -1430,7 +1430,7 @@ HRESULT CUIPresenter::MakeNotifyWindow(_In_ ITfContext *pContextDocument, _In_ C
 
 	if (nullptr == slot)
     {
-		slot = std::make_unique<CNotifyWindow>(_NotifyWndCallback, this, notifyType);
+		slot = std::make_unique<DimeNotifyWindow>(_NotifyWndCallback, this, notifyType);
 	}
 
     if (nullptr == slot)	return S_FALSE;
@@ -1442,7 +1442,7 @@ HRESULT CUIPresenter::MakeNotifyWindow(_In_ ITfContext *pContextDocument, _In_ C
         pView->GetWnd(&parentWndHandle);
     }
 
-	if (slot->_GetUIWnd() == nullptr)
+	if (!slot->_IsCreated())
 	{
 		if( !slot->_Create(CConfig::GetFontSize(), parentWndHandle, notifyText))
 		{

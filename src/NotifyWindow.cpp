@@ -38,97 +38,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "BaseWindow.h"
 #include "NotifyWindow.h"
 #include <memory> // Include for smart pointers
-#ifdef DIME_RUST_AVAILABLE
-#include "dime_ffi.h"
-#endif
 //#define NO_WINDOW_SHADOW
-#ifdef DIME_RUST_AVAILABLE
-//+---------------------------------------------------------------------------
-//
-// The notify window's drawing and behavior in Rust (dime-ui::notify); the
-// state stays in this object and is reached through this host.
-// Parity: NotifyParityTest.
-//
-//----------------------------------------------------------------------------
-
-struct CNotifyWindowRustHost
-{
-    static CNotifyWindow* N(void* ctx) { return static_cast<CNotifyWindow*>(ctx); }
-
-    static void* Hwnd(void* ctx) { return N(ctx)->_GetWnd(); }
-    static const uint16_t* Text(void* ctx, uint32_t* len)
-    {
-        *len = (uint32_t)N(ctx)->_notifyText.GetLength();
-        return (const uint16_t*)N(ctx)->_notifyText.Get();
-    }
-    static void* Font(void*) { return Global::defaultlFontHandle; }
-    static int32_t NotifyType(void* ctx) { return (int32_t)N(ctx)->_notifyType; }
-    static void TextMetric(void* ctx, int32_t* maxW, int32_t* aveW, int32_t* height)
-    {
-        *maxW = N(ctx)->_TextMetric.tmMaxCharWidth;
-        *aveW = N(ctx)->_TextMetric.tmAveCharWidth;
-        *height = N(ctx)->_TextMetric.tmHeight;
-    }
-    static void SetTitleSize(void* ctx, int32_t cx, int32_t cy) { N(ctx)->_cxTitle = cx; N(ctx)->_cyTitle = cy; }
-    static void SetPosition(void* ctx, int32_t x, int32_t y) { N(ctx)->_x = x; N(ctx)->_y = y; }
-    static void SetShowTimes(void* ctx, uint32_t delayShow, uint32_t timeToHide) { N(ctx)->_delayShow = delayShow; N(ctx)->_timeToHide = timeToHide; }
-    static uint32_t TimeToHide(void* ctx) { return N(ctx)->_timeToHide; }
-    static int32_t CornerRadiusBase(void* ctx) { return N(ctx)->_cornerRadiusBase; }
-    static uint32_t Dpi(void* ctx) { return CConfig::GetDpiForHwnd(N(ctx)->_GetWnd()); }
-    static void Invoke(void* ctx, int32_t action, uintptr_t wParam, intptr_t lParam)
-    {
-        // Copy before calling: the callback may destroy the window.
-        NOTIFYWNDCALLBACK pfnCallback = N(ctx)->_pfnCallback;
-        void* pObj = N(ctx)->_pObj;
-        if (pfnCallback)
-            pfnCallback(pObj, action == 0 ? NOTIFY_WND::SWITCH_CHN_ENG : NOTIFY_WND::SHOW_NOTIFY, (WPARAM)wParam, (LPARAM)lParam);
-    }
-    static void Paint(void* ctx, void* dc, void* ps) { N(ctx)->_OnPaint((HDC)dc, (PAINTSTRUCT*)ps); }
-    static void DpiChanged(void*, void* hwnd) { CConfig::SetDefaultTextFont((HWND)hwnd); }
-    static void BaseShow(void* ctx, int32_t on) { N(ctx)->CBaseWindow::_Show(on ? TRUE : FALSE); }
-    static int32_t IsCapture(void* ctx) { return N(ctx)->_IsCapture() ? 1 : 0; }
-    static void EndCapture(void* ctx) { N(ctx)->_EndCapture(); }
-    static int32_t IsTimer(void* ctx) { return N(ctx)->_IsTimer() ? 1 : 0; }
-    static void StartTimer(void* ctx, uint32_t elapse, uintptr_t id) { N(ctx)->_StartTimer(elapse, id); }
-    static void EndTimer(void* ctx, uintptr_t id) { N(ctx)->_EndTimer(id); }
-    static int32_t HasShadow(void* ctx) { return N(ctx)->_pShadowWnd != nullptr; }
-    static void* ShadowHwnd(void* ctx) { return N(ctx)->_pShadowWnd ? N(ctx)->_pShadowWnd->_GetWnd() : nullptr; }
-    static void ShadowShow(void* ctx, int32_t show) { if (N(ctx)->_pShadowWnd) N(ctx)->_pShadowWnd->_Show((BOOL)show); }
-    static void ShadowOwnerMoved(void* ctx, int32_t resized) { if (N(ctx)->_pShadowWnd) N(ctx)->_pShadowWnd->_OnOwnerWndMoved((BOOL)resized); }
-    static void DeleteShadow(void* ctx) { N(ctx)->_DeleteShadowWnd(); }
-
-    static const DimeNotifyHostVtbl s_vtbl;
-};
-
-const DimeNotifyHostVtbl CNotifyWindowRustHost::s_vtbl = {
-    Hwnd, Text, Font, NotifyType, TextMetric, SetTitleSize, SetPosition, SetShowTimes, TimeToHide, CornerRadiusBase,
-    Dpi, Invoke, Paint, DpiChanged, BaseShow, IsCapture, EndCapture, IsTimer, StartTimer, EndTimer, HasShadow,
-    ShadowHwnd, ShadowShow, ShadowOwnerMoved, DeleteShadow,
-};
-
-// _OnPaintRust: dime-ui::notify draws; C++ applies the new size.
-void CNotifyWindow::_OnPaintRust(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pPaintStruct)
-{
-    DimeNotifyPaint in = {};
-    in.font = Global::defaultlFontHandle;
-    in.bk_brush = _brshBkColor;
-    in.has_paint = pPaintStruct ? 1 : 0;
-    if (pPaintStruct)
-        in.paint = { pPaintStruct->rcPaint.left, pPaintStruct->rcPaint.top, pPaintStruct->rcPaint.right, pPaintStruct->rcPaint.bottom };
-    in.text = (const uint16_t*)_notifyText.Get();
-    in.text_len = (uint32_t)_notifyText.GetLength();
-    in.text_color = _crTextColor;
-    in.bk_color = _crBkColor;
-    in.cx_title = _cxTitle;
-    int32_t cx = 0, cy = 0, resize = 0;
-    if (dime_ui_notify_paint(dcHandle, &in, &cx, &cy, &resize))
-    {
-        _cxTitle = cx;
-        _cyTitle = cy;
-        if (resize) _ResizeWindow();
-    }
-}
-#endif
 
 //+---------------------------------------------------------------------------
 //
@@ -166,11 +76,6 @@ CNotifyWindow::CNotifyWindow(_In_ NOTIFYWNDCALLBACK pfnCallback, _In_ void *pv, 
 	_timeToHide = 0;
 
 	_notifyText.Set(nullptr,0);
-#ifdef DIME_USE_RUST_ENGINE
-	_useRust = TRUE;
-#else
-	_useRust = FALSE;
-#endif
 }
 
 //+---------------------------------------------------------------------------
@@ -219,11 +124,19 @@ Exit:
     return TRUE;
 }
 
+#if defined(DIME_UNIT_TESTING) && defined(DIME_USE_RUST_ENGINE)
+ATOM g_cppNotifyWindowAtomForTest = 0;
+#endif
+
 BOOL CNotifyWindow::_CreateMainWindow(_In_opt_ HWND parentWndHandle)
 {
     _SetUIWnd(this);
 
-	if (!CBaseWindow::_Create(Global::AtomNotifyWindow,
+    ATOM atom = Global::AtomNotifyWindow;
+#if defined(DIME_UNIT_TESTING) && defined(DIME_USE_RUST_ENGINE)
+    atom = g_cppNotifyWindowAtomForTest;
+#endif
+	if (!CBaseWindow::_Create(atom,
 		WS_EX_TOPMOST |
 		WS_EX_NOACTIVATE,
         WS_POPUP,
@@ -275,14 +188,6 @@ void CNotifyWindow::_Move(int x, int y)
 }
 void CNotifyWindow::_OnTimerID(UINT_PTR timerID)
 {   //animate the window faded out with layered transparency
-#ifdef DIME_RUST_AVAILABLE
-    if (_useRust)
-    {
-        DimeNotifyHost host = { &CNotifyWindowRustHost::s_vtbl, this };
-        dime_ui_notify_timer(&host, (uintptr_t)timerID);
-        return;
-    }
-#endif
 	debugPrint(L"CNotifyWindow::_OnTimer(): timerID = %d,  _animationStage = %d", timerID, _animationStage);
 	switch (timerID)
 	{
@@ -304,14 +209,6 @@ void CNotifyWindow::_OnTimerID(UINT_PTR timerID)
 
 void CNotifyWindow::_Show(BOOL isShowWnd, UINT delayShow, UINT timeToHide)
 {
-#ifdef DIME_RUST_AVAILABLE
-    if (_useRust)
-    {
-        DimeNotifyHost host = { &CNotifyWindowRustHost::s_vtbl, this };
-        dime_ui_notify_show(&host, isShowWnd ? 1 : 0, delayShow, timeToHide);
-        return;
-    }
-#endif
 	debugPrint(L"CNotifyWindow::_Show(), isShowWnd = %d, delayShow = %d, timeToHide = %d ", isShowWnd, delayShow, timeToHide);
 	_delayShow = delayShow;
 	_timeToHide = timeToHide;
@@ -407,13 +304,6 @@ VOID CNotifyWindow::_SetFillColor(_In_ COLORREF crFiColor)
 
 LRESULT CALLBACK CNotifyWindow::_WindowProcCallback(_In_ HWND wndHandle, UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam)
 {
-#ifdef DIME_RUST_AVAILABLE
-    if (_useRust)
-    {
-        DimeNotifyHost host = { &CNotifyWindowRustHost::s_vtbl, this };
-        return (LRESULT)dime_ui_notify_window_proc(&host, wndHandle, uMsg, (uintptr_t)wParam, (intptr_t)lParam);
-    }
-#endif
 	
     switch (uMsg)
     {
@@ -617,19 +507,6 @@ void CNotifyWindow::_HandleMouseMsg(_In_ UINT mouseMsg, _In_ POINT point)
 //----------------------------------------------------------------------------
 
 void CNotifyWindow::_OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pPaintStruct)
-{
-#ifdef DIME_RUST_AVAILABLE
-    if (_useRust)
-    {
-        _OnPaintRust(dcHandle, pPaintStruct);
-        return;
-    }
-#endif
-    _OnPaintCpp(dcHandle, pPaintStruct);
-}
-
-// _OnPaintCpp: the C++ original.
-void CNotifyWindow::_OnPaintCpp(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pPaintStruct)
 {
     SetBkMode(dcHandle, TRANSPARENT);
 

@@ -104,8 +104,7 @@ namespace
 
         void Create(NOTIFY_TYPE type, CStringRange* text)
         {
-            cpp = new CNotifyWindow(RecordNotify, &calls[0], type);
-            cpp->_SetUseRustForTest(FALSE);   // before _Create: WM_CREATE too
+            cpp = new CNotifyWindow(RecordNotify, &calls[0], type);   // DIME.Test.CppNotifyWindow in the Rust build
             Assert::IsTrue(cpp->_Create(12, nullptr, text) != FALSE);
             Assert::IsNotNull(cpp->_GetWnd(), L"a real C++ window (not a virtual one)");
             rust = new CRustNotifyWindow(RecordNotify, &calls[1], type);
@@ -191,7 +190,7 @@ namespace DIMEUnitTests
                     p.cpp->_SetTextColor(fg, bg);
                     p.rust->_SetTextColor(fg, bg);
                     if (fillBrush) { p.cpp->_SetFillColor(fill); p.rust->_SetFillColor(fill); }
-                    std::vector<DWORD> c = PaintInto(p.Wnd(0), [&](HDC dc, PAINTSTRUCT* ps) { p.cpp->_OnPaintCpp(dc, ps); }, withPs);
+                    std::vector<DWORD> c = PaintInto(p.Wnd(0), [&](HDC dc, PAINTSTRUCT* ps) { p.cpp->_OnPaint(dc, ps); }, withPs);
                     std::vector<DWORD> r = PaintInto(p.Wnd(1), [&](HDC dc, PAINTSTRUCT* ps) {
                         DimeRect pr = {};
                         if (ps) pr = { ps->rcPaint.left, ps->rcPaint.top, ps->rcPaint.right, ps->rcPaint.bottom };

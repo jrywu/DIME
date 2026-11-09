@@ -513,6 +513,8 @@ namespace DIMEIntegratedTests
 
         TEST_METHOD(IT06_03_ShowNotify)
         {
+            // Real windows: the Rust notify window has no "virtual window" fallback for an unregistered class.
+            EnsureWindowClassesRegistered();
             Logger::WriteMessage("Test: IT06_03_ShowNotify\n");
 
             // Arrange
@@ -535,6 +537,8 @@ namespace DIMEIntegratedTests
 
         TEST_METHOD(IT06_03_HideNotify)
         {
+            // Real windows: the Rust notify window has no "virtual window" fallback for an unregistered class.
+            EnsureWindowClassesRegistered();
             Logger::WriteMessage("Test: IT06_03_HideNotify\n");
 
             // Arrange
@@ -558,6 +562,8 @@ namespace DIMEIntegratedTests
 
         TEST_METHOD(IT06_03_ClearNotify)
         {
+            // Real windows: the Rust notify window has no "virtual window" fallback for an unregistered class.
+            EnsureWindowClassesRegistered();
             Logger::WriteMessage("Test: IT06_03_ClearNotify\n");
 
             // Arrange
@@ -607,6 +613,8 @@ namespace DIMEIntegratedTests
 
         TEST_METHOD(IT06_04_HideUIWindows)
         {
+            // Real windows: the Rust notify window has no "virtual window" fallback for an unregistered class.
+            EnsureWindowClassesRegistered();
             Logger::WriteMessage("Test: IT06_04_HideUIWindows\n");
 
             // Arrange
@@ -635,6 +643,8 @@ namespace DIMEIntegratedTests
 
         TEST_METHOD(IT06_04_QueryNotificationVisibility)
         {
+            // Real windows: the Rust notify window has no "virtual window" fallback for an unregistered class.
+            EnsureWindowClassesRegistered();
             Logger::WriteMessage("Test: IT06_04_QueryNotificationVisibility\n");
 
             // Arrange
@@ -763,6 +773,88 @@ namespace DIMEIntegratedTests
             Assert::IsFalse(pUIPresenter->IsCandShown() != FALSE, L"hidden");
             pUIPresenter->DisposeCandidateWindow();
             Assert::IsFalse(IsWindow(h) != FALSE, L"destroyed");
+            pUIPresenter->Release();
+        }
+
+        // The notify windows UIPresenter makes (CRustNotifyWindow in the Rust build) are real
+        // windows of DIME.NotifyWindow: shown, sized from their text, stacked by UIPresenter,
+        // hidden by their own auto-hide timer, destroyed per slot and all together.
+        TEST_METHOD(IT06_04_NotifyWindowIsReal)
+        {
+            EnsureWindowClassesRegistered();
+            StubCDIME* pStubDIME = new StubCDIME();
+            CUIPresenter* pUIPresenter = new CUIPresenter(pStubDIME, nullptr);
+            const NOTIFY_TYPE types[] = { NOTIFY_TYPE::NOTIFY_REVERSE_LOOKUP, NOTIFY_TYPE::NOTIFY_SPECIAL_CODE };
+            const wchar_t* texts[] = { L"反查：一二三", L"特別碼 ABCD" };
+            HWND h[2] = {};
+            for (int i = 0; i < 2; i++)
+            {
+                CStringRange text;
+                text.Set(texts[i], wcslen(texts[i]));
+                Assert::IsTrue(SUCCEEDED(pUIPresenter->MakeNotifyWindow(nullptr, &text, types[i])));
+                auto& slot = pUIPresenter->_pNotifyWnds[(size_t)types[i]];
+                Assert::IsNotNull(slot.get());
+                Assert::IsTrue(slot->_IsCreated() != FALSE, L"created");
+                h[i] = slot->_GetWnd();
+                Assert::IsNotNull(h[i], L"a real window");
+                Assert::AreEqual((int)Global::AtomNotifyWindow, (int)GetClassWord(h[i], GCW_ATOM), L"the DIME.NotifyWindow class");
+                // MakeNotifyWindow again keeps the window.
+                Assert::IsTrue(SUCCEEDED(pUIPresenter->MakeNotifyWindow(nullptr, &text, types[i])));
+                Assert::IsTrue(h[i] == slot->_GetWnd(), L"the same window");
+                slot->_SetTextColor(RGB(0, 0, 0), RGB(255, 255, 255));
+                slot->_SetFillColor(RGB(255, 255, 255));
+            }
+            Assert::IsFalse(pUIPresenter->IsNotifyShown() != FALSE, L"hidden at first");
+
+            for (int i = 0; i < 2; i++) pUIPresenter->ShowNotify(TRUE, 0, 0, types[i]);
+            Assert::IsTrue(pUIPresenter->IsNotifyShown() != FALSE, L"IsNotifyShown");
+            UINT width[2] = {};
+            for (int i = 0; i < 2; i++)
+            {
+                Assert::IsTrue(IsWindowVisible(h[i]) != FALSE, L"the window is visible");
+                UpdateWindow(h[i]);   // WM_PAINT: the text is measured again
+                auto& slot = pUIPresenter->_pNotifyWnds[(size_t)types[i]];
+                width[i] = slot->_GetWidth();
+                Assert::IsTrue(width[i] > 0 && slot->_GetHeight() > 0, L"title size from the text");
+                RECT rc = { 0, 0, 0, 0 };
+                GetClientRect(h[i], &rc);
+                Assert::AreEqual((LONG)width[i], rc.right, L"window width = title width");
+                Assert::AreEqual((LONG)slot->_GetHeight(), rc.bottom, L"window height = title height");
+            }
+            Assert::IsTrue(width[0] != width[1], L"sized from each text");
+
+            // UIPresenter stacks the visible slots from _notifyLocation (no candidate window): same left
+            // edge, no overlap.
+            pUIPresenter->_notifyLocation = { 200, 150 };
+            pUIPresenter->_RestackVisibleSlots(FALSE);
+            RECT r0 = {}, r1 = {}, overlap = {};
+            GetWindowRect(h[0], &r0);
+            GetWindowRect(h[1], &r1);
+            Assert::AreEqual(200L, r0.left, L"first slot at the anchor");
+            Assert::AreEqual(r0.left, r1.left, L"same left edge");
+            Assert::IsFalse(IntersectRect(&overlap, &r0, &r1) != FALSE, L"stacked, not overlapping");
+            Assert::IsTrue(r0.top == 150 || r1.top == 150, L"a slot at the anchor's y");
+
+            // The auto-hide timer of the window hides it (real WM_TIMER through the message loop).
+            pUIPresenter->ShowNotify(TRUE, 0, 30, types[0]);
+            DWORD start = GetTickCount();
+            while (IsWindowVisible(h[0]) && GetTickCount() - start < 3000)
+            {
+                MSG msg;
+                while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) { TranslateMessage(&msg); DispatchMessage(&msg); }
+                Sleep(5);
+            }
+            Assert::IsFalse(IsWindowVisible(h[0]) != FALSE, L"hidden by the auto-hide timer");
+            Assert::IsTrue(IsWindowVisible(h[1]) != FALSE, L"the other slot stays");
+            Assert::IsTrue(pUIPresenter->IsNotifyShown() != FALSE);
+
+            pUIPresenter->DisposeNotifyWindow(types[0]);
+            Assert::IsNull(pUIPresenter->_pNotifyWnds[(size_t)types[0]].get());
+            Assert::IsFalse(IsWindow(h[0]) != FALSE, L"slot destroyed");
+            Assert::IsTrue(IsWindow(h[1]) != FALSE, L"the other slot kept");
+            pUIPresenter->ClearNotify();
+            Assert::IsFalse(IsWindow(h[1]) != FALSE, L"all destroyed");
+            Assert::IsFalse(pUIPresenter->IsNotifyShown() != FALSE);
             pUIPresenter->Release();
         }
 

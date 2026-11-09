@@ -331,10 +331,19 @@ BOOL RegisterWindowClass()
     }
 #endif
 
+#ifdef DIME_USE_RUST_ENGINE
+    // The notify window is owned by Rust (dime-ui::notifywin, CRustNotifyWindow).
+    AtomNotifyWindow = dime_ui_register_window_class(dllInstanceHandle, (const uint16_t*)NotifyClassName, 1);
+    if (AtomNotifyWindow == 0)
+    {
+        return FALSE;
+    }
+#else
     if (!CBaseWindow::_InitPopupWindowClass(NotifyClassName, &AtomNotifyWindow))
     {
         return FALSE;
     }
+#endif
 #ifdef DIME_USE_RUST_ENGINE
     // Shadow windows are owned by Rust (dime-ui::shadow, CRustShadowWindow): its window procedure.
     AtomNotifyShadowWindow = dime_ui_register_window_class(dllInstanceHandle, (const uint16_t*)NotifyShadowClassName, 0);

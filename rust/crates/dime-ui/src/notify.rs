@@ -1,9 +1,10 @@
 //! The notify window (port of `CNotifyWindow`): the 中/英, 全/半形, reverse
 //! lookup and special code hints.  Drawing (`_OnPaint` / `_DrawText`), the
 //! window procedure, the mouse handlers, `_Show` with its delay-show and
-//! auto-hide timers, and `_OnTimerID`.  The state stays in the C++ object and
-//! is reached through [`NotifyHost`]; the callback (switch 中/英, show after the
-//! delay) is always the last call of a handler.
+//! auto-hide timers, and `_OnTimerID`.  The state is reached through
+//! [`NotifyHost`], implemented by the Rust-owned window (`notifywin`); the
+//! callback (switch 中/英, show after the delay) is always the last call of a
+//! handler.
 
 use crate::candwnd;
 use crate::layout::{Point, Rect};

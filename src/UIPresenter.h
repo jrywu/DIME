@@ -41,6 +41,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "CandidateWindow.h"
 #include "RustCandidateWindow.h"
 #include "NotifyWindow.h"
+#include "RustNotifyWindow.h"
 #include "TfTextLayoutSink.h"
 #include "DIME.h"
 #include "BaseStructure.h"
@@ -197,12 +198,12 @@ private:
 
 protected:
     std::unique_ptr<DimeCandidateWindow> _pCandidateWnd;   // CRustCandidateWindow in the Rust build
-	// One CNotifyWindow per NOTIFY_TYPE. Lazily instantiated by MakeNotifyWindow.
+	// One notify window per NOTIFY_TYPE. Lazily instantiated by MakeNotifyWindow.
 	// Concurrency invariant (see docs/MULTI_NOTIFY.md): at most NOTIFY_REVERSE_LOOKUP
 	// and NOTIFY_SPECIAL_CODE coexist, both wiped together by ClearNotify on next
 	// keystroke; CHN_ENG cannot coexist with hint slots in practice. Future hints
 	// with timeToHide>0 would need restack-on-hide — not implemented here.
-	std::array<std::unique_ptr<CNotifyWindow>, (size_t)NOTIFY_TYPE::NOTIFY_COUNT> _pNotifyWnds;
+	std::array<std::unique_ptr<DimeNotifyWindow>, (size_t)NOTIFY_TYPE::NOTIFY_COUNT> _pNotifyWnds;   // CRustNotifyWindow in the Rust build
     BOOL _isShowMode;
 
 
