@@ -39,6 +39,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <array>
 #include "KeyHandlerEditSession.h"
 #include "CandidateWindow.h"
+#include "RustCandidateWindow.h"
 #include "NotifyWindow.h"
 #include "TfTextLayoutSink.h"
 #include "DIME.h"
@@ -195,7 +196,7 @@ private:
     void SetPageIndexWithScrollInfo(_In_ CDIMEArray<CCandidateListItem> *pCandidateList);
 
 protected:
-    std::unique_ptr<CCandidateWindow> _pCandidateWnd;
+    std::unique_ptr<DimeCandidateWindow> _pCandidateWnd;   // CRustCandidateWindow in the Rust build
 	// One CNotifyWindow per NOTIFY_TYPE. Lazily instantiated by MakeNotifyWindow.
 	// Concurrency invariant (see docs/MULTI_NOTIFY.md): at most NOTIFY_REVERSE_LOOKUP
 	// and NOTIFY_SPECIAL_CODE coexist, both wiped together by ClearNotify on next

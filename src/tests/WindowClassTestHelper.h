@@ -10,6 +10,7 @@
 #include <Windows.h>
 #include "../Globals.h"
 #include "../BaseWindow.h"
+#include "../CandidateWindow.h"
 #ifdef DIME_RUST_AVAILABLE
 #include "dime_ffi.h"
 #endif
@@ -50,6 +51,18 @@ inline void EnsureWindowClassesRegistered()
         wc.cbSize = sizeof(wc);
         *c.atom = static_cast<ATOM>(GetClassInfoExW(Global::dllInstanceHandle, c.name, &wc));
     }
+#ifdef DIME_USE_RUST_ENGINE
+    // DIME.CandidateWindow has Rust's window procedure: C++ CCandidateWindow objects get their own class.
+    if (g_cppCandidateWindowAtomForTest == 0)
+    {
+        const wchar_t* name = L"DIME.Test.CppCandidateWindow";
+        WNDCLASSEXW wc = {};
+        wc.cbSize = sizeof(wc);
+        ATOM atom = static_cast<ATOM>(GetClassInfoExW(Global::dllInstanceHandle, name, &wc));
+        if (!atom) CBaseWindow::_InitPopupWindowClass(name, &atom);
+        g_cppCandidateWindowAtomForTest = atom;
+    }
+#endif
 }
 
 #ifdef DIME_RUST_AVAILABLE

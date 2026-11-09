@@ -155,11 +155,19 @@ Exit:
 }
 
 
+#if defined(DIME_UNIT_TESTING) && defined(DIME_USE_RUST_ENGINE)
+ATOM g_cppCandidateWindowAtomForTest = 0;
+#endif
+
 BOOL CCandidateWindow::_CreateMainWindow(_In_opt_ HWND parentWndHandle)
 {
     _SetUIWnd(this);
 
-    if (!CBaseWindow::_Create(Global::AtomCandidateWindow,
+    ATOM atom = Global::AtomCandidateWindow;
+#if defined(DIME_UNIT_TESTING) && defined(DIME_USE_RUST_ENGINE)
+    atom = g_cppCandidateWindowAtomForTest;
+#endif
+    if (!CBaseWindow::_Create(atom,
         WS_EX_TOPMOST | WS_EX_NOACTIVATE,
         WS_POPUP | WS_CLIPCHILDREN,
         NULL, 0, 0, parentWndHandle))

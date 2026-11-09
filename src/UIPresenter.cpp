@@ -1800,7 +1800,7 @@ HRESULT CUIPresenter::MakeCandidateWindow(_In_ ITfContext *pContextDocument, _In
 		goto Exit;
     }
 
-	_pCandidateWnd = std::make_unique <CCandidateWindow>(_CandWndCallback, this, _pIndexRange, _pTextService->_IsStoreAppMode());
+	_pCandidateWnd = std::make_unique <DimeCandidateWindow>(_CandWndCallback, this, _pIndexRange, _pTextService->_IsStoreAppMode());
     if (_pCandidateWnd == nullptr)
     {
         hr = E_OUTOFMEMORY;

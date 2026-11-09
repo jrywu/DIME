@@ -18,6 +18,7 @@
 #include "../CompositionProcessorEngine.h"
 #include "../UIPresenter.h"
 #include "../DisplayAttributeInfo.h"
+#include "WindowClassTestHelper.h"
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
@@ -713,6 +714,56 @@ namespace DIMEIntegratedTests
 
             // Cleanup
             pUIPresenter->Release(); // UIPresenter destructor will release pStubDIME
+        }
+
+        // The candidate window UIPresenter makes is a real window of the build's implementation
+        // (the Rust window under DIME_USE_RUST_ENGINE, phase 3c-5d-2): shown, sized for the
+        // page, and its messages reach UIPresenter's candidate list.
+        TEST_METHOD(IT06_04_CandidateWindowIsReal)
+        {
+            EnsureWindowClassesRegistered();
+            StubCDIME* pStubDIME = new StubCDIME();
+            CUIPresenter* pUIPresenter = new CUIPresenter(pStubDIME, nullptr);
+            Assert::IsTrue(SUCCEEDED(pUIPresenter->MakeCandidateWindow(nullptr, 200)));
+            HWND h = pUIPresenter->_pCandidateWnd->_GetWnd();
+            Assert::IsNotNull(h, L"a real window");
+            Assert::AreEqual((int)Global::AtomCandidateWindow, (int)GetClassWord(h, GCW_ATOM), L"the DIME.CandidateWindow class");
+
+            const wchar_t keys[] = L"12345";
+            CCandidateRange range;
+            for (int r = 0; r < 5; r++) range.Append()->CandIndex = keys[r];
+            CDIMEArray<CCandidateListItem> list;
+            const wchar_t* texts[] = { L"一", L"二", L"三", L"四", L"五", L"六", L"七", L"八", L"九", L"十", L"百", L"千" };
+            for (const wchar_t* t : texts) list.Append()->_ItemString.Set(t, 1);
+            pUIPresenter->_SetCandidateText(&list, &range, FALSE, 3);
+            pUIPresenter->_SetCandidateSelection(0, FALSE);
+            pUIPresenter->Show(TRUE);
+
+            Assert::IsTrue(pUIPresenter->IsCandShown() != FALSE, L"IsCandShown");
+            Assert::IsTrue(IsWindowVisible(h) != FALSE, L"the window is visible");
+            RECT rc = { 0, 0, 0, 0 };
+            GetClientRect(h, &rc);
+            Assert::IsTrue(rc.right > 0 && rc.bottom > 0, L"sized");
+            UINT count = 0;
+            pUIPresenter->GetCount(&count);
+            Assert::AreEqual(12u, count);
+
+            // The wheel moves the selection in UIPresenter's list (through the window's message handling).
+            SendMessage(h, WM_MOUSEWHEEL, MAKEWPARAM(0, (WORD)(SHORT)-WHEEL_DELTA), 0);
+            Assert::AreEqual(1, (int)pUIPresenter->_GetCandidateSelection(), L"wheel down");
+            // Paging keeps the row; the page index may be realigned to the selection (CCandidateListModel).
+            UINT pageBefore = 0, page = 0;
+            pUIPresenter->GetCurrentPage(&pageBefore);
+            Assert::IsTrue(pUIPresenter->_MoveCandidatePage(1) != FALSE);
+            Assert::AreEqual(6, (int)pUIPresenter->_GetCandidateSelection(), L"next page, same row");
+            pUIPresenter->GetCurrentPage(&page);
+            Assert::AreEqual(pageBefore + 1, page, L"the next page");
+
+            pUIPresenter->Show(FALSE);
+            Assert::IsFalse(pUIPresenter->IsCandShown() != FALSE, L"hidden");
+            pUIPresenter->DisposeCandidateWindow();
+            Assert::IsFalse(IsWindow(h) != FALSE, L"destroyed");
+            pUIPresenter->Release();
         }
 
         // ===================================================================

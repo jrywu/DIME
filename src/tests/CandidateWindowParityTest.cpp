@@ -24,6 +24,7 @@
 #include "../Globals.h"
 #include "../Config.h"
 #include "../CandidateWindow.h"
+#include "../RustCandidateWindow.h"
 #include "../BaseStructure.h"
 #include "../Define.h"
 #include "WindowClassTestHelper.h"
@@ -41,74 +42,37 @@ namespace
         return S_OK;
     }
 
-    // The Rust window's candidate list: a CCandidateListModel, as UIPresenter will hold it.
+    // The Rust window through CRustCandidateWindow, as UIPresenter holds it (the model, the
+    // DimeCandModel callbacks and the scroll bar sync are the production ones).
     struct RustSide
     {
         CCandidateRange range;
-        std::unique_ptr<CCandidateListModel> model{ CCandidateListModel::Create() };
         std::vector<CCandidateListItem> items;
         Recorder rec;
+        std::unique_ptr<CRustCandidateWindow> w;
         DimeCandidate* c = nullptr;
-
-        static RustSide* S(void* ctx) { return static_cast<RustSide*>(ctx); }
-        static int32_t Selection(void* ctx) { return S(ctx)->model->Selection(); }
-        static void SetSelectionRaw(void* ctx, uint32_t i) { S(ctx)->model->SetSelectionRaw(i); }
-        static void SetSelectionOffset(void* ctx, int32_t o) { S(ctx)->model->SetSelectionOffset(o); }
-        static void SetSelection(void* ctx, int32_t i) { BOOL applied = FALSE; S(ctx)->model->SetSelection(i, &applied); }
-        static void MovePage(void* ctx, int32_t o) { BOOL wrapped = FALSE; S(ctx)->model->MovePage(o, &wrapped); }
-        static int32_t CurrentPage(void* ctx, int32_t* page)
-        {
-            int p = 0;
-            if (FAILED(S(ctx)->model->GetCurrentPage(&p))) return 0;
-            *page = p;
-            return 1;
-        }
-        static int32_t PaintPage(void* ctx, uint32_t* page, uint32_t* start)
-        {
-            UINT p = 0, st = 0;
-            if (FAILED(S(ctx)->model->GetCurrentPage(&p))) return 0;
-            S(ctx)->model->AdjustPageIndex(p, st);
-            *page = p;
-            *start = st;
-            return 1;
-        }
-        static uint32_t PageCount(void* ctx) { return S(ctx)->model->PageCount(); }
-        static uint32_t PageStart(void* ctx, int32_t page) { return S(ctx)->model->PageStart(page); }
-        static uint32_t Count(void* ctx) { return S(ctx)->model->Count(); }
-        static int32_t RowsInPage(void* ctx) { return S(ctx)->range.Count(); }
-        static uint16_t IndexChar(void* ctx, int32_t row) { return (uint16_t)S(ctx)->range.GetAt(row)->CandIndex; }
-        static const uint16_t* Item(void* ctx, uint32_t index, uint32_t* len)
-        {
-            CCandidateListItem* it = S(ctx)->model->ItemAt(index);
-            if (!it) return nullptr;
-            *len = (uint32_t)it->_ItemString.GetLength();
-            return (const uint16_t*)it->_ItemString.Get();
-        }
-        static int32_t HasCallback(void*) { return 1; }
-        static void Invoke(void* ctx, int32_t action) { S(ctx)->rec.actions.push_back(action); }
-
-        static uint32_t Dpi(void* hwnd) { return CConfig::GetDpiForHwnd((HWND)hwnd); }
-        static int32_t Dark() { return CConfig::GetEffectiveDarkMode() ? 1 : 0; }
-        static int32_t AlwaysShow() { return CConfig::GetAlwaysShowScrollbars() ? 1 : 0; }
-        static void* Font() { return Global::defaultlFontHandle; }
-        static void SetFont(void* hwnd) { CConfig::SetDefaultTextFont((HWND)hwnd); }
+        CCandidateListModel* model = nullptr;
 
         bool Create(UINT wndWidth, const DimeCandColors& colors, COLORREF fill)
         {
-            static const DimeCandEnv env = { Dpi, Dark, AlwaysShow, Font, SetFont };
-            DimeCandModel m = { this, Selection, SetSelectionRaw, SetSelectionOffset, SetSelection, MovePage, CurrentPage,
-                                PaintPage, PageCount, PageStart, Count, RowsInPage, IndexChar, Item, HasCallback, Invoke };
+            w = std::make_unique<CRustCandidateWindow>(RecordAction, &rec, &range, FALSE);
             DimeCandClasses classes = {
                 TestClassAtomKind(L"DIME.Test.RustCandidateWindow", true, true),
                 TestClassAtom(L"DIME.Test.RustShadowWindow", true),
                 RustScrollBarTestAtom(),
                 Global::AtomNotifyWindow, Global::AtomNotifyShadowWindow };
-            model->SetIndexRange(&range);
-            c = dime_ui_candidate_create(Global::dllInstanceHandle, &classes, nullptr, wndWidth, &env, &m, &colors, fill);
-            return c != nullptr;
+            w->_SetClassesForTest(classes);
+            if (!w->_Create(wndWidth, 12, nullptr)) return false;
+            c = w->_GetRustWindow();
+            model = w->_GetModel();
+            w->_SetNumberColor(colors.number, colors.number_bk);
+            w->_SetTextColor(colors.text, colors.bk);
+            w->_SetSelectedTextColor(colors.selected_text, colors.selected_bk);
+            w->_SetFillColor(fill);
+            return true;
         }
-        HWND Wnd() const { return (HWND)dime_ui_candidate_hwnd(c); }
-        ~RustSide() { dime_ui_candidate_free(c); }
+        HWND Wnd() const { return w->_GetWnd(); }
+        ~RustSide() { if (w) w->_Destroy(); }
     };
 
     struct Pair
@@ -140,12 +104,6 @@ namespace
             cpp->_SetSelectedTextColor(colors.selected_text, colors.selected_bk);
             cpp->_SetFillColor(fill);
             Assert::IsTrue(rust.Create(wndWidth, colors, fill), L"the Rust window");
-            for (int which = 0; which < 3; which++)   // the same color adjustment as the C++ setters
-            {
-                uint32_t cc = which == 0 ? colors.number : which == 1 ? colors.text : colors.selected_text;
-                uint32_t bk = which == 0 ? colors.number_bk : which == 1 ? colors.bk : colors.selected_bk;
-                dime_ui_candidate_set_color(rust.c, which, cc, bk);
-            }
 
             UINT count = (UINT)texts.size();
             cppItems.resize(count);
@@ -155,7 +113,7 @@ namespace
                 cppItems[i]._ItemString.Set(texts[i].c_str(), texts[i].size());
                 rust.items[i]._ItemString.Set(texts[i].c_str(), texts[i].size());
                 cpp->_AddString(&cppItems[i], FALSE);
-                rust.model->AddItem(&rust.items[i], FALSE);
+                rust.w->_AddString(&rust.items[i], FALSE);
             }
             UINT pages = count ? (count + rowsInPage - 1) / rowsInPage : 0;
             std::vector<UINT> pageIndex(pages);
@@ -163,14 +121,14 @@ namespace
             if (pages)
             {
                 cpp->_SetPageIndex(pageIndex.data(), pages);
-                rust.model->SetPageIndex(pageIndex.data(), pages);
+                rust.w->_SetPageIndex(pageIndex.data(), pages);
             }
             cpp->_SetScrollInfo(count, rowsInPage);
-            dime_ui_candidate_op(rust.c, 9, (int)count, rowsInPage);
+            rust.w->_SetScrollInfo((int)count, rowsInPage);
             cpp->_Move(300, 300);
-            dime_ui_candidate_op(rust.c, 1, 300, 300);
+            rust.w->_Move(300, 300);
             cpp->_ResizeWindow();
-            dime_ui_candidate_op(rust.c, 2, 0, 0);
+            rust.w->_ResizeWindow();
         }
         ~Pair() { DestroyAndDelete(cpp); }
     };
@@ -308,9 +266,8 @@ namespace DIMEUnitTests
                     if (!texts.empty())
                     {
                         int sel = (int)(rng() % texts.size());
-                        BOOL applied = FALSE;
                         p.cpp->_SetSelection(sel, FALSE);
-                        p.rust.model->SetSelection(sel, &applied);
+                        p.rust.w->_SetSelection(sel, FALSE);
                     }
                     RECT rc = { 0, 0, 0, 0 };
                     GetClientRect(p.cpp->_GetWnd(), &rc);
@@ -428,57 +385,56 @@ namespace DIMEUnitTests
                 p.Setup(rng, 1 + (int)(rng() % 9), 1 + rng() % 4, texts);
                 for (int step = 0; step < 60; step++)
                 {
-                    int op = (int)(rng() % 11);
+                    int op = (int)(rng() % 14);
                     BOOL flag = rng() % 2;
                     int x = (int)(rng() % 1200) - 100, y = (int)(rng() % 800) - 100;
                     UINT w = 1 + rng() % 8;
                     COLORREF c1 = rng() & 0xFFFFFF, c2 = rng() & 0xFFFFFF;
                     int n = (int)(rng() % 7) - 3;
+                    int index = (int)(rng() % (texts.size() + 3)) - 1;
                     RECT text = { x, y, x + (int)(rng() % 300), y + 20 + (int)(rng() % 20) };
                     std::wstring extent[2], obs[2];
                     for (int k = 0; k < 2; k++)
                     {
                         ReleaseCapture();   // capture is global; _Show(TRUE) takes it: observe each side right after its op
                         CCandidateWindow* cw = p.cpp;
+                        CRustCandidateWindow* rw = p.rust.w.get();
                         DimeCandidate* rc = p.rust.c;
+                        int ret = -1;
                         switch (op)
                         {
-                        case 0: k == 0 ? cw->_Show(flag) : dime_ui_candidate_op(rc, 0, flag, 0); break;
-                        case 1: k == 0 ? cw->_Move(x, y) : dime_ui_candidate_op(rc, 1, x, y); break;
-                        case 2: k == 0 ? cw->_ResizeWindow() : dime_ui_candidate_op(rc, 2, 0, 0); break;
-                        case 3: k == 0 ? cw->_SetCandStringLength(w) : dime_ui_candidate_op(rc, 4, (int)w, 0); break;
+                        case 0: k == 0 ? cw->_Show(flag) : rw->_Show(flag); break;
+                        case 1: k == 0 ? cw->_Move(x, y) : rw->_Move(x, y); break;
+                        case 2: k == 0 ? cw->_ResizeWindow() : rw->_ResizeWindow(); break;
+                        case 3: k == 0 ? cw->_SetCandStringLength(w) : rw->_SetCandStringLength(w); break;
                         case 4:
                             if (k == 0) { cw->_SetTextColor(c1, c2); cw->_SetFillColor(c2); }
-                            else { dime_ui_candidate_set_color(rc, 1, c1, c2); dime_ui_candidate_op(rc, 5, (int)c2, 0); }
+                            else { rw->_SetTextColor(c1, c2); rw->_SetFillColor(c2); }
                             break;
                         case 5:
-                            k == 0 ? cw->_SetScrollInfo((int)texts.size() + n, 3 + (n & 3)) : dime_ui_candidate_op(rc, 9, (int)texts.size() + n, 3 + (n & 3));
+                            k == 0 ? cw->_SetScrollInfo((int)texts.size() + n, 3 + (n & 3)) : rw->_SetScrollInfo((int)texts.size() + n, 3 + (n & 3));
                             break;
                         case 6: if (k == 0) { if (cw->_GetScrollBarForTest()) cw->_GetScrollBarForTest()->SbShiftLine(n, flag); } else dime_ui_candidate_op(rc, 6, n, flag); break;
                         case 7: if (k == 0) { if (cw->_GetScrollBarForTest()) cw->_GetScrollBarForTest()->SbShiftPage(n, flag); } else dime_ui_candidate_op(rc, 7, n, flag); break;
                         case 8: if (k == 0) { if (cw->_GetScrollBarForTest()) cw->_GetScrollBarForTest()->SbShiftPosition(x & 63, flag); } else dime_ui_candidate_op(rc, 8, x & 63, flag); break;
-                        case 9: k == 0 ? cw->_InvalidateRect() : dime_ui_candidate_op(rc, 3, 0, 0); break;
+                        case 9: k == 0 ? cw->_InvalidateRect() : rw->_InvalidateRect(); break;
                         case 10:
                         {
                             RECT cand = { 0, 0, 0, 0 };
                             POINT pt = { 0, 0 };
-                            if (k == 0)
-                            {
-                                cw->_GetClientRect(&cand);
-                                cw->_GetWindowExtent(&text, &cand, &pt);
-                            }
-                            else
-                            {
-                                DimeRect cr = {}, tr = { text.left, text.top, text.right, text.bottom };
-                                DimePoint dp = {};
-                                dime_ui_candidate_rect(rc, 1, &cr);
-                                dime_ui_candidate_window_extent(rc, &tr, &cr, &dp);
-                                pt = { dp.x, dp.y };
-                            }
-                            extent[k] = L" extent=" + std::to_wstring(pt.x) + L"," + std::to_wstring(pt.y);
+                            HRESULT hr = S_OK;
+                            if (k == 0) { cw->_GetClientRect(&cand); hr = cw->_GetWindowExtent(&text, &cand, &pt); }
+                            else { rw->_GetClientRect(&cand); hr = rw->_GetWindowExtent(&text, &cand, &pt); }
+                            extent[k] = L" extent=" + std::to_wstring(pt.x) + L"," + std::to_wstring(pt.y) + L"/" + std::to_wstring(hr) +
+                                L" client=" + R(cand);
                             break;
                         }
+                        // UIPresenter's selection and paging: the model, then the scroll bar.
+                        case 11: ret = k == 0 ? cw->_MoveSelection(n, flag) : rw->_MoveSelection(n, flag); break;
+                        case 12: ret = k == 0 ? cw->_SetSelection(index, flag) : rw->_SetSelection(index, flag); break;
+                        case 13: ret = k == 0 ? cw->_MovePage(n, flag) : rw->_MovePage(n, flag); break;
                         }
+                        if (ret != -1) extent[k] += L" ret=" + std::to_wstring(ret);
                         obs[k] = (k == 0 ? ObserveCpp(p) : ObserveRust(p)) + extent[k];
                     }
                     ReleaseCapture();

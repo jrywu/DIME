@@ -291,10 +291,19 @@ ATOM AtomNotifyShadowWindow;
 BOOL RegisterWindowClass()
 {
     // Candidate and Notify use popup class (no CS_IME, with CS_DROPSHADOW) for DWM shadow
+#ifdef DIME_USE_RUST_ENGINE
+    // The candidate window is owned by Rust (dime-ui::candwin, CRustCandidateWindow).
+    AtomCandidateWindow = dime_ui_register_window_class(dllInstanceHandle, (const uint16_t*)CandidateClassName, 1);
+    if (AtomCandidateWindow == 0)
+    {
+        return FALSE;
+    }
+#else
     if (!CBaseWindow::_InitPopupWindowClass(CandidateClassName, &AtomCandidateWindow))
     {
         return FALSE;
     }
+#endif
 #ifdef DIME_USE_RUST_ENGINE
     // Shadow windows are owned by Rust (dime-ui::shadow, CRustShadowWindow): its window procedure.
     AtomCandidateShadowWindow = dime_ui_register_window_class(dllInstanceHandle, (const uint16_t*)CandidateShadowClassName, 0);
