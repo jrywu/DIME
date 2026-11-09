@@ -760,6 +760,37 @@ void    dime_ui_candidate_paint(const DimeCandidate* c, void* dc, const DimeRect
 void*   dime_ui_candidate_child(const DimeCandidate* c, int32_t which);   /* 0 scroll bar HWND, 1 shadow HWND, 2 tracking mouse (0/1) */
 int32_t dime_ui_candidate_sb_state(const DimeCandidate* c, DimeSbSnapshot* snapshot, DimeRect* highlight, int32_t* radius, uint32_t* color);
 
+/* ---- The notify window owned by Rust (rust/crates/dime-ui/src/notifywin.rs, phase 3c-5e) ---- */
+typedef struct DimeNotifyClasses {
+    uint16_t notify, notify_shadow;   /* class atoms registered by dime_ui_register_window_class */
+} DimeNotifyClasses;
+/* NOTIFYWNDCALLBACK and its object; invoke may destroy the window (always the last call). */
+typedef struct DimeNotifyCallback {
+    void* ctx;
+    void (*invoke)(void* ctx, int32_t action, uintptr_t wparam, intptr_t lparam);   /* NOTIFY_WND */
+} DimeNotifyCallback;
+typedef struct DimeNotify DimeNotify;
+/* CNotifyWindow + _Create (text may be NULL / 0); NULL on failure. env: the candidate window's. */
+DimeNotify* dime_ui_notifywin_create(void* hinstance, const DimeNotifyClasses* classes, void* parent, int32_t notify_type,
+                                           const uint16_t* text, size_t len, const DimeCandEnv* env,
+                                           const DimeNotifyCallback* callback);
+void    dime_ui_notifywin_free(DimeNotify* n);                /* destroys the window if it still exists */
+void*   dime_ui_notifywin_hwnd(const DimeNotify* n);
+int32_t dime_ui_notifywin_is_visible(const DimeNotify* n);
+void    dime_ui_notifywin_rect(const DimeNotify* n, int32_t client, DimeRect* out);   /* 0: window, 1: client */
+void    dime_ui_notifywin_window_extent(const DimeNotify* n, const DimeRect* text, const DimeRect* window, DimePoint* out);
+void    dime_ui_notifywin_title_size(const DimeNotify* n, int32_t* cx, int32_t* cy);   /* _GetWidth / _GetHeight */
+/* op: 0 _Show(a, delay b, time to hide c)  1 _Move(a, b)  2 _SetFillColor(a)  3 _InvalidateRect  4 _OnTimerID(a) */
+void    dime_ui_notifywin_op(const DimeNotify* n, uint32_t op, int32_t a, int32_t b, int32_t c);
+void    dime_ui_notifywin_set_text_color(const DimeNotify* n, uint32_t color, uint32_t bk);
+void    dime_ui_notifywin_set_string(const DimeNotify* n, const uint16_t* text, size_t len);   /* empty: kept */
+/* tests */
+void    dime_ui_notifywin_state(const DimeNotify* n, int32_t* state);   /* cxTitle, cyTitle, x, y, delayShow, timeToHide */
+void    dime_ui_notifywin_paint(const DimeNotify* n, void* dc, const DimeRect* paint);   /* paint NULL: no PAINTSTRUCT */
+void*   dime_ui_notifywin_shadow_hwnd(const DimeNotify* n);
+typedef void (*DimeNotifyTimerHook)(void* ctx, int32_t start, uint32_t elapse, uintptr_t id);
+void    dime_ui_notifywin_set_timer_hook(const DimeNotify* n, DimeNotifyTimerHook hook, void* ctx);   /* NULL removes */
+
 /* ---- Drop shadow (rust/crates/dime-ui/src/shadow.rs) ---- */
 void dime_ui_shadow_color(int32_t dark, uint32_t sys_window_color, uint8_t* gray, uint8_t* max_alpha);
 /* 0xAARRGGBB premultiplied, bitmap memory order; out has count = cx * cy entries. */

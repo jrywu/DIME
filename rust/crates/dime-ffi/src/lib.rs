@@ -17,7 +17,7 @@ use std::ptr;
 
 use dime_core::big5;
 use dime_core::candgen;
-use dime_ui::{candpaint, candproc, candwin, candwnd, layout, notify, sbpaint, sbwin, shadow, win};
+use dime_ui::{candpaint, candproc, candwin, candwnd, layout, notify, notifywin, sbpaint, sbwin, shadow, win};
 use dime_ui::win::{HINSTANCE, PCWSTR};
 use dime_core::candidates::{self, CandidatePaging};
 use dime_core::composition;
@@ -4129,6 +4129,258 @@ pub unsafe extern "C" fn dime_ui_candidate_sb_state(
             set(color, col);
         }
         1
+    })
+}
+
+// ---------------------------------------------------------------------------
+// The notify window owned by Rust (dime-ui::notifywin, phase 3c-5e)
+// ---------------------------------------------------------------------------
+
+/// `DimeNotifyClasses`.
+#[repr(C)]
+pub struct DimeNotifyClasses {
+    pub notify: u16,
+    pub notify_shadow: u16,
+}
+
+/// `DimeNotifyCallback`: the C++ `NOTIFYWNDCALLBACK` and its object.
+#[repr(C)]
+pub struct DimeNotifyCallback {
+    pub ctx: *mut c_void,
+    pub invoke: unsafe extern "C" fn(ctx: *mut c_void, action: i32, wparam: usize, lparam: isize),
+}
+
+/// An opaque notify window.
+pub struct DimeNotify(notifywin::NotifyWindow);
+
+/// `CNotifyWindow` + `_Create`; null on failure.
+///
+/// # Safety
+/// The pointers must be valid; `text` valid for `len` units (or null with 0);
+/// the callbacks valid for the window's life.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_notifywin_create(
+    hinstance: *mut c_void,
+    classes: *const DimeNotifyClasses,
+    parent: *mut c_void,
+    notify_type: i32,
+    text: *const u16,
+    len: usize,
+    env: *const DimeCandEnv,
+    callback: *const DimeNotifyCallback,
+) -> *mut DimeNotify {
+    guard(ptr::null_mut(), || {
+        let (Some(c), Some(e), Some(cb)) =
+            (unsafe { classes.as_ref() }, unsafe { env.as_ref() }, unsafe { callback.as_ref() })
+        else {
+            return ptr::null_mut();
+        };
+        let text = if text.is_null() || len == 0 { &[][..] } else { unsafe { std::slice::from_raw_parts(text, len) } };
+        let env = candwin::Env {
+            dpi_for_hwnd: e.dpi_for_hwnd,
+            dark: e.dark,
+            always_show: e.always_show,
+            font: e.font,
+            set_default_text_font: e.set_default_text_font,
+        };
+        let classes = notifywin::Classes {
+            notify: c.notify,
+            notify_shadow: c.notify_shadow,
+        };
+        let callback = notifywin::Callback {
+            ctx: cb.ctx,
+            invoke: cb.invoke,
+        };
+        let parent = (!parent.is_null()).then_some(candproc::HWND(parent));
+        match unsafe {
+            notifywin::NotifyWindow::create(HINSTANCE(hinstance), classes, parent, notify_type, text, env, callback)
+        } {
+            Some(w) => Box::into_raw(Box::new(DimeNotify(w))),
+            None => ptr::null_mut(),
+        }
+    })
+}
+
+/// Destroys the window (if it still exists) and frees it.
+///
+/// # Safety
+/// `n` must come from `dime_ui_notifywin_create` (or be null) and not be used again.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_notifywin_free(n: *mut DimeNotify) {
+    guard((), || {
+        if !n.is_null() {
+            drop(unsafe { Box::from_raw(n) });
+        }
+    })
+}
+
+/// The window (null once destroyed).
+///
+/// # Safety
+/// `n` must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_notifywin_hwnd(n: *const DimeNotify) -> *mut c_void {
+    guard(ptr::null_mut(), || unsafe { n.as_ref() }.map_or(ptr::null_mut(), |n| n.0.hwnd().0))
+}
+
+/// `_IsWindowVisible`.
+///
+/// # Safety
+/// `n` must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_notifywin_is_visible(n: *const DimeNotify) -> i32 {
+    guard(0, || unsafe { n.as_ref() }.map_or(0, |n| i32::from(n.0.is_visible())))
+}
+
+/// `_GetWindowRect` (`client` 0) / `_GetClientRect` (`client` 1).
+///
+/// # Safety
+/// `n` must be valid or null; `out` valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_notifywin_rect(n: *const DimeNotify, client: i32, out: *mut layout::Rect) {
+    guard((), || {
+        if let Some(n) = unsafe { n.as_ref() } {
+            let r = if client != 0 { n.0.client_rect() } else { n.0.window_rect() };
+            unsafe { set(out, r) };
+        }
+    })
+}
+
+/// `CBaseWindow::_GetWindowExtent`.
+///
+/// # Safety
+/// `n` must be valid or null; the pointers valid.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_notifywin_window_extent(
+    n: *const DimeNotify,
+    text: *const layout::Rect,
+    window: *const layout::Rect,
+    out: *mut layout::Point,
+) {
+    guard((), || {
+        if let (Some(n), Some(t), Some(w)) = (unsafe { n.as_ref() }, unsafe { text.as_ref() }, unsafe { window.as_ref() }) {
+            unsafe { set(out, n.0.window_extent(t, w)) };
+        }
+    })
+}
+
+/// `_GetWidth` / `_GetHeight`.
+///
+/// # Safety
+/// `n` must be valid or null; the out-pointers valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_notifywin_title_size(n: *const DimeNotify, cx: *mut i32, cy: *mut i32) {
+    guard((), || {
+        let (w, h) = unsafe { n.as_ref() }.map_or((0, 0), |n| n.0.title_size());
+        unsafe {
+            set(cx, w);
+            set(cy, h);
+        }
+    })
+}
+
+/// Notify window operations: 0 `_Show(a, b delay, c time to hide)`, 1 `_Move(a, b)`,
+/// 2 `_SetFillColor(a)`, 3 `_InvalidateRect`, 4 `_OnTimerID(a)`.
+///
+/// # Safety
+/// `n` must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_notifywin_op(n: *const DimeNotify, op: u32, a: i32, b: i32, c: i32) {
+    guard((), || {
+        let Some(n) = (unsafe { n.as_ref() }) else {
+            return;
+        };
+        let w = &n.0;
+        match op {
+            0 => w.show(a != 0, b as u32, c as u32),
+            1 => w.move_to(a, b),
+            2 => w.set_fill_color(a as u32),
+            3 => w.invalidate(),
+            4 => w.on_timer_id(a as u32 as usize),
+            _ => {}
+        }
+    })
+}
+
+/// `_SetTextColor`.
+///
+/// # Safety
+/// `n` must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_notifywin_set_text_color(n: *const DimeNotify, color: u32, bk: u32) {
+    guard((), || {
+        if let Some(n) = unsafe { n.as_ref() } {
+            n.0.set_text_color(color, bk);
+        }
+    })
+}
+
+/// `_SetString` (an empty text keeps the old one).
+///
+/// # Safety
+/// `n` must be valid or null; `text` valid for `len` units (or null with 0).
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_notifywin_set_string(n: *const DimeNotify, text: *const u16, len: usize) {
+    guard((), || {
+        if let Some(n) = unsafe { n.as_ref() } {
+            let t = if text.is_null() || len == 0 { &[][..] } else { unsafe { std::slice::from_raw_parts(text, len) } };
+            n.0.set_string(t);
+        }
+    })
+}
+
+/// The state (tests): `cx_title, cy_title, x, y, delay_show, time_to_hide`.
+///
+/// # Safety
+/// `n` must be valid or null; `state` valid (6 entries).
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_notifywin_state(n: *const DimeNotify, state: *mut i32) {
+    guard((), || {
+        if let (Some(n), false) = (unsafe { n.as_ref() }, state.is_null()) {
+            let s = n.0.state_for_test();
+            unsafe { std::slice::from_raw_parts_mut(state, 6) }.copy_from_slice(&s);
+        }
+    })
+}
+
+/// `_OnPaint` into `dc` (tests); `paint` null: no `PAINTSTRUCT`.
+///
+/// # Safety
+/// `n` must be valid or null; `dc` a valid device context; `paint` valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_notifywin_paint(n: *const DimeNotify, dc: *mut c_void, paint: *const layout::Rect) {
+    guard((), || {
+        if let Some(n) = unsafe { n.as_ref() } {
+            unsafe { n.0.paint(candpaint::HDC(dc), paint.as_ref().copied()) };
+        }
+    })
+}
+
+/// The shadow's window (tests; null without a shadow).
+///
+/// # Safety
+/// `n` must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_notifywin_shadow_hwnd(n: *const DimeNotify) -> *mut c_void {
+    guard(ptr::null_mut(), || {
+        unsafe { n.as_ref() }.and_then(|n| n.0.shadow()).map_or(ptr::null_mut(), |s| s.hwnd().0)
+    })
+}
+
+/// The timer test hook (`g_baseWindowTimerTestHook` for this window); null removes it.
+///
+/// # Safety
+/// `n` must be valid or null; `hook` and `ctx` valid while set.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_notifywin_set_timer_hook(
+    n: *const DimeNotify,
+    hook: Option<notifywin::TimerHook>,
+    ctx: *mut c_void,
+) {
+    guard((), || {
+        if let Some(n) = unsafe { n.as_ref() } {
+            n.0.set_timer_hook(hook.map(|h| (h, ctx)));
+        }
     })
 }
 

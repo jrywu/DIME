@@ -1,26 +1,29 @@
 ﻿/********************************************************************************
-* NotifyParityTest: the notify window, C++ vs Rust (dime-ui::notify).
-*  - PaintMatchesCpp: two real notify windows set up alike, one painted by
-*    _OnPaintCpp and one by _OnPaintRust into 32-bpp DIBs: the pixels, the new
-*    _cxTitle / _cyTitle and the window size (_ResizeWindow) are identical over
-*    fonts, sizes, texts and colors.
-*  - BehaviorMatchesCpp: two real notify windows, one per implementation
-*    (WM_CREATE included), through random _Show with delay-show / auto-hide,
-*    both timers, clicks inside / outside, right clicks, mouse moves,
-*    WM_SETCURSOR, WM_MOUSEACTIVATE, WM_POINTERACTIVATE, WM_WINDOWPOSCHANGING /
-*    CHANGED, WM_SHOWWINDOW, WM_PAINT and moves, for the 中/英 (clickable) and
+* NotifyParityTest: the notify window, the C++ CNotifyWindow (C++ drawing and
+* behavior) vs the window owned by Rust (dime-ui::notifywin / notify, phase
+* 3c-5e, through CRustNotifyWindow as UIPresenter holds it).
+*  - PaintMatchesCpp: two real notify windows set up alike paint into 32-bpp
+*    DIBs: the pixels, the new _cxTitle / _cyTitle and the window size
+*    (_ResizeWindow) are identical over fonts, sizes, texts and colors.
+*  - BehaviorMatchesCpp: two real notify windows (WM_CREATE included) through
+*    random _Show with delay-show / auto-hide, both timers, clicks inside /
+*    outside, right clicks, mouse moves, WM_SETCURSOR, WM_MOUSEACTIVATE,
+*    WM_POINTERACTIVATE, WM_WINDOWPOSCHANGING / CHANGED, WM_SHOWWINDOW,
+*    WM_PAINT, real WM_TIMER messages and moves, for the 中/英 (clickable) and
 *    reverse-lookup types: the state, visibility, position and size, shadow
 *    visibility, callbacks, cursor, timers started / stopped and the results.
 ********************************************************************************/
 #include "pch.h"
 #include "CppUnitTest.h"
 #include <Windows.h>
+#include <functional>
 #include <random>
 #include <string>
 #include <vector>
 
 #include "../Globals.h"
 #include "../NotifyWindow.h"
+#include "../RustNotifyWindow.h"
 #include "../BaseStructure.h"
 #include "../UIConstants.h"
 #include "WindowClassTestHelper.h"
@@ -41,20 +44,27 @@ namespace
         return S_OK;
     }
 
-    CBaseWindow* g_watchedN[2] = { nullptr, nullptr };
-    std::vector<std::wstring> g_timersN[2];
+    // Timers started / stopped: CBaseWindow's hook for the C++ window, the Rust window's own hook.
+    CBaseWindow* g_watchedCpp = nullptr;
+    std::vector<std::wstring> g_timers[2];
 
-    void TimerHookN(CBaseWindow* w, BOOL start, UINT elapse, UINT_PTR id)
+    std::wstring TimerText(BOOL start, UINT elapse, UINT_PTR id)
     {
-        for (int k = 0; k < 2; k++)
-            if (w == g_watchedN[k])
-                g_timersN[k].push_back((start ? L"+" : L"-") + std::to_wstring(id) + (start ? L"@" + std::to_wstring(elapse) : L""));
+        return (start ? L"+" : L"-") + std::to_wstring(id) + (start ? L"@" + std::to_wstring(elapse) : L"");
+    }
+    void TimerHookCpp(CBaseWindow* w, BOOL start, UINT elapse, UINT_PTR id)
+    {
+        if (w == g_watchedCpp) g_timers[0].push_back(TimerText(start, elapse, id));
+    }
+    void TimerHookRust(void*, int32_t start, uint32_t elapse, uintptr_t id)
+    {
+        g_timers[1].push_back(TimerText(start, elapse, id));
     }
 
-    std::vector<DWORD> PaintInto(CNotifyWindow* w, bool rust, bool withPs)
+    std::vector<DWORD> PaintInto(HWND h, const std::function<void(HDC, PAINTSTRUCT*)>& paint, bool withPs)
     {
         RECT rc = { 0, 0, 0, 0 };
-        GetClientRect(w->_GetWnd(), &rc);
+        GetClientRect(h, &rc);
         int cx = max(1, (int)rc.right), cy = max(1, (int)rc.bottom);
         HDC screen = GetDC(nullptr);
         HDC mem = CreateCompatibleDC(screen);
@@ -75,9 +85,7 @@ namespace
         PAINTSTRUCT ps = {};
         ps.hdc = mem;
         ps.rcPaint = rc;
-        PAINTSTRUCT* pps = withPs ? &ps : nullptr;
-        if (rust) w->_OnPaintRust(mem, pps);
-        else w->_OnPaintCpp(mem, pps);
+        paint(mem, withPs ? &ps : nullptr);
         GdiFlush();
         std::vector<DWORD> px((DWORD*)bits, (DWORD*)bits + (size_t)cx * cy);
         SelectObject(mem, oldBmp);
@@ -87,21 +95,66 @@ namespace
         return px;
     }
 
-    std::wstring State(CNotifyWindow* w, Calls& calls, int k)
+    // One pair: the C++ window and the Rust one, set up alike.
+    struct Pair
     {
-        CNotifyWindow::StateForTest st = w->_GetStateForTest();
+        Calls calls[2];
+        CNotifyWindow* cpp = nullptr;
+        CRustNotifyWindow* rust = nullptr;
+
+        void Create(NOTIFY_TYPE type, CStringRange* text)
+        {
+            cpp = new CNotifyWindow(RecordNotify, &calls[0], type);
+            cpp->_SetUseRustForTest(FALSE);   // before _Create: WM_CREATE too
+            Assert::IsTrue(cpp->_Create(12, nullptr, text) != FALSE);
+            Assert::IsNotNull(cpp->_GetWnd(), L"a real C++ window (not a virtual one)");
+            rust = new CRustNotifyWindow(RecordNotify, &calls[1], type);
+            rust->_SetClassesForTest(RustNotifyTestClasses());
+            Assert::IsTrue(rust->_Create(12, nullptr, text) != FALSE);
+            Assert::IsNotNull(rust->_GetWnd(), L"a real Rust window");
+        }
+        HWND Wnd(int k) const { return k == 0 ? cpp->_GetWnd() : rust->_GetWnd(); }
+        HWND Shadow(int k) const
+        {
+            if (k == 0) return cpp->_GetShadowForTest() ? cpp->_GetShadowForTest()->_GetWnd() : nullptr;
+            return (HWND)dime_ui_notifywin_shadow_hwnd(rust->_GetRustWindow());
+        }
+        void State(int k, int st[6]) const
+        {
+            if (k == 0)
+            {
+                CNotifyWindow::StateForTest s = cpp->_GetStateForTest();
+                int v[6] = { s.cxTitle, s.cyTitle, s.x, s.y, (int)s.delayShow, (int)s.timeToHide };
+                memcpy(st, v, sizeof(v));
+            }
+            else
+                dime_ui_notifywin_state(rust->_GetRustWindow(), (int32_t*)st);
+        }
+        ~Pair()
+        {
+            DestroyAndDelete(cpp);
+            if (rust) { rust->_Destroy(); delete rust; }
+        }
+    };
+
+    std::wstring Observe(Pair& p, int k)
+    {
+        int st[6] = {};
+        p.State(k, st);
+        HWND h = p.Wnd(k), shadow = p.Shadow(k);
         RECT rc = { 0, 0, 0, 0 };
-        GetWindowRect(w->_GetWnd(), &rc);
-        BOOL shadowVisible = w->_GetShadowForTest() ? IsWindowVisible(w->_GetShadowForTest()->_GetWnd()) : -1;
-        std::wstring s = L"title=" + std::to_wstring(st.cxTitle) + L"x" + std::to_wstring(st.cyTitle) +
-            L" pos=" + std::to_wstring(st.x) + L"," + std::to_wstring(st.y) +
-            L" delay=" + std::to_wstring(st.delayShow) + L" hide=" + std::to_wstring(st.timeToHide) +
-            L" visible=" + std::to_wstring(IsWindowVisible(w->_GetWnd())) +
+        GetWindowRect(h, &rc);
+        std::wstring s = L"title=" + std::to_wstring(st[0]) + L"x" + std::to_wstring(st[1]) +
+            L" pos=" + std::to_wstring(st[2]) + L"," + std::to_wstring(st[3]) +
+            L" delay=" + std::to_wstring(st[4]) + L" hide=" + std::to_wstring(st[5]) +
+            L" visible=" + std::to_wstring(IsWindowVisible(h)) +
             L" rect=" + std::to_wstring(rc.left) + L"," + std::to_wstring(rc.top) + L"," + std::to_wstring(rc.right - rc.left) + L"x" + std::to_wstring(rc.bottom - rc.top) +
-            L" shadow=" + std::to_wstring(shadowVisible) + L" calls=";
-        for (auto& c : calls.log) s += c + L";";
+            L" shadow=" + std::to_wstring(shadow ? IsWindowVisible(shadow) : -1) +
+            L" width=" + std::to_wstring(k == 0 ? p.cpp->_GetWidth() : p.rust->_GetWidth()) +
+            L" height=" + std::to_wstring(k == 0 ? p.cpp->_GetHeight() : p.rust->_GetHeight()) + L" calls=";
+        for (auto& c : p.calls[k].log) s += c + L";";
         s += L" timers=";
-        for (auto& t : g_timersN[k]) s += t + L" ";
+        for (auto& t : g_timers[k]) s += t + L" ";
         return s;
     }
 }
@@ -133,31 +186,31 @@ namespace DIMEUnitTests
                     bool withPs = rng() % 6 != 0;
                     CStringRange sr;
                     sr.Set(text.c_str(), text.size());
-                    Calls calls[2];
-                    CNotifyWindow* w[2] = {};
-                    for (int k = 0; k < 2; k++)
-                    {
-                        w[k] = new CNotifyWindow(RecordNotify, &calls[k], NOTIFY_TYPE::NOTIFY_CHN_ENG);
-                        Assert::IsTrue(w[k]->_Create(12, nullptr, &sr) != FALSE);
-                        Assert::IsNotNull(w[k]->_GetWnd(), L"a real window (not a virtual one)");
-                        w[k]->_SetTextColor(fg, bg);
-                        if (fillBrush) w[k]->_SetFillColor(fill);
-                    }
-                    std::vector<DWORD> c = PaintInto(w[0], false, withPs);
-                    std::vector<DWORD> r = PaintInto(w[1], true, withPs);
+                    Pair p;
+                    p.Create(NOTIFY_TYPE::NOTIFY_CHN_ENG, &sr);
+                    p.cpp->_SetTextColor(fg, bg);
+                    p.rust->_SetTextColor(fg, bg);
+                    if (fillBrush) { p.cpp->_SetFillColor(fill); p.rust->_SetFillColor(fill); }
+                    std::vector<DWORD> c = PaintInto(p.Wnd(0), [&](HDC dc, PAINTSTRUCT* ps) { p.cpp->_OnPaintCpp(dc, ps); }, withPs);
+                    std::vector<DWORD> r = PaintInto(p.Wnd(1), [&](HDC dc, PAINTSTRUCT* ps) {
+                        DimeRect pr = {};
+                        if (ps) pr = { ps->rcPaint.left, ps->rcPaint.top, ps->rcPaint.right, ps->rcPaint.bottom };
+                        dime_ui_notifywin_paint(p.rust->_GetRustWindow(), dc, ps ? &pr : nullptr);
+                    }, withPs);
                     std::wstring where = std::wstring(face) + L" " + std::to_wstring(height) + L" \"" + text + L"\"";
-                    CNotifyWindow::StateForTest a = w[0]->_GetStateForTest(), b = w[1]->_GetStateForTest();
-                    Assert::IsTrue(a.cxTitle == b.cxTitle && a.cyTitle == b.cyTitle, (where + L": title size").c_str());
+                    int a[6] = {}, b[6] = {};
+                    p.State(0, a);
+                    p.State(1, b);
+                    Assert::IsTrue(a[0] == b[0] && a[1] == b[1], (where + L": title size").c_str());
                     RECT ra = {}, rb = {};
-                    GetWindowRect(w[0]->_GetWnd(), &ra);
-                    GetWindowRect(w[1]->_GetWnd(), &rb);
+                    GetWindowRect(p.Wnd(0), &ra);
+                    GetWindowRect(p.Wnd(1), &rb);
                     Assert::IsTrue(ra.right - ra.left == rb.right - rb.left && ra.bottom - ra.top == rb.bottom - rb.top, (where + L": window size").c_str());
                     Assert::AreEqual(c.size(), r.size(), (where + L": bitmap size").c_str());
                     for (size_t i = 0; i < c.size(); i++)
                         if (c[i] != r[i]) Assert::Fail((where + L": pixel " + std::to_wstring(i) + L" differs").c_str());
                     if (ra.right - ra.left > 0) sized++;
                     compared++;
-                    for (int k = 0; k < 2; k++) DestroyAndDelete(w[k]);
                 }
                 Global::defaultlFontHandle = savedFont;
                 DeleteObject(font);
@@ -171,7 +224,7 @@ namespace DIMEUnitTests
             HFONT savedFont = Global::defaultlFontHandle;
             HFONT font = CreateFont(-24, 0, 0, 0, FW_NORMAL, FALSE, 0, 0, DEFAULT_CHARSET, 0, 0, 0, 0, L"Microsoft JhengHei");
             Global::defaultlFontHandle = font;
-            g_baseWindowTimerTestHook = TimerHookN;
+            g_baseWindowTimerTestHook = TimerHookCpp;
             std::mt19937 rng(72);
             int compared = 0, callbacks = 0;
             const NOTIFY_TYPE types[] = { NOTIFY_TYPE::NOTIFY_CHN_ENG, NOTIFY_TYPE::NOTIFY_REVERSE_LOOKUP };
@@ -180,33 +233,30 @@ namespace DIMEUnitTests
                 std::wstring text = (scenario % 3 == 0) ? L"英" : L"反查：中文字";
                 CStringRange sr;
                 sr.Set(text.c_str(), text.size());
-                Calls calls[2];
-                CNotifyWindow* w[2] = {};
-                for (int k = 0; k < 2; k++)
+                Pair p;
+                p.Create(types[scenario % 2], (scenario % 4 == 3) ? nullptr : &sr);
+                if (scenario % 4 == 3) { p.cpp->_SetString(&sr); p.rust->_SetString(&sr); }
+                p.cpp->_SetTextColor(RGB(0, 0, 0), RGB(255, 255, 255));
+                p.cpp->_SetFillColor(RGB(255, 255, 255));
+                p.rust->_SetTextColor(RGB(0, 0, 0), RGB(255, 255, 255));
+                p.rust->_SetFillColor(RGB(255, 255, 255));
+                g_watchedCpp = p.cpp;
+                dime_ui_notifywin_set_timer_hook(p.rust->_GetRustWindow(), TimerHookRust, nullptr);
+                g_timers[0].clear();
+                g_timers[1].clear();
                 {
-                    w[k] = new CNotifyWindow(RecordNotify, &calls[k], types[scenario % 2]);
-                    w[k]->_SetUseRustForTest(k == 1);   // before _Create: WM_CREATE too
-                    Assert::IsTrue(w[k]->_Create(12, nullptr, (scenario % 4 == 3) ? nullptr : &sr) != FALSE);
-                    Assert::IsNotNull(w[k]->_GetWnd(), L"a real window (not a virtual one)");
-                    if (scenario % 4 == 3) w[k]->_SetString(&sr);
-                    w[k]->_SetTextColor(RGB(0, 0, 0), RGB(255, 255, 255));
-                    w[k]->_SetFillColor(RGB(255, 255, 255));
-                    g_watchedN[k] = w[k];
-                    g_timersN[k].clear();
-                }
-                {
-                    std::wstring a = State(w[0], calls[0], 0), b = State(w[1], calls[1], 1);
+                    std::wstring a = Observe(p, 0), b = Observe(p, 1);
                     Assert::IsTrue(a == b, (L"after create\nC++  " + a + L"\nRust " + b).c_str());
                 }
                 for (int step = 0; step < 80; step++)
                 {
-                    int op = (int)(rng() % 14);
+                    int op = (int)(rng() % 15);
                     UINT times[] = { 0, 0, 100, 500 };
                     UINT delay = times[rng() % 4], tth = times[rng() % 4];
                     BOOL flag = rng() % 2;
                     int x = (int)(rng() % 200) - 50, y = (int)(rng() % 80) - 20;
-                    UINT_PTR timers[] = { UI::DELAY_SHOW_TIMER_ID, UI::TIME_TO_HIDE_TIMER_ID, 4242 };
-                    UINT_PTR timer = timers[rng() % 3];
+                    UINT_PTR timerIds[] = { UI::DELAY_SHOW_TIMER_ID, UI::TIME_TO_HIDE_TIMER_ID, 4242 };
+                    UINT_PTR timer = timerIds[rng() % 3];
                     int mx = 200 + (int)(rng() % 400), my = 200 + (int)(rng() % 300);
                     static const WORD ev[] = { WM_LBUTTONDOWN, WM_RBUTTONDOWN, WM_MBUTTONDOWN, WM_MOUSEMOVE };
                     WORD mev = ev[rng() % 4];
@@ -217,17 +267,20 @@ namespace DIMEUnitTests
                     LRESULT res[2] = {};
                     for (int k = 0; k < 2; k++)
                     {
-                        CNotifyWindow* n = w[k];
-                        HWND h = n->_GetWnd();
+                        HWND h = p.Wnd(k);
                         SetCursor(nullptr);
                         WINDOWPOS pos = {};
                         pos.hwnd = h;
                         pos.flags = wpFlags;
-                        if (flag && n->_GetShadowForTest()) pos.hwndInsertAfter = n->_GetShadowForTest()->_GetWnd();
+                        if (flag && p.Shadow(k)) pos.hwndInsertAfter = p.Shadow(k);
                         switch (op)
                         {
-                        case 0: case 1: n->_Show(flag || op == 0, delay, tth); break;
-                        case 2: n->_OnTimerID(timer); break;
+                        case 0: case 1:
+                            if (k == 0) p.cpp->_Show(flag || op == 0, delay, tth); else p.rust->_Show(flag || op == 0, delay, tth);
+                            break;
+                        case 2:
+                            if (k == 0) p.cpp->_OnTimerID(timer); else dime_ui_notifywin_op(p.rust->_GetRustWindow(), 4, (int32_t)timer, 0, 0);
+                            break;
                         case 3: res[k] = SendMessage(h, WM_LBUTTONDOWN, 0, MAKELPARAM(x, y)); break;
                         case 4: res[k] = SendMessage(h, WM_RBUTTONDOWN, 0, MAKELPARAM(x, y)); break;
                         case 5: res[k] = SendMessage(h, WM_MOUSEMOVE, 0, MAKELPARAM(x, y)); break;
@@ -237,10 +290,11 @@ namespace DIMEUnitTests
                         case 9: res[k] = SendMessage(h, flag ? WM_WINDOWPOSCHANGING : WM_WINDOWPOSCHANGED, 0, (LPARAM)&pos); break;
                         case 10: res[k] = SendMessage(h, WM_SHOWWINDOW, flag, 0); break;
                         case 11: res[k] = SendMessage(h, WM_PAINT, 0, 0); break;
-                        case 12: n->_Move(mx, my); break;
+                        case 12: if (k == 0) p.cpp->_Move(mx, my); else p.rust->_Move(mx, my); break;
                         case 13: res[k] = SendMessage(h, WM_LBUTTONUP, 0, MAKELPARAM(x, y)); break;
+                        case 14: res[k] = SendMessage(h, WM_TIMER, timer, 0); break;   // routed to the timer object
                         }
-                        st[k] = State(n, calls[k], k) + L" res=" + std::to_wstring(res[k]) + L" cursor=" + std::to_wstring((INT_PTR)GetCursor()) +
+                        st[k] = Observe(p, k) + L" res=" + std::to_wstring(res[k]) + L" cursor=" + std::to_wstring((INT_PTR)GetCursor()) +
                             L" wp=" + std::to_wstring(pos.flags);
                     }
                     if (st[0] != st[1])
@@ -248,8 +302,9 @@ namespace DIMEUnitTests
                             L"\nC++  " + st[0] + L"\nRust " + st[1]).c_str());
                     compared++;
                 }
-                callbacks += (int)calls[0].log.size();
-                for (int k = 0; k < 2; k++) { g_watchedN[k] = nullptr; DestroyAndDelete(w[k]); }
+                callbacks += (int)p.calls[0].log.size();
+                g_watchedCpp = nullptr;
+                dime_ui_notifywin_set_timer_hook(p.rust->_GetRustWindow(), nullptr, nullptr);
             }
             g_baseWindowTimerTestHook = nullptr;
             Global::defaultlFontHandle = savedFont;

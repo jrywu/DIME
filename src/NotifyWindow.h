@@ -57,6 +57,7 @@ public:
     virtual ~CNotifyWindow();
 
 	BOOL _Create(_In_ UINT fontHeight,  _In_opt_ HWND parentWndHandle, _In_opt_ CStringRange* notifytext=nullptr);
+    BOOL _IsCreated() { return _GetUIWnd() != nullptr; }   // _Create ran (also when no window could be made)
 
     void _Move(int x, int y);
     void _Show(BOOL isShowWnd, UINT delayShow = 0, UINT timeToHide = 0);

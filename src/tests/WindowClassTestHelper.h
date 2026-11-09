@@ -83,6 +83,11 @@ inline ATOM TestClassAtomKind(const wchar_t* name, bool rust, bool popup)
 inline ATOM TestClassAtom(const wchar_t* name, bool rust) { return TestClassAtomKind(name, rust, false); }
 inline ATOM CppScrollBarTestAtom() { return TestClassAtom(L"DIME.Test.CppScrollBarWindow", false); }
 inline ATOM RustScrollBarTestAtom() { return TestClassAtom(L"DIME.Test.RustScrollBarWindow", true); }
+// The classes of a test CRustNotifyWindow (_SetClassesForTest).
+inline DimeNotifyClasses RustNotifyTestClasses()
+{
+    return { TestClassAtomKind(L"DIME.Test.RustNotifyWindow", true, true), TestClassAtom(L"DIME.Test.RustShadowWindow", true) };
+}
 // The classes of a test CRustCandidateWindow (_SetClassesForTest): Rust test classes for the
 // candidate window and its shadow / scroll bar, whatever the build registered for the real ones.
 inline DimeCandClasses RustCandidateTestClasses()

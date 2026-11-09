@@ -23,6 +23,8 @@ pub mod layout;
 #[cfg(windows)]
 pub mod notify;
 #[cfg(windows)]
+pub mod notifywin;
+#[cfg(windows)]
 pub mod sbpaint;
 #[cfg(windows)]
 pub mod sbproc;

@@ -58,6 +58,7 @@
     <ClInclude Include="RustShadowWindow.h" />
     <ClInclude Include="RustScrollBarWindow.h" />
     <ClInclude Include="RustCandidateWindow.h" />
+    <ClInclude Include="RustNotifyWindow.h" />
     <ClInclude Include="CandidateWindow.h" />
     <ClInclude Include="Compartment.h" />
     <ClInclude Include="CompositionProcessorEngine.h" />
@@ -114,6 +115,7 @@
     <ClCompile Include="RustShadowWindow.cpp" />
     <ClCompile Include="RustScrollBarWindow.cpp" />
     <ClCompile Include="RustCandidateWindow.cpp" />
+    <ClCompile Include="RustNotifyWindow.cpp" />
     <ClCompile Include="CandidateWindow.cpp" />
     <ClCompile Include="Config.cpp" />
     <ClCompile Include="ConfigDialog.cpp" />

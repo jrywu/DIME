@@ -334,7 +334,7 @@ impl State {
 }
 
 /// `CBaseWindow::_Resize` for a popup: move and size, then the rounded region.
-fn base_resize(hwnd: HWND, x: i32, y: i32, cx: i32, cy: i32, dpi: u32) {
+pub(crate) fn base_resize(hwnd: HWND, x: i32, y: i32, cx: i32, cy: i32, dpi: u32) {
     if hwnd.is_invalid() {
         return;
     }
