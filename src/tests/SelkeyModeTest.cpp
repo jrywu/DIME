@@ -86,23 +86,26 @@ namespace DIMEUnitTests
             Global::ModifiersValue = _savedModifiers;
         }
 
-        TEST_METHOD(DayiKeys_NineSlots_InManualOrder)
+        // The Dayi manual's layout: space is the first select key, then ' [ ] - \ and
+        // Shift+' [ ] -: ten slots (space selects candidate 0, ' candidate 1, [ candidate 2, ...).
+        TEST_METHOD(DayiKeys_SpaceThenNineKeys_InManualOrder)
         {
             CCompositionProcessorEngine engine(nullptr);
             SetupDayi(engine, DAYI_SELKEY_MODE::DAYI_SELKEY_DAYI);
             CCandidateRange* pRange = engine.GetCandidateListIndexRange();
 
-            Assert::AreEqual(9u, engine.GetCandidatePageSize());
-            Assert::AreEqual(std::wstring(L"'[]-\\\"{}_"), Printables(pRange));
-            Assert::AreEqual(std::wstring(L"'[]-\\\"{}_"), Labels(pRange), L"window labels show the keys");
+            Assert::AreEqual(10u, engine.GetCandidatePageSize());
+            Assert::AreEqual(std::wstring(L" '[]-\\\"{}_"), Printables(pRange));
+            Assert::AreEqual(std::wstring(L" '[]-\\\"{}_"), Labels(pRange), L"window labels show the keys");
+            Assert::AreEqual((UINT)VK_SPACE, pRange->GetAt(0)->VirtualKey);
             for (int i = 0; i < pRange->Count(); i++)
-                Assert::AreEqual((UINT)(i + 1), pRange->GetAt(i)->Index, L"numpad 1..9 -> slot 1..9");
+                Assert::AreEqual((UINT)i, pRange->GetAt(i)->Index, L"numpad n -> slot n (as with the table's %selkey)");
 
             // Shifted keys carry the Shift modifier and the unshifted virtual key.
-            Assert::AreEqual((UINT)VK_OEM_7, pRange->GetAt(5)->VirtualKey);
-            Assert::AreEqual((UINT)TF_MOD_SHIFT, pRange->GetAt(5)->Modifiers);
-            Assert::AreEqual((UINT)VK_OEM_MINUS, pRange->GetAt(8)->VirtualKey);
-            Assert::AreEqual((UINT)TF_MOD_SHIFT, pRange->GetAt(8)->Modifiers);
+            Assert::AreEqual((UINT)VK_OEM_7, pRange->GetAt(6)->VirtualKey);
+            Assert::AreEqual((UINT)TF_MOD_SHIFT, pRange->GetAt(6)->Modifiers);
+            Assert::AreEqual((UINT)VK_OEM_MINUS, pRange->GetAt(9)->VirtualKey);
+            Assert::AreEqual((UINT)TF_MOD_SHIFT, pRange->GetAt(9)->Modifiers);
         }
 
         TEST_METHOD(DayiKeys_GetIndex)
@@ -111,19 +114,18 @@ namespace DIMEUnitTests
             SetupDayi(engine, DAYI_SELKEY_MODE::DAYI_SELKEY_DAYI);
             CCandidateRange* pRange = engine.GetCandidateListIndexRange();
 
-            Assert::AreEqual(0, IndexOf(pRange, VK_OEM_7, L'\''));
-            Assert::AreEqual(1, IndexOf(pRange, VK_OEM_4, L'['));
-            Assert::AreEqual(2, IndexOf(pRange, VK_OEM_6, L']'));
-            Assert::AreEqual(3, IndexOf(pRange, VK_OEM_MINUS, L'-'));
-            Assert::AreEqual(4, IndexOf(pRange, VK_OEM_5, L'\\'));
-            Assert::AreEqual(5, IndexOf(pRange, VK_OEM_7, L'"', TF_MOD_SHIFT));
-            Assert::AreEqual(6, IndexOf(pRange, VK_OEM_4, L'{', TF_MOD_SHIFT));
-            Assert::AreEqual(7, IndexOf(pRange, VK_OEM_6, L'}', TF_MOD_SHIFT));
-            Assert::AreEqual(8, IndexOf(pRange, VK_OEM_MINUS, L'_', TF_MOD_SHIFT));
-            Assert::AreEqual(-1, IndexOf(pRange, VK_OEM_5, L'|', TF_MOD_SHIFT), L"only 9 select keys");
-            Assert::AreEqual(-1, IndexOf(pRange, VK_SPACE, L' '), L"space is not a slot");
+            Assert::AreEqual(0, IndexOf(pRange, VK_SPACE, L' '), L"space selects the first");
+            Assert::AreEqual(1, IndexOf(pRange, VK_OEM_7, L'\''), L"' selects the second");
+            Assert::AreEqual(2, IndexOf(pRange, VK_OEM_4, L'['), L"[ selects the third");
+            Assert::AreEqual(3, IndexOf(pRange, VK_OEM_6, L']'));
+            Assert::AreEqual(4, IndexOf(pRange, VK_OEM_MINUS, L'-'));
+            Assert::AreEqual(5, IndexOf(pRange, VK_OEM_5, L'\\'));
+            Assert::AreEqual(6, IndexOf(pRange, VK_OEM_7, L'"', TF_MOD_SHIFT));
+            Assert::AreEqual(7, IndexOf(pRange, VK_OEM_4, L'{', TF_MOD_SHIFT));
+            Assert::AreEqual(8, IndexOf(pRange, VK_OEM_6, L'}', TF_MOD_SHIFT));
+            Assert::AreEqual(9, IndexOf(pRange, VK_OEM_MINUS, L'_', TF_MOD_SHIFT));
+            Assert::AreEqual(-1, IndexOf(pRange, VK_OEM_5, L'|', TF_MOD_SHIFT), L"only 9 select keys after space");
             Assert::AreEqual(-1, IndexOf(pRange, '1', L'1'), L"digits stay radicals");
-            Assert::AreEqual(0, IndexOf(pRange, VK_NUMPAD1, L'1'), L"numpad 1 still selects the first");
         }
 
         TEST_METHOD(Numeric_TenSlots)

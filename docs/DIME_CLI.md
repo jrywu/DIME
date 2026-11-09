@@ -239,7 +239,7 @@ DIMESettings.exe --reset-ui --mode array
 | `NumericPad` | 九宮格數字鍵盤 | 0 | 0=數字輸入, 1=組字, 2=僅組字 |
 | `ArrayScope` | 字集查詢範圍 (行列) | 0 | 0=行列30 Ext-A, 1=Ext-AB, 2=Ext-ABCD, 3=Ext-ABCDE, 4=行列40 Big5, 5=行列30 Big5 |
 | `PhoneticKeyboardLayout` | 鍵盤對應選擇 | 0 | 0=標準注音鍵盤, 1=許氏鍵盤 |
-| `DayiSelkeyMode` | 選字鍵（僅大易） | 0 | 0=依碼表 `%selkey`, 1=數字鍵 `1`~`0`, 2=大易選擇鍵 `'` `[` `]` `-` `\`、Shift+`'` `[` `]` `-`（9 個） |
+| `DayiSelkeyMode` | 選字鍵（僅大易） | 0 | 0=依碼表 `%selkey`, 1=數字鍵 `1`~`0`, 2=大易選擇鍵：空白鍵（第 1 個）、`'` `[` `]` `-` `\`、Shift+`'` `[` `]` `-`（共 10 個） |
 
 ### String keys
 

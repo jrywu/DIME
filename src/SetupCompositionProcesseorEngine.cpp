@@ -1596,20 +1596,27 @@ void CCompositionProcessorEngine::SetupCandidateListRange(IME_MODE imeMode)
 	WCHAR localSelKey[MAX_CAND_SELKEY];
 	WCHAR phraseSelKey[MAX_CAND_SELKEY];
 
-	// Dayi: a fixed select-key set overrides the table's %selkey. Space keeps
-	// selecting the (highlighted) first candidate through the VK_SPACE convert
-	// path, so it does not take a slot and the first select key is candidate 1.
+	// Dayi: a fixed select-key set overrides the table's %selkey.
+	//  - Numeric (1-0): ten keys, space does not take a slot (it still converts
+	//    to the highlighted candidate through the VK_SPACE convert path).
+	//  - Dayi keys (' [ ] - \ " { } _): as in the Dayi manual, space is the
+	//    first select key (candidate 0), ' the second, [ the third, ...: ten slots.
 	BOOL spaceAsFirstCandSelkey = CConfig::GetSpaceAsFirstCaniSelkey();
 	const DAYI_SELKEY_MODE dayiSelkeyMode = (imeMode == IME_MODE::IME_MODE_DAYI) ?
 		CConfig::GetDayiSelkeyMode() : DAYI_SELKEY_MODE::DAYI_SELKEY_FROM_TABLE;
 
-	if (dayiSelkeyMode != DAYI_SELKEY_MODE::DAYI_SELKEY_FROM_TABLE)
+	if (dayiSelkeyMode == DAYI_SELKEY_MODE::DAYI_SELKEY_NUMERIC)
 	{
-		StringCchCopy(localSelKey, MAX_CAND_SELKEY,
-			(dayiSelkeyMode == DAYI_SELKEY_MODE::DAYI_SELKEY_NUMERIC) ? L"1234567890" : L"'[]-\\\"{}_");
+		StringCchCopy(localSelKey, MAX_CAND_SELKEY, L"1234567890");
 		pSelkey = localSelKey;
 		_candidatePageSize = (UINT)wcslen(pSelkey);
 		spaceAsFirstCandSelkey = FALSE;
+	}
+	else if (dayiSelkeyMode == DAYI_SELKEY_MODE::DAYI_SELKEY_DAYI)
+	{
+		StringCchCopy(localSelKey, MAX_CAND_SELKEY, L"'[]-\\\"{}_");
+		pSelkey = localSelKey;
+		_candidatePageSize = (UINT)wcslen(pSelkey) + (spaceAsFirstCandSelkey ? 1 : 0);
 	}
 	else if (pSelkey == nullptr || wcslen(pSelkey) == 0)
 	{

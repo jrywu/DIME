@@ -228,7 +228,7 @@ namespace DIMEUnitTests
         TEST_METHOD(Dayi_PagingTwelve)        { CheckGolden(L"dayi_paging_twelve", DayiOptions(), L"g Space PgDn PgUp Down Down 3"); }
         TEST_METHOD(Dayi_SpaceAsPageDown)     { CheckGolden(L"dayi_space_as_page_down", DayiOptions({ L"SpaceAsPageDown = 1", L"SpaceAsFirstCandSelkey = 0" }), L"g Space Space Space 1"); }
         TEST_METHOD(Dayi_SelkeyNumeric)       { CheckGolden(L"dayi_selkey_numeric", DayiOptions({ L"DayiSelkeyMode = 1" }), L"a Space 2 g Space 0"); }
-        TEST_METHOD(Dayi_SelkeyDayi)          { CheckGolden(L"dayi_selkey_dayi", DayiOptions({ L"DayiSelkeyMode = 2" }), L"a Space [ g Space Shift+' g Space \\"); }
+        TEST_METHOD(Dayi_SelkeyDayi)          { CheckGolden(L"dayi_selkey_dayi", DayiOptions({ L"DayiSelkeyMode = 2" }), L"a Space ' a Space Space a Space [ g Space Shift+' g Space \\"); }
         TEST_METHOD(Dayi_AddressChars)        { CheckGolden(L"dayi_address_chars", DayiOptions(), L"' [ ] - \\ `"); }
         TEST_METHOD(Dayi_ArticleMode)         { CheckGolden(L"dayi_article_mode", DayiOptions({ L"DayiArticleMode = 1" }), L"' [ ] - \\"); }
         TEST_METHOD(Dayi_SymbolPrompt)        { CheckGolden(L"dayi_symbol_prompt", DayiOptions(), L"= 1 Space 2 = 2 Space 1"); }
