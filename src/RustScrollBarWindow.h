@@ -1,6 +1,10 @@
 // RustScrollBarWindow.h - the candidate window's scroll bar owned by Rust
 // (dime-ui::sbwin, phase 3c-5c; docs/RUST_WINDOW_OWNERSHIP.md).
 //
+// Tests only (3c-5f): the Rust DIME.dll has no C++ candidate window; dime-ui's
+// candidate window owns its scroll bar directly. Parity tests put this beside a
+// C++ CCandidateWindow to compare it with CScrollBarWindow.
+//
 // CRustScrollBarWindow implements IDimeScrollBar (ScrollBarWindow.h) over a
 // Rust handle. CBaseWindow keeps a scroll bar's capture and timers on the
 // candidate window; the Rust scroll bar asks the candidate through

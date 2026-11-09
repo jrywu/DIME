@@ -1,6 +1,6 @@
 # 3c-5：由 Rust 擁有 UI 視窗（設計提案）
 
-狀態：已決定（2026-11-08，見第 5 節），進行中。屬於 `RUST_MIGRATION_PLAN.md` 第 3 階段。
+狀態：已完成（2026-11-10；決定見第 5 節）。屬於 `RUST_MIGRATION_PLAN.md` 第 3 階段。
 
 ## 1. 現況
 
@@ -63,7 +63,7 @@
 | 3c-5e | 提示窗由 Rust 擁有；`UIPresenter` 的提示窗堆疊改用 handle。照 3c-5d 的做法分步，但提示窗的分派小，切換與移除分派併成一步： | 中 |
 | ✅ 3c-5e-1 | `notifywin::NotifyWindow`：自有狀態（文字、顏色與背景筆刷、標題大小、位置、延遲顯示／自動隱藏時間、capture／計時器物件旗標），擁有陰影窗，繪圖與行為沿用 3c-6 的 `notify`（`NotifyHost` 改由 Rust 狀態實作）；回呼經 `DimeNotifyCallback`。FFI 是 `dime_ui_notifywin_*`（不透明型別 `DimeNotify`）。C++ 端 `CRustNotifyWindow`（`src/RustNotifyWindow.*`，和 `CRustCandidateWindow` 一樣不是視窗）提供 `UIPresenter` 用到的 `CNotifyWindow` 成員，`DimeNotifyWindow` 依建置開關選它或 `CNotifyWindow`；`CNotifyWindow` 新增 `_IsCreated()`（`_GetUIWnd() != nullptr`），讓 `UIPresenter` 兩種建置用同一個名字。`NotifyParityTest` 改為 C++ `CNotifyWindow`（C++ 繪圖與行為）對 `CRustNotifyWindow`：繪圖 72 次逐像素、行為 12 組 × 80 步相同（新增真的 `WM_TIMER` 訊息，走計時器物件的轉交；Rust 的計時器以 `dime_ui_notifywin_set_timer_hook` 記錄，格式同 `g_baseWindowTimerTestHook`）。植入錯誤（繪圖後不重設大小、`WM_TIMER` 不檢查計時器物件）都被抓到。`UIPresenter` 尚未改用 | |
 | ✅ 3c-5e-2 | `UIPresenter` 的提示窗堆疊在 Rust 建置下持有 `DimeNotifyWindow` = `CRustNotifyWindow`（`MakeNotifyWindow` 改用 `_IsCreated()` 判斷是否已建立），`DIME.NotifyWindow` 在 Rust 建置下由 `dime_ui_register_window_class`（popup）註冊；測試裡的 C++ `CNotifyWindow` 改用 `EnsureWindowClassesRegistered()` 另外註冊的 `DIME.Test.CppNotifyWindow`（`g_cppNotifyWindowAtomForTest`）。移除 `CNotifyWindow` 的 Rust 分派（`_useRust`、`CNotifyWindowRustHost`、`_OnPaintRust`；`_OnPaintCpp` 改回 `_OnPaint`）與只給它用的 FFI（`DimeNotifyPaint`／`dime_ui_notify_paint`、`DimeNotifyHostVtbl`／`DimeNotifyHost`／`dime_ui_notify_show`／`_timer`／`_window_proc`），`notify` 只剩 `notifywin` 使用。新增 `IT06_04_NotifyWindowIsReal`：`UIPresenter` 建立的兩個提示窗是真實視窗、類別正確、重複 `MakeNotifyWindow` 不重建、顯示後可見且依文字定大小、`_RestackVisibleSlots` 同左緣不重疊、自動隱藏計時器經訊息迴圈隱藏、逐一與全部銷毀。Rust 視窗沒有 C++ 的「虛擬視窗」（atom 為 0 時只記可見旗標），原本未註冊類別就檢查提示窗可見性的五個 `UIPresenter` 測試改為先註冊類別。植入錯誤（`CRustNotifyWindow::_Move` 不動作、`_Create` 丟掉初始文字）都被新測試與 `NotifyParityTest` 抓到 | |
-| 3c-5f | Rust 建置不再編譯 C++ 視窗子類；刪除 `CButtonWindow`／`CScrollButtonWindow` 死碼（兩種建置） | 低 |
+| ✅ 3c-5f | Rust 建置的 `DIME.dll` 不再編譯 `BaseWindow`／`CandidateWindow`／`NotifyWindow`／`ScrollBarWindow`／`ShadowWindow`（`DIME.vcxproj` 依 `DimeRustEnabled` 排除；連結器確認只剩 `Global::UnregisterWindowClass` 用到 `CBaseWindow::_UninitWindowClass`，改為直接 `UnregisterClass`）；`DIMETests` 仍編譯它們供對拍。`CButtonWindow`／`CScrollButtonWindow` 刪除（兩種建置）。3c-5d-3 留下的 `CCandidateWindow` 捲軸選擇：`CRustScrollBarWindow`（與 `DimeSbParent` FFI）只剩對拍測試用來把 Rust 捲軸放在 C++ 候選字窗旁（`ScrollBarProcParityTest`、`ScrollBarPaintMatchesCpp` 逐方法比對），因此保留但移出 `DIME.vcxproj`，`CCandidateWindow` 內的使用改為只在 `DIME_UNIT_TESTING` 下編譯；正式的 C++ 候選字窗一律用 `CScrollBarWindow` | 低 |
 
 每一步都有自己的對拍與完整矩陣，個別提交。
 

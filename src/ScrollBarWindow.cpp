@@ -688,7 +688,7 @@ SCROLLBAR_HITTEST CScrollBarWindow::_HitTest(POINT pt)
 
 void CScrollBarWindow::_SetCurPos(int nPos, int dwSB)
 {
-	debugPrint(L"CScrollButtonWindow::_SetCurPos() nPos = %d, dwSB = %d", nPos, dwSB);
+	debugPrint(L"CScrollBarWindow::_SetCurPos() nPos = %d, dwSB = %d", nPos, dwSB);
     //int posMax = (_scrollInfo.nMax <= _scrollInfo.nPage) ? 0 : _scrollInfo.nMax - _scrollInfo.nPage;
 
 	nPos = UILayout::ScrollBarClampPos(nPos, _scrollInfo.nMax);
@@ -834,117 +834,4 @@ int CScrollBarWindow::_GetHoverWidth()
 {
     UINT dpi = CConfig::GetDpiForHwnd(_GetWnd());
     return UILayout::ScaleForDpi(SCROLLBAR_HOVER_WIDTH, dpi);
-}
-
-
-//////////////////////////////////////////////////////////////////////
-//
-// CScrollButtonWindow class.
-//
-//////////////////////////////////////////////////////////////////////+---------------------------------------------------------------------------
-//
-// _OnPaint
-//
-//----------------------------------------------------------------------------
-
-void CScrollButtonWindow::_OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps)
-{
-	debugPrint(L"CScrollButtonWindow::_OnPaint()\n");
-    pps;
-
-    RECT rc = {0, 0, 0, 0};
-
-    _GetClientRect(&rc);
-
-    DrawFrameControl(dcHandle, &rc, DFC_SCROLL, DFCS_FLAT | subTypeOfControl | typeOfControl | (!_IsEnabled() ? DFCS_INACTIVE : 0));
-}
-
-//+---------------------------------------------------------------------------
-//
-// _OnLButtonDown
-//
-//----------------------------------------------------------------------------
-
-void CScrollButtonWindow::_OnLButtonDown(POINT pt)
-{
-    CButtonWindow::_OnLButtonDown(pt);
-
-    CScrollBarWindow* pParent = (CScrollBarWindow*)_GetParent();    // more secure w/ dynamic_cast
-    if (pParent == nullptr)
-    {
-        return;
-    }
-
-    switch (subTypeOfControl)
-    {
-    case DFCS_SCROLLDOWN:
-        _NotifyCommand(WM_VSCROLL, SB_PAGEDOWN, 0);
-        pParent->_ShiftPage(+1, FALSE);
-        break;
-    case DFCS_SCROLLUP:
-        _NotifyCommand(WM_VSCROLL, SB_PAGEUP, 0);
-        pParent->_ShiftPage(-1, FALSE);
-        break;
-    }
-
-    _StartTimer(_GetScrollDelay());
-}
-
-//+---------------------------------------------------------------------------
-//
-// _OnLButtonUp
-//
-//----------------------------------------------------------------------------
-
-void CScrollButtonWindow::_OnLButtonUp(POINT pt)
-{
-    CButtonWindow::_OnLButtonUp(pt);
-
-    _InvalidateRect();
-
-    if (_IsTimer())
-    {
-        _EndTimer();
-    }
-}
-
-//+---------------------------------------------------------------------------
-//
-// _OnTimer : Speed up page Down/Up while holding Down/Up Button
-//
-//----------------------------------------------------------------------------
-
-void CScrollButtonWindow::_OnTimer()
-{
-    POINT pt = {0, 0};
-    CScrollBarWindow* pParent = (CScrollBarWindow*)_GetParent();    // more secure w/ dynamic_cast
-    if (pParent == nullptr)
-    {
-        return;
-    }
-
-    // start another faster timer
-    _StartTimer(_GetScrollSpeed());
-
-    GetCursorPos(&pt);
-    MapWindowPoints(HWND_DESKTOP, pParent->_GetWnd(), &pt, 1);
-
-    RECT rc = {0, 0, 0, 0};
-
-    _GetClientRect(&rc);
-
-    if (PtInRect(&rc, pt))
-    {
-        switch (subTypeOfControl)
-        {
-        case DFCS_SCROLLDOWN:
-            _NotifyCommand(WM_VSCROLL, SB_LINEDOWN, 0);
-            pParent->_ShiftLine(+1, FALSE);
-            break;
-        case DFCS_SCROLLUP:
-            _NotifyCommand(WM_VSCROLL, SB_LINEUP, 0);
-            pParent->_ShiftLine(-1, FALSE);
-            break;
-        }
-    }
 }

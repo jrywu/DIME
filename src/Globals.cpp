@@ -370,7 +370,9 @@ void UnregisterWindowClass()
                       &AtomNotifyWindow, &AtomNotifyShadowWindow };
     for (ATOM* atom : atoms)
     {
-        CBaseWindow::_UninitWindowClass(*atom);
+        // CBaseWindow::_UninitWindowClass (CBaseWindow is not compiled into the Rust build).
+        if (*atom != 0)
+            UnregisterClass((LPCTSTR)(ULONG_PTR)*atom, dllInstanceHandle);
         *atom = 0;
     }
 }

@@ -39,7 +39,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "BaseWindow.h"
 #include "ShadowWindow.h"
 #include "RustShadowWindow.h"
-#include "RustScrollBarWindow.h"
+#if defined(DIME_UNIT_TESTING) && defined(DIME_RUST_AVAILABLE)
+#include "RustScrollBarWindow.h"   // the Rust scroll bar beside a C++ candidate window (parity tests)
+#endif
 #include "ScrollBarWindow.h"
 #include "BaseStructure.h"
 #include "Define.h"
@@ -177,7 +179,7 @@ private:
 
     BOOL _isStoreAppMode;
     BOOL _isTrackingCandMouse;   // TRUE while TrackMouseEvent(TME_LEAVE) is active
-    BOOL _useRustScrollBar;      // CRustScrollBarWindow (DIME_USE_RUST_ENGINE) or CScrollBarWindow
+    BOOL _useRustScrollBar;      // tests: CRustScrollBarWindow; otherwise always CScrollBarWindow
     ATOM _scrollBarAtomForTest;  // 0: Global::AtomCandidateScrollBarWindow
 
 	BYTE _animationStage;

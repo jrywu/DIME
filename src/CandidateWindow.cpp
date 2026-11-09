@@ -83,7 +83,9 @@ CCandidateWindow::CCandidateWindow(_In_ CANDWNDCALLBACK pfnCallback, _In_ void *
 
     _isStoreAppMode = isStoreAppMode;
     _isTrackingCandMouse = FALSE;
-#ifdef DIME_USE_RUST_ENGINE
+#if defined(DIME_UNIT_TESTING) && defined(DIME_USE_RUST_ENGINE)
+    // Tests only (the Rust DIME.dll does not compile CCandidateWindow): DIME.CandidateScrollBarWindow
+    // has Rust's window procedure in this build, so the default scroll bar is the Rust one.
     _useRustScrollBar = TRUE;
 #else
     _useRustScrollBar = FALSE;
@@ -197,10 +199,10 @@ BOOL CCandidateWindow::_CreateBackGroundShadowWindow()
     return TRUE;
 }
 
-#ifdef DIME_RUST_AVAILABLE
+#if defined(DIME_UNIT_TESTING) && defined(DIME_RUST_AVAILABLE)
 //+---------------------------------------------------------------------------
 //
-// The candidate window's side of a Rust-owned scroll bar (CRustScrollBarWindow):
+// The candidate window's side of a Rust-owned scroll bar (CRustScrollBarWindow, tests only):
 // CBaseWindow keeps a scroll bar's capture and timers on this window.
 //
 //----------------------------------------------------------------------------
@@ -226,7 +228,7 @@ BOOL CCandidateWindow::_CreateVScrollWindow()
     BOOL ret = FALSE;
     ATOM atom = _scrollBarAtomForTest ? _scrollBarAtomForTest : Global::AtomCandidateScrollBarWindow;
 
-#ifdef DIME_RUST_AVAILABLE
+#if defined(DIME_UNIT_TESTING) && defined(DIME_RUST_AVAILABLE)
     if (_useRustScrollBar)
     {
         _pVScrollBarWnd = std::make_unique<CRustScrollBarWindow>(CCandidateWindowSbParent::For(this));

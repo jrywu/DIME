@@ -34,10 +34,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
 #include "BaseWindow.h"
-#include "ButtonWindow.h"
 #include "UILayout.h"
 
-class CScrollButtonWindow;
 
 enum SCROLLBAR_DIRECTION
 {
@@ -361,35 +359,4 @@ public:
     virtual void _ShiftPosition(int iPos, BOOL isNotify) { iPos; isNotify; };
     virtual void _GetScrollArea(_Out_ RECT *prc) { prc->bottom = 0; prc->left = 0; prc->right = 0; prc->top = 0; };
     virtual void _SetCurPos(int nPos, DWORD dwSB) { nPos; dwSB; };
-};
-
-//////////////////////////////////////////////////////////////////////
-//
-// CScrollButtonWindow declaration.
-//
-//////////////////////////////////////////////////////////////////////
-
-class CScrollButtonWindow : public CButtonWindow
-{
-public:
-    CScrollButtonWindow(UINT uSubType)
-    {
-        subTypeOfControl = uSubType;
-    }
-    virtual ~CScrollButtonWindow()
-    {
-    }
-
-    LRESULT CALLBACK _WindowProcCallback(_In_ HWND wndHandle, UINT uMsg, _In_ WPARAM wParam, _In_ LPARAM lParam) 
-    { 
-        wndHandle;uMsg;wParam;lParam;
-        return 0; 
-    }
-    virtual void _OnPaint(_In_ HDC dcHandle, _In_ PAINTSTRUCT *pps);
-    virtual void _OnLButtonDown(POINT pt);
-    virtual void _OnLButtonUp(POINT pt);
-    virtual void _OnTimer();
-
-private:
-    UINT subTypeOfControl;        // DFCS_SCROLLxxx for DrawFrameControl
 };

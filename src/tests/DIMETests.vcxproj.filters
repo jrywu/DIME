@@ -86,9 +86,6 @@
     <ClCompile Include="..\\ActiveLanguageProfileNotifySink.cpp">
       <Filter>Source Files\DIME Source</Filter>
     </ClCompile>
-    <ClCompile Include="..\\ButtonWindow.cpp">
-      <Filter>Source Files\DIME Source</Filter>
-    </ClCompile>
     <ClCompile Include="..\\CandidateHandler.cpp">
       <Filter>Source Files\DIME Source</Filter>
     </ClCompile>
