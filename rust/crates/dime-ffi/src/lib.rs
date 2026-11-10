@@ -2255,6 +2255,22 @@ pub unsafe extern "C" fn dime_session_handle_composition_convert(
     unsafe { with_host(host, |h| session::handle_composition_convert(h, wildcard != 0, array_phrase_ending != 0)) }
 }
 
+/// `CKeyHandlerEditSession::DoEditSession`: the key state of `category`
+/// handles `function` (`session::handle_key`, phase 4a).
+///
+/// # Safety
+/// See `dime_session_handle_complete`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_session_handle_key(
+    host: *const DimeHost,
+    category: u32,
+    function: u32,
+    code: u32,
+    wch: u16,
+) -> i32 {
+    unsafe { with_host(host, |h| session::handle_key(h, category, function, code, wch)) }
+}
+
 /// `_HandleCompositionBackspace`.
 ///
 /// # Safety

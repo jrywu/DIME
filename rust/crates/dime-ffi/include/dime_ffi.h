@@ -553,6 +553,9 @@ int32_t dime_session_handle_composition_arrow_key(const DimeHost* host, uint32_t
 int32_t dime_session_handle_sentence_commit(const DimeHost* host);
 int32_t dime_session_handle_sentence_backspace(const DimeHost* host, uint32_t code);
 int32_t dime_session_handle_sentence_arrow_key(const DimeHost* host, uint32_t function);
+/* CKeyHandlerEditSession::DoEditSession: the key state of category (KEYSTROKE_CATEGORY) handles
+ * function (KEYSTROKE_FUNCTION), as CKeyStateCategory and its subclasses (phase 4a). */
+int32_t dime_session_handle_key(const DimeHost* host, uint32_t category, uint32_t function, uint32_t code, uint16_t wch);
 
 DimeSession* dime_session_new(void);
 void        dime_session_free(DimeSession* s);

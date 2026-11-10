@@ -61,14 +61,14 @@
 
 | 步驟 | 內容 | 風險 |
 |---|---|---|
-| 4a | 按鍵路由進 Rust（3.2）。驗證：KeyFlow 全部情境（每個按鍵都經過路由；`KeyStateCategory` 沒有專屬單元測試），另以植入錯誤確認每個類別都走到 Rust | 低 |
+| ✅ 4a | 按鍵路由進 Rust：`session::handle_key`（`keyclass` 補齊 `PHRASE`／`PHRASE_FROM_KEYSTROKE`／`SENTENCE` 類別與 `FINALIZE_TEXTSTORE_AND_INPUT`／`FINALIZE_CANDIDATELIST`／`DOUBLE_SINGLE_BYTE` 功能）逐條對應 `CKeyStateComposing`／`Candidate`／`Phrase`／`Sentence`／`Null`：兩步驟的組合依序呼叫兩個 handler、回傳第二個的結果；`CKeyStateNull` 與未覆寫的功能回傳 `E_NOTIMPL`，`KeyStateHandler` 不路由的功能回傳 `E_INVALIDARG`。Rust 建置的 `CKeyHandlerEditSession::DoEditSession` 只建立一個 `CRustSessionHost` 並呼叫 `dime_session_handle_key`（原本兩步驟各建一個 host；host 的暫存只在單次 callback 內有效，共用不影響行為），`KeyStateCategory.cpp` 只編進 C++ 建置。Rust 單元測試：不路由的組合不碰 host、13 種組合與直接呼叫 handler 的呼叫紀錄相同。植入錯誤：Candidate 的「選字並輸入」少了輸入（KeyFlow 3 個情境抓到）、Composing 的 Backspace 改成取消（6 個情境抓到）；Composing 的方向鍵改走候選字窗版本時 KeyFlow 看不出差別（兩者只差一次設回原選取範圍的 `SetSelection`），改由 Rust 單元測試把關（`Mock` 記錄 `composition_arrow_key`）。`CDIME::_HandleXxx` 中只被路由表呼叫的 13 個 Rust 分派包裝在 Rust 建置下已無呼叫者，留到 4e 清理 | 低 |
 | 4b | 呈現器。分三步： | 高：和 TSF、游標追蹤、多提示窗互動最多 |
 | 4b-1 | `dime-ui::presenter` 的位置與提示窗策略（`_LayoutChangeNotification`、`ShowNotifyText`、堆疊）：C++ 收集事實、Rust 決定位置的純函式先上，對拍 `UIPresenter` 原版 | 中 |
 | 4b-2 | 呈現器擁有狀態與 Rust 視窗；`CUIPresenter` 只剩 TSF 介面與 host；`DimeHost` 的 UI callback 改成 Rust 內部呼叫 | 高 |
 | 4b-3 | 移除 `CRustCandidateWindow`／`CRustNotifyWindow`；`UIPresenter` 的邏輯部分只編進 C++ 建置 | 低 |
 | 4c | 引擎設定（3.4） | 中：碼表重新載入與自訂碼表優先順序 |
 | 4d | 語言列與 compartment（3.5） | 中：compartment 事件的重入 |
-| 4e | 清理：`Globals`／`BaseStructure` 中 Rust 建置已無人使用的部分改成只編進 C++ 建置或刪除；`DIME.vcxproj` 依 `DimeRustEnabled` 排除已完全移走的檔案；統計剩下的 C++ 行數 | 低 |
+| 4e | 清理：`Globals`／`BaseStructure` 中 Rust 建置已無人使用的部分改成只編進 C++ 建置或刪除；4a 之後只剩路由表呼叫的 `CDIME::_HandleXxx` 包裝在 Rust 建置下移除；`DIME.vcxproj` 依 `DimeRustEnabled` 排除已完全移走的檔案；統計剩下的 C++ 行數 | 低 |
 
 每一步都有自己的對拍與完整矩陣，個別提交。
 

@@ -125,7 +125,8 @@
     <ClCompile Include="CompositionProcessorEngine.cpp" />
     <ClCompile Include="EnumTfCandidates.cpp" />
     <ClCompile Include="KeyProcesser.cpp" />
-    <ClCompile Include="KeyStateCategory.cpp" />
+    <!-- The key state routing is in Rust in the Rust build (dime-core::session::handle_key, phase 4a). -->
+    <ClCompile Include="KeyStateCategory.cpp" Condition="'$(DimeRustEnabled)'!='true'" />
     <ClCompile Include="NotifyWindow.cpp" Condition="'$(DimeRustEnabled)'!='true'" />
     <ClCompile Include="BaseStructure.cpp" />
     <ClCompile Include="ReverseConversion.cpp" />

@@ -38,6 +38,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "DIME.h"
 #include "CompositionProcessorEngine.h"
 #include "KeyStateCategory.h"
+#ifdef DIME_USE_RUST_ENGINE
+#include "RustSessionHost.h"
+#endif
 
 //////////////////////////////////////////////////////////////////////
 //
@@ -53,6 +56,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 STDAPI CKeyHandlerEditSession::DoEditSession(TfEditCookie ec)
 {
+#ifdef DIME_USE_RUST_ENGINE
+    // The key state routing (CKeyStateCategory) is in Rust: dime-core::session::handle_key.
+    CRustSessionHost host(_pTextService, ec, _pContext);
+    return dime_session_handle_key(host.Get(), (uint32_t)_KeyState.Category, (uint32_t)_KeyState.Function, _uCode, _wch);
+#else
     HRESULT hResult = S_OK;
 
     CKeyStateCategoryFactory* pKeyStateCategoryFactory = CKeyStateCategoryFactory::Instance();
@@ -68,4 +76,5 @@ STDAPI CKeyHandlerEditSession::DoEditSession(TfEditCookie ec)
     }
 
     return hResult;
+#endif
 }

@@ -894,6 +894,116 @@ pub fn handle_sentence_arrow_key(h: &mut impl Host, function: u32) -> HResult {
     sentence_render(h, &[])
 }
 
+// ---------------------------------------------------------------------------
+// Key routing (`CKeyStateCategory` and its subclasses, phase 4a)
+// ---------------------------------------------------------------------------
+
+/// `E_NOTIMPL`: the key state has no handler for the function.
+pub const E_NOTIMPL: HResult = 0x8000_4001_u32 as i32;
+/// `E_INVALIDARG`: a function `CKeyStateCategory::KeyStateHandler` does not route.
+pub const E_INVALIDARG: HResult = 0x8007_0057_u32 as i32;
+
+/// `CKeyHandlerEditSession::DoEditSession`: the key state of `category`
+/// (`CKeyStateCategoryFactory::MakeKeyStateCategory`) handles `function`
+/// (`CKeyStateCategory::KeyStateHandler`).  Two-step entries run both
+/// handlers and return the second one's result, as the C++ subclasses do.
+/// `NONE`, `PHRASE_FROM_KEYSTROKE`, `INVOKE_COMPOSITION_EDIT_SESSION` and
+/// unknown categories are `CKeyStateNull`: `E_NOTIMPL` for every routed
+/// function.  Unrouted functions (`NONE`, unknown) are `E_INVALIDARG` in every
+/// state.
+pub fn handle_key(h: &mut impl Host, category: u32, function: u32, code: u32, wch: u16) -> HResult {
+    use crate::keyclass::{category as c, function as f};
+    let routed = matches!(
+        function,
+        f::INPUT
+            | f::INPUT_AND_CONVERT
+            | f::INPUT_AND_CONVERT_WILDCARD
+            | f::FINALIZE_TEXTSTORE_AND_INPUT
+            | f::FINALIZE_TEXTSTORE
+            | f::FINALIZE_CANDIDATELIST_AND_INPUT
+            | f::FINALIZE_CANDIDATELIST
+            | f::CONVERT
+            | f::CONVERT_WILDCARD
+            | f::CONVERT_ARRAY_PHRASE
+            | f::CONVERT_ARRAY_PHRASE_WILDCARD
+            | f::CANCEL
+            | f::BACKSPACE
+            | f::MOVE_LEFT
+            | f::MOVE_RIGHT
+            | f::MOVE_UP
+            | f::MOVE_DOWN
+            | f::MOVE_PAGE_UP
+            | f::MOVE_PAGE_DOWN
+            | f::MOVE_PAGE_TOP
+            | f::MOVE_PAGE_BOTTOM
+            | f::DOUBLE_SINGLE_BYTE
+            | f::SHIFT_ENGLISH_INPUT
+            | f::ADDRESS_DIRECT_INPUT
+            | f::SELECT_BY_NUMBER
+    );
+    if !routed {
+        return E_INVALIDARG;
+    }
+    let arrow = (f::MOVE_LEFT..=f::MOVE_PAGE_BOTTOM).contains(&function);
+    match category {
+        // CKeyStateComposing
+        c::COMPOSING => match function {
+            f::INPUT => handle_composition_input(h, wch),
+            f::INPUT_AND_CONVERT | f::INPUT_AND_CONVERT_WILDCARD => {
+                handle_composition_input(h, wch);
+                handle_composition_convert(h, function == f::INPUT_AND_CONVERT_WILDCARD, false)
+            }
+            f::FINALIZE_TEXTSTORE_AND_INPUT | f::FINALIZE_CANDIDATELIST_AND_INPUT => {
+                handle_composition_finalize(h, function == f::FINALIZE_CANDIDATELIST_AND_INPUT);
+                handle_composition_input(h, wch)
+            }
+            f::FINALIZE_TEXTSTORE => handle_composition_finalize(h, false),
+            f::FINALIZE_CANDIDATELIST => handle_composition_finalize(h, true),
+            f::CONVERT => handle_composition_convert(h, false, false),
+            f::CONVERT_WILDCARD => handle_composition_convert(h, true, false),
+            f::CONVERT_ARRAY_PHRASE => handle_composition_convert(h, false, true),
+            f::CONVERT_ARRAY_PHRASE_WILDCARD => handle_composition_convert(h, true, true),
+            f::CANCEL => handle_cancel(h),
+            f::BACKSPACE => handle_composition_backspace(h),
+            _ if arrow => handle_composition_arrow_key(h, function),
+            f::DOUBLE_SINGLE_BYTE => handle_double_single_byte(h, wch),
+            f::ADDRESS_DIRECT_INPUT => handle_address_char(h, wch),
+            f::SHIFT_ENGLISH_INPUT => handle_shift_english_input(h, code, wch),
+            _ => E_NOTIMPL, // SELECT_BY_NUMBER
+        },
+        // CKeyStateCandidate (_HandleCandidateFinalize / _HandleCandidateConvert are both
+        // _HandleCandidateWorker)
+        c::CANDIDATE => match function {
+            f::FINALIZE_CANDIDATELIST | f::CONVERT => handle_candidate_finalize(h),
+            f::FINALIZE_CANDIDATELIST_AND_INPUT => {
+                handle_candidate_finalize(h);
+                handle_composition_input(h, wch)
+            }
+            f::CANCEL => handle_cancel(h),
+            _ if arrow => handle_candidate_arrow_key(h, function),
+            f::SELECT_BY_NUMBER => handle_candidate_select_by_number(h, code, wch),
+            _ => E_NOTIMPL,
+        },
+        // CKeyStatePhrase (_HandlePhraseArrowKey is the candidate one)
+        c::PHRASE => match function {
+            f::FINALIZE_CANDIDATELIST => handle_phrase_finalize(h),
+            f::CANCEL => handle_cancel(h),
+            _ if arrow => handle_candidate_arrow_key(h, function),
+            f::SELECT_BY_NUMBER => handle_phrase_select_by_number(h, code, wch),
+            _ => E_NOTIMPL,
+        },
+        // CKeyStateSentence
+        c::SENTENCE => match function {
+            f::CONVERT => handle_sentence_commit(h),
+            f::BACKSPACE => handle_sentence_backspace(h, code),
+            _ if arrow => handle_sentence_arrow_key(h, function),
+            _ => E_NOTIMPL,
+        },
+        // CKeyStateNull
+        _ => E_NOTIMPL,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1088,7 +1198,9 @@ mod tests {
         fn create_and_start_candidate(&mut self) -> HResult {
             S_OK
         }
-        fn composition_arrow_key(&mut self, _function: u32) {}
+        fn composition_arrow_key(&mut self, function: u32) {
+            self.calls.push(format!("composition_arrow {function}"));
+        }
         fn set_commit_string(&mut self, _text: &[u16]) {}
         fn async_reverse_conversion(&mut self) {}
         fn beep(&mut self, kind: u32) {
@@ -1197,5 +1309,90 @@ mod tests {
         assert_eq!(dayi_address_char(u16::from(b'a'), false), 0);
         assert_eq!(full_width(u16::from(b' ')), 0x3000);
         assert_eq!(full_width(u16::from(b'~')), 0xFF5E);
+    }
+
+    fn mock_composing() -> Mock {
+        Mock {
+            composing: true,
+            vk_len: 2,
+            selected: "東".encode_utf16().collect(),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn handle_key_unrouted_touches_nothing() {
+        use crate::keyclass::{category as c, function as f};
+        let cats = [c::NONE, c::COMPOSING, c::CANDIDATE, c::PHRASE, c::PHRASE_FROM_KEYSTROKE,
+                    c::INVOKE_COMPOSITION_EDIT_SESSION, c::SENTENCE, 99];
+        for cat in cats {
+            // FUNCTION_NONE and unknown functions are not routed by KeyStateHandler.
+            for func in [f::NONE, 26, 1000] {
+                let mut m = mock_composing();
+                assert_eq!(handle_key(&mut m, cat, func, 0x41, u16::from(b'a')), E_INVALIDARG, "{cat} {func}");
+                assert!(m.calls.is_empty());
+            }
+        }
+        // CKeyStateNull: E_NOTIMPL for every routed function.
+        for cat in [c::NONE, c::PHRASE_FROM_KEYSTROKE, c::INVOKE_COMPOSITION_EDIT_SESSION, 99] {
+            for func in f::INPUT..=f::SHIFT_ENGLISH_INPUT {
+                let mut m = mock_composing();
+                assert_eq!(handle_key(&mut m, cat, func, 0x41, u16::from(b'a')), E_NOTIMPL, "{cat} {func}");
+                assert!(m.calls.is_empty());
+            }
+        }
+        // Functions a key state does not override.
+        for (cat, func) in [(c::COMPOSING, f::SELECT_BY_NUMBER), (c::CANDIDATE, f::INPUT), (c::CANDIDATE, f::BACKSPACE),
+                            (c::PHRASE, f::CONVERT), (c::PHRASE, f::FINALIZE_CANDIDATELIST_AND_INPUT),
+                            (c::SENTENCE, f::INPUT), (c::SENTENCE, f::CANCEL), (c::SENTENCE, f::SELECT_BY_NUMBER)] {
+            let mut m = mock_composing();
+            assert_eq!(handle_key(&mut m, cat, func, 0x41, u16::from(b'a')), E_NOTIMPL, "{cat} {func}");
+            assert!(m.calls.is_empty());
+        }
+    }
+
+    #[test]
+    fn handle_key_routes_like_the_key_states() {
+        use crate::keyclass::{category as c, function as f};
+        let wch = u16::from(b'a');
+        type Direct = fn(&mut Mock) -> HResult;
+        let cases: [(u32, u32, Direct); 13] = [
+            (c::COMPOSING, f::MOVE_LEFT, |m| handle_composition_arrow_key(m, crate::keyclass::function::MOVE_LEFT)),
+            (c::COMPOSING, f::INPUT_AND_CONVERT, |m| {
+                handle_composition_input(m, u16::from(b'a'));
+                handle_composition_convert(m, false, false)
+            }),
+            (c::COMPOSING, f::INPUT_AND_CONVERT_WILDCARD, |m| {
+                handle_composition_input(m, u16::from(b'a'));
+                handle_composition_convert(m, true, false)
+            }),
+            (c::COMPOSING, f::FINALIZE_TEXTSTORE_AND_INPUT, |m| {
+                handle_composition_finalize(m, false);
+                handle_composition_input(m, u16::from(b'a'))
+            }),
+            (c::COMPOSING, f::FINALIZE_CANDIDATELIST_AND_INPUT, |m| {
+                handle_composition_finalize(m, true);
+                handle_composition_input(m, u16::from(b'a'))
+            }),
+            (c::COMPOSING, f::CONVERT_ARRAY_PHRASE_WILDCARD, |m| handle_composition_convert(m, true, true)),
+            (c::COMPOSING, f::CANCEL, |m| handle_cancel(m)),
+            (c::CANDIDATE, f::CONVERT, |m| handle_candidate_finalize(m)),
+            (c::CANDIDATE, f::FINALIZE_CANDIDATELIST_AND_INPUT, |m| {
+                handle_candidate_finalize(m);
+                handle_composition_input(m, u16::from(b'a'))
+            }),
+            (c::CANDIDATE, f::MOVE_PAGE_DOWN, |m| handle_candidate_arrow_key(m, crate::keyclass::function::MOVE_PAGE_DOWN)),
+            (c::PHRASE, f::FINALIZE_CANDIDATELIST, |m| handle_phrase_finalize(m)),
+            (c::PHRASE, f::MOVE_UP, |m| handle_candidate_arrow_key(m, crate::keyclass::function::MOVE_UP)),
+            (c::SENTENCE, f::CONVERT, |m| handle_sentence_commit(m)),
+        ];
+        for (cat, func, direct) in cases {
+            let mut routed = mock_composing();
+            let mut expected = mock_composing();
+            let r = handle_key(&mut routed, cat, func, 0x41, wch);
+            let e = direct(&mut expected);
+            assert_eq!(r, e, "{cat} {func}");
+            assert_eq!(routed.calls, expected.calls, "{cat} {func}");
+        }
     }
 }

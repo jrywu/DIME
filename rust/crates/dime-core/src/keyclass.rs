@@ -15,7 +15,10 @@ pub mod category {
     pub const NONE: u32 = 0;
     pub const COMPOSING: u32 = 1;
     pub const CANDIDATE: u32 = 2;
+    pub const PHRASE: u32 = 3;
+    pub const PHRASE_FROM_KEYSTROKE: u32 = 4;
     pub const INVOKE_COMPOSITION_EDIT_SESSION: u32 = 5;
+    pub const SENTENCE: u32 = 6;
 }
 
 pub mod function {
@@ -25,6 +28,8 @@ pub mod function {
     pub const INPUT_AND_CONVERT_WILDCARD: u32 = 3;
     pub const CANCEL: u32 = 4;
     pub const FINALIZE_TEXTSTORE: u32 = 5;
+    pub const FINALIZE_TEXTSTORE_AND_INPUT: u32 = 6;
+    pub const FINALIZE_CANDIDATELIST: u32 = 7;
     pub const FINALIZE_CANDIDATELIST_AND_INPUT: u32 = 8;
     pub const CONVERT: u32 = 9;
     pub const CONVERT_WILDCARD: u32 = 10;
@@ -40,6 +45,7 @@ pub mod function {
     pub const MOVE_PAGE_DOWN: u32 = 20;
     pub const MOVE_PAGE_TOP: u32 = 21;
     pub const MOVE_PAGE_BOTTOM: u32 = 22;
+    pub const DOUBLE_SINGLE_BYTE: u32 = 23;
     pub const ADDRESS_DIRECT_INPUT: u32 = 24;
     pub const SHIFT_ENGLISH_INPUT: u32 = 25;
 }
