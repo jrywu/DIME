@@ -575,6 +575,10 @@
     <DimeRustTargetDir Condition="'$(Configuration)'!='Release'">$(DimeRustRoot)target\</DimeRustTargetDir>
     <DimeRustFlags Condition="'$(Configuration)'=='Release'">-C target-feature=+crt-static</DimeRustFlags>
     <DimeRustLibDir>$(DimeRustTargetDir)$(DimeRustTarget)\release\</DimeRustLibDir>
+    <!-- ARM64X (ARM64EC with BuildAsX): the ARM64EC pass links the native ARM64 objects too, so it
+         also needs the aarch64 dime_ffi.lib; the linker takes each half's symbols from the library
+         of the matching machine type. -->
+    <DimeRustArm64XNativeLibDir Condition="'$(Platform)'=='ARM64EC' And '$(BuildAsX)'=='true'">$(DimeRustTargetDir)aarch64-pc-windows-msvc\release\</DimeRustArm64XNativeLibDir>
     <DimeCargo Condition="Exists('$(USERPROFILE)\.cargo\bin\cargo.exe')">"$(USERPROFILE)\.cargo\bin\cargo.exe"</DimeCargo>
     <DimeCargo Condition="'$(DimeCargo)'==''">cargo</DimeCargo>
   </PropertyGroup>
@@ -591,6 +595,14 @@
   </ItemDefinitionGroup>
   <Target Name="BuildDimeRust" BeforeTargets="ClCompile" Condition="'$(DimeRustEnabled)'=='true'">
     <Exec Command="$(DimeCargo) build --release --locked -p dime-ffi --target $(DimeRustTarget) --target-dir &quot;$(DimeRustTargetDir.TrimEnd('\'))&quot; --manifest-path &quot;$(DimeRustRoot)Cargo.toml&quot;" EnvironmentVariables="RUSTFLAGS=$(DimeRustFlags)" />
+  </Target>
+  <ItemDefinitionGroup Condition="'$(DimeRustEnabled)'=='true' And '$(DimeRustArm64XNativeLibDir)'!=''">
+    <Link>
+      <AdditionalDependencies>$(DimeRustArm64XNativeLibDir)dime_ffi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <Target Name="BuildDimeRustArm64XNative" AfterTargets="BuildDimeRust" Condition="'$(DimeRustEnabled)'=='true' And '$(DimeRustArm64XNativeLibDir)'!=''">
+    <Exec Command="$(DimeCargo) build --release --locked -p dime-ffi --target aarch64-pc-windows-msvc --target-dir &quot;$(DimeRustTargetDir.TrimEnd('\'))&quot; --manifest-path &quot;$(DimeRustRoot)Cargo.toml&quot;" EnvironmentVariables="RUSTFLAGS=$(DimeRustFlags)" />
   </Target>
   <Target Name="DimeRustUnsupportedPlatform" BeforeTargets="ClCompile" Condition="'$(DimeUseRustEngine)'=='true' And '$(DimeRustTarget)'==''">
     <Error Text="DimeUseRustEngine=true is not supported for platform $(Platform)." />
