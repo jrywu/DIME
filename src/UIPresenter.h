@@ -58,6 +58,25 @@ class CReadingLine;
 class CCompositionProcessorEngine;
 class CDIME;
 
+// What _LayoutChangeNotification reads from TSF / Win32 before placing the windows
+// (DimeLayoutFacts in the Rust build; phase 4b-1, docs/RUST_TSF_SHELL.md).
+struct PresenterLayoutFacts
+{
+    RECT comp;          // *lpRect
+    BOOL firstCall;
+    BOOL hasParent;     // the context view's window, else the foreground one
+    POINT caret;        // GetCaretPos on the screen (with a parent)
+};
+
+// What ShowNotifyText reads before placing a notify window (DimeShowFacts).
+struct PresenterShowFacts
+{
+    BOOL refresh;       // a transient slot: reverse lookup, special code, beep
+    BOOL hasParent;     // the context view's window
+    RECT rcCaret;       // GUITHREADINFO::rcCaret as returned (zero if GetGUIThreadInfo failed)
+    POINT guiCaret;     // (rcCaret.left, rcCaret.bottom) on the screen
+};
+
 //+---------------------------------------------------------------------------
 //
 // CUIPresenter
@@ -76,7 +95,9 @@ class CUIPresenter :
 #ifdef DIME_UNIT_TESTING
     // Friend declaration for integration tests
     friend class DIMEIntegratedTests::UIPresenterIntegrationTest;
+    friend class PresenterLayoutParityAccess;   // tests/PresenterLayoutParityTest.cpp
 #endif
+    friend struct CUIPresenterLayoutHost;
 
 public:
     CUIPresenter(_In_ CDIME *pTextService, CCompositionProcessorEngine *pCompositionProcessorEngine);
@@ -165,6 +186,14 @@ public:
 	BOOL isUILessMode() const {return !_isShowMode;}
 private:
 	VOID _LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall);
+	// The placement decisions (dime-ui::presenter in the Rust build, phase 4b-1): the facts are
+	// read by the callers; _XxxCpp are the C++ originals.
+	void _LayoutChangeApply(const PresenterLayoutFacts& facts);
+	void _LayoutChangeApplyCpp(const PresenterLayoutFacts& facts);
+	BOOL _NotifyLocationForShow(const PresenterShowFacts& facts);      // caretUpdated
+	BOOL _NotifyLocationForShowCpp(const PresenterShowFacts& facts);
+	void _RestackForShow(BOOL caretUpdated);
+	void _RestackForShowCpp(BOOL caretUpdated);
     virtual HRESULT CALLBACK _CandidateChangeNotification(_In_ enum CANDWND_ACTION action);
 	virtual HRESULT CALLBACK _NotifyChangeNotification(_In_ enum NOTIFY_WND action, _In_ WPARAM wParam, _In_ LPARAM lParam);
 
@@ -221,6 +250,7 @@ private:
 	CUIACaretTracker _uiaCaretTracker;
 
 	BOOL _inFocus;
+	BOOL _useRustLayout;   // the placement decisions in Rust (DIME_USE_RUST_ENGINE) or C++
 };
 
 

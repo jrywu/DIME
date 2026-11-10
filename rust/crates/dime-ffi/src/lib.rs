@@ -17,7 +17,7 @@ use std::ptr;
 
 use dime_core::big5;
 use dime_core::candgen;
-use dime_ui::{candpaint, candproc, candwin, candwnd, layout, notifywin, sbpaint, sbwin, shadow, win};
+use dime_ui::{candpaint, candproc, candwin, candwnd, layout, notifywin, presenter, sbpaint, sbwin, shadow, win};
 use dime_ui::win::{HINSTANCE, PCWSTR};
 use dime_core::candidates::{self, CandidatePaging};
 use dime_core::composition;
@@ -2777,6 +2777,162 @@ pub unsafe extern "C" fn dime_ui_restack(
             }
         }
     })
+}
+
+// ---------------------------------------------------------------------------
+// CUIPresenter's placement decisions (dime-ui::presenter, phase 4b-1)
+// ---------------------------------------------------------------------------
+
+/// The C++ side of `presenter::Host` (`CUIPresenterLayoutHost` in
+/// `src/UIPresenter.cpp`); field order must match `dime_ffi.h`.
+#[repr(C)]
+pub struct DimePresenterHostVtbl {
+    pub has_candidate: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub candidate_client_rect: unsafe extern "C" fn(ctx: *mut c_void, out: *mut layout::Rect),
+    pub candidate_window_extent:
+        unsafe extern "C" fn(ctx: *mut c_void, comp: *const layout::Rect, cand: *const layout::Rect, out: *mut layout::Point),
+    pub candidate_move: unsafe extern "C" fn(ctx: *mut c_void, x: i32, y: i32),
+    pub candidate_visible: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub candidate_window_rect: unsafe extern "C" fn(ctx: *mut c_void, out: *mut layout::Rect),
+    pub slot_count: unsafe extern "C" fn(ctx: *mut c_void) -> usize,
+    pub slot: unsafe extern "C" fn(ctx: *mut c_void, i: usize, out: *mut layout::NotifySlot),
+    pub slot_client_rect: unsafe extern "C" fn(ctx: *mut c_void, i: usize, out: *mut layout::Rect),
+    pub slot_window_extent: unsafe extern "C" fn(
+        ctx: *mut c_void,
+        i: usize,
+        comp: *const layout::Rect,
+        rect: *const layout::Rect,
+        out: *mut layout::Point,
+    ),
+    pub slot_move: unsafe extern "C" fn(ctx: *mut c_void, i: usize, x: i32, y: i32),
+    pub screen_bottom: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+}
+
+/// `DimePresenterHost`.
+#[repr(C)]
+pub struct DimePresenterHost {
+    pub vtbl: *const DimePresenterHostVtbl,
+    pub ctx: *mut c_void,
+}
+
+struct PresenterHostFfi<'a> {
+    v: &'a DimePresenterHostVtbl,
+    ctx: *mut c_void,
+}
+
+impl presenter::Host for PresenterHostFfi<'_> {
+    fn has_candidate(&mut self) -> bool {
+        unsafe { (self.v.has_candidate)(self.ctx) != 0 }
+    }
+    fn candidate_client_rect(&mut self) -> layout::Rect {
+        let mut r = layout::Rect::default();
+        unsafe { (self.v.candidate_client_rect)(self.ctx, &mut r) };
+        r
+    }
+    fn candidate_window_extent(&mut self, comp: &layout::Rect, cand: &layout::Rect) -> layout::Point {
+        let mut p = layout::Point::default();
+        unsafe { (self.v.candidate_window_extent)(self.ctx, comp, cand, &mut p) };
+        p
+    }
+    fn candidate_move(&mut self, p: layout::Point) {
+        unsafe { (self.v.candidate_move)(self.ctx, p.x, p.y) }
+    }
+    fn candidate_visible(&mut self) -> bool {
+        unsafe { (self.v.candidate_visible)(self.ctx) != 0 }
+    }
+    fn candidate_window_rect(&mut self) -> layout::Rect {
+        let mut r = layout::Rect::default();
+        unsafe { (self.v.candidate_window_rect)(self.ctx, &mut r) };
+        r
+    }
+    fn slots(&mut self) -> Vec<layout::NotifySlot> {
+        let n = unsafe { (self.v.slot_count)(self.ctx) };
+        (0..n)
+            .map(|i| {
+                let mut s = layout::NotifySlot::default();
+                unsafe { (self.v.slot)(self.ctx, i, &mut s) };
+                s
+            })
+            .collect()
+    }
+    fn slot_client_rect(&mut self, i: usize) -> layout::Rect {
+        let mut r = layout::Rect::default();
+        unsafe { (self.v.slot_client_rect)(self.ctx, i, &mut r) };
+        r
+    }
+    fn slot_window_extent(&mut self, i: usize, comp: &layout::Rect, rect: &layout::Rect) -> layout::Point {
+        let mut p = layout::Point::default();
+        unsafe { (self.v.slot_window_extent)(self.ctx, i, comp, rect, &mut p) };
+        p
+    }
+    fn slot_move(&mut self, i: usize, p: layout::Point) {
+        unsafe { (self.v.slot_move)(self.ctx, i, p.x, p.y) }
+    }
+    fn screen_bottom(&mut self) -> i32 {
+        unsafe { (self.v.screen_bottom)(self.ctx) }
+    }
+}
+
+unsafe fn with_presenter_host(host: *const DimePresenterHost, f: impl FnOnce(&mut PresenterHostFfi)) {
+    guard((), || {
+        let h = unsafe { host.as_ref() };
+        if let Some((v, ctx)) = h.and_then(|h| unsafe { h.vtbl.as_ref() }.map(|v| (v, h.ctx))) {
+            f(&mut PresenterHostFfi { v, ctx });
+        }
+    })
+}
+
+/// `_LayoutChangeNotification` after C++ read the facts; `state` is updated.
+///
+/// # Safety
+/// `host` must be valid with a complete vtable; `facts` and `state` valid.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_presenter_layout_change(
+    host: *const DimePresenterHost,
+    facts: *const presenter::LayoutFacts,
+    state: *mut presenter::State,
+) {
+    unsafe {
+        with_presenter_host(host, |h| {
+            if let (Some(f), Some(st)) = (facts.as_ref(), state.as_mut()) {
+                presenter::layout_change(h, st, f);
+            }
+        })
+    }
+}
+
+/// `ShowNotifyText` before showing: returns `caretUpdated`; `state` is updated.
+///
+/// # Safety
+/// `facts` and `state` must be valid.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_presenter_notify_location_for_show(
+    facts: *const presenter::ShowFacts,
+    state: *mut presenter::State,
+) -> i32 {
+    guard(0, || match unsafe { (facts.as_ref(), state.as_mut()) } {
+        (Some(f), Some(st)) => i32::from(presenter::notify_location_for_show(st, f)),
+        _ => 0,
+    })
+}
+
+/// `ShowNotifyText` after showing (no delay): restack from one anchor.
+///
+/// # Safety
+/// `host` must be valid with a complete vtable; `state` valid.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_presenter_restack_for_show(
+    host: *const DimePresenterHost,
+    caret_updated: i32,
+    state: *mut presenter::State,
+) {
+    unsafe {
+        with_presenter_host(host, |h| {
+            if let Some(st) = state.as_mut() {
+                presenter::restack_for_show(h, st, caret_updated != 0);
+            }
+        })
+    }
 }
 
 // ---------------------------------------------------------------------------

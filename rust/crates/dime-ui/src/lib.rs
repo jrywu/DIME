@@ -10,7 +10,8 @@
 //! (`sbproc`, Windows only).  Phase 3c-4: the drop shadow (`shadow`).
 //! Phase 3c-6: the notify window (`notify`, Windows only).  Phase 3c-5a:
 //! the window infrastructure (`win`, Windows only): classes, creation and
-//! dispatch for windows owned by Rust.
+//! dispatch for windows owned by Rust.  Phase 4b-1: the placement decisions
+//! of `CUIPresenter` (`presenter`).
 
 #[cfg(windows)]
 pub mod candpaint;
@@ -24,6 +25,7 @@ pub mod layout;
 pub mod notify;
 #[cfg(windows)]
 pub mod notifywin;
+pub mod presenter;
 #[cfg(windows)]
 pub mod sbpaint;
 #[cfg(windows)]

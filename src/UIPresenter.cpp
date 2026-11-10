@@ -42,6 +42,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "CompositionProcessorEngine.h"
 #include "BaseStructure.h"
 #include <memory> // Include for smart pointers
+#ifdef DIME_RUST_AVAILABLE
+#include "dime_ffi.h"
+#endif
 
 //////////////////////////////////////////////////////////////////////
 //
@@ -75,6 +78,11 @@ CUIPresenter::CUIPresenter(_In_ CDIME *pTextService, CCompositionProcessorEngine
     _notifyLocation = { UI::DEFAULT_WINDOW_X, UI::DEFAULT_WINDOW_Y };
     _rectCompRange = { UI::DEFAULT_WINDOW_X, UI::DEFAULT_WINDOW_Y, UI::DEFAULT_WINDOW_X, UI::DEFAULT_WINDOW_Y };
     _inFocus = FALSE;
+#ifdef DIME_USE_RUST_ENGINE
+    _useRustLayout = TRUE;
+#else
+    _useRustLayout = FALSE;
+#endif
 }
 
 //+---------------------------------------------------------------------------
@@ -908,20 +916,17 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect)
 }
 VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall)
 {
-	debugPrint(L"CUIPresenter::_LayoutChangeNotification(), top = %d, bottom = %d, right = %d, left = %d", lpRect->top, lpRect->bottom, lpRect->right, lpRect->left);
 	if(lpRect == nullptr) return;
+	debugPrint(L"CUIPresenter::_LayoutChangeNotification(), top = %d, bottom = %d, right = %d, left = %d", lpRect->top, lpRect->bottom, lpRect->right, lpRect->left);
 
-	RECT compRect = * lpRect;
-    RECT candRect = {0, 0, 0, 0};
-	RECT notifyRect = {0, 0, 0, 0};
-    POINT candPt = {0, 0};
-	POINT notifyPt = {0, 0};
+	PresenterLayoutFacts facts = {};
+	facts.comp = *lpRect;
+	facts.firstCall = firstCall;
 
 	ITfContext *pContext =  _GetContextDocument();
 	ITfContextView * pView = nullptr;
 	HWND parentWndHandle;
-	POINT caretPt = { 0, 0 };
-	
+
 	if (pContext && SUCCEEDED(pContext->GetActiveView(&pView)))
 	{
 		debugPrint(L"parentWndHandle got from pContext");
@@ -931,16 +936,36 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall)
 	{
 		parentWndHandle = GetForegroundWindow();
 	}
-		
+
 	if (parentWndHandle)
 	{
+		POINT caretPt = { 0, 0 };
 		GetCaretPos(&caretPt);
 		ClientToScreen(parentWndHandle, &caretPt);
 		debugPrint(L"current caret position from GetCaretPos, x = %d, y = %d", caretPt.x, caretPt.y);
 		// Recreate font for fitting current monitor resolution and font size
 		if (Global::isWindows8) CConfig::SetDefaultTextFont(parentWndHandle);
-
+		facts.hasParent = TRUE;
+		facts.caret = caretPt;
 	}
+	_LayoutChangeApply(facts);
+}
+
+void CUIPresenter::_LayoutChangeApplyCpp(const PresenterLayoutFacts& facts)
+{
+	const RECT* lpRect = &facts.comp;
+	BOOL firstCall = facts.firstCall;
+
+	RECT compRect = * lpRect;
+    RECT candRect = {0, 0, 0, 0};
+	RECT notifyRect = {0, 0, 0, 0};
+    POINT candPt = {0, 0};
+	POINT notifyPt = {0, 0};
+
+	// No parent: the caret stays (0, 0) and the first call cannot place at it.
+	BOOL hasParent = facts.hasParent;
+	POINT caretPt = facts.hasParent ? facts.caret : POINT{ 0, 0 };
+
 	if (_pCandidateWnd && lpRect)
 	{
 
@@ -956,7 +981,7 @@ VOID CUIPresenter::_LayoutChangeNotification(_In_ RECT *lpRect, BOOL firstCall)
 			_candLocation.y = candPt.y;
 			debugPrint(L"move cand to x = %d, y = %d", candPt.x, candPt.y);
 		}
-		else if (firstCall && parentWndHandle)
+		else if (firstCall && hasParent)
 		{
 			_pCandidateWnd->_GetClientRect(&candRect);
 			compRect.left = caretPt.x;
@@ -1623,135 +1648,33 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange* pNotifyText, _In_opt_ UINT 
 			{
 				pView->GetWnd(&parentWndHandle);
 				debugPrint(L" parentWndHandle = %x , FocusHwnd = %x, ActiveHwnd =%x, ForeGroundHWnd = %x", parentWndHandle, GetFocus(), GetActiveWindow(), GetForegroundWindow());
-				GUITHREADINFO* guiInfo = new GUITHREADINFO;
-				if(guiInfo == nullptr) return;
-
-				POINT* pt = nullptr;
-				guiInfo->cbSize = sizeof(GUITHREADINFO);
-				GetGUIThreadInfo(NULL, guiInfo);
 				// Issue #127: for transient slots (compositional hints + BEEP),
 				// refresh _notifyLocation each show so a stale value from an earlier
-				// show does not stick. The probe call below (also widened) will
-				// overwrite with the precise caret rect when GetTextExt succeeds.
-				// Pre-multi-notify this matched the old NOTIFY_OTHERS bucket; without
-				// BEEP here the 錯誤組字 popup pinned to (0,0) in Firefox after the
-				// first show seeded _notifyLocation to a non-negative stale value.
-				BOOL refreshLocation = (notifyType == NOTIFY_TYPE::NOTIFY_REVERSE_LOOKUP
-				                        || notifyType == NOTIFY_TYPE::NOTIFY_SPECIAL_CODE
-				                        || notifyType == NOTIFY_TYPE::NOTIFY_BEEP);
-				// Track whether a valid caret position was actually written to _notifyLocation
-				// from GetGUIThreadInfo or GetCaretPos. When FALSE (e.g. Firefox always returns
-				// zero rcCaret), the _candLocation fallback below must cover the refreshLocation
-				// case too — not just the uninitialised case — to avoid reusing a stale
-				// _notifyLocation from a previous typing session at a different screen position.
-				BOOL caretUpdated = FALSE;
-				if(guiInfo && parentWndHandle)
+				// show does not stick (see _NotifyLocationForShowCpp).
+				PresenterShowFacts facts = {};
+				facts.refresh = (notifyType == NOTIFY_TYPE::NOTIFY_REVERSE_LOOKUP
+				                 || notifyType == NOTIFY_TYPE::NOTIFY_SPECIAL_CODE
+				                 || notifyType == NOTIFY_TYPE::NOTIFY_BEEP);
+				if (parentWndHandle)
 				{   //for ancient non TSF aware apps with a floating composition window.  The caret position we can get is always the caret in the floating composition window.
-					pt = new POINT;
-					if(pt == nullptr) return;
-					// Check raw rcCaret BEFORE ClientToScreen. Firefox/Chromium return
-					// rcCaret={0,0,0,0}; ClientToScreen then maps that to the window's
-					// screen origin (non-zero), which would wrongly overwrite a cached
-					// valid position with the browser window's top-left corner.
-					BOOL validCaretPos = (guiInfo->rcCaret.left   != 0 || guiInfo->rcCaret.top    != 0
-					                   || guiInfo->rcCaret.right  != 0 || guiInfo->rcCaret.bottom != 0);
-					pt->x = guiInfo->rcCaret.left;
-					pt->y = guiInfo->rcCaret.bottom;
-					ClientToScreen(parentWndHandle, pt);
-					debugPrint(L"current caret position from GetGUIThreadInfo, x = %d, y = %d", pt->x, pt->y);
-					// Only update when rcCaret is non-zero. When validCaretPos=FALSE,
-					// pt (after ClientToScreen) is the browser window's screen origin —
-					// not the caret — so we must not write it even for initialisation.
-					if (validCaretPos) {
-						if (refreshLocation || _notifyLocation.x < 0) _notifyLocation.x = pt->x;
-						if (refreshLocation || _notifyLocation.y < 0) _notifyLocation.y = pt->y;
-						caretUpdated = TRUE;
-					}
+					GUITHREADINFO guiInfo = {};
+					guiInfo.cbSize = sizeof(GUITHREADINFO);
+					if (!GetGUIThreadInfo(NULL, &guiInfo))
+						guiInfo.rcCaret = { 0, 0, 0, 0 };
+					POINT pt = { guiInfo.rcCaret.left, guiInfo.rcCaret.bottom };
+					ClientToScreen(parentWndHandle, &pt);
+					debugPrint(L"current caret position from GetGUIThreadInfo, x = %d, y = %d", pt.x, pt.y);
+					facts.hasParent = TRUE;
+					facts.rcCaret = guiInfo.rcCaret;
+					facts.guiCaret = pt;
 				}
-				else if(parentWndHandle)
-				{
-					POINT caretPt;
-					GetCaretPos(&caretPt);
-					// Check raw client-coords before ClientToScreen for the same reason.
-					BOOL validCaretPosAlt = (caretPt.x != 0 || caretPt.y != 0);
-					ClientToScreen(parentWndHandle, &caretPt);
-					debugPrint(L"current caret position from GetCaretPos, x = %d, y = %d", caretPt.x, caretPt.y);
-					if (validCaretPosAlt) {
-						if (refreshLocation || _notifyLocation.x < 0) _notifyLocation.x = caretPt.x;
-						if (refreshLocation || _notifyLocation.y < 0) _notifyLocation.y = caretPt.y;
-						caretUpdated = TRUE;
-					}
-				}
-				// Firefox fallback: when no valid caret was obtained from either path and
-				// _notifyLocation is uninitialised (reset on focus change by ResetCompRange),
-				// seed from the last known candidate position. Conditioned on _notifyLocation.x < 0
-				// only — not refreshLocation — so a freshly-set _notifyLocation from
-				// _LayoutChangeNotification during active composition is never overwritten by a
-				// stale _candLocation from a previous text field (e.g. Gmail compose box Y
-				// bleeding into the search bar).
-				debugPrint(L"ShowNotifyText pre-fallback: type=%d caretUpdated=%d notifyLoc=(%d,%d) candLoc=(%d,%d) rectComp=(%d,%d,%d,%d)",
-				           (int)notifyType, caretUpdated, _notifyLocation.x, _notifyLocation.y, _candLocation.x, _candLocation.y,
-				           _rectCompRange.left, _rectCompRange.top, _rectCompRange.right, _rectCompRange.bottom);
-				if (!caretUpdated && _notifyLocation.x < 0 && _candLocation.x >= 0)
-				{
-					_notifyLocation.x = _candLocation.x;
-					// If the candidate was flipped above the caret (candLocation.y < compRange.top),
-					// _notifyLocation.y is used directly as slot TOP in the no-candidate restack path,
-					// so place it below the composition text (not at candidate top or candidate bottom).
-					if (_rectCompRange.bottom > _rectCompRange.top && _candLocation.y < _rectCompRange.top)
-						_notifyLocation.y = _rectCompRange.bottom + SHADOW_SPREAD / 2;
-					else
-						_notifyLocation.y = _candLocation.y;
-				}
-				debugPrint(L"ShowNotifyText post-fallback: notifyLoc=(%d,%d)", _notifyLocation.x, _notifyLocation.y);
-
+				BOOL caretUpdated = _NotifyLocationForShow(facts);
 
 				ShowNotify(TRUE, delayShow, timeToHide, notifyType);
 
 				auto& slot = _pNotifyWnds[idx];
 				if(delayShow == 0 && slot)
-				{
-					{
-					// Restack ALL visible slots from the same _notifyLocation anchor
-					// so every slot — new or pre-existing — shares the same X edge.
-					// Using _ComputeStackPosForNewSlot+_Move for only the new slot
-					// caused X misalignment when _notifyLocation changed between the
-					// first and second ShowNotifyText calls (e.g. probe fired in between).
-					BOOL growUp = _DecideStackGrowUp();
-					if (_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())
-					{
-						// Set _notifyLocation.y above candidate top so _DecideStackGrowUp returns
-						// TRUE when the candidate is flipped. _RestackVisibleSlots then uses
-						// cr.bottom as the actual anchor (slots grow upward from candidate bottom).
-						if (_rectCompRange.top > 0 && _candLocation.y < _rectCompRange.top)
-						{
-							RECT _candWndRect = {};
-							_pCandidateWnd->_GetWindowRect(&_candWndRect);
-							_notifyLocation.y = _candLocation.y + (_candWndRect.bottom - _candWndRect.top);
-						}
-						else
-							_notifyLocation.y = _candLocation.y;
-					}
-					else if (!caretUpdated && _rectCompRange.bottom > _rectCompRange.top
-					         && _candLocation.y < _rectCompRange.top)
-					{
-						// Candidate was flipped above caret. Anchor = candidate window bottom,
-						// which _GetWindowExtent always places SHADOW_SPREAD/2 above comp top:
-						//   candBottom = _rectCompRange.top - SHADOW_SPREAD/2
-						// Using _rectCompRange.top directly lands the slot 7px too low.
-						// Also realign X to candidate left edge.
-						_notifyLocation.y = _rectCompRange.top - SHADOW_SPREAD / 2;
-						growUp = TRUE;
-						if (_candLocation.x >= 0)
-							_notifyLocation.x = _candLocation.x;
-					}
-					debugPrint(L"ShowNotifyText restack: notifyLoc=(%d,%d) candVisible=%d rectComp.top=%d candLoc.y=%d",
-					           _notifyLocation.x, _notifyLocation.y,
-					           (_pCandidateWnd && _pCandidateWnd->_IsWindowVisible()) ? 1 : 0,
-					           _rectCompRange.top, _candLocation.y);
-					_RestackVisibleSlots(growUp);
-				}
-				}
+					_RestackForShow(caretUpdated);
 				//means TextLayoutSink is not working. We need to ProbeComposition to start layout.
 				// Issue #127: also probe for compositional-hint slots and BEEP so they
 				// track the caret when ShowNotifyDesktop pref is OFF.
@@ -1770,6 +1693,221 @@ void CUIPresenter::ShowNotifyText(_In_ CStringRange* pNotifyText, _In_opt_ UINT 
 	}
 
 
+}
+
+//+---------------------------------------------------------------------------
+//
+// ShowNotifyText's location decisions (C++ originals)
+//
+//----------------------------------------------------------------------------
+
+BOOL CUIPresenter::_NotifyLocationForShowCpp(const PresenterShowFacts& facts)
+{
+	BOOL refreshLocation = facts.refresh;
+	// Track whether a valid caret position was actually written to _notifyLocation
+	// from GetGUIThreadInfo. When FALSE (e.g. Firefox always returns
+	// zero rcCaret), the _candLocation fallback below must cover the refreshLocation
+	// case too — not just the uninitialised case — to avoid reusing a stale
+	// _notifyLocation from a previous typing session at a different screen position.
+	BOOL caretUpdated = FALSE;
+	if (facts.hasParent)
+	{
+		// Check raw rcCaret BEFORE ClientToScreen. Firefox/Chromium return
+		// rcCaret={0,0,0,0}; ClientToScreen then maps that to the window's
+		// screen origin (non-zero), which would wrongly overwrite a cached
+		// valid position with the browser window's top-left corner.
+		BOOL validCaretPos = (facts.rcCaret.left   != 0 || facts.rcCaret.top    != 0
+		                   || facts.rcCaret.right  != 0 || facts.rcCaret.bottom != 0);
+		// Only update when rcCaret is non-zero. When validCaretPos=FALSE,
+		// pt (after ClientToScreen) is the browser window's screen origin —
+		// not the caret — so we must not write it even for initialisation.
+		if (validCaretPos) {
+			if (refreshLocation || _notifyLocation.x < 0) _notifyLocation.x = facts.guiCaret.x;
+			if (refreshLocation || _notifyLocation.y < 0) _notifyLocation.y = facts.guiCaret.y;
+			caretUpdated = TRUE;
+		}
+	}
+	// (The original's GetCaretPos branch ran only when `new GUITHREADINFO` returned null,
+	// which a throwing new never does.)
+	// Firefox fallback: when no valid caret was obtained and
+	// _notifyLocation is uninitialised (reset on focus change by ResetCompRange),
+	// seed from the last known candidate position. Conditioned on _notifyLocation.x < 0
+	// only — not refreshLocation — so a freshly-set _notifyLocation from
+	// _LayoutChangeNotification during active composition is never overwritten by a
+	// stale _candLocation from a previous text field (e.g. Gmail compose box Y
+	// bleeding into the search bar).
+	if (!caretUpdated && _notifyLocation.x < 0 && _candLocation.x >= 0)
+	{
+		_notifyLocation.x = _candLocation.x;
+		// If the candidate was flipped above the caret (candLocation.y < compRange.top),
+		// _notifyLocation.y is used directly as slot TOP in the no-candidate restack path,
+		// so place it below the composition text (not at candidate top or candidate bottom).
+		if (_rectCompRange.bottom > _rectCompRange.top && _candLocation.y < _rectCompRange.top)
+			_notifyLocation.y = _rectCompRange.bottom + SHADOW_SPREAD / 2;
+		else
+			_notifyLocation.y = _candLocation.y;
+	}
+	debugPrint(L"ShowNotifyText post-fallback: notifyLoc=(%d,%d)", _notifyLocation.x, _notifyLocation.y);
+	return caretUpdated;
+}
+
+void CUIPresenter::_RestackForShowCpp(BOOL caretUpdated)
+{
+	// Restack ALL visible slots from the same _notifyLocation anchor
+	// so every slot — new or pre-existing — shares the same X edge.
+	// Using _ComputeStackPosForNewSlot+_Move for only the new slot
+	// caused X misalignment when _notifyLocation changed between the
+	// first and second ShowNotifyText calls (e.g. probe fired in between).
+	BOOL growUp = _DecideStackGrowUp();
+	if (_pCandidateWnd && _pCandidateWnd->_IsWindowVisible())
+	{
+		// Set _notifyLocation.y above candidate top so _DecideStackGrowUp returns
+		// TRUE when the candidate is flipped. _RestackVisibleSlots then uses
+		// cr.bottom as the actual anchor (slots grow upward from candidate bottom).
+		if (_rectCompRange.top > 0 && _candLocation.y < _rectCompRange.top)
+		{
+			RECT _candWndRect = {};
+			_pCandidateWnd->_GetWindowRect(&_candWndRect);
+			_notifyLocation.y = _candLocation.y + (_candWndRect.bottom - _candWndRect.top);
+		}
+		else
+			_notifyLocation.y = _candLocation.y;
+	}
+	else if (!caretUpdated && _rectCompRange.bottom > _rectCompRange.top
+	         && _candLocation.y < _rectCompRange.top)
+	{
+		// Candidate was flipped above caret. Anchor = candidate window bottom,
+		// which _GetWindowExtent always places SHADOW_SPREAD/2 above comp top:
+		//   candBottom = _rectCompRange.top - SHADOW_SPREAD/2
+		// Using _rectCompRange.top directly lands the slot 7px too low.
+		// Also realign X to candidate left edge.
+		_notifyLocation.y = _rectCompRange.top - SHADOW_SPREAD / 2;
+		growUp = TRUE;
+		if (_candLocation.x >= 0)
+			_notifyLocation.x = _candLocation.x;
+	}
+	debugPrint(L"ShowNotifyText restack: notifyLoc=(%d,%d) candVisible=%d rectComp.top=%d candLoc.y=%d",
+	           _notifyLocation.x, _notifyLocation.y,
+	           (_pCandidateWnd && _pCandidateWnd->_IsWindowVisible()) ? 1 : 0,
+	           _rectCompRange.top, _candLocation.y);
+	_RestackVisibleSlots(growUp);
+}
+
+#ifdef DIME_RUST_AVAILABLE
+//+---------------------------------------------------------------------------
+//
+// The windows dime-ui::presenter places (phase 4b-1). Parity: PresenterLayoutParityTest.
+//
+//----------------------------------------------------------------------------
+
+struct CUIPresenterLayoutHost
+{
+    static CUIPresenter* P(void* ctx) { return static_cast<CUIPresenter*>(ctx); }
+    static DimeNotifyWindow* Slot(void* ctx, size_t i) { return i < P(ctx)->_pNotifyWnds.size() ? P(ctx)->_pNotifyWnds[i].get() : nullptr; }
+
+    static int32_t HasCandidate(void* ctx) { return P(ctx)->_pCandidateWnd ? 1 : 0; }
+    static void CandidateClientRect(void* ctx, DimeRect* out) { P(ctx)->_pCandidateWnd->_GetClientRect((RECT*)out); }
+    static void CandidateWindowExtent(void* ctx, const DimeRect* comp, const DimeRect* cand, DimePoint* out)
+    {
+        RECT c = *(const RECT*)cand;
+        P(ctx)->_pCandidateWnd->_GetWindowExtent((const RECT*)comp, &c, (POINT*)out);
+    }
+    static void CandidateMove(void* ctx, int32_t x, int32_t y) { P(ctx)->_pCandidateWnd->_Move(x, y); }
+    static int32_t CandidateVisible(void* ctx) { return P(ctx)->_pCandidateWnd->_IsWindowVisible() ? 1 : 0; }
+    static void CandidateWindowRect(void* ctx, DimeRect* out) { P(ctx)->_pCandidateWnd->_GetWindowRect((RECT*)out); }
+    static size_t SlotCount(void* ctx) { return P(ctx)->_pNotifyWnds.size(); }
+    static void SlotInfo(void* ctx, size_t i, DimeNotifySlot* out)
+    {
+        DimeNotifyWindow* w = Slot(ctx, i);
+        *out = { 0, 0, 0 };
+        if (w)
+            *out = { w->_IsWindowVisible() ? 1 : 0, (int32_t)w->_GetWidth(), (int32_t)w->_GetHeight() };
+    }
+    static void SlotClientRect(void* ctx, size_t i, DimeRect* out) { Slot(ctx, i)->_GetClientRect((RECT*)out); }
+    static void SlotWindowExtent(void* ctx, size_t i, const DimeRect* comp, const DimeRect* rect, DimePoint* out)
+    {
+        RECT r = *(const RECT*)rect;
+        Slot(ctx, i)->_GetWindowExtent((const RECT*)comp, &r, (POINT*)out);
+    }
+    static void SlotMove(void* ctx, size_t i, int32_t x, int32_t y) { Slot(ctx, i)->_Move(x, y); }
+    static int32_t ScreenBottom(void*) { return GetSystemMetrics(SM_CYSCREEN); }
+
+    static const DimePresenterHostVtbl s_vtbl;
+
+    static DimePresenterState Get(const CUIPresenter* p)
+    {
+        DimePresenterState st = {};
+        st.cand_location = { p->_candLocation.x, p->_candLocation.y };
+        st.notify_location = { p->_notifyLocation.x, p->_notifyLocation.y };
+        st.rect_comp_range = { p->_rectCompRange.left, p->_rectCompRange.top, p->_rectCompRange.right, p->_rectCompRange.bottom };
+        return st;
+    }
+    static void Set(CUIPresenter* p, const DimePresenterState& st)
+    {
+        p->_candLocation = { st.cand_location.x, st.cand_location.y };
+        p->_notifyLocation = { st.notify_location.x, st.notify_location.y };
+        p->_rectCompRange = { st.rect_comp_range.left, st.rect_comp_range.top, st.rect_comp_range.right, st.rect_comp_range.bottom };
+    }
+};
+
+const DimePresenterHostVtbl CUIPresenterLayoutHost::s_vtbl = {
+    HasCandidate, CandidateClientRect, CandidateWindowExtent, CandidateMove, CandidateVisible, CandidateWindowRect,
+    SlotCount, SlotInfo, SlotClientRect, SlotWindowExtent, SlotMove, ScreenBottom,
+};
+
+static_assert(sizeof(PresenterLayoutFacts) == sizeof(DimeLayoutFacts), "DimeLayoutFacts layout");
+static_assert(sizeof(PresenterShowFacts) == sizeof(DimeShowFacts), "DimeShowFacts layout");
+static_assert(sizeof(DimeRect) == sizeof(RECT) && sizeof(DimePoint) == sizeof(POINT), "RECT / POINT layout");
+#endif
+
+//+---------------------------------------------------------------------------
+//
+// The dispatchers (the Rust branch first in each body; see CLAUDE.md)
+//
+//----------------------------------------------------------------------------
+
+void CUIPresenter::_LayoutChangeApply(const PresenterLayoutFacts& facts)
+{
+#ifdef DIME_RUST_AVAILABLE
+    if (_useRustLayout)
+    {
+        DimePresenterHost host = { &CUIPresenterLayoutHost::s_vtbl, this };
+        DimePresenterState st = CUIPresenterLayoutHost::Get(this);
+        dime_ui_presenter_layout_change(&host, (const DimeLayoutFacts*)&facts, &st);
+        CUIPresenterLayoutHost::Set(this, st);
+        return;
+    }
+#endif
+    _LayoutChangeApplyCpp(facts);
+}
+
+BOOL CUIPresenter::_NotifyLocationForShow(const PresenterShowFacts& facts)
+{
+#ifdef DIME_RUST_AVAILABLE
+    if (_useRustLayout)
+    {
+        DimePresenterState st = CUIPresenterLayoutHost::Get(this);
+        BOOL caretUpdated = dime_ui_presenter_notify_location_for_show((const DimeShowFacts*)&facts, &st) ? TRUE : FALSE;
+        CUIPresenterLayoutHost::Set(this, st);
+        return caretUpdated;
+    }
+#endif
+    return _NotifyLocationForShowCpp(facts);
+}
+
+void CUIPresenter::_RestackForShow(BOOL caretUpdated)
+{
+#ifdef DIME_RUST_AVAILABLE
+    if (_useRustLayout)
+    {
+        DimePresenterHost host = { &CUIPresenterLayoutHost::s_vtbl, this };
+        DimePresenterState st = CUIPresenterLayoutHost::Get(this);
+        dime_ui_presenter_restack_for_show(&host, caretUpdated ? 1 : 0, &st);
+        CUIPresenterLayoutHost::Set(this, st);
+        return;
+    }
+#endif
+    _RestackForShowCpp(caretUpdated);
 }
 
 BOOL CUIPresenter::IsNotifyShown()

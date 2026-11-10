@@ -610,6 +610,47 @@ void     dime_ui_stack_pos_for_new_slot(DimePoint notify, const DimeNotifySlot* 
 void     dime_ui_restack(int32_t has_candidate, DimeRect candidate_rect, DimePoint candidate_location, DimePoint notify,
                          const DimeNotifySlot* slots, size_t count, int32_t grow_up, DimePoint* positions, int32_t* placed);
 
+/* ---- CUIPresenter's placement decisions (rust/crates/dime-ui/src/presenter.rs, phase 4b-1) ---- */
+typedef struct DimePresenterState {
+    DimePoint cand_location;      /* _candLocation */
+    DimePoint notify_location;    /* _notifyLocation */
+    DimeRect  rect_comp_range;    /* _rectCompRange */
+} DimePresenterState;
+/* The C++ side (CUIPresenterLayoutHost in src/UIPresenter.cpp); order must match dime-ffi. */
+typedef struct DimePresenterHostVtbl {
+    int32_t (*has_candidate)(void* ctx);
+    void    (*candidate_client_rect)(void* ctx, DimeRect* out);
+    void    (*candidate_window_extent)(void* ctx, const DimeRect* comp, const DimeRect* cand, DimePoint* out);
+    void    (*candidate_move)(void* ctx, int32_t x, int32_t y);
+    int32_t (*candidate_visible)(void* ctx);
+    void    (*candidate_window_rect)(void* ctx, DimeRect* out);
+    size_t  (*slot_count)(void* ctx);                                  /* NOTIFY_COUNT */
+    void    (*slot)(void* ctx, size_t i, DimeNotifySlot* out);         /* _NotifySlots */
+    void    (*slot_client_rect)(void* ctx, size_t i, DimeRect* out);
+    void    (*slot_window_extent)(void* ctx, size_t i, const DimeRect* comp, const DimeRect* rect, DimePoint* out);
+    void    (*slot_move)(void* ctx, size_t i, int32_t x, int32_t y);
+    int32_t (*screen_bottom)(void* ctx);                               /* GetSystemMetrics(SM_CYSCREEN) */
+} DimePresenterHostVtbl;
+typedef struct DimePresenterHost {
+    const DimePresenterHostVtbl* vtbl;
+    void* ctx;
+} DimePresenterHost;
+typedef struct DimeLayoutFacts {
+    DimeRect comp;          /* *lpRect */
+    int32_t first_call;
+    int32_t has_parent;     /* the context view's window, else the foreground one */
+    DimePoint caret;        /* GetCaretPos on the screen (with a parent) */
+} DimeLayoutFacts;
+typedef struct DimeShowFacts {
+    int32_t refresh;        /* reverse lookup, special code, beep */
+    int32_t has_parent;
+    DimeRect rc_caret;      /* GUITHREADINFO::rcCaret as returned (zero if GetGUIThreadInfo failed) */
+    DimePoint gui_caret;    /* (rcCaret.left, rcCaret.bottom) on the screen */
+} DimeShowFacts;
+void    dime_ui_presenter_layout_change(const DimePresenterHost* host, const DimeLayoutFacts* facts, DimePresenterState* state);
+int32_t dime_ui_presenter_notify_location_for_show(const DimeShowFacts* facts, DimePresenterState* state);   /* caretUpdated */
+void    dime_ui_presenter_restack_for_show(const DimePresenterHost* host, int32_t caret_updated, DimePresenterState* state);
+
 /* ---- Candidate window / scroll bar layout (rust/crates/dime-ui/src/candwnd.rs) ---- */
 typedef struct DimeCandMetrics {
     int32_t cx_line, cy_line, first_line_offset, left_padding, cx_title, padding, cy_offset;
