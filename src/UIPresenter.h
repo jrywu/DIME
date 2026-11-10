@@ -98,7 +98,6 @@ class CUIPresenter :
     friend class DIMEIntegratedTests::UIPresenterIntegrationTest;
     friend class PresenterLayoutParityAccess;   // tests/PresenterLayoutParityTest.cpp
 #endif
-    friend struct CUIPresenterCandHost;
 
 public:
     CUIPresenter(_In_ CDIME *pTextService, CCompositionProcessorEngine *pCompositionProcessorEngine);
@@ -152,7 +151,7 @@ public:
 
 	DWORD_PTR _GetSelectedCandidateKeyCode(_Inout_ const WCHAR **ppwchCandidateString);
     DWORD_PTR _GetSelectedCandidateString(_Inout_ const WCHAR **ppwchCandidateString);
-    BOOL _SetCandidateSelectionInPage(int nPos) { return _pCandidateWnd ? _pCandidateWnd->_SetSelectionInPage(nPos) : FALSE; }
+    BOOL _SetCandidateSelectionInPage(int nPos) { return _CandSelect(3, nPos, FALSE); }
 
     BOOL _MoveCandidateSelection(_In_ int offSet);
 	BOOL _SetCandidateSelection(_In_ int selectedIndex, _In_opt_ BOOL isNotify = TRUE);
@@ -203,11 +202,26 @@ private:
 	BOOL _NotifySlotExists(NOTIFY_TYPE notifyType) const;
 	HWND _NotifySlotWnd(NOTIFY_TYPE notifyType, _Out_opt_ UINT* width = nullptr, _Out_opt_ UINT* height = nullptr) const;   // tests
 	static void _NotifyWndInvoke(void* ctx, int32_t action, uintptr_t wParam, intptr_t lParam);
+	// The candidate window (phase 4b-2b): the Rust presenter's or _pCandidateWnd.
+	BOOL _HasCand() const;       // _pCandidateWnd != nullptr
+	BOOL _CandVisible() const;   // and its window is visible
+	void _CandShow(BOOL show);
+	void _CandOp(UINT op, int a = 0, int b = 0);
+	BOOL _CandSelect(UINT op, int a, BOOL notify);
+	HWND _CandWnd() const;
+public:
+	static void _CandWndCallbackForRust(void* ctx, int32_t action);   // the Rust candidate window's callback
+private:
 #ifdef DIME_UNIT_TESTING
 	void _PaintNotifySlotForTest(NOTIFY_TYPE notifyType, HDC dc, PAINTSTRUCT* ps);   // as WM_PAINT
+	void _PaintCandidateForTest(HDC dc, PAINTSTRUCT* ps);
+	BOOL _CandScrollInfoForTest(int* info);   // the scroll bar's nMax, nPage, nPos
 	// The classes the Rust presenter makes its notify windows with (default: Global::Atom*; the C++
 	// test build registers those with CBaseWindow's window procedure).
 	void _SetNotifyClassesForTest(ATOM notify, ATOM shadow) { _notifyAtomForTest = notify; _notifyShadowAtomForTest = shadow; }
+#ifdef DIME_RUST_AVAILABLE
+	void _SetCandidateClassesForTest(const DimeCandClasses& classes) { _candClassesForTest = classes; }
+#endif
 #endif
     virtual HRESULT CALLBACK _CandidateChangeNotification(_In_ enum CANDWND_ACTION action);
 	virtual HRESULT CALLBACK _NotifyChangeNotification(_In_ enum NOTIFY_WND action, _In_ WPARAM wParam, _In_ LPARAM lParam);
@@ -269,6 +283,9 @@ private:
 	DimePresenter* _rp;       // with DIME_RUST_AVAILABLE (else null)
 #ifdef DIME_UNIT_TESTING
 	ATOM _notifyAtomForTest = 0, _notifyShadowAtomForTest = 0;
+#ifdef DIME_RUST_AVAILABLE
+	DimeCandClasses _candClassesForTest = {};
+#endif
 #endif
 };
 

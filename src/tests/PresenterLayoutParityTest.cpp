@@ -46,21 +46,100 @@ public:
         {
             DimeNotifyClasses c = RustNotifyTestClasses();
             p->_SetNotifyClassesForTest(c.notify, c.notify_shadow);
+            p->_SetCandidateClassesForTest(RustCandidateTestClasses());
         }
 #endif
     }
     static BOOL UsesRust(const CUIPresenter* p) { return p->_RustPresenter(); }
     static void SetState(CUIPresenter* p, POINT cand, POINT notify, RECT comp) { p->_SetPlacement(cand, notify, comp); }
+    // The selection keys: the window keeps the pointer (as the engine's range), so they outlive the test.
+    static CCandidateRange* Range(int kind)
+    {
+        static CCandidateRange ranges[3];
+        static bool made = false;
+        if (!made)
+        {
+            const int sizes[3] = { 10, 5, 3 };
+            for (int k = 0; k < 3; k++)
+                for (int r = 0; r < sizes[k]; r++) ranges[k].Append()->CandIndex = L"1234567890"[r];
+            made = true;
+        }
+        return &ranges[kind % 3];
+    }
+    static void SetCandidates(CUIPresenter* p, int count, int rangeKind, BOOL withKeyCode, UINT width, bool phrase)
+    {
+        static const wchar_t* texts[] = { L"一", L"二三", L"四", L"五六七", L"八", L"九", L"十", L"百", L"千萬", L"億", L"兆", L"京", L"" };
+        static const wchar_t* keys[] = { L"a", L"bc", L"", L"def" };
+        CDIMEArray<CCandidateListItem> list;
+        for (int i = 0; i < count; i++)
+        {
+            CCandidateListItem* it = list.Append();
+            it->_ItemString.Set(texts[i % 13], wcslen(texts[i % 13]));
+            it->_FindKeyCode.Set(keys[i % 4], wcslen(keys[i % 4]));
+        }
+        p->_SetCandidateText(&list, Range(rangeKind), withKeyCode, width, phrase);
+    }
     static void MakeCandidate(CUIPresenter* p, int count, UINT width)
     {
         Assert::IsTrue(SUCCEEDED(p->MakeCandidateWindow(nullptr, width)));
-        static const wchar_t keys[] = L"1234567890";
-        CCandidateRange range;
-        for (int r = 0; r < 10; r++) range.Append()->CandIndex = keys[r];
-        CDIMEArray<CCandidateListItem> list;
-        static const wchar_t* texts[] = { L"一", L"二三", L"四", L"五六七", L"八", L"九", L"十", L"百", L"千萬", L"億", L"兆", L"京" };
-        for (int i = 0; i < count; i++) list.Append()->_ItemString.Set(texts[i % 12], wcslen(texts[i % 12]));
-        p->_SetCandidateText(&list, &range, FALSE, 3);
+        SetCandidates(p, count, 0, FALSE, 3, false);
+    }
+    // The candidate-list operations (phase 4b-2b: the window and the list are Rust's).
+    static void CandOp(CUIPresenter* p, int op, int a, int b)
+    {
+        switch (op)
+        {
+        case 0: p->_MoveCandidateSelection(a % 3 - 1); break;
+        case 1: p->_SetCandidateSelection(a % 15 - 2, b % 2); break;
+        case 2: p->_MoveCandidatePage(a % 3 - 1); break;
+        case 3: p->_SetCandidateSelectionInPage(a % 12 - 1); break;
+        case 4: p->SetSelection((UINT)(a % 14)); break;
+        case 5: p->AdviseUIChangedByArrowKey((KEYSTROKE_FUNCTION)((int)KEYSTROKE_FUNCTION::FUNCTION_MOVE_UP + a % 8)); break;
+        case 6: SetCandidates(p, a % 40, b, b % 2, 3 + a % 5, (b % 3) == 0); break;
+        case 7: p->_ClearCandidateList(); break;
+        case 8:
+            p->_SetCandidateTextColor(RGB(a % 200, 20, 30), RGB(250, 240, 230 - b % 9));
+            p->_SetCandidateNumberColor(RGB(5, a % 250, 9), RGB(240, 240, 240));
+            p->_SetCandidateSelectedTextColor(RGB(255, 255, 255), RGB(0, 80 + b % 100, 200));
+            p->_SetCandidateFillColor(RGB(250 - a % 30, 250, 250));
+            break;
+        case 9:
+            if (a % 3 == 0) p->_EndCandidateList();
+            else if (!p->_HasCand()) MakeCandidate(p, 1 + a % 30, 3 + b % 5);
+            else { UINT n = 1; p->SetPageIndex(&n, 1); }
+            break;
+        default: p->Show(a % 2); break;
+        }
+    }
+    static std::wstring CandQueries(CUIPresenter* p)
+    {
+        auto str = [](const WCHAR* t, DWORD_PTR n) { return t ? std::wstring(t, (size_t)n) : (n ? L"?" : L"-"); };
+        UINT count = 0, sel = 0, page = 0, pages[8] = {}, pageCount = 0;
+        BOOL shown = FALSE;
+        p->GetCount(&count);
+        p->GetSelection(&sel);
+        HRESULT hrPage = p->GetCurrentPage(&page);
+        HRESULT hrIndex = p->GetPageIndex(pages, 8, &pageCount);
+        p->IsShown(&shown);
+        std::wstring s = L"has=" + std::to_wstring(p->_HasCand()) + L" count=" + std::to_wstring(count) + L" sel=" + std::to_wstring(sel) +
+                         L"/" + std::to_wstring(p->_GetCandidateSelection()) + L" page=" + std::to_wstring(hrPage) + L":" + std::to_wstring(page) +
+                         L" index=" + std::to_wstring(hrIndex) + L":" + std::to_wstring(pageCount) + L":";
+        for (UINT i = 0; i < min(pageCount, 8u); i++) s += std::to_wstring(pages[i]) + L",";
+        s += L" shown=" + std::to_wstring(shown) + L"/" + std::to_wstring(p->IsCandShown());
+        const WCHAR* t = nullptr;
+        DWORD_PTR n = p->_GetSelectedCandidateString(&t);
+        s += L" selStr=" + str(t, n);
+        t = nullptr;
+        n = p->_GetSelectedCandidateKeyCode(&t);
+        s += L" selKey=" + str(t, n) + L" items=";
+        for (UINT i = 0; i <= count && i < 50; i++)
+        {
+            BSTR b = nullptr;
+            HRESULT hr = p->GetString(i, &b);
+            s += std::to_wstring(hr) + (b ? std::wstring(b, SysStringLen(b)) : L"-") + L"|";
+            if (b) SysFreeString(b);
+        }
+        return s;
     }
     static void MakeSlot(CUIPresenter* p, NOTIFY_TYPE type, const std::wstring& text, BOOL show)
     {
@@ -138,6 +217,40 @@ public:
         return std::to_wstring(hash);
     }
 
+    // The candidate window painted as WM_PAINT would, hashed (the list, the selection, the colors).
+    static std::wstring CandPaintHash(CUIPresenter* p, HWND h)
+    {
+        if (!h) return L"-";
+        RECT rc = {};
+        GetClientRect(h, &rc);
+        int cx = max(1, (int)rc.right), cy = max(1, (int)rc.bottom);
+        HDC screen = GetDC(nullptr);
+        HDC mem = CreateCompatibleDC(screen);
+        BITMAPINFO bi = {};
+        bi.bmiHeader.biSize = sizeof(bi.bmiHeader);
+        bi.bmiHeader.biWidth = cx;
+        bi.bmiHeader.biHeight = -cy;
+        bi.bmiHeader.biPlanes = 1;
+        bi.bmiHeader.biBitCount = 32;
+        bi.bmiHeader.biCompression = BI_RGB;
+        void* bits = nullptr;
+        HBITMAP dib = CreateDIBSection(mem, &bi, DIB_RGB_COLORS, &bits, nullptr, 0);
+        HGDIOBJ old = SelectObject(mem, dib);
+        PAINTSTRUCT ps = {};
+        ps.hdc = mem;
+        ps.rcPaint = rc;
+        p->_PaintCandidateForTest(mem, &ps);
+        GdiFlush();
+        unsigned long long hash = 1469598103934665603ULL;
+        for (size_t i = 0; i < (size_t)cx * cy; i++)
+            hash = (hash ^ ((const DWORD*)bits)[i]) * 1099511628211ULL;
+        SelectObject(mem, old);
+        DeleteObject(dib);
+        DeleteDC(mem);
+        ReleaseDC(nullptr, screen);
+        return std::to_wstring(cx) + L"x" + std::to_wstring(cy) + L"#" + std::to_wstring(hash);
+    }
+
     static std::wstring Observe(CUIPresenter* p)
     {
         auto pt = [](POINT q) { return std::to_wstring(q.x) + L"," + std::to_wstring(q.y); };
@@ -146,11 +259,15 @@ public:
         RECT comp = {};
         p->_GetPlacement(&cand, &notify, &comp);
         std::wstring s = L"cand=" + pt(cand) + L" notify=" + pt(notify) + L" comp=" + rc(comp);
-        if (p->_pCandidateWnd)
+        if (p->_HasCand())
         {
             RECT r = {};
-            GetWindowRect(p->_pCandidateWnd->_GetWnd(), &r);
-            s += L" candWnd=" + rc(r) + L"/" + std::to_wstring(p->_pCandidateWnd->_IsWindowVisible() ? 1 : 0);
+            HWND h = p->_CandWnd();
+            GetWindowRect(h, &r);
+            s += L" candWnd=" + rc(r) + L"/" + std::to_wstring(p->_CandVisible()) + L"/" + CandPaintHash(p, h);
+            int sb[3] = { -1, -1, -1 };
+            if (p->_CandScrollInfoForTest(sb))
+                s += L" sb=" + std::to_wstring(sb[0]) + L"," + std::to_wstring(sb[1]) + L"," + std::to_wstring(sb[2]);
         }
         for (size_t i = 0; i < (size_t)NOTIFY_TYPE::NOTIFY_COUNT; i++)
         {
@@ -180,7 +297,7 @@ namespace DIMEUnitTests
             Global::defaultlFontHandle = font;
             std::mt19937 rng(4201);
             auto in = [&](int lo, int hi) { return lo + (int)(rng() % (unsigned)(hi - lo + 1)); };
-            int steps = 0, layoutPlaced = 0, restacked = 0, updated = 0, stackOps = 0;
+            int steps = 0, layoutPlaced = 0, restacked = 0, updated = 0, stackOps = 0, candOps = 0;
             const std::wstring stackTexts[] = { L"英數", L"反查：一二", L"特別碼 XY", L"錯誤組字", L"全形", L"簡" };
             const NOTIFY_TYPE types[] = { NOTIFY_TYPE::NOTIFY_CHN_ENG, NOTIFY_TYPE::NOTIFY_REVERSE_LOOKUP,
                                           NOTIFY_TYPE::NOTIFY_SPECIAL_CODE, NOTIFY_TYPE::NOTIFY_BEEP };
@@ -231,9 +348,10 @@ namespace DIMEUnitTests
 
                 for (int step = 0; step < 40; step++)
                 {
-                    int r20 = in(0, 19);
-                    // 0 layout change, 1 location for show, 2 restack for show, 3+ the notify stack (4b-2a)
-                    int op = r20 < 5 ? 0 : r20 < 8 ? 1 : r20 < 10 ? 2 : r20 - 7;
+                    int r30 = in(0, 29);
+                    // 0 layout change, 1 location for show, 2 restack for show, 3-12 the notify stack (4b-2a),
+                    // 13 the candidate list and window (4b-2b)
+                    int op = r30 < 5 ? 0 : r30 < 8 ? 1 : r30 < 10 ? 2 : r30 < 20 ? r30 - 7 : 13;
                     std::wstring where = L"scenario " + std::to_wstring(scenario) + L" step " + std::to_wstring(step) + L" op " + std::to_wstring(op);
                     BOOL r[2] = {};
                     if (op == 0)
@@ -276,6 +394,13 @@ namespace DIMEUnitTests
                         for (int k = 0; k < 2; k++) PresenterLayoutParityAccess::RestackForShow(p[k], caretUpdated);
                         restacked++;
                     }
+                    else if (op == 13)
+                    {
+                        int cop = in(0, 10), a = in(0, 1000), b = in(0, 1000);
+                        where += L" cand " + std::to_wstring(cop) + L" " + std::to_wstring(a) + L" " + std::to_wstring(b);
+                        for (int k = 0; k < 2; k++) PresenterLayoutParityAccess::CandOp(p[k], cop, a, b);
+                        candOps++;
+                    }
                     else
                     {
                         NOTIFY_TYPE t = (NOTIFY_TYPE)in(0, (int)NOTIFY_TYPE::NOTIFY_COUNT - 1);
@@ -296,14 +421,14 @@ namespace DIMEUnitTests
                         }
                         stackOps++;
                     }
-                    std::wstring qa = PresenterLayoutParityAccess::Queries(p[0]);
-                    std::wstring qb = PresenterLayoutParityAccess::Queries(p[1]);
+                    std::wstring qa = PresenterLayoutParityAccess::Queries(p[0]) + L" " + PresenterLayoutParityAccess::CandQueries(p[0]);
+                    std::wstring qb = PresenterLayoutParityAccess::Queries(p[1]) + L" " + PresenterLayoutParityAccess::CandQueries(p[1]);
                     if (qa != qb)
                         Assert::Fail((where + L"\nC++:  " + qa + L"\nRust: " + qb).c_str());
                     std::wstring a = PresenterLayoutParityAccess::Observe(p[0]);
                     std::wstring b = PresenterLayoutParityAccess::Observe(p[1]);
                     if (a != b)
-                        Assert::Fail((where + L"\nC++:  " + a + L"\nRust: " + b).c_str());
+                        Assert::Fail((where + L"\nC++:  " + a + L"\nRust: " + b + L"\nqueries: " + qa).c_str());
                     steps++;
                 }
                 for (int k = 0; k < 2; k++)
@@ -315,7 +440,7 @@ namespace DIMEUnitTests
             Global::defaultlFontHandle = savedFont;
             DeleteObject(font);
             Logger::WriteMessage((std::to_wstring(steps) + L" steps compared (" + std::to_wstring(layoutPlaced) + L" layout changes, " +
-                                  std::to_wstring(restacked) + L" restacks, " + std::to_wstring(updated) + L" caret updates, " + std::to_wstring(stackOps) + L" stack operations)").c_str());
+                                  std::to_wstring(restacked) + L" restacks, " + std::to_wstring(updated) + L" caret updates, " + std::to_wstring(stackOps) + L" stack operations, " + std::to_wstring(candOps) + L" candidate operations)").c_str());
         }
     };
 }

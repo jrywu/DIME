@@ -66,7 +66,9 @@ struct CRustCandidateWindowModel
         CCandidateListItem* it = M(ctx)->ItemAt(index);
         if (!it) return nullptr;
         *len = (uint32_t)it->_ItemString.GetLength();
-        return (const uint16_t*)it->_ItemString.Get();
+        // Not null for an item with an empty string: CCandidateWindow still draws its row.
+        static const uint16_t empty[1] = { 0 };
+        return it->_ItemString.Get() ? (const uint16_t*)it->_ItemString.Get() : empty;
     }
     static int32_t HasCallback(void* ctx) { return W(ctx)->_pfnCallback != nullptr; }
     static void Invoke(void* ctx, int32_t action)

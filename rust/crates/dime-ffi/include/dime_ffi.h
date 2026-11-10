@@ -794,26 +794,13 @@ void*   dime_ui_notifywin_shadow_hwnd(const DimeNotify* n);
 typedef void (*DimeNotifyTimerHook)(void* ctx, int32_t start, uint32_t elapse, uintptr_t id);
 void    dime_ui_notifywin_set_timer_hook(const DimeNotify* n, DimeNotifyTimerHook hook, void* ctx);   /* NULL removes */
 
-/* ---- CUIPresenter's state and notify-window stack owned by Rust
- *      (rust/crates/dime-ui/src/presenterwin.rs, phase 4b-2a; decisions in presenter.rs, 4b-1) ---- */
+/* ---- CUIPresenter's state, notify-window stack and candidate window owned by Rust
+ *      (rust/crates/dime-ui/src/presenterwin.rs, phase 4b-2; decisions in presenter.rs, 4b-1) ---- */
 typedef struct DimePresenterState {
     DimePoint cand_location;      /* _candLocation */
     DimePoint notify_location;    /* _notifyLocation */
     DimeRect  rect_comp_range;    /* _rectCompRange */
 } DimePresenterState;
-/* The candidate window C++ still holds (CUIPresenterCandHost in src/UIPresenter.cpp); order must match dime-ffi. */
-typedef struct DimePresenterCandVtbl {
-    int32_t (*has_candidate)(void* ctx);
-    void    (*client_rect)(void* ctx, DimeRect* out);
-    void    (*window_extent)(void* ctx, const DimeRect* comp, const DimeRect* cand, DimePoint* out);
-    void    (*move_to)(void* ctx, int32_t x, int32_t y);
-    int32_t (*visible)(void* ctx);
-    void    (*window_rect)(void* ctx, DimeRect* out);
-} DimePresenterCandVtbl;
-typedef struct DimePresenterCand {
-    const DimePresenterCandVtbl* vtbl;
-    void* ctx;
-} DimePresenterCand;
 typedef struct DimeLayoutFacts {
     DimeRect comp;          /* *lpRect */
     int32_t first_call;
@@ -826,14 +813,28 @@ typedef struct DimeShowFacts {
     DimeRect rc_caret;      /* GUITHREADINFO::rcCaret as returned (zero if GetGUIThreadInfo failed) */
     DimePoint gui_caret;    /* (rcCaret.left, rcCaret.bottom) on the screen */
 } DimeShowFacts;
+/* The candidate window's C++ side: its callback (CANDWND_ACTION 0 select / 1 cancel; may destroy the
+ * window and the list) and the selection keys, a CCandidateRange* read live (count -1 for null). */
+typedef struct DimePresenterCandSource {
+    void* ctx;
+    void (*invoke)(void* ctx, int32_t action);
+    int32_t (*range_count)(const void* range);
+    uint16_t (*range_char)(const void* range, int32_t row);
+} DimePresenterCandSource;
+typedef struct DimeCandItem {
+    const uint16_t* text;
+    size_t text_len;
+    const uint16_t* key_code;
+    size_t key_code_len;
+} DimeCandItem;
 typedef struct DimePresenter DimePresenter;
 /* callback: every notify window's actions (_NotifyWndCallback); env as the candidate window's. */
-DimePresenter* dime_ui_presenter_create(const DimeCandEnv* env, const DimeNotifyCallback* callback);
+DimePresenter* dime_ui_presenter_create(const DimeCandEnv* env, const DimeNotifyCallback* callback, const DimePresenterCandSource* source);
 void    dime_ui_presenter_free(DimePresenter* p);
 void    dime_ui_presenter_get_state(const DimePresenter* p, DimePresenterState* out);
 void    dime_ui_presenter_set_state(const DimePresenter* p, const DimePresenterState* st);   /* tests */
 void    dime_ui_presenter_reset_comp_range(const DimePresenter* p);
-/* MakeNotifyWindow after the parent is known: 1, or 0 for a slot out of range. */
+/* The notify stack. MakeNotifyWindow after the parent is known: 1, or 0 for a slot out of range. */
 int32_t dime_ui_presenter_notify_make(const DimePresenter* p, uint32_t slot, void* hinstance, const DimeNotifyClasses* classes,
                                       void* parent, const uint16_t* text, size_t len);
 void    dime_ui_presenter_notify_dispose(const DimePresenter* p, uint32_t slot);   /* slot >= NOTIFY_COUNT: all */
@@ -844,10 +845,36 @@ void    dime_ui_presenter_notify_set_text_color(const DimePresenter* p, uint32_t
 int32_t dime_ui_presenter_notify_query(const DimePresenter* p, uint32_t slot, uint32_t what);
 void*   dime_ui_presenter_notify_window(const DimePresenter* p, uint32_t slot, int32_t* cx, int32_t* cy);   /* HWND, title size */
 void    dime_ui_presenter_notify_paint(const DimePresenter* p, uint32_t slot, void* dc, const DimeRect* paint);   /* tests */
-void    dime_ui_presenter_layout_change(const DimePresenter* p, const DimePresenterCand* cand, const DimeLayoutFacts* facts);
+/* The candidate window and list. MakeCandidateWindow after the parent is known: 1, or 0 when there is one. */
+int32_t dime_ui_presenter_cand_make(const DimePresenter* p, void* hinstance, const DimeCandClasses* classes, void* parent,
+                                    uint32_t wnd_width, const void* range, const DimeCandColors* colors, uint32_t fill);
+void    dime_ui_presenter_cand_dispose(const DimePresenter* p);
+/* what: 0 exists, 1 visible, 2 _GetWidth, 3 _GetCount, 4 _GetSelection (-1 without one). */
+int32_t dime_ui_presenter_cand_query(const DimePresenter* p, uint32_t what);
+void*   dime_ui_presenter_cand_hwnd(const DimePresenter* p);
+void    dime_ui_presenter_cand_rect(const DimePresenter* p, int32_t client, DimeRect* out);   /* untouched without a window */
+/* op: 0 _Show(a)  1 _Move(a, b)  2 _ResizeWindow  3 _InvalidateRect  4 _SetCandStringLength(a)  5 _SetFillColor(a)
+ *     9 _SetScrollInfo(a, b) */
+void    dime_ui_presenter_cand_op(const DimePresenter* p, uint32_t op, int32_t a, int32_t b);
+void    dime_ui_presenter_cand_set_color(const DimePresenter* p, int32_t which, uint32_t color, uint32_t bk);   /* 0 number, 1 text, 2 selected */
+void    dime_ui_presenter_cand_add_items(const DimePresenter* p, const DimeCandItem* items, size_t count, int32_t with_key_code);
+void    dime_ui_presenter_cand_clear(const DimePresenter* p);
+void    dime_ui_presenter_cand_set_index_range(const DimePresenter* p, const void* range);
+void    dime_ui_presenter_cand_set_page_index(const DimePresenter* p, const uint32_t* pages, uint32_t count);
+int32_t dime_ui_presenter_cand_get_page_index(const DimePresenter* p, uint32_t* out, uint32_t size, uint32_t* page_count);   /* HRESULT */
+int32_t dime_ui_presenter_cand_current_page(const DimePresenter* p, uint32_t* page);   /* HRESULT */
+/* op: 0 _MoveSelection(a, notify)  1 _SetSelection(a, notify)  2 _MovePage(a, notify)  3 _SetSelectionInPage(a)
+ *     4 _SetSelection(a) raw. Returns the BOOL result. */
+int32_t dime_ui_presenter_cand_select(const DimePresenter* p, uint32_t op, int32_t a, int32_t notify);
+/* which: 0 item index, 1 the selected item, 2 its key code. Length; *text valid until the list changes. */
+uint32_t dime_ui_presenter_cand_string(const DimePresenter* p, uint32_t which, int32_t index, const uint16_t** text);
+void    dime_ui_presenter_cand_paint(const DimePresenter* p, void* dc, const DimeRect* paint);   /* tests */
+int32_t dime_ui_presenter_cand_sb_info(const DimePresenter* p, int32_t* out);   /* tests: nMax, nPage, nPos; 0 without one */
+/* Placement. */
+void    dime_ui_presenter_layout_change(const DimePresenter* p, const DimeLayoutFacts* facts);
 int32_t dime_ui_presenter_notify_location_for_show(const DimePresenter* p, const DimeShowFacts* facts);   /* caretUpdated */
-void    dime_ui_presenter_restack_for_show(const DimePresenter* p, const DimePresenterCand* cand, int32_t caret_updated);
-void    dime_ui_presenter_restack_visible_slots(const DimePresenter* p, const DimePresenterCand* cand, int32_t grow_up);
+void    dime_ui_presenter_restack_for_show(const DimePresenter* p, int32_t caret_updated);
+void    dime_ui_presenter_restack_visible_slots(const DimePresenter* p, int32_t grow_up);
 
 /* ---- Drop shadow (rust/crates/dime-ui/src/shadow.rs) ---- */
 void dime_ui_shadow_color(int32_t dark, uint32_t sys_window_color, uint8_t* gray, uint8_t* max_alpha);

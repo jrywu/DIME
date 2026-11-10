@@ -26,6 +26,7 @@ dependencies = [
 name = "dime-ui"
 version = "0.1.0"
 dependencies = [
+ "dime-core",
  "windows",
 ]
 

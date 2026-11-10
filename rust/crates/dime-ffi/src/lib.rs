@@ -2780,60 +2780,26 @@ pub unsafe extern "C" fn dime_ui_restack(
 }
 
 // ---------------------------------------------------------------------------
-// CUIPresenter's state and notify-window stack owned by Rust
-// (dime-ui::presenterwin, phase 4b-2a; the decisions are dime-ui::presenter, 4b-1)
+// CUIPresenter's state, notify-window stack and candidate window owned by Rust
+// (dime-ui::presenterwin, phase 4b-2; the decisions are dime-ui::presenter, 4b-1)
 // ---------------------------------------------------------------------------
 
-/// The candidate window C++ still holds (`CUIPresenterCandHost` in
-/// `src/UIPresenter.cpp`); field order must match `dime_ffi.h`.
+/// `DimePresenterCandSource`: the selection keys and the candidate window's callback.
 #[repr(C)]
-pub struct DimePresenterCandVtbl {
-    pub has_candidate: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
-    pub client_rect: unsafe extern "C" fn(ctx: *mut c_void, out: *mut layout::Rect),
-    pub window_extent:
-        unsafe extern "C" fn(ctx: *mut c_void, comp: *const layout::Rect, cand: *const layout::Rect, out: *mut layout::Point),
-    pub move_to: unsafe extern "C" fn(ctx: *mut c_void, x: i32, y: i32),
-    pub visible: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
-    pub window_rect: unsafe extern "C" fn(ctx: *mut c_void, out: *mut layout::Rect),
-}
-
-/// `DimePresenterCand`.
-#[repr(C)]
-pub struct DimePresenterCand {
-    pub vtbl: *const DimePresenterCandVtbl,
+pub struct DimePresenterCandSource {
     pub ctx: *mut c_void,
+    pub invoke: unsafe extern "C" fn(ctx: *mut c_void, action: i32),
+    pub range_count: unsafe extern "C" fn(range: *const c_void) -> i32,
+    pub range_char: unsafe extern "C" fn(range: *const c_void, row: i32) -> u16,
 }
 
-struct PresenterCandFfi<'a> {
-    v: &'a DimePresenterCandVtbl,
-    ctx: *mut c_void,
-}
-
-impl presenterwin::CandidateHost for PresenterCandFfi<'_> {
-    fn has_candidate(&mut self) -> bool {
-        unsafe { (self.v.has_candidate)(self.ctx) != 0 }
-    }
-    fn client_rect(&mut self) -> layout::Rect {
-        let mut r = layout::Rect::default();
-        unsafe { (self.v.client_rect)(self.ctx, &mut r) };
-        r
-    }
-    fn window_extent(&mut self, comp: &layout::Rect, cand: &layout::Rect) -> layout::Point {
-        let mut p = layout::Point::default();
-        unsafe { (self.v.window_extent)(self.ctx, comp, cand, &mut p) };
-        p
-    }
-    fn move_to(&mut self, p: layout::Point) {
-        unsafe { (self.v.move_to)(self.ctx, p.x, p.y) }
-    }
-    fn visible(&mut self) -> bool {
-        unsafe { (self.v.visible)(self.ctx) != 0 }
-    }
-    fn window_rect(&mut self) -> layout::Rect {
-        let mut r = layout::Rect::default();
-        unsafe { (self.v.window_rect)(self.ctx, &mut r) };
-        r
-    }
+/// `DimeCandItem`: a candidate's string and key code.
+#[repr(C)]
+pub struct DimeCandItem {
+    pub text: *const u16,
+    pub text_len: usize,
+    pub key_code: *const u16,
+    pub key_code_len: usize,
 }
 
 /// An opaque presenter.
@@ -2847,22 +2813,6 @@ unsafe fn with_presenter<R: Default>(p: *const DimePresenter, f: impl FnOnce(&pr
     })
 }
 
-/// [`with_presenter`] with the C++ candidate window.
-unsafe fn with_presenter_cand<R: Default>(
-    p: *const DimePresenter,
-    cand: *const DimePresenterCand,
-    f: impl FnOnce(&presenterwin::Presenter, &mut PresenterCandFfi) -> R,
-) -> R {
-    guard(R::default(), || {
-        let p = unsafe { p.as_ref() };
-        let c = unsafe { cand.as_ref() }.and_then(|c| unsafe { c.vtbl.as_ref() }.map(|v| (v, c.ctx)));
-        match (p, c) {
-            (Some(p), Some((v, ctx))) => f(&p.0, &mut PresenterCandFfi { v, ctx }),
-            _ => R::default(),
-        }
-    })
-}
-
 fn ffi_text<'a>(text: *const u16, len: usize) -> &'a [u16] {
     if text.is_null() || len == 0 {
         &[]
@@ -2871,17 +2821,20 @@ fn ffi_text<'a>(text: *const u16, len: usize) -> &'a [u16] {
     }
 }
 
-/// The constructor; `callback` gets every notify window's actions. Null on failure.
+/// The constructor; `callback` gets every notify window's actions, `source`
+/// is the candidate window's side. Null on failure.
 ///
 /// # Safety
-/// `env` and `callback` must be valid; the functions they hold valid for the presenter's life.
+/// The pointers must be valid; the functions they hold valid for the presenter's life.
 #[no_mangle]
 pub unsafe extern "C" fn dime_ui_presenter_create(
     env: *const DimeCandEnv,
     callback: *const DimeNotifyCallback,
+    source: *const DimePresenterCandSource,
 ) -> *mut DimePresenter {
     guard(ptr::null_mut(), || {
-        let (Some(e), Some(cb)) = (unsafe { env.as_ref() }, unsafe { callback.as_ref() }) else {
+        let (Some(e), Some(cb), Some(s)) = (unsafe { env.as_ref() }, unsafe { callback.as_ref() }, unsafe { source.as_ref() })
+        else {
             return ptr::null_mut();
         };
         let env = candwin::Env {
@@ -2892,11 +2845,12 @@ pub unsafe extern "C" fn dime_ui_presenter_create(
             set_default_text_font: e.set_default_text_font,
         };
         let callback = notifywin::Callback { ctx: cb.ctx, invoke: cb.invoke };
-        Box::into_raw(Box::new(DimePresenter(presenterwin::Presenter::new(env, callback))))
+        let source = presenterwin::CandSource { ctx: s.ctx, invoke: s.invoke, range_count: s.range_count, range_char: s.range_char };
+        Box::into_raw(Box::new(DimePresenter(presenterwin::Presenter::new(env, callback, source))))
     })
 }
 
-/// Destroys the notify windows and frees the presenter.
+/// Destroys the windows and frees the presenter.
 ///
 /// # Safety
 /// `p` must come from `dime_ui_presenter_create` (or be null) and not be used again.
@@ -3092,20 +3046,342 @@ pub unsafe extern "C" fn dime_ui_presenter_notify_paint(
     }
 }
 
+/// `MakeCandidateWindow` after C++ found the parent: 1, or 0 when there is one
+/// already (`E_FAIL`).  `range` is the `CCandidateRange*`; `colors` / `fill`
+/// the constructor's.
+///
+/// # Safety
+/// `p` must be valid or null; `classes` / `colors` valid.
+#[no_mangle]
+#[allow(clippy::too_many_arguments)]
+pub unsafe extern "C" fn dime_ui_presenter_cand_make(
+    p: *const DimePresenter,
+    hinstance: *mut c_void,
+    classes: *const DimeCandClasses,
+    parent: *mut c_void,
+    wnd_width: u32,
+    range: *const c_void,
+    colors: *const candpaint::Colors,
+    fill: u32,
+) -> i32 {
+    unsafe {
+        with_presenter(p, |p| {
+            let (Some(c), Some(col)) = (classes.as_ref(), colors.as_ref()) else { return 0 };
+            let create = presenterwin::CandCreate {
+                hinstance: HINSTANCE(hinstance),
+                classes: candwin::Classes {
+                    candidate: c.candidate,
+                    candidate_shadow: c.candidate_shadow,
+                    scroll_bar: c.scroll_bar,
+                    notify: c.notify,
+                    notify_shadow: c.notify_shadow,
+                },
+                parent: (!parent.is_null()).then_some(candproc::HWND(parent)),
+                wnd_width,
+                range,
+                colors: *col,
+                fill,
+            };
+            i32::from(p.make_candidate(&create))
+        })
+    }
+}
+
+/// `DisposeCandidateWindow`.
+///
+/// # Safety
+/// `p` must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_presenter_cand_dispose(p: *const DimePresenter) {
+    unsafe { with_presenter(p, |p| p.dispose_candidate()) }
+}
+
+/// `what`: 0 the object exists (`_pCandidateWnd != nullptr`), 1 `_IsWindowVisible`,
+/// 2 `_GetWidth`, 3 `_GetCount`, 4 `_GetSelection` (-1 without a list).
+///
+/// # Safety
+/// `p` must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_presenter_cand_query(p: *const DimePresenter, what: u32) -> i32 {
+    unsafe {
+        with_presenter(p, |p| match what {
+            0 => i32::from(p.has_candidate()),
+            1 => i32::from(p.cand_window().is_some_and(|w| w.is_visible())),
+            2 => p.cand_window().map_or(0, |w| w.width()),
+            3 => p.cand_list().map_or(0, |l| l.count() as i32),
+            4 => p.cand_list().map_or(-1, |l| l.selection()),
+            _ => 0,
+        })
+    }
+}
+
+/// The candidate window (null without one).
+///
+/// # Safety
+/// `p` must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_presenter_cand_hwnd(p: *const DimePresenter) -> *mut c_void {
+    let h = unsafe { with_presenter(p, |p| p.cand_window().map_or(0, |w| w.hwnd().0 as usize)) };
+    h as *mut c_void
+}
+
+/// `_GetWindowRect` (`client` 0) / `_GetClientRect` (`client` 1); `out` untouched without a window.
+///
+/// # Safety
+/// `p` must be valid or null; `out` valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_presenter_cand_rect(p: *const DimePresenter, client: i32, out: *mut layout::Rect) {
+    unsafe {
+        with_presenter(p, |p| {
+            if let Some(w) = p.cand_window() {
+                set(out, if client != 0 { w.client_rect() } else { w.window_rect() });
+            }
+        })
+    }
+}
+
+/// Candidate window operations (as `dime_ui_candidate_op`): 0 `_Show(a)`,
+/// 1 `_Move(a, b)`, 2 `_ResizeWindow`, 3 `_InvalidateRect`,
+/// 4 `_SetCandStringLength(a)`, 5 `_SetFillColor(a)`, 9 `_SetScrollInfo(a, b)`.
+///
+/// # Safety
+/// `p` must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_presenter_cand_op(p: *const DimePresenter, op: u32, a: i32, b: i32) {
+    unsafe {
+        with_presenter(p, |p| {
+            let Some(w) = p.cand_window() else { return };
+            match op {
+                0 => w.show(a != 0),
+                1 => w.move_to(a, b),
+                2 => w.resize_window(),
+                3 => w.invalidate(),
+                4 => w.set_cand_string_length(a as u32),
+                5 => w.set_fill_color(a as u32),
+                9 => w.set_scroll_info(a, b),
+                _ => {}
+            }
+        })
+    }
+}
+
+/// `_SetNumberColor` (`which` 0), `_SetTextColor` (1), `_SetSelectedTextColor` (2).
+///
+/// # Safety
+/// `p` must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_presenter_cand_set_color(p: *const DimePresenter, which: i32, color: u32, bk: u32) {
+    unsafe {
+        with_presenter(p, |p| {
+            if let Some(w) = p.cand_window() {
+                match which {
+                    0 => w.set_number_color(color, bk),
+                    1 => w.set_text_color(color, bk),
+                    _ => w.set_selected_text_color(color, bk),
+                }
+            }
+        })
+    }
+}
+
+/// `_AddString` for each item (the key code kept only with `with_key_code`).
+///
+/// # Safety
+/// `p` must be valid or null; `items` valid for `count` entries, their strings for their lengths.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_presenter_cand_add_items(
+    p: *const DimePresenter,
+    items: *const DimeCandItem,
+    count: usize,
+    with_key_code: i32,
+) {
+    unsafe {
+        with_presenter(p, |p| {
+            if items.is_null() || count == 0 {
+                return;
+            }
+            let v: Vec<(&[u16], &[u16])> = std::slice::from_raw_parts(items, count)
+                .iter()
+                .map(|it| (ffi_text(it.text, it.text_len), ffi_text(it.key_code, it.key_code_len)))
+                .collect();
+            p.add_items(&v, with_key_code != 0)
+        })
+    }
+}
+
+/// `_ClearList`.
+///
+/// # Safety
+/// `p` must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_presenter_cand_clear(p: *const DimePresenter) {
+    unsafe { with_presenter(p, |p| p.clear_list()) }
+}
+
+/// `_SetCandIndexRange` (the `CCandidateRange*`).
+///
+/// # Safety
+/// `p` must be valid or null; `range` valid for the list's life or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_presenter_cand_set_index_range(p: *const DimePresenter, range: *const c_void) {
+    unsafe { with_presenter(p, |p| p.set_index_range(range)) }
+}
+
+/// `_SetPageIndex`.
+///
+/// # Safety
+/// `p` must be valid or null; `pages` valid for `count` entries (or null with 0).
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_presenter_cand_set_page_index(p: *const DimePresenter, pages: *const u32, count: u32) {
+    unsafe {
+        with_presenter(p, |p| {
+            let v = if pages.is_null() || count == 0 { &[][..] } else { std::slice::from_raw_parts(pages, count as usize) };
+            p.set_page_index(v)
+        })
+    }
+}
+
+/// `_GetPageIndex`: HRESULT; `out` (null: not written) gets up to `size` page starts.
+///
+/// # Safety
+/// `p` must be valid or null; `out` valid for `size` entries or null; `page_count` valid.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_presenter_cand_get_page_index(
+    p: *const DimePresenter,
+    out: *mut u32,
+    size: u32,
+    page_count: *mut u32,
+) -> i32 {
+    unsafe {
+        with_presenter(p, |p| {
+            let Some(l) = p.cand_list() else { return candidates::E_FAIL };
+            let mut buf = vec![0u32; size as usize];
+            let (hr, n) = l.page_index(&mut buf);
+            if !out.is_null() {
+                let written = if hr == candidates::S_OK { n as usize } else { size as usize };
+                std::slice::from_raw_parts_mut(out, size as usize)[..written].copy_from_slice(&buf[..written]);
+            }
+            set(page_count, n);
+            hr
+        })
+    }
+}
+
+/// `_GetCurrentPage`: HRESULT; `*page` the page (0 on failure).
+///
+/// # Safety
+/// `p` must be valid or null; `page` valid.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_presenter_cand_current_page(p: *const DimePresenter, page: *mut u32) -> i32 {
+    unsafe {
+        with_presenter(p, |p| {
+            let Some(l) = p.cand_list() else { return candidates::E_FAIL };
+            let (hr, pg) = l.current_page();
+            set(page, pg);
+            hr
+        })
+    }
+}
+
+/// Selection: `op` 0 `_MoveSelection(a, notify)`, 1 `_SetSelection(a, notify)`,
+/// 2 `_MovePage(a, notify)`, 3 `_SetSelectionInPage(a)`, 4 `_SetSelection(a)`
+/// (raw). Returns the BOOL result (0 without a list).
+///
+/// # Safety
+/// `p` must be valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_presenter_cand_select(p: *const DimePresenter, op: u32, a: i32, notify: i32) -> i32 {
+    unsafe {
+        with_presenter(p, |p| {
+            let n = notify != 0;
+            i32::from(match op {
+                0 => p.move_selection(a, n),
+                1 => p.set_selection(a, n),
+                2 => p.move_page(a, n),
+                3 => p.set_selection_in_page(a),
+                4 => {
+                    p.set_selection_raw(a);
+                    true
+                }
+                _ => false,
+            })
+        })
+    }
+}
+
+/// A string of the list: `which` 0 item `index` (`_GetCandidateString`), 1 the
+/// selected one (`_GetSelectedCandidateString`), 2 its key code
+/// (`_GetSelectedCandidateKeyCode`). Returns the length; `*text` (when not null)
+/// the string, valid until the list changes (null when there is none).
+///
+/// # Safety
+/// `p` must be valid or null; `text` valid or null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_presenter_cand_string(p: *const DimePresenter, which: u32, index: i32, text: *mut *const u16) -> u32 {
+    let (ptr_, len) = unsafe {
+        with_presenter(p, |p| match p.cand_list() {
+            Some(l) => {
+                let (s, n) = match which {
+                    0 => l.string(index),
+                    1 => l.string(l.selection()),
+                    _ => l.selected_key_code(),
+                };
+                (s as usize, n)
+            }
+            None => (0, 0),
+        })
+    };
+    if let Some(t) = unsafe { text.as_mut() } {
+        *t = ptr_ as *const u16;
+    }
+    len
+}
+
+/// Paints the candidate window into `dc` as `WM_PAINT` would (tests).
+///
+/// # Safety
+/// `p` must be valid or null; `dc` a valid DC; `paint` valid.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_presenter_cand_paint(p: *const DimePresenter, dc: *mut c_void, paint: *const layout::Rect) {
+    unsafe {
+        with_presenter(p, |p| {
+            if let Some(r) = paint.as_ref() {
+                p.paint_candidate(candpaint::HDC(dc), *r);
+            }
+        })
+    }
+}
+
+/// The candidate window's scroll bar `(nMax, nPage, nPos)` (tests); 0 without one.
+///
+/// # Safety
+/// `p` must be valid or null; `out` valid for 3 entries.
+#[no_mangle]
+pub unsafe extern "C" fn dime_ui_presenter_cand_sb_info(p: *const DimePresenter, out: *mut i32) -> i32 {
+    unsafe {
+        with_presenter(p, |p| {
+            let Some(sb) = p.cand_window().and_then(|w| w.scroll_bar()) else { return 0 };
+            if !out.is_null() {
+                let si = sb.snapshot().si;
+                *out = si.max;
+                *out.add(1) = si.page;
+                *out.add(2) = si.pos;
+            }
+            1
+        })
+    }
+}
+
 /// `_LayoutChangeNotification` after C++ read the facts.
 ///
 /// # Safety
-/// `p` must be valid or null; `cand` valid with a complete vtable; `facts` valid.
+/// `p` must be valid or null; `facts` valid.
 #[no_mangle]
-pub unsafe extern "C" fn dime_ui_presenter_layout_change(
-    p: *const DimePresenter,
-    cand: *const DimePresenterCand,
-    facts: *const presenter::LayoutFacts,
-) {
+pub unsafe extern "C" fn dime_ui_presenter_layout_change(p: *const DimePresenter, facts: *const presenter::LayoutFacts) {
     unsafe {
-        with_presenter_cand(p, cand, |p, c| {
+        with_presenter(p, |p| {
             if let Some(f) = facts.as_ref() {
-                p.layout_change(c, f);
+                p.layout_change(f);
             }
         })
     }
@@ -3126,27 +3402,19 @@ pub unsafe extern "C" fn dime_ui_presenter_notify_location_for_show(
 /// `ShowNotifyText` after showing (no delay): restack from one anchor.
 ///
 /// # Safety
-/// `p` must be valid or null; `cand` valid with a complete vtable.
+/// `p` must be valid or null.
 #[no_mangle]
-pub unsafe extern "C" fn dime_ui_presenter_restack_for_show(
-    p: *const DimePresenter,
-    cand: *const DimePresenterCand,
-    caret_updated: i32,
-) {
-    unsafe { with_presenter_cand(p, cand, |p, c| p.restack_for_show(c, caret_updated != 0)) }
+pub unsafe extern "C" fn dime_ui_presenter_restack_for_show(p: *const DimePresenter, caret_updated: i32) {
+    unsafe { with_presenter(p, |p| p.restack_for_show(caret_updated != 0)) }
 }
 
 /// `_RestackVisibleSlots(growUp)`.
 ///
 /// # Safety
-/// `p` must be valid or null; `cand` valid with a complete vtable.
+/// `p` must be valid or null.
 #[no_mangle]
-pub unsafe extern "C" fn dime_ui_presenter_restack_visible_slots(
-    p: *const DimePresenter,
-    cand: *const DimePresenterCand,
-    grow_up: i32,
-) {
-    unsafe { with_presenter_cand(p, cand, |p, c| p.restack_visible_slots(c, grow_up != 0)) }
+pub unsafe extern "C" fn dime_ui_presenter_restack_visible_slots(p: *const DimePresenter, grow_up: i32) {
+    unsafe { with_presenter(p, |p| p.restack_visible_slots(grow_up != 0)) }
 }
 
 // ---------------------------------------------------------------------------

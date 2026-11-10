@@ -736,7 +736,7 @@ namespace DIMEIntegratedTests
             StubCDIME* pStubDIME = new StubCDIME();
             CUIPresenter* pUIPresenter = new CUIPresenter(pStubDIME, nullptr);
             Assert::IsTrue(SUCCEEDED(pUIPresenter->MakeCandidateWindow(nullptr, 200)));
-            HWND h = pUIPresenter->_pCandidateWnd->_GetWnd();
+            HWND h = pUIPresenter->_CandWnd();
             Assert::IsNotNull(h, L"a real window");
             Assert::AreEqual((int)Global::AtomCandidateWindow, (int)GetClassWord(h, GCW_ATOM), L"the DIME.CandidateWindow class");
 
