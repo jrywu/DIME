@@ -7,6 +7,39 @@
 
 DIME 是一套適用於 Windows 8/10/11 的輸入法框架，支援多種中文輸入法，包含大易、行列、注音、自建輸入法。
 
+> **Fork 說明**：本儲存庫 fork 自 [jrywu/DIME](https://github.com/jrywu/DIME)（原作者 Jeremy Wu，BSD 3-Clause 授權），以 upstream `master` 的 commit `2788155` 為基礎。本頁沿用原專案說明，並在 [本 Fork 的異動](#本-fork-的異動) 一節列出新增與修改的部分。上方的徽章、下載連結與問題回報管道仍指向原專案；原專案發布的安裝檔**不包含**本 fork 的異動，需自行[從原始碼建置](docs/HOW_TO_BUILD.md)。
+
+## 本 Fork 的異動
+
+### 新功能
+
+- **大易整句輸入**（設定「整句輸入」，CLI key `SentenceMode`）
+  - 連續打字不必逐字選字：空白鍵或結束鍵把該字加入組字區的整句，依字頻（`TCFreq.cin`）與詞庫（`Array-Phrase.cin` 的詞）以上下文自動選出整句。
+  - Enter／空白送出，←→ 移動、↓ 改選游標所在的字（選定後固定），Backspace／Delete 刪字，Esc 放棄；標點、地址鍵、Shift 英數等會先送出整句。
+  - 會學習手動改選的字與它和前後字組成的詞，存在 `%APPDATA%\DIME\SentenceUser.txt`（刪除即重置）；Store app 與低完整性行程只記在記憶體。
+  - 詳見下方[整句輸入](#整句輸入本-fork-新增)。
+- **大易選字鍵模式**（設定「選字鍵」，CLI key `DayiSelkeyMode`）
+  - `依碼表設定`（碼表的 `%selkey`）、`數字鍵 1~0`，或 `大易選擇鍵`：空白鍵選第 1 個字，`'` `[` `]` `-` `\` 選第 2～6 個字，Shift+`'` `[` `]` `-` 選第 7～10 個字。
+
+### 錯誤修正
+
+- 自動組字搭配萬用字元時的當機。
+- 依本說明格式撰寫的 `Phrase.cin` 聯想詞表查不到聯想詞（原本查詢時會附加 `*`，而 CIN 查詢不把 `*` 當萬用字元）。
+- 版號標頭 `BuildInfo.h` 每次建置都重新產生，設定視窗標題的版號會跟著版本更新。
+
+### 以 Rust 改寫輸入法核心（進行中）
+
+- 字典引擎（`.cin` 解析與搜尋）、設定（`CConfig`）、組字緩衝、按鍵分類與路由、候選字產生與翻頁、按鍵處理流程、整句緩衝，以及候選字窗、捲軸、提示窗、陰影窗的繪圖與訊息處理，已移到 `rust/` 的 Cargo workspace（`dime-core`、`dime-config`、`dime-ui`、`dime-ffi`）。TSF 文字服務的外殼仍是 C++。
+- **預設建置使用 Rust 核心**，需安裝 Rust 工具鏈與對應的 target；`/p:DimeUseRustEngine=false` 仍可建出全 C++ 版本。`DIMESettings.exe` 的字典引擎仍是 C++。
+- Rust 版唯一的外部相依是 Microsoft 官方的 [`windows`](https://crates.io/crates/windows) crate（只在 `dime-ui` 使用）。
+- 改寫計畫與設計紀錄：[`RUST_MIGRATION_PLAN.md`](docs/RUST_MIGRATION_PLAN.md)、[`RUST_WINDOW_OWNERSHIP.md`](docs/RUST_WINDOW_OWNERSHIP.md)、[`RUST_TSF_SHELL.md`](docs/RUST_TSF_SHELL.md)。
+
+### 測試
+
+- 按鍵流程黃金測試（`src/tests/KeyFlowTest.cpp`）：以真實的 TSF thread manager 與自製文件，把按鍵腳本送進未修改的 `CDIME`，逐鍵記錄結果並與 `src/tests/keyflow/*.txt` 比對。
+- C++ 與 Rust 對拍測試（`*ParityTest.cpp`）：同一份輸入同時交給 C++ 與 Rust 實作，逐筆比對結果，包含 `installer/*.cin` 全部碼表、設定檔輸出位元組，以及候選字窗、捲軸、陰影窗的逐像素繪圖結果。
+- Rust 單元測試：`cargo test --manifest-path rust/Cargo.toml`。
+
 ## 功能特色
 
 - **原生支援Windows各平台**
@@ -27,9 +60,9 @@ DIME 是一套適用於 Windows 8/10/11 的輸入法框架，支援多種中文�
 - **支持字根反查**
   - 支持Widnows TSF 標準反查界面，可與Windows 內建輸入法互相反查
 - **輕量化設計**
-  - 100% 原生 C++ 開發，無第三方外部程式碼、函式庫或二進位檔案相依性
+  - 原生 C++ 與 Rust 開發（本 fork 預設以 Rust 核心建置，唯一外部相依為 Microsoft 官方 `windows` crate；可建置為 100% 原生 C++ 版本）
 - **隱私保護**
-  - 不學習使用者輸入內容，不連線網路，無任何隱私疑慮
+  - 不連線網路；僅大易整句輸入（本 fork 新增，預設關閉）會在本機記錄手動改選的字詞（`SentenceUser.txt`）
 - **開源專案**
   - 程式碼完全公開，歡迎檢視、使用與貢獻
 
@@ -288,6 +321,23 @@ Shift+數字鍵的輸出對照：
 
 > **注意**：當「全形/半形切換」設定為「以 Shift-Space 熱鍵切換」時，Shift+Space 保留給全形/半形切換，不會輸入空格；需放開 Shift 後按 Space 輸入空格。
 
+### 整句輸入（本 fork 新增）
+
+僅適用大易。在大易設定的「輸入設定」開啟「整句輸入」（或 `DIMESettings.exe --mode dayi --set SentenceMode 1`）後：
+
+| 按鍵 | 動作 |
+|------|------|
+| 空白鍵／結束鍵 | 不跳出候選字窗，將該字（連同該字碼的所有候選字）加入組字區的整句，並依上下文重選整句 |
+| Enter／空白鍵（無字根時） | 送出整句 |
+| ← → | 在整句中移動游標 |
+| ↓ | 改選游標所在的字，選定後該字固定，不再被自動重選 |
+| Backspace／Delete | 刪除字根或整句中的字 |
+| Esc | 放棄整句 |
+
+標點、地址鍵、Shift 英數等直接輸出的按鍵會先送出整句再輸出。
+
+選字依據 `TCFreq.cin` 的字頻與 `Array-Phrase.cin` 的詞（只用詞，不用其字碼）。送出整句時，手動改選的字會被記住：同一字碼約選 3 次後，沒有上下文時也會優先選它；和前後字組成的雙字詞在相同上下文中選一次就生效。學習資料存在 `%APPDATA%\DIME\SentenceUser.txt`，刪除即重置。以全 C++ 版本建置時，整句輸入只取第一候選字，也不學習。
+
 ### 聯想詞
 
 所有輸入法皆支援聯想詞功能，DIME 使用Windows 內建聯想詞表。在各輸入法設定頁面勾選「提示聯想字詞」即可啟用，每輸入一個中文字後會自動顯示相關聯想詞，以 `Shift + 1~0` 選字(詞)，例如輸入「台」後，聯想詞視窗會顯示「灣」、「北」、「中」和「北市」供選擇。使用者也可透過各輸入法設定的自建詞庫頁面`載入聯想詞表`按鈕載入自訂聯想詞表，聯想詞表格式請參考[聯想詞表格式](#聯想詞表格式)說明。
@@ -391,8 +441,9 @@ Shift+數字鍵的輸出對照：
 | 設定 | 適用 | 說明 |
 |------|------|------|
 | 地址鍵輸入符號 | 大易 | 啟用後可用地址鍵輸入全形符號 |
+| 整句輸入 | 大易 | 連續打字不選字，依上下文自動組成句子，按 Enter 送出（本 fork 新增，見[整句輸入](#整句輸入本-fork-新增)） |
 | 空白鍵為第一選字鍵 | 大易、自建 | 以空白鍵選擇第一個候選字 |
-| 選字鍵 | 大易 | `依碼表設定`（碼表的 `%selkey`）、`數字鍵 1~0`，或 `大易選擇鍵`：空白鍵選第 1 個字，`'` `[` `]` `-` `\` 選第 2～6 個字，Shift+`'` `[` `]` `-` 選第 7～10 個字。`數字鍵 1~0` 時 `1`～`0` 選第 1～10 個字，空白鍵選目前反白的字 |
+| 選字鍵（本 fork 新增） | 大易 | `依碼表設定`（碼表的 `%selkey`）、`數字鍵 1~0`，或 `大易選擇鍵`：空白鍵選第 1 個字，`'` `[` `]` `-` `\` 選第 2～6 個字，Shift+`'` `[` `]` `-` 選第 7～10 個字。`數字鍵 1~0` 時 `1`～`0` 選第 1～10 個字，空白鍵選目前反白的字 |
 | 僅接受輸入特別碼 | 行列 | 啟用後僅能輸入特別碼，不接受一般字碼 |
 | 特別碼提示 | 行列 | 輸入一般字碼時提示對應的特別碼 |
 | 以 `'` 鍵查詢自建詞庫 | 行列 | `'` 為詞彙結束鍵，勾選時查詢自建詞庫，否則查詢內建行列詞庫 |
@@ -779,6 +830,12 @@ DIME 執行時一律從此目錄讀取碼表（.cin），碼表來源有兩種�
 | `TCFreq.cin` | 常用字頻率表 (使用萬用字元時以詞頻作排序) |
 | `TCSC.cin` | 繁簡轉換表 |
 
+**整句輸入學習資料（本 fork 新增）：**
+
+| 檔案 | 說明 |
+|------|------|
+| `SentenceUser.txt` | 大易整句輸入記住的偏好字與雙字詞（UTF-16，刪除即重置；多個行程共用） |
+
 
 
 > **注意**：不建議直接修改%APPDATA%\DIME下的碼表檔案，請透過設定頁面載入自訂碼表或自建詞庫來覆蓋使用者資料夾中的碼表，以確保格式與編碼正確。
@@ -790,7 +847,7 @@ DIME 是開源專案，歡迎開發者 fork 並基於 DIME 建立衍生專案或
 DIME is an open-source project. Developers are welcome to fork and build derivative projects or software based on DIME.
 
 **專案特色 / Project Highlights:**
-- ✅ **100% 原生 C++** / 100% Native C++ - 無外部依賴 / No external dependencies
+- ✅ **原生 C++ + Rust** / Native C++ + Rust - 本 fork 預設以 Rust 核心建置，唯一外部相依為官方 `windows` crate；`/p:DimeUseRustEngine=false` 可建出無外部依賴的 100% C++ 版本 / This fork builds with a Rust core by default (only external dependency: the official `windows` crate); `/p:DimeUseRustEngine=false` builds the dependency-free all-C++ version
 - ✅ **BSD 3-Clause 授權** / BSD 3-Clause License - 商業與非商業皆可使用 / Free for commercial and non-commercial use
 - ✅ **多平台支援** / Multi-platform Support - x86/x64/ARM64EC 單一程式碼基底 / Single codebase for all platforms
 - ✅ **完整的 TSF 實作** / Complete TSF Implementation - Windows Text Services Framework 標準實作 / Standard Windows TSF implementation
@@ -803,7 +860,7 @@ If you want to build DIME yourself or modify the source code, please refer to th
 
 📖 **[HOW_TO_BUILD](docs/HOW_TO_BUILD.md)**
 
-此文件包含詳細的編譯步驟、開發環境設定、多平台建置說明。
+此文件包含詳細的編譯步驟、開發環境設定、多平台建置說明。本 fork 預設需要 Rust 工具鏈，安裝方式見該文件的需求一節。
 
 This document contains detailed build instructions, development environment setup, multi-platform build guidance.
 
