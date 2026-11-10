@@ -11,7 +11,8 @@
 //! Phase 3c-6: the notify window (`notify`, Windows only).  Phase 3c-5a:
 //! the window infrastructure (`win`, Windows only): classes, creation and
 //! dispatch for windows owned by Rust.  Phase 4b-1: the placement decisions
-//! of `CUIPresenter` (`presenter`).
+//! of `CUIPresenter` (`presenter`).  Phase 4b-2a: the presenter's state
+//! and notify-window stack owned by Rust (`presenterwin`, Windows only).
 
 #[cfg(windows)]
 pub mod candpaint;
@@ -26,6 +27,8 @@ pub mod notify;
 #[cfg(windows)]
 pub mod notifywin;
 pub mod presenter;
+#[cfg(windows)]
+pub mod presenterwin;
 #[cfg(windows)]
 pub mod sbpaint;
 #[cfg(windows)]

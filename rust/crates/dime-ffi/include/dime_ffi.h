@@ -610,47 +610,6 @@ void     dime_ui_stack_pos_for_new_slot(DimePoint notify, const DimeNotifySlot* 
 void     dime_ui_restack(int32_t has_candidate, DimeRect candidate_rect, DimePoint candidate_location, DimePoint notify,
                          const DimeNotifySlot* slots, size_t count, int32_t grow_up, DimePoint* positions, int32_t* placed);
 
-/* ---- CUIPresenter's placement decisions (rust/crates/dime-ui/src/presenter.rs, phase 4b-1) ---- */
-typedef struct DimePresenterState {
-    DimePoint cand_location;      /* _candLocation */
-    DimePoint notify_location;    /* _notifyLocation */
-    DimeRect  rect_comp_range;    /* _rectCompRange */
-} DimePresenterState;
-/* The C++ side (CUIPresenterLayoutHost in src/UIPresenter.cpp); order must match dime-ffi. */
-typedef struct DimePresenterHostVtbl {
-    int32_t (*has_candidate)(void* ctx);
-    void    (*candidate_client_rect)(void* ctx, DimeRect* out);
-    void    (*candidate_window_extent)(void* ctx, const DimeRect* comp, const DimeRect* cand, DimePoint* out);
-    void    (*candidate_move)(void* ctx, int32_t x, int32_t y);
-    int32_t (*candidate_visible)(void* ctx);
-    void    (*candidate_window_rect)(void* ctx, DimeRect* out);
-    size_t  (*slot_count)(void* ctx);                                  /* NOTIFY_COUNT */
-    void    (*slot)(void* ctx, size_t i, DimeNotifySlot* out);         /* _NotifySlots */
-    void    (*slot_client_rect)(void* ctx, size_t i, DimeRect* out);
-    void    (*slot_window_extent)(void* ctx, size_t i, const DimeRect* comp, const DimeRect* rect, DimePoint* out);
-    void    (*slot_move)(void* ctx, size_t i, int32_t x, int32_t y);
-    int32_t (*screen_bottom)(void* ctx);                               /* GetSystemMetrics(SM_CYSCREEN) */
-} DimePresenterHostVtbl;
-typedef struct DimePresenterHost {
-    const DimePresenterHostVtbl* vtbl;
-    void* ctx;
-} DimePresenterHost;
-typedef struct DimeLayoutFacts {
-    DimeRect comp;          /* *lpRect */
-    int32_t first_call;
-    int32_t has_parent;     /* the context view's window, else the foreground one */
-    DimePoint caret;        /* GetCaretPos on the screen (with a parent) */
-} DimeLayoutFacts;
-typedef struct DimeShowFacts {
-    int32_t refresh;        /* reverse lookup, special code, beep */
-    int32_t has_parent;
-    DimeRect rc_caret;      /* GUITHREADINFO::rcCaret as returned (zero if GetGUIThreadInfo failed) */
-    DimePoint gui_caret;    /* (rcCaret.left, rcCaret.bottom) on the screen */
-} DimeShowFacts;
-void    dime_ui_presenter_layout_change(const DimePresenterHost* host, const DimeLayoutFacts* facts, DimePresenterState* state);
-int32_t dime_ui_presenter_notify_location_for_show(const DimeShowFacts* facts, DimePresenterState* state);   /* caretUpdated */
-void    dime_ui_presenter_restack_for_show(const DimePresenterHost* host, int32_t caret_updated, DimePresenterState* state);
-
 /* ---- Candidate window / scroll bar layout (rust/crates/dime-ui/src/candwnd.rs) ---- */
 typedef struct DimeCandMetrics {
     int32_t cx_line, cy_line, first_line_offset, left_padding, cx_title, padding, cy_offset;
@@ -834,6 +793,61 @@ void    dime_ui_notifywin_paint(const DimeNotify* n, void* dc, const DimeRect* p
 void*   dime_ui_notifywin_shadow_hwnd(const DimeNotify* n);
 typedef void (*DimeNotifyTimerHook)(void* ctx, int32_t start, uint32_t elapse, uintptr_t id);
 void    dime_ui_notifywin_set_timer_hook(const DimeNotify* n, DimeNotifyTimerHook hook, void* ctx);   /* NULL removes */
+
+/* ---- CUIPresenter's state and notify-window stack owned by Rust
+ *      (rust/crates/dime-ui/src/presenterwin.rs, phase 4b-2a; decisions in presenter.rs, 4b-1) ---- */
+typedef struct DimePresenterState {
+    DimePoint cand_location;      /* _candLocation */
+    DimePoint notify_location;    /* _notifyLocation */
+    DimeRect  rect_comp_range;    /* _rectCompRange */
+} DimePresenterState;
+/* The candidate window C++ still holds (CUIPresenterCandHost in src/UIPresenter.cpp); order must match dime-ffi. */
+typedef struct DimePresenterCandVtbl {
+    int32_t (*has_candidate)(void* ctx);
+    void    (*client_rect)(void* ctx, DimeRect* out);
+    void    (*window_extent)(void* ctx, const DimeRect* comp, const DimeRect* cand, DimePoint* out);
+    void    (*move_to)(void* ctx, int32_t x, int32_t y);
+    int32_t (*visible)(void* ctx);
+    void    (*window_rect)(void* ctx, DimeRect* out);
+} DimePresenterCandVtbl;
+typedef struct DimePresenterCand {
+    const DimePresenterCandVtbl* vtbl;
+    void* ctx;
+} DimePresenterCand;
+typedef struct DimeLayoutFacts {
+    DimeRect comp;          /* *lpRect */
+    int32_t first_call;
+    int32_t has_parent;     /* the context view's window, else the foreground one */
+    DimePoint caret;        /* GetCaretPos on the screen (with a parent) */
+} DimeLayoutFacts;
+typedef struct DimeShowFacts {
+    int32_t refresh;        /* reverse lookup, special code, beep */
+    int32_t has_parent;
+    DimeRect rc_caret;      /* GUITHREADINFO::rcCaret as returned (zero if GetGUIThreadInfo failed) */
+    DimePoint gui_caret;    /* (rcCaret.left, rcCaret.bottom) on the screen */
+} DimeShowFacts;
+typedef struct DimePresenter DimePresenter;
+/* callback: every notify window's actions (_NotifyWndCallback); env as the candidate window's. */
+DimePresenter* dime_ui_presenter_create(const DimeCandEnv* env, const DimeNotifyCallback* callback);
+void    dime_ui_presenter_free(DimePresenter* p);
+void    dime_ui_presenter_get_state(const DimePresenter* p, DimePresenterState* out);
+void    dime_ui_presenter_set_state(const DimePresenter* p, const DimePresenterState* st);   /* tests */
+void    dime_ui_presenter_reset_comp_range(const DimePresenter* p);
+/* MakeNotifyWindow after the parent is known: 1, or 0 for a slot out of range. */
+int32_t dime_ui_presenter_notify_make(const DimePresenter* p, uint32_t slot, void* hinstance, const DimeNotifyClasses* classes,
+                                      void* parent, const uint16_t* text, size_t len);
+void    dime_ui_presenter_notify_dispose(const DimePresenter* p, uint32_t slot);   /* slot >= NOTIFY_COUNT: all */
+void    dime_ui_presenter_notify_set_string(const DimePresenter* p, uint32_t slot, const uint16_t* text, size_t len);
+void    dime_ui_presenter_notify_show(const DimePresenter* p, uint32_t slot, int32_t show, uint32_t delay_show, uint32_t time_to_hide);
+void    dime_ui_presenter_notify_set_text_color(const DimePresenter* p, uint32_t color, uint32_t bk);
+/* slot < NOTIFY_COUNT: what 0 exists, 1 visible; slot >= NOTIFY_COUNT: 0 any exists, 1 any visible, 2 a hint visible. */
+int32_t dime_ui_presenter_notify_query(const DimePresenter* p, uint32_t slot, uint32_t what);
+void*   dime_ui_presenter_notify_window(const DimePresenter* p, uint32_t slot, int32_t* cx, int32_t* cy);   /* HWND, title size */
+void    dime_ui_presenter_notify_paint(const DimePresenter* p, uint32_t slot, void* dc, const DimeRect* paint);   /* tests */
+void    dime_ui_presenter_layout_change(const DimePresenter* p, const DimePresenterCand* cand, const DimeLayoutFacts* facts);
+int32_t dime_ui_presenter_notify_location_for_show(const DimePresenter* p, const DimeShowFacts* facts);   /* caretUpdated */
+void    dime_ui_presenter_restack_for_show(const DimePresenter* p, const DimePresenterCand* cand, int32_t caret_updated);
+void    dime_ui_presenter_restack_visible_slots(const DimePresenter* p, const DimePresenterCand* cand, int32_t grow_up);
 
 /* ---- Drop shadow (rust/crates/dime-ui/src/shadow.rs) ---- */
 void dime_ui_shadow_color(int32_t dark, uint32_t sys_window_color, uint8_t* gray, uint8_t* max_alpha);

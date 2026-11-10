@@ -55,6 +55,7 @@ namespace DIMEIntegratedTests {
 #endif
 
 class CReadingLine;
+struct DimePresenter;   // dime_ffi.h: the presenter owned by Rust (phase 4b-2a)
 class CCompositionProcessorEngine;
 class CDIME;
 
@@ -97,7 +98,7 @@ class CUIPresenter :
     friend class DIMEIntegratedTests::UIPresenterIntegrationTest;
     friend class PresenterLayoutParityAccess;   // tests/PresenterLayoutParityTest.cpp
 #endif
-    friend struct CUIPresenterLayoutHost;
+    friend struct CUIPresenterCandHost;
 
 public:
     CUIPresenter(_In_ CDIME *pTextService, CCompositionProcessorEngine *pCompositionProcessorEngine);
@@ -180,7 +181,7 @@ public:
 	void ClearAll();
 	void ShowNotifyText(_In_ CStringRange *pNotifyText, _In_opt_ UINT delayShow = 0, _In_opt_ UINT timeToHide = 0, _In_opt_ NOTIFY_TYPE notifyType  = NOTIFY_TYPE::NOTIFY_CHN_ENG);
 	BOOL IsNotifyShown();
-	LONG GetCompRangeHeight() const { return _rectCompRange.bottom - _rectCompRange.top; }
+	LONG GetCompRangeHeight() const;
 	void ResetCompRange();
 
 	BOOL isUILessMode() const {return !_isShowMode;}
@@ -194,6 +195,20 @@ private:
 	BOOL _NotifyLocationForShowCpp(const PresenterShowFacts& facts);
 	void _RestackForShow(BOOL caretUpdated);
 	void _RestackForShowCpp(BOOL caretUpdated);
+	// The presenter state and notify stack owned by Rust (phase 4b-2a) when _useRustPresenter;
+	// else _candLocation / _notifyLocation / _rectCompRange / _pNotifyWnds.
+	BOOL _RustPresenter() const;
+	void _GetPlacement(_Out_opt_ POINT* cand, _Out_opt_ POINT* notify, _Out_opt_ RECT* comp) const;
+	void _SetPlacement(POINT cand, POINT notify, RECT comp);   // tests
+	BOOL _NotifySlotExists(NOTIFY_TYPE notifyType) const;
+	HWND _NotifySlotWnd(NOTIFY_TYPE notifyType, _Out_opt_ UINT* width = nullptr, _Out_opt_ UINT* height = nullptr) const;   // tests
+	static void _NotifyWndInvoke(void* ctx, int32_t action, uintptr_t wParam, intptr_t lParam);
+#ifdef DIME_UNIT_TESTING
+	void _PaintNotifySlotForTest(NOTIFY_TYPE notifyType, HDC dc, PAINTSTRUCT* ps);   // as WM_PAINT
+	// The classes the Rust presenter makes its notify windows with (default: Global::Atom*; the C++
+	// test build registers those with CBaseWindow's window procedure).
+	void _SetNotifyClassesForTest(ATOM notify, ATOM shadow) { _notifyAtomForTest = notify; _notifyShadowAtomForTest = shadow; }
+#endif
     virtual HRESULT CALLBACK _CandidateChangeNotification(_In_ enum CANDWND_ACTION action);
 	virtual HRESULT CALLBACK _NotifyChangeNotification(_In_ enum NOTIFY_WND action, _In_ WPARAM wParam, _In_ LPARAM lParam);
 
@@ -250,7 +265,11 @@ private:
 	CUIACaretTracker _uiaCaretTracker;
 
 	BOOL _inFocus;
-	BOOL _useRustLayout;   // the placement decisions in Rust (DIME_USE_RUST_ENGINE) or C++
+	BOOL _useRustPresenter;   // the presenter state, notify stack and placement decisions in Rust (DIME_USE_RUST_ENGINE) or C++
+	DimePresenter* _rp;       // with DIME_RUST_AVAILABLE (else null)
+#ifdef DIME_UNIT_TESTING
+	ATOM _notifyAtomForTest = 0, _notifyShadowAtomForTest = 0;
+#endif
 };
 
 

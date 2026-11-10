@@ -15,6 +15,7 @@
 #include "../DIME.h"
 #include "../Globals.h"
 #include "../Config.h"
+#include "../UIConstants.h"
 #include "../CompositionProcessorEngine.h"
 #include "../UIPresenter.h"
 #include "../DisplayAttributeInfo.h"
@@ -792,18 +793,18 @@ namespace DIMEIntegratedTests
                 CStringRange text;
                 text.Set(texts[i], wcslen(texts[i]));
                 Assert::IsTrue(SUCCEEDED(pUIPresenter->MakeNotifyWindow(nullptr, &text, types[i])));
-                auto& slot = pUIPresenter->_pNotifyWnds[(size_t)types[i]];
-                Assert::IsNotNull(slot.get());
-                Assert::IsTrue(slot->_IsCreated() != FALSE, L"created");
-                h[i] = slot->_GetWnd();
+                Assert::IsTrue(pUIPresenter->_NotifySlotExists(types[i]) != FALSE, L"the slot exists");
+                h[i] = pUIPresenter->_NotifySlotWnd(types[i]);
                 Assert::IsNotNull(h[i], L"a real window");
                 Assert::AreEqual((int)Global::AtomNotifyWindow, (int)GetClassWord(h[i], GCW_ATOM), L"the DIME.NotifyWindow class");
                 // MakeNotifyWindow again keeps the window.
                 Assert::IsTrue(SUCCEEDED(pUIPresenter->MakeNotifyWindow(nullptr, &text, types[i])));
-                Assert::IsTrue(h[i] == slot->_GetWnd(), L"the same window");
-                slot->_SetTextColor(RGB(0, 0, 0), RGB(255, 255, 255));
-                slot->_SetFillColor(RGB(255, 255, 255));
+                Assert::IsTrue(h[i] == pUIPresenter->_NotifySlotWnd(types[i]), L"the same window");
             }
+            pUIPresenter->_SetNotifyTextColor(RGB(0, 0, 0), RGB(255, 255, 255));
+#ifdef DIME_USE_RUST_ENGINE
+            Assert::IsTrue(pUIPresenter->_RustPresenter() != FALSE, L"the stack is the Rust presenter's");
+#endif
             Assert::IsFalse(pUIPresenter->IsNotifyShown() != FALSE, L"hidden at first");
 
             for (int i = 0; i < 2; i++) pUIPresenter->ShowNotify(TRUE, 0, 0, types[i]);
@@ -813,19 +814,19 @@ namespace DIMEIntegratedTests
             {
                 Assert::IsTrue(IsWindowVisible(h[i]) != FALSE, L"the window is visible");
                 UpdateWindow(h[i]);   // WM_PAINT: the text is measured again
-                auto& slot = pUIPresenter->_pNotifyWnds[(size_t)types[i]];
-                width[i] = slot->_GetWidth();
-                Assert::IsTrue(width[i] > 0 && slot->_GetHeight() > 0, L"title size from the text");
+                UINT height = 0;
+                pUIPresenter->_NotifySlotWnd(types[i], &width[i], &height);
+                Assert::IsTrue(width[i] > 0 && height > 0, L"title size from the text");
                 RECT rc = { 0, 0, 0, 0 };
                 GetClientRect(h[i], &rc);
                 Assert::AreEqual((LONG)width[i], rc.right, L"window width = title width");
-                Assert::AreEqual((LONG)slot->_GetHeight(), rc.bottom, L"window height = title height");
+                Assert::AreEqual((LONG)height, rc.bottom, L"window height = title height");
             }
             Assert::IsTrue(width[0] != width[1], L"sized from each text");
 
             // UIPresenter stacks the visible slots from _notifyLocation (no candidate window): same left
             // edge, no overlap.
-            pUIPresenter->_notifyLocation = { 200, 150 };
+            pUIPresenter->_SetPlacement({ UI::DEFAULT_WINDOW_X, UI::DEFAULT_WINDOW_Y }, { 200, 150 }, { 0, 0, 0, 0 });
             pUIPresenter->_RestackVisibleSlots(FALSE);
             RECT r0 = {}, r1 = {}, overlap = {};
             GetWindowRect(h[0], &r0);
@@ -849,7 +850,7 @@ namespace DIMEIntegratedTests
             Assert::IsTrue(pUIPresenter->IsNotifyShown() != FALSE);
 
             pUIPresenter->DisposeNotifyWindow(types[0]);
-            Assert::IsNull(pUIPresenter->_pNotifyWnds[(size_t)types[0]].get());
+            Assert::IsFalse(pUIPresenter->_NotifySlotExists(types[0]) != FALSE, L"slot gone");
             Assert::IsFalse(IsWindow(h[0]) != FALSE, L"slot destroyed");
             Assert::IsTrue(IsWindow(h[1]) != FALSE, L"the other slot kept");
             pUIPresenter->ClearNotify();
