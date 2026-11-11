@@ -157,16 +157,9 @@ private:
     static void DestroyFonts(WindowData* wd);
     static void PaintSidebar(HWND hWnd, HDC hdc, WindowData* wd);
     static void PaintContent(HWND hWnd, HDC hdc, WindowData* wd);
-    static void PaintCategoryList(HWND hWnd, HDC hdc, WindowData* wd);   // Level 0
-    static void PaintCardList(HWND hWnd, HDC hdc, WindowData* wd,       // Generic card list renderer
-        const wchar_t* title, const LayoutCard* cards, int cardCount,
-        int modeMask, int expandBaseIdx);
-    static void PaintSettingsDetail(HWND hWnd, HDC hdc, WindowData* wd); // Level 2
     static void PaintBreadcrumb(HWND hWnd, HDC hdc, WindowData* wd);
-    static void PaintToggleSwitch(HDC hdc, RECT rc, bool isOn, bool isHover, const ThemeColors& tc);
+    static void PaintHamburger(HWND hMain, HDC hdc, WindowData* wd, RECT rc, HBRUSH bg);
     static void NavigateToCategory(HWND hWnd, WindowData* wd, int cardIndex);
-    static void PaintRow(HDC hdc, WindowData* wd, const LayoutRow& lr,
-        int margin, int curY, int cardW, int thisH, int ctrlRightEdge, UINT dpi, bool isChild);
     static void AddControl(WindowData* wd, SettingsControlId id, HWND h, int x, int y, int w, int ht, int visH = -1);
     static void CreateRowControl(WindowData* wd, const LayoutRow& lr,
         int ctrlRight, int cy, int ctrlH, int btnH, UINT dpi);

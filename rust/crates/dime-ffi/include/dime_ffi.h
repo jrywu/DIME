@@ -1301,6 +1301,33 @@ int32_t dime_settings_msgbox_button_at(const void* layout, int32_t btn_count, in
 int32_t dime_settings_msgbox_key_result(const void* buttons, int32_t default_btn, uint32_t vk);
 int32_t dime_settings_msgbox_close_result(const void* buttons);
 
+/* ---- Settings window painting (phase 5b-7, dime-settings::paint) -------
+ * Call-by-call ports of SettingsWindowPaint::Cpp. Handles (HDC, HFONT,
+ * HBRUSH, HICON) are passed as void*. ctx is a SettingsWindowPaint::
+ * PaintContext (x64 520 bytes, Win32 484); fonts is SettingsWindowPaint::
+ * Fonts (56 / 28). rc is a RECT, tc a ThemeColors (88 bytes), snap a
+ * SettingsSnapshot (216), layout a SettingsWindowLayout::MsgBoxLayout (64).
+ * Strings are NUL terminated. GDI+ must already be started. A null
+ * required pointer paints nothing. A panic paints nothing more and returns 0.
+ */
+void dime_settings_create_fonts(uint32_t dpi, void* fonts);
+void dime_settings_draw_card(void* hdc, int32_t x, int32_t y, int32_t w, int32_t h, int32_t corner_r,
+    uint32_t card_bg, uint32_t card_border, uint32_t content_bg, int32_t is_hover, uint32_t hover_color);
+void dime_settings_paint_toggle(void* hdc, const void* rc, int32_t is_on, int32_t is_hover, const void* tc);
+int32_t dime_settings_preview_height(void* hdc, const void* snap, uint32_t dpi);
+void dime_settings_paint_preview(void* hdc, const void* snap, int32_t margin, int32_t cur_y,
+    int32_t card_w, int32_t total_h, uint32_t dpi, uint32_t sys_face);
+void dime_settings_paint_sidebar(void* hdc, const void* ctx);
+void dime_settings_paint_content(void* hdc, const void* ctx);
+void dime_settings_paint_breadcrumb(void* hdc, const void* ctx);
+void dime_settings_paint_hamburger(void* hdc, const void* ctx, const void* rc, void* bg_brush);
+void dime_settings_paint_button(void* hdc, const void* rc, const uint16_t* text, int32_t pressed,
+    int32_t disabled, const void* tc, void* font, uint32_t dpi);
+void dime_settings_paint_swatch(void* hdc, const void* rc, uint32_t color, uint32_t border, int32_t radius);
+void dime_settings_paint_msgbox(void* hdc, const void* layout, const uint16_t* text,
+    const uint16_t* const* labels, int32_t btn_count, int32_t hover_btn, int32_t default_btn,
+    const void* tc, void* font, void* icon, uint32_t dpi);
+
 #ifdef __cplusplus
 }
 #endif

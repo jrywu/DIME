@@ -409,3 +409,219 @@ pub unsafe extern "C" fn dime_settings_msgbox_close_result(b: *const msgbox::But
         }
     })
 }
+
+// ---- Phase 5b-7: painting (dime-settings::paint) -------------------------
+
+use dime_config::geometry::ThemeColors;
+use dime_config::settings_model::SettingsSnapshot;
+use dime_settings::paint::{self, Fonts, Handle, PaintContext, Rect};
+
+/// A NUL-terminated UTF-16 string without the NUL; null is empty.
+unsafe fn cstr_vec(p: *const u16) -> Vec<u16> {
+    let mut out = Vec::new();
+    if p.is_null() {
+        return out;
+    }
+    let mut i = 0;
+    // SAFETY: caller passes a NUL-terminated string.
+    while unsafe { *p.add(i) } != 0 {
+        out.push(unsafe { *p.add(i) });
+        i += 1;
+    }
+    out
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_create_fonts(dpi: u32, out: *mut Fonts) {
+    guard((), || unsafe { write(out, paint::create_fonts(dpi)) })
+}
+
+#[no_mangle]
+pub extern "C" fn dime_settings_draw_card(
+    hdc: Handle,
+    x: i32,
+    y: i32,
+    w: i32,
+    h: i32,
+    corner_r: i32,
+    card_bg: u32,
+    card_border: u32,
+    content_bg: u32,
+    is_hover: i32,
+    hover_color: u32,
+) {
+    guard((), || {
+        paint::draw_card(
+            hdc,
+            x,
+            y,
+            w,
+            h,
+            corner_r,
+            card_bg,
+            card_border,
+            content_bg,
+            is_hover != 0,
+            hover_color,
+        )
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_paint_toggle(
+    hdc: Handle,
+    rc: *const Rect,
+    is_on: i32,
+    _is_hover: i32,
+    tc: *const ThemeColors,
+) {
+    guard((), || unsafe {
+        if rc.is_null() || tc.is_null() {
+            return;
+        }
+        paint::paint_toggle(hdc, *rc, is_on != 0, &*tc)
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_preview_height(hdc: Handle, snap: *const SettingsSnapshot, dpi: u32) -> i32 {
+    guard(0, || {
+        if snap.is_null() {
+            0
+        } else {
+            paint::preview_height(hdc, unsafe { &*snap }, dpi)
+        }
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_paint_preview(
+    hdc: Handle,
+    snap: *const SettingsSnapshot,
+    margin: i32,
+    cur_y: i32,
+    _card_w: i32,
+    _total_h: i32,
+    dpi: u32,
+    sys_face: u32,
+) {
+    guard((), || {
+        if !snap.is_null() {
+            paint::paint_preview(hdc, unsafe { &*snap }, margin, cur_y, dpi, sys_face)
+        }
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_paint_sidebar(hdc: Handle, ctx: *const PaintContext) {
+    guard((), || {
+        if !ctx.is_null() {
+            paint::paint_sidebar(hdc, unsafe { &*ctx })
+        }
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_paint_content(hdc: Handle, ctx: *const PaintContext) {
+    guard((), || {
+        if !ctx.is_null() {
+            paint::paint_content(hdc, unsafe { &*ctx })
+        }
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_paint_breadcrumb(hdc: Handle, ctx: *const PaintContext) {
+    guard((), || {
+        if !ctx.is_null() {
+            paint::paint_breadcrumb(hdc, unsafe { &*ctx })
+        }
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_paint_hamburger(
+    hdc: Handle,
+    ctx: *const PaintContext,
+    rc: *const Rect,
+    bg: Handle,
+) {
+    guard((), || unsafe {
+        if !ctx.is_null() && !rc.is_null() {
+            paint::paint_hamburger(hdc, &*ctx, *rc, bg)
+        }
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_paint_button(
+    hdc: Handle,
+    rc: *const Rect,
+    text: *const u16,
+    pressed: i32,
+    disabled: i32,
+    tc: *const ThemeColors,
+    font: Handle,
+    dpi: u32,
+) {
+    guard((), || unsafe {
+        if rc.is_null() || tc.is_null() {
+            return;
+        }
+        paint::paint_button(hdc, *rc, &cstr_vec(text), pressed != 0, disabled != 0, &*tc, font, dpi)
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_paint_swatch(
+    hdc: Handle,
+    rc: *const Rect,
+    color: u32,
+    border: u32,
+    radius: i32,
+) {
+    guard((), || unsafe {
+        if !rc.is_null() {
+            paint::paint_swatch(hdc, *rc, color, border, radius)
+        }
+    })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_paint_msgbox(
+    hdc: Handle,
+    layout: *const msgbox::Layout,
+    text: *const u16,
+    labels: *const *const u16,
+    btn_count: i32,
+    hover_btn: i32,
+    default_btn: i32,
+    tc: *const ThemeColors,
+    font: Handle,
+    icon: Handle,
+    dpi: u32,
+) {
+    guard((), || unsafe {
+        if layout.is_null() || tc.is_null() {
+            return;
+        }
+        let n = if labels.is_null() {
+            0
+        } else {
+            btn_count.clamp(0, 3) as usize
+        };
+        let labels: Vec<Vec<u16>> = (0..n).map(|i| cstr_vec(*labels.add(i))).collect();
+        paint::paint_msgbox(
+            hdc,
+            &*layout,
+            &cstr_vec(text),
+            &labels,
+            hover_btn,
+            default_btn,
+            &*tc,
+            font,
+            icon,
+            dpi,
+        )
+    })
+}

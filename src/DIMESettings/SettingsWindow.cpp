@@ -31,6 +31,7 @@
 #include "SettingsPageLayout.h"
 #include "SettingsGeometry.h"
 #include "SettingsWindowLayout.h"
+#include "SettingsWindowPaint.h"
 
 #include <Richedit.h>
 #include <MLang.h>
@@ -131,47 +132,8 @@ namespace ThemedMsgBox {
             Layout L = CalcLayout(hWnd, md, dpi);
             const ThemeColors& tc = md->tc;
 
-            // Background
-            HBRUSH hBg = CreateSolidBrush(tc.contentBg);
-            FillRect(hdc, &L.rcClient, hBg);
-            DeleteObject(hBg);
-
-            // Icon
-            if (md->hIcon)
-                DrawIconEx(hdc, L.iconX, L.iconY, md->hIcon, L.iconSize, L.iconSize, 0, nullptr, DI_NORMAL);
-
-            // Text
-            SetBkMode(hdc, TRANSPARENT);
-            SetTextColor(hdc, tc.textPrimary);
-            HFONT oldF = (HFONT)SelectObject(hdc, md->hFont);
-            RECT rcText = { L.textX, L.textY, L.textX + L.textW, L.textY + L.textH };
-            DrawTextW(hdc, md->text, -1, &rcText, DT_WORDBREAK | DT_LEFT);
-
-            // Buttons — right-aligned
-            int btnX = SettingsWindowLayout::MsgBoxFirstButtonX(L, md->btnCount);
-            for (int i = 0; i < md->btnCount; i++) {
-                RECT rcBtn = { btnX, L.btnY, btnX + L.btnW, L.btnY + L.btnH };
-                bool isHover = (i == md->hoverBtn);
-                bool isDefault = (i == md->defaultBtn);
-                COLORREF fill = isHover ? tc.buttonFillHover : tc.buttonFill;
-                COLORREF border = isDefault ? tc.accent : tc.buttonBorder;
-
-                HBRUSH hBtn = CreateSolidBrush(fill);
-                HPEN hPen = CreatePen(PS_SOLID, 1, border);
-                HBRUSH oldBr = (HBRUSH)SelectObject(hdc, hBtn);
-                HPEN oldPn = (HPEN)SelectObject(hdc, hPen);
-                int r = ScaleForDpi(4, dpi);
-                RoundRect(hdc, rcBtn.left, rcBtn.top, rcBtn.right, rcBtn.bottom, r, r);
-                SelectObject(hdc, oldBr);
-                SelectObject(hdc, oldPn);
-                DeleteObject(hBtn);
-                DeleteObject(hPen);
-
-                SetTextColor(hdc, tc.buttonText);
-                DrawTextW(hdc, md->btnLabels[i], -1, &rcBtn, DT_SINGLELINE | DT_CENTER | DT_VCENTER);
-                btnX += L.btnW + L.btnGap;
-            }
-            SelectObject(hdc, oldF);
+            SettingsWindowPaint::PaintMsgBox(hdc, L, md->text, md->btnLabels, md->btnCount,
+                md->hoverBtn, md->defaultBtn, tc, md->hFont, md->hIcon, dpi);
             EndPaint(hWnd, &ps);
             return 0;
         }
@@ -735,13 +697,6 @@ static bool ApplyMicaBackdrop(HWND hWnd)
 // ============================================================================
 // Helper: create a font
 // ============================================================================
-static HFONT MakeFont(int ptSize, int dpi, int weight)
-{
-    return CreateFontW(-MulDiv(ptSize, dpi, 72), 0, 0, 0, weight, FALSE, FALSE, FALSE,
-        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
-        DEFAULT_PITCH | FF_SWISS, L"Microsoft JhengHei UI");
-}
-
 // ============================================================================
 // Theme brushes + colors
 // ============================================================================
@@ -764,29 +719,15 @@ void SettingsWindow::DestroyThemeBrushes(WindowData* wd)
 void SettingsWindow::CreateFonts(WindowData* wd, int dpi)
 {
     DestroyFonts(wd);
-    wd->hFontTitle      = MakeFont(g_geo.fontTitlePt, dpi, FW_SEMIBOLD);
-    wd->hFontCardHeader = MakeFont(g_geo.fontCardHeaderPt, dpi, FW_NORMAL);
-    wd->hFontBody       = MakeFont(g_geo.fontBodyPt, dpi, FW_NORMAL);
-    wd->hFontDesc       = MakeFont(g_geo.fontDescPt, dpi, FW_NORMAL);
-    // Segoe MDL2 Assets — small for chevrons
-    wd->hFontMDL2 = CreateFontW(-MulDiv(g_geo.fontBodyPt - 2, dpi, 72), 0, 0, 0, FW_BOLD,
-        FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-        CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe MDL2 Assets");
-    // Segoe MDL2 Assets — large for row icons (sized to rowIconSize)
-    wd->hFontMDL2Icon = CreateFontW(-ScaleForDpi(g_geo.rowIconSize, dpi), 0, 0, 0, FW_NORMAL,
-        FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
-        CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe MDL2 Assets");
-    // Check if MDL2 is actually available (Win10+). If not, fallback to text chevrons.
-    wd->hasMDL2 = false;
-    if (wd->hFontMDL2) {
-        HDC hdcChk = GetDC(nullptr);
-        HFONT hOld = (HFONT)SelectObject(hdcChk, wd->hFontMDL2);
-        WCHAR faceName[LF_FACESIZE] = {};
-        GetTextFaceW(hdcChk, LF_FACESIZE, faceName);
-        wd->hasMDL2 = (wcscmp(faceName, L"Segoe MDL2 Assets") == 0);
-        SelectObject(hdcChk, hOld);
-        ReleaseDC(nullptr, hdcChk);
-    }
+    SettingsWindowPaint::Fonts f = {};
+    SettingsWindowPaint::CreateFonts((UINT)dpi, &f);
+    wd->hFontTitle      = f.title;
+    wd->hFontCardHeader = f.cardHeader;
+    wd->hFontBody       = f.body;
+    wd->hFontDesc       = f.desc;
+    wd->hFontMDL2       = f.mdl2;
+    wd->hFontMDL2Icon   = f.mdl2Icon;
+    wd->hasMDL2         = f.hasMDL2 != 0;
 }
 
 void SettingsWindow::DestroyFonts(WindowData* wd)
@@ -841,53 +782,6 @@ void SettingsWindow::RepositionControlsForScroll(WindowData* wd)
     }
 }
 
-// Calculate candidate preview height using same metrics as CCandidateWindow::_DrawList
-// Calculate candidate preview height using a DC for accurate CJK font metrics.
-// Draw card background with subtle Win11-style bottom shadow using GDI+
-// Shadow color adapts to theme: dark shadow on light bg, light shadow on dark bg
-static void DrawCardWithShadow(HDC hdc, int x, int y, int w, int h, int cornerR,
-    COLORREF cardBg, COLORREF cardBorder, COLORREF contentBg,
-    bool isHover, COLORREF hoverColor)
-{
-    // Shadow only in light mode — Win11 dark cards have no shadow
-    int lum = (299 * GetRValue(contentBg) + 587 * GetGValue(contentBg) + 114 * GetBValue(contentBg)) / 1000;
-    bool bgIsLight = (lum > 128);
-
-    if (bgIsLight) {
-        Gdiplus::Graphics g(hdc);
-        g.SetSmoothingMode(Gdiplus::SmoothingModeNone);
-        Gdiplus::REAL r = (Gdiplus::REAL)cornerR;
-        int expand = 0;
-        int yOff = 1;
-        Gdiplus::GraphicsPath sp;
-        Gdiplus::RectF srf((Gdiplus::REAL)(x - expand), (Gdiplus::REAL)(y - expand + yOff),
-            (Gdiplus::REAL)(w + 2 * expand), (Gdiplus::REAL)(h + 2 * expand));
-        sp.AddArc(srf.X, srf.Y, r, r, 180, 90);
-        sp.AddArc(srf.X + srf.Width - r, srf.Y, r, r, 270, 90);
-        sp.AddArc(srf.X + srf.Width - r, srf.Y + srf.Height - r, r, r, 0, 90);
-        sp.AddArc(srf.X, srf.Y + srf.Height - r, r, r, 90, 90);
-        sp.CloseFigure();
-        Gdiplus::SolidBrush sb(Gdiplus::Color(20, 0, 0, 0));
-        g.FillPath(&sb, &sp);
-    } // end bgIsLight
-
-    // Card background
-    HPEN hPen = CreatePen(PS_SOLID, 1, cardBorder);
-    HBRUSH hBr = CreateSolidBrush(cardBg);
-    SelectObject(hdc, hPen); SelectObject(hdc, hBr);
-    RoundRect(hdc, x, y, x + w, y + h, cornerR, cornerR);
-    DeleteObject(hBr); DeleteObject(hPen);
-
-    // Hover overlay
-    if (isHover) {
-        HBRUSH hHov = CreateSolidBrush(hoverColor);
-        HPEN hHovPen = CreatePen(PS_SOLID, 1, hoverColor);
-        SelectObject(hdc, hHov); SelectObject(hdc, hHovPen);
-        RoundRect(hdc, x, y, x + w, y + h, cornerR, cornerR);
-        DeleteObject(hHov); DeleteObject(hHovPen);
-    }
-}
-
 void SettingsWindow::ShowAllControls(WindowData* wd)
 {
     for (auto& ch : wd->controlHandles) {
@@ -898,7 +792,6 @@ void SettingsWindow::ShowAllControls(WindowData* wd)
 
 // Forward declarations
 static int CalcCandidatePreviewH(HDC hdc, const SettingsSnapshot& s, UINT dpi);
-static void PaintCandidatePreviewCard(HDC hdc, const SettingsSnapshot& s, int margin, int curY, int cardW, int totalH, UINT dpi);
 static int CalcRowHeight(HDC hdc, const LayoutRow& lr, const SettingsSnapshot& s, UINT dpi);
 
 int SettingsWindow::HitTestCardList(int y, const LayoutCard* cards, int cardCount,
@@ -1024,25 +917,10 @@ static int CalcRowHeight(HDC hdc, const LayoutRow& lr, const SettingsSnapshot& s
     return SettingsWindowLayout::RowHeight(lr, dpi, previewH);
 }
 
-// Both RebuildContentArea and PaintSettingsDetail must call this so controls
-// are positioned at the same Y as the painted preview bottom.
-// Uses GetTextExtentPoint32 — same API as PaintSettingsDetail's actual drawing code.
+// Candidate preview height; RebuildContentArea and the painter must agree.
 static int CalcCandidatePreviewH(HDC hdc, const SettingsSnapshot& s, UINT dpi)
 {
-    HFONT hF = CreateFontW(-MulDiv(s.fontSize, dpi, 72), 0, 0, 0,
-        s.fontWeight, s.fontItalic, FALSE, FALSE,
-        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
-        DEFAULT_PITCH, s.fontFaceName);
-    if (!hF) return ScaleForDpi(172, dpi);
-    HFONT hOld = (HFONT)SelectObject(hdc, hF);
-    WCHAR test[] = L"國國國國";
-    SIZE sz; GetTextExtentPoint32(hdc, test, 4, &sz);
-    int cyLine = sz.cy * 5 / 4;  // must match PaintSettingsDetail's cyLine
-    int fistLineOffset = cyLine / 3;
-    int candWndH = 6 * cyLine + fistLineOffset + cyLine / 3;
-    SelectObject(hdc, hOld);
-    DeleteObject(hF);
-    return candWndH + ScaleForDpi(g_geo.previewGap, dpi);
+    return SettingsWindowPaint::CandidatePreviewHeight(hdc, s, dpi);
 }
 
 HWND SettingsWindow::FindControl(WindowData* wd, SettingsControlId id)
@@ -1136,447 +1014,67 @@ void SettingsWindow::NavigateBack(HWND hWnd, WindowData* wd)
     if (wd->hContentArea) InvalidateRect(wd->hContentArea, nullptr, TRUE);
 }
 
-// Stub implementations — these will be properly written in subsequent steps
+// Everything the painters read. hPaint is the window painted into (its client
+// size); dpi and card width come from the main window.
+static SettingsWindowPaint::PaintContext MakePaintContext(HWND hPaint, HWND hMain,
+    SettingsWindow::WindowData* wd)
+{
+    SettingsWindowPaint::PaintContext ctx = {};
+    ctx.theme = wd->theme;
+    ctx.snapshot = wd->snapshot;
+    ctx.fontTitle = wd->hFontTitle;
+    ctx.fontCardHeader = wd->hFontCardHeader;
+    ctx.fontBody = wd->hFontBody;
+    ctx.fontDesc = wd->hFontDesc;
+    ctx.fontMDL2 = wd->hFontMDL2;
+    ctx.fontMDL2Icon = wd->hFontMDL2Icon;
+    ctx.brushSidebarBg = wd->hBrushSidebarBg;
+    ctx.brushContentBg = wd->hBrushContentBg;
+    ctx.iconModule = GetModuleHandleW(nullptr);
+    ctx.dpi = CConfig::GetDpiForHwnd(hMain);
+    ctx.hasMDL2 = wd->hasMDL2 ? 1 : 0;
+    RECT rc; GetClientRect(hPaint, &rc);
+    ctx.clientW = rc.right;
+    ctx.clientH = rc.bottom;
+    ctx.cardW = CalcCardW(hMain, ctx.dpi, !wd->sidebarNarrowMode && !wd->sidebarCollapsed);
+    ctx.sysFace = GetSysColor(COLOR_3DFACE);
+    ctx.selectedModeIndex = wd->selectedModeIndex;
+    ctx.hoverSidebarIndex = wd->hoverSidebarIndex;
+    ctx.navLevel = wd->navLevel;
+    ctx.currentCardIndex = wd->currentCardIndex;
+    ctx.hoverRowIndex = wd->hoverRowIndex;
+    ctx.currentMode = (int)wd->currentMode;
+    ctx.scrollPos = wd->scrollPos;
+    ctx.sidebarNarrowMode = wd->sidebarNarrowMode ? 1 : 0;
+    ctx.sidebarCollapsed = wd->sidebarCollapsed ? 1 : 0;
+    ctx.colorGridExpanded = wd->colorGridExpanded ? 1 : 0;
+    memcpy(ctx.cardExpanded, wd->cardExpanded, sizeof(ctx.cardExpanded));
+    // Toggle state of the first control with each id (FindControl order).
+    bool seen[SettingsWindowPaint::kToggleSlots] = {};
+    for (auto& ch : wd->controlHandles) {
+        if (ch.id < 0 || ch.id >= SettingsWindowPaint::kToggleSlots || seen[ch.id]) continue;
+        seen[ch.id] = true;
+        ctx.toggleOn[ch.id] = (ch.hWnd && SendMessage(ch.hWnd, BM_GETCHECK, 0, 0) == BST_CHECKED) ? 1 : 0;
+    }
+    return ctx;
+}
+
 void SettingsWindow::PaintSidebar(HWND hWnd, HDC hdc, WindowData* wd)
 {
-    if (wd->sidebarCollapsed) return;
-    RECT rcClient; GetClientRect(hWnd, &rcClient);
-    UINT dpi = CConfig::GetDpiForHwnd(hWnd);
-    const ThemeColors& tc = wd->theme;
-    int sidebarW = ScaleForDpi(g_geo.sidebarWidth, dpi);
-    int itemH = ScaleForDpi(g_geo.sidebarItemH, dpi);
-    int itemR = ScaleForDpi(g_geo.sidebarItemR, dpi);
-    int iconSize = ScaleForDpi(g_geo.sidebarIconSize, dpi);
-    int iconGap = ScaleForDpi(g_geo.sidebarIconGap, dpi);
-    int padL = ScaleForDpi(g_geo.sidebarItemPadLeft, dpi);
-
-    // Background
-    RECT rcSidebar = { 0, 0, sidebarW, rcClient.bottom };
-    FillRect(hdc, &rcSidebar, wd->hBrushSidebarBg);
-
-    SetBkMode(hdc, TRANSPARENT);
-    HFONT oldFont = (HFONT)SelectObject(hdc, wd->hFontBody);
-
-    int sidebarCount = 0;
-    const SidebarItemDef* items = ::GetSidebarItems(&sidebarCount);
-    int startY = ScaleForDpi(g_geo.sidebarStartY, dpi);
-
-    for (int i = 0; i < sidebarCount; i++) {
-        // Separator
-        if (items[i].iconResourceId == -1) {
-            int sepY = startY + i * itemH + itemH / 2;
-            HPEN hSep = CreatePen(PS_SOLID, 1, tc.cardBorder);
-            HPEN oldPen = (HPEN)SelectObject(hdc, hSep);
-            MoveToEx(hdc, padL, sepY, nullptr);
-            LineTo(hdc, sidebarW - padL, sepY);
-            SelectObject(hdc, oldPen);
-            DeleteObject(hSep);
-            continue;
-        }
-
-        int itemPadX = ScaleForDpi(g_geo.sidebarItemR, dpi); // 4px inset for hover/select rounded rect
-        RECT rcItem = { itemPadX, startY + i * itemH, sidebarW - itemPadX, startY + (i + 1) * itemH };
-        bool isSelected = (i == wd->selectedModeIndex);
-
-        // Highlight
-        if (isSelected || i == wd->hoverSidebarIndex) {
-            COLORREF hlColor = isSelected ? tc.sidebarSelect : tc.sidebarHover;
-            HBRUSH hBr = CreateSolidBrush(hlColor);
-            HPEN hPen = CreatePen(PS_SOLID, 1, hlColor);
-            SelectObject(hdc, hBr); SelectObject(hdc, hPen);
-            RoundRect(hdc, rcItem.left, rcItem.top, rcItem.right, rcItem.bottom, itemR * 2, itemR * 2);
-            DeleteObject(hBr); DeleteObject(hPen);
-        }
-
-        // Accent bar
-        if (isSelected) {
-            int barW = ScaleForDpi(g_geo.sidebarAccentBarW, dpi);
-            int barH = ScaleForDpi(g_geo.sidebarAccentBarH, dpi);
-            int barX = rcItem.left + ScaleForDpi(g_geo.sidebarItemR, dpi);
-            int barY = rcItem.top + (itemH - barH) / 2;
-            int barR = ScaleForDpi(g_geo.sidebarAccentBarR, dpi);
-            HBRUSH hAcc = CreateSolidBrush(tc.accent);
-            HRGN hRgn = CreateRoundRectRgn(barX, barY, barX + barW + 1, barY + barH + 1, barR, barR);
-            FillRgn(hdc, hRgn, hAcc);
-            DeleteObject(hRgn); DeleteObject(hAcc);
-        }
-
-        // Icon from .ico
-        int iconX = rcItem.left + padL;
-        int iconY = rcItem.top + (itemH - iconSize) / 2;
-        if (items[i].iconResourceId > 0) {
-            HICON hIcon = (HICON)LoadImageW(GetModuleHandleW(nullptr),
-                MAKEINTRESOURCEW(items[i].iconResourceId),
-                IMAGE_ICON, iconSize, iconSize, 0);
-            if (hIcon) {
-                DrawIconEx(hdc, iconX, iconY, hIcon, iconSize, iconSize, 0, nullptr, DI_NORMAL);
-                DestroyIcon(hIcon);
-            }
-        }
-
-        // Text
-        SetTextColor(hdc, tc.textPrimary);
-        RECT rcText = rcItem;
-        rcText.left = iconX + iconSize + iconGap;
-        DrawTextW(hdc, items[i].label, -1, &rcText, DT_SINGLELINE | DT_VCENTER | DT_LEFT);
-    }
-    // Hamburger is drawn in ContentWndProc — not here
-    SelectObject(hdc, oldFont);
+    SettingsWindowPaint::PaintContext ctx = MakePaintContext(hWnd, hWnd, wd);
+    SettingsWindowPaint::PaintSidebar(hdc, ctx);
 }
+
 void SettingsWindow::PaintContent(HWND hWnd, HDC hdc, WindowData* wd)
 {
-    RECT rc; GetClientRect(hWnd, &rc);
-    FillRect(hdc, &rc, wd->hBrushContentBg);
-
-    if (wd->selectedModeIndex == 5) {
-        // 載入碼表 page — uses shared PaintCardList renderer
-        int ltPageCount = 0;
-        const LayoutCard* ltPage = GetLoadTablePageLayout(&ltPageCount);
-        // expandBaseIdx=4: cardExpanded[4+i] stores expand states (avoids overlap with IME mode cards 0-3)
-        PaintCardList(hWnd, hdc, wd, L"載入碼表", ltPage, ltPageCount, SM_MODE_ALL, 4);
-    } else if (wd->navLevel == 0) {
-        PaintCategoryList(hWnd, hdc, wd);
-    } else {
-        PaintSettingsDetail(hWnd, hdc, wd);
-    }
-
-    // Hamburger is drawn in main WndProc WM_PAINT (above content area, all levels)
-}
-void SettingsWindow::PaintCategoryList(HWND hWnd, HDC hdc, WindowData* wd)
-{
-    int sidebarCount = 0;
-    const SidebarItemDef* sItems = ::GetSidebarItems(&sidebarCount);
-    const wchar_t* title = (wd->selectedModeIndex < sidebarCount && sItems[wd->selectedModeIndex].label)
-        ? sItems[wd->selectedModeIndex].label : L"DIME";
-    int layoutCount = 0;
-    const LayoutCard* cards = GetIMEPageLayout(&layoutCount);
-    int modeMask = SettingsModel::GetModeBitmask(wd->currentMode);
-    PaintCardList(hWnd, hdc, wd, title, cards, layoutCount, modeMask, 0);
+    SettingsWindowPaint::PaintContext ctx = MakePaintContext(hWnd, GetParent(hWnd), wd);
+    SettingsWindowPaint::PaintContent(hdc, ctx);
 }
 
-void SettingsWindow::PaintCardList(HWND hWnd, HDC hdc, WindowData* wd,
-    const wchar_t* pageTitle, const LayoutCard* cards, int layoutCount,
-    int modeMask, int expandBaseIdx)
+void SettingsWindow::PaintHamburger(HWND hMain, HDC hdc, WindowData* wd, RECT rc, HBRUSH bg)
 {
-    RECT rcClient; GetClientRect(hWnd, &rcClient);
-    UINT dpi = CConfig::GetDpiForHwnd(GetParent(hWnd));
-    const ThemeColors& tc = wd->theme;
-    int margin = ScaleForDpi(g_geo.contentMargin, dpi);
-    int pad = ScaleForDpi(g_geo.cardPad, dpi);
-    int catRowH = ScaleForDpi(g_geo.categoryRowH, dpi);
-    int cornerR = ScaleForDpi(g_geo.cardRadius, dpi);
-    int sepIndent = ScaleForDpi(g_geo.rowSepIndent, dpi);
-    int iconSz = ScaleForDpi(g_geo.rowIconSize, dpi);
-    int iconPadL = ScaleForDpi(g_geo.rowIconPadLeft, dpi);
-    int iconGap = ScaleForDpi(g_geo.rowIconGap, dpi);
-    int rowH = ScaleForDpi(g_geo.rowHeight, dpi);
-    int rowHS = ScaleForDpi(g_geo.rowHeightSingle, dpi);
-
-    SetBkMode(hdc, TRANSPARENT);
-
-    // Section title
-    HFONT oldFont = (HFONT)SelectObject(hdc, wd->hFontTitle);
-    SetTextColor(hdc, tc.textPrimary);
-    int titleLeft0 = (wd->sidebarNarrowMode) ? ScaleForDpi(g_geo.hamburgerSize, dpi) : margin;
-    int titleY, titleB;
-    if (wd->sidebarNarrowMode) {
-        titleY = -wd->scrollPos;  // align with hamburger top (0)
-        titleB = ScaleForDpi(g_geo.hamburgerSize, dpi) - wd->scrollPos;
-    } else {
-        titleY = ScaleForDpi(g_geo.topPad, dpi) - wd->scrollPos;
-        titleB = titleY + ScaleForDpi(g_geo.titleAreaH, dpi);
-    }
-    RECT rcTitle = { titleLeft0, titleY, rcClient.right - margin, titleB };
-    DrawTextW(hdc, pageTitle, -1, &rcTitle, DT_SINGLELINE | DT_LEFT | DT_VCENTER);
-
-    // Win11 style: each category row is its own card with spacing between
-    int cardW = CalcCardW(GetParent(hWnd), dpi, !wd->sidebarNarrowMode && !wd->sidebarCollapsed);
-    int cardGapDpi = ScaleForDpi(g_geo.cardGap, dpi);
-    int curY = ScaleForDpi(g_geo.topMargin, dpi) - wd->scrollPos;
-
-    for (int i = 0; i < layoutCount; i++) {
-        bool vis = (cards[i].rowCount == 0);
-        if (!vis) for (int r = 0; !vis && r < cards[i].rowCount; r++) {
-            if (IsRowVisible(cards[i].rows[r], modeMask)) vis = true;
-        }
-        if (!vis) continue;
-
-        // Card wraps parent row + expanded children (Win11 style)
-        int cRowH = ScaleForDpi(g_geo.childRowH, dpi);
-        int numChildren = 0;
-        int expIdx = expandBaseIdx + i;
-        if (cards[i].action == RowAction::ExpandSection && wd->cardExpanded[expIdx] && cards[i].rows) {
-            for (int r = 0; r < cards[i].rowCount; r++)
-                if (IsRowVisible(cards[i].rows[r], modeMask)) numChildren++;
-        }
-        int cardH = 2 * pad + catRowH + (numChildren > 0 ? numChildren * (cRowH + 1) : 0);
-
-        // Draw card with shadow + hover
-        bool isHover = (i == wd->hoverRowIndex);
-        if (numChildren > 0) {
-            // Expanded: shadow on full card, hover only on parent row
-            DrawCardWithShadow(hdc, margin, curY, cardW, cardH, cornerR,
-                tc.cardBg, tc.cardBorder, tc.contentBg, false, tc.rowHover);
-            if (isHover) {
-                HBRUSH hHov = CreateSolidBrush(tc.rowHover);
-                HPEN hHovPen = CreatePen(PS_SOLID, 1, tc.rowHover);
-                SelectObject(hdc, hHov); SelectObject(hdc, hHovPen);
-                RoundRect(hdc, margin, curY, margin + cardW, curY + 2 * pad + catRowH, cornerR, cornerR);
-                DeleteObject(hHov); DeleteObject(hHovPen);
-            }
-        } else {
-            DrawCardWithShadow(hdc, margin, curY, cardW, cardH, cornerR,
-                tc.cardBg, tc.cardBorder, tc.contentBg, isHover, tc.rowHover);
-        }
-
-        int rowTop = curY + pad; // start inside card padding
-
-        // Category row: icon + label + description + chevron
-        int labelLeft = margin + iconPadL + iconSz + iconGap;
-
-        // Icon — glyph from Segoe MDL2 Assets (hollow style) or fallback colored rect
-        {
-            int ix = margin + iconPadL, iy = rowTop + (catRowH - iconSz) / 2;
-            if (cards[i].iconGlyph && wd->hFontMDL2Icon && wd->hasMDL2) {
-                HFONT hOldMDL2 = (HFONT)SelectObject(hdc, wd->hFontMDL2Icon);
-                SetTextColor(hdc, tc.textPrimary);
-                wchar_t glyph[2] = { cards[i].iconGlyph, 0 };
-                RECT rcGlyph = { ix, iy, ix + iconSz, iy + iconSz };
-                DrawTextW(hdc, glyph, 1, &rcGlyph, DT_SINGLELINE | DT_CENTER | DT_VCENTER);
-                SelectObject(hdc, hOldMDL2);
-            } else if (cards[i].iconColor) {
-                COLORREF ic = cards[i].iconColor;
-                HBRUSH hIBr = CreateSolidBrush(ic);
-                HPEN hIPen = CreatePen(PS_SOLID, 1, ic);
-                SelectObject(hdc, hIBr); SelectObject(hdc, hIPen);
-                RoundRect(hdc, ix, iy, ix + iconSz, iy + iconSz, iconSz / 4, iconSz / 4);
-                DeleteObject(hIBr); DeleteObject(hIPen);
-            }
-        }
-
-        // Label
-        SelectObject(hdc, wd->hFontCardHeader);
-        SetTextColor(hdc, tc.textPrimary);
-        RECT rcL = { labelLeft, rowTop + ScaleForDpi(g_geo.rowLabelTopOff, dpi), margin + cardW - pad - ScaleForDpi(g_geo.chevronW + g_geo.rowLabelMidOff, dpi), rowTop + catRowH / 2 + ScaleForDpi(g_geo.rowLabelMidOff, dpi) };
-        DrawTextW(hdc, cards[i].title, -1, &rcL, DT_SINGLELINE | DT_LEFT | DT_VCENTER);
-
-        // Description
-        if (cards[i].description) {
-            SelectObject(hdc, wd->hFontDesc);
-            SetTextColor(hdc, tc.textSecondary);
-            RECT rcD = { labelLeft, rowTop + catRowH / 2 - ScaleForDpi(g_geo.rowLabelMidOff, dpi), margin + cardW - pad - ScaleForDpi(g_geo.chevronW + g_geo.rowLabelMidOff, dpi), rowTop + catRowH - ScaleForDpi(g_geo.rowDescBotOff, dpi) };
-            DrawTextW(hdc, cards[i].description, -1, &rcD, DT_SINGLELINE | DT_LEFT | DT_VCENTER);
-        }
-
-        // Chevron — MDL2 glyphs (Win10+) or text fallback (Win7/8)
-        if (wd->hasMDL2 && wd->hFontMDL2) SelectObject(hdc, wd->hFontMDL2);
-        else SelectObject(hdc, wd->hFontBody);
-        SetTextColor(hdc, tc.textPrimary);
-        RECT rcChev = { margin + cardW - pad - ScaleForDpi(g_geo.chevronW, dpi), rowTop, margin + cardW - pad, rowTop + catRowH };
-        if (cards[i].action == RowAction::NavigateToCard)
-            DrawTextW(hdc, wd->hasMDL2 ? L"\xE76C" : L">", -1, &rcChev, DT_SINGLELINE | DT_VCENTER | DT_CENTER);
-        else if (cards[i].action == RowAction::ExpandSection)
-            DrawTextW(hdc, wd->cardExpanded[expIdx] ? (wd->hasMDL2 ? L"\xE70E" : L"\x2227") : (wd->hasMDL2 ? L"\xE70D" : L"\x2228"), -1, &rcChev, DT_SINGLELINE | DT_VCENTER | DT_CENTER);
-
-        // Expanded children — inside parent card, 1px separator between all rows
-        if (cards[i].action == RowAction::ExpandSection && wd->cardExpanded[expIdx] && cards[i].rows) {
-            int childY = rowTop + catRowH + pad;  // after title row's bottom padding
-            int childIdx = 0;
-            for (int r = 0; r < cards[i].rowCount; r++) {
-                const LayoutRow& lr = cards[i].rows[r];
-                if (!IsRowVisible(lr, modeMask)) continue;
-
-                // 1px separator — full width, including before first child (after parent row)
-                {
-                    HPEN hCSep = CreatePen(PS_SOLID, 1, BlendColor(tc.cardBg, tc.textSecondary, 40));
-                    SelectObject(hdc, hCSep);
-                    MoveToEx(hdc, margin + 1, childY, nullptr);
-                    LineTo(hdc, margin + cardW - 1, childY);
-                    DeleteObject(hCSep);
-                    childY += 1;
-                }
-
-                // Unified child row rendering
-                int childCtrlRight = CalcCtrlRight(margin, cardW, dpi, false);
-                PaintRow(hdc, wd, lr, margin, childY, cardW, cRowH, childCtrlRight, dpi, true);
-                childY += cRowH;
-                childIdx++;
-            }
-        }
-
-        // Advance past this card + gap
-        curY += cardH + cardGapDpi;
-    }
-
-    // Repaint section title area on top of scrolled cards
-    int titleAreaBottom = ScaleForDpi(g_geo.topMargin, dpi);
-    RECT rcTitleCover = { 0, 0, rcClient.right, titleAreaBottom };
-    FillRect(hdc, &rcTitleCover, wd->hBrushContentBg);
-    SelectObject(hdc, wd->hFontTitle);
-    SetTextColor(hdc, tc.textPrimary);
-    SetBkMode(hdc, TRANSPARENT);
-    // Hamburger is drawn by PaintContent (shared across all levels)
-    SelectObject(hdc, wd->hFontTitle);
-    SetTextColor(hdc, tc.textPrimary);
-    // In narrow mode, shift title right of hamburger and align vertically with hamburger
-    int titleLeft = (wd->sidebarNarrowMode) ? ScaleForDpi(g_geo.hamburgerSize, dpi) : margin;
-    RECT rcTitle2;
-    if (wd->sidebarNarrowMode)
-        rcTitle2 = { titleLeft, 0, rcClient.right - margin, ScaleForDpi(g_geo.hamburgerSize, dpi) };
-    else
-        rcTitle2 = { titleLeft, ScaleForDpi(g_geo.topPad, dpi), rcClient.right - margin, ScaleForDpi(g_geo.topPad + g_geo.titleAreaH, dpi) };
-    DrawTextW(hdc, pageTitle, -1, &rcTitle2, DT_SINGLELINE | DT_LEFT | DT_VCENTER);
-
-    SelectObject(hdc, oldFont);
-}
-// ============================================================================
-// PaintRow — unified row renderer for ALL pages
-// ============================================================================
-void SettingsWindow::PaintRow(HDC hdc, WindowData* wd,
-    const LayoutRow& lr, int margin, int curY, int cardW, int thisH,
-    int ctrlRightEdge, UINT dpi, bool isChild)
-{
-    const ThemeColors& tc = wd->theme;
-    int pad = ScaleForDpi(g_geo.cardPad, dpi);
-    int iconSz = ScaleForDpi(g_geo.rowIconSize, dpi);
-    int iconPadL = ScaleForDpi(g_geo.rowIconPadLeft, dpi);
-    int iconGap = ScaleForDpi(g_geo.rowIconGap, dpi);
-    int sepIndent = ScaleForDpi(g_geo.rowSepIndent, dpi);
-
-    // CandidatePreview
-    if (lr.type == RowType::CandidatePreview) {
-        PaintCandidatePreviewCard(hdc, wd->snapshot, margin, curY, cardW, thisH, dpi);
-        return;
-    }
-
-    // Child icon starts where parent label starts (aligned with parent title text)
-    // Parent: icon at margin+iconPadL, label at margin+iconPadL+iconSz+iconGap
-    // Child:  icon at margin+iconPadL+iconSz+iconGap, label after child icon
-    bool hasIcon = (lr.iconGlyph || lr.iconColor);
-    int childIconStart = margin + iconPadL + iconSz + iconGap; // = where parent label starts
-
-    if (lr.type != RowType::ColorGrid && lr.type != RowType::RichEditor && hasIcon) {
-        int ix = isChild ? childIconStart : (margin + iconPadL);
-        int iy = curY + (thisH - iconSz) / 2;
-        if (lr.iconGlyph && wd->hFontMDL2Icon && wd->hasMDL2) {
-            HFONT hOldMDL2 = (HFONT)SelectObject(hdc, wd->hFontMDL2Icon);
-            SetTextColor(hdc, tc.textPrimary);
-            wchar_t glyph[2] = { lr.iconGlyph, 0 };
-            RECT rcGlyph = { ix, iy, ix + iconSz, iy + iconSz };
-            DrawTextW(hdc, glyph, 1, &rcGlyph, DT_SINGLELINE | DT_CENTER | DT_VCENTER);
-            SelectObject(hdc, hOldMDL2);
-        } else if (lr.iconColor) {
-            HBRUSH hIBr = CreateSolidBrush(lr.iconColor);
-            HPEN hIPen = CreatePen(PS_SOLID, 1, lr.iconColor);
-            SelectObject(hdc, hIBr); SelectObject(hdc, hIPen);
-            RoundRect(hdc, ix, iy, ix + iconSz, iy + iconSz, iconSz / 4, iconSz / 4);
-            DeleteObject(hIBr); DeleteObject(hIPen);
-        }
-    }
-
-    // Label left: child with icon starts after child icon; child without icon uses sepIndent
-    int labelLeft = isChild ? (hasIcon ? (childIconStart + iconSz + iconGap)
-                                       : (margin + sepIndent))
-                            : (margin + iconPadL + iconSz + iconGap);
-
-    // RichEditor: header label + description only
-    if (lr.type == RowType::RichEditor) {
-        int hdrH = ScaleForDpi(g_geo.editorHeaderH / 2, dpi);
-        SelectObject(hdc, wd->hFontCardHeader);
-        SetTextColor(hdc, tc.textPrimary);
-        RECT rcRH = { margin + pad, curY + pad / 2, margin + cardW - pad, curY + hdrH };
-        DrawTextW(hdc, lr.label, -1, &rcRH, DT_SINGLELINE | DT_LEFT | DT_VCENTER);
-        if (lr.description) {
-            SelectObject(hdc, wd->hFontDesc);
-            SetTextColor(hdc, tc.textSecondary);
-            RECT rcRI = { margin + pad, curY + hdrH, margin + cardW - pad, curY + ScaleForDpi(g_geo.editorHeaderH, dpi) };
-            DrawTextW(hdc, lr.description, -1, &rcRI, DT_SINGLELINE | DT_LEFT | DT_VCENTER);
-        }
-        return;
-    }
-
-    // ColorGrid: swatch labels
-    if (lr.type == RowType::ColorGrid) {
-        const wchar_t* swLabels[] = { L"候選字文字", L"選取文字", L"候選字背景", L"聯想詞文字", L"編號文字", L"選取背景" };
-        int swS = ScaleForDpi(g_geo.swatchSize, dpi);
-        int swGap = ScaleForDpi(g_geo.swatchCellGap, dpi);
-        int cellH = swS + swGap;
-        int baseX = margin;
-        SelectObject(hdc, wd->hFontDesc);
-        SIZE szLbl; GetTextExtentPoint32W(hdc, swLabels[0], 5, &szLbl);
-        int maxLblW = szLbl.cx;
-        int gap = maxLblW / 5;
-        int rightEdge = ctrlRightEdge - margin;
-        int colW = rightEdge / 3;
-        for (int si = 0; si < 6; si++) {
-            int col = si % 3, row2 = si / 3;
-            int colRight = baseX + (col + 1) * colW;
-            int swatchX = colRight - swS;
-            int labelX = swatchX - gap - maxLblW;
-            int sy = curY + row2 * cellH;
-            SetTextColor(hdc, tc.textSecondary);
-            RECT rcSL = { labelX, sy, labelX + maxLblW, sy + swS };
-            DrawTextW(hdc, swLabels[si], -1, &rcSL, DT_SINGLELINE | DT_LEFT | DT_VCENTER);
-        }
-        return;
-    }
-
-    // Label + description
-    if (lr.type != RowType::ColorGrid) {
-        SelectObject(hdc, isChild ? wd->hFontBody : wd->hFontCardHeader);
-        SetTextColor(hdc, tc.textPrimary);
-        int lt = curY + ScaleForDpi(lr.description ? g_geo.rowLabelTopOff : 0, dpi);
-        int lb = lr.description ? curY + thisH / 2 + ScaleForDpi(g_geo.rowLabelMidOff, dpi) : curY + thisH;
-        // Label extends to ctrlRightEdge — WS_CLIPCHILDREN prevents label from
-        // painting over child HWND controls (combo, edit). Toggle/button are owner-drawn
-        // after the label, so they naturally paint on top.
-        RECT rcL = { labelLeft, lt, ctrlRightEdge, lb };
-
-        if (lr.type == RowType::Clickable && lr.action == RowAction::OpenFontDialog) {
-            WCHAR preview[128];
-            StringCchPrintfW(preview, 128, L"%s  —  %s, %upt", lr.label, wd->snapshot.fontFaceName, wd->snapshot.fontSize);
-            DrawTextW(hdc, preview, -1, &rcL, DT_SINGLELINE | DT_LEFT | DT_VCENTER);
-        } else {
-            DrawTextW(hdc, lr.label, -1, &rcL, DT_SINGLELINE | DT_LEFT | DT_VCENTER);
-        }
-
-        if (lr.description) {
-            SelectObject(hdc, wd->hFontDesc);
-            SetTextColor(hdc, tc.textSecondary);
-            RECT rcD = { labelLeft, curY + thisH / 2 - ScaleForDpi(g_geo.rowLabelMidOff, dpi), rcL.right, curY + thisH - ScaleForDpi(g_geo.rowDescBotOff, dpi) };
-            DrawTextW(hdc, lr.description, -1, &rcD, DT_SINGLELINE | DT_LEFT | DT_VCENTER);
-        }
-    }
-
-    // ExpandSection chevron (e.g., color mode when custom)
-    if (lr.action == RowAction::ExpandSection && lr.type == RowType::ComboBox
-        && wd->snapshot.colorMode == 3) {
-        int chevW = ScaleForDpi(g_geo.chevronW, dpi);
-        int chevArea = ScaleForDpi(g_geo.chevronW + 4, dpi);
-        if (wd->hasMDL2 && wd->hFontMDL2) SelectObject(hdc, wd->hFontMDL2);
-        else SelectObject(hdc, wd->hFontBody);
-        SetTextColor(hdc, tc.textPrimary);
-        RECT rcChev2 = { ctrlRightEdge + ScaleForDpi(4, dpi), curY, ctrlRightEdge + chevArea, curY + thisH };
-        DrawTextW(hdc, wd->colorGridExpanded
-            ? (wd->hasMDL2 ? L"\xE70E" : L"\x2227")
-            : (wd->hasMDL2 ? L"\xE70D" : L"\x2228"),
-            -1, &rcChev2, DT_SINGLELINE | DT_VCENTER | DT_CENTER);
-    }
-
-    // Toggle graphic
-    if (lr.type == RowType::Toggle) {
-        int tw = ScaleForDpi(g_geo.toggleW, dpi), th = ScaleForDpi(g_geo.toggleH, dpi);
-        int tx = ctrlRightEdge - tw;
-        int ty = curY + (thisH - th) / 2;
-        HWND hCtrl = FindControl(wd, lr.id);
-        bool isOn = hCtrl ? (SendMessage(hCtrl, BM_GETCHECK, 0, 0) == BST_CHECKED) : false;
-        RECT rcTog = { tx, ty, tx + tw, ty + th };
-        SettingsWindow::PaintToggleSwitch(hdc, rcTog, isOn, false, tc);
-        SetTextColor(hdc, tc.textPrimary);
-        SelectObject(hdc, wd->hFontBody);
-        RECT rcSt = { tx - ScaleForDpi(g_geo.toggleLabelW, dpi), ty, tx - ScaleForDpi(g_geo.toggleLabelGapR, dpi), ty + th };
-        DrawTextW(hdc, isOn ? L"開啟" : L"關閉", -1, &rcSt, DT_SINGLELINE | DT_RIGHT | DT_VCENTER);
-    }
+    SettingsWindowPaint::PaintContext ctx = MakePaintContext(hMain, hMain, wd);
+    SettingsWindowPaint::PaintHamburger(hdc, ctx, rc, bg);
 }
 
 void SettingsWindow::AddControl(WindowData* wd, SettingsControlId id, HWND h, int x, int y, int w, int ht, int visH)
@@ -1750,451 +1248,10 @@ void SettingsWindow::CreateRichEditorControl(WindowData* wd, const LayoutRow& lr
 }
 
 // Candidate + Notify preview — owner-draw card for RowType::CandidatePreview
-static void PaintCandidatePreviewCard(HDC hdc, const SettingsSnapshot& s,
-    int margin, int curY, int cardW, int totalH, UINT dpi)
-{
-    int prevTop = curY;
-    int padLeft = ScaleForDpi(g_geo.rowIconPadLeft, dpi);  // left padding from card edge
-
-    // Create the candidate font
-    HFONT hCandFont = CreateFontW(-MulDiv(s.fontSize, dpi, 72), 0, 0, 0,
-        s.fontWeight, s.fontItalic, FALSE, FALSE,
-        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
-        DEFAULT_PITCH, s.fontFaceName);
-    if (!hCandFont) hCandFont = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
-
-    HFONT hOldF = (HFONT)SelectObject(hdc, hCandFont);
-
-    // Metrics: exact copy from CCandidateWindow::_DrawList
-    const int wndWidth = 4;
-    WCHAR testStr[5] = L"國國國國";
-    SIZE candSize = {};
-    GetTextExtentPoint32(hdc, testStr, wndWidth, &candSize);
-    TEXTMETRIC tm; GetTextMetrics(hdc, &tm);
-    int cxLine = max((int)tm.tmAveCharWidth, (int)candSize.cx / wndWidth);
-    int cyLine = candSize.cy * 5 / 4;
-    int fistLineOffset = cyLine / 3;
-    int leftPadding = cyLine / 2;
-    int cxTitle = candSize.cx + leftPadding + cxLine;
-
-    const wchar_t* candNums[] = { L"1", L"2", L"3", L"4", L"5", L"6" };
-    const wchar_t* candTexts[] = { L"國", L"過", L"鍋", L"裹", L"鴿", L"擱" };
-    int candCount = 6;
-    int selectedIdx = 0;
-    int candWndH = candCount * cyLine + fistLineOffset + cyLine / 3;
-    int cornerRadius = MulDiv(8, dpi, 96);
-
-    int prevX = margin + padLeft;
-
-    // SDF shadow for candidate window (same algorithm as ShadowWindow.cpp)
-    {
-        int sp = ScaleForDpi(14, dpi); // SHADOW_SPREAD
-        int shadowW = cxTitle + sp * 2;
-        int shadowH = candWndH + sp * 2;
-        int shadowX = prevX - sp;
-        int shadowY = prevTop - sp;
-
-        // Shadow adapts to content bg — same as ShadowWindow.cpp
-        // Detect if the IME preview is dark or light based on itemBGColor
-        int imeLum = (299 * GetRValue(s.itemBGColor) + 587 * GetGValue(s.itemBGColor) + 114 * GetBValue(s.itemBGColor)) / 1000;
-        BOOL imeIsDark = (imeLum <= 128);
-        // Detect content bg luminance
-        COLORREF contentBg = GetSysColor(COLOR_3DFACE);
-        int contentLum = (299 * GetRValue(contentBg) + 587 * GetGValue(contentBg) + 114 * GetBValue(contentBg)) / 1000;
-        BOOL bgIsLight = (contentLum > 128);
-        // Default: dark IME → light shadow, light IME → dark shadow
-        BYTE shadowR = imeIsDark ? 200 : 0;
-        BYTE shadowG = imeIsDark ? 200 : 0;
-        BYTE shadowB = imeIsDark ? 200 : 0;
-        BYTE maxAlpha = 35;
-        if (imeIsDark && bgIsLight) {
-            // Dark IME on light bg: flip to dark shadow with boosted alpha
-            shadowR = 0; shadowG = 0; shadowB = 0;
-            maxAlpha = 45;
-        } else if (!imeIsDark && !bgIsLight) {
-            // Light IME on dark bg: flip to light shadow
-            shadowR = 200; shadowG = 200; shadowB = 200;
-        }
-
-        double r = cornerRadius * 0.5;
-        double half_w = cxTitle * 0.5;
-        double half_h = candWndH * 0.5;
-        double inner_rx = half_w - r;
-        double inner_ry = half_h - r;
-
-        HDC dcMem = CreateCompatibleDC(hdc);
-        BITMAPINFO bi = {};
-        bi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-        bi.bmiHeader.biWidth = shadowW;
-        bi.bmiHeader.biHeight = -shadowH; // top-down
-        bi.bmiHeader.biPlanes = 1;
-        bi.bmiHeader.biBitCount = 32;
-        void* pBits = nullptr;
-        HBITMAP hBmp = CreateDIBSection(hdc, &bi, DIB_RGB_COLORS, &pBits, nullptr, 0);
-        if (hBmp && pBits) {
-            memset(pBits, 0, (size_t)shadowW * shadowH * 4);
-            HBITMAP hOld = (HBITMAP)SelectObject(dcMem, hBmp);
-            struct RGBALPHA { BYTE b, g, r, a; };
-            for (int y = 0; y < shadowH; y++) {
-                for (int x = 0; x < shadowW; x++) {
-                    double ox = x - sp;
-                    double oy = y - sp;
-                    double qx = fabs(ox - half_w) - inner_rx;
-                    double qy = fabs(oy - half_h) - inner_ry;
-                    double len = sqrt(max(qx, 0.0) * max(qx, 0.0) + max(qy, 0.0) * max(qy, 0.0));
-                    double sdf = len + min(max(qx, qy), 0.0) - r;
-                    if (sdf <= -1.0) continue;
-                    double dist = max(0.0, sdf) / (double)sp;
-                    if (dist > 1.0) continue;
-                    double f = 1.0 - dist;
-                    BYTE alpha = (BYTE)(maxAlpha * f * f);
-                    if (alpha == 0) continue;
-                    RGBALPHA* px = (RGBALPHA*)pBits + ((size_t)y * shadowW + x);
-                    px->r = (BYTE)((DWORD)shadowR * alpha / 255);
-                    px->g = (BYTE)((DWORD)shadowG * alpha / 255);
-                    px->b = (BYTE)((DWORD)shadowB * alpha / 255);
-                    px->a = alpha;
-                }
-            }
-            BLENDFUNCTION bf = { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA };
-            AlphaBlend(hdc, shadowX, shadowY, shadowW, shadowH, dcMem, 0, 0, shadowW, shadowH, bf);
-            SelectObject(dcMem, hOld);
-            DeleteObject(hBmp);
-        }
-        DeleteDC(dcMem);
-    }
-
-    // Draw candidate window background
-    HBRUSH hBkBr = CreateSolidBrush(s.itemBGColor);
-    HPEN hBkPen = CreatePen(PS_SOLID, 1, s.itemBGColor);
-    SelectObject(hdc, hBkBr); SelectObject(hdc, hBkPen);
-    RoundRect(hdc, prevX, prevTop, prevX + cxTitle, prevTop + candWndH, cornerRadius, cornerRadius);
-    DeleteObject(hBkBr); DeleteObject(hBkPen);
-
-    // Draw candidate rows
-    int cyOffset = candSize.cy / 8 + fistLineOffset;
-    for (int pi = 0; pi < candCount; pi++) {
-        RECT rc;
-        rc.top = prevTop + pi * cyLine + fistLineOffset;
-        rc.bottom = rc.top + cyLine;
-        bool isSelected = (pi == selectedIdx);
-
-        if (isSelected) {
-            RECT rcFullRow = { prevX, rc.top, prevX + cxTitle, rc.bottom };
-            HBRUSH hFRBr = CreateSolidBrush(s.itemBGColor);
-            FillRect(hdc, &rcFullRow, hFRBr);
-            DeleteObject(hFRBr);
-
-            int hMargin = leftPadding;
-            int vInset = MulDiv(1, dpi, 96);
-            int selCornerR = MulDiv(4, dpi, 96);
-            RECT rcHL = { prevX + hMargin, rc.top + vInset, prevX + cxTitle - hMargin, rc.bottom - vInset };
-            HBRUSH hSelBr = CreateSolidBrush(s.selectedBGColor);
-            SelectObject(hdc, hSelBr); SelectObject(hdc, (HPEN)GetStockObject(NULL_PEN));
-            RoundRect(hdc, rcHL.left, rcHL.top, rcHL.right, rcHL.bottom, selCornerR, selCornerR);
-            DeleteObject(hSelBr);
-
-            SetBkMode(hdc, TRANSPARENT);
-            SetTextColor(hdc, s.selectedColor);
-            rc.left = prevX + leftPadding;
-            rc.right = prevX + leftPadding + cxLine;
-            ExtTextOut(hdc, prevX + leftPadding, prevTop + pi * cyLine + cyOffset, 0, &rc, candNums[pi], 1, NULL);
-            rc.left = prevX + leftPadding + cxLine;
-            rc.right = prevX + cxTitle;
-            ExtTextOut(hdc, prevX + leftPadding + cxLine, prevTop + pi * cyLine + cyOffset, 0, &rc, candTexts[pi], (DWORD)wcslen(candTexts[pi]), NULL);
-        } else {
-            rc.left = prevX + leftPadding;
-            rc.right = prevX + leftPadding + cxLine;
-            SetTextColor(hdc, s.numberColor);
-            SetBkColor(hdc, s.itemBGColor);
-            SetBkMode(hdc, OPAQUE);
-            ExtTextOut(hdc, prevX + leftPadding, prevTop + pi * cyLine + cyOffset, ETO_OPAQUE, &rc, candNums[pi], 1, NULL);
-            rc.left = prevX + leftPadding + cxLine;
-            rc.right = prevX + cxTitle;
-            SetTextColor(hdc, s.itemColor);
-            SetBkColor(hdc, s.itemBGColor);
-            ExtTextOut(hdc, prevX + leftPadding + cxLine, prevTop + pi * cyLine + cyOffset, ETO_OPAQUE, &rc, candTexts[pi], (DWORD)wcslen(candTexts[pi]), NULL);
-        }
-        if (isSelected) SetBkMode(hdc, OPAQUE);
-    }
-
-    // Notify window preview (right side) — exact from CNotifyWindow::_DrawText
-    const wchar_t* notifyText = L"中文";
-    int notifyLen = (int)wcslen(notifyText);
-    SIZE notifySize;
-    GetTextExtentPoint32(hdc, notifyText, notifyLen, &notifySize);
-    int notifyW = notifySize.cx + notifySize.cx / notifyLen;
-    int notifyHt = notifySize.cy * 3 / 2;
-    int notifyX = prevX + cxTitle + ScaleForDpi(20, dpi);
-    int notifyY = prevTop + (candWndH - notifyHt) / 2;
-    int nCorner = MulDiv(8, dpi, 96);
-
-    // SDF shadow for notify window (same algorithm as ShadowWindow.cpp)
-    {
-        int sp = ScaleForDpi(14, dpi);
-        int shadowW = notifyW + sp * 2;
-        int shadowH = notifyHt + sp * 2;
-        int shadowX = notifyX - sp;
-        int shadowY = notifyY - sp;
-
-        // Shadow adapts to content bg — same as ShadowWindow.cpp
-        // Detect if the IME preview is dark or light based on itemBGColor
-        int imeLum = (299 * GetRValue(s.itemBGColor) + 587 * GetGValue(s.itemBGColor) + 114 * GetBValue(s.itemBGColor)) / 1000;
-        BOOL imeIsDark = (imeLum <= 128);
-        // Detect content bg luminance
-        COLORREF contentBg = GetSysColor(COLOR_3DFACE);
-        int contentLum = (299 * GetRValue(contentBg) + 587 * GetGValue(contentBg) + 114 * GetBValue(contentBg)) / 1000;
-        BOOL bgIsLight = (contentLum > 128);
-        // Default: dark IME → light shadow, light IME → dark shadow
-        BYTE shadowR = imeIsDark ? 200 : 0;
-        BYTE shadowG = imeIsDark ? 200 : 0;
-        BYTE shadowB = imeIsDark ? 200 : 0;
-        BYTE maxAlpha = 35;
-        if (imeIsDark && bgIsLight) {
-            // Dark IME on light bg: flip to dark shadow with boosted alpha
-            shadowR = 0; shadowG = 0; shadowB = 0;
-            maxAlpha = 45;
-        } else if (!imeIsDark && !bgIsLight) {
-            // Light IME on dark bg: flip to light shadow
-            shadowR = 200; shadowG = 200; shadowB = 200;
-        }
-
-        double r = nCorner * 0.5;
-        double half_w = notifyW * 0.5;
-        double half_h = notifyHt * 0.5;
-        double inner_rx = half_w - r;
-        double inner_ry = half_h - r;
-
-        HDC dcMem = CreateCompatibleDC(hdc);
-        BITMAPINFO bi = {};
-        bi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-        bi.bmiHeader.biWidth = shadowW;
-        bi.bmiHeader.biHeight = -shadowH;
-        bi.bmiHeader.biPlanes = 1;
-        bi.bmiHeader.biBitCount = 32;
-        void* pBits = nullptr;
-        HBITMAP hBmp = CreateDIBSection(hdc, &bi, DIB_RGB_COLORS, &pBits, nullptr, 0);
-        if (hBmp && pBits) {
-            memset(pBits, 0, (size_t)shadowW * shadowH * 4);
-            HBITMAP hOld = (HBITMAP)SelectObject(dcMem, hBmp);
-            struct RGBALPHA { BYTE b, g, r, a; };
-            for (int y = 0; y < shadowH; y++) {
-                for (int x = 0; x < shadowW; x++) {
-                    double ox = x - sp;
-                    double oy = y - sp;
-                    double qx = fabs(ox - half_w) - inner_rx;
-                    double qy = fabs(oy - half_h) - inner_ry;
-                    double len = sqrt(max(qx, 0.0) * max(qx, 0.0) + max(qy, 0.0) * max(qy, 0.0));
-                    double sdf = len + min(max(qx, qy), 0.0) - r;
-                    if (sdf <= -1.0) continue;
-                    double dist = max(0.0, sdf) / (double)sp;
-                    if (dist > 1.0) continue;
-                    double f = 1.0 - dist;
-                    BYTE alpha = (BYTE)(maxAlpha * f * f);
-                    if (alpha == 0) continue;
-                    RGBALPHA* px = (RGBALPHA*)pBits + ((size_t)y * shadowW + x);
-                    px->r = (BYTE)((DWORD)shadowR * alpha / 255);
-                    px->g = (BYTE)((DWORD)shadowG * alpha / 255);
-                    px->b = (BYTE)((DWORD)shadowB * alpha / 255);
-                    px->a = alpha;
-                }
-            }
-            BLENDFUNCTION bf = { AC_SRC_OVER, 0, 255, AC_SRC_ALPHA };
-            AlphaBlend(hdc, shadowX, shadowY, shadowW, shadowH, dcMem, 0, 0, shadowW, shadowH, bf);
-            SelectObject(dcMem, hOld);
-            DeleteObject(hBmp);
-        }
-        DeleteDC(dcMem);
-    }
-
-    // Notify background
-    HBRUSH hNBr = CreateSolidBrush(s.itemBGColor);
-    HPEN hNPen = CreatePen(PS_SOLID, 1, s.itemBGColor);
-    SelectObject(hdc, hNBr); SelectObject(hdc, hNPen);
-    RoundRect(hdc, notifyX, notifyY, notifyX + notifyW, notifyY + notifyHt, nCorner, nCorner);
-    DeleteObject(hNBr); DeleteObject(hNPen);
-
-    // Notify text — same positioning as CNotifyWindow::_DrawText, but TRANSPARENT
-    // (ETO_OPAQUE would overwrite rounded corners — RoundRect already painted the bg)
-    SetTextColor(hdc, s.itemColor);
-    SetBkMode(hdc, TRANSPARENT);
-    ExtTextOut(hdc, notifyX + notifySize.cx / notifyLen / 2,
-        notifyY + notifyHt / 5, 0, nullptr,
-        notifyText, (DWORD)notifyLen, NULL);
-
-    SelectObject(hdc, hOldF);
-    if (hCandFont != GetStockObject(DEFAULT_GUI_FONT)) DeleteObject(hCandFont);
-}
-
-void SettingsWindow::PaintSettingsDetail(HWND hWnd, HDC hdc, WindowData* wd)
-{
-    RECT rcClient; GetClientRect(hWnd, &rcClient);
-    UINT dpi = CConfig::GetDpiForHwnd(GetParent(hWnd));
-    const ThemeColors& tc = wd->theme;
-    int margin = ScaleForDpi(g_geo.contentMargin, dpi);
-    int pad = ScaleForDpi(g_geo.cardPad, dpi);
-    int cornerR = ScaleForDpi(g_geo.cardRadius, dpi);
-    int sepIndent = ScaleForDpi(g_geo.rowSepIndent, dpi);
-    int iconSz = ScaleForDpi(g_geo.rowIconSize, dpi);
-    int iconPadL = ScaleForDpi(g_geo.rowIconPadLeft, dpi);
-    int iconGap = ScaleForDpi(g_geo.rowIconGap, dpi);
-    int rowH = ScaleForDpi(g_geo.rowHeight, dpi);
-    int rowHS = ScaleForDpi(g_geo.rowHeightSingle, dpi);
-
-    SetBkMode(hdc, TRANSPARENT);
-
-    int layoutCount = 0;
-    const LayoutCard* allCards = GetIMEPageLayout(&layoutCount);
-    if (wd->currentCardIndex < 0 || wd->currentCardIndex >= layoutCount) return;
-    const LayoutCard& card = allCards[wd->currentCardIndex];
-
-    int modeMask = SettingsModel::GetModeBitmask(wd->currentMode);
-
-    // Preview is now a RowType::CandidatePreview card in the layout — no special handling needed
-
-    int cardW = CalcCardW(GetParent(hWnd), dpi, !wd->sidebarNarrowMode && !wd->sidebarCollapsed);
-    // Right edge for ALL controls — left of chevron area on Level 1
-    int ctrlRightX = CalcCtrlRight(margin, cardW, dpi, true);
-    int chevArea = ScaleForDpi(g_geo.chevronW + 4, dpi);
-
-    // Win11 pattern: each top-level row (+ its children) is its own card.
-    // cardBreakBefore also forces a new card. Grouping: SettingsWindowLayout::RowSpans.
-    SettingsWindowLayout::RowContext rowCtx = {};
-    rowCtx.dpi = dpi;
-    rowCtx.scrollPos = wd->scrollPos;
-    rowCtx.modeMask = modeMask;
-    rowCtx.colorMode = wd->snapshot.colorMode;
-    rowCtx.gridExpanded = wd->colorGridExpanded ? 1 : 0;
-    rowCtx.previewH = CalcCandidatePreviewH(hdc, wd->snapshot, dpi);
-    std::vector<SettingsWindowLayout::RowSpan> cardSpans = SettingsWindowLayout::RowSpans(card, rowCtx);
-    int numCards = (int)cardSpans.size();
-    auto calcRowH = [&](const LayoutRow& lr) -> int {
-        return SettingsWindowLayout::RowHeight(lr, dpi, rowCtx.previewH);
-    };
-    auto isRowShown = [&](const LayoutRow& lr) -> bool {
-        return SettingsWindowLayout::RowShown(lr, modeMask, rowCtx.colorMode, rowCtx.gridExpanded != 0);
-    };
-
-    // Draw each card (each top-level row + children = one card, with cardGap between)
-    SetBkMode(hdc, TRANSPARENT);  // reset after candidate preview's OPAQUE
-    HFONT oldFont = (HFONT)SelectObject(hdc, wd->hFontBody);
-    int cardGap = ScaleForDpi(g_geo.cardGap, dpi);
-    int cardTop = ScaleForDpi(g_geo.topPad, dpi) - wd->scrollPos;
-    for (int ci = 0; ci < numCards; ci++) {
-        int cardH = cardSpans[ci].height;
-
-        // Skip card background + hover for CandidatePreview (transparent)
-        bool isPreviewCard = (cardSpans[ci].startRow < card.rowCount
-            && card.rows[cardSpans[ci].startRow].type == RowType::CandidatePreview);
-        if (!isPreviewCard) {
-            bool isHoverL2 = (cardSpans[ci].startRow == wd->hoverRowIndex);
-            DrawCardWithShadow(hdc, margin, cardTop, cardW, cardH, cornerR,
-                tc.cardBg, tc.cardBorder, tc.contentBg, isHoverL2, tc.rowHover);
-        }
-
-        int curY = cardTop + pad;
-        for (int r = cardSpans[ci].startRow; r < cardSpans[ci].endRow; r++) {
-            const LayoutRow& lr = card.rows[r];
-            if (!isRowShown(lr)) continue;
-            int thisH = calcRowH(lr);
-
-        // Unified row rendering
-        bool isChild = (card.rows[r].expandParent != CTRL_NONE);
-        PaintRow(hdc, wd, lr, margin, curY, cardW, thisH, ctrlRightX, dpi, isChild);
-
-        curY += thisH;
-        } // end row loop
-        cardTop += cardH + cardGap;
-    } // end card loop
-    SelectObject(hdc, oldFont);
-}
 void SettingsWindow::PaintBreadcrumb(HWND hWnd, HDC hdc, WindowData* wd)
 {
-    UINT dpi = CConfig::GetDpiForHwnd(GetParent(hWnd));
-    int margin = ScaleForDpi(g_geo.contentMargin, dpi);
-    int bcH = ScaleForDpi(g_geo.breadcrumbH, dpi);
-    const ThemeColors& tc = wd->theme;
-    SetBkMode(hdc, TRANSPARENT);
-
-    // All breadcrumb parts: same font (hFontTitle), same size.
-    // Win11: parent=textPrimary, ›=secondary, current=primary.
-    HFONT oldFont = (HFONT)SelectObject(hdc, wd->hFontTitle);
-
-    // IME name — primary color (clickable back-link)
-    SetTextColor(hdc, tc.textPrimary);
-    int sbc = 0; const SidebarItemDef* si = ::GetSidebarItems(&sbc);
-    const wchar_t* modeName = (wd->selectedModeIndex < sbc && si[wd->selectedModeIndex].label)
-        ? si[wd->selectedModeIndex].label : L"DIME";
-    // In narrow mode, breadcrumb starts after hamburger area; normal mode uses margin
-    int bcLeft = (wd->sidebarNarrowMode) ? ScaleForDpi(g_geo.hamburgerSize, dpi) : margin;
-    // Use DT_CALCRECT only to measure width; restore top/bottom so DT_VCENTER works correctly
-    RECT rcM = { bcLeft, 0, bcLeft + ScaleForDpi(g_geo.bcModeNameW, dpi), bcH };
-    DrawTextW(hdc, modeName, -1, &rcM, DT_SINGLELINE | DT_LEFT | DT_VCENTER | DT_CALCRECT);
-    int modeRight = rcM.right;
-    rcM = { bcLeft, 0, modeRight, bcH };
-    DrawTextW(hdc, modeName, -1, &rcM, DT_SINGLELINE | DT_LEFT | DT_VCENTER);
-
-    // Separator › — secondary color
-    SetTextColor(hdc, tc.textSecondary);
-    RECT rcS = { modeRight, 0, modeRight + ScaleForDpi(g_geo.bcSepW, dpi), bcH };
-    DrawTextW(hdc, L"  \x203A  ", -1, &rcS, DT_SINGLELINE | DT_LEFT | DT_VCENTER | DT_CALCRECT);
-    int sepRight = rcS.right;
-    rcS = { modeRight, 0, sepRight, bcH };
-    DrawTextW(hdc, L"  \x203A  ", -1, &rcS, DT_SINGLELINE | DT_LEFT | DT_VCENTER);
-
-    // Category name — primary color (current page)
-    SetTextColor(hdc, tc.textPrimary);
-    int lc = 0; const LayoutCard* lCards = GetIMEPageLayout(&lc);
-    const wchar_t* catName = (wd->currentCardIndex >= 0 && wd->currentCardIndex < lc)
-        ? lCards[wd->currentCardIndex].title : L"";
-    RECT rcC = { sepRight, 0, sepRight + ScaleForDpi(g_geo.bcCatNameW, dpi), bcH };
-    DrawTextW(hdc, catName, -1, &rcC, DT_SINGLELINE | DT_LEFT | DT_VCENTER);
-    SelectObject(hdc, oldFont);
-}
-void SettingsWindow::PaintToggleSwitch(HDC hdc, RECT rc, bool isOn, bool isHover, const ThemeColors& tc)
-{
-    Gdiplus::Graphics g(hdc);
-    g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
-
-    int trackW = rc.right - rc.left;
-    int trackH = rc.bottom - rc.top;
-    int knobSize = trackH - 8;   // Win11: 12px knob in 20px track
-    int knobInset = 4;
-    Gdiplus::REAL radius = (Gdiplus::REAL)trackH;
-
-    auto toColor = [](COLORREF c, BYTE a = 255) {
-        return Gdiplus::Color(a, GetRValue(c), GetGValue(c), GetBValue(c));
-    };
-
-    // Track rounded rect path
-    Gdiplus::GraphicsPath trackPath;
-    Gdiplus::RectF trackRect((Gdiplus::REAL)rc.left, (Gdiplus::REAL)rc.top,
-        (Gdiplus::REAL)trackW, (Gdiplus::REAL)trackH);
-    trackPath.AddArc(trackRect.X, trackRect.Y, radius, radius, 90, 180);
-    trackPath.AddArc(trackRect.X + trackRect.Width - radius, trackRect.Y, radius, radius, 270, 180);
-    trackPath.CloseFigure();
-
-    if (isOn) {
-        // Filled track
-        Gdiplus::SolidBrush trackBrush(toColor(tc.toggleOnTrack));
-        g.FillPath(&trackBrush, &trackPath);
-        // Knob (right side)
-        Gdiplus::SolidBrush knobBrush(toColor(tc.toggleOnKnob));
-        g.FillEllipse(&knobBrush,
-            (Gdiplus::REAL)(rc.right - knobSize - knobInset - 1),
-            (Gdiplus::REAL)(rc.top + knobInset),
-            (Gdiplus::REAL)knobSize, (Gdiplus::REAL)knobSize);
-    } else {
-        // Border-only track
-        Gdiplus::Pen trackPen(toColor(tc.toggleOffBorder), 1.5f);
-        g.DrawPath(&trackPen, &trackPath);
-        // Knob (left side)
-        Gdiplus::SolidBrush knobBrush(toColor(tc.toggleOffKnob));
-        g.FillEllipse(&knobBrush,
-            (Gdiplus::REAL)(rc.left + knobInset + 1),
-            (Gdiplus::REAL)(rc.top + knobInset),
-            (Gdiplus::REAL)knobSize, (Gdiplus::REAL)knobSize);
-    }
+    SettingsWindowPaint::PaintContext ctx = MakePaintContext(hWnd, GetParent(hWnd), wd);
+    SettingsWindowPaint::PaintBreadcrumb(hdc, ctx);
 }
 void SettingsWindow::RebuildContentArea(HWND hWnd, WindowData* wd)
 {
@@ -2604,17 +1661,7 @@ LRESULT CALLBACK SettingsWindow::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPA
                     {
                         int hbSize = ScaleForDpi(g_geo.hamburgerSize, dpi);
                         RECT rcHbBg = { 0, 0, hbSize, hbSize };
-                        FillRect(hdc, &rcHbBg, wd->hBrushSidebarBg);
-                        SetBkMode(hdc, TRANSPARENT);
-                        if (wd->hasMDL2 && wd->hFontMDL2Icon) {
-                            SelectObject(hdc, wd->hFontMDL2Icon);
-                            SetTextColor(hdc, wd->theme.textPrimary);
-                            DrawTextW(hdc, L"\xE700", -1, &rcHbBg, DT_SINGLELINE | DT_CENTER | DT_VCENTER);
-                        } else {
-                            SelectObject(hdc, wd->hFontCardHeader);
-                            SetTextColor(hdc, wd->theme.textPrimary);
-                            DrawTextW(hdc, L"\x2261", -1, &rcHbBg, DT_SINGLELINE | DT_CENTER | DT_VCENTER);
-                        }
+                        PaintHamburger(hWnd, hdc, wd, rcHbBg, wd->hBrushSidebarBg);
                     }
                 } else {
                     RECT rcBC = { sidebarW, 0, 32767, bcH };
@@ -2626,19 +1673,8 @@ LRESULT CALLBACK SettingsWindow::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPA
                     // Hamburger in breadcrumb strip (Level 1 narrow mode)
                     if (wd->sidebarNarrowMode) {
                         int hbSize = ScaleForDpi(g_geo.hamburgerSize, dpi);
-                        RECT rcHbBg = { sidebarW, 0, sidebarW + hbSize, hbSize };
-                        FillRect(hdc, &rcHbBg, wd->hBrushContentBg);
                         RECT rcHb = { sidebarW, 0, sidebarW + hbSize, hbSize };
-                        SetBkMode(hdc, TRANSPARENT);
-                        if (wd->hasMDL2 && wd->hFontMDL2Icon) {
-                            SelectObject(hdc, wd->hFontMDL2Icon);
-                            SetTextColor(hdc, wd->theme.textPrimary);
-                            DrawTextW(hdc, L"\xE700", -1, &rcHb, DT_SINGLELINE | DT_CENTER | DT_VCENTER);
-                        } else {
-                            SelectObject(hdc, wd->hFontCardHeader);
-                            SetTextColor(hdc, wd->theme.textPrimary);
-                            DrawTextW(hdc, L"\x2261", -1, &rcHb, DT_SINGLELINE | DT_CENTER | DT_VCENTER);
-                        }
+                        PaintHamburger(hWnd, hdc, wd, rcHb, wd->hBrushContentBg);
                     }
                 }
             }
@@ -2938,19 +1974,8 @@ LRESULT CALLBACK SettingsWindow::ContentWndProc(HWND hWnd, UINT msg, WPARAM wPar
             if (wd->sidebarNarrowMode && wd->navLevel == 0) {
                 UINT dpiHb = CConfig::GetDpiForHwnd(GetParent(hWnd));
                 int hbSize = ScaleForDpi(g_geo.hamburgerSize, dpiHb);
-                RECT rcHbBg = { 0, 0, hbSize, hbSize };
-                FillRect(hdc, &rcHbBg, wd->hBrushContentBg);
                 RECT rcHb = { 0, 0, hbSize, hbSize };
-                SetBkMode(hdc, TRANSPARENT);
-                if (wd->hasMDL2 && wd->hFontMDL2Icon) {
-                    SelectObject(hdc, wd->hFontMDL2Icon);
-                    SetTextColor(hdc, wd->theme.textPrimary);
-                    DrawTextW(hdc, L"\xE700", -1, &rcHb, DT_SINGLELINE | DT_CENTER | DT_VCENTER);
-                } else {
-                    SelectObject(hdc, wd->hFontCardHeader);
-                    SetTextColor(hdc, wd->theme.textPrimary);
-                    DrawTextW(hdc, L"\x2261", -1, &rcHb, DT_SINGLELINE | DT_CENTER | DT_VCENTER);
-                }
+                PaintHamburger(GetParent(hWnd), hdc, wd, rcHb, wd->hBrushContentBg);
             }
             // Blit off-screen buffer to screen (excludes child control areas via WS_CLIPCHILDREN)
             BitBlt(hdcScreen, 0, 0, rcClient.right, rcClient.bottom, hdc, 0, 0, SRCCOPY);
@@ -3719,54 +2744,13 @@ LRESULT CALLBACK SettingsWindow::ContentWndProc(HWND hWnd, UINT msg, WPARAM wPar
 
         // Owner-draw buttons (Win11 style: anti-aliased rounded corners via GDI+)
         if (pdis->CtlType == ODT_BUTTON) {
-            const ThemeColors& tc = wd->theme;
-            HDC hdc = pdis->hDC;
-            RECT rc = pdis->rcItem;
             UINT dpiBtn = CConfig::GetDpiForHwnd(GetParent(hWnd));
-            Gdiplus::REAL r = (Gdiplus::REAL)ScaleForDpi(4, dpiBtn);
-
             bool pressed  = (pdis->itemState & ODS_SELECTED) != 0;
             bool disabled = (pdis->itemState & ODS_DISABLED) != 0;
-
-            COLORREF fill   = disabled ? tc.buttonFillDisabled :
-                              pressed  ? tc.buttonFillPressed  : tc.buttonFill;
-            COLORREF border = tc.buttonBorder;
-            COLORREF text   = disabled ? tc.buttonTextDisabled : tc.buttonText;
-
-            auto toColor = [](COLORREF c) { return Gdiplus::Color(255, GetRValue(c), GetGValue(c), GetBValue(c)); };
-
-            // Fill background with card bg to eliminate white corners
-            HBRUSH hBgBr = CreateSolidBrush(tc.cardBg);
-            FillRect(hdc, &rc, hBgBr);
-            DeleteObject(hBgBr);
-
-            // Anti-aliased rounded button
-            Gdiplus::Graphics g(hdc);
-            g.SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);
-            Gdiplus::GraphicsPath path;
-            Gdiplus::RectF rr((Gdiplus::REAL)rc.left, (Gdiplus::REAL)rc.top,
-                (Gdiplus::REAL)(rc.right - rc.left - 1), (Gdiplus::REAL)(rc.bottom - rc.top - 1));
-            Gdiplus::REAL d = r * 2;
-            path.AddArc(rr.X, rr.Y, d, d, 180, 90);
-            path.AddArc(rr.X + rr.Width - d, rr.Y, d, d, 270, 90);
-            path.AddArc(rr.X + rr.Width - d, rr.Y + rr.Height - d, d, d, 0, 90);
-            path.AddArc(rr.X, rr.Y + rr.Height - d, d, d, 90, 90);
-            path.CloseFigure();
-
-            Gdiplus::SolidBrush fillBrush(toColor(fill));
-            g.FillPath(&fillBrush, &path);
-            Gdiplus::Pen borderPen(toColor(border), 1.0f);
-            g.DrawPath(&borderPen, &path);
-
             wchar_t txt[128] = {};
             GetWindowTextW(pdis->hwndItem, txt, 128);
-            if (txt[0]) {
-                HFONT hOldF = (HFONT)SelectObject(hdc, wd->hFontBody);
-                SetBkMode(hdc, TRANSPARENT);
-                SetTextColor(hdc, text);
-                DrawTextW(hdc, txt, -1, &rc, DT_SINGLELINE | DT_CENTER | DT_VCENTER);
-                SelectObject(hdc, hOldF);
-            }
+            SettingsWindowPaint::PaintOwnerButton(pdis->hDC, pdis->rcItem, txt, pressed, disabled,
+                wd->theme, wd->hFontBody, dpiBtn);
             return TRUE;
         }
 
@@ -3777,14 +2761,8 @@ LRESULT CALLBACK SettingsWindow::ContentWndProc(HWND hWnd, UINT msg, WPARAM wPar
                 wd->snapshot.itemColor, wd->snapshot.selectedColor, wd->snapshot.itemBGColor,
                 wd->snapshot.phraseColor, wd->snapshot.numberColor, wd->snapshot.selectedBGColor
             };
-            HDC hdc = pdis->hDC;
-            RECT rc = pdis->rcItem;
-            HBRUSH hBr = CreateSolidBrush(colors[idx]);
-            HPEN hPen = CreatePen(PS_SOLID, 1, wd->theme.cardBorder);
-            SelectObject(hdc, hBr); SelectObject(hdc, hPen);
             int r = ScaleForDpi(g_geo.swatchRadius, CConfig::GetDpiForHwnd(GetParent(hWnd)));
-            RoundRect(hdc, rc.left, rc.top, rc.right, rc.bottom, r, r);
-            DeleteObject(hBr); DeleteObject(hPen);
+            SettingsWindowPaint::PaintSwatch(pdis->hDC, pdis->rcItem, colors[idx], wd->theme.cardBorder, r);
             return TRUE;
         }
         break;

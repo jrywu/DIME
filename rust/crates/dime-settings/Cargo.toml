@@ -8,3 +8,6 @@ publish.workspace = true
 
 [dependencies]
 dime-config = { path = "../dime-config" }
+
+[target.'cfg(windows)'.dependencies]
+windows-link = "0.2.1"

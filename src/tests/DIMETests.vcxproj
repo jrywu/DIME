@@ -333,6 +333,7 @@
     <ClInclude Include="..\DIMESettings\SettingsPageLayout.h" />
     <ClInclude Include="..\DIMESettings\SettingsGeometry.h" />
     <ClInclude Include="..\DIMESettings\SettingsWindowLayout.h" />
+    <ClInclude Include="..\DIMESettings\SettingsWindowPaint.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\CompositionProcessorEngine.cpp">
@@ -381,6 +382,7 @@
     <ClCompile Include="SentenceBufferParityTest.cpp" />
     <ClCompile Include="UILayoutParityTest.cpp" />
     <ClCompile Include="SettingsWindowLayoutParityTest.cpp" />
+    <ClCompile Include="SettingsWindowPaintParityTest.cpp" />
     <ClCompile Include="CandidatePaintParityTest.cpp" />
     <ClCompile Include="ScrollBarProcParityTest.cpp" />
     <ClCompile Include="ShadowParityTest.cpp" />
@@ -422,6 +424,16 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|ARM64EC'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\DIMESettings\SettingsWindowLayout.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64EC'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|ARM64EC'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\DIMESettings\SettingsWindowPaint.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
