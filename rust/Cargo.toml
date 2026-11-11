@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/dime-core", "crates/dime-config", "crates/dime-ffi", "crates/dime-ui"]
+members = ["crates/dime-core", "crates/dime-config", "crates/dime-ffi", "crates/dime-settings", "crates/dime-ui"]
 
 [workspace.package]
 version = "0.1.0"

@@ -35,6 +35,7 @@ mod host_ui;
 mod langbar;
 mod page_layout;
 mod settings_model;
+mod settings_window;
 mod setup;
 mod text_file;
 

@@ -30,6 +30,7 @@
 #include "SettingsController.h"
 #include "SettingsPageLayout.h"
 #include "SettingsGeometry.h"
+#include "SettingsWindowLayout.h"
 
 #include <Richedit.h>
 #include <MLang.h>
@@ -71,6 +72,7 @@ namespace ThemedMsgBox {
         UINT type;
         ThemeColors tc;         // computed from system theme at creation time
         bool isDark;
+        SettingsWindowLayout::MsgBoxButtons buttons;   // ids and label indexes
         int btnCount;
         int btnIds[3];
         const wchar_t* btnLabels[3];
@@ -80,49 +82,20 @@ namespace ThemedMsgBox {
         HFONT hFont;
     };
 
-    struct Layout {
-        RECT rcClient;
-        int textX, textY, textW, textH;
-        int btnY, btnW, btnH, btnGap;
-        int iconX, iconY, iconSize;
-        int margin;
-    };
+    using Layout = SettingsWindowLayout::MsgBoxLayout;
 
+    // Measure the wrapped text here; the arithmetic is SettingsWindowLayout.
     static Layout CalcLayout(HWND hWnd, MsgBoxData* md, UINT dpi)
     {
-        Layout L = {};
-        L.margin = ScaleForDpi(20, dpi);
-        L.iconSize = ScaleForDpi(32, dpi);
-        int iconGap = ScaleForDpi(14, dpi);
-        L.btnH = ScaleForDpi(30, dpi);
-        L.btnW = ScaleForDpi(88, dpi);
-        L.btnGap = ScaleForDpi(8, dpi);
-        L.iconX = L.margin;
-        L.iconY = L.margin;
-        L.textX = md->hIcon ? (L.margin + L.iconSize + iconGap) : L.margin;
-
-        int maxTextW = ScaleForDpi(340, dpi);
+        int maxTextW = SettingsWindowLayout::MsgBoxMaxTextWidth(dpi);
         HDC hdc = GetDC(hWnd);
         HFONT oldF = (HFONT)SelectObject(hdc, md->hFont);
         RECT rcM = { 0, 0, maxTextW, 0 };
         DrawTextW(hdc, md->text, -1, &rcM, DT_CALCRECT | DT_WORDBREAK | DT_LEFT);
         SelectObject(hdc, oldF);
         ReleaseDC(hWnd, hdc);
-
-        L.textW = rcM.right;
-        L.textH = rcM.bottom;
-        if (md->hIcon && L.textH < L.iconSize) L.textH = L.iconSize;
-        L.textY = L.margin;
-
-        int contentBottom = L.margin + L.textH + ScaleForDpi(20, dpi);
-        L.btnY = contentBottom;
-        int totalBtnW = md->btnCount * L.btnW + (md->btnCount - 1) * L.btnGap;
-        int clientW = L.textX + L.textW + L.margin;
-        int minW = totalBtnW + 2 * L.margin;
-        if (clientW < minW) clientW = minW;
-        int clientH = L.btnY + L.btnH + L.margin;
-        SetRect(&L.rcClient, 0, 0, clientW, clientH);
-        return L;
+        return SettingsWindowLayout::MsgBoxLayoutFor(md->hIcon != nullptr, md->btnCount,
+            rcM.right, rcM.bottom, dpi);
     }
 
     static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -175,8 +148,7 @@ namespace ThemedMsgBox {
             DrawTextW(hdc, md->text, -1, &rcText, DT_WORDBREAK | DT_LEFT);
 
             // Buttons — right-aligned
-            int totalBtnW = md->btnCount * L.btnW + (md->btnCount - 1) * L.btnGap;
-            int btnX = L.rcClient.right - L.margin - totalBtnW;
+            int btnX = SettingsWindowLayout::MsgBoxFirstButtonX(L, md->btnCount);
             for (int i = 0; i < md->btnCount; i++) {
                 RECT rcBtn = { btnX, L.btnY, btnX + L.btnW, L.btnY + L.btnH };
                 bool isHover = (i == md->hoverBtn);
@@ -209,14 +181,7 @@ namespace ThemedMsgBox {
             int x = GET_X_LPARAM(lParam), y = GET_Y_LPARAM(lParam);
             UINT dpi = CConfig::GetDpiForHwnd(hWnd);
             Layout L = CalcLayout(hWnd, md, dpi);
-            int totalBtnW = md->btnCount * L.btnW + (md->btnCount - 1) * L.btnGap;
-            int btnX = L.rcClient.right - L.margin - totalBtnW;
-            int newHover = -1;
-            for (int i = 0; i < md->btnCount; i++) {
-                if (x >= btnX && x < btnX + L.btnW && y >= L.btnY && y < L.btnY + L.btnH)
-                    { newHover = i; break; }
-                btnX += L.btnW + L.btnGap;
-            }
+            int newHover = SettingsWindowLayout::MsgBoxButtonAt(L, md->btnCount, x, y);
             if (newHover != md->hoverBtn) {
                 md->hoverBtn = newHover;
                 InvalidateRect(hWnd, nullptr, FALSE);
@@ -235,41 +200,27 @@ namespace ThemedMsgBox {
             int x = GET_X_LPARAM(lParam), y = GET_Y_LPARAM(lParam);
             UINT dpi = CConfig::GetDpiForHwnd(hWnd);
             Layout L = CalcLayout(hWnd, md, dpi);
-            int totalBtnW = md->btnCount * L.btnW + (md->btnCount - 1) * L.btnGap;
-            int btnX = L.rcClient.right - L.margin - totalBtnW;
-            for (int i = 0; i < md->btnCount; i++) {
-                if (x >= btnX && x < btnX + L.btnW && y >= L.btnY && y < L.btnY + L.btnH) {
-                    s_result = md->btnIds[i];
-                    DestroyWindow(hWnd);
-                    return 0;
-                }
-                btnX += L.btnW + L.btnGap;
+            int hit = SettingsWindowLayout::MsgBoxButtonAt(L, md->btnCount, x, y);
+            if (hit >= 0) {
+                s_result = md->btnIds[hit];
+                DestroyWindow(hWnd);
             }
             return 0;
         }
 
-        case WM_KEYDOWN:
+        case WM_KEYDOWN: {
             if (!md) break;
-            if (wParam == VK_RETURN) {
-                s_result = md->btnIds[md->defaultBtn];
-                DestroyWindow(hWnd);
-                return 0;
-            }
-            if (wParam == VK_ESCAPE) {
-                for (int i = 0; i < md->btnCount; i++) {
-                    if (md->btnIds[i] == IDCANCEL) { s_result = IDCANCEL; DestroyWindow(hWnd); return 0; }
-                    if (md->btnIds[i] == IDNO) { s_result = IDNO; DestroyWindow(hWnd); return 0; }
-                }
-                s_result = md->btnIds[md->defaultBtn];
-                DestroyWindow(hWnd);
-                return 0;
-            }
-            break;
+            int r = SettingsWindowLayout::MsgBoxKeyResult(md->buttons, md->defaultBtn, (UINT)wParam);
+            if (r == -1) break;
+            s_result = r;
+            DestroyWindow(hWnd);
+            return 0;
+        }
 
         case WM_CLOSE:
             if (md) {
-                for (int i = 0; i < md->btnCount; i++)
-                    if (md->btnIds[i] == IDCANCEL) { s_result = IDCANCEL; break; }
+                int r = SettingsWindowLayout::MsgBoxCloseResult(md->buttons);
+                if (r != -1) s_result = r;
             }
             DestroyWindow(hWnd);
             return 0;
@@ -306,28 +257,22 @@ static int ThemedMessageBox(HWND hParent, const wchar_t* text, const wchar_t* ca
     md.hoverBtn = -1;
     md.defaultBtn = 0;
 
-    if (type & MB_YESNOCANCEL) {
-        md.btnCount = 3;
-        md.btnIds[0] = IDYES;   md.btnLabels[0] = L"是(Y)";
-        md.btnIds[1] = IDNO;    md.btnLabels[1] = L"否(N)";
-        md.btnIds[2] = IDCANCEL; md.btnLabels[2] = L"取消";
-    } else if (type & MB_YESNO) {
-        md.btnCount = 2;
-        md.btnIds[0] = IDYES;   md.btnLabels[0] = L"是(Y)";
-        md.btnIds[1] = IDNO;    md.btnLabels[1] = L"否(N)";
-    } else if (type & MB_OKCANCEL) {
-        md.btnCount = 2;
-        md.btnIds[0] = IDOK;    md.btnLabels[0] = L"確定";
-        md.btnIds[1] = IDCANCEL; md.btnLabels[1] = L"取消";
-    } else {
-        md.btnCount = 1;
-        md.btnIds[0] = IDOK;    md.btnLabels[0] = L"確定";
+    static const wchar_t* const kLabels[] = { L"是(Y)", L"否(N)", L"取消", L"確定" };
+    md.buttons = SettingsWindowLayout::MsgBoxButtonsFor(type);
+    md.btnCount = md.buttons.count;
+    for (int i = 0; i < md.btnCount && i < 3; i++) {
+        md.btnIds[i] = md.buttons.ids[i];
+        int li = md.buttons.labels[i];
+        md.btnLabels[i] = (li >= 0 && li < 4) ? kLabels[li] : L"";
     }
 
-    if (type & MB_ICONWARNING)         md.hIcon = LoadIcon(nullptr, IDI_WARNING);
-    else if (type & MB_ICONERROR)      md.hIcon = LoadIcon(nullptr, IDI_ERROR);
-    else if (type & MB_ICONQUESTION)   md.hIcon = LoadIcon(nullptr, IDI_QUESTION);
-    else if (type & MB_ICONINFORMATION) md.hIcon = LoadIcon(nullptr, IDI_INFORMATION);
+    switch (SettingsWindowLayout::MsgBoxIcon(type)) {
+    case 1: md.hIcon = LoadIcon(nullptr, IDI_WARNING); break;
+    case 2: md.hIcon = LoadIcon(nullptr, IDI_ERROR); break;
+    case 3: md.hIcon = LoadIcon(nullptr, IDI_QUESTION); break;
+    case 4: md.hIcon = LoadIcon(nullptr, IDI_INFORMATION); break;
+    default: break;
+    }
 
     UINT dpi = CConfig::GetDpiForHwnd(hParent ? hParent : GetDesktopWindow());
     md.hFont = CreateFontW(-ScaleForDpi(12, dpi), 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
@@ -386,37 +331,8 @@ static int ValidateCustomTableBuffer(const wchar_t* text, size_t wlen,
     IME_MODE mode, UINT maxCodes, CCompositionProcessorEngine* pEng,
     int* outFirstErrLine, wchar_t* outSummary, size_t summaryCch, int maxReport)
 {
-    if (outFirstErrLine) *outFirstErrLine = 0;
-    if (outSummary && summaryCch > 0) outSummary[0] = 0;
-    if (!text || wlen == 0) return 0;
-
-    int errCount = 0;
-    int lineNo = 0;
-    const wchar_t* p = text;
-    const wchar_t* lineStart = p;
-    const wchar_t* endBuf = text + wlen;
-
-    while (p <= endBuf) {
-        if (p == endBuf || *p == L'\n') {
-            ++lineNo;
-            int len = (int)(p - lineStart);
-            if (len > 0 && lineStart[len - 1] == L'\r') --len;
-            auto v = SettingsModel::ValidateLine(lineStart, len, mode, maxCodes, pEng);
-            if (!v.valid) {
-                if (errCount == 0 && outFirstErrLine) *outFirstErrLine = lineNo;
-                if (errCount < maxReport && outSummary && summaryCch > 0) {
-                    wchar_t one[64];
-                    StringCchPrintfW(one, _countof(one), L"  第 %d 行\n", lineNo);
-                    StringCchCatW(outSummary, summaryCch, one);
-                }
-                ++errCount;
-            }
-            if (p == endBuf) break;
-            lineStart = p + 1;
-        }
-        ++p;
-    }
-    return errCount;
+    return SettingsWindowLayout::ValidateBuffer(text, wlen, mode, maxCodes, pEng,
+        outFirstErrLine, outSummary, summaryCch, maxReport);
 }
 
 // ============================================================================
@@ -988,200 +904,99 @@ static int CalcRowHeight(HDC hdc, const LayoutRow& lr, const SettingsSnapshot& s
 int SettingsWindow::HitTestCardList(int y, const LayoutCard* cards, int cardCount,
     int modeMask, const bool* cardExpanded, int expandBaseIdx, UINT dpi, int scrollPos)
 {
-    int pad = ScaleForDpi(g_geo.cardPad, dpi);
-    int catRowH = ScaleForDpi(g_geo.categoryRowH, dpi);
-    int cardGap = ScaleForDpi(g_geo.cardGap, dpi);
-    int cRowH = ScaleForDpi(g_geo.childRowH, dpi);
-    int curY2 = ScaleForDpi(g_geo.topMargin, dpi) + pad - scrollPos;
-    for (int i = 0; i < cardCount; i++) {
-        bool vis = (cards[i].rowCount == 0);
-        if (!vis) for (int r = 0; !vis && r < cards[i].rowCount; r++)
-            if (IsRowVisible(cards[i].rows[r], modeMask)) vis = true;
-        if (!vis) continue;
-        int numCh = 0;
-        int expIdx = expandBaseIdx + i;
-        if (cards[i].action == RowAction::ExpandSection && cardExpanded[expIdx] && cards[i].rows)
-            for (int r = 0; r < cards[i].rowCount; r++)
-                if (IsRowVisible(cards[i].rows[r], modeMask)) numCh++;
-        int cardH = 2 * pad + catRowH + (numCh > 0 ? numCh * (cRowH + 1) : 0);
-        if (y >= curY2 - pad && y < curY2 - pad + cardH) return i;
-        curY2 += cardH - 2 * pad + 2 * pad + cardGap;
-    }
-    return -1;
+    return SettingsWindowLayout::CardListHitTest(y, cards, cardCount, modeMask,
+        cardExpanded, expandBaseIdx, dpi, scrollPos);
 }
 
 bool SettingsWindow::HandleCardListClick(int y, HWND hWnd, HWND hParent, WindowData* wd,
     const LayoutCard* cards, int cardCount, int modeMask, int expandBaseIdx, UINT dpi)
 {
-    int pad = ScaleForDpi(g_geo.cardPad, dpi);
-    int catRowH = ScaleForDpi(g_geo.categoryRowH, dpi);
-    int cardGap = ScaleForDpi(g_geo.cardGap, dpi);
-    int cRowH = ScaleForDpi(g_geo.childRowH, dpi);
-    int curY = ScaleForDpi(g_geo.topMargin, dpi) + pad - wd->scrollPos;
-
-    for (int i = 0; i < cardCount; i++) {
-        bool vis = (cards[i].rowCount == 0);
-        if (!vis) for (int r = 0; !vis && r < cards[i].rowCount; r++)
-            if (IsRowVisible(cards[i].rows[r], modeMask)) vis = true;
-        if (!vis) continue;
-
+    SettingsWindowLayout::CardListClick c = SettingsWindowLayout::CardListClickTarget(
+        y, cards, cardCount, modeMask, wd->cardExpanded, expandBaseIdx, dpi, wd->scrollPos);
+    if (c.kind == 1) {
+        int i = c.card;
         int expIdx = expandBaseIdx + i;
-
-        // Click on category row?
-        if (y >= curY && y < curY + catRowH) {
-            if (cards[i].action == RowAction::NavigateToCard) {
-                SettingsWindow::NavigateToCategory(hParent, wd, i);
-            } else if (cards[i].action == RowAction::ExpandSection) {
-                wd->cardExpanded[expIdx] = !wd->cardExpanded[expIdx];
-                wd->scrollPos = 0;
-                SettingsWindow::RebuildContentArea(hParent, wd);
-                SettingsWindow::UpdateScrollInfo(wd);
+        if (cards[i].action == RowAction::NavigateToCard) {
+            SettingsWindow::NavigateToCategory(hParent, wd, i);
+        } else if (cards[i].action == RowAction::ExpandSection) {
+            wd->cardExpanded[expIdx] = !wd->cardExpanded[expIdx];
+            wd->scrollPos = 0;
+            SettingsWindow::RebuildContentArea(hParent, wd);
+            SettingsWindow::UpdateScrollInfo(wd);
+            InvalidateRect(hWnd, nullptr, FALSE);
+            UpdateWindow(hWnd);
+        }
+        return true;
+    }
+    if (c.kind == 2) {
+        const LayoutRow& lr = cards[c.card].rows[c.row];
+        if (lr.type == RowType::Toggle) {
+            HWND hCtrl = FindControl(wd, lr.id);
+            if (hCtrl) {
+                BOOL checked = (SendMessage(hCtrl, BM_GETCHECK, 0, 0) == BST_CHECKED);
+                bool newState = !checked;
+                SendMessage(hCtrl, BM_SETCHECK, newState ? BST_CHECKED : BST_UNCHECKED, 0);
+                SettingsModel::SyncToggleToSnapshot(wd->snapshot, lr.id, newState);
+                SettingsWindow::ApplyAndSave(wd);
                 InvalidateRect(hWnd, nullptr, FALSE);
                 UpdateWindow(hWnd);
             }
-            return true;
         }
-
-        // Click on expanded children?
-        if (cards[i].action == RowAction::ExpandSection && wd->cardExpanded[expIdx] && cards[i].rows) {
-            int childY = curY + catRowH + pad;
-            int numCh = 0;
-            for (int r = 0; r < cards[i].rowCount; r++) {
-                const LayoutRow& lr = cards[i].rows[r];
-                if (!IsRowVisible(lr, modeMask)) continue;
-                childY += 1; // 1px separator
-                if (y >= childY && y < childY + cRowH) {
-                    if (lr.type == RowType::Toggle) {
-                        HWND hCtrl = FindControl(wd, lr.id);
-                        if (hCtrl) {
-                            BOOL checked = (SendMessage(hCtrl, BM_GETCHECK, 0, 0) == BST_CHECKED);
-                            bool newState = !checked;
-                            SendMessage(hCtrl, BM_SETCHECK, newState ? BST_CHECKED : BST_UNCHECKED, 0);
-                            SettingsModel::SyncToggleToSnapshot(wd->snapshot, lr.id, newState);
-                            SettingsWindow::ApplyAndSave(wd);
-                            InvalidateRect(hWnd, nullptr, FALSE);
-                            UpdateWindow(hWnd);
-                        }
-                    }
-                    return true;
-                }
-                childY += cRowH;
-                numCh++;
-            }
-            int totalCardH = 2 * pad + catRowH + numCh * (cRowH + 1);
-            curY += totalCardH + cardGap;
-        } else {
-            curY += catRowH + 2 * pad + cardGap;
-        }
+        return true;
     }
     return false;
+}
+
+// Sub-page row context: visibility and heights for the current snapshot.
+static SettingsWindowLayout::RowContext MakeRowContext(HWND hWnd, SettingsWindow::WindowData* wd, UINT dpi)
+{
+    SettingsWindowLayout::RowContext ctx = {};
+    ctx.dpi = dpi;
+    ctx.scrollPos = wd->scrollPos;
+    ctx.modeMask = SettingsModel::GetModeBitmask(wd->currentMode);
+    ctx.colorMode = wd->snapshot.colorMode;
+    ctx.gridExpanded = wd->colorGridExpanded ? 1 : 0;
+    HDC hdcTmp = GetDC(hWnd);
+    ctx.previewH = CalcCandidatePreviewH(hdcTmp, wd->snapshot, dpi);
+    ReleaseDC(hWnd, hdcTmp);
+    return ctx;
 }
 
 bool SettingsWindow::HandleRowCardClick(int y, HWND hWnd, WindowData* wd,
     const LayoutCard& card, UINT dpi)
 {
-    int pad = ScaleForDpi(g_geo.cardPad, dpi);
-    int cardGap = ScaleForDpi(g_geo.cardGap, dpi);
-    int modeMask = SettingsModel::GetModeBitmask(wd->currentMode);
-    HDC hdcTmp = GetDC(hWnd);
-    auto calcH = [&](const LayoutRow& lr) { return CalcRowHeight(hdcTmp, lr, wd->snapshot, dpi); };
-    auto isShown = [&](const LayoutRow& lr) -> bool {
-        if (!IsRowVisible(lr, modeMask)) return false;
-        if (lr.expandParent != CTRL_NONE && lr.expandParent == CTRL_COLOR_MODE
-            && (wd->snapshot.colorMode != 3 || !wd->colorGridExpanded)) return false;
-        return true;
-    };
-
-    int cardTop = ScaleForDpi(g_geo.topPad, dpi) - wd->scrollPos;
-    bool handled = false;
-    for (int r = 0; card.rows && r < card.rowCount; r++) {
-        const LayoutRow& lr = card.rows[r];
-        if (!isShown(lr)) continue;
-        if (lr.expandParent == CTRL_NONE || lr.cardBreakBefore) {
-            int h = calcH(lr);
-            int endR = r + 1;
-            while (endR < card.rowCount && card.rows[endR].expandParent != CTRL_NONE
-                   && !card.rows[endR].cardBreakBefore) {
-                if (isShown(card.rows[endR])) h += calcH(card.rows[endR]);
-                endR++;
+    SettingsWindowLayout::RowContext ctx = MakeRowContext(hWnd, wd, dpi);
+    SettingsWindowLayout::RowCardHit hit = SettingsWindowLayout::RowCardsHit(y, card, ctx);
+    if (hit.spanStart < 0) return false;
+    if (hit.row >= 0) {
+        const LayoutRow& lr = card.rows[hit.row];
+        if (lr.action == RowAction::ExpandSection
+            && lr.type == RowType::ComboBox && wd->snapshot.colorMode == 3) {
+            wd->colorGridExpanded = !wd->colorGridExpanded;
+            SettingsWindow::RebuildContentArea(GetParent(hWnd), wd);
+            InvalidateRect(hWnd, nullptr, FALSE);
+            UpdateWindow(hWnd);
+        } else if (lr.type == RowType::Toggle) {
+            HWND hCtrl = FindControl(wd, lr.id);
+            if (hCtrl) {
+                BOOL checked = (SendMessage(hCtrl, BM_GETCHECK, 0, 0) == BST_CHECKED);
+                bool newState = !checked;
+                SendMessage(hCtrl, BM_SETCHECK, newState ? BST_CHECKED : BST_UNCHECKED, 0);
+                SettingsModel::SyncToggleToSnapshot(wd->snapshot, lr.id, newState);
+                SettingsWindow::ApplyAndSave(wd);
+                InvalidateRect(hWnd, nullptr, FALSE);
+                UpdateWindow(hWnd);
             }
-            int cardH = h + 2 * pad;
-            if (y >= cardTop && y < cardTop + cardH) {
-                int curY = cardTop + pad;
-                for (int ri = r; ri < endR; ri++) {
-                    if (!isShown(card.rows[ri])) continue;
-                    int thisH = calcH(card.rows[ri]);
-                    if (y >= curY && y < curY + thisH) {
-                        if (card.rows[ri].action == RowAction::ExpandSection
-                            && card.rows[ri].type == RowType::ComboBox && wd->snapshot.colorMode == 3) {
-                            wd->colorGridExpanded = !wd->colorGridExpanded;
-                            SettingsWindow::RebuildContentArea(GetParent(hWnd), wd);
-                            InvalidateRect(hWnd, nullptr, FALSE);
-                            UpdateWindow(hWnd);
-                            handled = true; break;
-                        }
-                        if (card.rows[ri].type == RowType::Toggle) {
-                            HWND hCtrl = FindControl(wd, card.rows[ri].id);
-                            if (hCtrl) {
-                                BOOL checked = (SendMessage(hCtrl, BM_GETCHECK, 0, 0) == BST_CHECKED);
-                                bool newState = !checked;
-                                SendMessage(hCtrl, BM_SETCHECK, newState ? BST_CHECKED : BST_UNCHECKED, 0);
-                                SettingsModel::SyncToggleToSnapshot(wd->snapshot, card.rows[ri].id, newState);
-                                SettingsWindow::ApplyAndSave(wd);
-                                InvalidateRect(hWnd, nullptr, FALSE);
-                                UpdateWindow(hWnd);
-                            }
-                            handled = true; break;
-                        }
-                    }
-                    curY += thisH;
-                }
-                if (!handled) handled = true; // clicked in card but not on actionable row
-                break;
-            }
-            cardTop += cardH + cardGap;
-            r = endR - 1;
         }
     }
-    ReleaseDC(hWnd, hdcTmp);
-    return handled;
+    return true;   // clicked inside a card, actionable row or not
 }
 
 int SettingsWindow::HitTestRowCards(int y, HWND hWnd, WindowData* wd,
     const LayoutCard& card, UINT dpi)
 {
-    int pad = ScaleForDpi(g_geo.cardPad, dpi);
-    int cardGap = ScaleForDpi(g_geo.cardGap, dpi);
-    int modeMask = SettingsModel::GetModeBitmask(wd->currentMode);
-    HDC hdcTmp = GetDC(hWnd);
-    auto calcH = [&](const LayoutRow& lr) { return CalcRowHeight(hdcTmp, lr, wd->snapshot, dpi); };
-    auto isShown = [&](const LayoutRow& lr) -> bool {
-        if (!IsRowVisible(lr, modeMask)) return false;
-        if (lr.expandParent != CTRL_NONE && lr.expandParent == CTRL_COLOR_MODE
-            && (wd->snapshot.colorMode != 3 || !wd->colorGridExpanded)) return false;
-        return true;
-    };
-    int cardTop = ScaleForDpi(g_geo.topPad, dpi) - wd->scrollPos;
-    int result = -1;
-    for (int r = 0; r < card.rowCount; r++) {
-        const LayoutRow& lr = card.rows[r];
-        if (!isShown(lr)) continue;
-        if (lr.expandParent == CTRL_NONE || lr.cardBreakBefore) {
-            int h = calcH(lr);
-            int endR = r + 1;
-            while (endR < card.rowCount && card.rows[endR].expandParent != CTRL_NONE
-                   && !card.rows[endR].cardBreakBefore) {
-                if (isShown(card.rows[endR])) h += calcH(card.rows[endR]);
-                endR++;
-            }
-            int totalH = h + 2 * pad;
-            if (y >= cardTop && y < cardTop + totalH) { result = r; break; }
-            cardTop += totalH + cardGap;
-            r = endR - 1;
-        }
-    }
-    ReleaseDC(hWnd, hdcTmp);
-    return result;
+    SettingsWindowLayout::RowContext ctx = MakeRowContext(hWnd, wd, dpi);
+    return SettingsWindowLayout::RowCardsHit(y, card, ctx).spanStart;
 }
 
 // ============================================================================
@@ -1192,34 +1007,21 @@ int SettingsWindow::HitTestRowCards(int y, HWND hWnd, WindowData* wd,
 static int CalcCardW(HWND hMainWnd, UINT dpi, bool sidebarTakesSpace)
 {
     RECT rcMain; GetClientRect(hMainWnd, &rcMain);
-    int sidebarW = sidebarTakesSpace ? ScaleForDpi(g_geo.sidebarWidth, dpi) : 0;
-    int margin = ScaleForDpi(g_geo.contentMargin, dpi);
-    int sbW = GetSystemMetrics(SM_CXVSCROLL);
-    return rcMain.right - sidebarW - 2 * margin - sbW;
+    return SettingsWindowLayout::CardWidth(rcMain.right, dpi, sidebarTakesSpace,
+        GetSystemMetrics(SM_CXVSCROLL));
 }
 
 // Right edge X for controls (combo, button, toggle, swatch) — always left of chevron area
 static int CalcCtrlRight(int margin, int cardW, UINT dpi, bool hasChevron)
 {
-    int pad = ScaleForDpi(g_geo.cardPad, dpi);
-    int ctrlRM = ScaleForDpi(g_geo.controlRightMargin, dpi);
-    int chevArea = hasChevron ? ScaleForDpi(g_geo.chevronW + 4, dpi) : 0;
-    return margin + cardW - pad - ctrlRM - chevArea;
+    return SettingsWindowLayout::CtrlRight(margin, cardW, dpi, hasChevron);
 }
 
-// Row height for any RowType
+// Row height for any RowType (the preview row is measured with the DC)
 static int CalcRowHeight(HDC hdc, const LayoutRow& lr, const SettingsSnapshot& s, UINT dpi)
 {
-    if (lr.type == RowType::CandidatePreview)
-        return CalcCandidatePreviewH(hdc, s, dpi);
-    if (lr.type == RowType::ColorGrid) {
-        int swS = ScaleForDpi(g_geo.swatchSize, dpi);
-        int swGap = ScaleForDpi(g_geo.swatchCellGap, dpi);
-        return 2 * (swS + swGap);
-    }
-    if (lr.type == RowType::RichEditor)
-        return ScaleForDpi(g_geo.editorCardH, dpi);
-    return lr.description ? ScaleForDpi(g_geo.rowHeight, dpi) : ScaleForDpi(g_geo.rowHeightSingle, dpi);
+    int previewH = (lr.type == RowType::CandidatePreview) ? CalcCandidatePreviewH(hdc, s, dpi) : 0;
+    return SettingsWindowLayout::RowHeight(lr, dpi, previewH);
 }
 
 // Both RebuildContentArea and PaintSettingsDetail must call this so controls
@@ -1792,10 +1594,9 @@ void SettingsWindow::AddControl(WindowData* wd, SettingsControlId id, HWND h, in
 void SettingsWindow::CreateRowControl(WindowData* wd, const LayoutRow& lr,
     int ctrlRight, int cy, int ctrlH, int btnH, UINT dpi)
 {
-    int comboW = ScaleForDpi(g_geo.comboWidth, dpi);
-    int editW = ScaleForDpi(g_geo.editWidth, dpi);
-    int btnW = ScaleForDpi(g_geo.buttonWidth, dpi);
-
+    SettingsWindowLayout::CtrlRect rc = {};
+    if (!SettingsWindowLayout::RowControlRect(lr.type, ctrlRight, cy, ctrlH, btnH, dpi, &rc))
+        return;
 
     switch (lr.type) {
     case RowType::Toggle:
@@ -1803,33 +1604,33 @@ void SettingsWindow::CreateRowControl(WindowData* wd, const LayoutRow& lr,
         HWND h = CreateWindowExW(0, L"BUTTON", lr.label,
             WS_CHILD | BS_AUTOCHECKBOX, 0, 0, 0, 0,
             wd->hContentArea, (HMENU)(UINT_PTR)(3000 + lr.id), wd->hInstance, nullptr);
-        AddControl(wd, lr.id, h, 0, 0, 0, 0);
+        AddControl(wd, lr.id, h, rc.x, rc.y, rc.w, rc.h);
         break;
     }
     case RowType::ComboBox:
     {
         HWND h = CreateWindowExW(0, L"COMBOBOX", nullptr,
             WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL,
-            ctrlRight - comboW, cy, comboW, ScaleForDpi(g_geo.comboDropH, dpi),
+            rc.x, rc.y, rc.w, rc.h,
             wd->hContentArea, (HMENU)(UINT_PTR)(3000 + lr.id), wd->hInstance, nullptr);
         if (h) {
             SendMessage(h, WM_SETFONT, (WPARAM)wd->hFontBody, TRUE);
             if (wd->isDarkTheme) SetWindowTheme(h, L"DarkMode_CFD", nullptr);
         }
-        AddControl(wd, lr.id, h, ctrlRight - comboW, cy, comboW, ScaleForDpi(g_geo.comboDropH, dpi), ScaleForDpi(g_geo.ctrlHeight, dpi));
+        AddControl(wd, lr.id, h, rc.x, rc.y, rc.w, rc.h, rc.visH);
         break;
     }
     case RowType::Edit:
     {
         HWND h = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", nullptr,
             WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
-            ctrlRight - editW, cy, editW, ctrlH,
+            rc.x, rc.y, rc.w, rc.h,
             wd->hContentArea, (HMENU)(UINT_PTR)(3000 + lr.id), wd->hInstance, nullptr);
         if (h) {
             SendMessage(h, WM_SETFONT, (WPARAM)wd->hFontBody, TRUE);
             if (wd->isDarkTheme) SetWindowTheme(h, L"DarkMode_CFD", nullptr);
         }
-        AddControl(wd, lr.id, h, ctrlRight - editW, cy, editW, ctrlH);
+        AddControl(wd, lr.id, h, rc.x, rc.y, rc.w, rc.h);
         break;
     }
     case RowType::Button:
@@ -1842,10 +1643,10 @@ void SettingsWindow::CreateRowControl(WindowData* wd, const LayoutRow& lr,
                                  (lr.action == RowAction::ResetDefaults) ? L"還原預設值" : lr.label;
         HWND h = CreateWindowExW(0, L"BUTTON", btnText,
             WS_CHILD | WS_VISIBLE | BS_OWNERDRAW,
-            ctrlRight - btnW, cy, btnW, btnH,
+            rc.x, rc.y, rc.w, rc.h,
             wd->hContentArea, (HMENU)(UINT_PTR)(3000 + lr.id), wd->hInstance, nullptr);
         if (h) SendMessage(h, WM_SETFONT, (WPARAM)wd->hFontBody, TRUE);
-        AddControl(wd, lr.id, h, ctrlRight - btnW, cy, btnW, btnH);
+        AddControl(wd, lr.id, h, rc.x, rc.y, rc.w, rc.h);
         break;
     }
     default: break;
@@ -1857,22 +1658,13 @@ void SettingsWindow::CreateRowControl(WindowData* wd, const LayoutRow& lr,
 // ============================================================================
 void SettingsWindow::CreateColorGridControls(WindowData* wd, int margin, int curY, int ctrlRight, UINT dpi)
 {
-    int swS = ScaleForDpi(g_geo.swatchSize, dpi);
-    int swGap = ScaleForDpi(g_geo.swatchCellGap, dpi);
-    int baseX = margin;
-    int cellH = swS + swGap;
-    int rightEdge = ctrlRight - margin;
-    int colW = rightEdge / 3;
     for (int si = 0; si < 6; si++) {
-        int col = si % 3, row2 = si / 3;
-        int colRight = baseX + (col + 1) * colW;
-        int sx = colRight - swS;
-        int sy = curY + row2 * cellH;
+        SettingsWindowLayout::CtrlRect rc = SettingsWindowLayout::SwatchRect(si, margin, curY, ctrlRight, dpi);
         HWND h = CreateWindowExW(0, L"STATIC", nullptr,
             WS_CHILD | WS_VISIBLE | SS_OWNERDRAW | SS_NOTIFY,
-            sx, sy, swS, swS,
+            rc.x, rc.y, rc.w, rc.h,
             wd->hContentArea, (HMENU)(UINT_PTR)(4000 + si), wd->hInstance, nullptr);
-        AddControl(wd, (SettingsControlId)(CTRL_COLOR_FR + si), h, sx, sy, swS, swS);
+        AddControl(wd, (SettingsControlId)(CTRL_COLOR_FR + si), h, rc.x, rc.y, rc.w, rc.h);
     }
 }
 
@@ -1883,10 +1675,10 @@ void SettingsWindow::CreateRichEditorControl(WindowData* wd, const LayoutRow& lr
     int margin, int cardW, int pad, int curY, int thisH, int ctrlRight, int btnW, int btnH, UINT dpi)
 {
     static HMODULE hMsftEdit = LoadLibraryW(L"msftedit.dll");
-    int reX = margin + pad;
-    int reY = curY + ScaleForDpi(g_geo.editorHeaderH, dpi);
-    int reW = cardW - 2 * pad;
-    int reH = thisH - ScaleForDpi(g_geo.editorHeaderH + g_geo.rowHeightSingle, dpi);
+    SettingsWindowLayout::CtrlRect rcRE = {}, rcSave = {};
+    SettingsWindowLayout::RichEditorRects(margin, cardW, pad, curY, thisH, ctrlRight, btnW, btnH, dpi,
+        &rcRE, &rcSave);
+    int reX = rcRE.x, reY = rcRE.y, reW = rcRE.w, reH = rcRE.h;
     HWND hRE = CreateWindowExW(WS_EX_CLIENTEDGE, L"RICHEDIT50W", nullptr,
         WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_MULTILINE | ES_WANTRETURN | ES_AUTOVSCROLL,
         reX, reY, reW, reH,
@@ -1949,13 +1741,12 @@ void SettingsWindow::CreateRichEditorControl(WindowData* wd, const LayoutRow& lr
     }
 
     // [儲存] button below RichEdit
-    int saveY = reY + reH + ScaleForDpi(g_geo.topPad, dpi);
     HWND hSave = CreateWindowExW(0, L"BUTTON", L"儲存",
         WS_CHILD | WS_VISIBLE | BS_OWNERDRAW | WS_DISABLED,
-        ctrlRight - btnW, saveY, btnW, btnH,
+        rcSave.x, rcSave.y, rcSave.w, rcSave.h,
         wd->hContentArea, (HMENU)(UINT_PTR)(3000 + CTRL_CUSTOM_TABLE_SAVE), wd->hInstance, nullptr);
     if (hSave) SendMessage(hSave, WM_SETFONT, (WPARAM)wd->hFontBody, TRUE);
-    AddControl(wd, CTRL_CUSTOM_TABLE_SAVE, hSave, ctrlRight - btnW, saveY, btnW, btnH);
+    AddControl(wd, CTRL_CUSTOM_TABLE_SAVE, hSave, rcSave.x, rcSave.y, rcSave.w, rcSave.h);
 }
 
 // Candidate + Notify preview — owner-draw card for RowType::CandidatePreview
@@ -2266,45 +2057,23 @@ void SettingsWindow::PaintSettingsDetail(HWND hWnd, HDC hdc, WindowData* wd)
     int ctrlRightX = CalcCtrlRight(margin, cardW, dpi, true);
     int chevArea = ScaleForDpi(g_geo.chevronW + 4, dpi);
 
-    // Helper: calculate row height
-    auto calcRowH = [&](const LayoutRow& lr) -> int {
-        return CalcRowHeight(hdc, lr, wd->snapshot, dpi);
-    };
-
-    // Helper: check if row is visible in current context
-    auto isRowShown = [&](const LayoutRow& lr) -> bool {
-        if (!IsRowVisible(lr, modeMask)) return false;
-        if (lr.expandParent != CTRL_NONE && lr.expandParent == CTRL_COLOR_MODE
-            && (wd->snapshot.colorMode != 3 || !wd->colorGridExpanded)) return false;
-        return true;
-    };
-
     // Win11 pattern: each top-level row (+ its children) is its own card.
-    // cardBreakBefore also forces a new card.
-    // Top-level rows have spacing between cards; expanded children are inside parent card.
-    struct CardSpan { int startRow; int endRow; int height; };
-    CardSpan cardSpans[32]; int numCards = 0;
-    {
-        for (int r = 0; r < card.rowCount; r++) {
-            const LayoutRow& lr = card.rows[r];
-            if (!isRowShown(lr)) continue;
-            // Top-level row or cardBreakBefore → start a new card
-            if (lr.expandParent == CTRL_NONE || lr.cardBreakBefore) {
-                int h = calcRowH(lr);
-                // Include all visible children that follow
-                int endR = r + 1;
-                while (endR < card.rowCount && card.rows[endR].expandParent != CTRL_NONE
-                       && !card.rows[endR].cardBreakBefore) {
-                    if (isRowShown(card.rows[endR]))
-                        h += calcRowH(card.rows[endR]);
-                    endR++;
-                }
-                if (numCards < 32)
-                    cardSpans[numCards++] = { r, endR, h + 2 * pad };
-                r = endR - 1; // loop will r++
-            }
-        }
-    }
+    // cardBreakBefore also forces a new card. Grouping: SettingsWindowLayout::RowSpans.
+    SettingsWindowLayout::RowContext rowCtx = {};
+    rowCtx.dpi = dpi;
+    rowCtx.scrollPos = wd->scrollPos;
+    rowCtx.modeMask = modeMask;
+    rowCtx.colorMode = wd->snapshot.colorMode;
+    rowCtx.gridExpanded = wd->colorGridExpanded ? 1 : 0;
+    rowCtx.previewH = CalcCandidatePreviewH(hdc, wd->snapshot, dpi);
+    std::vector<SettingsWindowLayout::RowSpan> cardSpans = SettingsWindowLayout::RowSpans(card, rowCtx);
+    int numCards = (int)cardSpans.size();
+    auto calcRowH = [&](const LayoutRow& lr) -> int {
+        return SettingsWindowLayout::RowHeight(lr, dpi, rowCtx.previewH);
+    };
+    auto isRowShown = [&](const LayoutRow& lr) -> bool {
+        return SettingsWindowLayout::RowShown(lr, modeMask, rowCtx.colorMode, rowCtx.gridExpanded != 0);
+    };
 
     // Draw each card (each top-level row + children = one card, with cardGap between)
     SetBkMode(hdc, TRANSPARENT);  // reset after candidate preview's OPAQUE
@@ -2440,28 +2209,20 @@ void SettingsWindow::RebuildContentArea(HWND hWnd, WindowData* wd)
     // Position content area based on navLevel:
     // navLevel==1 (sub-page): start below the breadcrumb strip painted in main WndProc
     // navLevel==0: start at y=0
+    bool sidebarTakesSpace = !wd->sidebarNarrowMode && !wd->sidebarCollapsed;
     {
         RECT rcMain; GetClientRect(hWnd, &rcMain);
         UINT dpiPos = CConfig::GetDpiForHwnd(hWnd);
-        int sidebarW2 = (!wd->sidebarNarrowMode && !wd->sidebarCollapsed) ? ScaleForDpi(g_geo.sidebarWidth, dpiPos) : 0;
         bool hasBc = (wd->navLevel == 1 && wd->selectedModeIndex < 4);
-        // Reserve breadcrumb strip height whenever we have a breadcrumb (any mode)
-        int bcH2 = hasBc ? ScaleForDpi(g_geo.breadcrumbH, dpiPos) : 0;
-        MoveWindow(wd->hContentArea, sidebarW2, bcH2,
-            rcMain.right - sidebarW2, rcMain.bottom - bcH2, FALSE);
+        SettingsWindowLayout::CtrlRect rcArea = SettingsWindowLayout::ContentAreaRect(
+            rcMain.right, rcMain.bottom, dpiPos, sidebarTakesSpace, hasBc);
+        MoveWindow(wd->hContentArea, rcArea.x, rcArea.y, rcArea.w, rcArea.h, FALSE);
     }
 
-    RECT rcContent; GetClientRect(wd->hContentArea, &rcContent);
-    RECT rcMain2; GetClientRect(hWnd, &rcMain2);
     UINT dpi = CConfig::GetDpiForHwnd(hWnd);
     int margin = ScaleForDpi(g_geo.contentMargin, dpi);
     int pad = ScaleForDpi(g_geo.cardPad, dpi);
-    int cardW = CalcCardW(hWnd, dpi, !wd->sidebarNarrowMode && !wd->sidebarCollapsed);
-    int rowH = ScaleForDpi(g_geo.rowHeight, dpi);
-    int rowHS = ScaleForDpi(g_geo.rowHeightSingle, dpi);
-    int catRowH = ScaleForDpi(g_geo.categoryRowH, dpi);
-    int comboW = ScaleForDpi(g_geo.comboWidth, dpi);
-    int editW = ScaleForDpi(g_geo.editWidth, dpi);
+    int cardW = CalcCardW(hWnd, dpi, sidebarTakesSpace);
     int btnW = ScaleForDpi(g_geo.buttonWidth, dpi);
     int ctrlH = ScaleForDpi(g_geo.ctrlHeight, dpi);
     int btnH = ScaleForDpi(g_geo.buttonHeight, dpi);
@@ -2469,164 +2230,43 @@ void SettingsWindow::RebuildContentArea(HWND hWnd, WindowData* wd)
     bool isLevel1 = (wd->navLevel == 1 && wd->selectedModeIndex < 4);
     int ctrlRight = CalcCtrlRight(margin, cardW, dpi, isLevel1);
 
-    int modeMask = SettingsModel::GetModeBitmask(wd->currentMode);
+    int imeCount = 0;
+    const LayoutCard* imeCards = GetIMEPageLayout(&imeCount);
+    int ltCount = 0;
+    const LayoutCard* ltCards = GetLoadTablePageLayout(&ltCount);
 
-    // Helper lambda: create a control and store it
-    auto addCtrl = [&](SettingsControlId id, HWND h, int ox, int oy, int ow, int oh) {
-        if (!h) return;
-        WindowData::ControlHandle ch{};
-        ch.id = id; ch.hWnd = h;
-        ch.origX = ox; ch.origY = oy; ch.origW = ow; ch.origH = oh;
-        ch.visH = oh;
-        wd->controlHandles.push_back(ch);
-        // Subclass for mouse wheel forwarding
-        if (IsWindowVisible(h))
-            SetWindowSubclass(h, ChildWheelSubclassProc, 1, 0);
-    };
+    SettingsWindowLayout::PlanInput in = {};
+    in.dpi = dpi;
+    in.selectedModeIndex = wd->selectedModeIndex;
+    in.navLevel = wd->navLevel;
+    in.currentCardIndex = wd->currentCardIndex;
+    in.modeMask = SettingsModel::GetModeBitmask(wd->currentMode);
+    in.colorMode = wd->snapshot.colorMode;
+    in.gridExpanded = wd->colorGridExpanded ? 1 : 0;
+    in.previewH = 0;
+    if (wd->navLevel == 1 && wd->selectedModeIndex < 4) {
+        HDC hdcTmp = GetDC(wd->hContentArea);
+        in.previewH = CalcCandidatePreviewH(hdcTmp, wd->snapshot, dpi);
+        ReleaseDC(wd->hContentArea, hdcTmp);
+    }
+    memcpy(in.expanded, wd->cardExpanded, sizeof(in.expanded));
 
-    if (wd->selectedModeIndex == 5) {
-        // =========================================================
-        // 載入碼表 page — same per-card structure as Level 0
-        // =========================================================
-        int ltPageCount = 0;
-        const LayoutCard* ltCards = GetLoadTablePageLayout(&ltPageCount);
-        int cardGapLT = ScaleForDpi(g_geo.cardGap, dpi);
-        int cRowHLT = ScaleForDpi(g_geo.childRowH, dpi);
-        int curY = ScaleForDpi(g_geo.topMargin, dpi) + pad;
+    std::vector<SettingsWindowLayout::Placement> placements;
+    SettingsWindowLayout::PlanResult plan = SettingsWindowLayout::PlanControls(
+        in, imeCards, imeCount, ltCards, ltCount, placements);
 
-        for (int i = 0; i < ltPageCount; i++) {
-            int expIdx = 4 + i;
-
-            // Create button for the card's own row (standalone cards with RowAction::None)
-            if (ltCards[i].action == RowAction::None && ltCards[i].rows && ltCards[i].rowCount > 0) {
-                const LayoutRow& lr = ltCards[i].rows[0];
-                int cy = curY + (catRowH - btnH) / 2;
-                CreateRowControl(wd, lr, ctrlRight, cy, ctrlH, btnH, dpi);
-                curY += catRowH + 2 * pad + cardGapLT;
-            } else if (ltCards[i].action == RowAction::ExpandSection && wd->cardExpanded[expIdx] && ltCards[i].rows) {
-                // Expanded: children inside parent card
-                int childY = curY + catRowH + pad;
-                for (int r = 0; r < ltCards[i].rowCount; r++) {
-                    const LayoutRow& lr = ltCards[i].rows[r];
-                    childY += 1;
-                    int cy = childY + (cRowHLT - btnH) / 2;
-                    CreateRowControl(wd, lr, ctrlRight, cy, ctrlH, btnH, dpi);
-                    childY += cRowHLT;
-                }
-                int numCh = ltCards[i].rowCount;
-                int totalCardH = 2 * pad + catRowH + numCh * (cRowHLT + 1);
-                curY += totalCardH + cardGapLT;
-            } else {
-                // Collapsed expandable card (no children shown)
-                curY += catRowH + 2 * pad + cardGapLT;
-            }
-        }
-        wd->totalContentHeight = curY;
-
-    } else if (wd->navLevel == 0 && wd->selectedModeIndex < 4) {
-        // =========================================================
-        // Level 0: IME mode page — create controls for expanded cards
-        // =========================================================
-        int layoutCount = 0;
-        const LayoutCard* cards = GetIMEPageLayout(&layoutCount);
-        int cardGapL0 = ScaleForDpi(g_geo.cardGap, dpi);
-        int curY = ScaleForDpi(g_geo.topMargin, dpi) + pad; // first card starts at topMargin + pad
-
-        for (int i = 0; i < layoutCount; i++) {
-            // Check card visibility
-            bool vis = (cards[i].rowCount == 0);
-            if (!vis) {
-                for (int r = 0; !vis && r < cards[i].rowCount; r++) {
-                    if (IsRowVisible(cards[i].rows[r], modeMask))
-                        vis = true;
-                }
-            }
-            if (!vis) continue;
-
-            if (cards[i].action == RowAction::ExpandSection && wd->cardExpanded[i] && cards[i].rows) {
-                // Children inside parent card, after parent row
-                int cRowHL0 = ScaleForDpi(g_geo.childRowH, dpi);
-                int childY = curY + catRowH + pad;  // after title row's bottom padding
-                int childIdx = 0;
-                int numCh = 0;
-                for (int r = 0; r < cards[i].rowCount; r++) {
-                    const LayoutRow& lr = cards[i].rows[r];
-                    if (!IsRowVisible(lr, modeMask)) continue;
-                    childY += 1; // 1px separator (including before first child)
-                    int cy = childY + (cRowHL0 - ctrlH) / 2;
-                    CreateRowControl(wd, lr, ctrlRight, cy, ctrlH, btnH, dpi);
-                    childY += cRowHL0;
-                    childIdx++;
-                    numCh++;
-                }
-                // Card height = pad + catRowH + children + pad
-                int totalCardH = 2 * pad + catRowH + numCh * (cRowHL0 + 1);
-                curY += totalCardH + cardGapL0;
-            } else {
-                curY += catRowH + 2 * pad + cardGapL0;
-            }
-        }
-        wd->totalContentHeight = curY;
-        PopulateControls(wd);
-
-    } else if (wd->navLevel == 1 && wd->selectedModeIndex < 4) {
-        // =========================================================
-        // Level 1: sub-page — create controls for current card's rows
-        // =========================================================
-        int layoutCount = 0;
-        const LayoutCard* cards = GetIMEPageLayout(&layoutCount);
-        if (wd->currentCardIndex < 0 || wd->currentCardIndex >= layoutCount) {
-            wd->totalContentHeight = 0;
-        } else {
-            const LayoutCard& card = cards[wd->currentCardIndex];
-            int cardGapDpi = ScaleForDpi(g_geo.cardGap, dpi);
-            int curY = ScaleForDpi(g_geo.topPad, dpi) + pad;
-            bool firstTopLevel = true;
-
-            if (card.rows) {
-                for (int r = 0; r < card.rowCount; r++) {
-                    const LayoutRow& lr = card.rows[r];
-                    if (!IsRowVisible(lr, modeMask)) continue;
-                    if (lr.expandParent != CTRL_NONE) {
-                        if (lr.expandParent == CTRL_COLOR_MODE
-                            && (wd->snapshot.colorMode != 3 || !wd->colorGridExpanded))
-                            continue;
-                    }
-
-                    // Each top-level row starts a new card (Win11 style: spacing between cards)
-                    if (lr.expandParent == CTRL_NONE || lr.cardBreakBefore) {
-                        if (!firstTopLevel)
-                            curY += pad + cardGapDpi + pad; // close prev card + gap + open new card
-                        firstTopLevel = false;
-                    }
-
-                    HDC hdcTmp = GetDC(wd->hContentArea);
-                    int thisH = CalcRowHeight(hdcTmp, lr, wd->snapshot, dpi);
-                    ReleaseDC(wd->hContentArea, hdcTmp);
-                    int cy = curY + (thisH - ctrlH) / 2;
-
-                    switch (lr.type) {
-                    case RowType::RichEditor:
-                        CreateRichEditorControl(wd, lr, margin, cardW, pad, curY, thisH, ctrlRight, btnW, btnH, dpi);
-                        break;
-                    case RowType::Toggle:
-                    case RowType::ComboBox:
-                    case RowType::Edit:
-                    case RowType::Clickable:
-                    case RowType::Button:
-                        CreateRowControl(wd, lr, ctrlRight, cy, ctrlH, btnH, dpi);
-                        break;
-                    case RowType::ColorGrid:
-                        CreateColorGridControls(wd, margin, curY, ctrlRight, dpi);
-                        break;
-                    }
-                    curY += thisH;
-                }
-            }
-            wd->totalContentHeight = curY + pad + ScaleForDpi(g_geo.cardGap, dpi);
-            PopulateControls(wd);
+    for (const auto& pl : placements) {
+        const LayoutCard* cards = (wd->selectedModeIndex == 5) ? ltCards : imeCards;
+        const LayoutRow& lr = cards[pl.card].rows[pl.row];
+        switch (pl.kind) {
+        case 0: CreateRowControl(wd, lr, ctrlRight, pl.y, ctrlH, btnH, dpi); break;
+        case 1: CreateRichEditorControl(wd, lr, margin, cardW, pad, pl.y, pl.h, ctrlRight, btnW, btnH, dpi); break;
+        case 2: CreateColorGridControls(wd, margin, pl.y, ctrlRight, dpi); break;
+        default: break;
         }
     }
+    if (plan.setTotal) wd->totalContentHeight = plan.totalHeight;
+    if (plan.populate) PopulateControls(wd);
 
     wd->scrollPos = 0;
     UpdateScrollInfo(wd);

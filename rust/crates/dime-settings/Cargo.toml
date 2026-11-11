@@ -1,0 +1,10 @@
+[package]
+name = "dime-settings"
+description = "DIMESettings.exe: the settings window (port of SettingsWindow). Window-free computations first; the window and the binary follow."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+dime-config = { path = "../dime-config" }

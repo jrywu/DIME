@@ -19,42 +19,42 @@ use crate::settings_model::{
     MODE_DAYI, MODE_GENERIC, MODE_PHONETIC,
 };
 
-const CTRL_NONE: i32 = 0;
-const CTRL_FONT_NAME: i32 = 1;
-const CTRL_COLOR_MODE: i32 = 4;
-const CTRL_RESTORE_DEFAULT: i32 = 12;
-const CTRL_ARRAY_SCOPE: i32 = 13;
-const CTRL_REVERSE_CONVERSION: i32 = 33;
-const CTRL_COLOR_GRID: i32 = 41;
-const CTRL_CANDIDATE_PREVIEW: i32 = 42;
-const CTRL_CUSTOM_TABLE_EDITOR: i32 = 200;
-const CTRL_CUSTOM_TABLE_EXPORT: i32 = 202;
-const CTRL_CUSTOM_TABLE_IMPORT: i32 = 203;
+pub const CTRL_NONE: i32 = 0;
+pub const CTRL_FONT_NAME: i32 = 1;
+pub const CTRL_COLOR_MODE: i32 = 4;
+pub const CTRL_RESTORE_DEFAULT: i32 = 12;
+pub const CTRL_ARRAY_SCOPE: i32 = 13;
+pub const CTRL_REVERSE_CONVERSION: i32 = 33;
+pub const CTRL_COLOR_GRID: i32 = 41;
+pub const CTRL_CANDIDATE_PREVIEW: i32 = 42;
+pub const CTRL_CUSTOM_TABLE_EDITOR: i32 = 200;
+pub const CTRL_CUSTOM_TABLE_EXPORT: i32 = 202;
+pub const CTRL_CUSTOM_TABLE_IMPORT: i32 = 203;
 
-const MODE_ALL: i32 = MODE_DAYI | MODE_ARRAY | MODE_PHONETIC | MODE_GENERIC;
+pub const MODE_ALL: i32 = MODE_DAYI | MODE_ARRAY | MODE_PHONETIC | MODE_GENERIC;
 const MODE_NON_ARRAY: i32 = MODE_DAYI | MODE_PHONETIC | MODE_GENERIC;
 
 /// `RowType` in `SettingsPageLayout.h`.
-const TY_TOGGLE: i32 = 0;
-const TY_COMBO: i32 = 1;
-const TY_EDIT: i32 = 2;
-const TY_COLOR_GRID: i32 = 3;
-const TY_CLICKABLE: i32 = 4;
-const TY_BUTTON: i32 = 5;
-const TY_RICH_EDITOR: i32 = 6;
-const TY_PREVIEW: i32 = 7;
+pub const TY_TOGGLE: i32 = 0;
+pub const TY_COMBO: i32 = 1;
+pub const TY_EDIT: i32 = 2;
+pub const TY_COLOR_GRID: i32 = 3;
+pub const TY_CLICKABLE: i32 = 4;
+pub const TY_BUTTON: i32 = 5;
+pub const TY_RICH_EDITOR: i32 = 6;
+pub const TY_PREVIEW: i32 = 7;
 
 /// `RowAction` in `SettingsPageLayout.h`.
-const ACT_NONE: i32 = 0;
-const ACT_TOGGLE: i32 = 1;
-const ACT_FONT: i32 = 2;
-const ACT_COLOR: i32 = 3;
-const ACT_EXPAND: i32 = 4;
-const ACT_NAVIGATE: i32 = 5;
-const ACT_LOAD: i32 = 6;
-const ACT_EXPORT: i32 = 8;
-const ACT_IMPORT: i32 = 9;
-const ACT_RESET: i32 = 10;
+pub const ACT_NONE: i32 = 0;
+pub const ACT_TOGGLE: i32 = 1;
+pub const ACT_FONT: i32 = 2;
+pub const ACT_COLOR: i32 = 3;
+pub const ACT_EXPAND: i32 = 4;
+pub const ACT_NAVIGATE: i32 = 5;
+pub const ACT_LOAD: i32 = 6;
+pub const ACT_EXPORT: i32 = 8;
+pub const ACT_IMPORT: i32 = 9;
+pub const ACT_RESET: i32 = 10;
 
 /// `IDI_*` in `resource.h`.
 const IDI_DIMESETTINGS: i32 = 10;

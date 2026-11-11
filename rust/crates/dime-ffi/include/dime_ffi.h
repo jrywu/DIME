@@ -1251,6 +1251,56 @@ void dime_settings_apply_snapshot(const void* snap);
 int32_t dime_settings_decode_text_len(const uint8_t* bytes, uint32_t len, uint32_t* out_wlen);
 int32_t dime_settings_decode_text(const uint8_t* bytes, uint32_t len, uint16_t* out, uint32_t cap);
 
+/* ---- Settings window computations (phase 5b-6, dime-settings) ----------
+ * Window-free pieces of SettingsWindow (SettingsWindowLayout.h). Cards and
+ * rows are C++ LayoutCard / LayoutRow. Struct pointers are the
+ * SettingsWindowLayout structs: RowContext (24 bytes), PlanInput (48, the
+ * 16 cardExpanded bools as bytes at offset 32), Placement (20), PlanResult
+ * (12), CtrlRect (20), CardListClick (12), RowSpan (12), RowCardHit (8),
+ * MsgBoxButtons (28), MsgBoxLayout (64). `expanded` is 16 bools or NULL
+ * (all collapsed). dpi is ScaleForDpi(int, UINT): MulDiv(v, dpi, 96).
+ * List functions write at most cap entries and the full count to
+ * out_count; call once with cap 0 to size. Null out-pointers are not
+ * written. A panic writes nothing and returns 0 (-1 for hit tests).
+ */
+int32_t dime_settings_card_width(int32_t client_right, uint32_t dpi, int32_t sidebar_takes_space, int32_t vscroll_w);
+int32_t dime_settings_ctrl_right(int32_t margin, int32_t card_w, uint32_t dpi, int32_t has_chevron);
+int32_t dime_settings_row_height(const void* row, uint32_t dpi, int32_t preview_h);
+int32_t dime_settings_row_shown(const void* row, int32_t mode_mask, int32_t color_mode, int32_t grid_expanded);
+int32_t dime_settings_card_list_hit_test(int32_t y, const void* cards, int32_t count, int32_t mode_mask,
+    const uint8_t* expanded, int32_t expand_base, uint32_t dpi, int32_t scroll_pos);
+void dime_settings_card_list_click(int32_t y, const void* cards, int32_t count, int32_t mode_mask,
+    const uint8_t* expanded, int32_t expand_base, uint32_t dpi, int32_t scroll_pos, void* out);
+void dime_settings_row_spans(const void* card, const void* ctx, void* out, size_t cap, size_t* out_count);
+void dime_settings_row_cards_hit(int32_t y, const void* card, const void* ctx, void* out);
+void dime_settings_plan_controls(const void* input, const void* ime, int32_t ime_count,
+    const void* load, int32_t load_count, void* out, size_t cap, size_t* out_count, void* result);
+int32_t dime_settings_row_control_rect(int32_t row_type, int32_t ctrl_right, int32_t cy, int32_t ctrl_h,
+    int32_t btn_h, uint32_t dpi, void* out); /* 0 = row type has no control */
+void dime_settings_swatch_rect(int32_t index, int32_t margin, int32_t cur_y, int32_t ctrl_right, uint32_t dpi, void* out);
+void dime_settings_rich_editor_rects(int32_t margin, int32_t card_w, int32_t pad, int32_t cur_y, int32_t this_h,
+    int32_t ctrl_right, int32_t btn_w, int32_t btn_h, uint32_t dpi, void* out_editor, void* out_save);
+void dime_settings_content_area_rect(int32_t client_w, int32_t client_h, uint32_t dpi,
+    int32_t sidebar_takes_space, int32_t has_breadcrumb, void* out);
+/* ValidateCustomTableBuffer: returns the invalid line count. first_err_line
+ * and summary[0] are cleared first; one line per error, for the first
+ * max_report errors, is appended like StringCchCatW (truncated, NUL
+ * terminated): two spaces, U+7B2C, the 1-based line number, U+884C, LF. */
+int32_t dime_settings_validate_buffer(const uint16_t* text, size_t len, int32_t mode, uint32_t max_codes,
+    int32_t (*char_ok)(uint16_t ch, void* ctx), void* ctx, int32_t max_report,
+    int32_t* first_err_line, uint16_t* summary, size_t summary_cch);
+/* ThemedMessageBox. MB_* bit tests in C++ order: MB_OKCANCEL shows Yes/No/Cancel
+ * and every MB_ICON in 0x30 shows the warning icon. key_result returns -1
+ * for keys it does not handle; close_result -1 keeps the current result. */
+void dime_settings_msgbox_buttons(uint32_t mb_type, void* out);
+int32_t dime_settings_msgbox_icon(uint32_t mb_type);
+int32_t dime_settings_msgbox_max_text_width(uint32_t dpi);
+void dime_settings_msgbox_layout(int32_t has_icon, int32_t btn_count, int32_t text_w, int32_t text_h, uint32_t dpi, void* out);
+int32_t dime_settings_msgbox_first_button_x(const void* layout, int32_t btn_count);
+int32_t dime_settings_msgbox_button_at(const void* layout, int32_t btn_count, int32_t x, int32_t y);
+int32_t dime_settings_msgbox_key_result(const void* buttons, int32_t default_btn, uint32_t vk);
+int32_t dime_settings_msgbox_close_result(const void* buttons);
+
 #ifdef __cplusplus
 }
 #endif

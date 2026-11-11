@@ -292,7 +292,8 @@ pub fn theme_colors(is_dark: bool, sys: SysColors) -> ThemeColors {
 }
 
 /// Win32 `MulDiv` of the process (`dime-ui::candwnd::mul_div`).
-fn mul_div(a: i32, b: i32, c: i32) -> i32 {
+/// Win32 `MulDiv` for the target architecture (x86 and x64 differ on `i32::MIN`).
+pub fn mul_div(a: i32, b: i32, c: i32) -> i32 {
     if cfg!(target_arch = "x86") {
         mul_div_x86(a, b, c)
     } else {

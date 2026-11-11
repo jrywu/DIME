@@ -109,6 +109,7 @@
     <ClInclude Include="SettingsWindow.h" />
     <ClInclude Include="SettingsPageLayout.h" />
     <ClInclude Include="SettingsGeometry.h" />
+    <ClInclude Include="SettingsWindowLayout.h" />
     <ClInclude Include="DIMESettings.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="DIMESettingsResource.h" />
@@ -132,6 +133,7 @@
     <ClCompile Include="SettingsWindow.cpp" />
     <ClCompile Include="SettingsPageLayout.cpp" />
     <ClCompile Include="SettingsGeometry.cpp" />
+    <ClCompile Include="SettingsWindowLayout.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\DIME.rc" />
