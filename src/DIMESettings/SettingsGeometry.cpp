@@ -2,25 +2,59 @@
 
 #include "SettingsGeometry.h"
 #include "..\Define.h"
+#include <cstddef>
+#ifdef DIME_USE_RUST_CONFIG
+#include "dime_ffi.h"
+#endif
+
+// SettingsGeometry / ThemeColors must match dime-config::geometry.
+static_assert(sizeof(SettingsGeometry) == 260, "SettingsGeometry size");
+static_assert(alignof(SettingsGeometry) == 4, "SettingsGeometry align");
+static_assert(offsetof(SettingsGeometry, sidebarWidth) == 0, "sidebarWidth");
+static_assert(offsetof(SettingsGeometry, windowDefaultH) == 256, "windowDefaultH");
+static_assert(sizeof(ThemeColors) == 88, "ThemeColors size");
+static_assert(alignof(ThemeColors) == 4, "ThemeColors align");
+static_assert(offsetof(ThemeColors, accent) == 40, "accent");
+static_assert(offsetof(ThemeColors, buttonTextDisabled) == 84, "buttonTextDisabled");
+#ifdef DIME_USE_RUST_CONFIG
+static_assert(sizeof(DimeSysColors) == 24, "DimeSysColors size");
+#endif
 
 #pragma comment(lib, "dwmapi.lib")
 
+#ifdef DIME_USE_RUST_CONFIG
+namespace {
+SettingsGeometry LoadRustGeometry()
+{
+    SettingsGeometry geo = {};
+    dime_settings_geometry(&geo);
+    return geo;
+}
+}
+const SettingsGeometry g_geo = LoadRustGeometry();
+#else
 // Single global geometry instance (uses default member initializers)
 const SettingsGeometry g_geo = {};
+#endif
 
 // ============================================================================
 // Blend two colors
 // ============================================================================
 COLORREF BlendColor(COLORREF c1, COLORREF c2, int alpha)
 {
+#ifdef DIME_USE_RUST_CONFIG
+    return dime_settings_blend_color(c1, c2, alpha);
+#else
     if (alpha <= 0) return c1;
     if (alpha >= 255) return c2;
     int r = (GetRValue(c1) * (255 - alpha) + GetRValue(c2) * alpha) / 255;
     int g = (GetGValue(c1) * (255 - alpha) + GetGValue(c2) * alpha) / 255;
     int b = (GetBValue(c1) * (255 - alpha) + GetBValue(c2) * alpha) / 255;
     return RGB(r, g, b);
+#endif
 }
 
+#ifndef DIME_USE_RUST_CONFIG
 // ============================================================================
 // Get system accent color
 // ============================================================================
@@ -30,12 +64,25 @@ static COLORREF GetAccentColor()
     // DwmGetColorizationColor gives the window frame tint — too dark/muted for UI text.
     return GetSysColor(COLOR_HOTLIGHT);
 }
+#endif
 
 // ============================================================================
 // Compute theme colors from system APIs
 // ============================================================================
 ThemeColors ComputeThemeColors(bool isDark)
 {
+#ifdef DIME_USE_RUST_CONFIG
+    DimeSysColors sys = {};
+    sys.hotlight = GetSysColor(COLOR_HOTLIGHT);
+    sys.face = GetSysColor(COLOR_3DFACE);
+    sys.window = GetSysColor(COLOR_WINDOW);
+    sys.window_text = GetSysColor(COLOR_WINDOWTEXT);
+    sys.gray_text = GetSysColor(COLOR_GRAYTEXT);
+    sys.highlight_text = GetSysColor(COLOR_HIGHLIGHTTEXT);
+    ThemeColors tc = {};
+    dime_settings_theme_colors(isDark ? 1 : 0, &sys, &tc);
+    return tc;
+#else
     ThemeColors tc = {};
     COLORREF accent = GetAccentColor();
 
@@ -98,4 +145,5 @@ ThemeColors ComputeThemeColors(bool isDark)
     }
 
     return tc;
+#endif
 }

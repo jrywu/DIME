@@ -1,13 +1,17 @@
 //! Window-free `SettingsModel` (phase 5b-1).
 //!
-//! These functions match `src/DIMESettings/SettingsController.cpp`. Layout
-//! tables, geometry, `LoadFromConfig` / `ApplyToConfig`, the composition
-//! engine, and file decoding stay in C++. Quirks kept on purpose:
+//! These functions match `src/DIMESettings/SettingsController.cpp`.
+//! `LoadFromConfig` / `ApplyToConfig` copy the plain fields. The six effective
+//! colors are passed in (`colors[]`, not the stored palettes) and are not
+//! written back. `reverseConversionIndex` is always 0. The composition engine
+//! and custom-table paths stay in C++. Decoding an already-read text file
+//! lives in `text_file`. Page layout tables live in `page_layout`. Geometry
+//! and theme colors live in `geometry`. Quirks kept on purpose:
 //! `CTRL_LOAD_ARRAY_EXT_E_TO_J` maps to `Array-Ext-EF.cin` (not EFG),
 //! `CTRL_LOAD_ARRAY_EXPAND` has no suffix, an unknown sidebar index is Dayi,
 //! and the no-engine character check is `towupper(c)` in `32..=128`.
 
-use crate::values::ImeMode;
+use crate::values::{face_from, ConfigValues, ImeMode};
 
 /// `SM_MODE_*` in `SettingsPageLayout.h`.
 pub const MODE_DAYI: i32 = 0x1;
@@ -26,6 +30,7 @@ pub const CTRL_CHARSET_SCOPE: i32 = 14;
 pub const CTRL_NUMERIC_PAD: i32 = 15;
 pub const CTRL_SHIFT_ENGLISH_DIGIT_MODE: i32 = 16;
 pub const CTRL_PHONETIC_KB: i32 = 17;
+pub const CTRL_MAX_CODES: i32 = 18;
 pub const CTRL_ARROW_KEY_SW_PAGES: i32 = 19;
 pub const CTRL_SPACE_AS_PAGEDOWN: i32 = 20;
 pub const CTRL_SPACE_AS_FIRST_CAND: i32 = 21;
@@ -457,6 +462,91 @@ pub fn validate_line(
     errors
 }
 
+/// `SettingsModel::LoadFromConfig`. `effective_colors` is `CConfig::colors[]`
+/// in order: item, selected, item background, phrase, number, selected
+/// background. Stored palettes are not read. `reverse_conversion_index` is 0.
+pub fn load_snapshot(values: &ConfigValues, effective_colors: &[u32; 6]) -> SettingsSnapshot {
+    SettingsSnapshot {
+        font_size: values.font_size,
+        font_weight: values.font_weight,
+        font_italic: values.font_italic,
+        font_face_name: face_from(&values.font_face_name),
+        color_mode: values.color_mode,
+        item_color: effective_colors[0],
+        phrase_color: effective_colors[3],
+        number_color: effective_colors[4],
+        item_bg_color: effective_colors[2],
+        selected_color: effective_colors[1],
+        selected_bg_color: effective_colors[5],
+        auto_compose: values.auto_compose,
+        clear_on_beep: values.clear_on_beep,
+        do_beep: values.do_beep,
+        do_beep_notify: values.do_beep_notify,
+        do_beep_on_candi: values.do_beep_on_candi,
+        make_phrase: values.make_phrase,
+        custom_table_priority: values.custom_table_priority,
+        arrow_key_sw_pages: values.arrow_key_sw_pages,
+        space_as_page_down: values.space_as_page_down,
+        space_as_first_cand_selkey: values.space_as_first_cand_selkey,
+        show_notify_desktop: values.show_notify_desktop,
+        array_notify_sp: values.array_notify_sp,
+        array_force_sp: values.array_force_sp,
+        array_single_quote_custom_phrase: values.array_single_quote_custom_phrase,
+        dayi_article_mode: values.dayi_article_mode,
+        sentence_mode: values.sentence_mode,
+        do_han_convert: values.do_han_convert,
+        activated_keyboard_mode: values.activated_keyboard_mode,
+        big5_filter: values.big5_filter,
+        max_codes: values.max_codes,
+        array_scope: values.array_scope,
+        numeric_pad: values.numeric_pad,
+        phonetic_keyboard_layout: values.phonetic_keyboard_layout,
+        dayi_selkey_mode: values.dayi_selkey_mode,
+        ime_shift_mode: values.ime_shift_mode,
+        double_single_byte_mode: values.double_single_byte_mode,
+        shift_english_digit_mode: values.shift_english_digit_mode,
+        reverse_conversion_index: 0,
+    }
+}
+
+/// `SettingsModel::ApplyToConfig`. Palette colors and the fields Apply does
+/// not assign (reverse conversion, reload flags) stay as they were. The font
+/// face is truncated like `StringCchCopy` into `LF_FACESIZE`.
+pub fn apply_snapshot(values: &mut ConfigValues, snap: &SettingsSnapshot) {
+    values.font_size = snap.font_size;
+    values.font_weight = snap.font_weight;
+    values.font_italic = snap.font_italic;
+    values.font_face_name = face_from(&snap.font_face_name);
+    values.color_mode = snap.color_mode;
+    values.auto_compose = snap.auto_compose;
+    values.clear_on_beep = snap.clear_on_beep;
+    values.do_beep = snap.do_beep;
+    values.do_beep_notify = snap.do_beep_notify;
+    values.do_beep_on_candi = snap.do_beep_on_candi;
+    values.make_phrase = snap.make_phrase;
+    values.custom_table_priority = snap.custom_table_priority;
+    values.arrow_key_sw_pages = snap.arrow_key_sw_pages;
+    values.space_as_page_down = snap.space_as_page_down;
+    values.space_as_first_cand_selkey = snap.space_as_first_cand_selkey;
+    values.show_notify_desktop = snap.show_notify_desktop;
+    values.array_notify_sp = snap.array_notify_sp;
+    values.array_force_sp = snap.array_force_sp;
+    values.array_single_quote_custom_phrase = snap.array_single_quote_custom_phrase;
+    values.dayi_article_mode = snap.dayi_article_mode;
+    values.sentence_mode = snap.sentence_mode;
+    values.do_han_convert = snap.do_han_convert;
+    values.activated_keyboard_mode = snap.activated_keyboard_mode;
+    values.big5_filter = snap.big5_filter;
+    values.max_codes = snap.max_codes;
+    values.array_scope = snap.array_scope;
+    values.numeric_pad = snap.numeric_pad;
+    values.phonetic_keyboard_layout = snap.phonetic_keyboard_layout;
+    values.dayi_selkey_mode = snap.dayi_selkey_mode;
+    values.ime_shift_mode = snap.ime_shift_mode;
+    values.double_single_byte_mode = snap.double_single_byte_mode;
+    values.shift_english_digit_mode = snap.shift_english_digit_mode;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -716,5 +806,105 @@ mod tests {
             validate_line(&bad_key, ImeMode::Array, 4, none),
             vec![entry(LineError::InvalidChar, 0, 1)]
         );
+    }
+
+    #[test]
+    fn load_and_apply_match_cpp() {
+        use crate::values::face_str;
+
+        let mut values = ConfigValues::ZERO;
+        values.font_size = 18;
+        values.font_weight = 700;
+        values.font_italic = 1;
+        values.font_face_name = face_from(&w("Segoe UI"));
+        values.color_mode = 3;
+        values.auto_compose = 1;
+        values.clear_on_beep = 0;
+        values.do_beep = 2;
+        values.do_beep_notify = 0;
+        values.do_beep_on_candi = 1;
+        values.make_phrase = 1;
+        values.custom_table_priority = 0;
+        values.arrow_key_sw_pages = 1;
+        values.space_as_page_down = 0;
+        values.space_as_first_cand_selkey = 1;
+        values.show_notify_desktop = 1;
+        values.array_notify_sp = 0;
+        values.array_force_sp = 1;
+        values.array_single_quote_custom_phrase = 0;
+        values.dayi_article_mode = 1;
+        values.sentence_mode = 1;
+        values.do_han_convert = 0;
+        values.activated_keyboard_mode = 1;
+        values.big5_filter = 0;
+        values.max_codes = 6;
+        values.array_scope = 2;
+        values.numeric_pad = 1;
+        values.phonetic_keyboard_layout = 1;
+        values.dayi_selkey_mode = 1;
+        values.ime_shift_mode = 2;
+        values.double_single_byte_mode = 1;
+        values.shift_english_digit_mode = 1;
+        values.custom.item = 0x0001_0203;
+        values.light.item = 0x0004_0506;
+        values.dark.item = 0x0007_0809;
+        values.reload_reverse_conversion = 1;
+        values.app_permission_set = 1;
+        values.load_table_mode = 1;
+        values.color_mode_key_found = 1;
+
+        // Distinct from every stored palette. Order matches colors[]:
+        // item, selected, item background, phrase, number, selected background.
+        let effective = [
+            0x0009_0807,
+            0x0006_0504,
+            0x0003_0201,
+            0x000D_0C0B,
+            0x0010_0F0E,
+            0x0013_1211,
+        ];
+        let snap = load_snapshot(&values, &effective);
+        assert_eq!(snap.font_size, 18);
+        assert_eq!(snap.font_weight, 700);
+        assert_eq!(snap.font_italic, 1);
+        assert_eq!(face_str(&snap.font_face_name), w("Segoe UI").as_slice());
+        assert_eq!(snap.color_mode, 3);
+        assert_eq!(snap.item_color, effective[0]);
+        assert_eq!(snap.selected_color, effective[1]);
+        assert_eq!(snap.item_bg_color, effective[2]);
+        assert_eq!(snap.phrase_color, effective[3]);
+        assert_eq!(snap.number_color, effective[4]);
+        assert_eq!(snap.selected_bg_color, effective[5]);
+        assert_ne!(snap.item_color, values.custom.item);
+        assert_eq!(snap.do_beep, 2);
+        assert_eq!(snap.sentence_mode, 1);
+        assert_eq!(snap.max_codes, 6);
+        assert_eq!(snap.phonetic_keyboard_layout, 1);
+        assert_eq!(snap.shift_english_digit_mode, 1);
+        assert_eq!(snap.dayi_selkey_mode, 1);
+        assert_eq!(snap.reverse_conversion_index, 0);
+
+        let custom = values.custom;
+        let light = values.light;
+        let dark = values.dark;
+        let mut edited = snap;
+        edited.item_color = 0x0000_00FF;
+        edited.reverse_conversion_index = 4;
+        edited.font_size = 22;
+        edited.max_codes = 9;
+        edited.font_face_name = [u16::from(b'B'); 32];
+        apply_snapshot(&mut values, &edited);
+        assert_eq!(values.font_size, 22);
+        assert_eq!(values.max_codes, 9);
+        assert_eq!(values.font_face_name[30], u16::from(b'B'));
+        assert_eq!(values.font_face_name[31], 0);
+        assert_eq!(values.do_beep, 2);
+        assert_eq!(values.custom, custom);
+        assert_eq!(values.light, light);
+        assert_eq!(values.dark, dark);
+        assert_eq!(values.reload_reverse_conversion, 1);
+        assert_eq!(values.app_permission_set, 1);
+        assert_eq!(values.load_table_mode, 1);
+        assert_eq!(values.color_mode_key_found, 1);
     }
 }

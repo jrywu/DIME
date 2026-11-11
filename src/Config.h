@@ -95,6 +95,7 @@ namespace DIMEUnitTests {
 	class CustomTableValidationUnitTest; // UT-CV custom table validation tests
 	class RustConfigParityTest; // C++ <-> Rust (dime-config) parity
 	class KeyFlowConfigAccess;  // key-flow tests reset the settings between scenarios
+	class SettingsModelTest; // UT-SM snapshot colors[] vs stored palettes
 }
 namespace DIMEIntegratedTests {
 	class SettingsDialogIntegrationTest; // IT-01 Settings Dialog tests
@@ -125,6 +126,7 @@ class CConfig
 	friend class DIMEUnitTests::CustomTableValidationUnitTest;
 	friend class DIMEUnitTests::RustConfigParityTest;
 	friend class DIMEUnitTests::KeyFlowConfigAccess;
+	friend class DIMEUnitTests::SettingsModelTest;
 	friend class DIMEIntegratedTests::SettingsDialogIntegrationTest;
 	friend class DIMEIntegratedTests::CustomTableValidationIntegrationTest;
 #endif

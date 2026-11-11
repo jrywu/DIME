@@ -206,3 +206,36 @@ pub unsafe extern "C" fn dime_settings_validate_line(
         }
     })
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_load_snapshot(out: *mut SettingsSnapshot, colors: *const u32) {
+    guard((), || {
+        if out.is_null() {
+            return;
+        }
+        let effective = if colors.is_null() {
+            [0u32; 6]
+        } else {
+            // SAFETY: caller passed six COLORREFs, or the pointer is null.
+            let slice = unsafe { std::slice::from_raw_parts(colors, 6) };
+            [slice[0], slice[1], slice[2], slice[3], slice[4], slice[5]]
+        };
+        // SAFETY: `out` is a SettingsSnapshot, and the global values live for the process.
+        let values = unsafe { &*crate::global_config_values() };
+        let snap = settings_model::load_snapshot(values, &effective);
+        unsafe { *out = snap };
+    });
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_apply_snapshot(snap: *const SettingsSnapshot) {
+    guard((), || {
+        if snap.is_null() {
+            return;
+        }
+        // SAFETY: `snap` is a SettingsSnapshot. The global values live for the process.
+        let snap = unsafe { &*snap };
+        let values = unsafe { &mut *crate::global_config_values() };
+        settings_model::apply_snapshot(values, snap);
+    });
+}

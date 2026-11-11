@@ -8,11 +8,14 @@
 //! `src/tests/RustConfigParityTest.cpp`.
 
 pub mod cli;
+pub mod geometry;
 pub mod guid;
 pub mod ini;
 pub mod keys;
 pub mod num;
+pub mod page_layout;
 pub mod settings_model;
+pub mod text_file;
 pub mod values;
 
 pub use values::{ConfigValues, Env, ImeMode, Palette, Settings};

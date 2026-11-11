@@ -1,4 +1,4 @@
-﻿// SettingsModelTest.cpp — Unit tests for SettingsModel (UT-SM-01 through UT-SM-25)
+﻿// SettingsModelTest.cpp — Unit tests for SettingsModel (UT-SM-01 through UT-SM-27)
 //
 // All tests are pure (no HWND, no GDI) and run in CI/CD.
 
@@ -7,6 +7,7 @@
 #include "..\DIMESettings\SettingsController.h"
 #include "..\DIMESettings\SettingsKeys.h"
 #include "..\DIMESettings\SettingsPageLayout.h"
+#include "..\DIMESettings\SettingsGeometry.h"
 #include "..\DIMESettings\CLI.h"
 #include <cmath>
 
@@ -456,6 +457,119 @@ namespace DIMEUnitTests
             Assert::AreEqual(0, SettingsModel::GetModeBitmask(IME_MODE::IME_MODE_NONE));
         }
 
+        // UT-SM-26: geometry defaults, blend, the (int, int) DPI helper, theme.
+        TEST_METHOD(UT_SM_26_GeometryDefaultsAndTheme)
+        {
+            Assert::AreEqual(280, g_geo.sidebarWidth);
+            Assert::AreEqual(800, g_geo.sidebarCollapseBreak);
+            Assert::AreEqual(36, g_geo.hamburgerSize);
+            Assert::AreEqual(36, g_geo.contentMargin);
+            Assert::AreEqual(10, g_geo.cardPad);
+            Assert::AreEqual(49, g_geo.rowHeight);
+            Assert::AreEqual(38, g_geo.rowHeightSingle);
+            Assert::AreEqual(50, g_geo.childRowH);
+            Assert::AreEqual(40, g_geo.toggleW);
+            Assert::AreEqual(180, g_geo.comboWidth);
+            Assert::AreEqual(20, g_geo.fontTitlePt);
+            Assert::AreEqual(9, g_geo.fontDescPt);
+            Assert::AreEqual(400, g_geo.editorCardH);
+            Assert::AreEqual(52, g_geo.editorHeaderH);
+            Assert::AreEqual(5, g_geo.rowLabelMidOff);
+            Assert::AreEqual(0, g_geo.rowLabelTopOff);
+            Assert::AreEqual(28, g_geo.previewGap);
+            Assert::AreEqual(24, g_geo.ctrlHeight);
+            Assert::AreEqual(80, g_geo.actionBtnW);
+            Assert::AreEqual(20, g_geo.chevronW);
+            Assert::AreEqual(300, g_geo.bcCatNameW);
+            Assert::AreEqual(200, g_geo.comboDropH);
+            Assert::AreEqual(14, g_geo.swatchLabelH);
+            Assert::AreEqual(520, g_geo.windowMinW);
+            Assert::AreEqual(900, g_geo.windowDefaultW);
+            Assert::AreEqual(650, g_geo.windowDefaultH);
+
+            COLORREF c1 = RGB(1, 2, 3);
+            COLORREF c2 = RGB(4, 5, 6);
+            Assert::AreEqual(c1, BlendColor(c1, c2, 0));
+            Assert::AreEqual(c1, BlendColor(c1, c2, -1));
+            Assert::AreEqual(c2, BlendColor(c1, c2, 255));
+            Assert::AreEqual(16, ScaleForDpi(16, 0));
+            Assert::AreEqual(20, ScaleForDpi(16, 120));
+
+            ThemeColors dark = ComputeThemeColors(true);
+            Assert::AreEqual((COLORREF)RGB(32, 32, 32), dark.contentBg);
+            Assert::AreEqual((COLORREF)RGB(45, 45, 48), dark.cardBg);
+            Assert::AreEqual(dark.cardBorder, dark.rowSeparator);
+            Assert::AreEqual(GetSysColor(COLOR_HOTLIGHT), dark.accent);
+
+            COLORREF face = GetSysColor(COLOR_3DFACE);
+            COLORREF window = GetSysColor(COLOR_WINDOW);
+            ThemeColors light = ComputeThemeColors(false);
+            Assert::AreEqual(face, light.contentBg);
+            Assert::AreEqual(BlendColor(window, face, 30), light.cardBg);
+            Assert::AreEqual(GetSysColor(COLOR_WINDOWTEXT), light.textPrimary);
+            Assert::AreEqual(GetSysColor(COLOR_GRAYTEXT), light.buttonTextDisabled);
+            Assert::AreEqual(GetSysColor(COLOR_HOTLIGHT), light.buttonFill);
+        }
+
+        // UT-SM-27: effective colors[] win over stored palettes; apply does not
+        // write them back; reverseConversionIndex stays 0.
+        TEST_METHOD(UT_SM_27_SnapshotColorsStayOutOfPalette)
+        {
+            COLORREF savedCols[6];
+            for (int i = 0; i < 6; ++i) savedCols[i] = CConfig::colors[i].color;
+            COLORREF savedItem = CConfig::GetItemColor();
+            UINT savedFont = CConfig::GetFontSize();
+            BOOL savedSentence = CConfig::GetSentenceMode();
+            auto savedLayout = CConfig::getPhoneticKeyboardLayout();
+            auto savedDigit = CConfig::GetShiftEnglishDigitMode();
+            wchar_t savedFace[LF_FACESIZE] = {};
+            wcscpy_s(savedFace, CConfig::GetFontFaceName());
+
+            CConfig::SetItemColor(RGB(1, 2, 3));
+            CConfig::colors[0].color = RGB(9, 8, 7);
+            CConfig::colors[1].color = RGB(6, 5, 4);
+            CConfig::colors[2].color = RGB(3, 2, 1);
+            CConfig::colors[3].color = RGB(11, 12, 13);
+            CConfig::colors[4].color = RGB(14, 15, 16);
+            CConfig::colors[5].color = RGB(17, 18, 19);
+            CConfig::SetSentenceMode(TRUE);
+            CConfig::SetFontFaceName(const_cast<WCHAR*>(L"Segoe UI"));
+            CConfig::setPhoneticKeyboardLayout(PHONETIC_KEYBOARD_LAYOUT::PHONETIC_ETEN_KEYBOARD_LAYOUT);
+            CConfig::SetShiftEnglishDigitMode(IME_SHIFT_ENGLISH_DIGIT_MODE::SHIFT_ENGLISH_DIGIT_CAPS_OFF_DIGIT);
+
+            auto snap = SettingsModel::LoadFromConfig();
+            Assert::AreEqual((COLORREF)RGB(9, 8, 7), snap.itemColor);
+            Assert::AreEqual((COLORREF)RGB(6, 5, 4), snap.selectedColor);
+            Assert::AreEqual((COLORREF)RGB(3, 2, 1), snap.itemBGColor);
+            Assert::AreEqual((COLORREF)RGB(11, 12, 13), snap.phraseColor);
+            Assert::AreEqual((COLORREF)RGB(14, 15, 16), snap.numberColor);
+            Assert::AreEqual((COLORREF)RGB(17, 18, 19), snap.selectedBGColor);
+            Assert::AreEqual((COLORREF)RGB(1, 2, 3), CConfig::GetItemColor());
+            Assert::AreEqual(0, snap.reverseConversionIndex);
+            Assert::AreEqual((BOOL)TRUE, snap.sentenceMode);
+            Assert::AreEqual((int)PHONETIC_KEYBOARD_LAYOUT::PHONETIC_ETEN_KEYBOARD_LAYOUT, snap.phoneticKeyboardLayout);
+            Assert::AreEqual((int)IME_SHIFT_ENGLISH_DIGIT_MODE::SHIFT_ENGLISH_DIGIT_CAPS_OFF_DIGIT, snap.shiftEnglishDigitMode);
+            Assert::AreEqual(0, wcscmp(snap.fontFaceName, L"Segoe UI"));
+
+            snap.itemColor = RGB(255, 0, 0);
+            snap.reverseConversionIndex = 4;
+            snap.fontSize = 22;
+            SettingsModel::ApplyToConfig(snap);
+
+            Assert::AreEqual((COLORREF)RGB(1, 2, 3), CConfig::GetItemColor());
+            Assert::AreEqual((COLORREF)RGB(9, 8, 7), CConfig::colors[0].color);
+            Assert::AreEqual((UINT)22, CConfig::GetFontSize());
+            Assert::AreEqual(0, wcscmp(CConfig::GetFontFaceName(), L"Segoe UI"));
+
+            CConfig::SetItemColor(savedItem);
+            for (int i = 0; i < 6; ++i) CConfig::colors[i].color = savedCols[i];
+            CConfig::SetFontSize(savedFont);
+            CConfig::SetSentenceMode(savedSentence);
+            CConfig::setPhoneticKeyboardLayout(savedLayout);
+            CConfig::SetShiftEnglishDigitMode(savedDigit);
+            CConfig::SetFontFaceName(savedFace);
+        }
+
     };
 
     // ============================================================================
@@ -621,6 +735,53 @@ namespace DIMEUnitTests
             Assert::IsTrue(outLen >= 2);
             Assert::AreEqual(L'a', result[0]);
             Assert::AreEqual(L' ', result[1]);
+            delete[] result;
+        }
+
+        // UT_LT_05: UTF-16 BE BOM keeps the double byte-swap. U+0041 stored
+        // as 00 41 comes back as 0x4100.
+        TEST_METHOD(UT_LT_05_LoadTextFile_Utf16BeDoubleSwap)
+        {
+            BYTE bytes[] = { 0xFE, 0xFF, 0x00, 0x41, 0x00, 0x42 };
+            std::wstring path = WriteTempBinaryFile(L"lt05", bytes, sizeof(bytes));
+
+            size_t outLen = 0;
+            LPWSTR result = SettingsModel::LoadTextFileAsUtf16(path.c_str(), &outLen);
+            DeleteFileW(path.c_str());
+
+            Assert::IsNotNull(result);
+            Assert::AreEqual((size_t)2, outLen);
+            Assert::AreEqual((wchar_t)0x4100, result[0]);
+            Assert::AreEqual((wchar_t)0x4200, result[1]);
+            delete[] result;
+        }
+
+        // UT_LT_06: a file that is only a UTF-8 BOM is a failed decode.
+        TEST_METHOD(UT_LT_06_LoadTextFile_Utf8BomOnlyIsNull)
+        {
+            BYTE bytes[] = { 0xEF, 0xBB, 0xBF };
+            std::wstring path = WriteTempBinaryFile(L"lt06", bytes, sizeof(bytes));
+
+            size_t outLen = 99;
+            LPWSTR result = SettingsModel::LoadTextFileAsUtf16(path.c_str(), &outLen);
+            DeleteFileW(path.c_str());
+
+            Assert::IsNull(result);
+            Assert::AreEqual((size_t)0, outLen);
+        }
+
+        // UT_LT_07: a zero-byte file is an empty string, not a failed decode.
+        TEST_METHOD(UT_LT_07_LoadTextFile_EmptyFile)
+        {
+            std::wstring path = WriteTempBinaryFile(L"lt07", nullptr, 0);
+
+            size_t outLen = 99;
+            LPWSTR result = SettingsModel::LoadTextFileAsUtf16(path.c_str(), &outLen);
+            DeleteFileW(path.c_str());
+
+            Assert::IsNotNull(result);
+            Assert::AreEqual((size_t)0, outLen);
+            Assert::AreEqual(L'\0', result[0]);
             delete[] result;
         }
     };

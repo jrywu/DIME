@@ -30,10 +30,13 @@ use dime_config::{ini, keys, ConfigValues, Env, ImeMode, Settings};
 use dime_core::{CandidateItem, DictionaryType, SearchSection, TableDictionaryEngine, WinTextOps};
 
 mod cli;
+mod geometry;
 mod host_ui;
 mod langbar;
+mod page_layout;
 mod settings_model;
 mod setup;
+mod text_file;
 
 pub struct DimeEngine(TableDictionaryEngine<WinTextOps>);
 pub struct DimeItems(Vec<CandidateItem>);
@@ -757,6 +760,11 @@ static GLOBAL_SETTINGS: GlobalSettings = GlobalSettings(std::cell::UnsafeCell::n
 
 fn global_settings() -> *mut DimeSettings {
     GLOBAL_SETTINGS.0.get()
+}
+
+pub(crate) fn global_config_values() -> *mut ConfigValues {
+    // SAFETY: the global settings object is process-lifetime and never moved.
+    unsafe { &raw mut (*global_settings()).settings.v }
 }
 
 /// The process-wide settings object.  Never free it (dime_settings_free ignores it).

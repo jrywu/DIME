@@ -188,6 +188,20 @@ IME_MODE SettingsModel::StringToImeMode(const wchar_t* str)
 
 SettingsSnapshot SettingsModel::LoadFromConfig()
 {
+#ifdef DIME_USE_RUST_CONFIG
+    uint32_t colors[6] = {};
+    const ColorInfo* clrs = CConfig::GetColors();
+    if (clrs != nullptr)
+    {
+        for (int i = 0; i < 6; ++i)
+        {
+            colors[i] = clrs[i].color;
+        }
+    }
+    SettingsSnapshot snap = {};
+    dime_settings_load_snapshot(&snap, colors);
+    return snap;
+#else
     SettingsSnapshot snap = {};
 
     snap.fontSize      = CConfig::GetFontSize();
@@ -239,10 +253,14 @@ SettingsSnapshot SettingsModel::LoadFromConfig()
     snap.reverseConversionIndex  = 0; // default; UI populates from reverse conversion list
 
     return snap;
+#endif
 }
 
 void SettingsModel::ApplyToConfig(const SettingsSnapshot& snap)
 {
+#ifdef DIME_USE_RUST_CONFIG
+    dime_settings_apply_snapshot(&snap);
+#else
     CConfig::SetFontSize(snap.fontSize);
     CConfig::SetFontWeight(snap.fontWeight);
     CConfig::SetFontItalic(snap.fontItalic);
@@ -281,6 +299,7 @@ void SettingsModel::ApplyToConfig(const SettingsSnapshot& snap)
     CConfig::SetIMEShiftMode((IME_SHIFT_MODE)snap.imeShiftMode);
     CConfig::SetDoubleSingleByteMode((DOUBLE_SINGLE_BYTE_MODE)snap.doubleSingleByteMode);
     CConfig::SetShiftEnglishDigitMode((IME_SHIFT_ENGLISH_DIGIT_MODE)snap.shiftEnglishDigitMode);
+#endif
 }
 
 void SettingsModel::SyncToggleToSnapshot(SettingsSnapshot& s, SettingsControlId id, bool isOn)
@@ -535,6 +554,52 @@ void SettingsModel::GetCustomTableCINPath(IME_MODE mode, WCHAR* out, DWORD cch)
 // detects encoding and returns a real UTF-16LE wide string.
 LPWSTR SettingsModel::LoadTextFileAsUtf16(LPCWSTR path, size_t* outLen)
 {
+#ifdef DIME_USE_RUST_CONFIG
+    // File open and the empty-file buffer stay here. The byte ladder,
+    // including the UTF-16 BE double swap, is dime_settings_decode_text*.
+    if (outLen) *outLen = 0;
+    if (!path) return nullptr;
+
+    HANDLE hFile = CreateFileW(path, GENERIC_READ,
+        FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
+        OPEN_EXISTING, FILE_FLAG_SEQUENTIAL_SCAN, nullptr);
+    if (hFile == INVALID_HANDLE_VALUE) return nullptr;
+
+    DWORD dwSize = GetFileSize(hFile, nullptr);
+    if (dwSize == INVALID_FILE_SIZE || dwSize == 0) {
+        CloseHandle(hFile);
+        LPWSTR empty = new (std::nothrow) WCHAR[1];
+        if (empty) empty[0] = 0;
+        return empty;
+    }
+
+    BYTE* raw = new (std::nothrow) BYTE[dwSize];
+    if (!raw) { CloseHandle(hFile); return nullptr; }
+    DWORD dwRead = 0;
+    if (!ReadFile(hFile, raw, dwSize, &dwRead, nullptr) || dwRead == 0) {
+        delete[] raw;
+        CloseHandle(hFile);
+        return nullptr;
+    }
+    CloseHandle(hFile);
+
+    uint32_t wlen = 0;
+    if (dime_settings_decode_text_len(raw, dwRead, &wlen) == 0) {
+        delete[] raw;
+        return nullptr;
+    }
+    LPWSTR out = new (std::nothrow) WCHAR[static_cast<size_t>(wlen) + 1];
+    if (!out) { delete[] raw; return nullptr; }
+    if (dime_settings_decode_text(raw, dwRead, reinterpret_cast<uint16_t*>(out), wlen) == 0) {
+        delete[] out;
+        delete[] raw;
+        return nullptr;
+    }
+    out[wlen] = 0;
+    delete[] raw;
+    if (outLen) *outLen = wlen;
+    return out;
+#else
     if (outLen) *outLen = 0;
     if (!path) return nullptr;
 
@@ -628,6 +693,7 @@ LPWSTR SettingsModel::LoadTextFileAsUtf16(LPCWSTR path, size_t* outLen)
     delete[] raw;
     if (outLen) *outLen = (size_t)wlen;
     return out;
+#endif
 }
 
 // ============================================================================

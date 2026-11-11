@@ -1186,6 +1186,71 @@ int32_t dime_settings_validate_line(
     int32_t (*char_ok)(uint16_t ch, void* ctx), void* ctx,
     DimeLineError* out, size_t cap, size_t* out_count);
 
+/* ---- Settings page layout (phase 5b-2, dime-config::page_layout) -------
+ * Card, row, and sidebar tables. The bytes match C++ LayoutCard, LayoutRow,
+ * and SidebarItemDef (x64 sizes 48/48/16, Win32 sizes 28/36/8). String
+ * pointers are static NUL-terminated UTF-16, or NULL. The tables live for
+ * the process lifetime. A null count pointer is not written. A panic
+ * returns NULL and leaves count unchanged.
+ */
+const void* dime_settings_ime_page_layout(int32_t* count);
+const void* dime_settings_load_table_page_layout(int32_t* count);
+const void* dime_settings_sidebar_items(int32_t* count);
+
+/* ---- Settings geometry (phase 5b-3, dime-config::geometry) -------------
+ * Defaults match SettingsGeometry (260 bytes, 65 ints). ThemeColors is 88
+ * bytes, 22 COLORREFs. out is not written when null. sys null is all zeros.
+ * blend_color: alpha <= 0 returns c1, alpha >= 255 returns c2, otherwise
+ * each channel (c1 * (255 - alpha) + c2 * alpha) / 255 and the high byte
+ * is cleared. scale_for_dpi: dpi <= 0 returns value; otherwise Win32
+ * MulDiv(value, dpi, 96), including the x86 / x64 i32::MIN difference.
+ * A panic returns 0 from blend and scale, and leaves out unchanged.
+ */
+typedef struct DimeSysColors {
+    uint32_t hotlight;
+    uint32_t face;
+    uint32_t window;
+    uint32_t window_text;
+    uint32_t gray_text;
+    uint32_t highlight_text;
+} DimeSysColors;
+
+void dime_settings_geometry(void* out);
+void dime_settings_theme_colors(int32_t is_dark, const DimeSysColors* sys, void* out);
+uint32_t dime_settings_blend_color(uint32_t c1, uint32_t c2, int32_t alpha);
+int32_t dime_settings_scale_for_dpi(int32_t value, int32_t dpi);
+
+/* ---- Settings snapshot bridge (phase 5b-4) ------------------------------
+ * Load copies the plain CConfig fields into SettingsSnapshot (216 bytes).
+ * colors is six COLORREFs from the live colors[] array, in order: item,
+ * selected, item background, phrase, number, selected background. Stored
+ * palettes are not read. A null colors pointer is six zeros.
+ * reverseConversionIndex is always 0. Apply writes those fields back except
+ * the six colors. Palettes, reverse conversion, and the reload flags stay.
+ * The font face is truncated like StringCchCopy into LF_FACESIZE (32).
+ * A null out or snap is not written. A panic leaves out unchanged and does
+ * not apply.
+ */
+void dime_settings_load_snapshot(void* out, const uint32_t* colors);
+void dime_settings_apply_snapshot(const void* snap);
+
+/* ---- Text file decode (phase 5b-5) --------------------------------------
+ * Decode the bytes LoadTextFileAsUtf16 has already read. Opening the file,
+ * the empty-file WCHAR[1], and the output allocation stay in C++.
+ * FF FE copies little-endian code units and drops a trailing odd byte.
+ * FE FF keeps the C++ double byte-swap, so the payload is stored as
+ * little-endian units. EF BB BF is stripped. Other bytes try strict UTF-8
+ * (CP_UTF8, MB_ERR_INVALID_CHARS) and then CP_ACP with flags 0.
+ * decode_text_len writes the code-unit count with no NUL and returns 1.
+ * decode_text writes exactly cap units, writes no NUL, and returns 1 only
+ * when the decoded length is cap. A null out_wlen or out is not written.
+ * A null bytes pointer with a non-zero length returns 0. A panic returns 0
+ * and does not write. A byte length above INT_MAX fails the code-page
+ * calls instead of passing a negative MultiByteToWideChar length.
+ */
+int32_t dime_settings_decode_text_len(const uint8_t* bytes, uint32_t len, uint32_t* out_wlen);
+int32_t dime_settings_decode_text(const uint8_t* bytes, uint32_t len, uint16_t* out, uint32_t cap);
+
 #ifdef __cplusplus
 }
 #endif
