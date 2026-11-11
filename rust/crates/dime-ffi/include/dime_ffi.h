@@ -1339,6 +1339,16 @@ int32_t dime_settings_message_box(void* parent, const uint16_t* text, const uint
     uint32_t mb_type, const uint16_t* class_name, int32_t is_dark, const void* tc,
     uint32_t (*dpi_for)(void* hwnd));
 
+/* ---- Settings navigation reducer (phase 5b-8b, dime-settings::nav) -------
+ * SettingsNav::Cpp::Handle in Rust. state is a SettingsNav::NavState (64
+ * bytes, the 16 cardExpanded bools at offset 48, written back as 0 / 1),
+ * ev a NavEvent (36), out NavEffect[cap] (32 bytes each). The effects are
+ * written in order, at most cap of them, with the total in out_count.
+ * min_track_size writes a POINT. Null pointers are not written.
+ */
+void dime_settings_nav_handle(void* state, const void* ev, void* out, size_t cap, size_t* out_count);
+void dime_settings_nav_min_track_size(uint32_t screen_dpi, void* out_point);
+
 #ifdef __cplusplus
 }
 #endif

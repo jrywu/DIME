@@ -33,6 +33,7 @@
 #include "SettingsWindowLayout.h"
 #include "SettingsWindowPaint.h"
 #include "SettingsMsgBox.h"
+#include "SettingsNav.h"
 
 #include <Richedit.h>
 #include <MLang.h>
@@ -591,104 +592,144 @@ void SettingsWindow::ShowAllControls(WindowData* wd)
 
 // Forward declarations
 static int CalcCandidatePreviewH(HDC hdc, const SettingsSnapshot& s, UINT dpi);
-static int CalcRowHeight(HDC hdc, const LayoutRow& lr, const SettingsSnapshot& s, UINT dpi);
 
-int SettingsWindow::HitTestCardList(int y, const LayoutCard* cards, int cardCount,
-    int modeMask, const bool* cardExpanded, int expandBaseIdx, UINT dpi, int scrollPos)
+// Navigation state <-> WindowData.
+static SettingsNav::NavState LoadNav(const SettingsWindow::WindowData* wd)
 {
-    return SettingsWindowLayout::CardListHitTest(y, cards, cardCount, modeMask,
-        cardExpanded, expandBaseIdx, dpi, scrollPos);
+    SettingsNav::NavState n = {};
+    n.selectedModeIndex = wd->selectedModeIndex;
+    n.hoverSidebarIndex = wd->hoverSidebarIndex;
+    n.navLevel = wd->navLevel;
+    n.currentCardIndex = wd->currentCardIndex;
+    n.hoverRowIndex = wd->hoverRowIndex;
+    n.currentMode = (int)wd->currentMode;
+    n.scrollPos = wd->scrollPos;
+    n.scrollMax = wd->scrollMax;
+    n.totalContentHeight = wd->totalContentHeight;
+    n.sidebarCollapsed = wd->sidebarCollapsed ? 1 : 0;
+    n.sidebarNarrowMode = wd->sidebarNarrowMode ? 1 : 0;
+    n.colorGridExpanded = wd->colorGridExpanded ? 1 : 0;
+    memcpy(n.cardExpanded, wd->cardExpanded, sizeof(n.cardExpanded));
+    return n;
 }
 
-bool SettingsWindow::HandleCardListClick(int y, HWND hWnd, HWND hParent, WindowData* wd,
-    const LayoutCard* cards, int cardCount, int modeMask, int expandBaseIdx, UINT dpi)
+static void StoreNav(SettingsWindow::WindowData* wd, const SettingsNav::NavState& n)
 {
-    SettingsWindowLayout::CardListClick c = SettingsWindowLayout::CardListClickTarget(
-        y, cards, cardCount, modeMask, wd->cardExpanded, expandBaseIdx, dpi, wd->scrollPos);
-    if (c.kind == 1) {
-        int i = c.card;
-        int expIdx = expandBaseIdx + i;
-        if (cards[i].action == RowAction::NavigateToCard) {
-            SettingsWindow::NavigateToCategory(hParent, wd, i);
-        } else if (cards[i].action == RowAction::ExpandSection) {
-            wd->cardExpanded[expIdx] = !wd->cardExpanded[expIdx];
-            wd->scrollPos = 0;
-            SettingsWindow::RebuildContentArea(hParent, wd);
-            SettingsWindow::UpdateScrollInfo(wd);
-            InvalidateRect(hWnd, nullptr, FALSE);
-            UpdateWindow(hWnd);
-        }
-        return true;
+    wd->selectedModeIndex = n.selectedModeIndex;
+    wd->hoverSidebarIndex = n.hoverSidebarIndex;
+    wd->navLevel = n.navLevel;
+    wd->currentCardIndex = n.currentCardIndex;
+    wd->hoverRowIndex = n.hoverRowIndex;
+    wd->currentMode = (IME_MODE)n.currentMode;
+    wd->scrollPos = n.scrollPos;
+    wd->scrollMax = n.scrollMax;
+    wd->totalContentHeight = n.totalContentHeight;
+    wd->sidebarCollapsed = n.sidebarCollapsed != 0;
+    wd->sidebarNarrowMode = n.sidebarNarrowMode != 0;
+    wd->colorGridExpanded = n.colorGridExpanded != 0;
+    memcpy(wd->cardExpanded, n.cardExpanded, sizeof(wd->cardExpanded));
+}
+
+// Feed one event to SettingsNav, then carry out its effects in order.
+void SettingsWindow::RunNav(HWND hMain, WindowData* wd, SettingsNav::NavEvent ev)
+{
+    HWND hContent = wd->hContentArea;
+    ev.dpi = CConfig::GetDpiForHwnd(hMain);
+    ev.colorMode = wd->snapshot.colorMode;
+    HWND hSaveBtn = FindControl(wd, CTRL_CUSTOM_TABLE_SAVE);
+    ev.customTableDirty = (hSaveBtn && IsWindowEnabled(hSaveBtn)) ? 1 : 0;
+    ev.previewH = 0;
+    if (wd->navLevel == 1 && wd->selectedModeIndex < 4 && hContent) {
+        HDC hdcTmp = GetDC(hContent);
+        ev.previewH = CalcCandidatePreviewH(hdcTmp, wd->snapshot, ev.dpi);
+        ReleaseDC(hContent, hdcTmp);
     }
-    if (c.kind == 2) {
-        const LayoutRow& lr = cards[c.card].rows[c.row];
-        if (lr.type == RowType::Toggle) {
-            HWND hCtrl = FindControl(wd, lr.id);
+
+    SettingsNav::NavState nav = LoadNav(wd);
+    std::vector<SettingsNav::NavEffect> effects;
+    SettingsNav::Handle(nav, ev, effects);
+    StoreNav(wd, nav);
+
+    for (const auto& fx : effects) {
+        switch (fx.kind) {
+        case SettingsNav::FX_INVALIDATE_MAIN:
+            InvalidateRect(hMain, fx.hasRect ? &fx.rc : nullptr, fx.erase ? TRUE : FALSE);
+            break;
+        case SettingsNav::FX_INVALIDATE_CONTENT:
+            if (hContent) InvalidateRect(hContent, nullptr, fx.erase ? TRUE : FALSE);
+            break;
+        case SettingsNav::FX_TRACK_LEAVE_MAIN:
+        case SettingsNav::FX_TRACK_LEAVE_CONTENT: {
+            TRACKMOUSEEVENT tme = { sizeof(tme), TME_LEAVE,
+                fx.kind == SettingsNav::FX_TRACK_LEAVE_MAIN ? hMain : hContent };
+            TrackMouseEvent(&tme);
+            break;
+        }
+        case SettingsNav::FX_SCROLL_CHANGED:
+            UpdateScrollInfo(wd);
+            RepositionControlsForScroll(wd);
+            RedrawWindow(hContent, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
+            break;
+        case SettingsNav::FX_SHOW_ALL_CONTROLS:
+            ShowAllControls(wd);
+            break;
+        case SettingsNav::FX_HIDE_ALL_CONTROLS:
+            for (auto& ch : wd->controlHandles)
+                if (ch.hWnd && IsWindow(ch.hWnd)) ShowWindow(ch.hWnd, SW_HIDE);
+            break;
+        case SettingsNav::FX_SWITCH_MODE:
+            SwitchMode(hMain, wd, (IME_MODE)fx.arg);
+            break;
+        case SettingsNav::FX_REBUILD:
+            RebuildContentArea(hMain, wd);
+            break;
+        case SettingsNav::FX_TOGGLE_CONTROL: {
+            SettingsControlId id = (SettingsControlId)fx.arg;
+            HWND hCtrl = FindControl(wd, id);
             if (hCtrl) {
                 BOOL checked = (SendMessage(hCtrl, BM_GETCHECK, 0, 0) == BST_CHECKED);
                 bool newState = !checked;
                 SendMessage(hCtrl, BM_SETCHECK, newState ? BST_CHECKED : BST_UNCHECKED, 0);
-                SettingsModel::SyncToggleToSnapshot(wd->snapshot, lr.id, newState);
-                SettingsWindow::ApplyAndSave(wd);
-                InvalidateRect(hWnd, nullptr, FALSE);
-                UpdateWindow(hWnd);
+                SettingsModel::SyncToggleToSnapshot(wd->snapshot, id, newState);
+                ApplyAndSave(wd);
+                InvalidateRect(hContent, nullptr, FALSE);
+                UpdateWindow(hContent);
             }
+            break;
         }
-        return true;
-    }
-    return false;
-}
-
-// Sub-page row context: visibility and heights for the current snapshot.
-static SettingsWindowLayout::RowContext MakeRowContext(HWND hWnd, SettingsWindow::WindowData* wd, UINT dpi)
-{
-    SettingsWindowLayout::RowContext ctx = {};
-    ctx.dpi = dpi;
-    ctx.scrollPos = wd->scrollPos;
-    ctx.modeMask = SettingsModel::GetModeBitmask(wd->currentMode);
-    ctx.colorMode = wd->snapshot.colorMode;
-    ctx.gridExpanded = wd->colorGridExpanded ? 1 : 0;
-    HDC hdcTmp = GetDC(hWnd);
-    ctx.previewH = CalcCandidatePreviewH(hdcTmp, wd->snapshot, dpi);
-    ReleaseDC(hWnd, hdcTmp);
-    return ctx;
-}
-
-bool SettingsWindow::HandleRowCardClick(int y, HWND hWnd, WindowData* wd,
-    const LayoutCard& card, UINT dpi)
-{
-    SettingsWindowLayout::RowContext ctx = MakeRowContext(hWnd, wd, dpi);
-    SettingsWindowLayout::RowCardHit hit = SettingsWindowLayout::RowCardsHit(y, card, ctx);
-    if (hit.spanStart < 0) return false;
-    if (hit.row >= 0) {
-        const LayoutRow& lr = card.rows[hit.row];
-        if (lr.action == RowAction::ExpandSection
-            && lr.type == RowType::ComboBox && wd->snapshot.colorMode == 3) {
-            wd->colorGridExpanded = !wd->colorGridExpanded;
-            SettingsWindow::RebuildContentArea(GetParent(hWnd), wd);
-            InvalidateRect(hWnd, nullptr, FALSE);
-            UpdateWindow(hWnd);
-        } else if (lr.type == RowType::Toggle) {
-            HWND hCtrl = FindControl(wd, lr.id);
-            if (hCtrl) {
-                BOOL checked = (SendMessage(hCtrl, BM_GETCHECK, 0, 0) == BST_CHECKED);
-                bool newState = !checked;
-                SendMessage(hCtrl, BM_SETCHECK, newState ? BST_CHECKED : BST_UNCHECKED, 0);
-                SettingsModel::SyncToggleToSnapshot(wd->snapshot, lr.id, newState);
-                SettingsWindow::ApplyAndSave(wd);
-                InvalidateRect(hWnd, nullptr, FALSE);
-                UpdateWindow(hWnd);
+        case SettingsNav::FX_ASK_SAVE_THEN_BACK: {
+            // 自建詞庫 has unsaved changes: ask before leaving the sub-page.
+            int result = ThemedMessageBox(hMain,
+                L"自建詞庫尚未儲存，是否要儲存後離開？\n\n[是] 儲存並離開\n[否] 不儲存離開\n[取消] 繼續編輯",
+                L"自建詞庫未儲存", MB_YESNOCANCEL | MB_ICONQUESTION);
+            if (result == IDYES) {
+                HWND hSave = FindControl(wd, CTRL_CUSTOM_TABLE_SAVE);
+                SendMessageW(hContent, WM_COMMAND,
+                    MAKEWPARAM(3000 + CTRL_CUSTOM_TABLE_SAVE, BN_CLICKED), (LPARAM)hSave);
             }
+            if (result == IDYES || result == IDNO) {
+                SettingsNav::NavEvent back = {};
+                back.kind = SettingsNav::EV_BACK;
+                RunNav(hMain, wd, back);
+            }
+            break;
+        }
+        case SettingsNav::FX_MOVE_CONTENT:
+            MoveWindow(hContent, fx.rc.left, fx.rc.top, fx.rc.right, fx.rc.bottom, FALSE);
+            break;
+        case SettingsNav::FX_SET_FOCUS_CONTENT:
+            SetFocus(hContent);
+            break;
+        case SettingsNav::FX_UPDATE_CONTENT:
+            UpdateWindow(hContent);
+            break;
+        case SettingsNav::FX_UPDATE_SCROLL_INFO:
+            UpdateScrollInfo(wd);
+            break;
+        default:
+            break;
         }
     }
-    return true;   // clicked inside a card, actionable row or not
-}
-
-int SettingsWindow::HitTestRowCards(int y, HWND hWnd, WindowData* wd,
-    const LayoutCard& card, UINT dpi)
-{
-    SettingsWindowLayout::RowContext ctx = MakeRowContext(hWnd, wd, dpi);
-    return SettingsWindowLayout::RowCardsHit(y, card, ctx).spanStart;
 }
 
 // ============================================================================
@@ -707,13 +748,6 @@ static int CalcCardW(HWND hMainWnd, UINT dpi, bool sidebarTakesSpace)
 static int CalcCtrlRight(int margin, int cardW, UINT dpi, bool hasChevron)
 {
     return SettingsWindowLayout::CtrlRight(margin, cardW, dpi, hasChevron);
-}
-
-// Row height for any RowType (the preview row is measured with the DC)
-static int CalcRowHeight(HDC hdc, const LayoutRow& lr, const SettingsSnapshot& s, UINT dpi)
-{
-    int previewH = (lr.type == RowType::CandidatePreview) ? CalcCandidatePreviewH(hdc, s, dpi) : 0;
-    return SettingsWindowLayout::RowHeight(lr, dpi, previewH);
 }
 
 // Candidate preview height; RebuildContentArea and the painter must agree.
@@ -792,25 +826,6 @@ void SettingsWindow::SwitchMode(HWND hWnd, WindowData* wd, IME_MODE mode)
     wd->pEngine = SettingsModel::CreateEngine(mode);
     RebuildContentArea(hWnd, wd);
     InvalidateRect(hWnd, nullptr, TRUE);
-}
-
-void SettingsWindow::NavigateToCategory(HWND hWnd, WindowData* wd, int cardIndex)
-{
-    wd->navLevel = 1;
-    wd->currentCardIndex = cardIndex;
-    wd->scrollPos = 0;
-    RebuildContentArea(hWnd, wd);
-    InvalidateRect(hWnd, nullptr, TRUE);
-    if (wd->hContentArea) InvalidateRect(wd->hContentArea, nullptr, TRUE);
-}
-
-void SettingsWindow::NavigateBack(HWND hWnd, WindowData* wd)
-{
-    wd->navLevel = 0;
-    wd->scrollPos = 0;
-    RebuildContentArea(hWnd, wd);
-    InvalidateRect(hWnd, nullptr, TRUE);
-    if (wd->hContentArea) InvalidateRect(wd->hContentArea, nullptr, TRUE);
 }
 
 // Everything the painters read. hPaint is the window painted into (its client
@@ -1406,23 +1421,11 @@ LRESULT CALLBACK SettingsWindow::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPA
 
     case WM_SIZE:
         if (wd) {
-            UINT dpi = CConfig::GetDpiForHwnd(hWnd);
-            int winW = LOWORD(lParam);
-            int winH = HIWORD(lParam);
-            int collapseBreak = ScaleForDpi(g_geo.sidebarCollapseBreak, dpi);
-            bool isNarrow = (winW < collapseBreak);
-            if (!isNarrow) {
-                wd->sidebarCollapsed = false;
-                wd->sidebarNarrowMode = false;
-            } else {
-                wd->sidebarNarrowMode = true;
-                wd->sidebarCollapsed = true; // auto-collapse on resize
-            }
-            // In narrow mode, content always at x=0 full width
-            int sidebarW = isNarrow ? 0 : ScaleForDpi(g_geo.sidebarWidth, dpi);
-            MoveWindow(wd->hContentArea, sidebarW, 0, winW - sidebarW, winH, FALSE);
-            RebuildContentArea(hWnd, wd);
-            InvalidateRect(hWnd, nullptr, TRUE);
+            SettingsNav::NavEvent ev = {};
+            ev.kind = SettingsNav::EV_MAIN_SIZE;
+            ev.x = LOWORD(lParam);
+            ev.y = HIWORD(lParam);
+            RunNav(hWnd, wd, ev);
         }
         return 0;
 
@@ -1491,140 +1494,31 @@ LRESULT CALLBACK SettingsWindow::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPA
 
     case WM_MOUSEWHEEL:
         if (wd && wd->hContentArea) {
-            int delta = GET_WHEEL_DELTA_WPARAM(wParam);
-            int oldPos = wd->scrollPos;
-            { UINT dpiW = CConfig::GetDpiForHwnd(hWnd); wd->scrollPos -= MulDiv(delta, ScaleForDpi(g_geo.rowHeight * 3, dpiW), WHEEL_DELTA); }
-            wd->scrollPos = SettingsModel::ClampScrollPos(wd->scrollPos, wd->scrollMax);
-            if (wd->scrollPos != oldPos) {
-                UpdateScrollInfo(wd);
-                RepositionControlsForScroll(wd);
-                RedrawWindow(wd->hContentArea, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
-            }
+            SettingsNav::NavEvent ev = {};
+            ev.kind = SettingsNav::EV_MAIN_WHEEL;
+            ev.delta = GET_WHEEL_DELTA_WPARAM(wParam);
+            RunNav(hWnd, wd, ev);
         }
         return 0;
 
     case WM_LBUTTONDOWN:
-    {
-        // Sidebar click + breadcrumb back click
-        if (!wd) break;
-        int x = GET_X_LPARAM(lParam), y = GET_Y_LPARAM(lParam);
-        UINT dpi = CConfig::GetDpiForHwnd(hWnd);
-        int sidebarW = (!wd->sidebarNarrowMode && !wd->sidebarCollapsed) ? ScaleForDpi(g_geo.sidebarWidth, dpi) : 0;
-
-        // Hamburger click in breadcrumb strip (Level 1 narrow mode)
-        if (wd->sidebarNarrowMode && wd->navLevel == 1) {
-            int hbSize = ScaleForDpi(g_geo.hamburgerSize, dpi);
-            if (x >= sidebarW && x < sidebarW + hbSize && y < hbSize) {
-                wd->sidebarCollapsed = !wd->sidebarCollapsed;
-                if (wd->sidebarCollapsed)
-                    ShowAllControls(wd);
-                else
-                    for (auto& ch : wd->controlHandles)
-                        if (ch.hWnd && IsWindow(ch.hWnd)) ShowWindow(ch.hWnd, SW_HIDE);
-                InvalidateRect(wd->hContentArea, nullptr, TRUE);
-                InvalidateRect(hWnd, nullptr, TRUE);
-                return 0;
-            }
-        }
-
-        // Breadcrumb back click (main window area above content area, navLevel==1 only)
-        if (x >= sidebarW && wd->navLevel == 1 && wd->selectedModeIndex < 4) {
-            int bcH = ScaleForDpi(g_geo.breadcrumbH, dpi);
-            if (y < bcH) {
-                int margin = ScaleForDpi(g_geo.contentMargin, dpi);
-                int relX = x - sidebarW;
-                if (relX >= margin && relX < margin + ScaleForDpi(g_geo.bcModeNameW, dpi)) {
-                    // Dirty check: if custom table editor has unsaved changes, ask user
-                    HWND hSaveBtn = FindControl(wd, CTRL_CUSTOM_TABLE_SAVE);
-                    if (hSaveBtn && IsWindowEnabled(hSaveBtn)) {
-                        int result = ThemedMessageBox(hWnd,
-                            L"自建詞庫尚未儲存，是否要儲存後離開？\n\n[是] 儲存並離開\n[否] 不儲存離開\n[取消] 繼續編輯",
-                            L"自建詞庫未儲存", MB_YESNOCANCEL | MB_ICONQUESTION);
-                        if (result == IDYES) {
-                            SendMessageW(wd->hContentArea, WM_COMMAND,
-                                MAKEWPARAM(3000 + CTRL_CUSTOM_TABLE_SAVE, BN_CLICKED),
-                                (LPARAM)hSaveBtn);
-                        } else if (result == IDCANCEL) {
-                            return 0;
-                        }
-                    }
-                    NavigateBack(hWnd, wd);
-                    return 0;
-                }
-            }
-            break; // click in content area but not on breadcrumb — ignore in WndProc
-        }
-
-        if (wd->sidebarCollapsed) break;
-        if (x >= sidebarW) break;
-        // Hamburger click handled in ContentWndProc
-
-        int startY = ScaleForDpi(g_geo.sidebarStartY, dpi);
-        int itemH = ScaleForDpi(g_geo.sidebarItemH, dpi);
-        int sidebarCount = 0;
-        const SidebarItemDef* sItems = ::GetSidebarItems(&sidebarCount);
-        int idx = SettingsModel::SidebarHitTest(y - startY, itemH, sidebarCount);
-        if (idx < 0 || idx >= sidebarCount) break;
-        if (sItems[idx].iconResourceId == -1) break; // separator
-
-        if (idx < 4) {
-            IME_MODE newMode = IndexToMode(idx);
-            if (newMode != wd->currentMode || wd->navLevel == 1 || wd->selectedModeIndex != idx)
-                SwitchMode(hWnd, wd, newMode);
-        } else if (idx == 5) {
-            wd->selectedModeIndex = 5;
-            wd->navLevel = 0;
-            wd->scrollPos = 0;
-            // Reset 載入碼表 expand states from layout defaults
-            {
-                int ltCount = 0;
-                const LayoutCard* ltCards = GetLoadTablePageLayout(&ltCount);
-                for (int li = 0; li < ltCount && (4 + li) < 16; li++)
-                    wd->cardExpanded[4 + li] = ltCards[li].defaultExpanded;
-            }
-            RebuildContentArea(hWnd, wd);
-            InvalidateRect(hWnd, nullptr, TRUE);
-            if (wd->hContentArea) InvalidateRect(wd->hContentArea, nullptr, TRUE);
-        }
-        // Auto-collapse sidebar after selection in narrow mode
-        if (wd->sidebarNarrowMode) {
-            wd->sidebarCollapsed = true;
-            ShowAllControls(wd);
-            if (wd->hContentArea) InvalidateRect(wd->hContentArea, nullptr, TRUE);
-            InvalidateRect(hWnd, nullptr, TRUE);
-        }
-        return 0;
-    }
-
     case WM_MOUSEMOVE:
     {
+        // Sidebar click / hover, breadcrumb back link, narrow-mode hamburger
         if (!wd) break;
-        UINT dpi = CConfig::GetDpiForHwnd(hWnd);
-        int sidebarW = ScaleForDpi(g_geo.sidebarWidth, dpi);
-        int x = GET_X_LPARAM(lParam), y = GET_Y_LPARAM(lParam);
-        int newHover = -1;
-        if (x < sidebarW && !wd->sidebarCollapsed) {
-            int startY = ScaleForDpi(g_geo.sidebarStartY, dpi);
-            int itemH = ScaleForDpi(g_geo.sidebarItemH, dpi);
-            int sc = 0; ::GetSidebarItems(&sc);
-            newHover = SettingsModel::SidebarHitTest(y - startY, itemH, sc);
-        }
-        if (newHover != wd->hoverSidebarIndex) {
-            wd->hoverSidebarIndex = newHover;
-            RECT rcS = { 0, 0, sidebarW, 32767 };
-            InvalidateRect(hWnd, &rcS, FALSE);
-            TRACKMOUSEEVENT tme = { sizeof(tme), TME_LEAVE, hWnd };
-            TrackMouseEvent(&tme);
-        }
+        SettingsNav::NavEvent ev = {};
+        ev.kind = (msg == WM_LBUTTONDOWN) ? SettingsNav::EV_MAIN_LBUTTON : SettingsNav::EV_MAIN_MOUSEMOVE;
+        ev.x = GET_X_LPARAM(lParam);
+        ev.y = GET_Y_LPARAM(lParam);
+        RunNav(hWnd, wd, ev);
         return 0;
     }
 
     case WM_MOUSELEAVE:
-        if (wd && wd->hoverSidebarIndex != -1) {
-            wd->hoverSidebarIndex = -1;
-            UINT dpi = CConfig::GetDpiForHwnd(hWnd);
-            RECT rcS = { 0, 0, ScaleForDpi(g_geo.sidebarWidth, dpi), 32767 };
-            InvalidateRect(hWnd, &rcS, FALSE);
+        if (wd) {
+            SettingsNav::NavEvent ev = {};
+            ev.kind = SettingsNav::EV_MAIN_MOUSELEAVE;
+            RunNav(hWnd, wd, ev);
         }
         return 0;
 
@@ -1638,8 +1532,7 @@ LRESULT CALLBACK SettingsWindow::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPA
         UINT dpi2 = 96;
         HDC hdc2 = GetDC(nullptr);
         if (hdc2) { dpi2 = GetDeviceCaps(hdc2, LOGPIXELSY); ReleaseDC(nullptr, hdc2); }
-        mmi->ptMinTrackSize.x = ScaleForDpi(g_geo.windowMinW, dpi2);
-        mmi->ptMinTrackSize.y = ScaleForDpi(g_geo.windowMinH, dpi2);
+        mmi->ptMinTrackSize = SettingsNav::MinTrackSize(dpi2);
         return 0;
     }
 
@@ -1787,200 +1680,45 @@ LRESULT CALLBACK SettingsWindow::ContentWndProc(HWND hWnd, UINT msg, WPARAM wPar
     }
 
     case WM_VSCROLL:
-    {
-        if (!wd) break;
-        int oldPos = wd->scrollPos;
-        switch (LOWORD(wParam)) {
-        case SB_LINEUP:    { UINT dpi2 = CConfig::GetDpiForHwnd(hWnd); wd->scrollPos -= ScaleForDpi(g_geo.rowHeight, dpi2); break; }
-        case SB_LINEDOWN:  { UINT dpi2 = CConfig::GetDpiForHwnd(hWnd); wd->scrollPos += ScaleForDpi(g_geo.rowHeight, dpi2); break; }
-        case SB_PAGEUP:    wd->scrollPos -= wd->totalContentHeight / 4; break;
-        case SB_PAGEDOWN:  wd->scrollPos += wd->totalContentHeight / 4; break;
-        case SB_THUMBTRACK: wd->scrollPos = HIWORD(wParam); break;
-        }
-        wd->scrollPos = SettingsModel::ClampScrollPos(wd->scrollPos, wd->scrollMax);
-        if (wd->scrollPos != oldPos) {
-            UpdateScrollInfo(wd);
-            RepositionControlsForScroll(wd);
-            RedrawWindow(hWnd, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
-        }
-        return 0;
-    }
-
     case WM_MOUSEWHEEL:
-    {
-        if (!wd) break;
-        int delta = GET_WHEEL_DELTA_WPARAM(wParam);
-        int oldPos = wd->scrollPos;
-        { UINT dpiW = CConfig::GetDpiForHwnd(hWnd); wd->scrollPos -= MulDiv(delta, ScaleForDpi(g_geo.rowHeight * 3, dpiW), WHEEL_DELTA); }
-        wd->scrollPos = SettingsModel::ClampScrollPos(wd->scrollPos, wd->scrollMax);
-        if (wd->scrollPos != oldPos) {
-            UpdateScrollInfo(wd);
-            RepositionControlsForScroll(wd);
-            RedrawWindow(hWnd, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
-        }
-        return 0;
-    }
-
     case WM_MOUSEMOVE:
+    case WM_LBUTTONDOWN:
     {
         if (!wd) break;
-        int x = GET_X_LPARAM(lParam), y = GET_Y_LPARAM(lParam);
-        HWND hParent = GetParent(hWnd);
-        UINT dpi = CConfig::GetDpiForHwnd(hParent);
-
-        // Sidebar hover in narrow overlay mode
-        if (wd->sidebarNarrowMode && !wd->sidebarCollapsed) {
-            int sidebarWM = ScaleForDpi(g_geo.sidebarWidth, dpi);
-            if (x < sidebarWM) {
-                // In Level 1, content area is offset by bcH — adjust Y to main window coords
-                bool hasBcHv = (wd->navLevel == 1 && wd->selectedModeIndex < 4);
-                int bcOffHv = hasBcHv ? ScaleForDpi(g_geo.breadcrumbH, dpi) : 0;
-                int mainYHv = y + bcOffHv;
-                int startY = ScaleForDpi(g_geo.sidebarStartY, dpi);
-                int itemH = ScaleForDpi(g_geo.sidebarItemH, dpi);
-                int sc = 0; ::GetSidebarItems(&sc);
-                int newSbHover = SettingsModel::SidebarHitTest(mainYHv - startY, itemH, sc);
-                if (newSbHover != wd->hoverSidebarIndex) {
-                    wd->hoverSidebarIndex = newSbHover;
-                    InvalidateRect(hWnd, nullptr, FALSE);
-                    TRACKMOUSEEVENT tme = { sizeof(tme), TME_LEAVE, hWnd };
-                    TrackMouseEvent(&tme);
-                }
-                return 0;
-            } else {
-                if (wd->hoverSidebarIndex != -1) {
-                    wd->hoverSidebarIndex = -1;
-                    InvalidateRect(hWnd, nullptr, FALSE);
-                }
-            }
+        SettingsNav::NavEvent ev = {};
+        switch (msg) {
+        case WM_VSCROLL:
+            ev.kind = SettingsNav::EV_CONTENT_VSCROLL;
+            ev.delta = LOWORD(wParam);
+            ev.thumb = HIWORD(wParam);
+            break;
+        case WM_MOUSEWHEEL:
+            ev.kind = SettingsNav::EV_CONTENT_WHEEL;
+            ev.delta = GET_WHEEL_DELTA_WPARAM(wParam);
+            break;
+        case WM_MOUSEMOVE:
+            ev.kind = SettingsNav::EV_CONTENT_MOUSEMOVE;
+            ev.x = GET_X_LPARAM(lParam);
+            ev.y = GET_Y_LPARAM(lParam);
+            break;
+        default:
+            ev.kind = SettingsNav::EV_CONTENT_LBUTTON;
+            ev.x = GET_X_LPARAM(lParam);
+            ev.y = GET_Y_LPARAM(lParam);
+            break;
         }
-
-        int pad = ScaleForDpi(g_geo.cardPad, dpi);
-        int catRowH2 = ScaleForDpi(g_geo.categoryRowH, dpi);
-        int cardGapM = ScaleForDpi(g_geo.cardGap, dpi);
-
-        int newHover = -1;
-        if (wd->navLevel == 0 && wd->selectedModeIndex < 4) {
-            int layoutCount = 0;
-            const LayoutCard* cards = GetIMEPageLayout(&layoutCount);
-            int modeMask = SettingsModel::GetModeBitmask(wd->currentMode);
-            newHover = HitTestCardList(y, cards, layoutCount, modeMask, wd->cardExpanded, 0, dpi, wd->scrollPos);
-        } else if (wd->selectedModeIndex == 5) {
-            int ltCount = 0;
-            const LayoutCard* ltCards = GetLoadTablePageLayout(&ltCount);
-            newHover = HitTestCardList(y, ltCards, ltCount, SM_MODE_ALL, wd->cardExpanded, 4, dpi, wd->scrollPos);
-        } else if (wd->navLevel == 1 && wd->selectedModeIndex < 4) {
-            int layoutCount = 0;
-            const LayoutCard* allCards = GetIMEPageLayout(&layoutCount);
-            if (wd->currentCardIndex >= 0 && wd->currentCardIndex < layoutCount)
-                newHover = HitTestRowCards(y, hWnd, wd, allCards[wd->currentCardIndex], dpi);
-        }
-        if (newHover != wd->hoverRowIndex) {
-            wd->hoverRowIndex = newHover;
-            InvalidateRect(hWnd, nullptr, FALSE);
-            TRACKMOUSEEVENT tme = { sizeof(tme), TME_LEAVE, hWnd };
-            TrackMouseEvent(&tme);
-        }
+        RunNav(GetParent(hWnd), wd, ev);
         return 0;
     }
 
     case WM_MOUSELEAVE:
     {
-        if (wd && wd->hoverRowIndex != -1) {
-            wd->hoverRowIndex = -1;
-            InvalidateRect(hWnd, nullptr, FALSE);
+        if (wd) {
+            SettingsNav::NavEvent ev = {};
+            ev.kind = SettingsNav::EV_CONTENT_MOUSELEAVE;
+            RunNav(GetParent(hWnd), wd, ev);
         }
         break;
-    }
-
-    case WM_LBUTTONDOWN:
-    {
-        if (!wd) break;
-        SetFocus(hWnd);
-        int x = GET_X_LPARAM(lParam), y = GET_Y_LPARAM(lParam);
-        HWND hParent = GetParent(hWnd);
-        UINT dpi = CConfig::GetDpiForHwnd(hParent);
-
-        // Hamburger click — toggle sidebar overlay (MUST be before sidebar click handler)
-        if (wd->sidebarNarrowMode) {
-            int hbSize = ScaleForDpi(g_geo.hamburgerSize, dpi);
-            if (x >= 0 && x < hbSize && y >= 0 && y < hbSize) {
-                wd->sidebarCollapsed = !wd->sidebarCollapsed;
-                if (wd->sidebarCollapsed)
-                    ShowAllControls(wd);
-                else
-                    for (auto& ch : wd->controlHandles)
-                        if (ch.hWnd && IsWindow(ch.hWnd)) ShowWindow(ch.hWnd, SW_HIDE);
-                InvalidateRect(hWnd, nullptr, TRUE);
-                InvalidateRect(hParent, nullptr, TRUE);
-                return 0;
-            }
-        }
-
-        // In narrow mode with sidebar shown as overlay — handle sidebar clicks here
-        if (wd->sidebarNarrowMode && !wd->sidebarCollapsed) {
-            int sidebarWHT = ScaleForDpi(g_geo.sidebarWidth, dpi);
-            if (x < sidebarWHT) {
-                // Sidebar item click — compute Y in main window coords
-                bool hasBcOv = (wd->navLevel == 1 && wd->selectedModeIndex < 4);
-                int bcOffOv = hasBcOv ? ScaleForDpi(g_geo.breadcrumbH, dpi) : 0;
-                int mainY = y + bcOffOv;
-                int startY = ScaleForDpi(g_geo.sidebarStartY, dpi);
-                int itemH = ScaleForDpi(g_geo.sidebarItemH, dpi);
-                int sidebarCount = 0;
-                const SidebarItemDef* sItems = ::GetSidebarItems(&sidebarCount);
-                int idx = SettingsModel::SidebarHitTest(mainY - startY, itemH, sidebarCount);
-                if (idx >= 0 && idx < sidebarCount && sItems[idx].iconResourceId != -1) {
-                    // Auto-collapse sidebar after selection
-                    wd->sidebarCollapsed = true;
-                    if (idx < 4) {
-                        IME_MODE newMode = IndexToMode(idx);
-                        if (newMode != wd->currentMode || wd->navLevel == 1 || wd->selectedModeIndex != idx)
-                            SwitchMode(hParent, wd, newMode);
-                    } else if (idx == 5) {
-                        wd->selectedModeIndex = 5;
-                        wd->navLevel = 0;
-                        wd->scrollPos = 0;
-                        int ltCount = 0;
-                        const LayoutCard* ltCards = GetLoadTablePageLayout(&ltCount);
-                        for (int li = 0; li < ltCount && (4 + li) < 16; li++)
-                            wd->cardExpanded[4 + li] = ltCards[li].defaultExpanded;
-                        RebuildContentArea(hParent, wd);
-                        InvalidateRect(hParent, nullptr, TRUE);
-                        if (wd->hContentArea) InvalidateRect(wd->hContentArea, nullptr, TRUE);
-                    }
-                    ShowAllControls(wd);
-                }
-                return 0;
-            }
-            // Click outside sidebar — auto-collapse
-            wd->sidebarCollapsed = true;
-            ShowAllControls(wd);
-            InvalidateRect(hWnd, nullptr, TRUE);
-            InvalidateRect(hParent, nullptr, TRUE);
-            // Don't return — let the click pass through to content
-        }
-
-        if (wd->navLevel == 0 && wd->selectedModeIndex < 4) {
-            int layoutCount = 0;
-            const LayoutCard* cards = GetIMEPageLayout(&layoutCount);
-            int modeMask = SettingsModel::GetModeBitmask(wd->currentMode);
-            if (HandleCardListClick(y, hWnd, hParent, wd, cards, layoutCount, modeMask, 0, dpi))
-                return 0;
-        } else if (wd->navLevel == 1) {
-            int layoutCount = 0;
-            const LayoutCard* allCards = GetIMEPageLayout(&layoutCount);
-            if (wd->currentCardIndex >= 0 && wd->currentCardIndex < layoutCount) {
-                if (HandleRowCardClick(y, hWnd, wd, allCards[wd->currentCardIndex], dpi))
-                    return 0;
-            }
-        } else if (wd->selectedModeIndex == 5) {
-            int ltPageCount = 0;
-            const LayoutCard* ltCards = GetLoadTablePageLayout(&ltPageCount);
-            if (HandleCardListClick(y, hWnd, hParent, wd, ltCards, ltPageCount, SM_MODE_ALL, 4, dpi))
-                return 0;
-        }
-        return 0;
     }
 
     case WM_COMMAND:

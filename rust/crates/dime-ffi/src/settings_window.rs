@@ -657,3 +657,37 @@ pub unsafe extern "C" fn dime_settings_message_box(
         )
     })
 }
+
+// ---- Phase 5b-8b: navigation reducer (dime-settings::nav) ------------------
+
+use dime_settings::nav::{self, NavEffect, NavEvent, NavState};
+
+/// `SettingsNav::Handle`: update `state` from `ev`, write up to `cap` effects
+/// and the total count. A panic leaves `state` as the reducer left it and
+/// writes no effects.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_nav_handle(
+    state: *mut NavState,
+    ev: *const NavEvent,
+    out: *mut NavEffect,
+    cap: usize,
+    out_count: *mut usize,
+) {
+    guard((), || unsafe {
+        write(out_count, 0);
+        if state.is_null() || ev.is_null() {
+            return;
+        }
+        let effects = nav::handle(&mut *state, &*ev);
+        write_list(&effects, out, cap, out_count);
+    })
+}
+
+/// `SettingsNav::MinTrackSize`: `out` is a POINT.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_nav_min_track_size(screen_dpi: u32, out: *mut [i32; 2]) {
+    guard((), || unsafe {
+        let (x, y) = nav::min_track_size(screen_dpi);
+        write(out, [x, y]);
+    })
+}

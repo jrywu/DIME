@@ -9,6 +9,7 @@
 #include "SettingsController.h"
 #include "SettingsPageLayout.h"
 #include "SettingsGeometry.h"
+#include "SettingsNav.h"
 
 // Window class name for FindWindow / single-instance support
 constexpr wchar_t SETTINGS_WND_CLASS[] = L"DIMESettingsMainClass";
@@ -159,21 +160,14 @@ private:
     static void PaintContent(HWND hWnd, HDC hdc, WindowData* wd);
     static void PaintBreadcrumb(HWND hWnd, HDC hdc, WindowData* wd);
     static void PaintHamburger(HWND hMain, HDC hdc, WindowData* wd, RECT rc, HBRUSH bg);
-    static void NavigateToCategory(HWND hWnd, WindowData* wd, int cardIndex);
     static void AddControl(WindowData* wd, SettingsControlId id, HWND h, int x, int y, int w, int ht, int visH = -1);
     static void CreateRowControl(WindowData* wd, const LayoutRow& lr,
         int ctrlRight, int cy, int ctrlH, int btnH, UINT dpi);
     static void CreateColorGridControls(WindowData* wd, int margin, int curY, int ctrlRight, UINT dpi);
     static void CreateRichEditorControl(WindowData* wd, const LayoutRow& lr,
         int margin, int cardW, int pad, int curY, int thisH, int ctrlRight, int btnW, int btnH, UINT dpi);
-    static int HitTestCardList(int y, const LayoutCard* cards, int cardCount,
-        int modeMask, const bool* cardExpanded, int expandBaseIdx, UINT dpi, int scrollPos);
-    static int HitTestRowCards(int y, HWND hWnd, WindowData* wd, const LayoutCard& card, UINT dpi);
-    static bool HandleCardListClick(int y, HWND hWnd, HWND hParent, WindowData* wd,
-        const LayoutCard* cards, int cardCount, int modeMask, int expandBaseIdx, UINT dpi);
-    static bool HandleRowCardClick(int y, HWND hWnd, WindowData* wd, const LayoutCard& card, UINT dpi);
+    static void RunNav(HWND hMain, WindowData* wd, SettingsNav::NavEvent ev);
     static void ShowAllControls(WindowData* wd);
-    static void NavigateBack(HWND hWnd, WindowData* wd);
     static void UpdateScrollInfo(WindowData* wd);
     static void RepositionControlsForScroll(WindowData* wd);
     static void ApplyAndSave(WindowData* wd);
