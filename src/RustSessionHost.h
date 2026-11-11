@@ -31,6 +31,7 @@ private:
     DimeHost _host;
     std::wstring _scratch;      // strings returned to Rust (valid until the next callback)
     CDIMEArray<CCandidateListItem> _fetched;   // fetch_candidates
+    ITfContext* _notifyContext = nullptr;      // ShowNotifyText's context (the focus one is not released)
 
     static const DimeHostVtbl s_vtbl;
     static CRustSessionHost* Self(void* ctx) { return static_cast<CRustSessionHost*>(ctx); }
@@ -101,6 +102,25 @@ private:
     static uint32_t FetchedCount(void* ctx);
     static size_t FetchedString(void* ctx, uint32_t index, const uint16_t** out);
     static void ShowSentenceCandidates(void* ctx, const uint16_t* const* candidates, const size_t* lens, size_t count, const uint16_t* code, size_t codeLen, int32_t selection);
+    // Phase 4b-2c, in DimeHostVtbl order after the slots above.
+    static void NotifyShowFacts(void* ctx, uint32_t kind, DimeNotifyShowFacts* out);
+    static void NotifyProbe(void* ctx, uint32_t kind);
+    static void CandidateTextFacts(void* ctx, void** range, uint32_t* width, int32_t* showMode);
+    static size_t FetchedKey(void* ctx, uint32_t index, const uint16_t** out);
+    static void ApplyCandidateColors(void* ctx, int32_t phrase);
+    static void UiShow(void* ctx, int32_t show);
+    static void UiUpdate(void* ctx, uint32_t which);
+    static int32_t UiShowMode(void* ctx);
+    static int32_t ArrowSwitchesPages(void* ctx);
+    static void CandidateOpen(void* ctx, int32_t nullRange, DimeCandOpenFacts* out);
+    static void CandidatePlace(void* ctx, DimeLayoutFacts* out);
+    static void EndCandidateList(void* ctx);
+    static int32_t CandidateDeleteBegin(void* ctx, int32_t force);
+    static void CandidateDeleteMid(void* ctx);
+    static void CandidateDeleteEnd(void* ctx);
+    static uint32_t FetchAssociated(void* ctx, uint16_t lastChar);
+    static size_t ReadingForKey(void* ctx, const uint16_t* key, size_t len, const uint16_t** out);
+    static void NotifyEndLayout(void* ctx);
 };
 
 #endif // DIME_RUST_AVAILABLE

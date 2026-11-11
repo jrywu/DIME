@@ -1,6 +1,7 @@
 //! The settings key registry used by the CLI (`g_keyRegistry` in
-//! `DIMESettings/CLI.cpp`): key types, value ranges, which IME modes a key
-//! applies to, and the `--get` / `--set` value formatting and validation.
+//! `DIMESettings/CLI.cpp`, and `cli.rs` on the Rust CLI path): key types,
+//! value ranges, which IME modes a key applies to, and the `--get` / `--set`
+//! value formatting and validation.
 
 use dime_core::text::w;
 

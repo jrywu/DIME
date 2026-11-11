@@ -29,9 +29,14 @@ use dime_core::session;
 use dime_config::{ini, keys, ConfigValues, Env, ImeMode, Settings};
 use dime_core::{CandidateItem, DictionaryType, SearchSection, TableDictionaryEngine, WinTextOps};
 
+mod cli;
+mod host_ui;
+mod langbar;
+mod setup;
+
 pub struct DimeEngine(TableDictionaryEngine<WinTextOps>);
 pub struct DimeItems(Vec<CandidateItem>);
-pub struct DimeBuffer(Vec<u16>);
+pub struct DimeBuffer(pub(crate) Vec<u16>);
 pub struct DimeLexicon(Lexicon);
 pub struct DimeUserModel(UserModel);
 
@@ -1854,6 +1859,26 @@ pub struct DimeHostVtbl {
     pub fetched_count: unsafe extern "C" fn(ctx: *mut c_void) -> u32,
     pub fetched_string: unsafe extern "C" fn(ctx: *mut c_void, index: u32, out: *mut *const u16) -> usize,
     pub show_sentence_candidates: unsafe extern "C" fn(ctx: *mut c_void, candidates: *const *const u16, lens: *const usize, count: usize, code: *const u16, code_len: usize, selection: i32),
+    // Phase 4b-2c, appended: TSF facts for the presenter. Called only when
+    // `DimeHost::presenter` is set; the UI slots above stay for a null presenter.
+    pub notify_show_facts: unsafe extern "C" fn(ctx: *mut c_void, kind: u32, out: *mut host_ui::NotifyShowFacts),
+    pub notify_probe: unsafe extern "C" fn(ctx: *mut c_void, kind: u32),
+    pub candidate_text_facts: unsafe extern "C" fn(ctx: *mut c_void, range: *mut *mut c_void, width: *mut u32, show_mode: *mut i32),
+    pub fetched_key: unsafe extern "C" fn(ctx: *mut c_void, index: u32, out: *mut *const u16) -> usize,
+    pub apply_candidate_colors: unsafe extern "C" fn(ctx: *mut c_void, phrase: i32),
+    pub ui_show: unsafe extern "C" fn(ctx: *mut c_void, show: i32),
+    pub ui_update: unsafe extern "C" fn(ctx: *mut c_void, which: u32),
+    pub ui_show_mode: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub arrow_switches_pages: unsafe extern "C" fn(ctx: *mut c_void) -> i32,
+    pub candidate_open: unsafe extern "C" fn(ctx: *mut c_void, null_range: i32, out: *mut host_ui::CandOpenFacts),
+    pub candidate_place: unsafe extern "C" fn(ctx: *mut c_void, out: *mut presenter::LayoutFacts),
+    pub end_candidate_list: unsafe extern "C" fn(ctx: *mut c_void),
+    pub candidate_delete_begin: unsafe extern "C" fn(ctx: *mut c_void, force: i32) -> i32,
+    pub candidate_delete_mid: unsafe extern "C" fn(ctx: *mut c_void),
+    pub candidate_delete_end: unsafe extern "C" fn(ctx: *mut c_void),
+    pub fetch_associated: unsafe extern "C" fn(ctx: *mut c_void, last_char: u16) -> u32,
+    pub reading_for_key: unsafe extern "C" fn(ctx: *mut c_void, key: *const u16, len: usize, out: *mut *const u16) -> usize,
+    pub notify_end_layout: unsafe extern "C" fn(ctx: *mut c_void),
 }
 
 /// IME state owned by Rust, kept by `CDIME` across edit sessions.
@@ -1864,6 +1889,9 @@ pub struct DimeHost {
     pub vtbl: *const DimeHostVtbl,
     pub ctx: *mut c_void,
     pub session: *mut DimeSession,
+    /// `CUIPresenter::_rp` when that presenter owns the windows (phase 4b-2c).
+    /// Null: the UI slots of the vtable still do the work.
+    pub presenter: *mut DimePresenter,
 }
 
 struct FfiHost<'a> {
@@ -1873,6 +1901,8 @@ struct FfiHost<'a> {
     /// `dime_session_*`) while a handler runs; Rust never keeps a borrow of it
     /// across a callback (every access goes through `state()` / `state_ref()`).
     state: *mut session::SessionState,
+    /// The presenter, or null (the UI vtable slots). Not borrowed across a callback.
+    presenter: *mut DimePresenter,
 }
 
 /// Copy a host string (`ptr`, `len`), null meaning empty.
@@ -1930,12 +1960,8 @@ impl session::Host for FfiHost<'_> {
     host_unit!(
         remove_dummy_composition,
         terminate_composition,
-        notify_selected_key_code,
         start_composition,
         async_reverse_conversion,
-        set_candidate_text,
-        clear_candidate_list,
-        hide_candidate_window,
         sentence_learn,
         sentence_clear_display
     );
@@ -1955,24 +1981,63 @@ impl session::Host for FfiHost<'_> {
         unsafe { (self.v.add_char_and_finalize)(self.ctx, text.as_ptr(), text.len()) }
     }
     fn delete_candidate_list(&mut self, force: bool) {
-        unsafe { (self.v.delete_candidate_list)(self.ctx, i32::from(force)) }
+        if self.presenter.is_null() {
+            unsafe { (self.v.delete_candidate_list)(self.ctx, i32::from(force)) };
+            return;
+        }
+        // EndUIElement, then clear while the window still exists, UpdateUIElement,
+        // dispose, EndLayout. The mode reset is the session's either way.
+        let tear = unsafe { (self.v.candidate_delete_begin)(self.ctx, i32::from(force)) } != 0;
+        if tear {
+            if let Some(p) = self.pres() {
+                p.clear_list();
+                if let Some(w) = p.cand_window() {
+                    w.invalidate();
+                }
+            }
+            unsafe { (self.v.candidate_delete_mid)(self.ctx) };
+            if let Some(p) = self.pres() {
+                p.dispose_candidate();
+            }
+            unsafe { (self.v.candidate_delete_end)(self.ctx) };
+        }
+        self.state().candidate_mode = 0;
+        self.state().candidate_with_wildcard = 0;
     }
     fn selected_candidate(&self) -> Vec<u16> {
+        if let Some(p) = self.pres() {
+            return host_ui::list_string(p, p.cand_list().map(|l| l.selection()).unwrap_or(-1));
+        }
         let mut p: *const u16 = ptr::null();
         let len = unsafe { (self.v.selected_candidate)(self.ctx, &mut p) };
         host_string(p, len)
     }
     fn candidate_selection(&self) -> i32 {
+        if let Some(p) = self.pres() {
+            return p.cand_list().map(|l| l.selection()).unwrap_or(-1);
+        }
         unsafe { (self.v.candidate_selection)(self.ctx) }
     }
     fn selkey_index(&self, code: u32, wch: u16) -> i32 {
         unsafe { (self.v.selkey_index)(self.ctx, code, wch) }
     }
     fn set_candidate_selection_in_page(&mut self, index: i32) -> bool {
+        if let Some(p) = self.pres() {
+            // No invalidate: `_SetCandidateSelectionInPage` only moves the index.
+            return p.set_selection_in_page(index);
+        }
         unsafe { (self.v.set_candidate_selection_in_page)(self.ctx, index) != 0 }
     }
     fn advise_ui_changed_by_arrow_key(&mut self, function: u32) {
-        unsafe { (self.v.advise_ui_changed_by_arrow_key)(self.ctx, function) }
+        if self.presenter.is_null() {
+            unsafe { (self.v.advise_ui_changed_by_arrow_key)(self.ctx, function) };
+            return;
+        }
+        let ui_less = unsafe { (self.v.ui_show_mode)(self.ctx) } == 0;
+        let switch_pages = unsafe { (self.v.arrow_switches_pages)(self.ctx) } != 0;
+        if let Some(arrow) = host_ui::arrow_action(function, ui_less, switch_pages) {
+            self.apply_arrow(arrow);
+        }
     }
     fn array_special_code_matches(&mut self) -> bool {
         unsafe { (self.v.array_special_code_matches)(self.ctx) != 0 }
@@ -1989,10 +2054,48 @@ impl session::Host for FfiHost<'_> {
         host_string(p, len)
     }
     fn show_notify(&mut self, text: &[u16], kind: u32) {
-        unsafe { (self.v.show_notify)(self.ctx, text.as_ptr(), text.len(), kind) }
+        if self.presenter.is_null() {
+            unsafe { (self.v.show_notify)(self.ctx, text.as_ptr(), text.len(), kind) };
+            return;
+        }
+        let mut facts = host_ui::NotifyShowFacts::default();
+        unsafe { (self.v.notify_show_facts)(self.ctx, kind, &mut facts) };
+        let probe = self.pres().is_some_and(|p| host_ui::show_notify(p, text, kind, &facts));
+        if probe {
+            unsafe { (self.v.notify_probe)(self.ctx, kind) };
+        }
+    }
+    fn notify_selected_key_code(&mut self) {
+        if self.presenter.is_null() {
+            unsafe { (self.v.notify_selected_key_code)(self.ctx) };
+            return;
+        }
+        let key = self.pres().map(host_ui::selected_key).unwrap_or_default();
+        let (kp, kn) = if key.is_empty() { (ptr::null(), 0) } else { (key.as_ptr(), key.len()) };
+        let mut p: *const u16 = ptr::null();
+        let len = unsafe { (self.v.reading_for_key)(self.ctx, kp, kn, &mut p) };
+        // Copied before show_notify: that call uses the host scratch again.
+        let reading = host_string(p, len);
+        self.show_notify(&reading, host_ui::NOTIFY_REVERSE);
     }
     fn show_associated_phrases(&mut self, last_char: u16) -> bool {
-        unsafe { (self.v.show_associated_phrases)(self.ctx, last_char) != 0 }
+        if self.presenter.is_null() {
+            return unsafe { (self.v.show_associated_phrases)(self.ctx, last_char) != 0 };
+        }
+        let n = unsafe { (self.v.fetch_associated)(self.ctx, last_char) };
+        if n == 0 {
+            return false;
+        }
+        let items = self.fetched_pairs(false);
+        self.clear_presenter_list();
+        self.apply_list(&items, false, true);
+        self.finish_selection(-1, false);
+        // Mode is already PHRASE before the window is (re)started, so this must
+        // not go through create_and_start (that returns without opening).
+        self.set_candidate_mode(session::candidate_mode::PHRASE);
+        self.set_candidate_with_wildcard(false);
+        let _hr = self.open_candidate(true);
+        true
     }
     fn add_composing_and_char(&mut self, text: Option<&[u16]>) -> i32 {
         let (p, len) = text.map_or((ptr::null(), 0), |t| (t.as_ptr(), t.len()));
@@ -2035,11 +2138,50 @@ impl session::Host for FfiHost<'_> {
             )
         }
     }
+    fn set_candidate_text(&mut self) {
+        if self.presenter.is_null() {
+            unsafe { (self.v.set_candidate_text)(self.ctx) };
+            return;
+        }
+        let items = self.fetched_pairs(true);
+        self.apply_list(&items, true, false);
+    }
+    fn clear_candidate_list(&mut self) {
+        if self.presenter.is_null() {
+            unsafe { (self.v.clear_candidate_list)(self.ctx) };
+            return;
+        }
+        self.clear_presenter_list();
+    }
+    fn hide_candidate_window(&mut self) {
+        if self.presenter.is_null() {
+            unsafe { (self.v.hide_candidate_window)(self.ctx) };
+            return;
+        }
+        let any_notify = self.pres().is_some_and(host_ui::hide_candidate);
+        if any_notify {
+            unsafe { (self.v.notify_end_layout)(self.ctx) };
+            if let Some(p) = self.pres() {
+                p.dispose(None);
+            }
+        }
+        unsafe { (self.v.ui_update)(self.ctx, host_ui::UI_HIDE) };
+    }
     fn create_and_start_candidate(&mut self) -> i32 {
-        unsafe { (self.v.create_and_start_candidate)(self.ctx) }
+        if self.presenter.is_null() {
+            return unsafe { (self.v.create_and_start_candidate)(self.ctx) };
+        }
+        self.open_candidate(false)
     }
     fn composition_arrow_key(&mut self, function: u32) {
-        unsafe { (self.v.composition_arrow_key)(self.ctx, function) }
+        // Advise first, then put the selection back. The C++ callback is the
+        // TSF half only, so a null presenter advises through the old slot.
+        if self.presenter.is_null() {
+            unsafe { (self.v.advise_ui_changed_by_arrow_key)(self.ctx, function) };
+        } else {
+            self.advise_ui_changed_by_arrow_key(function);
+        }
+        unsafe { (self.v.composition_arrow_key)(self.ctx, function) };
     }
 
     fn state(&mut self) -> &mut session::SessionState {
@@ -2075,22 +2217,163 @@ impl session::Host for FfiHost<'_> {
             .collect()
     }
     fn show_sentence_candidates(&mut self, pos: usize) {
-        // The window keeps these pointers: they point into the session's
-        // sentence, which does not change while the window is open.
-        let position = unsafe { (*self.state).sentence.at(pos) };
-        let ptrs: Vec<*const u16> = position.candidates.iter().map(|c| c.as_ptr()).collect();
-        let lens: Vec<usize> = position.candidates.iter().map(Vec::len).collect();
-        unsafe {
-            (self.v.show_sentence_candidates)(
-                self.ctx,
-                ptrs.as_ptr(),
-                lens.as_ptr(),
-                ptrs.len(),
-                position.code.as_ptr(),
-                position.code.len(),
-                position.chosen,
-            )
+        if self.presenter.is_null() {
+            // The window keeps these pointers: they point into the session's
+            // sentence, which does not change while the window is open.
+            let position = unsafe { (*self.state).sentence.at(pos) };
+            let ptrs: Vec<*const u16> = position.candidates.iter().map(|c| c.as_ptr()).collect();
+            let lens: Vec<usize> = position.candidates.iter().map(Vec::len).collect();
+            unsafe {
+                (self.v.show_sentence_candidates)(
+                    self.ctx,
+                    ptrs.as_ptr(),
+                    lens.as_ptr(),
+                    ptrs.len(),
+                    position.code.as_ptr(),
+                    position.code.len(),
+                    position.chosen,
+                )
+            }
+            return;
         }
+        let (cands, code, chosen) = {
+            let position = unsafe { (*self.state).sentence.at(pos) };
+            (position.candidates.clone(), position.code.clone(), position.chosen)
+        };
+        let items: Vec<(Vec<u16>, Vec<u16>)> = cands.into_iter().map(|c| (c, code.clone())).collect();
+        self.clear_presenter_list();
+        self.apply_list(&items, false, false);
+        self.finish_selection(chosen, false);
+    }
+}
+
+impl FfiHost<'_> {
+    fn pres(&self) -> Option<&presenterwin::Presenter> {
+        unsafe { self.presenter.as_ref().map(|d| d.presenter()) }
+    }
+
+    /// `_SetCandidateText` for an owned list. `with_key` keeps find-key codes.
+    fn apply_list(&mut self, items: &[(Vec<u16>, Vec<u16>)], with_key: bool, phrase: bool) {
+        unsafe { (self.v.apply_candidate_colors)(self.ctx, i32::from(phrase)) };
+        let mut range: *mut c_void = ptr::null_mut();
+        let mut width = 0u32;
+        let mut show_mode = 0i32;
+        unsafe { (self.v.candidate_text_facts)(self.ctx, &mut range, &mut width, &mut show_mode) };
+        let refs: Vec<(&[u16], &[u16])> = items.iter().map(|(t, k)| (t.as_slice(), k.as_slice())).collect();
+        if let Some(p) = self.pres() {
+            host_ui::add_candidate_page(p, &refs, with_key, range, width);
+        }
+        // Re-read: BeginUIElement may have changed it since the facts were filled.
+        let mode = unsafe { (self.v.ui_show_mode)(self.ctx) };
+        unsafe { (self.v.ui_show)(self.ctx, mode) };
+        let show = unsafe { (self.v.ui_show_mode)(self.ctx) } != 0;
+        let has = self.pres().is_some_and(|p| p.has_candidate());
+        if show && has {
+            if let Some(w) = self.pres().and_then(|p| p.cand_window()) {
+                w.invalidate();
+            }
+        } else {
+            unsafe { (self.v.ui_update)(self.ctx, host_ui::UI_COUNT_STRING) };
+        }
+    }
+
+    fn clear_presenter_list(&mut self) {
+        if let Some(p) = self.pres() {
+            p.clear_list();
+            if let Some(w) = p.cand_window() {
+                w.invalidate();
+            }
+        }
+    }
+
+    /// `_SetCandidateSelection`: invalidate, or the selection+page UI element.
+    fn finish_selection(&mut self, index: i32, notify: bool) {
+        let applied = self.pres().is_some_and(|p| p.set_selection(index, notify));
+        if !applied {
+            return;
+        }
+        self.after_move(true);
+    }
+
+    fn apply_arrow(&mut self, arrow: host_ui::Arrow) {
+        let ok = match arrow {
+            host_ui::Arrow::MoveSelection(offset) => self.pres().is_some_and(|p| p.move_selection(offset, true)),
+            host_ui::Arrow::MovePage(offset) => self.pres().is_some_and(|p| p.move_page(offset, true)),
+            host_ui::Arrow::Select(index) => self.pres().is_some_and(|p| p.set_selection(index, true)),
+        };
+        if ok {
+            self.after_move(host_ui::arrow_updates_page(arrow));
+        }
+    }
+
+    fn after_move(&mut self, page: bool) {
+        let show = unsafe { (self.v.ui_show_mode)(self.ctx) } != 0;
+        if show {
+            if let Some(w) = self.pres().and_then(|p| p.cand_window()) {
+                w.invalidate();
+            }
+        } else {
+            let which = if page { host_ui::UI_SELECTION_PAGE } else { host_ui::UI_SELECTION };
+            unsafe { (self.v.ui_update)(self.ctx, which) };
+        }
+    }
+
+    /// Item strings of the fetched list, with key codes when `with_key`.
+    fn fetched_pairs(&self, with_key: bool) -> Vec<(Vec<u16>, Vec<u16>)> {
+        let count = unsafe { (self.v.fetched_count)(self.ctx) };
+        (0..count)
+            .map(|i| {
+                let mut text: *const u16 = ptr::null();
+                let text_len = unsafe { (self.v.fetched_string)(self.ctx, i, &mut text) };
+                let text = host_string(text, text_len);
+                let key = if with_key {
+                    let mut k: *const u16 = ptr::null();
+                    let key_len = unsafe { (self.v.fetched_key)(self.ctx, i, &mut k) };
+                    host_string(k, key_len)
+                } else {
+                    Vec::new()
+                };
+                (text, key)
+            })
+            .collect()
+    }
+
+    /// `_StartCandidateList`. `null_range` is the phrase list (no composition range,
+    /// and the `CANDIDATE_NONE` gate does not apply).
+    fn open_candidate(&mut self, null_range: bool) -> i32 {
+        let mut facts = host_ui::CandOpenFacts::default();
+        unsafe { (self.v.candidate_open)(self.ctx, i32::from(null_range), &mut facts) };
+        if facts.go == 0 {
+            return 0;
+        }
+        if facts.go == 2 {
+            unsafe { (self.v.end_candidate_list)(self.ctx) };
+            return facts.hr;
+        }
+        let hr = match self.pres() {
+            Some(p) if p.has_candidate() => 0,
+            Some(_) if facts.text_service == 0 => candidates::E_FAIL,
+            Some(p) => {
+                if unsafe { host_ui::make_candidate(p, &facts) } {
+                    0
+                } else {
+                    candidates::E_FAIL
+                }
+            }
+            None => candidates::E_FAIL,
+        };
+        if hr >= 0 {
+            let mode = unsafe { (self.v.ui_show_mode)(self.ctx) };
+            unsafe { (self.v.ui_show)(self.ctx, mode) };
+            let mut layout = presenter::LayoutFacts::default();
+            unsafe { (self.v.candidate_place)(self.ctx, &mut layout) };
+            if let Some(p) = self.pres() {
+                host_ui::layout_from_place(p, &layout);
+            }
+        } else {
+            unsafe { (self.v.end_candidate_list)(self.ctx) };
+        }
+        hr
     }
 }
 
@@ -2116,6 +2399,7 @@ unsafe fn with_host(host: *const DimeHost, f: impl FnOnce(&mut FfiHost<'_>) -> i
             v,
             ctx: h.ctx,
             state: unsafe { ptr::addr_of_mut!((*h.session).0) },
+            presenter: h.presenter,
         };
         f(&mut fh)
     })
@@ -2320,6 +2604,18 @@ pub unsafe extern "C" fn dime_session_handle_sentence_arrow_key(host: *const Dim
 #[no_mangle]
 pub extern "C" fn dime_session_new() -> *mut DimeSession {
     guard(ptr::null_mut(), || boxed(DimeSession(session::SessionState::new())))
+}
+
+/// `sizeof` of the 4b-2c fact structs, so C++ can assert the layouts match.
+///
+/// # Safety
+/// The pointers are written when non-null.
+#[no_mangle]
+pub unsafe extern "C" fn dime_host_fact_sizes(notify_show: *mut usize, cand_open: *mut usize) {
+    unsafe {
+        set(notify_show, std::mem::size_of::<host_ui::NotifyShowFacts>());
+        set(cand_open, std::mem::size_of::<host_ui::CandOpenFacts>());
+    }
 }
 
 /// # Safety
@@ -2804,6 +3100,12 @@ pub struct DimeCandItem {
 
 /// An opaque presenter.
 pub struct DimePresenter(presenterwin::Presenter);
+
+impl DimePresenter {
+    pub(crate) fn presenter(&self) -> &presenterwin::Presenter {
+        &self.0
+    }
+}
 
 /// `f` on the presenter; the default for a null one or a panic.
 unsafe fn with_presenter<R: Default>(p: *const DimePresenter, f: impl FnOnce(&presenterwin::Presenter) -> R) -> R {

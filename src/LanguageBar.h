@@ -100,4 +100,9 @@ private:
 
     LONG _refCount;
 };
+
+#ifdef DIME_UNIT_TESTING
+typedef void (*DimeLangNotifyFn)(const wchar_t* text, unsigned len, unsigned delay);
+extern DimeLangNotifyFn g_dimeLangNotify;
+#endif
 #endif

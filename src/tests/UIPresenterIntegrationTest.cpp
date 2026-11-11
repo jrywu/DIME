@@ -777,7 +777,7 @@ namespace DIMEIntegratedTests
             pUIPresenter->Release();
         }
 
-        // The notify windows UIPresenter makes (CRustNotifyWindow in the Rust build) are real
+        // The notify windows UIPresenter makes (the Rust presenter in the Rust build) are real
         // windows of DIME.NotifyWindow: shown, sized from their text, stacked by UIPresenter,
         // hidden by their own auto-hide timer, destroyed per slot and all together.
         TEST_METHOD(IT06_04_NotifyWindowIsReal)

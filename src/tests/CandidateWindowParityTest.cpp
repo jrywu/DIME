@@ -23,7 +23,7 @@
 #include "../Globals.h"
 #include "../Config.h"
 #include "../CandidateWindow.h"
-#include "../RustCandidateWindow.h"
+#include "RustCandidateWindow.h"
 #include "../BaseStructure.h"
 #include "../Define.h"
 #include "WindowClassTestHelper.h"

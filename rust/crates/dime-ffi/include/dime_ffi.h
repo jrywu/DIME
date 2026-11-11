@@ -458,7 +458,46 @@ size_t dime_associated_phrase_key(const uint16_t* text, size_t len, int32_t phra
  * implemented in C++ (RustSessionHost.cpp). Callbacks must not throw.
  * Booleans are int32_t; handlers return HRESULT. Strings returned through
  * `out` must stay valid until the next callback. The field order must match
- * DimeHostVtbl in rust/crates/dime-ffi/src/lib.rs. */
+ * DimeHostVtbl in rust/crates/dime-ffi/src/lib.rs.
+ *
+ * Phase 4b-2c appends fact callbacks. When DimeHost::presenter is set, Rust
+ * drives the presenter itself and calls only those; the UI slots above stay
+ * for a null presenter (the C++ build). */
+
+/* ShowNotifyText's Win32/TSF facts (host_ui::NotifyShowFacts). */
+typedef struct DimeNotifyShowFacts {
+    int32_t has_context;
+    int32_t have_view;
+    void* parent;             /* MakeNotifyWindow parent (first GetActiveView) */
+    void* view_parent;        /* second GetActiveView's window; may be null while have_view is 1 */
+    void* hinstance;
+    uint32_t notify_class;
+    uint32_t notify_shadow_class;
+    uint32_t color;
+    uint32_t bk;
+    int32_t refresh;          /* 1 for reverse lookup, special code, beep */
+    int32_t has_parent;
+    int32_t rc_left, rc_top, rc_right, rc_bottom;
+    int32_t caret_x, caret_y;
+} DimeNotifyShowFacts;
+
+struct DimeLayoutFacts;   /* defined with the presenter; candidate_place writes one */
+
+/* _StartCandidateList's facts (host_ui::CandOpenFacts). go: 0 skip S_OK, 1 proceed, 2 layout failed. */
+typedef struct DimeCandOpenFacts {
+    int32_t go;
+    int32_t hr;
+    int32_t text_service;
+    int32_t show_mode;
+    void* parent;
+    void* hinstance;
+    void* range;              /* CCandidateRange* */
+    uint32_t width;
+    uint32_t fill;
+    uint32_t number, number_bk, text, bk, selected_text, selected_bk;
+    uint32_t cls_candidate, cls_shadow, cls_scroll, cls_notify, cls_notify_shadow;
+} DimeCandOpenFacts;
+
 typedef struct DimeHostVtbl {
     int32_t (*is_composing)(void* ctx);
     int32_t (*is_full_shape)(void* ctx);
@@ -523,15 +562,36 @@ typedef struct DimeHostVtbl {
     uint32_t (*fetched_count)(void* ctx);
     size_t (*fetched_string)(void* ctx, uint32_t index, const uint16_t** out);
     void (*show_sentence_candidates)(void* ctx, const uint16_t* const* candidates, const size_t* lens, size_t count, const uint16_t* code, size_t code_len, int32_t selection);
+    /* Phase 4b-2c, appended. See the comment above DimeNotifyShowFacts. */
+    void (*notify_show_facts)(void* ctx, uint32_t kind, DimeNotifyShowFacts* out);
+    void (*notify_probe)(void* ctx, uint32_t kind);
+    void (*candidate_text_facts)(void* ctx, void** range, uint32_t* width, int32_t* show_mode);
+    size_t (*fetched_key)(void* ctx, uint32_t index, const uint16_t** out);
+    void (*apply_candidate_colors)(void* ctx, int32_t phrase);
+    void (*ui_show)(void* ctx, int32_t show);
+    void (*ui_update)(void* ctx, uint32_t which);   /* 0 keep, 1 selection, 2 selection|page, 3 count|string, 4 hide */
+    int32_t (*ui_show_mode)(void* ctx);
+    int32_t (*arrow_switches_pages)(void* ctx);
+    void (*candidate_open)(void* ctx, int32_t null_range, DimeCandOpenFacts* out);
+    void (*candidate_place)(void* ctx, struct DimeLayoutFacts* out);
+    void (*end_candidate_list)(void* ctx);
+    int32_t (*candidate_delete_begin)(void* ctx, int32_t force);   /* 1: tear the list down */
+    void (*candidate_delete_mid)(void* ctx);
+    void (*candidate_delete_end)(void* ctx);
+    uint32_t (*fetch_associated)(void* ctx, uint16_t last_char);
+    size_t (*reading_for_key)(void* ctx, const uint16_t* key, size_t len, const uint16_t** out);
+    void (*notify_end_layout)(void* ctx);
 } DimeHostVtbl;
 
 /* IME state owned by Rust, kept by CDIME across edit sessions. */
 typedef struct DimeSession DimeSession;
 
+struct DimePresenter;
 typedef struct DimeHost {
     const DimeHostVtbl* vtbl;
     void* ctx;
     DimeSession* session;
+    struct DimePresenter* presenter;   /* phase 4b-2c; null: the UI slots above */
 } DimeHost;
 
 int32_t dime_session_handle_complete(const DimeHost* host);
@@ -558,6 +618,7 @@ int32_t dime_session_handle_sentence_arrow_key(const DimeHost* host, uint32_t fu
 int32_t dime_session_handle_key(const DimeHost* host, uint32_t category, uint32_t function, uint32_t code, uint16_t wch);
 
 DimeSession* dime_session_new(void);
+void         dime_host_fact_sizes(size_t* notify_show, size_t* cand_open);   /* sizeof the 4b-2c fact structs */
 void        dime_session_free(DimeSession* s);
 int32_t     dime_session_sentence_pending(const DimeSession* s);
 int32_t     dime_session_sentence_learn(const DimeSession* s, DimeUserModel* user);
@@ -905,6 +966,191 @@ void  dime_ui_shadow_show(const DimeShadow* s, int32_t on);
 void  dime_ui_shadow_owner_moved(const DimeShadow* s, int32_t resized);
 void  dime_ui_shadow_setting_change(const DimeShadow* s);
 void  dime_ui_shadow_state(const DimeShadow* s, uint32_t* color, DimePoint* shift, int32_t* gradient);   /* tests */
+
+/* ---- Engine setup (phase 4c, rust/crates/dime-core/src/engine_setup.rs) ----
+ * Rust chooses which table to copy, open, reload, or alias. The host performs
+ * filesystem and CFile / engine operations. Callback order is the vtable order.
+ * id is kind * 16 + slot (kind: 0 main, 1 custom, 2 phrase, 3 ext-b, 4 ext-cd,
+ * 5 ext-e, 6 array-phrase, 7 special, 8 short, 9 tcsc, 10 tcfreq).
+ */
+typedef struct DimeSetupHost DimeSetupHost;
+typedef struct DimeSetupHostVtbl {
+    int    (*path_exists)(DimeSetupHost*, const uint16_t* path, size_t len);
+    /* 0 when _wstat fails (the caller's timestamp stays). 1 and *mtime set on success. */
+    int    (*file_mtime)(DimeSetupHost*, const uint16_t* path, size_t len, int64_t* mtime);
+    void   (*copy_file)(DimeSetupHost*, const uint16_t* src, size_t slen, const uint16_t* dst, size_t dlen, int fail_if_exists);
+    void   (*create_dir)(DimeSetupHost*, const uint16_t* path, size_t len);
+    int    (*path_equal)(DimeSetupHost*, uint32_t locale, const uint16_t* a, size_t alen, const uint16_t* b, size_t blen);
+    int    (*has_file)(DimeSetupHost*, int32_t id);
+    int    (*has_engine)(DimeSetupHost*, int32_t id);
+    int    (*dict_type)(DimeSetupHost*, int32_t id);   /* -1 when there is no engine */
+    int    (*file_updated)(DimeSetupHost*, int32_t id);
+    size_t (*file_name)(DimeSetupHost*, int32_t id, uint16_t* buf, size_t cap);   /* units written */
+    void   (*drop_file)(DimeSetupHost*, int32_t id);
+    void   (*drop_engine)(DimeSetupHost*, int32_t id);
+    int    (*new_file)(DimeSetupHost*, int32_t id);   /* leaks a previous CFile, as C++ does */
+    int    (*create_file)(DimeSetupHost*, int32_t id, const uint16_t* path, size_t len, uint32_t share_mode);
+    int    (*create_engine)(DimeSetupHost*, int32_t id, uint32_t locale, int32_t dict_type);   /* does not delete the previous */
+    void   (*parse_config)(DimeSetupHost*, int32_t id, int32_t mode);   /* no-op when the engine is null */
+    void   (*alias_phrase_to_main)(DimeSetupHost*, int32_t slot);
+    void   (*setup_big5)(DimeSetupHost*, int32_t mode, uint32_t locale);
+    void   (*setup_keystroke)(DimeSetupHost*, int32_t mode);             /* public SetupKeystroke */
+    void   (*load_config)(DimeSetupHost*, int32_t mode);
+    void   (*setup_configuration)(DimeSetupHost*, int32_t mode);
+    void   (*setup_candidate_range)(DimeSetupHost*, int32_t mode);       /* public SetupCandidateListRange */
+    int    (*has_text_service)(DimeSetupHost*);
+    int    (*array_scope)(DimeSetupHost*);
+    int    (*active_mode)(DimeSetupHost*);
+    int    (*do_han_convert)(DimeSetupHost*);
+} DimeSetupHostVtbl;
+struct DimeSetupHost { const DimeSetupHostVtbl* vtbl; void* ctx; };
+
+/* 1 / 0. settings_build skips SetupCandidateListRange on a reload (DIMESettings). */
+int dime_setup_dictionary(DimeSetupHost* host, int32_t mode, uint32_t locale, int32_t settings_build,
+                          const uint16_t* app, size_t app_len, const uint16_t* pf, size_t pf_len);
+int dime_setup_han_convert(DimeSetupHost* host, uint32_t locale,
+                           const uint16_t* app, size_t app_len, const uint16_t* pf, size_t pf_len);
+int dime_setup_tc_freq(DimeSetupHost* host, uint32_t locale,
+                       const uint16_t* app, size_t app_len, const uint16_t* pf, size_t pf_len);
+
+/* Natural alignment, 20 bytes. function is KEYSTROKE_FUNCTION. */
+typedef struct DimeKeystrokeOut {
+    uint32_t index;
+    uint16_t printable;
+    uint16_t cand_index;
+    uint32_t virtual_key;
+    uint32_t modifiers;
+    uint32_t function;
+} DimeKeystrokeOut;
+
+/* Writes min(97, cap) rows. Returns the full row count (97). *inserted_equal is 1 when Dayi added '='. */
+size_t dime_build_keystrokes(int32_t mode, const uint16_t* radicals, size_t radical_count,
+                             const uint16_t* endkey, size_t endkey_len,
+                             DimeKeystrokeOut* out, size_t cap, int32_t* inserted_equal);
+/* *page_size is the C++ page size (the dangling else is preserved). Returns entries written. */
+size_t dime_build_candidate_range(int32_t mode, int32_t global_mode, int32_t dayi_selkey_mode,
+                                  int32_t space_as_first, int32_t array_scope,
+                                  const uint16_t* selkey, size_t selkey_len,
+                                  DimeKeystrokeOut* cand, DimeKeystrokeOut* phrase, size_t cap,
+                                  uint32_t* page_size);
+
+/* desc_len 0: the C++ resource string (ids 0 and 1). Otherwise a literal, not NUL-terminated. */
+typedef struct DimePreservedKey {
+    uint32_t id;
+    uint32_t vkey;
+    uint32_t modifiers;
+    uint32_t desc_len;
+} DimePreservedKey;
+int dime_preserved_key_count(void);
+int dime_preserved_key_at(int32_t index, DimePreservedKey* out, uint16_t* desc, size_t desc_cap);
+
+/* ---- Language bar (phase 4d, rust/crates/dime-core/src/langbar.rs) ----
+ * Rust decides when to sync a compartment, switch shape, or show text.
+ * The host reads and writes compartments and runs the side effect immediately,
+ * so a sink can re-enter before the callback returns.
+ * Bool ids: 0 double/single, 1 keyboard open, 2 IME mode.
+ * Keyboard which: 0 OPENCLOSE, 1 IME mode, anything else neither.
+ * Preserved ids: 0 IME, 1 width, 2 config, 3 han; anything else is eaten.
+ * Show kinds: 0 Chinese/English (desktop-notify gate), 1 full/half, 2 han.
+ * get_* returns 1 and writes *out on SUCCEEDED (including S_FALSE). 0 is a failed HRESULT.
+ * dime_langbar_preserved returns 1 when the key is eaten.
+ */
+typedef struct DimeLangHost DimeLangHost;
+typedef struct DimeLangHostVtbl {
+    int      (*has_conversion)(DimeLangHost*);
+    int      (*get_conversion)(DimeLangHost*, uint32_t* out);
+    void     (*set_conversion)(DimeLangHost*, uint32_t mode);
+    int      (*get_bool)(DimeLangHost*, int32_t id, int32_t* out);
+    void     (*set_bool)(DimeLangHost*, int32_t id, int32_t value);
+    int      (*windows8)(DimeLangHost*);
+    void     (*set_chinese)(DimeLangHost*, int32_t on);
+    void     (*set_full_shape)(DimeLangHost*, int32_t on);
+    void     (*end_composition_if_any)(DimeLangHost*);
+    void     (*delete_candidate)(DimeLangHost*, int32_t force);
+    int      (*width_mode)(DimeLangHost*);
+    void     (*set_width_mode)(DimeLangHost*, int32_t mode);
+    int      (*notify_desktop)(DimeLangHost*);
+    void     (*show_text)(DimeLangHost*, const uint16_t* text, size_t len, uint32_t delay);
+    int      (*shift_mode)(DimeLangHost*);
+    int      (*shift_key_only)(DimeLangHost*);
+    uint32_t (*modifiers)(DimeLangHost*);
+    int      (*do_han)(DimeLangHost*);
+    void     (*set_do_han)(DimeLangHost*, int32_t on);
+    void     (*write_config)(DimeLangHost*);
+    void     (*setup_han)(DimeLangHost*);
+    void     (*inject_space)(DimeLangHost*);
+    void     (*show_config)(DimeLangHost*);
+    int      (*has_text_service)(DimeLangHost*);
+} DimeLangHostVtbl;
+struct DimeLangHost { const DimeLangHostVtbl* vtbl; void* ctx; };
+
+void dime_langbar_conversion(DimeLangHost* host, int has_override, int override_open);
+void dime_langbar_private(DimeLangHost* host);
+void dime_langbar_keyboard(DimeLangHost* host, int32_t which);
+int  dime_langbar_preserved(DimeLangHost* host, int32_t id);
+void dime_langbar_keyboard_side(DimeLangHost* host, int open);
+void dime_langbar_shape(DimeLangHost* host, int full);
+void dime_langbar_show(DimeLangHost* host, int32_t kind, int on, uint32_t delay);
+
+/* ---- CLI (phase 5a, dime-config::cli) ----------------------------------
+ * dime_cli_parse fills DimeCliArgs (fixed buffers are NUL-terminated; strings
+ * are already truncated like StringCchCopyW). Returns 1, or 0 and an error
+ * buffer (trailing newline included; free with dime_buffer_free).
+ * dime_cli_run is RunCLI. The host performs file and CConfig side effects.
+ * Vtable order is frozen: dime-ffi/src/cli.rs and CLI.cpp kCliVtbl.
+ * array_table is -1 when the command is not --load-array.
+ * main_dest / array_dest return 0 when the mode or table is not valid.
+ * write_utf16_bom: 0 ok, 1 open failed (*gle = GetLastError), 2 write failed.
+ * copy_file / parse_cin / file_exists / load_text: 1 success, 0 failure.
+ * set_value: 0 ok, 1 rejected, 2 failure. *error is optional.
+ * validate_line: 0 valid, 1 format, 2 key too long, 3 invalid char.
+ */
+typedef struct DimeCliArgs {
+    int32_t command;
+    int32_t mode;
+    int32_t has_mode;
+    int32_t json_output;
+    int32_t silent;
+    int32_t no_validate;
+    uint16_t get_key[64];
+    uint16_t set_keys[32][64];
+    uint16_t set_values[32][256];
+    int32_t set_count;
+    uint16_t file_path[260];
+    int32_t array_table;
+} DimeCliArgs;
+
+int32_t dime_cli_parse(const uint16_t* const* argv, const size_t* lens, size_t argc,
+                       DimeCliArgs* out, DimeBuffer** error);
+
+typedef struct DimeCliHost DimeCliHost;
+typedef struct DimeCliHostVtbl {
+    void     (*write_out)(DimeCliHost*, const uint16_t*, size_t);
+    void     (*write_err)(DimeCliHost*, const uint16_t*, size_t);
+    void     (*load_config)(DimeCliHost*, int32_t mode);
+    void     (*write_config)(DimeCliHost*, int32_t mode);
+    void     (*reset_defaults)(DimeCliHost*, int32_t mode);
+    void     (*get_value)(DimeCliHost*, int32_t index, DimeBuffer** out);
+    int32_t  (*set_value)(DimeCliHost*, int32_t index, const uint16_t* value, size_t len, DimeBuffer** error);
+    int32_t  (*file_exists)(DimeCliHost*, const uint16_t*, size_t);
+    int32_t  (*load_text)(DimeCliHost*, const uint16_t*, size_t, uint16_t** out, size_t* out_len);
+    void     (*free_text)(DimeCliHost*, uint16_t*);
+    uint32_t (*begin_validate)(DimeCliHost*, int32_t mode);
+    int32_t  (*validate_line)(DimeCliHost*, const uint16_t*, size_t, int32_t mode, uint32_t max_codes);
+    void     (*end_validate)(DimeCliHost*);
+    size_t   (*custom_txt_path)(DimeCliHost*, int32_t mode, uint16_t* out, size_t cap);
+    size_t   (*custom_cin_path)(DimeCliHost*, int32_t mode, uint16_t* out, size_t cap);
+    int32_t  (*write_utf16_bom)(DimeCliHost*, const uint16_t*, size_t, const uint16_t*, size_t, uint32_t* gle);
+    int32_t  (*parse_cin)(DimeCliHost*, const uint16_t*, size_t, const uint16_t*, size_t, int32_t custom);
+    size_t   (*export_src_path)(DimeCliHost*, int32_t mode, uint16_t* out, size_t cap);
+    int32_t  (*copy_file)(DimeCliHost*, const uint16_t*, size_t, const uint16_t*, size_t, uint32_t* gle);
+    size_t   (*main_dest)(DimeCliHost*, int32_t mode, uint16_t* out, size_t cap);
+    size_t   (*phrase_dest)(DimeCliHost*, uint16_t* out, size_t cap);
+    size_t   (*array_dest)(DimeCliHost*, int32_t table, uint16_t* out, size_t cap);
+} DimeCliHostVtbl;
+struct DimeCliHost { const DimeCliHostVtbl* vtbl; void* ctx; };
+
+int32_t dime_cli_run(const uint16_t* const* argv, const size_t* lens, size_t argc, DimeCliHost* host);
 
 #ifdef __cplusplus
 }

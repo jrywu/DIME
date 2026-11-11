@@ -74,6 +74,24 @@ const DimeHostVtbl CRustSessionHost::s_vtbl = {
     FetchedCount,
     FetchedString,
     ShowSentenceCandidates,
+    NotifyShowFacts,
+    NotifyProbe,
+    CandidateTextFacts,
+    FetchedKey,
+    ApplyCandidateColors,
+    UiShow,
+    UiUpdate,
+    UiShowMode,
+    ArrowSwitchesPages,
+    CandidateOpen,
+    CandidatePlace,
+    EndCandidateList,
+    CandidateDeleteBegin,
+    CandidateDeleteMid,
+    CandidateDeleteEnd,
+    FetchAssociated,
+    ReadingForKey,
+    NotifyEndLayout,
 };
 
 CRustSessionHost::CRustSessionHost(_In_ CDIME* pDime, TfEditCookie ec, _In_ ITfContext* pContext)
@@ -86,6 +104,9 @@ CRustSessionHost::CRustSessionHost(_In_ CDIME* pDime, TfEditCookie ec, _In_ ITfC
 #else
     _host.session = nullptr;
 #endif
+    _host.presenter = nullptr;
+    if (pDime->_pUIPresenter)
+        _host.presenter = pDime->_pUIPresenter->HostPresenter();
 }
 
 CCompositionProcessorEngine* CRustSessionHost::Engine() const { return _pDime->_pCompositionProcessorEngine; }
@@ -431,6 +452,7 @@ int32_t CRustSessionHost::CreateAndStartCandidate(void* ctx)
 // _HandleCompositionArrowKey.
 void CRustSessionHost::CompositionArrowKey(void* ctx, uint32_t function)
 {
+    function;   // the list moves in FfiHost before this TSF half
     CRustSessionHost* self = Self(ctx);
     CDIME* dime = self->_pDime;
     ITfRange* pRangeComposition = nullptr;
@@ -442,8 +464,7 @@ void CRustSessionHost::CompositionArrowKey(void* ctx, uint32_t function)
 
     if (SUCCEEDED(dime->_pComposition->GetRange(&pRangeComposition)))
     {
-        if (dime->_pUIPresenter)
-            dime->_pUIPresenter->AdviseUIChangedByArrowKey((KEYSTROKE_FUNCTION)function);
+        // The candidate list moves first, in FfiHost, then this puts the selection back.
         self->_pContext->SetSelection(self->_ec, 1, &tfSelection);
         pRangeComposition->Release();
     }
@@ -512,6 +533,345 @@ void CRustSessionHost::ShowSentenceCandidates(void* ctx, const uint16_t* const* 
     dime->_pUIPresenter->_SetCandidateText(&candidateList, self->Engine()->GetCandidateListIndexRange(),
         FALSE, self->Engine()->GetCandidateWindowWidth());
     dime->_pUIPresenter->_SetCandidateSelection(selection, FALSE);
+}
+
+// ---- presenter facts (phase 4b-2c): TSF only, the windows are Rust's ----
+
+void CRustSessionHost::NotifyShowFacts(void* ctx, uint32_t kind, DimeNotifyShowFacts* out)
+{
+    if (!out)
+        return;
+    *out = {};
+    CRustSessionHost* self = Self(ctx);
+    CUIPresenter* ui = self->UI();
+    CDIME* dime = self->_pDime;
+    if (!ui)
+        return;
+
+    self->_notifyContext = ui->_GetContextDocument();
+    if (self->_notifyContext == nullptr && dime)
+    {
+        ITfThreadMgr* pThreadMgr = dime->_GetThreadMgr();
+        ITfDocumentMgr* pDocumentMgr = nullptr;
+        if (pThreadMgr && SUCCEEDED(pThreadMgr->GetFocus(&pDocumentMgr)) && pDocumentMgr)
+            pDocumentMgr->GetTop(&self->_notifyContext);   // neither ref is released, as before
+    }
+    out->has_context = self->_notifyContext ? 1 : 0;
+    out->hinstance = Global::dllInstanceHandle;
+    DimeNotifyClasses classes = { Global::AtomNotifyWindow, Global::AtomNotifyShadowWindow };
+#ifdef DIME_UNIT_TESTING
+    if (ui->_notifyAtomForTest)
+        classes = { ui->_notifyAtomForTest, ui->_notifyShadowAtomForTest };
+#endif
+    out->notify_class = classes.notify;
+    out->notify_shadow_class = classes.notify_shadow;
+    if (CConfig::GetEffectiveDarkMode())
+    {
+        out->color = CConfig::GetDarkItemColor();
+        out->bk = CConfig::GetDarkItemBGColor();
+    }
+    else if (CConfig::GetColorMode() == IME_COLOR_MODE::IME_COLOR_MODE_CUSTOM)
+    {
+        out->color = CConfig::GetItemColor();
+        out->bk = CConfig::GetItemBGColor();
+    }
+    else
+    {
+        out->color = CConfig::GetLightItemColor();
+        out->bk = CConfig::GetLightItemBGColor();
+    }
+    out->refresh = (kind == (uint32_t)NOTIFY_TYPE::NOTIFY_REVERSE_LOOKUP
+                    || kind == (uint32_t)NOTIFY_TYPE::NOTIFY_SPECIAL_CODE
+                    || kind == (uint32_t)NOTIFY_TYPE::NOTIFY_BEEP) ? 1 : 0;
+    if (!self->_notifyContext)
+        return;
+
+    HWND parent = nullptr;
+    ITfContextView* pView = nullptr;
+    if (SUCCEEDED(self->_notifyContext->GetActiveView(&pView)) && pView)
+        pView->GetWnd(&parent);   // the view is not released, as MakeNotifyWindow
+    out->parent = parent;
+
+    HWND viewParent = nullptr;
+    ITfContextView* pView2 = nullptr;
+    if (SUCCEEDED(self->_notifyContext->GetActiveView(&pView2)) && pView2)
+    {
+        out->have_view = 1;
+        pView2->GetWnd(&viewParent);
+        out->view_parent = viewParent;
+        if (viewParent)
+        {
+            GUITHREADINFO guiInfo = {};
+            guiInfo.cbSize = sizeof(GUITHREADINFO);
+            if (!GetGUIThreadInfo(NULL, &guiInfo))
+                guiInfo.rcCaret = { 0, 0, 0, 0 };
+            POINT pt = { guiInfo.rcCaret.left, guiInfo.rcCaret.bottom };
+            ClientToScreen(viewParent, &pt);
+            out->has_parent = 1;
+            out->rc_left = guiInfo.rcCaret.left;
+            out->rc_top = guiInfo.rcCaret.top;
+            out->rc_right = guiInfo.rcCaret.right;
+            out->rc_bottom = guiInfo.rcCaret.bottom;
+            out->caret_x = pt.x;
+            out->caret_y = pt.y;
+        }
+    }
+}
+
+void CRustSessionHost::NotifyProbe(void* ctx, uint32_t kind)
+{
+    CRustSessionHost* self = Self(ctx);
+    CUIPresenter* ui = self->UI();
+    if (!ui || !self->_pDime || !self->_notifyContext)
+        return;
+    if (ui->_GetContextDocument() == nullptr
+        && (kind == (uint32_t)NOTIFY_TYPE::NOTIFY_CHN_ENG
+            || kind == (uint32_t)NOTIFY_TYPE::NOTIFY_REVERSE_LOOKUP
+            || kind == (uint32_t)NOTIFY_TYPE::NOTIFY_SPECIAL_CODE
+            || kind == (uint32_t)NOTIFY_TYPE::NOTIFY_BEEP))
+        self->_pDime->_ProbeComposition(self->_notifyContext);
+}
+
+void CRustSessionHost::CandidateTextFacts(void* ctx, void** range, uint32_t* width, int32_t* showMode)
+{
+    CRustSessionHost* self = Self(ctx);
+    CCompositionProcessorEngine* engine = self->Engine();
+    CUIPresenter* ui = self->UI();
+    CCandidateRange* indexRange = engine ? engine->GetCandidateListIndexRange() : nullptr;
+    if (ui)
+        ui->_pIndexRange = indexRange;
+    if (range)
+        *range = indexRange;
+    if (width)
+        *width = engine ? engine->GetCandidateWindowWidth() : 0;
+    if (showMode)
+        *showMode = (ui && ui->_isShowMode) ? 1 : 0;
+}
+
+size_t CRustSessionHost::FetchedKey(void* ctx, uint32_t index, const uint16_t** out)
+{
+    CCandidateListItem* pItem = Self(ctx)->_fetched.GetAt(index);
+    *out = (pItem) ? (const uint16_t*)pItem->_FindKeyCode.Get() : nullptr;
+    return (pItem && pItem->_FindKeyCode.Get()) ? pItem->_FindKeyCode.GetLength() : 0;
+}
+
+void CRustSessionHost::ApplyCandidateColors(void* ctx, int32_t phrase)
+{
+    if (CUIPresenter* ui = Self(ctx)->UI())
+        CConfig::ApplyIMEColorSet(ui, phrase != 0);
+}
+
+void CRustSessionHost::UiShow(void* ctx, int32_t show)
+{
+    if (CUIPresenter* ui = Self(ctx)->UI())
+        ui->Show(show ? TRUE : FALSE);
+}
+
+void CRustSessionHost::UiUpdate(void* ctx, uint32_t which)
+{
+    CUIPresenter* ui = Self(ctx)->UI();
+    if (!ui)
+        return;
+    switch (which)
+    {
+    case 1:
+        ui->_updatedFlags = TF_CLUIE_SELECTION;
+        break;
+    case 2:
+    case 4:
+        ui->_updatedFlags = TF_CLUIE_SELECTION | TF_CLUIE_CURRENTPAGE;
+        break;
+    case 3:
+        ui->_updatedFlags = TF_CLUIE_COUNT | TF_CLUIE_SELECTION | TF_CLUIE_STRING | TF_CLUIE_PAGEINDEX | TF_CLUIE_CURRENTPAGE;
+        break;
+    default:
+        break;
+    }
+    ui->_UpdateUIElement();
+}
+
+int32_t CRustSessionHost::UiShowMode(void* ctx)
+{
+    CUIPresenter* ui = Self(ctx)->UI();
+    return (ui && ui->_isShowMode) ? 1 : 0;
+}
+
+int32_t CRustSessionHost::ArrowSwitchesPages(void*)
+{
+    return CConfig::GetArrowKeySWPages() ? 1 : 0;
+}
+
+void CRustSessionHost::CandidateOpen(void* ctx, int32_t nullRange, DimeCandOpenFacts* out)
+{
+    if (!out)
+        return;
+    *out = {};
+    out->go = 0;
+    out->hr = S_OK;
+    CRustSessionHost* self = Self(ctx);
+    CUIPresenter* ui = self->UI();
+    CCompositionProcessorEngine* engine = self->Engine();
+    CDIME* dime = self->_pDime;
+    if (!ui || !engine || !dime || !self->_pContext)
+        return;
+
+    ITfDocumentMgr* pDoc = nullptr;
+    ITfRange* pRange = nullptr;
+    if (!nullRange)
+    {
+        if (dime->_candidateMode != CANDIDATE_MODE::CANDIDATE_NONE)
+            return;
+        if (FAILED(self->_pContext->GetDocumentMgr(&pDoc)) || !pDoc)
+            return;
+        if (!dime->_pComposition || FAILED(dime->_pComposition->GetRange(&pRange)))
+        {
+            pDoc->Release();
+            return;
+        }
+    }
+    else if (FAILED(self->_pContext->GetDocumentMgr(&pDoc)) || !pDoc)
+    {
+        return;
+    }
+
+    HRESULT hrLayout = ui->_StartLayout(self->_pContext, self->_ec, nullRange ? nullptr : pRange);
+    if (pRange)
+        pRange->Release();
+    pDoc->Release();
+    if (FAILED(hrLayout))
+    {
+        out->go = 2;
+        out->hr = hrLayout;
+        return;
+    }
+    ui->BeginUIElement();
+
+    out->go = 1;
+    out->text_service = ui->_pTextService ? 1 : 0;
+    out->show_mode = ui->_isShowMode ? 1 : 0;
+    out->hinstance = Global::dllInstanceHandle;
+    out->range = engine->GetCandidateListIndexRange();
+    ui->_pIndexRange = (CCandidateRange*)out->range;
+    out->width = engine->GetCandidateWindowWidth();
+
+    HWND parent = nullptr;
+    ITfContextView* pView = nullptr;
+    if (SUCCEEDED(self->_pContext->GetActiveView(&pView)) && pView)
+        pView->GetWnd(&parent);   // not released, as MakeCandidateWindow
+    out->parent = parent;
+
+    COLORREF text = CANDWND_ITEM_COLOR;
+    COLORREF bk = GetSysColor(COLOR_WINDOW);
+    out->number = text;
+    out->number_bk = bk;
+    out->text = text;
+    out->bk = bk;
+    out->selected_text = text;
+    out->selected_bk = bk;
+    out->fill = GetSysColor(COLOR_3DHIGHLIGHT);
+
+    DimeCandClasses classes = { Global::AtomCandidateWindow, Global::AtomCandidateShadowWindow,
+                                Global::AtomCandidateScrollBarWindow, Global::AtomNotifyWindow, Global::AtomNotifyShadowWindow };
+#ifdef DIME_UNIT_TESTING
+    if (ui->_candClassesForTest.candidate)
+        classes = ui->_candClassesForTest;
+#endif
+    out->cls_candidate = classes.candidate;
+    out->cls_shadow = classes.candidate_shadow;
+    out->cls_scroll = classes.scroll_bar;
+    out->cls_notify = classes.notify;
+    out->cls_notify_shadow = classes.notify_shadow;
+}
+
+void CRustSessionHost::CandidatePlace(void* ctx, DimeLayoutFacts* out)
+{
+    if (!out)
+        return;
+    *out = {};
+    CUIPresenter* ui = Self(ctx)->UI();
+    if (!ui)
+        return;
+    RECT rc = {};
+    BOOL firstCall = FALSE;
+    if (FAILED(ui->_GetTextExt(&rc)))
+    {
+        ui->_GetPlacement(nullptr, nullptr, &rc);
+        firstCall = TRUE;
+    }
+    PresenterLayoutFacts facts = {};
+    ui->_ReadLayoutFacts(rc, firstCall, facts);
+    static_assert(sizeof(PresenterLayoutFacts) == sizeof(DimeLayoutFacts), "DimeLayoutFacts layout");
+    memcpy(out, &facts, sizeof(*out));
+}
+
+void CRustSessionHost::EndCandidateList(void* ctx)
+{
+    if (CUIPresenter* ui = Self(ctx)->UI())
+        ui->_EndCandidateList();
+}
+
+int32_t CRustSessionHost::CandidateDeleteBegin(void* ctx, int32_t force)
+{
+    CRustSessionHost* self = Self(ctx);
+    if (self->Engine())
+        self->Engine()->PurgeVirtualKey();
+    if (force && self->UI())
+    {
+        self->UI()->EndUIElement();
+        return 1;
+    }
+    return 0;
+}
+
+void CRustSessionHost::CandidateDeleteMid(void* ctx)
+{
+    if (CUIPresenter* ui = Self(ctx)->UI())
+        ui->_UpdateUIElement();
+}
+
+void CRustSessionHost::CandidateDeleteEnd(void* ctx)
+{
+    if (CUIPresenter* ui = Self(ctx)->UI())
+        ui->_EndLayout();
+}
+
+uint32_t CRustSessionHost::FetchAssociated(void* ctx, uint16_t lastChar)
+{
+    CRustSessionHost* self = Self(ctx);
+    // The candidates may point into it, so it is never freed (as before).
+    PWCHAR pwch = new (std::nothrow) WCHAR[2];
+    if (pwch == nullptr || !self->Engine())
+        return 0;
+    pwch[0] = (WCHAR)lastChar;
+    pwch[1] = L'\0';
+    CStringRange lastCharRange;
+    lastCharRange.Set(pwch, 1);
+    self->_fetched.Clear();
+    self->Engine()->GetCandidateStringInConverted(lastCharRange, &self->_fetched);
+    return self->_fetched.Count();
+}
+
+size_t CRustSessionHost::ReadingForKey(void* ctx, const uint16_t* key, size_t len, const uint16_t** out)
+{
+    CRustSessionHost* self = Self(ctx);
+    CDIME* dime = self->_pDime;
+    StringCchCopy(dime->_commitKeyCode, 1, L"\0");
+    if (key && len)
+        StringCchCatN(dime->_commitKeyCode, MAX_KEY_LENGTH, (const WCHAR*)key, len);
+    CStringRange commitKeyCode, converted;
+    commitKeyCode.Set(dime->_commitKeyCode, wcslen(dime->_commitKeyCode));
+    if (self->Engine())
+        self->Engine()->GetReadingString(&converted, NULL, &commitKeyCode);
+    self->_scratch.assign(converted.Get() ? converted.Get() : L"", converted.Get() ? converted.GetLength() : 0);
+    *out = (const uint16_t*)self->_scratch.c_str();
+    return self->_scratch.size();
+}
+
+void CRustSessionHost::NotifyEndLayout(void* ctx)
+{
+    CUIPresenter* ui = Self(ctx)->UI();
+    if (ui && ui->_GetContextDocument() && !ui->_HasCand())
+        ui->_EndLayout();
 }
 
 #endif // DIME_RUST_AVAILABLE

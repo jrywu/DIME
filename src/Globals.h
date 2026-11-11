@@ -211,7 +211,6 @@ extern const GUID DIMEGuidConfigPreserveKey;
 extern const GUID DIMEGuidHanConvertPreserveKey;
 
 //LRESULT CALLBACK ThreadKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam);
-BOOL CheckModifiers(UINT uModCurrent, UINT uMod);
 BOOL UpdateModifiers(WPARAM wParam, LPARAM lParam);
 
 extern USHORT ModifiersValue;
@@ -223,7 +222,6 @@ extern const GUID DIMEGuidCompartmentIMEMode;
 extern const GUID DIMEGuidCompartmentDoubleSingleByte;
 
 extern const WCHAR FullWidthCharTable[];
-extern const WCHAR DayiSymbolCharTable[];
 extern const _DAYI_ADDRESS_DIRECT_INPUT dayiAddressCharTable[6];
 extern const _DAYI_ADDRESS_DIRECT_INPUT dayiArticleCharTable[6];
 

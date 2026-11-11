@@ -23,7 +23,7 @@
 
 #include "../Globals.h"
 #include "../NotifyWindow.h"
-#include "../RustNotifyWindow.h"
+#include "RustNotifyWindow.h"
 #include "../BaseStructure.h"
 #include "../UIConstants.h"
 #include "WindowClassTestHelper.h"

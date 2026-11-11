@@ -544,6 +544,7 @@ HRESULT CDIME::_SentenceCommitBeforeOutput(TfEditCookie ec, _In_ ITfContext *pCo
 //
 //----------------------------------------------------------------------------
 
+#ifdef DIME_COMPILE_ROUTING_HANDLERS
 HRESULT CDIME::_HandleSentenceBackspace(TfEditCookie ec, _In_ ITfContext *pContext, UINT code)
 {
 #ifdef DIME_USE_RUST_ENGINE
@@ -553,6 +554,7 @@ HRESULT CDIME::_HandleSentenceBackspace(TfEditCookie ec, _In_ ITfContext *pConte
 	return _HandleSentenceBackspaceCpp(ec, pContext, code);
 #endif
 }
+#endif
 
 HRESULT CDIME::_HandleSentenceBackspaceCpp(TfEditCookie ec, _In_ ITfContext *pContext, UINT code)
 {
@@ -573,6 +575,7 @@ HRESULT CDIME::_HandleSentenceBackspaceCpp(TfEditCookie ec, _In_ ITfContext *pCo
 //
 //----------------------------------------------------------------------------
 
+#ifdef DIME_COMPILE_ROUTING_HANDLERS
 HRESULT CDIME::_HandleSentenceArrowKey(TfEditCookie ec, _In_ ITfContext *pContext, KEYSTROKE_FUNCTION keyFunction)
 {
 #ifdef DIME_USE_RUST_ENGINE
@@ -582,6 +585,7 @@ HRESULT CDIME::_HandleSentenceArrowKey(TfEditCookie ec, _In_ ITfContext *pContex
 	return _HandleSentenceArrowKeyCpp(ec, pContext, keyFunction);
 #endif
 }
+#endif
 
 HRESULT CDIME::_HandleSentenceArrowKeyCpp(TfEditCookie ec, _In_ ITfContext *pContext, KEYSTROKE_FUNCTION keyFunction)
 {

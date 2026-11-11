@@ -382,9 +382,7 @@
     <ClCompile Include="KeyProcesser.cpp">
       <Filter>Source Files\TextService\IMInterface\CompositionProcesserEngine</Filter>
     </ClCompile>
-    <ClCompile Include="ConfigDialog.cpp">
-      <Filter>Source Files\UI</Filter>
-    </ClCompile>
+
     <ClCompile Include="UIACaretTracker.cpp">
       <Filter>Source Files\TextService\IMInterface\Composition</Filter>
     </ClCompile>

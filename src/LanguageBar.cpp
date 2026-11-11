@@ -39,6 +39,24 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "Globals.h"
 #include "Compartment.h"
 #include "UIPresenter.h"
+#include "Config.h"
+
+#ifdef DIME_UNIT_TESTING
+DimeLangNotifyFn g_dimeLangNotify = nullptr;
+#endif
+
+void CDIME::_LangShowText(const WCHAR* text, UINT len, UINT delay)
+{
+#ifdef DIME_UNIT_TESTING
+	if (g_dimeLangNotify && text)
+		g_dimeLangNotify(text, len, delay);
+#endif
+	if (_pUIPresenter && text)
+	{
+		CStringRange notify;
+		_pUIPresenter->ShowNotifyText(&notify.Set(text, len), delay, CHN_ENG_NOTIFY_DELAY, NOTIFY_TYPE::NOTIFY_CHN_ENG);
+	}
+}
 
 //+---------------------------------------------------------------------------
 //
@@ -914,6 +932,15 @@ void CDIME::HideAllLanguageBarIcons()
 
 void CDIME::ConversionModeCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr, BOOL *setKeyboardOpenClose)
 {
+#if defined(DIME_USE_RUST_ENGINE)
+	_ConversionModeCompartmentUpdatedRust(pThreadMgr, setKeyboardOpenClose);
+#else
+	_ConversionModeCompartmentUpdatedCpp(pThreadMgr, setKeyboardOpenClose);
+#endif
+}
+
+void CDIME::_ConversionModeCompartmentUpdatedCpp(_In_ ITfThreadMgr *pThreadMgr, BOOL *setKeyboardOpenClose)
+{
 	debugPrint(L"CDIME::ConversionModeCompartmentUpdated()\n");
     if (_pCompartmentConversion == nullptr)
     {
@@ -978,11 +1005,6 @@ void CDIME::ConversionModeCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr, BOOL
 			CompartmentIMEMode._SetCompartmentBOOL(TRUE);
 		}
 	}
-	
-
-    
-	
-
 }
 
 //+---------------------------------------------------------------------------
@@ -992,6 +1014,15 @@ void CDIME::ConversionModeCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr, BOOL
 //----------------------------------------------------------------------------
 
 void CDIME::PrivateCompartmentsUpdated(_In_ ITfThreadMgr *pThreadMgr)
+{
+#if defined(DIME_USE_RUST_ENGINE)
+	_PrivateCompartmentsUpdatedRust(pThreadMgr);
+#else
+	_PrivateCompartmentsUpdatedCpp(pThreadMgr);
+#endif
+}
+
+void CDIME::_PrivateCompartmentsUpdatedCpp(_In_ ITfThreadMgr *pThreadMgr)
 {
 	debugPrint(L"CDIME::PrivateCompartmentsUpdated()");
     if (_pCompartmentConversion == nullptr)
@@ -1025,8 +1056,8 @@ void CDIME::PrivateCompartmentsUpdated(_In_ ITfThreadMgr *pThreadMgr)
     if (conversionMode != conversionModePrev)
     {
         _pCompartmentConversion->_SetCompartmentDWORD(conversionMode);
-		if(isDouble) OnSwitchedToFullShape();
-		else OnSwitchedToHalfShape();
+		if(isDouble) _OnSwitchedToFullShapeCpp();
+		else _OnSwitchedToHalfShapeCpp();
     }
 }
 
@@ -1037,6 +1068,15 @@ void CDIME::PrivateCompartmentsUpdated(_In_ ITfThreadMgr *pThreadMgr)
 //----------------------------------------------------------------------------
 
 void CDIME::KeyboardOpenCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr, _In_ REFGUID guidCompartment)
+{
+#if defined(DIME_USE_RUST_ENGINE)
+	_KeyboardOpenCompartmentUpdatedRust(pThreadMgr, guidCompartment);
+#else
+	_KeyboardOpenCompartmentUpdatedCpp(pThreadMgr, guidCompartment);
+#endif
+}
+
+void CDIME::_KeyboardOpenCompartmentUpdatedCpp(_In_ ITfThreadMgr *pThreadMgr, _In_ REFGUID guidCompartment)
 {
 	debugPrint(L"CDIME::KeyboardOpenCompartmentUpdated()");
     if (_pCompartmentConversion == nullptr)
@@ -1074,9 +1114,9 @@ void CDIME::KeyboardOpenCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr, _In_ R
 		if (conversionMode != conversionModePrev)
 		{
 		     _pCompartmentConversion->_SetCompartmentDWORD(conversionMode);
-   			if(isOpen) OnKeyboardOpen();
-			else OnKeyboardClosed();
-			showChnEngNotify(isOpen);
+   			if(isOpen) _OnKeyboardOpenCpp();
+			else _OnKeyboardClosedCpp();
+			_showChnEngNotifyCpp(isOpen);
 		}
 	}
 	isOpen = FALSE;
@@ -1096,9 +1136,9 @@ void CDIME::KeyboardOpenCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr, _In_ R
 		if (conversionMode != conversionModePrev)
 		{
 			_pCompartmentConversion->_SetCompartmentDWORD(conversionMode);
-			if(isOpen) OnKeyboardOpen();
-			else OnKeyboardClosed();
-			showChnEngNotify(isOpen);
+			if(isOpen) _OnKeyboardOpenCpp();
+			else _OnKeyboardClosedCpp();
+			_showChnEngNotifyCpp(isOpen);
 		}
 	
 	}
@@ -1112,6 +1152,15 @@ void CDIME::KeyboardOpenCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr, _In_ R
 
 void CDIME::OnKeyboardClosed()
 {
+#if defined(DIME_USE_RUST_ENGINE)
+	_OnKeyboardClosedRust();
+#else
+	_OnKeyboardClosedCpp();
+#endif
+}
+
+void CDIME::_OnKeyboardClosedCpp()
+{
 	debugPrint(L"CDIME::OnKeyboardClosed()\n");
 	// switching to English (native) mode delete the phrase candidate window before exiting.
 	_isChinese = FALSE;
@@ -1124,12 +1173,30 @@ void CDIME::OnKeyboardClosed()
 
 void CDIME::OnKeyboardOpen()
 {
+#if defined(DIME_USE_RUST_ENGINE)
+	_OnKeyboardOpenRust();
+#else
+	_OnKeyboardOpenCpp();
+#endif
+}
+
+void CDIME::_OnKeyboardOpenCpp()
+{
 	debugPrint(L"CDIME::OnKeyboardOpen()\n");
 	_isChinese = TRUE;
 	// switching to Chinese mode
 }
 
 void CDIME::OnSwitchedToFullShape()
+{
+#if defined(DIME_USE_RUST_ENGINE)
+	_OnSwitchedToFullShapeRust();
+#else
+	_OnSwitchedToFullShapeCpp();
+#endif
+}
+
+void CDIME::_OnSwitchedToFullShapeCpp()
 {
 	debugPrint(L"CDIME::OnSwitchedToFullShape()\n");
 	_isFullShape = TRUE;
@@ -1144,6 +1211,15 @@ void CDIME::OnSwitchedToFullShape()
 
 void CDIME::OnSwitchedToHalfShape()
 {
+#if defined(DIME_USE_RUST_ENGINE)
+	_OnSwitchedToHalfShapeRust();
+#else
+	_OnSwitchedToHalfShapeCpp();
+#endif
+}
+
+void CDIME::_OnSwitchedToHalfShapeCpp()
+{
 	debugPrint(L"CDIME::OnSwitchedToHalfShape()\n");
 	_isFullShape = FALSE;
 	if(_IsComposing()) 
@@ -1157,22 +1233,429 @@ void CDIME::OnSwitchedToHalfShape()
 
 void CDIME::showChnEngNotify(BOOL isChinese, UINT delayShow)
 {
-	CStringRange notify;
+#if defined(DIME_USE_RUST_ENGINE)
+	_showChnEngNotifyRust(isChinese, delayShow);
+#else
+	_showChnEngNotifyCpp(isChinese, delayShow);
+#endif
+}
+void CDIME::_showChnEngNotifyCpp(BOOL isChinese, UINT delayShow)
+{
     // Remove _IsStoreAppMode for Win 11 explorer, notepad and paint using XAML inputs.
-    if (CConfig::GetShowNotifyDesktop() && _pUIPresenter)
-        _pUIPresenter->ShowNotifyText(&notify.Set(isChinese ? L"中文" : L"英數", 2), delayShow, CHN_ENG_NOTIFY_DELAY, NOTIFY_TYPE::NOTIFY_CHN_ENG);
+    if (CConfig::GetShowNotifyDesktop())
+        _LangShowText(isChinese ? L"中文" : L"英數", 2, delayShow);
 }
 void CDIME::showFullHalfShapeNotify(BOOL isFullShape, UINT delayShow)
 {
-	CStringRange notify;
+#if defined(DIME_USE_RUST_ENGINE)
+	_showFullHalfShapeNotifyRust(isFullShape, delayShow);
+#else
+	_showFullHalfShapeNotifyCpp(isFullShape, delayShow);
+#endif
+}
+void CDIME::_showFullHalfShapeNotifyCpp(BOOL isFullShape, UINT delayShow)
+{
     // Always show — no compartment for full/half shape, notify is the only visual feedback
-    if (_pUIPresenter)
-        _pUIPresenter->ShowNotifyText(&notify.Set(isFullShape ? L"全形" : L"半形", 2), delayShow, CHN_ENG_NOTIFY_DELAY, NOTIFY_TYPE::NOTIFY_CHN_ENG);
+    _LangShowText(isFullShape ? L"全形" : L"半形", 2, delayShow);
 }
 void CDIME::showHanConvertNotify(BOOL isSimplified, UINT delayShow)
 {
-	CStringRange notify;
-    // Always show — no compartment for han convert, notify is the only visual feedback
-    if (_pUIPresenter)
-        _pUIPresenter->ShowNotifyText(&notify.Set(isSimplified ? L"簡" : L"繁", 1), delayShow, CHN_ENG_NOTIFY_DELAY, NOTIFY_TYPE::NOTIFY_CHN_ENG);
+#if defined(DIME_USE_RUST_ENGINE)
+	_showHanConvertNotifyRust(isSimplified, delayShow);
+#else
+	_showHanConvertNotifyCpp(isSimplified, delayShow);
+#endif
 }
+void CDIME::_showHanConvertNotifyCpp(BOOL isSimplified, UINT delayShow)
+{
+    // Always show — no compartment for han convert, notify is the only visual feedback
+    _LangShowText(isSimplified ? L"簡" : L"繁", 1, delayShow);
+}
+
+#if defined(DIME_USE_RUST_ENGINE) || (defined(DIME_UNIT_TESTING) && defined(DIME_RUST_AVAILABLE))
+#include "dime_ffi.h"
+
+static_assert(TF_CONVERSIONMODE_NATIVE == 0x0001, "TF_CONVERSIONMODE_NATIVE");
+static_assert(TF_CONVERSIONMODE_FULLSHAPE == 0x0008, "TF_CONVERSIONMODE_FULLSHAPE");
+static_assert(TF_MOD_LSHIFT == 0x0100, "TF_MOD_LSHIFT");
+static_assert(TF_MOD_RSHIFT == 0x0020, "TF_MOD_RSHIFT");
+static_assert((int)IME_SHIFT_MODE::IME_BOTH_SHIFT == 0, "IME_BOTH_SHIFT");
+static_assert((int)DOUBLE_SINGLE_BYTE_MODE::DOUBLE_SINGLE_BYTE_SHIFT_SPACE == 0, "SHIFT_SPACE");
+static_assert(CHN_ENG_NOTIFY_DELAY == 1500, "CHN_ENG_NOTIFY_DELAY");
+
+struct DimeLangCtx
+{
+	CDIME* dime;
+	CCompositionProcessorEngine* engine;
+	ITfThreadMgr* thread;
+	TfClientId client;
+};
+
+struct CLangBarHost
+{
+	static DimeLangCtx* Ctx(DimeLangHost* h)
+	{
+		return (h && h->ctx) ? static_cast<DimeLangCtx*>(h->ctx) : nullptr;
+	}
+
+	static int HasConversion(DimeLangHost* h)
+	{
+		DimeLangCtx* c = Ctx(h);
+		return (c && c->dime && c->dime->_pCompartmentConversion) ? 1 : 0;
+	}
+
+	static int GetConversion(DimeLangHost* h, uint32_t* out)
+	{
+		DimeLangCtx* c = Ctx(h);
+		if (!c || !c->dime || !c->dime->_pCompartmentConversion) return 0;
+		DWORD mode = 0;
+		HRESULT hr = c->dime->_pCompartmentConversion->_GetCompartmentDWORD(mode);
+		if (FAILED(hr)) return 0;
+		if (out) *out = mode;
+		return 1;
+	}
+
+	static void SetConversion(DimeLangHost* h, uint32_t mode)
+	{
+		DimeLangCtx* c = Ctx(h);
+		if (c && c->dime && c->dime->_pCompartmentConversion)
+			c->dime->_pCompartmentConversion->_SetCompartmentDWORD(mode);
+	}
+
+	static HRESULT ReadBool(DimeLangCtx* c, int32_t id, BOOL& flag)
+	{
+		// A null thread matches CCompartment: the get returns S_OK and leaves the flag false.
+		if (!c) return E_FAIL;
+		if (id == 0)
+		{
+			CCompartment box(c->thread, c->client, Global::DIMEGuidCompartmentDoubleSingleByte);
+			return box._GetCompartmentBOOL(flag);
+		}
+		if (id == 1)
+		{
+			CCompartment box(c->thread, c->client, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
+			return box._GetCompartmentBOOL(flag);
+		}
+		if (id == 2)
+		{
+			CCompartment box(c->thread, c->client, Global::DIMEGuidCompartmentIMEMode);
+			return box._GetCompartmentBOOL(flag);
+		}
+		return E_FAIL;
+	}
+
+	static int GetBool(DimeLangHost* h, int32_t id, int32_t* out)
+	{
+		BOOL flag = FALSE;
+		HRESULT hr = ReadBool(Ctx(h), id, flag);
+		if (FAILED(hr)) return 0;
+		if (out) *out = flag ? 1 : 0;
+		return 1;
+	}
+
+	static void SetBool(DimeLangHost* h, int32_t id, int32_t value)
+	{
+		DimeLangCtx* c = Ctx(h);
+		if (!c || !c->thread) return;
+		BOOL flag = value ? TRUE : FALSE;
+		if (id == 0)
+		{
+			CCompartment box(c->thread, c->client, Global::DIMEGuidCompartmentDoubleSingleByte);
+			box._SetCompartmentBOOL(flag);
+		}
+		else if (id == 1)
+		{
+			CCompartment box(c->thread, c->client, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE);
+			box._SetCompartmentBOOL(flag);
+		}
+		else if (id == 2)
+		{
+			CCompartment box(c->thread, c->client, Global::DIMEGuidCompartmentIMEMode);
+			box._SetCompartmentBOOL(flag);
+		}
+	}
+
+	static int Windows8(DimeLangHost*)
+	{
+		return Global::isWindows8 ? 1 : 0;
+	}
+
+	static void SetChinese(DimeLangHost* h, int32_t on)
+	{
+		DimeLangCtx* c = Ctx(h);
+		if (c && c->dime) c->dime->_isChinese = on ? TRUE : FALSE;
+	}
+
+	static void SetFullShape(DimeLangHost* h, int32_t on)
+	{
+		DimeLangCtx* c = Ctx(h);
+		if (c && c->dime) c->dime->_isFullShape = on ? TRUE : FALSE;
+	}
+
+	static void EndComposition(DimeLangHost* h)
+	{
+		DimeLangCtx* c = Ctx(h);
+		if (c && c->dime && c->dime->_IsComposing())
+			c->dime->_EndComposition(c->dime->_pContext);
+	}
+
+	static void DeleteCandidate(DimeLangHost* h, int32_t force)
+	{
+		DimeLangCtx* c = Ctx(h);
+		if (c && c->dime)
+			c->dime->_DeleteCandidateList(force ? TRUE : FALSE, c->dime->_pContext);
+	}
+
+	static int WidthMode(DimeLangHost*)
+	{
+		return (int)CConfig::GetDoubleSingleByteMode();
+	}
+
+	static void SetWidthMode(DimeLangHost*, int32_t mode)
+	{
+		CConfig::SetDoubleSingleByteMode((DOUBLE_SINGLE_BYTE_MODE)mode);
+	}
+
+	static int NotifyDesktop(DimeLangHost*)
+	{
+		return CConfig::GetShowNotifyDesktop() ? 1 : 0;
+	}
+
+	static void ShowText(DimeLangHost* h, const uint16_t* text, size_t len, uint32_t delay)
+	{
+		DimeLangCtx* c = Ctx(h);
+		if (c && c->dime)
+			c->dime->_LangShowText((const WCHAR*)text, (UINT)len, delay);
+	}
+
+	static int ShiftMode(DimeLangHost*)
+	{
+		return (int)CConfig::GetIMEShiftMode();
+	}
+
+	static int ShiftKeyOnly(DimeLangHost* h)
+	{
+		DimeLangCtx* c = Ctx(h);
+		if (!c || !c->engine) return 0;
+		return c->engine->CheckShiftKeyOnly(&c->engine->_PreservedKey_IMEMode.TSFPreservedKeyTable) ? 1 : 0;
+	}
+
+	static uint32_t Modifiers(DimeLangHost*)
+	{
+		return Global::ModifiersValue;
+	}
+
+	static int DoHan(DimeLangHost*)
+	{
+		return CConfig::GetDoHanConvert() ? 1 : 0;
+	}
+
+	static void SetDoHan(DimeLangHost*, int32_t on)
+	{
+		CConfig::SetDoHanConvert(on ? TRUE : FALSE);
+	}
+
+	static void WriteConfigCb(DimeLangHost*)
+	{
+		CConfig::WriteConfig(Global::imeMode);
+	}
+
+	static void SetupHan(DimeLangHost* h)
+	{
+		DimeLangCtx* c = Ctx(h);
+		if (c && c->engine) c->engine->SetupHanCovertTable();
+	}
+
+	static void InjectSpace(DimeLangHost* h)
+	{
+		DimeLangCtx* c = Ctx(h);
+		if (!c || !c->thread || !c->engine) return;
+		ITfDocumentMgr* doc = nullptr;
+		ITfContext* context = nullptr;
+		if (SUCCEEDED(c->thread->GetFocus(&doc)) && doc)
+		{
+			if (SUCCEEDED(doc->GetTop(&context)) && context)
+			{
+				_KEYSTROKE_STATE keyState;
+				keyState.Category = KEYSTROKE_CATEGORY::CATEGORY_COMPOSING;
+				keyState.Function = KEYSTROKE_FUNCTION::FUNCTION_SHIFT_ENGLISH_INPUT;
+				if (c->engine->_pTextService)
+				{
+					CKeyHandlerEditSession* session = new (std::nothrow) CKeyHandlerEditSession(
+						c->engine->_pTextService, context, VK_SPACE, L' ', keyState);
+					if (session)
+					{
+						HRESULT hrSession = S_OK;
+						context->RequestEditSession(c->engine->_pTextService->_GetClientId(), session,
+							TF_ES_ASYNCDONTCARE | TF_ES_READWRITE, &hrSession);
+						session->Release();
+					}
+				}
+				context->Release();
+			}
+			doc->Release();
+		}
+	}
+
+	static void ShowConfig(DimeLangHost* h)
+	{
+		DimeLangCtx* c = Ctx(h);
+		if (c && c->engine && c->engine->_pTextService)
+			c->engine->_pTextService->Show(GetForegroundWindow(), 0, GUID_NULL);
+	}
+
+	static int HasTextService(DimeLangHost* h)
+	{
+		DimeLangCtx* c = Ctx(h);
+		return (c && c->engine && c->engine->_pTextService) ? 1 : 0;
+	}
+
+	static const DimeLangHostVtbl Vtbl;
+};
+
+const DimeLangHostVtbl CLangBarHost::Vtbl = {
+	HasConversion,
+	GetConversion,
+	SetConversion,
+	GetBool,
+	SetBool,
+	Windows8,
+	SetChinese,
+	SetFullShape,
+	EndComposition,
+	DeleteCandidate,
+	WidthMode,
+	SetWidthMode,
+	NotifyDesktop,
+	ShowText,
+	ShiftMode,
+	ShiftKeyOnly,
+	Modifiers,
+	DoHan,
+	SetDoHan,
+	WriteConfigCb,
+	SetupHan,
+	InjectSpace,
+	ShowConfig,
+	HasTextService,
+};
+
+static void BindLang(DimeLangCtx* ctx, DimeLangHost* ffi)
+{
+	ffi->vtbl = &CLangBarHost::Vtbl;
+	ffi->ctx = ctx;
+}
+
+static DimeLangCtx MakeCtx(CDIME* dime, ITfThreadMgr* thread, TfClientId client)
+{
+	DimeLangCtx ctx;
+	ctx.dime = dime;
+	ctx.engine = dime ? dime->GetCompositionProcessorEngine() : nullptr;
+	ctx.thread = thread;
+	ctx.client = client;
+	return ctx;
+}
+
+void CDIME::_ConversionModeCompartmentUpdatedRust(_In_ ITfThreadMgr* pThreadMgr, BOOL* setKeyboardOpenClose)
+{
+	DimeLangCtx ctx = MakeCtx(this, pThreadMgr, _tfClientId);
+	DimeLangHost host;
+	BindLang(&ctx, &host);
+	int has = setKeyboardOpenClose != nullptr;
+	int val = (has && *setKeyboardOpenClose) ? 1 : 0;
+	dime_langbar_conversion(&host, has, val);
+}
+
+void CDIME::_PrivateCompartmentsUpdatedRust(_In_ ITfThreadMgr* pThreadMgr)
+{
+	DimeLangCtx ctx = MakeCtx(this, pThreadMgr, _tfClientId);
+	DimeLangHost host;
+	BindLang(&ctx, &host);
+	dime_langbar_private(&host);
+}
+
+void CDIME::_KeyboardOpenCompartmentUpdatedRust(_In_ ITfThreadMgr* pThreadMgr, _In_ REFGUID guidCompartment)
+{
+	int which = -1;
+	if (IsEqualGUID(guidCompartment, GUID_COMPARTMENT_KEYBOARD_OPENCLOSE)) which = 0;
+	else if (IsEqualGUID(guidCompartment, Global::DIMEGuidCompartmentIMEMode)) which = 1;
+	DimeLangCtx ctx = MakeCtx(this, pThreadMgr, _tfClientId);
+	DimeLangHost host;
+	BindLang(&ctx, &host);
+	dime_langbar_keyboard(&host, which);
+}
+
+void CDIME::_OnKeyboardClosedRust()
+{
+	DimeLangCtx ctx = MakeCtx(this, _pThreadMgr, _tfClientId);
+	DimeLangHost host;
+	BindLang(&ctx, &host);
+	dime_langbar_keyboard_side(&host, 0);
+}
+
+void CDIME::_OnKeyboardOpenRust()
+{
+	DimeLangCtx ctx = MakeCtx(this, _pThreadMgr, _tfClientId);
+	DimeLangHost host;
+	BindLang(&ctx, &host);
+	dime_langbar_keyboard_side(&host, 1);
+}
+
+void CDIME::_OnSwitchedToFullShapeRust()
+{
+	DimeLangCtx ctx = MakeCtx(this, _pThreadMgr, _tfClientId);
+	DimeLangHost host;
+	BindLang(&ctx, &host);
+	dime_langbar_shape(&host, 1);
+}
+
+void CDIME::_OnSwitchedToHalfShapeRust()
+{
+	DimeLangCtx ctx = MakeCtx(this, _pThreadMgr, _tfClientId);
+	DimeLangHost host;
+	BindLang(&ctx, &host);
+	dime_langbar_shape(&host, 0);
+}
+
+void CDIME::_showChnEngNotifyRust(BOOL isChinese, UINT delayShow)
+{
+	DimeLangCtx ctx = MakeCtx(this, _pThreadMgr, _tfClientId);
+	DimeLangHost host;
+	BindLang(&ctx, &host);
+	dime_langbar_show(&host, 0, isChinese ? 1 : 0, delayShow);
+}
+
+void CDIME::_showFullHalfShapeNotifyRust(BOOL isFullShape, UINT delayShow)
+{
+	DimeLangCtx ctx = MakeCtx(this, _pThreadMgr, _tfClientId);
+	DimeLangHost host;
+	BindLang(&ctx, &host);
+	dime_langbar_show(&host, 1, isFullShape ? 1 : 0, delayShow);
+}
+
+void CDIME::_showHanConvertNotifyRust(BOOL isSimplified, UINT delayShow)
+{
+	DimeLangCtx ctx = MakeCtx(this, _pThreadMgr, _tfClientId);
+	DimeLangHost host;
+	BindLang(&ctx, &host);
+	dime_langbar_show(&host, 2, isSimplified ? 1 : 0, delayShow);
+}
+
+void CCompositionProcessorEngine::_OnPreservedKeyRust(REFGUID rguid, _Out_ BOOL* pIsEaten, _In_ ITfThreadMgr* pThreadMgr, TfClientId tfClientId)
+{
+	int id = -1;
+	if (IsEqualGUID(rguid, _PreservedKey_IMEMode.Guid)) id = 0;
+	else if (IsEqualGUID(rguid, _PreservedKey_DoubleSingleByte.Guid)) id = 1;
+	else if (IsEqualGUID(rguid, _PreservedKey_Config.Guid)) id = 2;
+	else if (IsEqualGUID(rguid, _PreservedKey_HanConvert.Guid)) id = 3;
+	DimeLangCtx ctx;
+	ctx.dime = _pTextService;
+	ctx.engine = this;
+	ctx.thread = pThreadMgr;
+	ctx.client = tfClientId;
+	DimeLangHost host;
+	BindLang(&ctx, &host);
+	if (pIsEaten)
+		*pIsEaten = dime_langbar_preserved(&host, id) ? TRUE : FALSE;
+}
+#endif

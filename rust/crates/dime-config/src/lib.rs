@@ -7,6 +7,7 @@
 //! exact `WriteConfig` text); parity is checked against the C++ code by
 //! `src/tests/RustConfigParityTest.cpp`.
 
+pub mod cli;
 pub mod guid;
 pub mod ini;
 pub mod keys;

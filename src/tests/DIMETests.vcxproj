@@ -384,6 +384,7 @@
     <ClCompile Include="ShadowParityTest.cpp" />
     <ClCompile Include="NotifyParityTest.cpp" />
     <ClCompile Include="PresenterLayoutParityTest.cpp" />
+    <ClCompile Include="SessionHostUiTest.cpp" />
     <ClCompile Include="CandidateWindowParityTest.cpp" />
     <ClCompile Include="..\RustTableDictionaryEngine.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
@@ -396,6 +397,8 @@
     </ClCompile>
     <ClCompile Include="SentenceBufferTest.cpp" />
     <ClCompile Include="SelkeyModeTest.cpp" />
+    <ClCompile Include="EngineSetupParityTest.cpp" />
+    <ClCompile Include="LangBarParityTest.cpp" />
     <ClCompile Include="..\DIMESettings\SettingsPageLayout.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
@@ -578,10 +581,10 @@
     <ClCompile Include="..\RustShadowWindow.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\RustCandidateWindow.cpp">
+    <ClCompile Include="RustCandidateWindow.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\RustNotifyWindow.cpp">
+    <ClCompile Include="RustNotifyWindow.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\RustScrollBarWindow.cpp">

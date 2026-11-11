@@ -19,7 +19,7 @@
 
 #include "../Globals.h"
 #include "../CandidateWindow.h"
-#include "../RustCandidateWindow.h"
+#include "RustCandidateWindow.h"
 #include "../BaseStructure.h"
 #include "../Config.h"
 #include "WindowClassTestHelper.h"

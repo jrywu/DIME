@@ -56,7 +56,7 @@ enum class CANDWND_ACTION
 typedef HRESULT (*CANDWNDCALLBACK)(void *pv, enum CANDWND_ACTION action);
 
 #if defined(DIME_UNIT_TESTING) && defined(DIME_USE_RUST_ENGINE)
-// The Rust build registers DIME.CandidateWindow with Rust's window procedure (CRustCandidateWindow);
+// The Rust build registers DIME.CandidateWindow with Rust's window procedure (dime-ui::candwin);
 // C++ CCandidateWindow objects in tests are created with this class instead (WindowClassTestHelper.h).
 extern ATOM g_cppCandidateWindowAtomForTest;
 #endif

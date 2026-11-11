@@ -1,12 +1,6 @@
-// RustCandidateWindow.h - the candidate window owned by Rust (dime-ui::candwin,
-// phase 3c-5d; docs/RUST_WINDOW_OWNERSHIP.md).
-//
-// CRustCandidateWindow is not a window: it holds the candidate list
-// (CCandidateListModel, the strings stay C++) and the Rust window, which reads
-// the list through DimeCandModel callbacks into this object. It has the members
-// of CCandidateWindow that UIPresenter uses; DimeCandidateWindow is the type
-// UIPresenter holds: CRustCandidateWindow under DIME_USE_RUST_ENGINE,
-// CCandidateWindow otherwise.
+// RustCandidateWindow.h - test-only stand-in for the removed product type
+// (phase 4b-3). Window parity drives dime_ui_candidate_* with a C++ list.
+// The product presenter owns its own Rust window and list.
 
 #pragma once
 
@@ -85,10 +79,4 @@ private:
     BOOL _hasClassesForTest = FALSE;
 #endif
 };
-#endif
-
-#ifdef DIME_USE_RUST_ENGINE
-typedef CRustCandidateWindow DimeCandidateWindow;
-#else
-typedef CCandidateWindow DimeCandidateWindow;
 #endif

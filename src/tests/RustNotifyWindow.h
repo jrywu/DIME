@@ -1,10 +1,6 @@
-// RustNotifyWindow.h - the notify window owned by Rust (dime-ui::notifywin,
-// phase 3c-5e; docs/RUST_WINDOW_OWNERSHIP.md).
-//
-// CRustNotifyWindow is not a window: it holds the Rust window (with its text,
-// colors and shadow) and the C++ callback. It has the members of CNotifyWindow
-// that UIPresenter uses; DimeNotifyWindow is the type UIPresenter holds:
-// CRustNotifyWindow under DIME_USE_RUST_ENGINE, CNotifyWindow otherwise.
+// RustNotifyWindow.h - test-only stand-in for the removed product type
+// (phase 4b-3). Notify parity drives dime_ui_notifywin_*.
+// The product presenter owns its own Rust notify windows.
 
 #pragma once
 
@@ -61,10 +57,4 @@ private:
     BOOL _hasClassesForTest = FALSE;
 #endif
 };
-#endif
-
-#ifdef DIME_USE_RUST_ENGINE
-typedef CRustNotifyWindow DimeNotifyWindow;
-#else
-typedef CNotifyWindow DimeNotifyWindow;
 #endif

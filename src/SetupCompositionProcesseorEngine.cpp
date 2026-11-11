@@ -33,6 +33,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //#define DEBUG_PRINT
 #include <Shlobj.h>
 #include <Shlwapi.h>
+#include <sys/stat.h>
 #include "DIME.h"
 #include "CompositionProcessorEngine.h"
 #include "BaseStructure.h"
@@ -130,6 +131,15 @@ void CCompositionProcessorEngine::SetupBig5Engine(IME_MODE imeMode, LCID locale)
 //----------------------------------------------------------------------------
 
 BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode, LCID locale)
+{
+#if defined(DIME_USE_RUST_ENGINE)
+	return _SetupDictionaryFileRust(imeMode, locale);
+#else
+	return _SetupDictionaryFileCpp(imeMode, locale);
+#endif
+}
+
+BOOL CCompositionProcessorEngine::_SetupDictionaryFileCpp(IME_MODE imeMode, LCID locale)
 {
 	debugPrint(L"CCompositionProcessorEngine::SetupDictionaryFile() \n");
 	BOOL bRet = FALSE;
@@ -304,11 +314,11 @@ BOOL CCompositionProcessorEngine::SetupDictionaryFile(IME_MODE imeMode, LCID loc
 			SetupBig5Engine(imeMode, locale);
 			big5EngineRebuilt = true;
 			// Reload Keystroke and CandidateListRage when table is updated
-			SetupKeystroke(Global::imeMode);
+			_SetupKeystrokeCpp(Global::imeMode);
 			CConfig::LoadConfig(Global::imeMode);
 			SetupConfiguration(Global::imeMode);
 #ifndef DIMESettings
-			SetupCandidateListRange(Global::imeMode);
+			_SetupCandidateListRangeCpp(Global::imeMode);
 #endif
 		}
 
@@ -820,6 +830,15 @@ void CCompositionProcessorEngine::ReleaseDictionaryFiles()
 
 void CCompositionProcessorEngine::SetupKeystroke(IME_MODE imeMode)
 {
+#if defined(DIME_USE_RUST_ENGINE)
+	_SetupKeystrokeRust(imeMode);
+#else
+	_SetupKeystrokeCpp(imeMode);
+#endif
+}
+
+void CCompositionProcessorEngine::_SetupKeystrokeCpp(IME_MODE imeMode)
+{
 	debugPrint(L"SetupKeystroke for imeMode %d", imeMode);
     if (!IsDictionaryAvailable(imeMode))
     {
@@ -1081,6 +1100,15 @@ void CCompositionProcessorEngine::GetVKeyFromPrintable(WCHAR printable, UINT* vK
 
 void CCompositionProcessorEngine::SetupPreserved(_In_ ITfThreadMgr* pThreadMgr, TfClientId tfClientId)
 {
+#if defined(DIME_USE_RUST_ENGINE)
+	_SetupPreservedRust(pThreadMgr, tfClientId);
+#else
+	_SetupPreservedCpp(pThreadMgr, tfClientId);
+#endif
+}
+
+void CCompositionProcessorEngine::_SetupPreservedCpp(_In_ ITfThreadMgr* pThreadMgr, TfClientId tfClientId)
+{
     TF_PRESERVEDKEY preservedKeyImeMode = { 0 }; // Initialize the structure to zero
     preservedKeyImeMode.uVKey = VK_SHIFT;
     preservedKeyImeMode.uModifiers = _TF_MOD_ON_KEYUP_SHIFT_ONLY;
@@ -1216,6 +1244,15 @@ BOOL CCompositionProcessorEngine::CheckShiftKeyOnly(_In_ CDIMEArray<TF_PRESERVED
 
 void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL* pIsEaten, _In_ ITfThreadMgr* pThreadMgr, TfClientId tfClientId)
 {
+#if defined(DIME_USE_RUST_ENGINE)
+	_OnPreservedKeyRust(rguid, pIsEaten, pThreadMgr, tfClientId);
+#else
+	_OnPreservedKeyCpp(rguid, pIsEaten, pThreadMgr, tfClientId);
+#endif
+}
+
+void CCompositionProcessorEngine::_OnPreservedKeyCpp(REFGUID rguid, _Out_ BOOL* pIsEaten, _In_ ITfThreadMgr* pThreadMgr, TfClientId tfClientId)
+{
 	debugPrint(L"CCompositionProcessorEngine::OnPreservedKey() \n");
 	if (IsEqualGUID(rguid, _PreservedKey_IMEMode.Guid))
 	{
@@ -1248,7 +1285,7 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL* pIsE
 
 		debugPrint(L"CCompositionProcessorEngine::OnPreservedKey() isOpen=%d", isOpen);
 		//show notify
-		if (_pTextService) _pTextService->showChnEngNotify(isOpen ? FALSE : TRUE);
+		if (_pTextService) _pTextService->_showChnEngNotifyCpp(isOpen ? FALSE : TRUE);
 
 		*pIsEaten = TRUE;
 	}
@@ -1294,7 +1331,7 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL* pIsE
 		CompartmentDoubleSingleByte._GetCompartmentBOOL(isDouble);
 		CompartmentDoubleSingleByte._SetCompartmentBOOL(isDouble ? FALSE : TRUE);
 		//show notify
-		if (_pTextService) _pTextService->showFullHalfShapeNotify(isDouble ? FALSE : TRUE);
+		if (_pTextService) _pTextService->_showFullHalfShapeNotifyCpp(isDouble ? FALSE : TRUE);
 		*pIsEaten = TRUE;
 	}
 	else if (IsEqualGUID(rguid, _PreservedKey_Config.Guid) && _pTextService)
@@ -1330,7 +1367,7 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL* pIsE
 
 		// Show notification: 繁 or 簡
 		if (_pTextService)
-			_pTextService->showHanConvertNotify(currentState ? FALSE : TRUE);
+			_pTextService->_showHanConvertNotifyCpp(currentState ? FALSE : TRUE);
 
 		*pIsEaten = TRUE;
 	}
@@ -1344,6 +1381,15 @@ void CCompositionProcessorEngine::OnPreservedKey(REFGUID rguid, _Out_ BOOL* pIsE
 
 
 BOOL CCompositionProcessorEngine::SetupHanCovertTable()
+{
+#if defined(DIME_USE_RUST_ENGINE)
+	return _SetupHanCovertTableRust();
+#else
+	return _SetupHanCovertTableCpp();
+#endif
+}
+
+BOOL CCompositionProcessorEngine::_SetupHanCovertTableCpp()
 {
 	debugPrint(L"CCompositionProcessorEngine::SetupHanCovertTable() \n");
 
@@ -1399,6 +1445,15 @@ BOOL CCompositionProcessorEngine::SetupHanCovertTable()
 }
 
 BOOL CCompositionProcessorEngine::SetupTCFreqTable()
+{
+#if defined(DIME_USE_RUST_ENGINE)
+	return _SetupTCFreqTableRust();
+#else
+	return _SetupTCFreqTableCpp();
+#endif
+}
+
+BOOL CCompositionProcessorEngine::_SetupTCFreqTableCpp()
 {
 	debugPrint(L"CCompositionProcessorEngine::SetupTCFreqTable() \n");
 
@@ -1585,6 +1640,15 @@ CCompositionProcessorEngine::XPreservedKey::~XPreservedKey()
 
 void CCompositionProcessorEngine::SetupCandidateListRange(IME_MODE imeMode)
 {
+#if defined(DIME_USE_RUST_ENGINE)
+	_SetupCandidateListRangeRust(imeMode);
+#else
+	_SetupCandidateListRangeCpp(imeMode);
+#endif
+}
+
+void CCompositionProcessorEngine::_SetupCandidateListRangeCpp(IME_MODE imeMode)
+{
 	debugPrint(L"CCompositionProcessorEngine::SetupCandidateListRange() ");
 
 	_candidateListIndexRange.Clear();
@@ -1708,4 +1772,515 @@ void CCompositionProcessorEngine::SetupCandidateListRange(IME_MODE imeMode)
 	
 }
 
+#endif
+
+#if defined(DIME_USE_RUST_ENGINE) || (defined(DIME_UNIT_TESTING) && defined(DIME_RUST_AVAILABLE))
+// Rust owns the load / keystroke / range / preserved-key decisions. This host
+// applies them to the CFile and CTableDictionaryEngine members. Callback order
+// matches DimeSetupHostVtbl in dime_ffi.h and rust/crates/dime-ffi/src/setup.rs.
+
+static_assert(sizeof(DimeKeystrokeOut) == 20, "DimeKeystrokeOut abi");
+
+static void FillKeystroke(_KEYSTROKE* dst, const DimeKeystrokeOut& src)
+{
+	if (!dst) return;
+	dst->Index = src.index;
+	dst->Printable = (WCHAR)src.printable;
+	dst->CandIndex = (WCHAR)src.cand_index;
+	dst->VirtualKey = src.virtual_key;
+	dst->Modifiers = src.modifiers;
+	dst->Function = (KEYSTROKE_FUNCTION)src.function;
+}
+
+static bool TermPath(const uint16_t* path, size_t len, WCHAR* buf, size_t cap)
+{
+	if (!buf || cap == 0) return false;
+	if (!path) len = 0;
+	if (len >= cap) len = cap - 1;
+	if (len) CopyMemory(buf, path, len * sizeof(WCHAR));
+	buf[len] = L'\0';
+	return true;
+}
+
+static void ResolveSetupPaths(WCHAR* app, WCHAR* pf)
+{
+	app[0] = L'\0';
+	pf[0] = L'\0';
+	if (GetEnvironmentVariableW(L"ProgramW6432", pf, MAX_PATH) == 0)
+		GetEnvironmentVariableW(L"ProgramFiles", pf, MAX_PATH);
+	Global::GetAppDataPath(app, TRUE);
+}
+
+struct CEngineSetupHost
+{
+	CCompositionProcessorEngine* eng;
+
+	static CEngineSetupHost* Self(DimeSetupHost* h)
+	{
+		return (h && h->ctx) ? static_cast<CEngineSetupHost*>(h->ctx) : nullptr;
+	}
+
+	CFile** FileSlot(int32_t id)
+	{
+		if (!eng || id < 0) return nullptr;
+		int kind = id / 16;
+		int slot = id % 16;
+		switch (kind)
+		{
+		case 0: return (slot < IM_SLOTS) ? &eng->_pTableDictionaryFile[slot] : nullptr;
+		case 1: return (slot < IM_SLOTS) ? &eng->_pCustomTableDictionaryFile[slot] : nullptr;
+		case 2: return &eng->_pPhraseDictionaryFile;
+		case 3: return &eng->_pArrayExtBDictionaryFile;
+		case 4: return &eng->_pArrayExtCDDictionaryFile;
+		case 5: return &eng->_pArrayExtEDictionaryFile;
+		case 6: return &eng->_pArrayPhraseDictionaryFile;
+		case 7: return &eng->_pArraySpecialCodeDictionaryFile;
+		case 8: return &eng->_pArrayShortCodeDictionaryFile;
+		case 9: return &eng->_pTCSCTableDictionaryFile;
+		case 10: return &eng->_pTCFreqTableDictionaryFile;
+		default: return nullptr;
+		}
+	}
+
+	CTableDictionaryEngine** EngineSlot(int32_t id)
+	{
+		if (!eng || id < 0) return nullptr;
+		int kind = id / 16;
+		int slot = id % 16;
+		switch (kind)
+		{
+		case 0: return (slot < IM_SLOTS) ? &eng->_pTableDictionaryEngine[slot] : nullptr;
+		case 1: return (slot < IM_SLOTS) ? &eng->_pCustomTableDictionaryEngine[slot] : nullptr;
+		case 2: return &eng->_pPhraseTableDictionaryEngine;
+		case 3: return &eng->_pArrayExtBTableDictionaryEngine;
+		case 4: return &eng->_pArrayExtCDTableDictionaryEngine;
+		case 5: return &eng->_pArrayExtETableDictionaryEngine;
+		case 6: return &eng->_pArrayPhraseTableDictionaryEngine;
+		case 7: return &eng->_pArraySpecialCodeTableDictionaryEngine;
+		case 8: return &eng->_pArrayShortCodeTableDictionaryEngine;
+		case 9: return &eng->_pTCSCTableDictionaryEngine;
+		case 10: return &eng->_pTCFreqTableDictionaryEngine;
+		default: return nullptr;
+		}
+	}
+
+	static int PathExists(DimeSetupHost* h, const uint16_t* path, size_t len)
+	{
+		CEngineSetupHost* self = Self(h);
+		if (!self) return 0;
+		WCHAR buf[MAX_PATH];
+		if (!TermPath(path, len, buf, MAX_PATH)) return 0;
+		return PathFileExistsW(buf) ? 1 : 0;
+	}
+
+	static int FileMtime(DimeSetupHost* h, const uint16_t* path, size_t len, int64_t* mtime)
+	{
+		CEngineSetupHost* self = Self(h);
+		if (!self) return 0;
+		WCHAR buf[MAX_PATH];
+		if (!TermPath(path, len, buf, MAX_PATH)) return 0;
+		struct _stat st;
+		if (_wstat(buf, &st) != 0) return 0;
+		if (mtime) *mtime = (int64_t)st.st_mtime;
+		return 1;
+	}
+
+	static void CopyFileCb(DimeSetupHost* h, const uint16_t* src, size_t slen, const uint16_t* dst, size_t dlen, int failIfExists)
+	{
+		CEngineSetupHost* self = Self(h);
+		if (!self) return;
+		WCHAR s[MAX_PATH], d[MAX_PATH];
+		if (!TermPath(src, slen, s, MAX_PATH) || !TermPath(dst, dlen, d, MAX_PATH)) return;
+		CopyFileW(s, d, failIfExists ? TRUE : FALSE);
+	}
+
+	static void CreateDirCb(DimeSetupHost* h, const uint16_t* path, size_t len)
+	{
+		CEngineSetupHost* self = Self(h);
+		if (!self) return;
+		WCHAR buf[MAX_PATH];
+		if (!TermPath(path, len, buf, MAX_PATH)) return;
+		CreateDirectoryW(buf, nullptr);
+	}
+
+	static int PathEqual(DimeSetupHost* h, uint32_t locale, const uint16_t* a, size_t alen, const uint16_t* b, size_t blen)
+	{
+		if (!Self(h)) return 0;
+		if (alen == 0 && blen == 0) return 1;
+		if (!a || !b) return 0;
+		if (alen > 0x7fffffff) alen = 0x7fffffff;
+		if (blen > 0x7fffffff) blen = 0x7fffffff;
+		int r = CompareStringW((LCID)locale, NORM_IGNORECASE, (LPCWSTR)a, (int)alen, (LPCWSTR)b, (int)blen);
+		return r == CSTR_EQUAL ? 1 : 0;
+	}
+
+	static int HasFile(DimeSetupHost* h, int32_t id)
+	{
+		CEngineSetupHost* self = Self(h);
+		if (!self) return 0;
+		CFile** s = self->FileSlot(id);
+		return (s && *s) ? 1 : 0;
+	}
+
+	static int HasEngine(DimeSetupHost* h, int32_t id)
+	{
+		CEngineSetupHost* self = Self(h);
+		if (!self) return 0;
+		CTableDictionaryEngine** s = self->EngineSlot(id);
+		return (s && *s) ? 1 : 0;
+	}
+
+	static int DictType(DimeSetupHost* h, int32_t id)
+	{
+		CEngineSetupHost* self = Self(h);
+		if (!self) return -1;
+		CTableDictionaryEngine** s = self->EngineSlot(id);
+		return (s && *s) ? (int)(*s)->GetDictionaryType() : -1;
+	}
+
+	static int FileUpdated(DimeSetupHost* h, int32_t id)
+	{
+		CEngineSetupHost* self = Self(h);
+		if (!self) return 0;
+		CFile** s = self->FileSlot(id);
+		return (s && *s && (*s)->IsFileUpdated()) ? 1 : 0;
+	}
+
+	static size_t FileName(DimeSetupHost* h, int32_t id, uint16_t* buf, size_t cap)
+	{
+		CEngineSetupHost* self = Self(h);
+		if (!self || !buf || cap == 0) return 0;
+		CFile** s = self->FileSlot(id);
+		if (!s || !*s || !(*s)->GetFileName()) return 0;
+		size_t n = wcslen((*s)->GetFileName());
+		size_t w = n < cap ? n : cap;
+		if (w) CopyMemory(buf, (*s)->GetFileName(), w * sizeof(uint16_t));
+		return w;
+	}
+
+	static void DropFile(DimeSetupHost* h, int32_t id)
+	{
+		CEngineSetupHost* self = Self(h);
+		if (!self) return;
+		CFile** s = self->FileSlot(id);
+		if (!s || !*s) return;
+		delete *s;
+		*s = nullptr;
+	}
+
+	static void DropEngine(DimeSetupHost* h, int32_t id)
+	{
+		CEngineSetupHost* self = Self(h);
+		if (!self) return;
+		CTableDictionaryEngine** s = self->EngineSlot(id);
+		if (!s || !*s) return;
+		delete *s;
+		*s = nullptr;
+	}
+
+	static int NewFile(DimeSetupHost* h, int32_t id)
+	{
+		CEngineSetupHost* self = Self(h);
+		if (!self) return 0;
+		CFile** s = self->FileSlot(id);
+		if (!s) return 0;
+		*s = new (std::nothrow) CFile();
+		return *s ? 1 : 0;
+	}
+
+	static int CreateFileCb(DimeSetupHost* h, int32_t id, const uint16_t* path, size_t len, uint32_t share)
+	{
+		CEngineSetupHost* self = Self(h);
+		if (!self) return 0;
+		CFile** s = self->FileSlot(id);
+		if (!s || !*s) return 0;
+		WCHAR buf[MAX_PATH];
+		if (!TermPath(path, len, buf, MAX_PATH)) return 0;
+		return (*s)->CreateFile(buf, GENERIC_READ, OPEN_EXISTING, share) ? 1 : 0;
+	}
+
+	static int CreateEngine(DimeSetupHost* h, int32_t id, uint32_t locale, int32_t dictType)
+	{
+		CEngineSetupHost* self = Self(h);
+		if (!self) return 0;
+		CFile** file = self->FileSlot(id);
+		CTableDictionaryEngine** eng = self->EngineSlot(id);
+		if (!file || !*file || !eng) return 0;
+		*eng = CTableDictionaryEngine::Create((LCID)locale, *file, (DICTIONARY_TYPE)dictType);
+		return *eng ? 1 : 0;
+	}
+
+	static void ParseConfigCb(DimeSetupHost* h, int32_t id, int32_t mode)
+	{
+		CEngineSetupHost* self = Self(h);
+		if (!self) return;
+		CTableDictionaryEngine** eng = self->EngineSlot(id);
+		if (!eng || !*eng) return;
+		(*eng)->ParseConfig((IME_MODE)mode);
+	}
+
+	static void AliasPhrase(DimeSetupHost* h, int32_t slot)
+	{
+		CEngineSetupHost* self = Self(h);
+		if (!self || !self->eng || slot < 0 || slot >= IM_SLOTS) return;
+		self->eng->_pPhraseTableDictionaryEngine = self->eng->_pTableDictionaryEngine[slot];
+	}
+
+	static void SetupBig5Cb(DimeSetupHost* h, int32_t mode, uint32_t locale)
+	{
+		CEngineSetupHost* self = Self(h);
+		if (!self || !self->eng) return;
+		self->eng->SetupBig5Engine((IME_MODE)mode, (LCID)locale);
+	}
+
+	static void SetupKeystrokeCb(DimeSetupHost* h, int32_t mode)
+	{
+		CEngineSetupHost* self = Self(h);
+		if (!self || !self->eng) return;
+		self->eng->SetupKeystroke((IME_MODE)mode);
+	}
+
+	static void LoadConfigCb(DimeSetupHost* h, int32_t mode)
+	{
+		if (!Self(h)) return;
+		CConfig::LoadConfig((IME_MODE)mode);
+	}
+
+	static void SetupConfigurationCb(DimeSetupHost* h, int32_t mode)
+	{
+		CEngineSetupHost* self = Self(h);
+		if (!self || !self->eng) return;
+		self->eng->SetupConfiguration((IME_MODE)mode);
+	}
+
+	static void SetupCandidateRangeCb(DimeSetupHost* h, int32_t mode)
+	{
+		CEngineSetupHost* self = Self(h);
+		if (!self || !self->eng) return;
+		self->eng->SetupCandidateListRange((IME_MODE)mode);
+	}
+
+	static int HasTextService(DimeSetupHost* h)
+	{
+		CEngineSetupHost* self = Self(h);
+		return (self && self->eng && self->eng->_pTextService) ? 1 : 0;
+	}
+
+	static int ArrayScopeCb(DimeSetupHost* h)
+	{
+		if (!Self(h)) return 0;
+		return (int)CConfig::GetArrayScope();
+	}
+
+	static int ActiveModeCb(DimeSetupHost* h)
+	{
+		if (!Self(h)) return 0;
+		return (int)Global::imeMode;
+	}
+
+	static int DoHanConvertCb(DimeSetupHost* h)
+	{
+		if (!Self(h)) return 0;
+		return CConfig::GetDoHanConvert() ? 1 : 0;
+	}
+
+	static const DimeSetupHostVtbl Vtbl;
+};
+
+const DimeSetupHostVtbl CEngineSetupHost::Vtbl = {
+	PathExists,
+	FileMtime,
+	CopyFileCb,
+	CreateDirCb,
+	PathEqual,
+	HasFile,
+	HasEngine,
+	DictType,
+	FileUpdated,
+	FileName,
+	DropFile,
+	DropEngine,
+	NewFile,
+	CreateFileCb,
+	CreateEngine,
+	ParseConfigCb,
+	AliasPhrase,
+	SetupBig5Cb,
+	SetupKeystrokeCb,
+	LoadConfigCb,
+	SetupConfigurationCb,
+	SetupCandidateRangeCb,
+	HasTextService,
+	ArrayScopeCb,
+	ActiveModeCb,
+	DoHanConvertCb,
+};
+
+static void BindSetup(CCompositionProcessorEngine* eng, DimeSetupHost* ffi, CEngineSetupHost* host)
+{
+	host->eng = eng;
+	ffi->vtbl = &CEngineSetupHost::Vtbl;
+	ffi->ctx = host;
+}
+
+BOOL CCompositionProcessorEngine::_SetupDictionaryFileRust(IME_MODE imeMode, LCID locale)
+{
+	WCHAR app[MAX_PATH] = {};
+	WCHAR pf[MAX_PATH] = {};
+	ResolveSetupPaths(app, pf);
+	CEngineSetupHost host;
+	DimeSetupHost ffi;
+	BindSetup(this, &ffi, &host);
+	return dime_setup_dictionary(&ffi, (int32_t)imeMode, (uint32_t)locale, 0,
+		(const uint16_t*)app, wcslen(app), (const uint16_t*)pf, wcslen(pf)) ? TRUE : FALSE;
+}
+
+void CCompositionProcessorEngine::_SetupKeystrokeRust(IME_MODE imeMode)
+{
+	if (!IsDictionaryAvailable(imeMode)) return;
+	CTableDictionaryEngine* table = _pTableDictionaryEngine[(UINT)imeMode];
+	_T_RadicalMap* map = (table) ? table->GetRadicalMap() : nullptr;
+	if (!table || !map || map->empty() || map->size() > MAX_RADICAL) return;
+
+	uint16_t radicals[MAX_RADICAL];
+	size_t radicalCount = 0;
+	for (_T_RadicalMap::iterator it = map->begin(); it != map->end() && radicalCount < MAX_RADICAL; ++it)
+		radicals[radicalCount++] = (uint16_t)it->first;
+
+	const uint16_t* end = _pEndkey ? (const uint16_t*)_pEndkey : nullptr;
+	size_t endLen = _pEndkey ? wcslen(_pEndkey) : 0;
+	DimeKeystrokeOut rows[MAX_RADICAL + 1];
+	int32_t inserted = 0;
+	size_t count = dime_build_keystrokes((int32_t)imeMode, radicals, radicalCount, end, endLen,
+		rows, MAX_RADICAL + 1, &inserted);
+	if (count > MAX_RADICAL + 1) count = MAX_RADICAL + 1;
+
+	if (inserted && map->find(L'=') == map->end())
+	{
+		WCHAR* eq = new (std::nothrow) WCHAR[2];
+		if (eq)
+		{
+			eq[0] = L'=';
+			eq[1] = L'\0';
+			(*map)[L'='] = eq;
+		}
+	}
+
+	_KeystrokeComposition.Clear();
+	for (size_t i = 0; i < count; i++)
+		FillKeystroke(_KeystrokeComposition.Append(), rows[i]);
+}
+
+#ifndef DIMESettings
+BOOL CCompositionProcessorEngine::_SetupHanCovertTableRust()
+{
+	WCHAR app[MAX_PATH] = {};
+	WCHAR pf[MAX_PATH] = {};
+	ResolveSetupPaths(app, pf);
+	CEngineSetupHost host;
+	DimeSetupHost ffi;
+	BindSetup(this, &ffi, &host);
+	LCID locale = _pTextService ? _pTextService->GetLocale() : 0;
+	return dime_setup_han_convert(&ffi, (uint32_t)locale,
+		(const uint16_t*)app, wcslen(app), (const uint16_t*)pf, wcslen(pf)) ? TRUE : FALSE;
+}
+
+BOOL CCompositionProcessorEngine::_SetupTCFreqTableRust()
+{
+	WCHAR app[MAX_PATH] = {};
+	WCHAR pf[MAX_PATH] = {};
+	ResolveSetupPaths(app, pf);
+	CEngineSetupHost host;
+	DimeSetupHost ffi;
+	BindSetup(this, &ffi, &host);
+	LCID locale = _pTextService ? _pTextService->GetLocale() : 0;
+	return dime_setup_tc_freq(&ffi, (uint32_t)locale,
+		(const uint16_t*)app, wcslen(app), (const uint16_t*)pf, wcslen(pf)) ? TRUE : FALSE;
+}
+
+void CCompositionProcessorEngine::_SetupCandidateListRangeRust(IME_MODE imeMode)
+{
+	const WCHAR* sel = nullptr;
+	size_t selLen = 0;
+	UINT slot = (UINT)imeMode;
+	if (slot < IM_SLOTS && _pTableDictionaryEngine[slot] && _pTableDictionaryEngine[slot]->GetSelkey())
+	{
+		sel = _pTableDictionaryEngine[slot]->GetSelkey();
+		selLen = wcslen(sel);
+	}
+	DimeKeystrokeOut cand[16];
+	DimeKeystrokeOut phrase[16];
+	uint32_t page = 0;
+	int32_t dayiMode = (imeMode == IME_MODE::IME_MODE_DAYI) ? (int32_t)CConfig::GetDayiSelkeyMode() : 0;
+	size_t n = dime_build_candidate_range((int32_t)imeMode, (int32_t)Global::imeMode, dayiMode,
+		CConfig::GetSpaceAsFirstCaniSelkey() ? 1 : 0, (int32_t)CConfig::GetArrayScope(),
+		(const uint16_t*)sel, selLen, cand, phrase, 16, &page);
+	_candidateListIndexRange.Clear();
+	_phraseCandidateListIndexRange.Clear();
+	_candidatePageSize = page;
+	if (n > 16) n = 16;
+	if (n > page) n = page;
+	for (size_t i = 0; i < n; i++)
+	{
+		FillKeystroke(_candidateListIndexRange.Append(), cand[i]);
+		FillKeystroke(_phraseCandidateListIndexRange.Append(), phrase[i]);
+	}
+}
+
+void CCompositionProcessorEngine::_SetupPreservedRust(_In_ ITfThreadMgr* pThreadMgr, TfClientId tfClientId)
+{
+	int n = dime_preserved_key_count();
+	for (int i = 0; i < n; i++)
+	{
+		DimePreservedKey key = {};
+		uint16_t desc[64];
+		if (!dime_preserved_key_at(i, &key, desc, 64)) continue;
+		TF_PRESERVEDKEY pk = {};
+		pk.uVKey = key.vkey;
+		pk.uModifiers = key.modifiers;
+		const GUID* guid = nullptr;
+		XPreservedKey* slot = nullptr;
+		const WCHAR* text = nullptr;
+		WCHAR local[64];
+		local[0] = L'\0';
+		switch (key.id)
+		{
+		case 0:
+			guid = &Global::DIMEGuidImeModePreserveKey;
+			slot = &_PreservedKey_IMEMode;
+			text = Global::ImeModeDescription;
+			break;
+		case 1:
+			guid = &Global::DIMEGuidDoubleSingleBytePreserveKey;
+			slot = &_PreservedKey_DoubleSingleByte;
+			text = Global::DoubleSingleByteDescription;
+			break;
+		case 2:
+			guid = &Global::DIMEGuidConfigPreserveKey;
+			slot = &_PreservedKey_Config;
+			break;
+		case 3:
+			guid = &Global::DIMEGuidHanConvertPreserveKey;
+			slot = &_PreservedKey_HanConvert;
+			break;
+		default:
+			continue;
+		}
+		if (key.desc_len != 0)
+		{
+			size_t cch = key.desc_len;
+			if (cch >= 64) cch = 63;
+			CopyMemory(local, desc, cch * sizeof(WCHAR));
+			local[cch] = L'\0';
+			text = local;
+		}
+		if (guid && text)
+			SetPreservedKey(*guid, pk, text, slot);
+	}
+	InitPreservedKey(&_PreservedKey_IMEMode, pThreadMgr, tfClientId);
+	InitPreservedKey(&_PreservedKey_DoubleSingleByte, pThreadMgr, tfClientId);
+	InitPreservedKey(&_PreservedKey_Config, pThreadMgr, tfClientId);
+	InitPreservedKey(&_PreservedKey_HanConvert, pThreadMgr, tfClientId);
+}
+#endif
 #endif

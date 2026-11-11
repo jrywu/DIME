@@ -55,8 +55,7 @@
     <ClInclude Include="RustSessionHost.h" />
     <ClInclude Include="UILayout.h" />
     <ClInclude Include="RustShadowWindow.h" />
-    <ClInclude Include="RustCandidateWindow.h" />
-    <ClInclude Include="RustNotifyWindow.h" />
+
     <ClInclude Include="CandidateWindow.h" />
     <ClInclude Include="Compartment.h" />
     <ClInclude Include="CompositionProcessorEngine.h" />
@@ -111,13 +110,16 @@
     <ClCompile Include="CandidateListModel.cpp" />
     <ClCompile Include="RustCandidateListModel.cpp" />
     <ClCompile Include="RustSessionHost.cpp" />
-    <ClCompile Include="UILayout.cpp" />
+    <!-- Layout math is dime-ui in the Rust build. UILayout.cpp stays for the C++ build
+         (CandidateWindow / ScrollBarWindow / DIME_CPP_PRESENTER). Tests compile their own. -->
+    <ClCompile Include="UILayout.cpp" Condition="'$(DimeRustEnabled)'!='true'" />
     <ClCompile Include="RustShadowWindow.cpp" />
-    <ClCompile Include="RustCandidateWindow.cpp" />
-    <ClCompile Include="RustNotifyWindow.cpp" />
+
     <ClCompile Include="CandidateWindow.cpp" Condition="'$(DimeRustEnabled)'!='true'" />
     <ClCompile Include="Config.cpp" />
-    <ClCompile Include="ConfigDialog.cpp" />
+    <!-- Legacy PropertySheet. Phase 4e dropped it from DIME.dll (ShowConfig shows an
+         error when DIMESettings.exe is missing). DIMESettings.exe keeps ConfigDialog.cpp
+         until phase 5b. DIME.rc dialog resources stay: DIMESettings compiles that rc. -->
     <ClCompile Include="Compartment.cpp" />
     <ClCompile Include="Composition.cpp">
       <PreprocessorDefinitions Condition="'$(DiagnosticLogging)'=='true'">DEBUG_PRINT;%(PreprocessorDefinitions)</PreprocessorDefinitions>

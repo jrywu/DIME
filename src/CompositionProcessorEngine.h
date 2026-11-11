@@ -201,6 +201,14 @@ private:
 
     CFile* GetDictionaryFile() const;
     void SetupBig5Engine(IME_MODE imeMode, LCID locale);
+    BOOL _SetupDictionaryFileCpp(IME_MODE imeMode, LCID locale);
+    void _SetupKeystrokeCpp(IME_MODE imeMode);
+#if defined(DIME_USE_RUST_ENGINE) || (defined(DIME_UNIT_TESTING) && defined(DIME_RUST_AVAILABLE))
+    BOOL _SetupDictionaryFileRust(IME_MODE imeMode, LCID locale);
+    void _SetupKeystrokeRust(IME_MODE imeMode);
+    friend struct CEngineSetupHost;
+    friend struct CLangBarHost;
+#endif
 
     BOOL _isKeystrokeSort;
     BOOL _isWildCardWordFreqSort;
@@ -225,6 +233,19 @@ private:
     friend class KeyClassifyParityAccess;
     friend class CompositionBufferParityAccess;
     friend class CandidateGenParityAccess;
+    friend class EngineSetupParityAccess;
+    friend class LangBarParityAccess;
+#endif
+
+    void _SetupCandidateListRangeCpp(IME_MODE imeMode);
+    BOOL _SetupHanCovertTableCpp();
+    BOOL _SetupTCFreqTableCpp();
+    void _SetupPreservedCpp(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId);
+#if defined(DIME_USE_RUST_ENGINE) || (defined(DIME_UNIT_TESTING) && defined(DIME_RUST_AVAILABLE))
+    void _SetupCandidateListRangeRust(IME_MODE imeMode);
+    BOOL _SetupHanCovertTableRust();
+    BOOL _SetupTCFreqTableRust();
+    void _SetupPreservedRust(_In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId);
 #endif
 
     // GetCandidateList dispatches to one of these (Rust plan under DIME_USE_RUST_ENGINE).
@@ -308,6 +329,11 @@ private:
 	
 	CStringRange buildKeyStrokesFromPhoneticSyllable(UINT syllable);
 	WCHAR VPSymbolToStandardLayoutChar(UINT syllable);
+
+	void _OnPreservedKeyCpp(REFGUID rguid, _Out_ BOOL *pIsEaten, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId);
+#if defined(DIME_USE_RUST_ENGINE) || (defined(DIME_UNIT_TESTING) && defined(DIME_RUST_AVAILABLE))
+	void _OnPreservedKeyRust(REFGUID rguid, _Out_ BOOL *pIsEaten, _In_ ITfThreadMgr *pThreadMgr, TfClientId tfClientId);
+#endif
 
 #endif
 };

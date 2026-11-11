@@ -292,7 +292,7 @@ BOOL RegisterWindowClass()
 {
     // Candidate and Notify use popup class (no CS_IME, with CS_DROPSHADOW) for DWM shadow
 #ifdef DIME_USE_RUST_ENGINE
-    // The candidate window is owned by Rust (dime-ui::candwin, CRustCandidateWindow).
+    // The candidate window is owned by Rust (dime-ui::candwin, via the presenter).
     AtomCandidateWindow = dime_ui_register_window_class(dllInstanceHandle, (const uint16_t*)CandidateClassName, 1);
     if (AtomCandidateWindow == 0)
     {
@@ -332,7 +332,7 @@ BOOL RegisterWindowClass()
 #endif
 
 #ifdef DIME_USE_RUST_ENGINE
-    // The notify window is owned by Rust (dime-ui::notifywin, CRustNotifyWindow).
+    // The notify window is owned by Rust (dime-ui::notifywin, via the presenter).
     AtomNotifyWindow = dime_ui_register_window_class(dllInstanceHandle, (const uint16_t*)NotifyClassName, 1);
     if (AtomNotifyWindow == 0)
     {
@@ -397,10 +397,6 @@ extern const WCHAR FullWidthCharTable[] = {
 };
 
 //---------------------------------------------------------------------
-// defined symbol characters
-//---------------------------------------------------------------------
-extern const WCHAR DayiSymbolCharTable[] = L" !\\\"#$%&\'()*+,-./0123456789:;<>?@[]^_`{}|~";
-//---------------------------------------------------------------------
 // defined directly input address characters
 //---------------------------------------------------------------------
 extern const _DAYI_ADDRESS_DIRECT_INPUT dayiAddressCharTable[6] = {
@@ -424,62 +420,11 @@ extern const _DAYI_ADDRESS_DIRECT_INPUT dayiArticleCharTable[6] = {
 };
 
 
-//+---------------------------------------------------------------------------
-//
-// CheckModifiers
-//
-//----------------------------------------------------------------------------
-
+// Modifier masks used by UpdateModifiers. CheckModifiers (and the RL masks it
+// needed) had no callers.
 #define TF_MOD_ALLALT     (TF_MOD_RALT | TF_MOD_LALT | TF_MOD_ALT)
 #define TF_MOD_ALLCONTROL (TF_MOD_RCONTROL | TF_MOD_LCONTROL | TF_MOD_CONTROL)
 #define TF_MOD_ALLSHIFT   (TF_MOD_RSHIFT | TF_MOD_LSHIFT | TF_MOD_SHIFT)
-#define TF_MOD_RLALT      (TF_MOD_RALT | TF_MOD_LALT)
-#define TF_MOD_RLCONTROL  (TF_MOD_RCONTROL | TF_MOD_LCONTROL)
-#define TF_MOD_RLSHIFT    (TF_MOD_RSHIFT | TF_MOD_LSHIFT)
-
-#define CheckMod(m0, m1, mod)        \
-    if (m1 & TF_MOD_ ## mod ##)      \
-{ \
-    if (!(m0 & TF_MOD_ ## mod ##)) \
-{      \
-    return FALSE;   \
-}      \
-} \
-    else       \
-{ \
-    if ((m1 ^ m0) & TF_MOD_RL ## mod ##)    \
-{      \
-    return FALSE;   \
-}      \
-} \
-
-
-
-BOOL CheckModifiers(UINT modCurrent, UINT mod)
-{
-    mod &= ~TF_MOD_ON_KEYUP;
-
-    if (mod & TF_MOD_IGNORE_ALL_MODIFIER)
-    {
-        return TRUE;
-    }
-
-    if (modCurrent == mod)
-    {
-        return TRUE;
-    }
-
-    if (modCurrent && !mod)
-    {
-        return FALSE;
-    }
-
-    CheckMod(modCurrent, mod, ALT);
-    CheckMod(modCurrent, mod, SHIFT);
-    CheckMod(modCurrent, mod, CONTROL);
-
-    return TRUE;
-}
 
 //+---------------------------------------------------------------------------
 //
@@ -633,13 +578,6 @@ BOOL UpdateModifiers(WPARAM wParam, LPARAM lParam)
     return TRUE;
 }
 
-//---------------------------------------------------------------------
-// override CompareElements
-//---------------------------------------------------------------------
-BOOL CompareElements(LCID locale, const CStringRange* pElement1, const CStringRange* pElement2)
-{
-    return (CStringRange::Compare(locale, (CStringRange*)pElement1, (CStringRange*)pElement2) == CSTR_EQUAL) ? TRUE : FALSE;
-}
 #endif
 
 }

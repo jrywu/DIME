@@ -164,15 +164,26 @@ public:
     HRESULT _HandleComplete(TfEditCookie ec, _In_ ITfContext *pContext);
     HRESULT _HandleCancel(TfEditCookie ec, _In_ ITfContext *pContext);
 
+    // Routing-table handlers (phase 4a). The Rust product does not compile them:
+    // session::handle_key does not call them, and KeyStateCategory.cpp is C++-build
+    // only. Tests still compile that table, so the wrappers stay under DIME_UNIT_TESTING.
+#if !defined(DIME_USE_RUST_ENGINE) || defined(DIME_UNIT_TESTING)
+#define DIME_COMPILE_ROUTING_HANDLERS 1
+#endif
+
     // key event handlers for composition object.
+#ifdef DIME_COMPILE_ROUTING_HANDLERS
     HRESULT _HandleCompositionInput(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch);
+#endif
     HRESULT _HandleCompositionFinalize(TfEditCookie ec, _In_ ITfContext *pContext, BOOL fCandidateList);
+#ifdef DIME_COMPILE_ROUTING_HANDLERS
     HRESULT _HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pContext, BOOL isWildcardSearch, BOOL isArrayPhraseEnding = FALSE);
     HRESULT _HandleCompositionBackspace(TfEditCookie ec, _In_ ITfContext *pContext);
     HRESULT _HandleCompositionArrowKey(TfEditCookie ec, _In_ ITfContext *pContext, KEYSTROKE_FUNCTION keyFunction);
     HRESULT _HandleCompositionDoubleSingleByte(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch);
 	HRESULT _HandleCompositionShiftEnglishInput(TfEditCookie ec, _In_ ITfContext *pContext, UINT code, WCHAR wch);
 	HRESULT _HandleCompositionAddressChar(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch);
+#endif
 	// C++ versions of the handlers ported to Rust (session.rs); the ones above
 	// dispatch to Rust under DIME_USE_RUST_ENGINE.
 	HRESULT _HandleCompleteCpp(TfEditCookie ec, _In_ ITfContext *pContext);
@@ -186,19 +197,25 @@ public:
     HRESULT _HandleSentenceCommitCpp(TfEditCookie ec, _In_ ITfContext *pContext);
     HRESULT _HandleSentenceBackspaceCpp(TfEditCookie ec, _In_ ITfContext *pContext, UINT code);
     HRESULT _HandleSentenceArrowKeyCpp(TfEditCookie ec, _In_ ITfContext *pContext, KEYSTROKE_FUNCTION keyFunction);
+#ifdef DIME_COMPILE_ROUTING_HANDLERS
     HRESULT _HandleSentenceBackspace(TfEditCookie ec, _In_ ITfContext *pContext, UINT code);
     HRESULT _HandleSentenceArrowKey(TfEditCookie ec, _In_ ITfContext *pContext, KEYSTROKE_FUNCTION keyFunction);
+#endif
 
     // key event handlers for candidate object.
     HRESULT _HandleCandidateFinalize(TfEditCookie ec, _In_ ITfContext *pContext);
     HRESULT _HandleCandidateConvert(TfEditCookie ec, _In_ ITfContext *pContext);
+#ifdef DIME_COMPILE_ROUTING_HANDLERS
     HRESULT _HandleCandidateArrowKey(TfEditCookie ec, _In_ ITfContext *pContext, _In_ KEYSTROKE_FUNCTION keyFunction);
     HRESULT _HandleCandidateSelectByNumber(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode, _In_ WCHAR wch);
+#endif
 
     // key event handlers for phrase object.
     HRESULT _HandlePhraseFinalize(TfEditCookie ec, _In_ ITfContext *pContext);
+#ifdef DIME_COMPILE_ROUTING_HANDLERS
     HRESULT _HandlePhraseArrowKey(TfEditCookie ec, _In_ ITfContext *pContext, _In_ KEYSTROKE_FUNCTION keyFunction);
     HRESULT _HandlePhraseSelectByNumber(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode, _In_ WCHAR wch);
+#endif
 
     static BOOL _IsSecureMode(void) { return (_dwActivateFlags & TF_TMAE_SECUREMODE) ? TRUE : FALSE; }
     static BOOL _IsComLess(void) { return (_dwActivateFlags & TF_TMAE_COMLESS) ? TRUE : FALSE; }
@@ -356,10 +373,16 @@ private:
 
 	// The host of the Rust key handler flow (RustSessionHost.cpp).
 	friend class CRustSessionHost;
+	// OnPreservedKey's C++ body calls the _show*Cpp leaves.
+	friend class CCompositionProcessorEngine;
+#if defined(DIME_USE_RUST_ENGINE) || (defined(DIME_UNIT_TESTING) && defined(DIME_RUST_AVAILABLE))
+	friend struct CLangBarHost;
+#endif
 
 #ifdef DIME_UNIT_TESTING
 	// Friend declaration for integration tests - allows access to private members for testing
 	friend class DIMEIntegratedTests::TSFIntegrationTest;
+	friend class LangBarParityAccess;
 #endif
 
 	// function for process candidate
@@ -403,8 +426,30 @@ private:
     void ConversionModeCompartmentUpdated(_In_ ITfThreadMgr *pThreadMgr, BOOL *setKeyboardOpenClose = NULL);
     void ShowAllLanguageBarIcons();
     void HideAllLanguageBarIcons();
-	
 
+	void _ConversionModeCompartmentUpdatedCpp(_In_ ITfThreadMgr *pThreadMgr, BOOL *setKeyboardOpenClose);
+	void _PrivateCompartmentsUpdatedCpp(_In_ ITfThreadMgr *pThreadMgr);
+	void _KeyboardOpenCompartmentUpdatedCpp(_In_ ITfThreadMgr *pThreadMgr, _In_ REFGUID guidCompartment);
+	void _OnKeyboardClosedCpp();
+	void _OnKeyboardOpenCpp();
+	void _OnSwitchedToFullShapeCpp();
+	void _OnSwitchedToHalfShapeCpp();
+	void _LangShowText(const WCHAR* text, UINT len, UINT delay);
+	void _showChnEngNotifyCpp(BOOL isChinese, UINT delayShow = 0);
+	void _showFullHalfShapeNotifyCpp(BOOL isFullShape, UINT delayShow = 0);
+	void _showHanConvertNotifyCpp(BOOL isSimplified, UINT delayShow = 0);
+#if defined(DIME_USE_RUST_ENGINE) || (defined(DIME_UNIT_TESTING) && defined(DIME_RUST_AVAILABLE))
+	void _ConversionModeCompartmentUpdatedRust(_In_ ITfThreadMgr *pThreadMgr, BOOL *setKeyboardOpenClose);
+	void _PrivateCompartmentsUpdatedRust(_In_ ITfThreadMgr *pThreadMgr);
+	void _KeyboardOpenCompartmentUpdatedRust(_In_ ITfThreadMgr *pThreadMgr, _In_ REFGUID guidCompartment);
+	void _OnKeyboardClosedRust();
+	void _OnKeyboardOpenRust();
+	void _OnSwitchedToFullShapeRust();
+	void _OnSwitchedToHalfShapeRust();
+	void _showChnEngNotifyRust(BOOL isChinese, UINT delayShow);
+	void _showFullHalfShapeNotifyRust(BOOL isFullShape, UINT delayShow);
+	void _showHanConvertNotifyRust(BOOL isSimplified, UINT delayShow);
+#endif
 
 private:
 	

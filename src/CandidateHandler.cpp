@@ -282,6 +282,7 @@ Exit:
 //
 //----------------------------------------------------------------------------
 
+#ifdef DIME_COMPILE_ROUTING_HANDLERS
 HRESULT CDIME::_HandleCandidateArrowKey(TfEditCookie ec, _In_ ITfContext *pContext, _In_ KEYSTROKE_FUNCTION keyFunction)
 {
 #ifdef DIME_USE_RUST_ENGINE
@@ -291,6 +292,7 @@ HRESULT CDIME::_HandleCandidateArrowKey(TfEditCookie ec, _In_ ITfContext *pConte
 	return _HandleCandidateArrowKeyCpp(ec, pContext, keyFunction);
 #endif
 }
+#endif
 
 HRESULT CDIME::_HandleCandidateArrowKeyCpp(TfEditCookie ec, _In_ ITfContext *pContext, _In_ KEYSTROKE_FUNCTION keyFunction)
 {
@@ -309,6 +311,7 @@ HRESULT CDIME::_HandleCandidateArrowKeyCpp(TfEditCookie ec, _In_ ITfContext *pCo
 //
 //----------------------------------------------------------------------------
 
+#ifdef DIME_COMPILE_ROUTING_HANDLERS
 HRESULT CDIME::_HandleCandidateSelectByNumber(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode,_In_ WCHAR wch)
 {
 #ifdef DIME_USE_RUST_ENGINE
@@ -318,6 +321,7 @@ HRESULT CDIME::_HandleCandidateSelectByNumber(TfEditCookie ec, _In_ ITfContext *
 	return _HandleCandidateSelectByNumberCpp(ec, pContext, uCode, wch);
 #endif
 }
+#endif
 
 HRESULT CDIME::_HandleCandidateSelectByNumberCpp(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode,_In_ WCHAR wch)
 {
@@ -394,6 +398,7 @@ HRESULT CDIME::_HandlePhraseFinalizeCpp(TfEditCookie ec, _In_ ITfContext *pConte
 //
 //----------------------------------------------------------------------------
 
+#ifdef DIME_COMPILE_ROUTING_HANDLERS
 HRESULT CDIME::_HandlePhraseArrowKey(TfEditCookie ec, _In_ ITfContext *pContext, _In_ KEYSTROKE_FUNCTION keyFunction)
 {
 #ifdef DIME_USE_RUST_ENGINE
@@ -403,6 +408,7 @@ HRESULT CDIME::_HandlePhraseArrowKey(TfEditCookie ec, _In_ ITfContext *pContext,
 	return _HandlePhraseArrowKeyCpp(ec, pContext, keyFunction);
 #endif
 }
+#endif
 
 HRESULT CDIME::_HandlePhraseArrowKeyCpp(TfEditCookie ec, _In_ ITfContext *pContext, _In_ KEYSTROKE_FUNCTION keyFunction)
 {
@@ -421,6 +427,7 @@ HRESULT CDIME::_HandlePhraseArrowKeyCpp(TfEditCookie ec, _In_ ITfContext *pConte
 //
 //----------------------------------------------------------------------------
 
+#ifdef DIME_COMPILE_ROUTING_HANDLERS
 HRESULT CDIME::_HandlePhraseSelectByNumber(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode, _In_ WCHAR wch)
 {
 #ifdef DIME_USE_RUST_ENGINE
@@ -430,6 +437,7 @@ HRESULT CDIME::_HandlePhraseSelectByNumber(TfEditCookie ec, _In_ ITfContext *pCo
 	return _HandlePhraseSelectByNumberCpp(ec, pContext, uCode, wch);
 #endif
 }
+#endif
 
 HRESULT CDIME::_HandlePhraseSelectByNumberCpp(TfEditCookie ec, _In_ ITfContext *pContext, _In_ UINT uCode, _In_ WCHAR wch)
 {

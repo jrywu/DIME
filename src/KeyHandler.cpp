@@ -148,6 +148,7 @@ HRESULT CDIME::_HandleCancelCpp(TfEditCookie ec, _In_ ITfContext *pContext)
 //
 //----------------------------------------------------------------------------
 
+#ifdef DIME_COMPILE_ROUTING_HANDLERS
 HRESULT CDIME::_HandleCompositionInput(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch)
 {
 #ifdef DIME_USE_RUST_ENGINE
@@ -157,6 +158,7 @@ HRESULT CDIME::_HandleCompositionInput(TfEditCookie ec, _In_ ITfContext *pContex
 	return _HandleCompositionInputCpp(ec, pContext, wch);
 #endif
 }
+#endif
 
 HRESULT CDIME::_HandleCompositionInputCpp(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch)
 {
@@ -394,6 +396,7 @@ HRESULT CDIME::_HandleCompositionFinalizeCpp(TfEditCookie ec, _In_ ITfContext *p
 //
 //----------------------------------------------------------------------------
 
+#ifdef DIME_COMPILE_ROUTING_HANDLERS
 HRESULT CDIME::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pContext, BOOL isWildcardSearch, BOOL isArrayPhraseEnding)
 {
 #ifdef DIME_USE_RUST_ENGINE
@@ -403,6 +406,7 @@ HRESULT CDIME::_HandleCompositionConvert(TfEditCookie ec, _In_ ITfContext *pCont
 	return _HandleCompositionConvertCpp(ec, pContext, isWildcardSearch, isArrayPhraseEnding);
 #endif
 }
+#endif
 
 HRESULT CDIME::_HandleCompositionConvertCpp(TfEditCookie ec, _In_ ITfContext *pContext, BOOL isWildcardSearch, BOOL isArrayPhraseEnding)
 {
@@ -474,6 +478,7 @@ HRESULT CDIME::_HandleCompositionConvertCpp(TfEditCookie ec, _In_ ITfContext *pC
 //
 //----------------------------------------------------------------------------
 
+#ifdef DIME_COMPILE_ROUTING_HANDLERS
 HRESULT CDIME::_HandleCompositionBackspace(TfEditCookie ec, _In_ ITfContext *pContext)
 {
 #ifdef DIME_USE_RUST_ENGINE
@@ -483,6 +488,7 @@ HRESULT CDIME::_HandleCompositionBackspace(TfEditCookie ec, _In_ ITfContext *pCo
 	return _HandleCompositionBackspaceCpp(ec, pContext);
 #endif
 }
+#endif
 
 HRESULT CDIME::_HandleCompositionBackspaceCpp(TfEditCookie ec, _In_ ITfContext *pContext)
 {
@@ -561,6 +567,7 @@ Exit:
 //
 //----------------------------------------------------------------------------
 
+#ifdef DIME_COMPILE_ROUTING_HANDLERS
 HRESULT CDIME::_HandleCompositionArrowKey(TfEditCookie ec, _In_ ITfContext *pContext, KEYSTROKE_FUNCTION keyFunction)
 {
 #ifdef DIME_USE_RUST_ENGINE
@@ -570,6 +577,7 @@ HRESULT CDIME::_HandleCompositionArrowKey(TfEditCookie ec, _In_ ITfContext *pCon
 	return _HandleCompositionArrowKeyCpp(ec, pContext, keyFunction);
 #endif
 }
+#endif
 
 HRESULT CDIME::_HandleCompositionArrowKeyCpp(TfEditCookie ec, _In_ ITfContext *pContext, KEYSTROKE_FUNCTION keyFunction)
 {
@@ -613,6 +621,7 @@ Exit:
 //
 //----------------------------------------------------------------------------
 
+#ifdef DIME_COMPILE_ROUTING_HANDLERS
 HRESULT CDIME::_HandleCompositionDoubleSingleByte(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch)
 {
 #ifdef DIME_USE_RUST_ENGINE
@@ -622,6 +631,7 @@ HRESULT CDIME::_HandleCompositionDoubleSingleByte(TfEditCookie ec, _In_ ITfConte
 	return _HandleCompositionDoubleSingleByteCpp(ec, pContext, wch);
 #endif
 }
+#endif
 
 HRESULT CDIME::_HandleCompositionDoubleSingleByteCpp(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch)
 {
@@ -656,6 +666,7 @@ HRESULT CDIME::_HandleCompositionDoubleSingleByteCpp(TfEditCookie ec, _In_ ITfCo
 // - CapsLock ON: produce shifted characters (A, !, _)
 //----------------------------------------------------------------------------
 
+#ifdef DIME_COMPILE_ROUTING_HANDLERS
 HRESULT CDIME::_HandleCompositionShiftEnglishInput(TfEditCookie ec, _In_ ITfContext *pContext, UINT code, WCHAR wch)
 {
 #ifdef DIME_USE_RUST_ENGINE
@@ -665,6 +676,7 @@ HRESULT CDIME::_HandleCompositionShiftEnglishInput(TfEditCookie ec, _In_ ITfCont
 	return _HandleCompositionShiftEnglishInputCpp(ec, pContext, code, wch);
 #endif
 }
+#endif
 
 HRESULT CDIME::_HandleCompositionShiftEnglishInputCpp(TfEditCookie ec, _In_ ITfContext *pContext, UINT code, WCHAR wch)
 {
@@ -764,6 +776,7 @@ HRESULT CDIME::_HandleCompositionShiftEnglishInputCpp(TfEditCookie ec, _In_ ITfC
 //
 //----------------------------------------------------------------------------
 
+#ifdef DIME_COMPILE_ROUTING_HANDLERS
 HRESULT CDIME::_HandleCompositionAddressChar(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch)
 {
 #ifdef DIME_USE_RUST_ENGINE
@@ -776,6 +789,7 @@ HRESULT CDIME::_HandleCompositionAddressChar(TfEditCookie ec, _In_ ITfContext *p
 	return _HandleCompositionAddressCharCpp(ec, pContext, wch);
 #endif
 }
+#endif
 
 HRESULT CDIME::_HandleCompositionAddressCharCpp(TfEditCookie ec, _In_ ITfContext *pContext, WCHAR wch)
 {

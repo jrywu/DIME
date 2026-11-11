@@ -388,6 +388,10 @@ impl Presenter {
     pub fn cand_list(&self) -> Option<Rc<CandList>> {
         self.cand.borrow().as_ref().map(|c| Rc::clone(&c.list))
     }
+    /// `PageSize()` of the list (0 without one, or when the range's count is not positive).
+    pub fn candidate_page_size(&self) -> u32 {
+        self.cand_list().map(|l| l.page_size()).unwrap_or(0)
+    }
 
     /// `MakeCandidateWindow` after C++ found the parent: false when there is
     /// one already (`E_FAIL`).  Then `CRustCandidateWindow::_Create`: the
