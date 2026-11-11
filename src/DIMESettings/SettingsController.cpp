@@ -16,6 +16,77 @@
 #include "..\CompositionProcessorEngine.h"
 #include "SettingsController.h"
 #include "SettingsPageLayout.h"
+#ifdef DIME_USE_RUST_CONFIG
+#include "dime_ffi.h"
+#include <cstddef>
+
+// SettingsSnapshot must match dime-config::settings_model::SettingsSnapshot.
+static_assert(sizeof(SettingsSnapshot) == 216, "SettingsSnapshot size");
+static_assert(alignof(SettingsSnapshot) == 4, "SettingsSnapshot alignment");
+static_assert(offsetof(SettingsSnapshot, fontFaceName) == 12, "fontFaceName");
+static_assert(offsetof(SettingsSnapshot, colorMode) == 76, "colorMode");
+static_assert(offsetof(SettingsSnapshot, autoCompose) == 104, "autoCompose");
+static_assert(offsetof(SettingsSnapshot, showNotifyDesktop) == 144, "showNotifyDesktop");
+static_assert(offsetof(SettingsSnapshot, big5Filter) == 176, "big5Filter");
+static_assert(offsetof(SettingsSnapshot, maxCodes) == 180, "maxCodes");
+static_assert(offsetof(SettingsSnapshot, reverseConversionIndex) == 212, "reverseConversionIndex");
+static_assert(sizeof(SettingsModel::LineError) == sizeof(int), "LineError");
+static_assert(static_cast<int>(SettingsModel::LineError::None) == 0, "LineError::None");
+static_assert(static_cast<int>(SettingsModel::LineError::Format) == 1, "LineError::Format");
+static_assert(static_cast<int>(SettingsModel::LineError::KeyTooLong) == 2, "LineError::KeyTooLong");
+static_assert(static_cast<int>(SettingsModel::LineError::InvalidChar) == 3, "LineError::InvalidChar");
+static_assert(static_cast<int>(IME_MODE::IME_MODE_NONE) == 4, "IME_MODE_NONE");
+static_assert(CTRL_SHOW_NOTIFY == 11, "CTRL_SHOW_NOTIFY");
+static_assert(CTRL_CHARSET_SCOPE == 14, "CTRL_CHARSET_SCOPE");
+static_assert(CTRL_NUMERIC_PAD == 15, "CTRL_NUMERIC_PAD");
+static_assert(CTRL_SHIFT_ENGLISH_DIGIT_MODE == 16, "CTRL_SHIFT_ENGLISH_DIGIT_MODE");
+static_assert(CTRL_PHONETIC_KB == 17, "CTRL_PHONETIC_KB");
+static_assert(CTRL_ARROW_KEY_SW_PAGES == 19, "CTRL_ARROW_KEY_SW_PAGES");
+static_assert(CTRL_SPACE_AS_PAGEDOWN == 20, "CTRL_SPACE_AS_PAGEDOWN");
+static_assert(CTRL_SPACE_AS_FIRST_CAND == 21, "CTRL_SPACE_AS_FIRST_CAND");
+static_assert(CTRL_AUTO_COMPOSE == 22, "CTRL_AUTO_COMPOSE");
+static_assert(CTRL_CLEAR_ON_BEEP == 23, "CTRL_CLEAR_ON_BEEP");
+static_assert(CTRL_MAKE_PHRASE == 24, "CTRL_MAKE_PHRASE");
+static_assert(CTRL_CUSTOM_TABLE_PRIORITY == 25, "CTRL_CUSTOM_TABLE_PRIORITY");
+static_assert(CTRL_DO_BEEP == 26, "CTRL_DO_BEEP");
+static_assert(CTRL_DO_BEEP_NOTIFY == 27, "CTRL_DO_BEEP_NOTIFY");
+static_assert(CTRL_DO_BEEP_CANDI == 28, "CTRL_DO_BEEP_CANDI");
+static_assert(CTRL_IME_SHIFT_MODE == 29, "CTRL_IME_SHIFT_MODE");
+static_assert(CTRL_DOUBLE_SINGLE_BYTE == 30, "CTRL_DOUBLE_SINGLE_BYTE");
+static_assert(CTRL_KEYBOARD_OPEN_CLOSE == 31, "CTRL_KEYBOARD_OPEN_CLOSE");
+static_assert(CTRL_OUTPUT_CHT_CHS == 32, "CTRL_OUTPUT_CHT_CHS");
+static_assert(CTRL_DAYI_ARTICLE == 34, "CTRL_DAYI_ARTICLE");
+static_assert(CTRL_SENTENCE_MODE == 35, "CTRL_SENTENCE_MODE");
+static_assert(CTRL_DAYI_SELKEY_MODE == 36, "CTRL_DAYI_SELKEY_MODE");
+static_assert(CTRL_ARRAY_FORCE_SP == 37, "CTRL_ARRAY_FORCE_SP");
+static_assert(CTRL_ARRAY_NOTIFY_SP == 38, "CTRL_ARRAY_NOTIFY_SP");
+static_assert(CTRL_ARRAY_SINGLE_QUOTE == 39, "CTRL_ARRAY_SINGLE_QUOTE");
+static_assert(CTRL_LOAD_DAYI_MAIN == 300, "CTRL_LOAD_DAYI_MAIN");
+static_assert(CTRL_LOAD_ARRAY_MAIN == 301, "CTRL_LOAD_ARRAY_MAIN");
+static_assert(CTRL_LOAD_ARRAY_EXPAND == 302, "CTRL_LOAD_ARRAY_EXPAND");
+static_assert(CTRL_LOAD_ARRAY_SP == 303, "CTRL_LOAD_ARRAY_SP");
+static_assert(CTRL_LOAD_ARRAY_SC == 304, "CTRL_LOAD_ARRAY_SC");
+static_assert(CTRL_LOAD_ARRAY_EXT_B == 305, "CTRL_LOAD_ARRAY_EXT_B");
+static_assert(CTRL_LOAD_ARRAY_EXT_CD == 306, "CTRL_LOAD_ARRAY_EXT_CD");
+static_assert(CTRL_LOAD_ARRAY_EXT_E_TO_J == 307, "CTRL_LOAD_ARRAY_EXT_E_TO_J");
+static_assert(CTRL_LOAD_ARRAY40 == 308, "CTRL_LOAD_ARRAY40");
+static_assert(CTRL_LOAD_ARRAY_PHRASE == 309, "CTRL_LOAD_ARRAY_PHRASE");
+static_assert(CTRL_LOAD_PHONETIC_MAIN == 310, "CTRL_LOAD_PHONETIC_MAIN");
+static_assert(CTRL_LOAD_GENERIC_MAIN == 311, "CTRL_LOAD_GENERIC_MAIN");
+static_assert(CTRL_LOAD_ASSOC_PHRASE == 312, "CTRL_LOAD_ASSOC_PHRASE");
+
+namespace {
+extern "C" int32_t DimeSettingsCharOk(uint16_t ch, void* ctx)
+{
+    CCompositionProcessorEngine* engine = static_cast<CCompositionProcessorEngine*>(ctx);
+    if (engine == nullptr)
+    {
+        return 0;
+    }
+    return engine->ValidateCompositionKeyCharFull(static_cast<WCHAR>(ch)) ? 1 : 0;
+}
+}
+#endif
 
 // ============================================================================
 // IME mode bitmask
@@ -23,6 +94,9 @@
 
 int SettingsModel::GetModeBitmask(IME_MODE mode)
 {
+#ifdef DIME_USE_RUST_CONFIG
+    return dime_settings_mode_bitmask(static_cast<int32_t>(mode));
+#else
     switch (mode) {
     case IME_MODE::IME_MODE_DAYI:     return SM_MODE_DAYI;
     case IME_MODE::IME_MODE_ARRAY:    return SM_MODE_ARRAY;
@@ -30,6 +104,7 @@ int SettingsModel::GetModeBitmask(IME_MODE mode)
     case IME_MODE::IME_MODE_GENERIC:  return SM_MODE_GENERIC;
     default: return 0;
     }
+#endif
 }
 
 // ============================================================================
@@ -38,10 +113,14 @@ int SettingsModel::GetModeBitmask(IME_MODE mode)
 
 int SettingsModel::SidebarHitTest(int y, int itemHeight, int itemCount)
 {
+#ifdef DIME_USE_RUST_CONFIG
+    return dime_settings_sidebar_hit_test(y, itemHeight, itemCount);
+#else
     if (y < 0 || itemHeight <= 0 || itemCount <= 0) return -1;
     int index = y / itemHeight;
     if (index >= itemCount) return -1;
     return index;
+#endif
 }
 
 // ============================================================================
@@ -50,16 +129,24 @@ int SettingsModel::SidebarHitTest(int y, int itemHeight, int itemCount)
 
 int SettingsModel::ComputeScrollRange(int contentHeight, int viewportHeight)
 {
+#ifdef DIME_USE_RUST_CONFIG
+    return dime_settings_scroll_range(contentHeight, viewportHeight);
+#else
     if (contentHeight <= viewportHeight) return 0;
     return contentHeight - viewportHeight;
+#endif
 }
 
 int SettingsModel::ClampScrollPos(int pos, int maxScroll)
 {
+#ifdef DIME_USE_RUST_CONFIG
+    return dime_settings_clamp_scroll(pos, maxScroll);
+#else
     if (pos < 0) return 0;
     if (maxScroll < 0) maxScroll = 0;
     if (pos > maxScroll) return maxScroll;
     return pos;
+#endif
 }
 
 // ============================================================================
@@ -68,6 +155,9 @@ int SettingsModel::ClampScrollPos(int pos, int maxScroll)
 
 const wchar_t* SettingsModel::ImeModeToString(IME_MODE mode)
 {
+#ifdef DIME_USE_RUST_CONFIG
+    return reinterpret_cast<const wchar_t*>(dime_settings_ime_mode_to_string(static_cast<int32_t>(mode)));
+#else
     switch (mode) {
     case IME_MODE::IME_MODE_DAYI:     return ImeModeStrings::Dayi;
     case IME_MODE::IME_MODE_ARRAY:    return ImeModeStrings::Array;
@@ -75,16 +165,21 @@ const wchar_t* SettingsModel::ImeModeToString(IME_MODE mode)
     case IME_MODE::IME_MODE_GENERIC:  return ImeModeStrings::Generic;
     default: return nullptr;
     }
+#endif
 }
 
 IME_MODE SettingsModel::StringToImeMode(const wchar_t* str)
 {
+#ifdef DIME_USE_RUST_CONFIG
+    return static_cast<IME_MODE>(dime_settings_string_to_ime_mode(reinterpret_cast<const uint16_t*>(str)));
+#else
     if (!str) return IME_MODE::IME_MODE_NONE;
     if (_wcsicmp(str, ImeModeStrings::Dayi) == 0)     return IME_MODE::IME_MODE_DAYI;
     if (_wcsicmp(str, ImeModeStrings::Array) == 0)    return IME_MODE::IME_MODE_ARRAY;
     if (_wcsicmp(str, ImeModeStrings::Phonetic) == 0) return IME_MODE::IME_MODE_PHONETIC;
     if (_wcsicmp(str, ImeModeStrings::Generic) == 0)  return IME_MODE::IME_MODE_GENERIC;
     return IME_MODE::IME_MODE_NONE;
+#endif
 }
 
 // ============================================================================
@@ -190,6 +285,9 @@ void SettingsModel::ApplyToConfig(const SettingsSnapshot& snap)
 
 void SettingsModel::SyncToggleToSnapshot(SettingsSnapshot& s, SettingsControlId id, bool isOn)
 {
+#ifdef DIME_USE_RUST_CONFIG
+    dime_settings_sync_toggle(&s, static_cast<int32_t>(id), isOn ? 1 : 0);
+#else
     switch (id) {
     case CTRL_DO_BEEP:             s.doBeep = isOn; break;
     case CTRL_DO_BEEP_NOTIFY:      s.doBeepNotify = isOn; break;
@@ -211,11 +309,39 @@ void SettingsModel::SyncToggleToSnapshot(SettingsSnapshot& s, SettingsControlId 
     case CTRL_ARRAY_SINGLE_QUOTE:  s.arraySingleQuoteCustomPhrase = isOn; break;
     default: break;
     }
+#endif
 }
 
 SettingsModel::LineValidation SettingsModel::ValidateLine(const wchar_t* line, int len, IME_MODE mode, UINT maxCodes,
     CCompositionProcessorEngine* pEngine)
 {
+#ifdef DIME_USE_RUST_CONFIG
+    DimeLineError errs[1024];
+    size_t count = 0;
+    const int32_t ok = dime_settings_validate_line(
+        reinterpret_cast<const uint16_t*>(line),
+        (line != nullptr && len > 0) ? static_cast<size_t>(len) : 0,
+        static_cast<int32_t>(mode),
+        maxCodes,
+        (pEngine != nullptr) ? &DimeSettingsCharOk : nullptr,
+        pEngine,
+        errs,
+        1024,
+        &count);
+    LineValidation v;
+    v.valid = (ok != 0);
+    if (count > 1024) count = 1024;
+    v.errors.reserve(count);
+    for (size_t i = 0; i < count; ++i)
+    {
+        LineError kind = LineError::None;
+        if (errs[i].code == static_cast<int32_t>(LineError::Format)) kind = LineError::Format;
+        else if (errs[i].code == static_cast<int32_t>(LineError::KeyTooLong)) kind = LineError::KeyTooLong;
+        else if (errs[i].code == static_cast<int32_t>(LineError::InvalidChar)) kind = LineError::InvalidChar;
+        v.errors.push_back({ kind, errs[i].start, errs[i].len });
+    }
+    return v;
+#else
     // Matches CConfig::ValidateCustomTableLines per-line logic exactly.
     // 3 levels: Format → KeyTooLong → InvalidChar (may report multiple chars)
     LineValidation v = { true, {} };
@@ -341,6 +467,7 @@ SettingsModel::LineValidation SettingsModel::ValidateLine(const wchar_t* line, i
         }
     }
     return v;
+#endif
 }
 
 // ============================================================================
@@ -509,6 +636,9 @@ LPWSTR SettingsModel::LoadTextFileAsUtf16(LPCWSTR path, size_t* outLen)
 
 IME_MODE SettingsModel::IndexToMode(int index)
 {
+#ifdef DIME_USE_RUST_CONFIG
+    return static_cast<IME_MODE>(dime_settings_index_to_mode(index));
+#else
     switch (index) {
     case 0: return IME_MODE::IME_MODE_DAYI;
     case 1: return IME_MODE::IME_MODE_ARRAY;
@@ -516,10 +646,14 @@ IME_MODE SettingsModel::IndexToMode(int index)
     case 3: return IME_MODE::IME_MODE_GENERIC;
     default: return IME_MODE::IME_MODE_DAYI;
     }
+#endif
 }
 
 int SettingsModel::ModeToIndex(IME_MODE mode)
 {
+#ifdef DIME_USE_RUST_CONFIG
+    return dime_settings_mode_to_index(static_cast<int32_t>(mode));
+#else
     switch (mode) {
     case IME_MODE::IME_MODE_DAYI:     return 0;
     case IME_MODE::IME_MODE_ARRAY:    return 1;
@@ -527,6 +661,7 @@ int SettingsModel::ModeToIndex(IME_MODE mode)
     case IME_MODE::IME_MODE_GENERIC:  return 3;
     default: return 0;
     }
+#endif
 }
 
 // ============================================================================
@@ -535,6 +670,9 @@ int SettingsModel::ModeToIndex(IME_MODE mode)
 
 void SettingsModel::SyncComboToSnapshot(SettingsSnapshot& s, SettingsControlId id, int sel)
 {
+#ifdef DIME_USE_RUST_CONFIG
+    dime_settings_sync_combo(&s, static_cast<int32_t>(id), sel);
+#else
     switch (id) {
     case CTRL_CHARSET_SCOPE:       s.big5Filter = (sel == 1); break;
     case CTRL_NUMERIC_PAD:         s.numericPad = sel; break;
@@ -547,6 +685,7 @@ void SettingsModel::SyncComboToSnapshot(SettingsSnapshot& s, SettingsControlId i
     case CTRL_OUTPUT_CHT_CHS:      s.doHanConvert = (sel == 1); break;
     default: break;
     }
+#endif
 }
 
 // ============================================================================
@@ -555,6 +694,15 @@ void SettingsModel::SyncComboToSnapshot(SettingsSnapshot& s, SettingsControlId i
 
 bool SettingsModel::ParseMaxCodes(const wchar_t* text, UINT& outVal)
 {
+#ifdef DIME_USE_RUST_CONFIG
+    uint32_t val = 0;
+    if (!dime_settings_parse_max_codes(reinterpret_cast<const uint16_t*>(text), &val))
+    {
+        return false;
+    }
+    outVal = val;
+    return true;
+#else
     if (!text) return false;
     UINT val = (UINT)_wtoi(text);
     if (val >= 1 && val <= 20) {
@@ -562,6 +710,7 @@ bool SettingsModel::ParseMaxCodes(const wchar_t* text, UINT& outVal)
         return true;
     }
     return false;
+#endif
 }
 
 // ============================================================================
@@ -570,6 +719,9 @@ bool SettingsModel::ParseMaxCodes(const wchar_t* text, UINT& outVal)
 
 const wchar_t* SettingsModel::GetLoadTableSuffix(SettingsControlId id)
 {
+#ifdef DIME_USE_RUST_CONFIG
+    return reinterpret_cast<const wchar_t*>(dime_settings_load_table_suffix(static_cast<int32_t>(id)));
+#else
     switch (id) {
     case CTRL_LOAD_DAYI_MAIN:     return L"\\DIME\\Dayi.cin";
     case CTRL_LOAD_ARRAY_MAIN:    return L"\\DIME\\Array.cin";
@@ -585,4 +737,5 @@ const wchar_t* SettingsModel::GetLoadTableSuffix(SettingsControlId id)
     case CTRL_LOAD_ARRAY_PHRASE:   return L"\\DIME\\Array-Phrase.cin";
     default: return nullptr;
     }
+#endif
 }

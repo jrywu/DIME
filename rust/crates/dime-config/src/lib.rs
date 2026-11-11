@@ -12,6 +12,7 @@ pub mod guid;
 pub mod ini;
 pub mod keys;
 pub mod num;
+pub mod settings_model;
 pub mod values;
 
 pub use values::{ConfigValues, Env, ImeMode, Palette, Settings};

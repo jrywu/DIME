@@ -1152,6 +1152,40 @@ struct DimeCliHost { const DimeCliHostVtbl* vtbl; void* ctx; };
 
 int32_t dime_cli_run(const uint16_t* const* argv, const size_t* lens, size_t argc, DimeCliHost* host);
 
+/* ---- Settings model (phase 5b-1, dime-config::settings_model) ----------
+ * Window-free SettingsModel functions. snapshot is a C++ SettingsSnapshot
+ * (216 bytes). Returned strings are static NUL-terminated UTF-16, or NULL.
+ * string_to_ime_mode: NULL or an unknown name is IME_MODE_NONE (4).
+ * parse_max_codes: 1 and *out_val written when the text is in 1..=20;
+ *   0 otherwise (NULL text does not write). validate_line: 1 when the line
+ *   is valid. char_ok NULL selects the no-engine fallback. out receives up
+ *   to cap entries; *out_count is how many were written. Codes: 1 format,
+ *   2 key too long, 3 invalid char.
+ */
+int32_t dime_settings_mode_bitmask(int32_t mode);
+int32_t dime_settings_sidebar_hit_test(int32_t y, int32_t item_height, int32_t item_count);
+int32_t dime_settings_scroll_range(int32_t content_height, int32_t viewport_height);
+int32_t dime_settings_clamp_scroll(int32_t pos, int32_t max_scroll);
+const uint16_t* dime_settings_ime_mode_to_string(int32_t mode);
+int32_t dime_settings_string_to_ime_mode(const uint16_t* text);
+int32_t dime_settings_index_to_mode(int32_t index);
+int32_t dime_settings_mode_to_index(int32_t mode);
+void dime_settings_sync_toggle(void* snapshot, int32_t id, int32_t is_on);
+void dime_settings_sync_combo(void* snapshot, int32_t id, int32_t sel);
+int32_t dime_settings_parse_max_codes(const uint16_t* text, uint32_t* out_val);
+const uint16_t* dime_settings_load_table_suffix(int32_t id);
+
+typedef struct DimeLineError {
+    int32_t code;
+    int32_t start;
+    int32_t len;
+} DimeLineError;
+
+int32_t dime_settings_validate_line(
+    const uint16_t* line, size_t len, int32_t mode, uint32_t max_codes,
+    int32_t (*char_ok)(uint16_t ch, void* ctx), void* ctx,
+    DimeLineError* out, size_t cap, size_t* out_count);
+
 #ifdef __cplusplus
 }
 #endif

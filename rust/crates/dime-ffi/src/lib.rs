@@ -32,6 +32,7 @@ use dime_core::{CandidateItem, DictionaryType, SearchSection, TableDictionaryEng
 mod cli;
 mod host_ui;
 mod langbar;
+mod settings_model;
 mod setup;
 
 pub struct DimeEngine(TableDictionaryEngine<WinTextOps>);
