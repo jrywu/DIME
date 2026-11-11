@@ -625,3 +625,35 @@ pub unsafe extern "C" fn dime_settings_paint_msgbox(
         )
     })
 }
+
+// ---- Phase 5b-8a: the themed message box window (dime-settings::msgboxwin)
+
+/// `SettingsMsgBox::Show` in Rust: runs the modal box and returns the button
+/// id. A panic returns IDCANCEL (2).
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_message_box(
+    parent: Handle,
+    text: *const u16,
+    caption: *const u16,
+    mb_type: u32,
+    class_name: *const u16,
+    is_dark: i32,
+    tc: *const ThemeColors,
+    dpi_for: Option<dime_settings::msgboxwin::DpiFn>,
+) -> i32 {
+    guard(2, || unsafe {
+        let (Some(dpi_for), false) = (dpi_for, tc.is_null()) else {
+            return 2;
+        };
+        dime_settings::msgboxwin::show(
+            parent,
+            &cstr_vec(text),
+            &cstr_vec(caption),
+            mb_type,
+            &cstr_vec(class_name),
+            is_dark != 0,
+            &*tc,
+            dpi_for,
+        )
+    })
+}

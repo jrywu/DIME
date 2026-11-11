@@ -1328,6 +1328,17 @@ void dime_settings_paint_msgbox(void* hdc, const void* layout, const uint16_t* t
     const uint16_t* const* labels, int32_t btn_count, int32_t hover_btn, int32_t default_btn,
     const void* tc, void* font, void* icon, uint32_t dpi);
 
+/* ---- Settings message box window (phase 5b-8a, dime-settings::msgboxwin)
+ * SettingsMsgBox::Cpp::Show in Rust: registers class_name once per process,
+ * runs the modal box, and returns IDOK / IDYES / IDNO / IDCANCEL, or the
+ * MessageBoxW result when the window cannot be created. Strings are NUL
+ * terminated. tc is a ThemeColors (88 bytes). dpi_for is the host's
+ * CConfig::GetDpiForHwnd. A null tc or dpi_for, or a panic, returns IDCANCEL.
+ */
+int32_t dime_settings_message_box(void* parent, const uint16_t* text, const uint16_t* caption,
+    uint32_t mb_type, const uint16_t* class_name, int32_t is_dark, const void* tc,
+    uint32_t (*dpi_for)(void* hwnd));
+
 #ifdef __cplusplus
 }
 #endif
