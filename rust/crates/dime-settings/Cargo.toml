@@ -11,3 +11,4 @@ dime-config = { path = "../dime-config" }
 
 [target.'cfg(windows)'.dependencies]
 windows-link = "0.2.1"
+windows = { version = "0.62.2", default-features = false, features = ["Win32_Foundation", "Win32_System_Com", "Win32_System_Ole", "Win32_System_Variant", "Win32_UI_Controls", "Win32_UI_Controls_RichEdit"] }

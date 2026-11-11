@@ -1403,6 +1403,19 @@ typedef struct DimeSettingsCmdHostVtbl {
 void dime_settings_command_handle(const DimeSettingsCmdHostVtbl* vtbl, void* ctx, void* snapshot,
     int32_t* grid_expanded, const void* ev);
 
+/* ---- Settings custom table editor (phase 5b-8d, dime-settings::editor) --
+ * SettingsEditor::Cpp in Rust. hre is the RICHEDIT50W. viewport writes the
+ * inclusive visible line range (0, 0 for an empty editor). validate_viewport
+ * validates the visible lines and colours them through TOM without moving
+ * the selection, with EN_CHANGE muted; char_ok / char_ctx is the engine's
+ * key check or NULL. subclass_proc returns the SUBCLASSPROC to install with
+ * SetWindowSubclass(hre, proc, 0, 0); it removes itself on WM_NCDESTROY.
+ */
+void dime_settings_editor_viewport(void* hre, int32_t* first_visible, int32_t* last_visible);
+void dime_settings_editor_validate_viewport(void* hre, int32_t mode, uint32_t max_codes, int32_t is_dark,
+    int32_t (*char_ok)(uint16_t ch, void* ctx), void* char_ctx);
+const void* dime_settings_editor_subclass_proc(void);
+
 #ifdef __cplusplus
 }
 #endif

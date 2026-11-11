@@ -17,7 +17,6 @@
 #include <shlobj.h>
 #include <gdiplus.h>
 #include <math.h>
-#include <tom.h>          // ITextDocument / ITextRange — for issue-#130 caret-safe painting
 #include <richedit.h>     // EM_GETOLEINTERFACE
 #pragma comment(lib, "gdiplus.lib")
 #pragma comment(lib, "msimg32.lib")
@@ -35,6 +34,7 @@
 #include "SettingsMsgBox.h"
 #include "SettingsNav.h"
 #include "SettingsCommand.h"
+#include "SettingsEditor.h"
 
 #include <Richedit.h>
 #include <MLang.h>
@@ -99,297 +99,26 @@ static int ValidateCustomTableBuffer(const wchar_t* text, size_t wlen,
 }
 
 // ============================================================================
-// Issue #130 Phase 3: foreground viewport pass + chunked background scan +
-// Save-button gating. Replaces the LIVE_VALIDATE_LINE_CAP all-or-nothing
-// heuristic with a design that stays responsive at any document size.
-// Design + rationale: docs/RICHEDIT_FG_BG_VAL.md and
-//                     docs/CUSTOM_TABLE_VALIDATION.md §2.2.
+// Issue #130: live validation of the custom table editor (SettingsEditor.*).
+// The chunked background scan that used to live here was never started
+// (StartBgScan had no caller since the Phase 3 final fix) and is removed;
+// Save validates the whole buffer itself. See docs/RICHEDIT_VIEWPORT_VAL.md.
 // ============================================================================
-static const int      BG_SCAN_CHUNK        = 500;     // lines per scan-tick
-static const UINT     BG_SCAN_INTERVAL_MS  = 50;      // scan tick period
-static const UINT_PTR BG_SCAN_TIMER_ID     = 0xC130;  // unique scan-timer ID
-
-// Forward declarations (call sites earlier in the file reference these).
-static void ValidateViewport(HWND hRE, SettingsWindow::WindowData* wd);
-static void StartBgScan(HWND hOwnerWnd, SettingsWindow::WindowData* wd);
-static void CancelBgScan(HWND hOwnerWnd, SettingsWindow::WindowData* wd);
-static void EnableSaveButton(SettingsWindow::WindowData* wd, BOOL enable);
-static void SetSaveButtonText(SettingsWindow::WindowData* wd, LPCWSTR text);
-static BOOL SnapshotEditorForBgScan(HWND hRE, SettingsWindow::WindowData* wd);
-static void FreeBgSnapshot(SettingsWindow::WindowData* wd);
-
-// Compute the inclusive [firstVis, lastVis] line range currently visible in
-// the RichEdit. Returns 0,0 for an empty editor.
-static void GetViewportLineRange(HWND hRE, int* outFirstVis, int* outLastVis)
-{
-    int firstVis = (int)SendMessageW(hRE, EM_GETFIRSTVISIBLELINE, 0, 0);
-    RECT rc; GetClientRect(hRE, &rc);
-    POINTL pt = { rc.right - 1, rc.bottom - 1 };
-    LRESULT lastChar = SendMessageW(hRE, EM_CHARFROMPOS, 0, (LPARAM)&pt);
-    int lastVis = (lastChar >= 0)
-        ? (int)SendMessageW(hRE, EM_LINEFROMCHAR, (WPARAM)lastChar, 0)
-        : firstVis;
-    int lineCount = (int)SendMessageW(hRE, EM_GETLINECOUNT, 0, 0);
-    if (lastVis >= lineCount) lastVis = lineCount - 1;
-    if (lastVis < firstVis) lastVis = firstVis;
-    if (outFirstVis) *outFirstVis = firstVis;
-    if (outLastVis)  *outLastVis  = lastVis;
-}
-
-// Issue #130 Phase 3 (final fix for live highlighting without caret jumps):
-// the previous EM_SETSEL + EM_SETCHARFORMAT(SCF_SELECTION) approach moved the
-// caret on every per-line / per-error paint, even with WM_SETREDRAW + HIDESEL
-// suppression — RichEdit-50 doesn't reliably honour the restore inside that
-// window. The proper fix is to use the Text Object Model (ITextDocument /
-// ITextRange) which sets CHARFORMAT on arbitrary ranges WITHOUT touching the
-// selection at all.
-
-// Acquire ITextDocument from the RichEdit. Caller releases.
-// Returns nullptr if the control doesn't support TOM (very old RichEdit
-// versions); callers should fall back gracefully (skip painting).
-static ITextDocument* GetRichEditTextDocument(HWND hRE)
-{
-    if (!hRE) return nullptr;
-    IUnknown* pUnk = nullptr;
-    SendMessageW(hRE, EM_GETOLEINTERFACE, 0, (LPARAM)&pUnk);
-    if (!pUnk) return nullptr;
-    ITextDocument* pDoc = nullptr;
-    pUnk->QueryInterface(__uuidof(ITextDocument), (void**)&pDoc);
-    pUnk->Release();
-    return pDoc;
-}
-
-// Paint a foreground colour over [cpMin, cpMax) WITHOUT moving the selection.
-static void PaintRangeColor(ITextDocument* pDoc, LONG cpMin, LONG cpMax, COLORREF color)
-{
-    if (!pDoc || cpMax <= cpMin) return;
-    ITextRange* pRange = nullptr;
-    if (FAILED(pDoc->Range(cpMin, cpMax, &pRange)) || !pRange) return;
-    ITextFont* pFont = nullptr;
-    if (SUCCEEDED(pRange->GetFont(&pFont)) && pFont) {
-        pFont->SetForeColor((LONG)color);
-        pFont->Release();
-    }
-    pRange->Release();
-}
-
-// Paint per-error colours over the line whose absolute char offset is
-// lineStart. Uses ITextRange — does not touch the selection.
-static void PaintErrorRange(ITextDocument* pDoc, LONG lineStart,
-    const SettingsModel::LineValidation& v, bool isDark)
-{
-    if (!pDoc || v.valid || v.errors.empty()) return;
-
-    COLORREF errorFormat = isDark ? CUSTOM_TABLE_DARK_ERROR_FORMAT : CUSTOM_TABLE_LIGHT_ERROR_FORMAT;
-    COLORREF errorLength = isDark ? CUSTOM_TABLE_DARK_ERROR_LENGTH : CUSTOM_TABLE_LIGHT_ERROR_LENGTH;
-    COLORREF errorChar   = isDark ? CUSTOM_TABLE_DARK_ERROR_CHAR   : CUSTOM_TABLE_LIGHT_ERROR_CHAR;
-
-    for (const auto& err : v.errors) {
-        COLORREF color;
-        switch (err.error) {
-        case SettingsModel::LineError::Format:      color = errorFormat; break;
-        case SettingsModel::LineError::KeyTooLong:  color = errorLength; break;
-        case SettingsModel::LineError::InvalidChar: color = errorChar;   break;
-        default: continue;
-        }
-        PaintRangeColor(pDoc,
-            lineStart + err.errorStart,
-            lineStart + err.errorStart + err.errorLen,
-            color);
-    }
-}
-
-// Validate one line by index. Reads the line via EM_GETTEXTRANGE, validates
-// in-memory, then paints valid-colour first (clears stale error colours from
-// a previous pass) followed by per-error colours — ALL via ITextRange,
-// so the caret never moves.
-static void ValidateCustomTableRE_OneLine(HWND hRE, ITextDocument* pDoc, int li,
-    IME_MODE mode, UINT maxCodes, bool isDark, CCompositionProcessorEngine* pEng)
-{
-    if (!pDoc) return;
-    LONG start = (LONG)SendMessageW(hRE, EM_LINEINDEX, (WPARAM)li, 0);
-    if (start < 0) return;
-    LONG len = (LONG)SendMessageW(hRE, EM_LINELENGTH, (WPARAM)start, 0);
-    if (len <= 0) return;
-    std::vector<WCHAR> buf((size_t)len + 1);
-    TEXTRANGEW tr;
-    tr.chrg.cpMin = start;
-    tr.chrg.cpMax = start + len;
-    tr.lpstrText = buf.data();
-    if (SendMessageW(hRE, EM_GETTEXTRANGE, 0, (LPARAM)&tr) <= 0) return;
-
-    auto v = SettingsModel::ValidateLine(buf.data(), (int)len, mode, maxCodes, pEng);
-
-    COLORREF validColor = isDark ? CUSTOM_TABLE_DARK_VALID : CUSTOM_TABLE_LIGHT_VALID;
-    PaintRangeColor(pDoc, start, start + len, validColor);
-    if (!v.valid) PaintErrorRange(pDoc, start, v, isDark);
-}
-
-// Validate ONLY the current line (the one the caret is on). Used by EN_CHANGE
-// and WM_USER+1 — per-keystroke cost is constant regardless of document size,
-// so typing stays responsive even on 70k+ line buffers.
-static void ValidateCurrentLine(HWND hRE, SettingsWindow::WindowData* wd)
-{
-    if (!hRE || !wd) return;
-    CHARRANGE sel = {0, 0};
-    SendMessageW(hRE, EM_EXGETSEL, 0, (LPARAM)&sel);
-    int li = (int)SendMessageW(hRE, EM_LINEFROMCHAR, (WPARAM)sel.cpMin, 0);
-    if (li < 0) return;
-
-    ITextDocument* pDoc = GetRichEditTextDocument(hRE);
-    if (!pDoc) return;
-    LRESULT prevMask = SendMessageW(hRE, EM_GETEVENTMASK, 0, 0);
-    SendMessageW(hRE, EM_SETEVENTMASK, 0, 0);
-
-    ValidateCustomTableRE_OneLine(hRE, pDoc, li, wd->currentMode,
-        wd->snapshot.maxCodes, wd->isDarkTheme, wd->pEngine);
-
-    SendMessageW(hRE, EM_SETEVENTMASK, 0, (LPARAM)prevMask);
-    pDoc->Release();
-}
-
-// Foreground viewport pass — validates only the lines currently visible in
-// the editor. Selection is never touched (TOM-based painting), so no caret
-// jumps and no flicker. Used at one-shot moments (initial-load, Import,
-// scroll) where painting the full visible range is necessary; per-keystroke
-// EN_CHANGE uses ValidateCurrentLine instead so cost stays constant.
-//
-// Wraps the painting block in EM_SETEVENTMASK(0) → restore. RichEdit fires
-// EN_CHANGE on some CHARFORMAT-only operations even though strictly only the
-// formatting changed; without the mute we'd recurse infinitely (EN_CHANGE
-// handler → ValidateViewport → SetForeColor → EN_CHANGE → ...) which pegs
-// the message pump and makes the editor non-editable.
 static void ValidateViewport(HWND hRE, SettingsWindow::WindowData* wd)
 {
     if (!hRE || !wd) return;
-    int firstVis, lastVis;
-    GetViewportLineRange(hRE, &firstVis, &lastVis);
-    int lineCount = (int)SendMessageW(hRE, EM_GETLINECOUNT, 0, 0);
-    if (lineCount <= 0) return;
-
-    ITextDocument* pDoc = GetRichEditTextDocument(hRE);
-    if (!pDoc) return;  // No TOM support → silently skip live highlighting.
-
-    LRESULT prevMask = SendMessageW(hRE, EM_GETEVENTMASK, 0, 0);
-    SendMessageW(hRE, EM_SETEVENTMASK, 0, 0);
-
-    for (int li = firstVis; li <= lastVis && li < lineCount; ++li) {
-        ValidateCustomTableRE_OneLine(hRE, pDoc, li, wd->currentMode,
-            wd->snapshot.maxCodes, wd->isDarkTheme, wd->pEngine);
-    }
-
-    SendMessageW(hRE, EM_SETEVENTMASK, 0, (LPARAM)prevMask);
-    pDoc->Release();
+    SettingsEditor::EditorContext ctx = { (int)wd->currentMode, wd->snapshot.maxCodes,
+        wd->isDarkTheme ? 1 : 0, wd->pEngine };
+    SettingsEditor::ValidateViewport(hRE, ctx);
 }
 
-// Find and enable/disable the Save button. Centralised so callers don't repeat
-// the FindControl boilerplate.
+// Find and enable/disable the Save button.
 static void EnableSaveButton(SettingsWindow::WindowData* wd, BOOL enable)
 {
     if (!wd) return;
     HWND hSaveBtn = SettingsWindow::FindControl(wd, CTRL_CUSTOM_TABLE_SAVE);
     if (hSaveBtn) EnableWindow(hSaveBtn, enable);
 }
-
-// Set the Save button caption and force a repaint. Used to give the user
-// visible feedback while the BG scan is running ("驗證中 N%") and after it
-// completes with errors ("第 N 行有誤"). Restored to "儲存" on clean completion
-// and after a successful Save.
-static void SetSaveButtonText(SettingsWindow::WindowData* wd, LPCWSTR text)
-{
-    if (!wd || !text) return;
-    HWND hSaveBtn = SettingsWindow::FindControl(wd, CTRL_CUSTOM_TABLE_SAVE);
-    if (!hSaveBtn) return;
-    // Skip the SetWindowText if the caption is unchanged — avoids needless
-    // WM_DRAWITEM churn when the BG-scan progress percentage hasn't moved.
-    wchar_t curr[64] = {};
-    GetWindowTextW(hSaveBtn, curr, _countof(curr));
-    if (wcscmp(curr, text) == 0) return;
-    SetWindowTextW(hSaveBtn, text);
-    InvalidateRect(hSaveBtn, nullptr, TRUE);
-}
-
-// Free any snapshot owned by the WindowData. Idempotent.
-static void FreeBgSnapshot(SettingsWindow::WindowData* wd)
-{
-    if (!wd) return;
-    if (wd->ctBgBuffer)      { delete[] wd->ctBgBuffer;      wd->ctBgBuffer = nullptr; }
-    if (wd->ctBgLineOffsets) { delete[] wd->ctBgLineOffsets; wd->ctBgLineOffsets = nullptr; }
-    wd->ctBgBufferLen = 0;
-}
-
-// Cancel any in-progress background scan and free the in-memory snapshot.
-// Does NOT touch the Save button — Save's enabled state is dirty-bit driven
-// (EN_CHANGE marks dirty; successful Save clears it).
-static void CancelBgScan(HWND hOwnerWnd, SettingsWindow::WindowData* wd)
-{
-    if (!wd) return;
-    if (wd->ctBgScanTimer) {
-        KillTimer(hOwnerWnd, BG_SCAN_TIMER_ID);
-        wd->ctBgScanTimer = 0;
-    }
-    FreeBgSnapshot(wd);
-}
-
-// Start a one-shot background scan: snapshot the editor content, then walk it
-// in chunks via WM_TIMER ticks. Triggered ONLY by Import button + initial-load
-// (one-shot visual feedback for bulk content). EN_CHANGE never starts a BG
-// scan — typing only runs the foreground viewport pass and cancels any
-// in-flight BG. Save validates independently at click time.
-static void StartBgScan(HWND hOwnerWnd, SettingsWindow::WindowData* wd)
-{
-    if (!wd) return;
-    CancelBgScan(hOwnerWnd, wd);
-    HWND hRE = SettingsWindow::FindControl(wd, CTRL_CUSTOM_TABLE_EDITOR);
-    if (!hRE) return;
-    if (!SnapshotEditorForBgScan(hRE, wd)) return;  // OOM — silently skip
-    wd->ctBgScanTimer = SetTimer(hOwnerWnd, BG_SCAN_TIMER_ID,
-                                 BG_SCAN_INTERVAL_MS, nullptr);
-}
-
-// Take a one-shot snapshot of the RichEdit content into wd->ctBgBuffer and
-// compute the per-line char-offset table. Called from the debounce-timer fire
-// after typing settles. Returns FALSE on allocation failure.
-static BOOL SnapshotEditorForBgScan(HWND hRE, SettingsWindow::WindowData* wd)
-{
-    if (!hRE || !wd) return FALSE;
-    DWORD dwLen = GetWindowTextLengthW(hRE);
-    LPWSTR buf = new (std::nothrow) WCHAR[dwLen + 1];
-    if (!buf) return FALSE;
-    ZeroMemory(buf, (dwLen + 1) * sizeof(WCHAR));
-    GetWindowTextW(hRE, buf, dwLen + 1);
-
-    // Walk the buffer once to record line-start offsets. Lines split on '\n';
-    // a trailing '\r' on the previous line is excluded by the validator below.
-    // Pre-sized via EM_GETLINECOUNT for an exact allocation.
-    int lineCount = (int)SendMessageW(hRE, EM_GETLINECOUNT, 0, 0);
-    if (lineCount < 1) lineCount = 1;
-    int* offsets = new (std::nothrow) int[lineCount];
-    if (!offsets) { delete[] buf; return FALSE; }
-    int li = 0;
-    offsets[0] = 0;
-    for (int i = 0; i < (int)dwLen && li + 1 < lineCount; ++i) {
-        if (buf[i] == L'\n') {
-            offsets[++li] = i + 1;
-        }
-    }
-    // If actual line count differs (rare — EM_GETLINECOUNT counts wrap lines
-    // too on some RichEdit versions), cap to what we filled.
-    int actualLines = li + 1;
-    if (actualLines < lineCount) lineCount = actualLines;
-
-    wd->ctBgBuffer               = buf;
-    wd->ctBgBufferLen            = (int)dwLen;
-    wd->ctBgLineOffsets          = offsets;
-    wd->ctBgScanLineCountAtStart = lineCount;
-    wd->ctBgScanCursor           = 0;
-    wd->ctFirstBgErrorLine       = -1;
-    return TRUE;
-}
-
-// ValidateCustomTableRE removed (issue #130 Phase 3) — replaced by the
-// foreground viewport pass + background WM_TIMER scan above. Live edit
-// highlighting is now O(viewport) instead of O(N²) over RichEdit lines.
 
 // Custom table path helpers — delegated to SettingsModel
 #define GetCustomTableTxtPath  SettingsModel::GetCustomTableTxtPath
@@ -434,51 +163,6 @@ static void DeleteWindowPlacement()
         RegDeleteValueW(hKey, SETTINGS_UI_WP_VALUE);
         RegCloseKey(hKey);
     }
-}
-
-// Subclass proc for the custom table RichEdit:
-// - Prevents select-all on focus
-// - Posts WM_USER+1 to parent (hContentArea) for deferred validation on Enter/Space/Paste/large-delete
-static LRESULT CALLBACK CustomTableRE_SubclassProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
-    UINT_PTR uIdSubclass, DWORD_PTR /*dwRefData*/)
-{
-    if (uMsg == WM_SETFOCUS) {
-        CHARRANGE cr = {0, 0};
-        SendMessageW(hWnd, EM_EXSETSEL, 0, (LPARAM)&cr);
-        SendMessageW(hWnd, EM_SCROLLCARET, 0, 0);
-    } else if (uMsg == WM_KEYDOWN) {
-        if (wParam == VK_RETURN || wParam == VK_SPACE) {
-            PostMessageW(GetParent(hWnd), WM_USER + 1, 0, 0);
-        } else if (wParam == VK_DELETE || wParam == VK_BACK) {
-            CHARRANGE sel;
-            SendMessageW(hWnd, EM_EXGETSEL, 0, (LPARAM)&sel);
-            if (sel.cpMax - sel.cpMin > CUSTOM_TABLE_LARGE_DELETION_THRESHOLD)
-                PostMessageW(GetParent(hWnd), WM_USER + 1, 0, 0);
-        }
-    } else if (uMsg == WM_PASTE) {
-        PostMessageW(GetParent(hWnd), WM_USER + 1, 0, 0);
-    } else if (uMsg == WM_MOUSEWHEEL) {
-        // Cursor-aware routing: if cursor is over the RichEdit, let it scroll internally;
-        // otherwise forward to the outer content area scrollbar.
-        POINT pt;
-        GetCursorPos(&pt);
-        RECT rcRE;
-        GetWindowRect(hWnd, &rcRE);
-        if (!PtInRect(&rcRE, pt))
-            return SendMessageW(GetParent(hWnd), uMsg, wParam, lParam);
-        // Cursor is inside RichEdit → RichEdit scrolls internally. Forward a
-        // WM_USER+3 to the parent so the foreground viewport pass repaints
-        // whatever is now visible. Does NOT restart the BG scan (no buffer change).
-        PostMessageW(GetParent(hWnd), WM_USER + 3, 0, 0);
-        // Fall through to DefSubclassProc to let RichEdit do the actual scroll.
-    } else if (uMsg == WM_VSCROLL) {
-        // Scrollbar drag / arrow / page key — forward FG-only repaint trigger.
-        PostMessageW(GetParent(hWnd), WM_USER + 3, 0, 0);
-        // Fall through to DefSubclassProc.
-    } else if (uMsg == WM_NCDESTROY) {
-        RemoveWindowSubclass(hWnd, CustomTableRE_SubclassProc, uIdSubclass);
-    }
-    return DefSubclassProc(hWnd, uMsg, wParam, lParam);
 }
 
 // ============================================================================
@@ -1039,7 +723,7 @@ void SettingsWindow::CreateRichEditorControl(WindowData* wd, const LayoutRow& lr
                 delete[] text;
             }
         }
-        SetWindowSubclass(hRE, CustomTableRE_SubclassProc, 0, 0);
+        SetWindowSubclass(hRE, SettingsEditor::SubclassProc(), 0, 0);
         SendMessageW(hRE, EM_SETEVENTMASK, 0, ENM_CHANGE);
         wd->ctLastLineCount = (int)SendMessageW(hRE, EM_GETLINECOUNT, 0, 0);
         wd->ctLastEditedLine = -1;
@@ -1606,11 +1290,6 @@ LRESULT CALLBACK SettingsWindow::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPA
     case WM_DESTROY:
         SaveWindowPlacement(hWnd);
         if (wd) {
-            // Issue #130 Phase 3: kill any in-flight BG scan timers and free
-            // the snapshot before tearing down the WindowData. Content-area
-            // child window owns the timers; cancel here too in case the
-            // content-area WndProc didn't get its own WM_DESTROY first.
-            CancelBgScan(wd->hContentArea, wd);
             SettingsModel::DestroyEngine(wd->pEngine);
             DestroyThemeBrushes(wd);
             DestroyFonts(wd);
@@ -1846,7 +1525,7 @@ void SettingsWindow::HandleCommand(HWND hWnd, WindowData* wd, WPARAM wParam, LPA
             HWND hRE = Editor();
             if (hRE) ::ValidateViewport(hRE, wd);
         }
-        void CancelBgScan() override { ::CancelBgScan(hWnd, wd); }
+        void CancelBgScan() override {}   // no background scan exists any more
         void EnableSave(bool enable) override { EnableSaveButton(wd, enable ? TRUE : FALSE); }
         void UpdateLineCount() override
         {
@@ -1992,7 +1671,6 @@ LRESULT CALLBACK SettingsWindow::ContentWndProc(HWND hWnd, UINT msg, WPARAM wPar
         HWND hRE = FindControl(wd, CTRL_CUSTOM_TABLE_EDITOR);
         if (hRE) {
             ValidateViewport(hRE, wd);
-            CancelBgScan(hWnd, wd);
             EnableSaveButton(wd, TRUE);
             wd->ctKeystrokeCount = 0;
         }
@@ -2004,77 +1682,6 @@ LRESULT CALLBACK SettingsWindow::ContentWndProc(HWND hWnd, UINT msg, WPARAM wPar
         if (!wd) break;
         HWND hRE = FindControl(wd, CTRL_CUSTOM_TABLE_EDITOR);
         if (hRE) ValidateViewport(hRE, wd);   // newly-visible lines need painting
-        return 0;
-    }
-
-    case WM_TIMER:
-    {
-        if (!wd || wParam != BG_SCAN_TIMER_ID) break;
-        HWND hRE = FindControl(wd, CTRL_CUSTOM_TABLE_EDITOR);
-        if (!hRE || !wd->ctBgBuffer) { CancelBgScan(hWnd, wd); return 0; }
-
-        // Acquire ITextDocument once per tick — TOM-based painting doesn't
-        // touch the selection, so no caret save/restore needed.
-        ITextDocument* pDoc = GetRichEditTextDocument(hRE);
-        if (!pDoc) { CancelBgScan(hWnd, wd); return 0; }
-
-        // Compute viewport once per tick — foreground owns those lines, skip them.
-        int firstVis, lastVis;
-        GetViewportLineRange(hRE, &firstVis, &lastVis);
-
-        int totalLines = wd->ctBgScanLineCountAtStart;
-        int end = wd->ctBgScanCursor + BG_SCAN_CHUNK;
-        if (end > totalLines) end = totalLines;
-
-        bool autoJumped = false;
-
-        for (int li = wd->ctBgScanCursor; li < end; ++li) {
-            // Foreground owns the visible range; skip to avoid double work.
-            if (li >= firstVis && li <= lastVis) continue;
-
-            // In-memory read from snapshot — O(1), not O(N) like EM_GETTEXTRANGE.
-            int start = wd->ctBgLineOffsets[li];
-            int lineLen = (li + 1 < totalLines)
-                ? wd->ctBgLineOffsets[li + 1] - start - 1   // exclude '\n'
-                : wd->ctBgBufferLen - start;
-            if (lineLen <= 0) continue;
-            // Strip trailing '\r' if CRLF.
-            if (wd->ctBgBuffer[start + lineLen - 1] == L'\r') --lineLen;
-            if (lineLen <= 0) continue;
-
-            auto v = SettingsModel::ValidateLine(&wd->ctBgBuffer[start], lineLen,
-                wd->currentMode, wd->snapshot.maxCodes, wd->pEngine);
-            if (!v.valid) {
-                // Char offsets in our snapshot match the RichEdit's offsets.
-                PaintErrorRange(pDoc, start, v, wd->isDarkTheme);
-                if (wd->ctFirstBgErrorLine == -1) {
-                    wd->ctFirstBgErrorLine = li + 1;  // 1-based for UI
-                    // Auto-jump uses EM_SETSEL + EM_SCROLLCARET intentionally
-                    // (this is the ONLY caret movement we want from a BG tick).
-                    SendMessageW(hRE, EM_SETSEL, (WPARAM)start, (LPARAM)start);
-                    SendMessageW(hRE, EM_SCROLLCARET, 0, 0);
-                    autoJumped = true;
-                }
-            }
-        }
-        wd->ctBgScanCursor = end;
-        pDoc->Release();
-
-        // After auto-jump, repaint the new viewport so the destination line +
-        // neighbours are highlighted immediately (rather than waiting for the
-        // BG to walk back to those lines, which it won't).
-        if (autoJumped) {
-            ValidateViewport(hRE, wd);
-        }
-
-        if (wd->ctBgScanCursor >= totalLines) {
-            // Scan complete. Free snapshot. Save button state is independent
-            // (dirty-bit driven), so don't touch it here. Errors found this
-            // pass have already been painted + caret auto-jumped.
-            KillTimer(hWnd, BG_SCAN_TIMER_ID);
-            wd->ctBgScanTimer = 0;
-            FreeBgSnapshot(wd);
-        }
         return 0;
     }
 

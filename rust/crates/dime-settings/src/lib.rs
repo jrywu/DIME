@@ -8,9 +8,12 @@
 //! with the themed message box (`msgboxwin.rs`, `SettingsMsgBox.*`) and the
 //! navigation / hover / scroll / size reducer (`nav.rs`, `SettingsNav.*`).
 //! The command handlers (`command.rs`, `SettingsCommand.*`) run against a
-//! host interface. The editor and the binary come in later steps.
+//! host interface. The custom table editor's live validation is `editor.rs`
+//! (`SettingsEditor.*`). The binary comes in a later step.
 
 pub mod command;
+#[cfg(windows)]
+pub mod editor;
 pub mod layout;
 pub mod msgbox;
 #[cfg(windows)]

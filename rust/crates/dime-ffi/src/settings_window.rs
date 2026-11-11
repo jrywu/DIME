@@ -934,3 +934,46 @@ pub unsafe extern "C" fn dime_settings_command_handle(
         *grid_expanded = i32::from(grid);
     })
 }
+
+// ---- Phase 5b-8d: custom table editor (dime-settings::editor) --------------
+
+use dime_settings::editor;
+
+/// `SettingsEditor::ViewportLineRange`. Null outs are not written.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_editor_viewport(hre: Handle, first: *mut i32, last: *mut i32) {
+    guard((), || unsafe {
+        let (f, l) = editor::viewport_line_range(hre);
+        write(first, f);
+        write(last, l);
+    })
+}
+
+/// `SettingsEditor::ValidateViewport`. `char_ok` / `char_ctx` is the
+/// engine's per-character key check, or null for the fallback range.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_editor_validate_viewport(
+    hre: Handle,
+    mode: i32,
+    max_codes: u32,
+    is_dark: i32,
+    char_ok: Option<unsafe extern "C" fn(u16, *mut c_void) -> i32>,
+    char_ctx: *mut c_void,
+) {
+    guard((), || {
+        let mut check = |c: u16| unsafe { char_ok.is_some_and(|f| f(c, char_ctx) != 0) };
+        let mut ctx = editor::EditorContext {
+            mode: ImeMode::from_i32(mode),
+            max_codes,
+            is_dark: is_dark != 0,
+            char_ok: if char_ok.is_some() { Some(&mut check) } else { None },
+        };
+        editor::validate_viewport(hre, &mut ctx);
+    })
+}
+
+/// The editor's `SUBCLASSPROC` (`SettingsEditor::SubclassProc`).
+#[no_mangle]
+pub extern "C" fn dime_settings_editor_subclass_proc() -> *const c_void {
+    editor::subclass_proc as *const c_void
+}

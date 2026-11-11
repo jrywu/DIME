@@ -85,22 +85,6 @@ public:
         int ctLastEditedLine;
         int ctKeystrokeCount;
 
-        // Issue #130 Phase 3: chunked background validator.
-        // BG scan is started ONLY by Import button + initial-load (one-shot
-        // visual feedback for bulk content). EN_CHANGE never starts a BG scan
-        // — typing only runs the foreground viewport pass and cancels any
-        // in-flight BG (since the snapshotted lines are now stale). The Save
-        // button has its own pre-persist ValidateCustomTableBuffer pass, so
-        // BG completion is purely cosmetic (paints errors + auto-jumps).
-        // Snapshot taken at scan start (one-shot GetWindowTextW + line offsets);
-        // freed on scan complete / cancel / WM_DESTROY.
-        UINT_PTR ctBgScanTimer;            // 0 = not running; chunked scan timer
-        int      ctBgScanCursor;           // next 0-based line index to validate
-        int      ctBgScanLineCountAtStart; // line count at scan start
-        int      ctFirstBgErrorLine;       // 1-based first error this pass; -1 if none
-        LPWSTR   ctBgBuffer;               // owned wchar_t*; nullptr when no scan
-        int      ctBgBufferLen;            // wchar count, excluding NUL
-        int*     ctBgLineOffsets;          // owned int[]; offset of each line in ctBgBuffer
 
         // GDI resources
         HBRUSH hBrushSidebarBg;
@@ -133,9 +117,6 @@ public:
             currentMode(IME_MODE::IME_MODE_DAYI), snapshot{}, pEngine(nullptr),
             hContentArea(nullptr), scrollPos(0), scrollMax(0),
             ctLastLineCount(0), ctLastEditedLine(-1), ctKeystrokeCount(0),
-            ctBgScanTimer(0), ctBgScanCursor(0),
-            ctBgScanLineCountAtStart(0), ctFirstBgErrorLine(-1),
-            ctBgBuffer(nullptr), ctBgBufferLen(0), ctBgLineOffsets(nullptr),
             hBrushSidebarBg(nullptr), hBrushContentBg(nullptr), hBrushCardBg(nullptr),
             hFontTitle(nullptr), hFontCardHeader(nullptr), hFontBody(nullptr), hFontDesc(nullptr),
             hFontMDL2(nullptr), hFontMDL2Icon(nullptr), hasMDL2(false), colorGridExpanded(true), sidebarCollapsed(false), sidebarNarrowMode(false)
