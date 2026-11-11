@@ -34,6 +34,7 @@
 #include "SettingsWindowPaint.h"
 #include "SettingsMsgBox.h"
 #include "SettingsNav.h"
+#include "SettingsCommand.h"
 
 #include <Richedit.h>
 #include <MLang.h>
@@ -1624,6 +1625,265 @@ LRESULT CALLBACK SettingsWindow::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPA
 }
 
 // ============================================================================
+// WM_COMMAND: SettingsCommand::Handle with the window as its Host
+// ============================================================================
+void SettingsWindow::HandleCommand(HWND hWnd, WindowData* wd, WPARAM wParam, LPARAM lParam)
+{
+    // A local class has the member function's access to SettingsWindow.
+    class WindowHost : public SettingsCommand::Host {
+    public:
+        HWND hWnd;          // content area
+        WindowData* wd;
+        HWND hSender;       // the control that sent WM_COMMAND
+        WindowHost(HWND h, WindowData* w, HWND sender) : hWnd(h), wd(w), hSender(sender) {}
+
+        HWND Editor() { return FindControl(wd, CTRL_CUSTOM_TABLE_EDITOR); }
+
+        int LogPixelsY() override
+        {
+            HDC hdcScr = GetDC(hWnd);
+            int lpY = GetDeviceCaps(hdcScr, LOGPIXELSY);
+            ReleaseDC(hWnd, hdcScr);
+            return lpY;
+        }
+        bool PickFont(LOGFONTW& lf, int& pointSize10) override
+        {
+            bool ok = false;
+            HINSTANCE hDlgLib = LoadLibraryW(L"comdlg32.dll");
+            if (hDlgLib) {
+                auto pCF = reinterpret_cast<BOOL(WINAPI*)(LPCHOOSEFONTW)>(GetProcAddress(hDlgLib, "ChooseFontW"));
+                if (pCF) {
+                    CHOOSEFONTW cf = {};
+                    cf.lStructSize = sizeof(cf);
+                    cf.hwndOwner = GetParent(hWnd);
+                    cf.lpLogFont = &lf;
+                    cf.Flags = CF_INITTOLOGFONTSTRUCT | CF_NOVERTFONTS;
+                    if (pCF(&cf)) { pointSize10 = cf.iPointSize; ok = true; }
+                }
+                FreeLibrary(hDlgLib);
+            }
+            return ok;
+        }
+        bool PickColor(COLORREF& rgb) override
+        {
+            static COLORREF custColors[16] = {};
+            bool ok = false;
+            HINSTANCE hDlgLib = LoadLibraryW(L"comdlg32.dll");
+            if (hDlgLib) {
+                auto pCC = reinterpret_cast<BOOL(WINAPI*)(LPCHOOSECOLORW)>(GetProcAddress(hDlgLib, "ChooseColorW"));
+                if (pCC) {
+                    CHOOSECOLORW cc = {};
+                    cc.lStructSize = sizeof(cc);
+                    cc.hwndOwner = GetParent(hWnd);
+                    cc.rgbResult = rgb;
+                    cc.lpCustColors = custColors;
+                    cc.Flags = CC_FULLOPEN | CC_RGBINIT;
+                    if (pCC(&cc)) { rgb = cc.rgbResult; ok = true; }
+                }
+                FreeLibrary(hDlgLib);
+            }
+            return ok;
+        }
+        bool OpenFileDialog(int filter, std::wstring& path) override
+        {
+            bool ok = false;
+            HINSTANCE hDlgLib = LoadLibraryW(L"comdlg32.dll");
+            if (hDlgLib) {
+                auto pGetOpen = reinterpret_cast<_T_GetOpenFileName>(GetProcAddress(hDlgLib, "GetOpenFileNameW"));
+                if (pGetOpen) {
+                    WCHAR pathToLoad[MAX_PATH] = {};
+                    OPENFILENAMEW ofn = {};
+                    ofn.lStructSize = sizeof(OPENFILENAMEW);
+                    ofn.hwndOwner = GetParent(hWnd);
+                    ofn.lpstrFile = pathToLoad;
+                    ofn.nMaxFile = MAX_PATH;
+                    ofn.Flags = OFN_FILEMUSTEXIST;
+                    ofn.lpstrFilter = (filter == 0) ? L"CIN TXT Files(*.txt, *.cin)\0*.cin;*.txt\0\0"
+                                                    : L"詞庫文字檔(*.txt)\0*.txt\0\0";
+                    if (pGetOpen(&ofn)) { path = pathToLoad; ok = true; }
+                }
+                FreeLibrary(hDlgLib);
+            }
+            return ok;
+        }
+        bool SaveFileDialog(std::wstring& path) override
+        {
+            bool ok = false;
+            HINSTANCE hDlgLib = LoadLibraryW(L"comdlg32.dll");
+            if (hDlgLib) {
+                auto pGetSave = reinterpret_cast<_T_GetSaveFileName>(GetProcAddress(hDlgLib, "GetSaveFileNameW"));
+                if (pGetSave) {
+                    WCHAR pathToWrite[MAX_PATH] = {};
+                    StringCchCopyW(pathToWrite, MAX_PATH, path.c_str());
+                    OPENFILENAMEW ofn = {};
+                    ofn.lStructSize = sizeof(OPENFILENAMEW);
+                    ofn.hwndOwner = GetParent(hWnd);
+                    ofn.lpstrFile = pathToWrite;
+                    ofn.nMaxFile = MAX_PATH;
+                    ofn.Flags = OFN_OVERWRITEPROMPT;
+                    ofn.lpstrFilter = L"詞庫文字檔(*.txt)\0*.txt\0\0";
+                    if (pGetSave(&ofn)) { path = pathToWrite; ok = true; }
+                }
+                FreeLibrary(hDlgLib);
+            }
+            return ok;
+        }
+        int ShowMessage(const std::wstring& text, const wchar_t* caption, UINT type) override
+        {
+            return ThemedMessageBox(GetParent(hWnd), text.c_str(), caption, type);
+        }
+        std::wstring AppDataPath() override
+        {
+            WCHAR buf[MAX_PATH] = {};
+            Global::GetAppDataPath(buf, TRUE);
+            return buf;
+        }
+        std::wstring DocumentsPath() override
+        {
+            WCHAR buf[MAX_PATH] = {};
+            SHGetSpecialFolderPathW(nullptr, buf, CSIDL_PERSONAL, FALSE);
+            return buf;
+        }
+        std::wstring CustomTableTxtPath(int mode) override
+        {
+            WCHAR buf[MAX_PATH] = {};
+            GetCustomTableTxtPath((IME_MODE)mode, buf, MAX_PATH);
+            return buf;
+        }
+        std::wstring CustomTableCinPath(int mode) override
+        {
+            WCHAR buf[MAX_PATH] = {};
+            GetCustomTableCINPath((IME_MODE)mode, buf, MAX_PATH);
+            return buf;
+        }
+        bool WriteBomFile(const std::wstring& path, const std::wstring& text) override
+        {
+            HANDLE hFile = CreateFileW(path.c_str(), GENERIC_WRITE, FILE_SHARE_READ, nullptr,
+                CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+            if (hFile == INVALID_HANDLE_VALUE) return false;
+            DWORD written = 0;
+            WCHAR bom = 0xFEFF;
+            WriteFile(hFile, &bom, sizeof(WCHAR), &written, nullptr);
+            WriteFile(hFile, text.c_str(), (DWORD)(text.size() * sizeof(WCHAR)), &written, nullptr);
+            CloseHandle(hFile);
+            return true;
+        }
+        bool LoadTextFile(const std::wstring& path, std::wstring& text) override
+        {
+            size_t wlen = 0;
+            LPWSTR buf = SettingsModel::LoadTextFileAsUtf16(path.c_str(), &wlen);
+            if (!buf) return false;
+            text.assign(buf, wlen);
+            delete[] buf;
+            return true;
+        }
+        bool ParseCin(const std::wstring& src, const std::wstring& dst, bool customTable) override
+        {
+            return CConfig::parseCINFile(src.c_str(), dst.c_str(), customTable ? TRUE : FALSE) != FALSE;
+        }
+        void ResetAllDefaults(int mode) override { CConfig::ResetAllDefaults((IME_MODE)mode); }
+        void WriteConfig(int mode) override { CConfig::WriteConfig((IME_MODE)mode); }
+        void LoadConfig(int mode) override { CConfig::LoadConfig((IME_MODE)mode); }
+        SettingsSnapshot LoadSnapshot() override { return SettingsModel::LoadFromConfig(); }
+        void ApplyAndSave() override { SettingsWindow::ApplyAndSave(wd); }
+        void SetColorMode(int m) override { CConfig::SetColorMode((IME_COLOR_MODE)m); }
+        void LoadColorsForMode(int m) override { CConfig::LoadColorsForMode((IME_COLOR_MODE)m); }
+        void GetColors(COLORREF out[6]) override
+        {
+            const ColorInfo* clrs = CConfig::GetColors();
+            for (int i = 0; i < 6; i++) out[i] = clrs[i].color;
+        }
+        void SetColor(int index, COLORREF color) override
+        {
+            const_cast<ColorInfo*>(CConfig::GetColors())[index].color = color;
+        }
+        void SaveColorsForMode(int m) override { CConfig::SaveColorsForMode((IME_COLOR_MODE)m); }
+        void SetReverseConversionSelection(int sel) override { CConfig::SetReverseConversionSelection(sel); }
+        void Rebuild() override { RebuildContentArea(GetParent(hWnd), wd); }
+        void InvalidateContent(bool erase) override { InvalidateRect(hWnd, nullptr, erase ? TRUE : FALSE); }
+        void UpdateContent() override { UpdateWindow(hWnd); }
+        void InvalidateSwatch(int) override { InvalidateRect(hSender, nullptr, TRUE); }
+        bool EditorExists() override { return Editor() != nullptr; }
+        std::wstring EditorText() override
+        {
+            HWND hRE = Editor();
+            if (!hRE) return {};
+            DWORD dwLen = GetWindowTextLengthW(hRE);
+            std::wstring text(dwLen + 1, L'\0');
+            GetWindowTextW(hRE, &text[0], dwLen + 1);
+            text.resize(dwLen);
+            return text;
+        }
+        void SetEditorTextMuted(const std::wstring& text) override
+        {
+            HWND hRE = Editor();
+            if (!hRE) return;
+            LRESULT prevMask = SendMessageW(hRE, EM_GETEVENTMASK, 0, 0);
+            SendMessageW(hRE, EM_SETEVENTMASK, 0, 0);
+            SetWindowTextW(hRE, text.c_str());
+            wd->ctLastLineCount = (int)SendMessageW(hRE, EM_GETLINECOUNT, 0, 0);
+            wd->ctLastEditedLine = -1;
+            wd->ctKeystrokeCount = 0;
+            SendMessageW(hRE, EM_SETEVENTMASK, 0, (LPARAM)prevMask);
+        }
+        int EditorLineIndex(int line) override
+        {
+            HWND hRE = Editor();
+            return hRE ? (int)(LONG)SendMessageW(hRE, EM_LINEINDEX, (WPARAM)line, 0) : -1;
+        }
+        void EditorFocusAt(int cp) override
+        {
+            HWND hRE = Editor();
+            if (!hRE) return;
+            // SetFocus first: the subclass's WM_SETFOCUS resets the selection.
+            SetFocus(hRE);
+            SendMessageW(hRE, EM_SETSEL, (WPARAM)cp, (LPARAM)cp);
+            SendMessageW(hRE, EM_SCROLLCARET, 0, 0);
+            ::ValidateViewport(hRE, wd);
+        }
+        void ValidateViewport() override
+        {
+            HWND hRE = Editor();
+            if (hRE) ::ValidateViewport(hRE, wd);
+        }
+        void CancelBgScan() override { ::CancelBgScan(hWnd, wd); }
+        void EnableSave(bool enable) override { EnableSaveButton(wd, enable ? TRUE : FALSE); }
+        void UpdateLineCount() override
+        {
+            HWND hRE = Editor();
+            if (hRE) wd->ctLastLineCount = (int)SendMessageW(hRE, EM_GETLINECOUNT, 0, 0);
+        }
+        int ValidateBuffer(const std::wstring& text, int maxReport, int& firstErrorLine,
+            std::wstring& summary) override
+        {
+            wchar_t errSummary[1024] = {};
+            int first = 0;
+            int count = ValidateCustomTableBuffer(text.c_str(), text.size(), wd->currentMode,
+                wd->snapshot.maxCodes, wd->pEngine, &first, errSummary, _countof(errSummary), maxReport);
+            firstErrorLine = first;
+            summary = errSummary;
+            return count;
+        }
+    };
+
+    SettingsCommand::CommandEvent ev = {};
+    ev.notifyCode = HIWORD(wParam);
+    ev.ctrlId = LOWORD(wParam);
+    ev.mode = (int)wd->currentMode;
+    HWND hSender = (HWND)lParam;
+    if (ev.notifyCode == CBN_SELCHANGE && hSender) {
+        ev.comboSel = (int)SendMessage(hSender, CB_GETCURSEL, 0, 0);
+        if (ev.comboSel != CB_ERR)
+            ev.comboItemData = (int)SendMessage(hSender, CB_GETITEMDATA, (WPARAM)ev.comboSel, 0);
+    }
+    if (ev.notifyCode == EN_CHANGE && ev.ctrlId - 3000 == CTRL_MAX_CODES && hSender)
+        GetWindowTextW(hSender, ev.editText, 16);
+
+    WindowHost host(hWnd, wd, hSender);
+    SettingsCommand::Handle(host, wd->snapshot, wd->colorGridExpanded, ev);
+}
+
+// ============================================================================
 // Content area window procedure
 // ============================================================================
 LRESULT CALLBACK SettingsWindow::ContentWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -1722,464 +1982,9 @@ LRESULT CALLBACK SettingsWindow::ContentWndProc(HWND hWnd, UINT msg, WPARAM wPar
     }
 
     case WM_COMMAND:
-    {
         if (!wd) break;
-        int notifyCode = HIWORD(wParam);
-        int ctrlId = LOWORD(wParam);
-
-        if (notifyCode == BN_CLICKED) {
-            // Action-based dispatch: find LayoutRow by id, dispatch by row->action
-            SettingsControlId btnId = (SettingsControlId)(ctrlId - 3000);
-            RowAction action = RowAction::None;
-
-            // Search all layout trees for matching row
-            auto findAction = [&](const LayoutRow* rows, int count) {
-                for (int i = 0; i < count; i++)
-                    if (rows[i].id == btnId) { action = rows[i].action; return; }
-            };
-            int layoutCount = 0;
-            const LayoutCard* cards = GetIMEPageLayout(&layoutCount);
-            for (int ci = 0; ci < layoutCount && action == RowAction::None; ci++)
-                if (cards[ci].rows) findAction(cards[ci].rows, cards[ci].rowCount);
-            if (action == RowAction::None) {
-                int ltCount = 0;
-                const LayoutCard* ltCards = GetLoadTablePageLayout(&ltCount);
-                for (int ci = 0; ci < ltCount && action == RowAction::None; ci++)
-                    if (ltCards[ci].rows) findAction(ltCards[ci].rows, ltCards[ci].rowCount);
-            }
-            // Programmatically created button not in layout tree
-            if (action == RowAction::None && btnId == CTRL_CUSTOM_TABLE_SAVE)
-                action = RowAction::SaveCustomTable;
-
-            switch (action) {
-            case RowAction::OpenFontDialog:
-            {
-                HINSTANCE hDlgLib = LoadLibraryW(L"comdlg32.dll");
-                if (hDlgLib) {
-                    auto pCF = reinterpret_cast<BOOL(WINAPI*)(LPCHOOSEFONTW)>(GetProcAddress(hDlgLib, "ChooseFontW"));
-                    if (pCF) {
-                        HDC hdcScr = GetDC(hWnd);
-                        int lpY = GetDeviceCaps(hdcScr, LOGPIXELSY);
-                        ReleaseDC(hWnd, hdcScr);
-                        LOGFONTW lf = {};
-                        StringCchCopyW(lf.lfFaceName, LF_FACESIZE, wd->snapshot.fontFaceName);
-                        lf.lfHeight = -MulDiv(wd->snapshot.fontSize, lpY, 72);
-                        lf.lfWeight = wd->snapshot.fontWeight;
-                        lf.lfItalic = (BYTE)wd->snapshot.fontItalic;
-                        lf.lfCharSet = DEFAULT_CHARSET;
-                        CHOOSEFONTW cf = {};
-                        cf.lStructSize = sizeof(cf);
-                        cf.hwndOwner = GetParent(hWnd);
-                        cf.lpLogFont = &lf;
-                        cf.Flags = CF_INITTOLOGFONTSTRUCT | CF_NOVERTFONTS;
-                        if (pCF(&cf)) {
-                            StringCchCopyW(wd->snapshot.fontFaceName, LF_FACESIZE, lf.lfFaceName);
-                            wd->snapshot.fontSize = cf.iPointSize / 10;
-                            wd->snapshot.fontWeight = lf.lfWeight;
-                            wd->snapshot.fontItalic = lf.lfItalic;
-                            ApplyAndSave(wd);
-                            // Preview height changed — rebuild controls at new positions
-                            RebuildContentArea(GetParent(hWnd), wd);
-                            InvalidateRect(hWnd, nullptr, FALSE);
-                            UpdateWindow(hWnd);
-                        }
-                    }
-                    FreeLibrary(hDlgLib);
-                }
-                break;
-            }
-            case RowAction::ResetDefaults:
-            {
-                CConfig::ResetAllDefaults(wd->currentMode);
-                CConfig::WriteConfig(wd->currentMode);
-                CConfig::LoadConfig(wd->currentMode);
-                wd->snapshot = SettingsModel::LoadFromConfig();
-                RebuildContentArea(GetParent(hWnd), wd);
-                InvalidateRect(hWnd, nullptr, FALSE);
-                UpdateWindow(hWnd);
-                break;
-            }
-            case RowAction::LoadTable:
-            {
-                // Determine target .cin filename based on control id
-                const wchar_t* targetSuffix = SettingsModel::GetLoadTableSuffix((SettingsControlId)btnId);
-                if (targetSuffix) {
-                    HINSTANCE hDlgLib = LoadLibraryW(L"comdlg32.dll");
-                    if (hDlgLib) {
-                        auto pGetOpen = reinterpret_cast<_T_GetOpenFileName>(GetProcAddress(hDlgLib, "GetOpenFileNameW"));
-                        if (pGetOpen) {
-                            WCHAR pathToLoad[MAX_PATH] = {};
-                            OPENFILENAMEW ofn = {};
-                            ofn.lStructSize = sizeof(OPENFILENAMEW);
-                            ofn.hwndOwner = GetParent(hWnd);
-                            ofn.lpstrFile = pathToLoad;
-                            ofn.nMaxFile = MAX_PATH;
-                            ofn.Flags = OFN_FILEMUSTEXIST;
-                            ofn.lpstrFilter = L"CIN TXT Files(*.txt, *.cin)\0*.cin;*.txt\0\0";
-                            if (pGetOpen(&ofn)) {
-                                WCHAR wszAppData[MAX_PATH] = {};
-                                Global::GetAppDataPath(wszAppData, TRUE);
-                                WCHAR pathToWrite[MAX_PATH] = {};
-                                StringCchPrintfW(pathToWrite, MAX_PATH, L"%s%s", wszAppData, targetSuffix);
-                                if (CConfig::parseCINFile(pathToLoad, pathToWrite))
-                                    ThemedMessageBox(GetParent(hWnd), L"自訂碼表載入完成。", L"DIME 自訂碼表", MB_ICONINFORMATION);
-                                else
-                                    ThemedMessageBox(GetParent(hWnd), L"自訂碼表載入發生錯誤 !!", L"DIME 自訂碼表", MB_ICONERROR);
-                            }
-                        }
-                        FreeLibrary(hDlgLib);
-                    }
-                }
-                break;
-            }
-            case RowAction::SaveCustomTable:
-            {
-                // Issue #130 Phase 3 (final): Save validates the full buffer
-                // synchronously at click time using ValidateCustomTableBuffer
-                // (in-memory, O(N), bounded). For 73K-line content this takes
-                // ~500 ms — acceptable latency for an explicit Save action.
-                // The BG scan (when one runs after Import) is purely visual;
-                // Save runs its own authoritative pass here.
-                HWND hRE = FindControl(wd, CTRL_CUSTOM_TABLE_EDITOR);
-                if (!hRE) break;
-
-                DWORD dwLen = GetWindowTextLengthW(hRE);
-                LPWSTR text = new (std::nothrow) WCHAR[dwLen + 1];
-                if (!text) break;
-                ZeroMemory(text, (dwLen + 1) * sizeof(WCHAR));
-                GetWindowTextW(hRE, text, dwLen + 1);
-
-                // Pre-persist validation. On error: message box with first N
-                // line numbers, abort write. On clean: persist.
-                const int MAX_REPORT = 10;
-                int firstErrorLine = 0;
-                wchar_t errSummary[1024] = {};
-                int errCount = ValidateCustomTableBuffer(text, dwLen,
-                    wd->currentMode, wd->snapshot.maxCodes, wd->pEngine,
-                    &firstErrorLine, errSummary, _countof(errSummary), MAX_REPORT);
-                if (errCount > 0) {
-                    wchar_t msg[2048];
-                    StringCchPrintfW(msg, _countof(msg),
-                        L"儲存失敗：偵測到 %d 個格式錯誤行，第一個錯誤在第 %d 行。\n\n%s%s按確定後將跳到第一個錯誤行。",
-                        errCount, firstErrorLine, errSummary,
-                        (errCount > MAX_REPORT) ? L"  ...(更多錯誤已省略)\n" : L"");
-                    ThemedMessageBox(GetParent(hWnd), msg, L"自建詞庫格式錯誤", MB_ICONWARNING | MB_OK);
-                    delete[] text;
-
-                    // Jump caret to the first error line so the user can find +
-                    // fix it without counting line numbers manually. Order matters:
-                    // SetFocus FIRST — the RichEdit subclass's WM_SETFOCUS handler
-                    // resets the selection to (0,0). If we set the selection
-                    // before SetFocus, the focus reset would clobber it. After
-                    // focus is on the editor, set the caret + scroll, then paint
-                    // the now-visible viewport so the error highlight shows up.
-                    if (firstErrorLine > 0) {
-                        LONG cp = (LONG)SendMessageW(hRE, EM_LINEINDEX,
-                            (WPARAM)(firstErrorLine - 1), 0);
-                        if (cp >= 0) {
-                            SetFocus(hRE);
-                            SendMessageW(hRE, EM_SETSEL, (WPARAM)cp, (LPARAM)cp);
-                            SendMessageW(hRE, EM_SCROLLCARET, 0, 0);
-                            ValidateViewport(hRE, wd);
-                        }
-                    }
-                    break;
-                }
-
-                // Persist — UTF-16+BOM .txt then parseCINFile(customTableMode=TRUE).
-                WCHAR txtPath[MAX_PATH] = {};
-                GetCustomTableTxtPath(wd->currentMode, txtPath, MAX_PATH);
-                HANDLE hFile = CreateFileW(txtPath, GENERIC_WRITE, FILE_SHARE_READ, nullptr,
-                    CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-                if (hFile != INVALID_HANDLE_VALUE) {
-                    DWORD written = 0;
-                    WCHAR bom = 0xFEFF;
-                    WriteFile(hFile, &bom, sizeof(WCHAR), &written, nullptr);
-                    WriteFile(hFile, text, dwLen * sizeof(WCHAR), &written, nullptr);
-                    CloseHandle(hFile);
-                    WCHAR cinPath[MAX_PATH] = {};
-                    GetCustomTableCINPath(wd->currentMode, cinPath, MAX_PATH);
-                    if (!CConfig::parseCINFile(txtPath, cinPath, TRUE))
-                        ThemedMessageBox(GetParent(hWnd), L"自建詞庫載入發生錯誤！", L"DIME 自建詞庫", MB_ICONERROR);
-                }
-                delete[] text;
-                EnableSaveButton(wd, FALSE);   // not dirty until next edit
-                break;
-            }
-            case RowAction::ExportCustomTable:
-            {
-                // Validate before export using the in-memory path (issue #130:
-                // ValidateCustomTableRE was O(N²) on the RichEdit gap buffer).
-                {
-                    HWND hRE = FindControl(wd, CTRL_CUSTOM_TABLE_EDITOR);
-                    if (!hRE) break;
-                    DWORD dwLen = GetWindowTextLengthW(hRE);
-                    LPWSTR vText = new (std::nothrow) WCHAR[dwLen + 1];
-                    if (!vText) break;
-                    ZeroMemory(vText, (dwLen + 1) * sizeof(WCHAR));
-                    GetWindowTextW(hRE, vText, dwLen + 1);
-                    int firstErrorLine = 0;
-                    wchar_t errSummary[1024] = {};
-                    int errCount = ValidateCustomTableBuffer(vText, dwLen,
-                        wd->currentMode, wd->snapshot.maxCodes, wd->pEngine,
-                        &firstErrorLine, errSummary, _countof(errSummary), 10);
-                    delete[] vText;
-                    if (errCount > 0) {
-                        wchar_t msg[2048];
-                        StringCchPrintfW(msg, _countof(msg),
-                            L"匯出失敗：偵測到 %d 個格式錯誤行，第一個錯誤在第 %d 行。\n\n%s請修正後再匯出。",
-                            errCount, firstErrorLine, errSummary);
-                        ThemedMessageBox(GetParent(hWnd), msg, L"自建詞庫格式錯誤", MB_ICONWARNING | MB_OK);
-                        break;
-                    }
-                }
-                HINSTANCE hDlgLib = LoadLibraryW(L"comdlg32.dll");
-                if (hDlgLib) {
-                    auto pGetSave = reinterpret_cast<_T_GetSaveFileName>(GetProcAddress(hDlgLib, "GetSaveFileNameW"));
-                    if (pGetSave) {
-                        WCHAR pathToWrite[MAX_PATH] = {};
-                        WCHAR wszDoc[MAX_PATH] = {};
-                        SHGetSpecialFolderPathW(nullptr, wszDoc, CSIDL_PERSONAL, FALSE);
-                        StringCchPrintfW(pathToWrite, MAX_PATH, L"%s\\customTable.txt", wszDoc);
-                        OPENFILENAMEW ofn = {};
-                        ofn.lStructSize = sizeof(OPENFILENAMEW);
-                        ofn.hwndOwner = GetParent(hWnd);
-                        ofn.lpstrFile = pathToWrite;
-                        ofn.nMaxFile = MAX_PATH;
-                        ofn.Flags = OFN_OVERWRITEPROMPT;
-                        ofn.lpstrFilter = L"詞庫文字檔(*.txt)\0*.txt\0\0";
-                        if (pGetSave(&ofn)) {
-                            // Write RichEdit content to selected file
-                            HWND hRE = FindControl(wd, CTRL_CUSTOM_TABLE_EDITOR);
-                            if (hRE) {
-                                DWORD dwLen = GetWindowTextLengthW(hRE);
-                                LPWSTR text = new (std::nothrow) WCHAR[dwLen + 1];
-                                if (text) {
-                                    ZeroMemory(text, (dwLen + 1) * sizeof(WCHAR));
-                                    GetWindowTextW(hRE, text, dwLen + 1);
-                                    HANDLE hFile = CreateFileW(pathToWrite, GENERIC_WRITE, FILE_SHARE_READ, nullptr,
-                                        CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-                                    if (hFile != INVALID_HANDLE_VALUE) {
-                                        DWORD written = 0;
-                                        WCHAR bom = 0xFEFF;
-                                        WriteFile(hFile, &bom, sizeof(WCHAR), &written, nullptr);
-                                        WriteFile(hFile, text, dwLen * sizeof(WCHAR), &written, nullptr);
-                                        CloseHandle(hFile);
-                                    }
-                                    delete[] text;
-                                }
-                            }
-                        }
-                    }
-                    FreeLibrary(hDlgLib);
-                }
-                break;
-            }
-            case RowAction::ImportCustomTable:
-            {
-                HINSTANCE hDlgLib = LoadLibraryW(L"comdlg32.dll");
-                if (hDlgLib) {
-                    auto pGetOpen = reinterpret_cast<_T_GetOpenFileName>(GetProcAddress(hDlgLib, "GetOpenFileNameW"));
-                    if (pGetOpen) {
-                        WCHAR pathToLoad[MAX_PATH] = {};
-                        OPENFILENAMEW ofn = {};
-                        ofn.lStructSize = sizeof(OPENFILENAMEW);
-                        ofn.hwndOwner = GetParent(hWnd);
-                        ofn.lpstrFile = pathToLoad;
-                        ofn.nMaxFile = MAX_PATH;
-                        ofn.Flags = OFN_FILEMUSTEXIST;
-                        ofn.lpstrFilter = L"詞庫文字檔(*.txt)\0*.txt\0\0";
-                        if (pGetOpen(&ofn)) {
-                            // Read file and set into RichEdit. Issue #130:
-                            // 1. Use the encoding-aware helper so ANSI/Big5/UTF-8
-                            //    sources are properly decoded — not byte-aliased.
-                            // 2. Pre-flight ValidateLine in memory before SetWindowTextW.
-                            //    Aborts atomically with a message box on errors —
-                            //    matches the CLI --import-custom contract.
-                            // 3. Suppress ENM_CHANGE around SetWindowTextW so the
-                            //    bulk load does not trigger the synchronous full-file
-                            //    EN_CHANGE → ValidateCustomTableRE pass (which is
-                            //    O(N²) over RichEdit lines on 70k+ rows and froze
-                            //    the UI thread before this fix).
-                            HWND hRE = FindControl(wd, CTRL_CUSTOM_TABLE_EDITOR);
-                            if (hRE) {
-                                size_t wlen = 0;
-                                LPWSTR text = SettingsModel::LoadTextFileAsUtf16(pathToLoad, &wlen);
-                                if (!text) {
-                                    ThemedMessageBox(GetParent(hWnd),
-                                        L"無法讀取或解碼檔案，請確認檔案編碼為 UTF-8 / UTF-16 / ANSI(Big5)。",
-                                        L"DIME 自建詞庫", MB_ICONERROR);
-                                    break;
-                                }
-
-                                // Issue #130 Phase 3 (final): scan for errors but DO NOT
-                                // abort the import on them. Load the content unconditionally
-                                // so the user can inspect / fix in the editor. Save's full
-                                // pre-persist validation is the gate that prevents broken
-                                // content from being persisted to disk.
-                                const int MAX_REPORT = 10;
-                                int firstErrorLine = 0;
-                                wchar_t errSummary[1024] = {};
-                                int errCount = ValidateCustomTableBuffer(text, wlen,
-                                    wd->currentMode, wd->snapshot.maxCodes, wd->pEngine,
-                                    &firstErrorLine, errSummary, _countof(errSummary), MAX_REPORT);
-
-                                // Load content (with EN_CHANGE muted) — always.
-                                LRESULT prevMask = SendMessageW(hRE, EM_GETEVENTMASK, 0, 0);
-                                SendMessageW(hRE, EM_SETEVENTMASK, 0, 0);
-                                SetWindowTextW(hRE, text);
-                                wd->ctLastLineCount = (int)SendMessageW(hRE, EM_GETLINECOUNT, 0, 0);
-                                wd->ctLastEditedLine = -1;
-                                wd->ctKeystrokeCount = 0;
-                                SendMessageW(hRE, EM_SETEVENTMASK, 0, (LPARAM)prevMask);
-                                delete[] text;
-
-                                // Mark Save dirty (Import = new content vs disk) and paint
-                                // the visible range. NO BG scan — ITextDocument is O(N)
-                                // per call → unresponsive editor on 70k+ lines.
-                                EnableSaveButton(wd, TRUE);
-                                ValidateViewport(hRE, wd);
-
-                                // If errors were found in pre-scan, surface a non-blocking
-                                // warning (the load already succeeded) and auto-jump the
-                                // caret to the first error so the user can see it directly.
-                                if (errCount > 0 && firstErrorLine > 0) {
-                                    wchar_t msg[2048];
-                                    StringCchPrintfW(msg, _countof(msg),
-                                        L"匯入完成，但偵測到 %d 個格式錯誤行，第一個錯誤在第 %d 行。\n\n%s%s按確定後將跳到第一個錯誤行，請修正後再儲存。",
-                                        errCount, firstErrorLine, errSummary,
-                                        (errCount > MAX_REPORT) ? L"  ...(更多錯誤已省略)\n" : L"");
-                                    ThemedMessageBox(GetParent(hWnd), msg,
-                                        L"DIME 自建詞庫匯入", MB_ICONWARNING);
-                                    LONG cp = (LONG)SendMessageW(hRE, EM_LINEINDEX,
-                                        (WPARAM)(firstErrorLine - 1), 0);
-                                    if (cp >= 0) {
-                                        SetFocus(hRE);
-                                        SendMessageW(hRE, EM_SETSEL, (WPARAM)cp, (LPARAM)cp);
-                                        SendMessageW(hRE, EM_SCROLLCARET, 0, 0);
-                                        ValidateViewport(hRE, wd);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    FreeLibrary(hDlgLib);
-                }
-                break;
-            }
-            default: break;
-            }
-        }
-
-        if (notifyCode == EN_CHANGE) {
-            int settingsId = ctrlId - 3000;
-            if ((SettingsControlId)settingsId == CTRL_CUSTOM_TABLE_EDITOR) {
-                // Issue #130 Phase 3 (final): live foreground viewport pass
-                // via TOM (ITextRange). TOM-based painting does NOT touch the
-                // selection, so no caret jumps or flicker even on every keystroke.
-                // Cancels any in-flight BG scan (its snapshot is now stale).
-                HWND hRE = (HWND)lParam;
-                ValidateViewport(hRE, wd);
-                CancelBgScan(hWnd, wd);
-                EnableSaveButton(wd, TRUE);   // mark dirty
-                wd->ctLastLineCount = (int)SendMessageW(hRE, EM_GETLINECOUNT, 0, 0);
-            }
-            else if ((SettingsControlId)settingsId == CTRL_MAX_CODES) {
-                WCHAR buf[16] = {};
-                GetWindowTextW((HWND)lParam, buf, 16);
-                UINT val;
-                if (SettingsModel::ParseMaxCodes(buf, val)) {
-                    wd->snapshot.maxCodes = val;
-                    ApplyAndSave(wd);
-                }
-            }
-        }
-
-        if (notifyCode == CBN_SELCHANGE) {
-            int settingsId = ctrlId - 3000;
-            HWND hCombo = (HWND)lParam;
-            int sel = (int)SendMessage(hCombo, CB_GETCURSEL, 0, 0);
-            if (sel != CB_ERR) {
-                switch ((SettingsControlId)settingsId) {
-                case CTRL_COLOR_MODE: {
-                    // Uses item data, not direct index
-                    int itemData = (int)SendMessage(hCombo, CB_GETITEMDATA, (WPARAM)sel, 0);
-                    wd->snapshot.colorMode = itemData;
-                    break;
-                }
-                case CTRL_ARRAY_SCOPE: {
-                    int itemData = (int)SendMessage(hCombo, CB_GETITEMDATA, (WPARAM)sel, 0);
-                    wd->snapshot.arrayScope = itemData;
-                    break;
-                }
-                case CTRL_REVERSE_CONVERSION:  CConfig::SetReverseConversionSelection(sel); break;
-                default:
-                    SettingsModel::SyncComboToSnapshot(wd->snapshot, (SettingsControlId)settingsId, sel);
-                    break;
-                }
-                if ((SettingsControlId)settingsId == CTRL_COLOR_MODE) {
-                    // Auto-expand color grid when switching to custom
-                    wd->colorGridExpanded = (wd->snapshot.colorMode == 3);
-                    // Only save the color mode enum — don't overwrite palette colors
-                    CConfig::SetColorMode((IME_COLOR_MODE)wd->snapshot.colorMode);
-                    CConfig::WriteConfig(wd->currentMode);
-                    // Load the new mode's palette into snapshot for preview
-                    CConfig::LoadColorsForMode((IME_COLOR_MODE)wd->snapshot.colorMode);
-                    const ColorInfo* clrs = CConfig::GetColors();
-                    wd->snapshot.itemColor      = clrs[0].color;
-                    wd->snapshot.selectedColor  = clrs[1].color;
-                    wd->snapshot.itemBGColor    = clrs[2].color;
-                    wd->snapshot.phraseColor    = clrs[3].color;
-                    wd->snapshot.numberColor    = clrs[4].color;
-                    wd->snapshot.selectedBGColor = clrs[5].color;
-                    RebuildContentArea(GetParent(hWnd), wd);
-                } else {
-                    ApplyAndSave(wd);
-                }
-                InvalidateRect(hWnd, nullptr, FALSE);
-                UpdateWindow(hWnd);
-            }
-        }
-
-        // Color swatch click (STN_CLICKED or BN_CLICKED from swatch statics)
-        if (notifyCode == STN_CLICKED || (notifyCode == BN_CLICKED && ctrlId >= 4000 && ctrlId < 4006)) {
-            int swIdx = ctrlId - 4000;
-            if (swIdx >= 0 && swIdx < 6) {
-                static COLORREF custColors[16] = {};
-                COLORREF* fields[] = {
-                    &wd->snapshot.itemColor, &wd->snapshot.selectedColor, &wd->snapshot.itemBGColor,
-                    &wd->snapshot.phraseColor, &wd->snapshot.numberColor, &wd->snapshot.selectedBGColor
-                };
-                HINSTANCE hDlgLib = LoadLibraryW(L"comdlg32.dll");
-                if (hDlgLib) {
-                    auto pCC = reinterpret_cast<BOOL(WINAPI*)(LPCHOOSECOLORW)>(GetProcAddress(hDlgLib, "ChooseColorW"));
-                    if (pCC) {
-                        CHOOSECOLORW cc = {};
-                        cc.lStructSize = sizeof(cc);
-                        cc.hwndOwner = GetParent(hWnd);
-                        cc.rgbResult = *fields[swIdx];
-                        cc.lpCustColors = custColors;
-                        cc.Flags = CC_FULLOPEN | CC_RGBINIT;
-                        if (pCC(&cc)) {
-                            *fields[swIdx] = cc.rgbResult;
-                            // Save custom colors to the current mode's palette
-                            CConfig::LoadColorsForMode((IME_COLOR_MODE)wd->snapshot.colorMode);
-                            // Update colors[] with the new swatch value
-                            const_cast<ColorInfo*>(CConfig::GetColors())[swIdx].color = cc.rgbResult;
-                            CConfig::SaveColorsForMode((IME_COLOR_MODE)wd->snapshot.colorMode);
-                            ApplyAndSave(wd);
-                            // Invalidate the swatch control so it redraws with new color
-                            InvalidateRect((HWND)lParam, nullptr, TRUE);
-                            InvalidateRect(hWnd, nullptr, FALSE);
-                            UpdateWindow(hWnd);
-                        }
-                    }
-                    FreeLibrary(hDlgLib);
-                }
-            }
-        }
+        HandleCommand(hWnd, wd, wParam, lParam);
         break;
-    }
 
     case WM_USER + 1:  // Deferred trigger from subclass after Enter/Space/Paste/large-delete
     {

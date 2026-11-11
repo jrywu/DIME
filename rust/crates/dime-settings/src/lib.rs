@@ -7,8 +7,10 @@
 //! (`paint.rs`, `SettingsWindowPaint.*`). 5b-8 moves the windows, starting
 //! with the themed message box (`msgboxwin.rs`, `SettingsMsgBox.*`) and the
 //! navigation / hover / scroll / size reducer (`nav.rs`, `SettingsNav.*`).
-//! The command handlers, the editor, and the binary come in later steps.
+//! The command handlers (`command.rs`, `SettingsCommand.*`) run against a
+//! host interface. The editor and the binary come in later steps.
 
+pub mod command;
 pub mod layout;
 pub mod msgbox;
 #[cfg(windows)]

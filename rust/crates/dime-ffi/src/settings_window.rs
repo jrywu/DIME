@@ -691,3 +691,246 @@ pub unsafe extern "C" fn dime_settings_nav_min_track_size(screen_dpi: u32, out: 
         write(out, [x, y]);
     })
 }
+
+// ---- Phase 5b-8c: WM_COMMAND (dime-settings::command) ------------------------
+
+use dime_settings::command::{self, CommandEvent, LogFont};
+
+type Ctx = *mut c_void;
+
+/// `DimeSettingsCmdHostVtbl`: the order must match dime_ffi.h and
+/// SettingsCommand.cpp (`kVtbl`). Returned strings stay valid until the next
+/// call that returns a string.
+#[repr(C)]
+pub struct CmdHostVtbl {
+    log_pixels_y: unsafe extern "C" fn(Ctx) -> i32,
+    choose_font: unsafe extern "C" fn(Ctx, *mut LogFont, *mut i32) -> i32,
+    choose_color: unsafe extern "C" fn(Ctx, *mut u32) -> i32,
+    get_open_file: unsafe extern "C" fn(Ctx, i32, *mut i32, *mut usize) -> *const u16,
+    get_save_file: unsafe extern "C" fn(Ctx, *const u16, usize, *mut i32, *mut usize) -> *const u16,
+    message_box: unsafe extern "C" fn(Ctx, *const u16, usize, *const u16, u32) -> i32,
+    app_data_path: unsafe extern "C" fn(Ctx, *mut usize) -> *const u16,
+    documents_path: unsafe extern "C" fn(Ctx, *mut usize) -> *const u16,
+    custom_table_txt_path: unsafe extern "C" fn(Ctx, i32, *mut usize) -> *const u16,
+    custom_table_cin_path: unsafe extern "C" fn(Ctx, i32, *mut usize) -> *const u16,
+    write_bom_file: unsafe extern "C" fn(Ctx, *const u16, usize, *const u16, usize) -> i32,
+    load_text_file: unsafe extern "C" fn(Ctx, *const u16, usize, *mut i32, *mut usize) -> *const u16,
+    parse_cin: unsafe extern "C" fn(Ctx, *const u16, usize, *const u16, usize, i32) -> i32,
+    reset_all_defaults: unsafe extern "C" fn(Ctx, i32),
+    write_config: unsafe extern "C" fn(Ctx, i32),
+    load_config: unsafe extern "C" fn(Ctx, i32),
+    load_snapshot: unsafe extern "C" fn(Ctx, *mut SettingsSnapshot),
+    apply_and_save: unsafe extern "C" fn(Ctx),
+    set_color_mode: unsafe extern "C" fn(Ctx, i32),
+    load_colors_for_mode: unsafe extern "C" fn(Ctx, i32),
+    get_colors: unsafe extern "C" fn(Ctx, *mut u32),
+    set_color: unsafe extern "C" fn(Ctx, i32, u32),
+    save_colors_for_mode: unsafe extern "C" fn(Ctx, i32),
+    set_reverse_conversion_selection: unsafe extern "C" fn(Ctx, i32),
+    rebuild: unsafe extern "C" fn(Ctx),
+    invalidate_content: unsafe extern "C" fn(Ctx, i32),
+    update_content: unsafe extern "C" fn(Ctx),
+    invalidate_swatch: unsafe extern "C" fn(Ctx, i32),
+    editor_exists: unsafe extern "C" fn(Ctx) -> i32,
+    editor_text: unsafe extern "C" fn(Ctx, *mut usize) -> *const u16,
+    set_editor_text_muted: unsafe extern "C" fn(Ctx, *const u16, usize),
+    editor_line_index: unsafe extern "C" fn(Ctx, i32) -> i32,
+    editor_focus_at: unsafe extern "C" fn(Ctx, i32),
+    validate_viewport: unsafe extern "C" fn(Ctx),
+    cancel_bg_scan: unsafe extern "C" fn(Ctx),
+    enable_save: unsafe extern "C" fn(Ctx, i32),
+    update_line_count: unsafe extern "C" fn(Ctx),
+    validate_buffer: unsafe extern "C" fn(Ctx, *const u16, usize, i32, *mut i32, *mut i32, *mut usize) -> *const u16,
+}
+
+struct VtblHost<'a> {
+    v: &'a CmdHostVtbl,
+    ctx: Ctx,
+}
+
+unsafe fn copy_out(p: *const u16, len: usize) -> Vec<u16> {
+    if p.is_null() || len == 0 {
+        Vec::new()
+    } else {
+        // SAFETY: the host keeps `len` units alive until its next string call.
+        unsafe { std::slice::from_raw_parts(p, len) }.to_vec()
+    }
+}
+
+// SAFETY (every method): the vtable functions are the host thunks; they take
+// `ctx` and never unwind.
+impl command::Host for VtblHost<'_> {
+    fn log_pixels_y(&mut self) -> i32 {
+        unsafe { (self.v.log_pixels_y)(self.ctx) }
+    }
+    fn choose_font(&mut self, lf: &mut LogFont, point_size10: &mut i32) -> bool {
+        unsafe { (self.v.choose_font)(self.ctx, lf, point_size10) != 0 }
+    }
+    fn choose_color(&mut self, rgb: &mut u32) -> bool {
+        unsafe { (self.v.choose_color)(self.ctx, rgb) != 0 }
+    }
+    fn get_open_file(&mut self, filter: i32) -> Option<Vec<u16>> {
+        let (mut ok, mut len) = (0, 0);
+        let p = unsafe { (self.v.get_open_file)(self.ctx, filter, &mut ok, &mut len) };
+        (ok != 0).then(|| unsafe { copy_out(p, len) })
+    }
+    fn get_save_file(&mut self, default_path: &[u16]) -> Option<Vec<u16>> {
+        let (mut ok, mut len) = (0, 0);
+        let p =
+            unsafe { (self.v.get_save_file)(self.ctx, default_path.as_ptr(), default_path.len(), &mut ok, &mut len) };
+        (ok != 0).then(|| unsafe { copy_out(p, len) })
+    }
+    fn message_box(&mut self, text: &[u16], caption: &str, mb_type: u32) -> i32 {
+        let cap: Vec<u16> = caption.encode_utf16().chain(std::iter::once(0)).collect();
+        unsafe { (self.v.message_box)(self.ctx, text.as_ptr(), text.len(), cap.as_ptr(), mb_type) }
+    }
+    fn app_data_path(&mut self) -> Vec<u16> {
+        let mut len = 0;
+        unsafe { copy_out((self.v.app_data_path)(self.ctx, &mut len), len) }
+    }
+    fn documents_path(&mut self) -> Vec<u16> {
+        let mut len = 0;
+        unsafe { copy_out((self.v.documents_path)(self.ctx, &mut len), len) }
+    }
+    fn custom_table_txt_path(&mut self, mode: i32) -> Vec<u16> {
+        let mut len = 0;
+        unsafe { copy_out((self.v.custom_table_txt_path)(self.ctx, mode, &mut len), len) }
+    }
+    fn custom_table_cin_path(&mut self, mode: i32) -> Vec<u16> {
+        let mut len = 0;
+        unsafe { copy_out((self.v.custom_table_cin_path)(self.ctx, mode, &mut len), len) }
+    }
+    fn write_bom_file(&mut self, path: &[u16], text: &[u16]) -> bool {
+        unsafe { (self.v.write_bom_file)(self.ctx, path.as_ptr(), path.len(), text.as_ptr(), text.len()) != 0 }
+    }
+    fn load_text_file(&mut self, path: &[u16]) -> Option<Vec<u16>> {
+        let (mut ok, mut len) = (0, 0);
+        let p = unsafe { (self.v.load_text_file)(self.ctx, path.as_ptr(), path.len(), &mut ok, &mut len) };
+        (ok != 0).then(|| unsafe { copy_out(p, len) })
+    }
+    fn parse_cin(&mut self, src: &[u16], dst: &[u16], custom_table: bool) -> bool {
+        unsafe {
+            (self.v.parse_cin)(
+                self.ctx,
+                src.as_ptr(),
+                src.len(),
+                dst.as_ptr(),
+                dst.len(),
+                i32::from(custom_table),
+            ) != 0
+        }
+    }
+    fn reset_all_defaults(&mut self, mode: i32) {
+        unsafe { (self.v.reset_all_defaults)(self.ctx, mode) }
+    }
+    fn write_config(&mut self, mode: i32) {
+        unsafe { (self.v.write_config)(self.ctx, mode) }
+    }
+    fn load_config(&mut self, mode: i32) {
+        unsafe { (self.v.load_config)(self.ctx, mode) }
+    }
+    fn load_snapshot(&mut self) -> SettingsSnapshot {
+        let mut s = SettingsSnapshot::default();
+        unsafe { (self.v.load_snapshot)(self.ctx, &mut s) };
+        s
+    }
+    fn apply_and_save(&mut self) {
+        unsafe { (self.v.apply_and_save)(self.ctx) }
+    }
+    fn set_color_mode(&mut self, color_mode: i32) {
+        unsafe { (self.v.set_color_mode)(self.ctx, color_mode) }
+    }
+    fn load_colors_for_mode(&mut self, color_mode: i32) {
+        unsafe { (self.v.load_colors_for_mode)(self.ctx, color_mode) }
+    }
+    fn get_colors(&mut self) -> [u32; 6] {
+        let mut c = [0u32; 6];
+        unsafe { (self.v.get_colors)(self.ctx, c.as_mut_ptr()) };
+        c
+    }
+    fn set_color(&mut self, index: i32, color: u32) {
+        unsafe { (self.v.set_color)(self.ctx, index, color) }
+    }
+    fn save_colors_for_mode(&mut self, color_mode: i32) {
+        unsafe { (self.v.save_colors_for_mode)(self.ctx, color_mode) }
+    }
+    fn set_reverse_conversion_selection(&mut self, sel: i32) {
+        unsafe { (self.v.set_reverse_conversion_selection)(self.ctx, sel) }
+    }
+    fn rebuild(&mut self) {
+        unsafe { (self.v.rebuild)(self.ctx) }
+    }
+    fn invalidate_content(&mut self, erase: bool) {
+        unsafe { (self.v.invalidate_content)(self.ctx, i32::from(erase)) }
+    }
+    fn update_content(&mut self) {
+        unsafe { (self.v.update_content)(self.ctx) }
+    }
+    fn invalidate_swatch(&mut self, index: i32) {
+        unsafe { (self.v.invalidate_swatch)(self.ctx, index) }
+    }
+    fn editor_exists(&mut self) -> bool {
+        unsafe { (self.v.editor_exists)(self.ctx) != 0 }
+    }
+    fn editor_text(&mut self) -> Vec<u16> {
+        let mut len = 0;
+        unsafe { copy_out((self.v.editor_text)(self.ctx, &mut len), len) }
+    }
+    fn set_editor_text_muted(&mut self, text: &[u16]) {
+        unsafe { (self.v.set_editor_text_muted)(self.ctx, text.as_ptr(), text.len()) }
+    }
+    fn editor_line_index(&mut self, line: i32) -> i32 {
+        unsafe { (self.v.editor_line_index)(self.ctx, line) }
+    }
+    fn editor_focus_at(&mut self, cp: i32) {
+        unsafe { (self.v.editor_focus_at)(self.ctx, cp) }
+    }
+    fn validate_viewport(&mut self) {
+        unsafe { (self.v.validate_viewport)(self.ctx) }
+    }
+    fn cancel_bg_scan(&mut self) {
+        unsafe { (self.v.cancel_bg_scan)(self.ctx) }
+    }
+    fn enable_save(&mut self, enable: bool) {
+        unsafe { (self.v.enable_save)(self.ctx, i32::from(enable)) }
+    }
+    fn update_line_count(&mut self) {
+        unsafe { (self.v.update_line_count)(self.ctx) }
+    }
+    fn validate_buffer(&mut self, text: &[u16], max_report: i32) -> (i32, i32, Vec<u16>) {
+        let (mut count, mut first, mut len) = (0, 0, 0);
+        let p = unsafe {
+            (self.v.validate_buffer)(
+                self.ctx,
+                text.as_ptr(),
+                text.len(),
+                max_report,
+                &mut count,
+                &mut first,
+                &mut len,
+            )
+        };
+        (count, first, unsafe { copy_out(p, len) })
+    }
+}
+
+/// `SettingsCommand::Handle` in Rust. `snapshot` and `grid_expanded` are the
+/// window's and are updated in place. A panic stops the handler where it was.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_command_handle(
+    vtbl: *const CmdHostVtbl,
+    ctx: Ctx,
+    snapshot: *mut SettingsSnapshot,
+    grid_expanded: *mut i32,
+    ev: *const CommandEvent,
+) {
+    guard((), || unsafe {
+        if vtbl.is_null() || snapshot.is_null() || grid_expanded.is_null() || ev.is_null() {
+            return;
+        }
+        let mut host = VtblHost { v: &*vtbl, ctx };
+        let mut grid = *grid_expanded != 0;
+        command::handle(&mut host, &mut *snapshot, &mut grid, &*ev);
+        *grid_expanded = i32::from(grid);
+    })
+}

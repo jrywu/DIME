@@ -167,6 +167,7 @@ private:
     static void CreateRichEditorControl(WindowData* wd, const LayoutRow& lr,
         int margin, int cardW, int pad, int curY, int thisH, int ctrlRight, int btnW, int btnH, UINT dpi);
     static void RunNav(HWND hMain, WindowData* wd, SettingsNav::NavEvent ev);
+    static void HandleCommand(HWND hWnd, WindowData* wd, WPARAM wParam, LPARAM lParam);
     static void ShowAllControls(WindowData* wd);
     static void UpdateScrollInfo(WindowData* wd);
     static void RepositionControlsForScroll(WindowData* wd);

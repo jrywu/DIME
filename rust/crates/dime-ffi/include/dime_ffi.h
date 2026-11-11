@@ -1349,6 +1349,60 @@ int32_t dime_settings_message_box(void* parent, const uint16_t* text, const uint
 void dime_settings_nav_handle(void* state, const void* ev, void* out, size_t cap, size_t* out_count);
 void dime_settings_nav_min_track_size(uint32_t screen_dpi, void* out_point);
 
+/* ---- Settings WM_COMMAND (phase 5b-8c, dime-settings::command) ---------
+ * SettingsCommand::Cpp::Handle in Rust, run against a host vtable. Field
+ * order must match SettingsCommand.cpp (kVtbl) and dime-ffi's CmdHostVtbl.
+ * Strings are (pointer, length) UTF-16 without NULs, except the message box
+ * caption, which is NUL terminated. A returned string stays valid until the
+ * host's next call that returns a string. logfont is a LOGFONTW (92 bytes),
+ * snapshot a SettingsSnapshot (216), ev a SettingsCommand::CommandEvent (52).
+ * Host callbacks must not throw. A null pointer argument does nothing.
+ */
+typedef struct DimeSettingsCmdHostVtbl {
+    int32_t (*log_pixels_y)(void* ctx);
+    int32_t (*choose_font)(void* ctx, void* logfont, int32_t* point_size10);
+    int32_t (*choose_color)(void* ctx, uint32_t* rgb);
+    const uint16_t* (*get_open_file)(void* ctx, int32_t filter, int32_t* ok, size_t* len);
+    const uint16_t* (*get_save_file)(void* ctx, const uint16_t* default_path, size_t default_len, int32_t* ok, size_t* len);
+    int32_t (*message_box)(void* ctx, const uint16_t* text, size_t len, const uint16_t* caption, uint32_t mb_type);
+    const uint16_t* (*app_data_path)(void* ctx, size_t* len);
+    const uint16_t* (*documents_path)(void* ctx, size_t* len);
+    const uint16_t* (*custom_table_txt_path)(void* ctx, int32_t mode, size_t* len);
+    const uint16_t* (*custom_table_cin_path)(void* ctx, int32_t mode, size_t* len);
+    int32_t (*write_bom_file)(void* ctx, const uint16_t* path, size_t path_len, const uint16_t* text, size_t text_len);
+    const uint16_t* (*load_text_file)(void* ctx, const uint16_t* path, size_t path_len, int32_t* ok, size_t* len);
+    int32_t (*parse_cin)(void* ctx, const uint16_t* src, size_t src_len, const uint16_t* dst, size_t dst_len, int32_t custom_table);
+    void (*reset_all_defaults)(void* ctx, int32_t mode);
+    void (*write_config)(void* ctx, int32_t mode);
+    void (*load_config)(void* ctx, int32_t mode);
+    void (*load_snapshot)(void* ctx, void* out_snapshot);
+    void (*apply_and_save)(void* ctx);
+    void (*set_color_mode)(void* ctx, int32_t color_mode);
+    void (*load_colors_for_mode)(void* ctx, int32_t color_mode);
+    void (*get_colors)(void* ctx, uint32_t* out6);
+    void (*set_color)(void* ctx, int32_t index, uint32_t color);
+    void (*save_colors_for_mode)(void* ctx, int32_t color_mode);
+    void (*set_reverse_conversion_selection)(void* ctx, int32_t sel);
+    void (*rebuild)(void* ctx);
+    void (*invalidate_content)(void* ctx, int32_t erase);
+    void (*update_content)(void* ctx);
+    void (*invalidate_swatch)(void* ctx, int32_t index);
+    int32_t (*editor_exists)(void* ctx);
+    const uint16_t* (*editor_text)(void* ctx, size_t* len);
+    void (*set_editor_text_muted)(void* ctx, const uint16_t* text, size_t len);
+    int32_t (*editor_line_index)(void* ctx, int32_t line);
+    void (*editor_focus_at)(void* ctx, int32_t cp);
+    void (*validate_viewport)(void* ctx);
+    void (*cancel_bg_scan)(void* ctx);
+    void (*enable_save)(void* ctx, int32_t enable);
+    void (*update_line_count)(void* ctx);
+    const uint16_t* (*validate_buffer)(void* ctx, const uint16_t* text, size_t len, int32_t max_report,
+        int32_t* count, int32_t* first_line, size_t* summary_len);
+} DimeSettingsCmdHostVtbl;
+
+void dime_settings_command_handle(const DimeSettingsCmdHostVtbl* vtbl, void* ctx, void* snapshot,
+    int32_t* grid_expanded, const void* ev);
+
 #ifdef __cplusplus
 }
 #endif

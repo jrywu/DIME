@@ -113,6 +113,7 @@
     <ClInclude Include="SettingsWindowPaint.h" />
     <ClInclude Include="SettingsMsgBox.h" />
     <ClInclude Include="SettingsNav.h" />
+    <ClInclude Include="SettingsCommand.h" />
     <ClInclude Include="DIMESettings.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="DIMESettingsResource.h" />
@@ -140,6 +141,7 @@
     <ClCompile Include="SettingsWindowPaint.cpp" />
     <ClCompile Include="SettingsMsgBox.cpp" />
     <ClCompile Include="SettingsNav.cpp" />
+    <ClCompile Include="SettingsCommand.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\DIME.rc" />
