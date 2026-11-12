@@ -1267,3 +1267,35 @@ pub unsafe extern "C" fn dime_settings_frame_initial_size(dpi: u32, out: *mut [i
         write(out, [w, h]);
     })
 }
+
+// ---- Phase 5b-8j: WM_DRAWITEM / WM_CTLCOLOR* (dime-settings::owner) ---------
+
+use dime_settings::owner::{self, Context as OwnerContext, DrawItem};
+
+/// `SettingsOwnerDraw::DrawItem`: 1 when the item was painted.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_draw_item(dis: *const DrawItem, ctx: *const OwnerContext) -> i32 {
+    guard(0, || unsafe {
+        if dis.is_null() || ctx.is_null() {
+            return 0;
+        }
+        i32::from(owner::draw_item(&*dis, &*ctx))
+    })
+}
+
+/// `SettingsOwnerDraw::CtlColor`: 1 when handled; the brush is in `*brush`
+/// (created when null).
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_ctl_color(
+    hdc: Handle,
+    is_dark: i32,
+    tc: *const ThemeColors,
+    brush: *mut Handle,
+) -> i32 {
+    guard(0, || unsafe {
+        if tc.is_null() || brush.is_null() {
+            return 0;
+        }
+        i32::from(owner::ctl_color(hdc, is_dark != 0, &*tc, &mut *brush))
+    })
+}

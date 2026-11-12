@@ -26,6 +26,7 @@
 #include "..\TfInputProcessorProfile.h"
 #include "..\BuildInfo.h"
 #include "SettingsWindow.h"
+#include "SettingsOwnerDraw.h"
 #include "SettingsController.h"
 #include "SettingsPageLayout.h"
 #include "SettingsGeometry.h"
@@ -1382,40 +1383,24 @@ LRESULT CALLBACK SettingsWindow::ContentWndProc(HWND hWnd, UINT msg, WPARAM wPar
         LPDRAWITEMSTRUCT pdis = (LPDRAWITEMSTRUCT)lParam;
         if (!pdis) break;
 
-        // Owner-draw buttons (Win11 style: anti-aliased rounded corners via GDI+)
-        if (pdis->CtlType == ODT_BUTTON) {
-            UINT dpiBtn = CConfig::GetDpiForHwnd(GetParent(hWnd));
-            bool pressed  = (pdis->itemState & ODS_SELECTED) != 0;
-            bool disabled = (pdis->itemState & ODS_DISABLED) != 0;
-            wchar_t txt[128] = {};
-            GetWindowTextW(pdis->hwndItem, txt, 128);
-            SettingsWindowPaint::PaintOwnerButton(pdis->hDC, pdis->rcItem, txt, pressed, disabled,
-                wd->theme, wd->hFontBody, dpiBtn);
+        SettingsOwnerDraw::Context ctx = {};
+        ctx.theme = wd->theme;
+        ctx.fontBody = wd->hFontBody;
+        ctx.dpi = CConfig::GetDpiForHwnd(GetParent(hWnd));
+        const SettingsSnapshot& sn = wd->snapshot;
+        COLORREF swatch[6] = { sn.itemColor, sn.selectedColor, sn.itemBGColor,
+            sn.phraseColor, sn.numberColor, sn.selectedBGColor };
+        memcpy(ctx.swatch, swatch, sizeof(swatch));
+        if (SettingsOwnerDraw::DrawItem(pdis, ctx))
             return TRUE;
-        }
-
-        // Color swatches
-        if (pdis->CtlType == ODT_STATIC && pdis->CtlID >= 4000 && pdis->CtlID < 4006) {
-            int idx = pdis->CtlID - 4000;
-            COLORREF colors[] = {
-                wd->snapshot.itemColor, wd->snapshot.selectedColor, wd->snapshot.itemBGColor,
-                wd->snapshot.phraseColor, wd->snapshot.numberColor, wd->snapshot.selectedBGColor
-            };
-            int r = ScaleForDpi(g_geo.swatchRadius, CConfig::GetDpiForHwnd(GetParent(hWnd)));
-            SettingsWindowPaint::PaintSwatch(pdis->hDC, pdis->rcItem, colors[idx], wd->theme.cardBorder, r);
-            return TRUE;
-        }
         break;
     }
 
     case WM_CTLCOLOREDIT:
     case WM_CTLCOLORLISTBOX:
     {
-        if (!wd || !wd->isDarkTheme) break;
-        HDC hdcCtrl = (HDC)wParam;
-        SetTextColor(hdcCtrl, wd->theme.textPrimary);
-        SetBkColor(hdcCtrl, wd->theme.cardBg);
-        if (!wd->hBrushCardBg) wd->hBrushCardBg = CreateSolidBrush(wd->theme.cardBg);
+        if (!wd) break;
+        if (!SettingsOwnerDraw::CtlColor((HDC)wParam, wd->isDarkTheme, wd->theme, &wd->hBrushCardBg)) break;
         return (LRESULT)wd->hBrushCardBg;
     }
 

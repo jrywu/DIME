@@ -4,7 +4,8 @@
 * (dime-settings paint.rs via dime_settings_paint_*). Each case paints into
 * two 32-bit DIBs and compares every pixel: cards, toggles, the candidate /
 * notify preview, the sidebar, every page (card lists, sub-pages, 載入碼表),
-* the breadcrumb, the hamburger, owner-drawn buttons, swatches, and the
+* the breadcrumb, the hamburger, owner-drawn buttons, swatches (also through
+* SettingsOwnerDraw's WM_DRAWITEM / WM_CTLCOLOR* handling), and the
 * themed message box, in light and dark themes and at several dpis.
 ********************************************************************************/
 #include "pch.h"
@@ -18,6 +19,7 @@
 
 #include "../BaseStructure.h"
 #include "../DIMESettings/SettingsWindowPaint.h"
+#include "../DIMESettings/SettingsOwnerDraw.h"
 #include "../DIMESettings/SettingsPageLayout.h"
 #include "dime_ffi.h"
 
@@ -370,6 +372,107 @@ namespace DIMEUnitTests
                 }
             }
             Assert::IsTrue(frames >= 144, L"frame cases");
+        }
+
+        // SettingsOwnerDraw (5b-8j): WM_DRAWITEM for buttons, swatches, and
+        // items that are not ours, through the dispatch-free Cpp / Rust pair.
+        TEST_METHOD(OwnerDrawItems)
+        {
+            HWND btn = CreateWindowExW(0, L"BUTTON", L"", WS_POPUP | BS_OWNERDRAW, 0, 0, 10, 10,
+                nullptr, nullptr, GetModuleHandleW(nullptr), nullptr);
+            Assert::IsNotNull(btn, L"button");
+            std::wstring longText(140, L'\x5B57');
+            const wchar_t* texts[] = { L"\x5132\x5B58", L"\x8B8A\x66F4\x5B57\x578B", L"OK", L"", longText.c_str() };
+            int painted = 0;
+            for (bool dark : { false, true }) {
+                for (UINT dpi : { 96u, 144u, 0u }) {
+                    SWP::Fonts f = {};
+                    SWP::Cpp::CreateFonts(dpi ? dpi : 96, &f);
+                    SettingsOwnerDraw::Context ctx = {};
+                    ctx.theme = ComputeThemeColors(dark);
+                    ctx.fontBody = f.body;
+                    ctx.dpi = dpi;
+                    COLORREF sw[6] = { RGB(0, 0, 0), RGB(255, 255, 255), RGB(250, 250, 250), RGB(0, 128, 0),
+                        RGB(0, 0, 255), RGB(0, 120, 215) };
+                    memcpy(ctx.swatch, sw, sizeof(sw));
+                    int w = MulDiv(160, dpi ? dpi : 96, 96), h = MulDiv(40, dpi ? dpi : 96, 96);
+                    struct Item { UINT type; UINT id; };
+                    std::vector<Item> items;
+                    for (UINT id = 3998; id <= 4007; id++) items.push_back({ ODT_STATIC, id });
+                    items.push_back({ ODT_BUTTON, 201 });
+                    items.push_back({ ODT_COMBOBOX, 4000 });
+                    items.push_back({ ODT_LISTBOX, 4001 });
+                    for (const Item& it : items) {
+                        for (const wchar_t* text : texts) {
+                            if (it.type != ODT_BUTTON && text != texts[0]) continue;
+                            SetWindowTextW(btn, text);
+                            for (UINT state : { 0u, (UINT)ODS_SELECTED, (UINT)ODS_DISABLED, (UINT)(ODS_SELECTED | ODS_DISABLED), (UINT)ODS_FOCUS }) {
+                                if (it.type != ODT_BUTTON && state) continue;
+                                DRAWITEMSTRUCT dis = {};
+                                dis.CtlType = it.type;
+                                dis.CtlID = it.id;
+                                dis.itemState = state;
+                                dis.hwndItem = btn;
+                                dis.rcItem = { 2, 3, w - 2, h - 3 };
+                                bool ra = false, rb = false;
+                                bool ours = (it.type == ODT_BUTTON) || (it.type == ODT_STATIC && it.id >= 4000 && it.id < 4006);
+                                ExpectSame(w, h, RGB(255, 0, 255),
+                                    [&](HDC dc) { DRAWITEMSTRUCT d = dis; d.hDC = dc; ra = SettingsOwnerDraw::Cpp::DrawItem(&d, ctx); },
+                                    [&](HDC dc) { DRAWITEMSTRUCT d = dis; d.hDC = dc; rb = SettingsOwnerDraw::Rust::DrawItem(&d, ctx); },
+                                    L"draw item type=" + std::to_wstring(it.type) + L" id=" + std::to_wstring(it.id)
+                                        + L" state=" + std::to_wstring(state) + L" dark=" + std::to_wstring(dark)
+                                        + L" dpi=" + std::to_wstring(dpi),
+                                    ours);
+                                Assert::AreEqual(ra, rb, L"handled");
+                                Assert::AreEqual(ours, ra, L"handled as expected");
+                                if (ra) painted++;
+                            }
+                        }
+                    }
+                    for (HGDIOBJ o : { (HGDIOBJ)f.title, (HGDIOBJ)f.cardHeader, (HGDIOBJ)f.body, (HGDIOBJ)f.desc,
+                             (HGDIOBJ)f.mdl2, (HGDIOBJ)f.mdl2Icon })
+                        if (o) DeleteObject(o);
+                }
+            }
+            DestroyWindow(btn);
+            Assert::IsTrue(painted >= 100, L"painted items");
+        }
+
+        // SettingsOwnerDraw (5b-8j): WM_CTLCOLOREDIT / WM_CTLCOLORLISTBOX.
+        TEST_METHOD(OwnerCtlColor)
+        {
+            HDC screen = GetDC(nullptr);
+            for (bool dark : { false, true }) {
+                ThemeColors tc = ComputeThemeColors(dark);
+                for (int preset = 0; preset < 2; preset++) {
+                    HDC da = CreateCompatibleDC(screen), db = CreateCompatibleDC(screen);
+                    SetTextColor(da, RGB(1, 2, 3)); SetTextColor(db, RGB(1, 2, 3));
+                    SetBkColor(da, RGB(4, 5, 6)); SetBkColor(db, RGB(4, 5, 6));
+                    HBRUSH given = preset ? CreateSolidBrush(RGB(9, 9, 9)) : nullptr;
+                    HBRUSH ba = given, bb = given;
+                    bool ra = SettingsOwnerDraw::Cpp::CtlColor(da, dark, tc, &ba);
+                    bool rb = SettingsOwnerDraw::Rust::CtlColor(db, dark, tc, &bb);
+                    std::wstring what = L"dark=" + std::to_wstring(dark) + L" preset=" + std::to_wstring(preset);
+                    Assert::AreEqual(ra, rb, (what + L" handled").c_str());
+                    Assert::AreEqual(dark, ra, (what + L" handled only in dark").c_str());
+                    Assert::AreEqual((DWORD)GetTextColor(da), (DWORD)GetTextColor(db), (what + L" text").c_str());
+                    Assert::AreEqual((DWORD)GetBkColor(da), (DWORD)GetBkColor(db), (what + L" bk").c_str());
+                    Assert::AreEqual(ba == given, bb == given, (what + L" brush kept").c_str());
+                    Assert::AreEqual(ba != nullptr, bb != nullptr, (what + L" brush exists").c_str());
+                    if (ba && ba != given) {
+                        LOGBRUSH la = {}, lb = {};
+                        GetObjectW(ba, sizeof(la), &la);
+                        GetObjectW(bb, sizeof(lb), &lb);
+                        Assert::IsTrue(la.lbStyle == lb.lbStyle && la.lbColor == lb.lbColor, (what + L" brush").c_str());
+                        DeleteObject(ba);
+                        DeleteObject(bb);
+                    }
+                    if (given) DeleteObject(given);
+                    DeleteDC(da);
+                    DeleteDC(db);
+                }
+            }
+            ReleaseDC(nullptr, screen);
         }
 
         TEST_METHOD(ThemedMessageBoxPaint)

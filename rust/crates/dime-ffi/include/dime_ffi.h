@@ -1526,6 +1526,16 @@ void dime_settings_plan_scroll(const DimeScrollItem* items, size_t count, int32_
 void dime_settings_frame_handle(void* state, const void* ev, void* out, size_t cap, size_t* out_count);
 void dime_settings_frame_initial_size(uint32_t dpi, int32_t out_size[2]);
 
+/* ---- Settings owner draw and control colours (phase 5b-8j, dime-settings::owner)
+ * SettingsOwnerDraw::Cpp: WM_DRAWITEM (owner-drawn buttons, the six colour
+ * swatches with HMENU 4000-4005) and WM_CTLCOLOREDIT / WM_CTLCOLORLISTBOX
+ * in the dark theme. dis is a DRAWITEMSTRUCT, ctx a
+ * SettingsOwnerDraw::Context (ThemeColors, body font, dpi, six swatch
+ * colours), tc a ThemeColors. Both return 1 when handled.
+ */
+int32_t dime_settings_draw_item(const void* dis, const void* ctx);
+int32_t dime_settings_ctl_color(void* hdc, int32_t is_dark, const void* tc, void** brush);
+
 #ifdef __cplusplus
 }
 #endif

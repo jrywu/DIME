@@ -11,8 +11,9 @@
 //! host interface. The custom table editor's live validation is `editor.rs`
 //! (`SettingsEditor.*`). Launch arguments, page defaults, and scroll
 //! placement are `lifecycle.rs` (`SettingsLifecycle.*`); window creation,
-//! theme and dpi changes are `frame.rs` (`SettingsFrame.*`). The binary comes in
-//! a later step.
+//! theme and dpi changes are `frame.rs` (`SettingsFrame.*`); owner-drawn
+//! controls and dark control colours are `owner.rs` (`SettingsOwnerDraw.*`).
+//! The binary comes in a later step.
 
 pub mod command;
 pub mod controls;
@@ -25,6 +26,8 @@ pub mod msgbox;
 #[cfg(windows)]
 pub mod msgboxwin;
 pub mod nav;
+#[cfg(windows)]
+pub mod owner;
 #[cfg(windows)]
 pub mod paint;
 pub mod populate;
