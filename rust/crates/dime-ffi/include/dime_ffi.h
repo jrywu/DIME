@@ -1517,6 +1517,15 @@ typedef struct DimeScrollAction {
 void dime_settings_plan_scroll(const DimeScrollItem* items, size_t count, int32_t scroll_pos, uint32_t dpi,
     DimeScrollAction* out);
 
+/* ---- Settings window create / theme / dpi (phase 5b-8i, dime-settings::frame)
+ * SettingsFrame::Cpp::Handle: WM_CREATE, WM_THEMECHANGED (UpdateTheme),
+ * WM_SETTINGCHANGE, and WM_DPICHANGED as a reducer over the dark flag that
+ * lists the Win32 effects in order. state is SettingsFrame::FrameState
+ * (4 bytes), ev FrameEvent (48), out FrameEffect (24).
+ */
+void dime_settings_frame_handle(void* state, const void* ev, void* out, size_t cap, size_t* out_count);
+void dime_settings_frame_initial_size(uint32_t dpi, int32_t out_size[2]);
+
 #ifdef __cplusplus
 }
 #endif

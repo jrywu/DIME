@@ -1234,3 +1234,36 @@ pub unsafe extern "C" fn dime_settings_plan_scroll(
         }
     })
 }
+
+// ---- Phase 5b-8i: create / theme / dpi (dime-settings::frame) ---------------
+
+use dime_settings::frame::{self, FrameEffect, FrameEvent, FrameState};
+
+/// `SettingsFrame::Handle`: updates `state`, writes up to `cap` effects; the
+/// full count goes to `out_count`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_frame_handle(
+    state: *mut FrameState,
+    ev: *const FrameEvent,
+    out: *mut FrameEffect,
+    cap: usize,
+    out_count: *mut usize,
+) {
+    guard((), || unsafe {
+        write(out_count, 0);
+        if state.is_null() || ev.is_null() {
+            return;
+        }
+        let effects = frame::handle(&mut *state, &*ev);
+        write_list(&effects, out, cap, out_count);
+    })
+}
+
+/// `SettingsFrame::InitialSize`: `out` is a SIZE.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_frame_initial_size(dpi: u32, out: *mut [i32; 2]) {
+    guard((), || unsafe {
+        let (w, h) = frame::initial_size(dpi);
+        write(out, [w, h]);
+    })
+}

@@ -12,6 +12,7 @@
 #include "SettingsNav.h"
 #include "SettingsControls.h"
 #include "SettingsLifecycle.h"
+#include "SettingsFrame.h"
 
 // Window class name for FindWindow / single-instance support
 constexpr wchar_t SETTINGS_WND_CLASS[] = L"DIMESettingsMainClass";
@@ -134,7 +135,7 @@ public:
 private:
     static void SwitchMode(HWND hWnd, WindowData* wd, IME_MODE mode);
     static void RebuildContentArea(HWND hWnd, WindowData* wd);
-    static void UpdateTheme(HWND hWnd, WindowData* wd);
+    static void RunFrame(HWND hWnd, WindowData* wd, SettingsFrame::FrameEvent ev);
     static void CreateThemeBrushes(WindowData* wd);
     static void DestroyThemeBrushes(WindowData* wd);
     static void CreateFonts(WindowData* wd, int dpi);

@@ -10,13 +10,15 @@
 //! The command handlers (`command.rs`, `SettingsCommand.*`) run against a
 //! host interface. The custom table editor's live validation is `editor.rs`
 //! (`SettingsEditor.*`). Launch arguments, page defaults, and scroll
-//! placement are `lifecycle.rs` (`SettingsLifecycle.*`). The binary comes in
+//! placement are `lifecycle.rs` (`SettingsLifecycle.*`); window creation,
+//! theme and dpi changes are `frame.rs` (`SettingsFrame.*`). The binary comes in
 //! a later step.
 
 pub mod command;
 pub mod controls;
 #[cfg(windows)]
 pub mod editor;
+pub mod frame;
 pub mod layout;
 pub mod lifecycle;
 pub mod msgbox;

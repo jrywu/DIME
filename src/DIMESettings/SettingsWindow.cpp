@@ -453,20 +453,69 @@ void SettingsWindow::ApplyAndSave(WindowData* wd)
     CConfig::WriteConfig(wd->currentMode);
 }
 
-void SettingsWindow::UpdateTheme(HWND hWnd, WindowData* wd)
+static void RegisterContentClass(HINSTANCE hInstance);
+
+// Create / theme / dpi: SettingsFrame::Handle decides, this carries out the
+// effects. The dark flag is stored first (CreateThemeBrushes reads it).
+void SettingsWindow::RunFrame(HWND hWnd, WindowData* wd, SettingsFrame::FrameEvent ev)
 {
-    wd->isDarkTheme = CConfig::IsSystemDarkTheme();
-    CreateThemeBrushes(wd);
-    CreateFonts(wd, CConfig::GetDpiForHwnd(hWnd));
-    if (wd->isDarkTheme) {
-        BOOL useDark = TRUE;
-        DwmSetWindowAttribute(hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &useDark, sizeof(BOOL));
+    ev.systemDark = CConfig::IsSystemDarkTheme() ? 1 : 0;
+    ev.hasContent = wd->hContentArea ? 1 : 0;
+    SettingsFrame::FrameState st = { wd->isDarkTheme ? 1 : 0 };
+    std::vector<SettingsFrame::FrameEffect> effects;
+    SettingsFrame::Handle(st, ev, effects);
+    wd->isDarkTheme = st.isDark != 0;
+
+    for (const auto& fx : effects) {
+        switch (fx.kind) {
+        case SettingsFrame::FX_SET_DARK_TITLE: {
+            BOOL useDark = fx.arg ? TRUE : FALSE;
+            DwmSetWindowAttribute(hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &useDark, sizeof(BOOL));
+            break;
+        }
+        case SettingsFrame::FX_CAPTION_COLOR: {
+            COLORREF cbg = wd->theme.contentBg;
+            DwmSetWindowAttribute(hWnd, (DWORD)fx.arg, &cbg, sizeof(COLORREF));
+            break;
+        }
+        case SettingsFrame::FX_THEME_BRUSHES:
+            CreateThemeBrushes(wd);
+            break;
+        case SettingsFrame::FX_CREATE_FONTS:
+            CreateFonts(wd, fx.arg);
+            break;
+        case SettingsFrame::FX_DESTROY_FONTS:
+            DestroyFonts(wd);
+            break;
+        case SettingsFrame::FX_INVALIDATE_MAIN:
+            InvalidateRect(hWnd, nullptr, TRUE);
+            break;
+        case SettingsFrame::FX_INVALIDATE_CONTENT:
+            if (wd->hContentArea) InvalidateRect(wd->hContentArea, nullptr, TRUE);
+            break;
+        case SettingsFrame::FX_CONTENT_THEME:
+            if (wd->hContentArea)
+                SetWindowTheme(wd->hContentArea, fx.arg ? L"DarkMode_Explorer" : nullptr, nullptr);
+            break;
+        case SettingsFrame::FX_REBUILD:
+            RebuildContentArea(hWnd, wd);
+            break;
+        case SettingsFrame::FX_SET_POS:
+            SetWindowPos(hWnd, nullptr, fx.rc.left, fx.rc.top, fx.rc.right, fx.rc.bottom,
+                SWP_NOZORDER | SWP_NOACTIVATE);
+            break;
+        case SettingsFrame::FX_CREATE_CONTENT:
+            RegisterContentClass(wd->hInstance);
+            wd->hContentArea = CreateWindowExW(0, CONTENT_WND_CLASS, nullptr,
+                WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_CLIPCHILDREN,
+                fx.rc.left, fx.rc.top, fx.rc.right, fx.rc.bottom,
+                hWnd, (HMENU)IDC_CONTENT_AREA, wd->hInstance, nullptr);
+            SetWindowLongPtr(wd->hContentArea, GWLP_USERDATA, (LONG_PTR)wd);
+            break;
+        default:
+            break;
+        }
     }
-    // Match title bar color to content background (DWMWA_CAPTION_COLOR = 36)
-    COLORREF captionColor = wd->theme.contentBg;
-    DwmSetWindowAttribute(hWnd, 36, &captionColor, sizeof(COLORREF));
-    InvalidateRect(hWnd, nullptr, TRUE);
-    if (wd->hContentArea) InvalidateRect(wd->hContentArea, nullptr, TRUE);
 }
 
 // ============================================================================
@@ -771,6 +820,7 @@ int SettingsWindow::Run(HINSTANCE hInstance, int nCmdShow, IME_MODE initialMode)
     RegisterWindowClass(hInstance);
     UINT dpi = 96;
     { HDC hdc = GetDC(nullptr); if (hdc) { dpi = GetDeviceCaps(hdc, LOGPIXELSY); ReleaseDC(nullptr, hdc); } }
+    SIZE initial = SettingsFrame::InitialSize(dpi);
 
     WCHAR caption[128];
     StringCchPrintfW(caption, 128, L"DIME 設定 v%d.%d.%d", BUILD_VER_MAJOR, BUILD_VER_MINOR, BUILD_COMMIT_COUNT);
@@ -778,7 +828,7 @@ int SettingsWindow::Run(HINSTANCE hInstance, int nCmdShow, IME_MODE initialMode)
     HWND hWnd = CreateWindowExW(0, SETTINGS_WND_CLASS, caption,
         WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
         CW_USEDEFAULT, CW_USEDEFAULT,
-        ScaleForDpi(g_geo.windowDefaultW, dpi), ScaleForDpi(g_geo.windowDefaultH, dpi),
+        initial.cx, initial.cy,
         nullptr, nullptr, hInstance, nullptr);
     if (!hWnd) return -1;
 
@@ -815,29 +865,14 @@ LRESULT CALLBACK SettingsWindow::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPA
         SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)wd);
         HINSTANCE hInst = ((LPCREATESTRUCT)lParam)->hInstance;
         wd->hInstance = hInst;
-        wd->isDarkTheme = CConfig::IsSystemDarkTheme();
-        UINT dpi = CConfig::GetDpiForHwnd(hWnd);
-        CreateThemeBrushes(wd);
-        CreateFonts(wd, dpi);
-        if (wd->isDarkTheme) {
-            BOOL useDark = TRUE;
-            DwmSetWindowAttribute(hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &useDark, sizeof(BOOL));
-        }
-        // Match title bar color to content background (DWMWA_CAPTION_COLOR = 35)
-        COLORREF cbg = wd->theme.contentBg;
-        DwmSetWindowAttribute(hWnd, 35, &cbg, sizeof(COLORREF));
         wd->micaActive = false; // Don't use Mica — it makes title bar translucent
-
-        RegisterContentClass(hInst);
         RECT rc; GetClientRect(hWnd, &rc);
-        int sidebarW = ScaleForDpi(g_geo.sidebarWidth, dpi);
-        wd->hContentArea = CreateWindowExW(0, CONTENT_WND_CLASS, nullptr,
-            WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_CLIPCHILDREN,
-            sidebarW, 0, rc.right - sidebarW, rc.bottom,
-            hWnd, (HMENU)IDC_CONTENT_AREA, hInst, nullptr);
-        SetWindowLongPtr(wd->hContentArea, GWLP_USERDATA, (LONG_PTR)wd);
-        if (wd->isDarkTheme)
-            SetWindowTheme(wd->hContentArea, L"DarkMode_Explorer", nullptr);
+        SettingsFrame::FrameEvent ev = {};
+        ev.kind = SettingsFrame::EV_CREATE;
+        ev.dpi = CConfig::GetDpiForHwnd(hWnd);
+        ev.clientW = rc.right;
+        ev.clientH = rc.bottom;
+        RunFrame(hWnd, wd, ev);
         return 0;
     }
 
@@ -906,7 +941,12 @@ LRESULT CALLBACK SettingsWindow::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPA
         return 0;
 
     case WM_THEMECHANGED:
-        if (wd) UpdateTheme(hWnd, wd);
+        if (wd) {
+            SettingsFrame::FrameEvent ev = {};
+            ev.kind = SettingsFrame::EV_THEME_CHANGED;
+            ev.dpi = CConfig::GetDpiForHwnd(hWnd);
+            RunFrame(hWnd, wd, ev);
+        }
         return 0;
 
     case WM_GETMINMAXINFO:
@@ -935,45 +975,25 @@ LRESULT CALLBACK SettingsWindow::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPA
     case WM_SETTINGCHANGE:
     {
         if (!wd) break;
-        // Detect system theme change (dark/light mode)
-        bool wasDark = wd->isDarkTheme;
-        wd->isDarkTheme = CConfig::IsSystemDarkTheme();
-        if (wasDark != wd->isDarkTheme) {
-            UpdateTheme(hWnd, wd);
-            // Re-apply dark mode to title bar
-            BOOL useDark = wd->isDarkTheme ? TRUE : FALSE;
-            DwmSetWindowAttribute(hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &useDark, sizeof(BOOL));
-            // Update title bar color
-            COLORREF cbg = wd->theme.contentBg;
-            DwmSetWindowAttribute(hWnd, 35, &cbg, sizeof(COLORREF));
-            // Dark mode scrollbar
-            if (wd->hContentArea)
-                SetWindowTheme(wd->hContentArea, wd->isDarkTheme ? L"DarkMode_Explorer" : nullptr, nullptr);
-            // Rebuild to re-apply dark theme to child controls (combos, edits)
-            RebuildContentArea(hWnd, wd);
-        }
+        SettingsFrame::FrameEvent ev = {};
+        ev.kind = SettingsFrame::EV_SETTING_CHANGE;
+        ev.dpi = CConfig::GetDpiForHwnd(hWnd);
+        RunFrame(hWnd, wd, ev);
         return 0;
     }
 
     case WM_DPICHANGED:
     {
         if (!wd) break;
-        UINT newDpi = HIWORD(wParam);
-        // Resize window to suggested rect
+        SettingsFrame::FrameEvent ev = {};
+        ev.kind = SettingsFrame::EV_DPI_CHANGED;
+        ev.dpi = HIWORD(wParam);
         RECT* prcNew = (RECT*)lParam;
-        if (prcNew)
-            SetWindowPos(hWnd, nullptr, prcNew->left, prcNew->top,
-                prcNew->right - prcNew->left, prcNew->bottom - prcNew->top,
-                SWP_NOZORDER | SWP_NOACTIVATE);
-        // Recreate fonts for new DPI
-        DestroyFonts(wd);
-        CreateFonts(wd, newDpi);
-        // Rebuild content with new DPI-scaled positions
-        RebuildContentArea(hWnd, wd);
-        // Update title bar color
-        COLORREF cbg = wd->theme.contentBg;
-        DwmSetWindowAttribute(hWnd, 35, &cbg, sizeof(COLORREF));
-        InvalidateRect(hWnd, nullptr, TRUE);
+        if (prcNew) {
+            ev.hasRect = 1;
+            ev.rc = *prcNew;
+        }
+        RunFrame(hWnd, wd, ev);
         return 0;
     }
 
