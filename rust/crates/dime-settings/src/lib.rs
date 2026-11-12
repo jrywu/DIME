@@ -21,4 +21,5 @@ pub mod msgboxwin;
 pub mod nav;
 #[cfg(windows)]
 pub mod paint;
+pub mod populate;
 pub mod validate;

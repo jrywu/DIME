@@ -35,6 +35,7 @@
 #include "SettingsNav.h"
 #include "SettingsCommand.h"
 #include "SettingsEditor.h"
+#include "SettingsPopulate.h"
 
 #include <Richedit.h>
 #include <MLang.h>
@@ -828,166 +829,31 @@ void SettingsWindow::RebuildContentArea(HWND hWnd, WindowData* wd)
     UpdateScrollInfo(wd);
     InvalidateRect(wd->hContentArea, nullptr, TRUE);
 }
-static void ComboAddAndSelect(HWND hCombo, const wchar_t* items[], int count, int sel)
+// Fill the controls from the snapshot (SettingsPopulate.*).
+static HWND FindControlThunk(void* ctx, SettingsControlId id)
 {
-    SendMessage(hCombo, CB_RESETCONTENT, 0, 0);
-    for (int i = 0; i < count; i++)
-        SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)items[i]);
-    if (sel >= 0 && sel < count)
-        SendMessage(hCombo, CB_SETCURSEL, (WPARAM)sel, 0);
+    return SettingsWindow::FindControl(static_cast<SettingsWindow::WindowData*>(ctx), id);
 }
 
 void SettingsWindow::PopulateControls(WindowData* wd)
 {
-    const SettingsSnapshot& s = wd->snapshot;
-    HWND h;
-
-    if ((h = FindControl(wd, CTRL_COLOR_MODE))) {
-        SendMessage(h, CB_RESETCONTENT, 0, 0);
-        // Must match ConfigDialog.cpp exactly: "跟隨系統模式" only on Win10 1809+
-        if (Global::isWindows1809OrLater) {
-            int idx = (int)SendMessage(h, CB_ADDSTRING, 0, (LPARAM)L"跟隨系統模式");
-            SendMessage(h, CB_SETITEMDATA, (WPARAM)idx, (LPARAM)static_cast<int>(IME_COLOR_MODE::IME_COLOR_MODE_SYSTEM));
-        }
-        {
-            int idx = (int)SendMessage(h, CB_ADDSTRING, 0, (LPARAM)L"淡色模式");
-            SendMessage(h, CB_SETITEMDATA, (WPARAM)idx, (LPARAM)static_cast<int>(IME_COLOR_MODE::IME_COLOR_MODE_LIGHT));
-        }
-        {
-            int idx = (int)SendMessage(h, CB_ADDSTRING, 0, (LPARAM)L"深色模式");
-            SendMessage(h, CB_SETITEMDATA, (WPARAM)idx, (LPARAM)static_cast<int>(IME_COLOR_MODE::IME_COLOR_MODE_DARK));
-        }
-        {
-            int idx = (int)SendMessage(h, CB_ADDSTRING, 0, (LPARAM)L"自訂");
-            SendMessage(h, CB_SETITEMDATA, (WPARAM)idx, (LPARAM)static_cast<int>(IME_COLOR_MODE::IME_COLOR_MODE_CUSTOM));
-        }
-        // Select by item data matching colorMode
-        int count = (int)SendMessage(h, CB_GETCOUNT, 0, 0);
-        for (int ci = 0; ci < count; ci++) {
-            if ((int)SendMessage(h, CB_GETITEMDATA, (WPARAM)ci, 0) == s.colorMode) {
-                SendMessage(h, CB_SETCURSEL, (WPARAM)ci, 0);
-                break;
-            }
+    // The reverse-conversion providers are enumerated at startup and
+    // filtered by LoadConfig in SwitchMode.
+    std::vector<SettingsPopulate::ReverseEntry> reverse;
+    CDIMEArray<LanguageProfileInfo>* infoList = CConfig::GetReverseConvervsionInfoList();
+    if (infoList) {
+        for (UINT i = 0; i < infoList->Count(); i++) {
+            reverse.push_back({ infoList->GetAt(i)->description,
+                IsEqualCLSID(CConfig::GetReverseConversionGUIDProfile(), infoList->GetAt(i)->guidProfile) != FALSE });
         }
     }
-    if ((h = FindControl(wd, CTRL_SHOW_NOTIFY)))
-        SendMessage(h, BM_SETCHECK, s.showNotifyDesktop ? BST_CHECKED : BST_UNCHECKED, 0);
-    if ((h = FindControl(wd, CTRL_ARRAY_SCOPE))) {
-        // Exact from ConfigDialog.cpp — uses CB_SETITEMDATA
-        SendMessage(h, CB_RESETCONTENT, 0, 0);
-        struct { const wchar_t* text; int data; } arrayScopeItems[] = {
-            { L"行列30 Big5 (繁體中文)", (int)ARRAY_SCOPE::ARRAY30_BIG5 },
-            { L"行列30 Unicode Ext-A",  (int)ARRAY_SCOPE::ARRAY30_UNICODE_EXT_A },
-            { L"行列30 Unicode Ext-AB", (int)ARRAY_SCOPE::ARRAY30_UNICODE_EXT_AB },
-            { L"行列30 Unicode Ext-A~D",(int)ARRAY_SCOPE::ARRAY30_UNICODE_EXT_ABCD },
-            { L"行列30 Unicode Ext-A~J",(int)ARRAY_SCOPE::ARRAY30_UNICODE_EXT_A_TO_J },
-            { L"行列40 Big5",           (int)ARRAY_SCOPE::ARRAY40_BIG5 },
-        };
-        for (auto& item : arrayScopeItems) {
-            LRESULT idx = SendMessage(h, CB_ADDSTRING, 0, (LPARAM)item.text);
-            SendMessage(h, CB_SETITEMDATA, idx, (LPARAM)item.data);
-        }
-        // Select by item data
-        int cnt = (int)SendMessage(h, CB_GETCOUNT, 0, 0);
-        for (int ci = 0; ci < cnt; ci++) {
-            if ((int)SendMessage(h, CB_GETITEMDATA, (WPARAM)ci, 0) == s.arrayScope) {
-                SendMessage(h, CB_SETCURSEL, (WPARAM)ci, 0); break;
-            }
-        }
-    }
-    if ((h = FindControl(wd, CTRL_CHARSET_SCOPE))) {
-        const wchar_t* f[] = { L"完整字集", L"繁體中文" };
-        ComboAddAndSelect(h, f, 2, s.big5Filter ? 1 : 0);
-    }
-    if ((h = FindControl(wd, CTRL_NUMERIC_PAD))) {
-        const wchar_t* p[] = { L"數字鍵盤輸入數字符號", L"數字鍵盤輸入字根", L"僅用數字鍵盤輸入字根" };
-        ComboAddAndSelect(h, p, 3, s.numericPad);
-    }
-    if ((h = FindControl(wd, CTRL_SHIFT_ENGLISH_DIGIT_MODE))) {
-        const wchar_t* d[] = {
-            L"CapsLock 關輸出符號",
-            L"CapsLock 關輸出數字",
-            L"永遠輸出符號"
-        };
-        ComboAddAndSelect(h, d, 3, s.shiftEnglishDigitMode);
-    }
-    if ((h = FindControl(wd, CTRL_DAYI_SELKEY_MODE))) {
-        const wchar_t* k[] = { L"依碼表設定", L"數字鍵 1~0", L"大易選擇鍵 ' [ ] - \\" };
-        ComboAddAndSelect(h, k, 3, s.dayiSelkeyMode);
-    }
-    if ((h = FindControl(wd, CTRL_PHONETIC_KB))) {
-        const wchar_t* l[] = { L"標準鍵盤", L"倚天鍵盤" };
-        ComboAddAndSelect(h, l, 2, s.phoneticKeyboardLayout);
-    }
-    if ((h = FindControl(wd, CTRL_MAX_CODES))) {
-        WCHAR buf[16]; StringCchPrintfW(buf, 16, L"%u", s.maxCodes);
-        SetWindowTextW(h, buf);
-    }
-    if ((h = FindControl(wd, CTRL_ARROW_KEY_SW_PAGES)))
-        SendMessage(h, BM_SETCHECK, s.arrowKeySWPages ? BST_CHECKED : BST_UNCHECKED, 0);
-    if ((h = FindControl(wd, CTRL_SPACE_AS_PAGEDOWN)))
-        SendMessage(h, BM_SETCHECK, s.spaceAsPageDown ? BST_CHECKED : BST_UNCHECKED, 0);
-    if ((h = FindControl(wd, CTRL_SPACE_AS_FIRST_CAND)))
-        SendMessage(h, BM_SETCHECK, s.spaceAsFirstCandSelkey ? BST_CHECKED : BST_UNCHECKED, 0);
-    if ((h = FindControl(wd, CTRL_AUTO_COMPOSE)))
-        SendMessage(h, BM_SETCHECK, s.autoCompose ? BST_CHECKED : BST_UNCHECKED, 0);
-    if ((h = FindControl(wd, CTRL_CLEAR_ON_BEEP)))
-        SendMessage(h, BM_SETCHECK, s.clearOnBeep ? BST_CHECKED : BST_UNCHECKED, 0);
-    if ((h = FindControl(wd, CTRL_MAKE_PHRASE)))
-        SendMessage(h, BM_SETCHECK, s.makePhrase ? BST_CHECKED : BST_UNCHECKED, 0);
-    if ((h = FindControl(wd, CTRL_CUSTOM_TABLE_PRIORITY)))
-        SendMessage(h, BM_SETCHECK, s.customTablePriority ? BST_CHECKED : BST_UNCHECKED, 0);
-    if ((h = FindControl(wd, CTRL_DO_BEEP)))
-        SendMessage(h, BM_SETCHECK, s.doBeep ? BST_CHECKED : BST_UNCHECKED, 0);
-    if ((h = FindControl(wd, CTRL_DO_BEEP_NOTIFY)))
-        SendMessage(h, BM_SETCHECK, s.doBeepNotify ? BST_CHECKED : BST_UNCHECKED, 0);
-    if ((h = FindControl(wd, CTRL_DO_BEEP_CANDI)))
-        SendMessage(h, BM_SETCHECK, s.doBeepOnCandi ? BST_CHECKED : BST_UNCHECKED, 0);
-    if ((h = FindControl(wd, CTRL_IME_SHIFT_MODE))) {
-        const wchar_t* m[] = { L"左右SHIFT鍵", L"右SHIFT鍵", L"左SHIFT鍵", L"無(僅Ctrl-Space鍵)" };
-        ComboAddAndSelect(h, m, 4, s.imeShiftMode);
-    }
-    if ((h = FindControl(wd, CTRL_DOUBLE_SINGLE_BYTE))) {
-        const wchar_t* d[] = { L"以 Shift-Space 熱鍵切換", L"半型", L"全型" };
-        ComboAddAndSelect(h, d, 3, s.doubleSingleByteMode);
-    }
-    if ((h = FindControl(wd, CTRL_REVERSE_CONVERSION))) {
-        // List is populated at startup and filtered by LoadConfig in SwitchMode
-        SendMessage(h, CB_RESETCONTENT, 0, 0);
-        SendMessage(h, CB_ADDSTRING, 0, (LPARAM)L"(無)");
-        if (IsEqualCLSID(CConfig::GetReverseConversionGUIDProfile(), CLSID_NULL))
-            SendMessage(h, CB_SETCURSEL, (WPARAM)0, 0);
-        CDIMEArray<LanguageProfileInfo>* infoList = CConfig::GetReverseConvervsionInfoList();
-        if (infoList) {
-            for (UINT i = 0; i < infoList->Count(); i++) {
-                SendMessage(h, CB_ADDSTRING, 0, (LPARAM)infoList->GetAt(i)->description);
-                if (IsEqualCLSID(CConfig::GetReverseConversionGUIDProfile(), infoList->GetAt(i)->guidProfile))
-                    SendMessage(h, CB_SETCURSEL, (WPARAM)i + 1, 0);
-            }
-        }
-    }
-    if ((h = FindControl(wd, CTRL_KEYBOARD_OPEN_CLOSE))) {
-        SendMessage(h, CB_RESETCONTENT, 0, 0);
-        SendMessage(h, CB_ADDSTRING, 0, (LPARAM)L"中文模式");
-        SendMessage(h, CB_ADDSTRING, 0, (LPARAM)L"英數模式");
-        SendMessage(h, CB_SETCURSEL, s.activatedKeyboardMode ? 0 : 1, 0);
-    }
-    if ((h = FindControl(wd, CTRL_OUTPUT_CHT_CHS))) {
-        SendMessage(h, CB_RESETCONTENT, 0, 0);
-        SendMessage(h, CB_ADDSTRING, 0, (LPARAM)L"不轉換");
-        SendMessage(h, CB_ADDSTRING, 0, (LPARAM)L"繁轉簡");
-        SendMessage(h, CB_SETCURSEL, s.doHanConvert ? 1 : 0, 0);
-    }
-    if ((h = FindControl(wd, CTRL_DAYI_ARTICLE)))
-        SendMessage(h, BM_SETCHECK, s.dayiArticleMode ? BST_CHECKED : BST_UNCHECKED, 0);
-    if ((h = FindControl(wd, CTRL_SENTENCE_MODE)))
-        SendMessage(h, BM_SETCHECK, s.sentenceMode ? BST_CHECKED : BST_UNCHECKED, 0);
-    if ((h = FindControl(wd, CTRL_ARRAY_FORCE_SP)))
-        SendMessage(h, BM_SETCHECK, s.arrayForceSP ? BST_CHECKED : BST_UNCHECKED, 0);
-    if ((h = FindControl(wd, CTRL_ARRAY_NOTIFY_SP)))
-        SendMessage(h, BM_SETCHECK, s.arrayNotifySP ? BST_CHECKED : BST_UNCHECKED, 0);
-    if ((h = FindControl(wd, CTRL_ARRAY_SINGLE_QUOTE)))
-        SendMessage(h, BM_SETCHECK, s.arraySingleQuoteCustomPhrase ? BST_CHECKED : BST_UNCHECKED, 0);
+    SettingsPopulate::Inputs in = {};
+    in.snapshot = &wd->snapshot;
+    in.windows1809OrLater = Global::isWindows1809OrLater != FALSE;
+    in.reverseIsNull = IsEqualCLSID(CConfig::GetReverseConversionGUIDProfile(), CLSID_NULL) != FALSE;
+    in.reverse = reverse.data();
+    in.reverseCount = (int)reverse.size();
+    SettingsPopulate::Populate(in, &FindControlThunk, wd);
 }
 
 // ============================================================================

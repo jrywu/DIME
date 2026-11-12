@@ -977,3 +977,80 @@ pub unsafe extern "C" fn dime_settings_editor_validate_viewport(
 pub extern "C" fn dime_settings_editor_subclass_proc() -> *const c_void {
     editor::subclass_proc as *const c_void
 }
+
+// ---- Phase 5b-8e: populate controls (dime-settings::populate) ------------
+
+use dime_settings::populate;
+
+/// `DimePopulateOp` (28 bytes). Text is `text[text_offset..+text_len]`.
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+pub struct PopulateOp {
+    kind: i32,
+    ctrl_id: i32,
+    value: i32,
+    has_data: i32,
+    data: i32,
+    text_offset: i32,
+    text_len: i32,
+}
+
+/// `SettingsPopulate` operations for `snapshot`. `reverse_descs` are
+/// NUL-terminated, `reverse_selected` 0 / 1, both `reverse_count` long.
+/// Writes up to `cap` ops and up to `text_cap` text units; the full counts go
+/// to `out_count` / `text_len` (call once with zero caps to size).
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_populate_ops(
+    snapshot: *const SettingsSnapshot,
+    windows1809: i32,
+    reverse_is_null: i32,
+    reverse_descs: *const *const u16,
+    reverse_selected: *const i32,
+    reverse_count: i32,
+    out: *mut PopulateOp,
+    cap: usize,
+    out_count: *mut usize,
+    text: *mut u16,
+    text_cap: usize,
+    text_len: *mut usize,
+) {
+    guard((), || unsafe {
+        write(out_count, 0);
+        write(text_len, 0);
+        if snapshot.is_null() {
+            return;
+        }
+        let n = if reverse_descs.is_null() || reverse_selected.is_null() {
+            0
+        } else {
+            reverse_count.max(0) as usize
+        };
+        let descs: Vec<Vec<u16>> = (0..n).map(|i| cstr_vec(*reverse_descs.add(i))).collect();
+        let entries: Vec<populate::ReverseEntry> = (0..n)
+            .map(|i| populate::ReverseEntry {
+                description: &descs[i],
+                selected: *reverse_selected.add(i) != 0,
+            })
+            .collect();
+        let ops = populate::populate(&*snapshot, windows1809 != 0, reverse_is_null != 0, &entries);
+        let mut pool: Vec<u16> = Vec::new();
+        let flat: Vec<PopulateOp> = ops
+            .iter()
+            .map(|op| {
+                let offset = pool.len() as i32;
+                pool.extend_from_slice(&op.text);
+                PopulateOp {
+                    kind: op.kind,
+                    ctrl_id: op.ctrl_id,
+                    value: op.value,
+                    has_data: i32::from(op.data.is_some()),
+                    data: op.data.unwrap_or(0),
+                    text_offset: offset,
+                    text_len: op.text.len() as i32,
+                }
+            })
+            .collect();
+        write_list(&flat, out, cap, out_count);
+        write_list(&pool, text, text_cap, text_len);
+    })
+}

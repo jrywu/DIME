@@ -1416,6 +1416,35 @@ void dime_settings_editor_validate_viewport(void* hre, int32_t mode, uint32_t ma
     int32_t (*char_ok)(uint16_t ch, void* ctx), void* char_ctx);
 const void* dime_settings_editor_subclass_proc(void);
 
+/* ---- Settings populate controls (phase 5b-8e, dime-settings::populate) --
+ * SettingsPopulate::Cpp::Populate as control operations, in order. The
+ * window applies each to the control with ctrl_id (skipping controls not on
+ * the page): RESET = CB_RESETCONTENT, ADD = CB_ADDSTRING of the text (then
+ * CB_SETITEMDATA of data when has_data), SELECT = CB_SETCURSEL value,
+ * CHECK = BM_SETCHECK value, TEXT = SetWindowTextW. Text is
+ * text[text_offset .. text_offset + text_len] without NULs. snapshot is a
+ * SettingsSnapshot (216 bytes); reverse_descs are NUL terminated.
+ */
+enum {
+    DIME_POPULATE_RESET = 1,
+    DIME_POPULATE_ADD = 2,
+    DIME_POPULATE_SELECT = 3,
+    DIME_POPULATE_CHECK = 4,
+    DIME_POPULATE_TEXT = 5,
+};
+typedef struct DimePopulateOp {
+    int32_t kind;
+    int32_t ctrl_id;
+    int32_t value;
+    int32_t has_data;
+    int32_t data;
+    int32_t text_offset;
+    int32_t text_len;
+} DimePopulateOp;
+void dime_settings_populate_ops(const void* snapshot, int32_t windows1809, int32_t reverse_is_null,
+    const uint16_t* const* reverse_descs, const int32_t* reverse_selected, int32_t reverse_count,
+    DimePopulateOp* out, size_t cap, size_t* out_count, uint16_t* text, size_t text_cap, size_t* text_len);
+
 #ifdef __cplusplus
 }
 #endif
