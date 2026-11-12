@@ -1,6 +1,7 @@
 // KeyFlowHarness.cpp - see KeyFlowHarness.h
 
 #include "pch.h"
+#include "TestAppData.h"
 #include "KeyFlowHarness.h"
 
 #include <thread>
@@ -713,7 +714,7 @@ std::vector<std::wstring> RunKeyFlow(const KeyFlowOptions& options, const std::w
         if (s.threadMgr) { s.threadMgr->Deactivate(); s.threadMgr->Release(); }
         if (s.hwnd) DestroyWindow(s.hwnd);
 
-        Global::testAppDataOverride[0] = L'\0';
+        DIMETestAppData::Restore();
         SetEnvironmentVariableW(L"ProgramW6432", hadPf ? savedPf : nullptr);
         DIMEUnitTests::KeyFlowConfigAccess::Reset(options.mode);
         RemoveTree(base);

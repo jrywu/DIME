@@ -338,6 +338,7 @@
     <ClInclude Include="..\DIMESettings\SettingsNav.h" />
     <ClInclude Include="..\DIMESettings\SettingsCommand.h" />
     <ClInclude Include="..\DIMESettings\SettingsEditor.h" />
+    <ClInclude Include="TestAppData.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\CompositionProcessorEngine.cpp">
@@ -391,6 +392,7 @@
     <ClCompile Include="SettingsNavParityTest.cpp" />
     <ClCompile Include="SettingsCommandParityTest.cpp" />
     <ClCompile Include="SettingsEditorParityTest.cpp" />
+    <ClCompile Include="TestAppData.cpp" />
     <ClCompile Include="CandidatePaintParityTest.cpp" />
     <ClCompile Include="ScrollBarProcParityTest.cpp" />
     <ClCompile Include="ShadowParityTest.cpp" />

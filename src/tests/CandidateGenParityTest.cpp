@@ -10,6 +10,7 @@
 * and the active select-key range must match.
 ********************************************************************************/
 #include "pch.h"
+#include "TestAppData.h"
 #include "CppUnitTest.h"
 #include <Windows.h>
 #include <msctf.h>
@@ -246,7 +247,7 @@ namespace DIMEUnitTests
             CConfig::SetBig5Filter(_savedBig5);
             CConfig::setCustomTablePriority(_savedPriority);
             CConfig::SetArraySingleQuoteCustomPhrase(_savedQuote);
-            Global::testAppDataOverride[0] = L'\0';
+            DIMETestAppData::Restore();
         }
 
         TEST_METHOD(RandomStates)

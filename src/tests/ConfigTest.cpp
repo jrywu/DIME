@@ -24,7 +24,7 @@ namespace DIMEUnitTests
         static std::wstring GetConfigFilePath(IME_MODE mode)
         {
             WCHAR appDataPath[MAX_PATH];
-            SHGetFolderPath(NULL, CSIDL_APPDATA, NULL, 0, appDataPath);
+            Global::GetAppDataPath(appDataPath, TRUE);   // module temp folder (TestAppData.h)
             
             std::wstring configPath = appDataPath;
             configPath += L"\\DIME\\";
@@ -62,7 +62,7 @@ namespace DIMEUnitTests
         static void EnsureConfigDirectory()
         {
             WCHAR appDataPath[MAX_PATH];
-            SHGetFolderPath(NULL, CSIDL_APPDATA, NULL, 0, appDataPath);
+            Global::GetAppDataPath(appDataPath, TRUE);   // module temp folder (TestAppData.h)
             
             std::wstring dirPath = appDataPath;
             dirPath += L"\\DIME";
@@ -705,7 +705,7 @@ namespace DIMEUnitTests
 
             // Assert: Verify config file created
             WCHAR appDataPath[MAX_PATH] = {0};
-            SHGetFolderPath(NULL, CSIDL_APPDATA, NULL, 0, appDataPath);
+            Global::GetAppDataPath(appDataPath, TRUE);   // module temp folder (TestAppData.h)
             std::wstring expectedPath = std::wstring(appDataPath) + L"\\DIME\\GenericConfig.ini";
 
             DWORD attrs = GetFileAttributes(expectedPath.c_str());
@@ -2093,7 +2093,7 @@ namespace DIMEUnitTests
 
             // Read back directly from INI
             WCHAR appData[MAX_PATH] = {};
-            SHGetSpecialFolderPath(NULL, appData, CSIDL_APPDATA, FALSE);
+            Global::GetAppDataPath(appData, TRUE);   // module temp folder (TestAppData.h)
             WCHAR iniPath[MAX_PATH];
             StringCchPrintfW(iniPath, MAX_PATH, L"%s\\DIME\\DayiConfig.ini", appData);
 

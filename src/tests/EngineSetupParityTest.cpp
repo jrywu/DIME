@@ -1,6 +1,7 @@
 // Phase 4c: C++ and Rust dictionary setup, keystroke table, candidate range,
 // traditional/simplified and frequency tables, and the preserved-key list.
 #include "pch.h"
+#include "TestAppData.h"
 #include "CppUnitTest.h"
 #include <fstream>
 #include <iterator>
@@ -153,7 +154,7 @@ struct EnvGuard
 
     ~EnvGuard()
     {
-        Global::testAppDataOverride[0] = L'\0';
+        DIMETestAppData::Restore();
         SetEnvironmentVariableW(L"ProgramW6432", hadPf ? savedPf : nullptr);
         IME_MODE cur = CConfig::GetIMEMode();
         if (cur == savedConfig)

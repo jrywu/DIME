@@ -2,6 +2,7 @@
 // (a sink would re-enter the public method and mix the two paths). Re-entry is
 // covered by the Rust mock and by ThreadMgrTogglesChineseAndShape.
 #include "pch.h"
+#include "TestAppData.h"
 #include "CppUnitTest.h"
 #include <msctf.h>
 #include <string>
@@ -485,7 +486,7 @@ TEST_CLASS(LangBarParityTest)
         CConfig::SetDoubleSingleByteMode(savedWidth);
         CConfig::SetDoHanConvert(savedHan);
         CConfig::SetIMEShiftMode(savedShift);
-        Global::testAppDataOverride[0] = 0;
+        DIMETestAppData::Restore();
         SetEnvironmentVariableW(L"ProgramW6432", hadPf ? savedPf : nullptr);
         if (CConfig::GetIMEMode() == savedConfigMode)
             CConfig::SetIMEMode(savedConfigMode == IME_MODE::IME_MODE_NONE ? IME_MODE::IME_MODE_DAYI : IME_MODE::IME_MODE_NONE);
