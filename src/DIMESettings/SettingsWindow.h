@@ -138,10 +138,6 @@ private:
     static void DestroyThemeBrushes(WindowData* wd);
     static void CreateFonts(WindowData* wd, int dpi);
     static void DestroyFonts(WindowData* wd);
-    static void PaintSidebar(HWND hWnd, HDC hdc, WindowData* wd);
-    static void PaintContent(HWND hWnd, HDC hdc, WindowData* wd);
-    static void PaintBreadcrumb(HWND hWnd, HDC hdc, WindowData* wd);
-    static void PaintHamburger(HWND hMain, HDC hdc, WindowData* wd, RECT rc, HBRUSH bg);
     static void AddControl(WindowData* wd, SettingsControlId id, HWND h, int x, int y, int w, int ht, int visH = -1);
     static void CreateControls(WindowData* wd, const std::vector<SettingsControls::ControlSpec>& specs);
     static void SetupRichEditor(WindowData* wd, HWND hRE);

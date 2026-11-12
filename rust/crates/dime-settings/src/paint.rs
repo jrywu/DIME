@@ -1724,6 +1724,93 @@ pub fn paint_msgbox(
     }
 }
 
+windows_link::link!("gdi32.dll" "system" fn CreateRectRgn(l: i32, t: i32, r: i32, b: i32) -> Handle);
+windows_link::link!("gdi32.dll" "system" fn SaveDC(hdc: Handle) -> i32);
+windows_link::link!("gdi32.dll" "system" fn RestoreDC(hdc: Handle, saved: i32) -> i32);
+windows_link::link!("gdi32.dll" "system" fn ExtSelectClipRgn(hdc: Handle, rgn: Handle, mode: i32) -> i32);
+windows_link::link!("gdi32.dll" "system" fn SetViewportOrgEx(hdc: Handle, x: i32, y: i32, old: *mut c_void) -> i32);
+
+const RGN_AND: i32 = 1;
+
+/// `PaintMainFrame` (phase 5b-8g): the sidebar, then on a sub-page the
+/// breadcrumb strip, or with the narrow sidebar open the sidebar over the
+/// strip and the hamburger.
+pub fn paint_main_frame(hdc: Handle, main: &PaintContext, has_content: bool) {
+    let g = defaults();
+    paint_sidebar(hdc, main);
+    if !(main.nav_level == 1 && main.selected_mode_index < 4 && has_content) {
+        return;
+    }
+    let dpi = main.dpi;
+    let narrow = main.sidebar_narrow_mode != 0;
+    let collapsed = main.sidebar_collapsed != 0;
+    let sidebar_w = if !narrow && !collapsed {
+        s(g.sidebar_width, dpi)
+    } else {
+        0
+    };
+    let bc_h = s(g.breadcrumb_h, dpi);
+    // SAFETY: plain GDI calls on the caller's DC.
+    unsafe {
+        if narrow && !collapsed {
+            let ov = s(g.sidebar_width, dpi);
+            let clip = CreateRectRgn(0, 0, ov, bc_h);
+            let saved = SaveDC(hdc);
+            ExtSelectClipRgn(hdc, clip, RGN_AND);
+            paint_sidebar(hdc, main);
+            RestoreDC(hdc, saved);
+            DeleteObject(clip);
+            FillRect(hdc, &Rect::new(ov, 0, 32767, bc_h), main.brush_content_bg);
+            let hb = s(g.hamburger_size, dpi);
+            paint_hamburger(hdc, main, Rect::new(0, 0, hb, hb), main.brush_sidebar_bg);
+        } else {
+            FillRect(hdc, &Rect::new(sidebar_w, 0, 32767, bc_h), main.brush_content_bg);
+            let saved = SaveDC(hdc);
+            SetViewportOrgEx(hdc, sidebar_w, 0, null_mut());
+            paint_breadcrumb(hdc, main);
+            RestoreDC(hdc, saved);
+            if narrow {
+                let hb = s(g.hamburger_size, dpi);
+                paint_hamburger(
+                    hdc,
+                    main,
+                    Rect::new(sidebar_w, 0, sidebar_w + hb, hb),
+                    main.brush_content_bg,
+                );
+            }
+        }
+    }
+}
+
+/// `PaintContentFrame` (phase 5b-8g): the page, the narrow-mode sidebar
+/// overlay, and the Level 0 hamburger.
+pub fn paint_content_frame(hdc: Handle, content: &PaintContext, main: &PaintContext) {
+    let g = defaults();
+    paint_content(hdc, content);
+    let narrow = main.sidebar_narrow_mode != 0;
+    // SAFETY: plain GDI calls on the caller's DC.
+    unsafe {
+        if narrow && main.sidebar_collapsed == 0 {
+            let ov = s(g.sidebar_width, main.dpi);
+            let has_bc = main.nav_level == 1 && main.selected_mode_index < 4;
+            let bc_off = if has_bc { s(g.breadcrumb_h, main.dpi) } else { 0 };
+            let clip = CreateRectRgn(0, 0, ov, 32767);
+            let saved = SaveDC(hdc);
+            ExtSelectClipRgn(hdc, clip, RGN_AND);
+            if bc_off != 0 {
+                SetViewportOrgEx(hdc, 0, -bc_off, null_mut());
+            }
+            paint_sidebar(hdc, main);
+            RestoreDC(hdc, saved);
+            DeleteObject(clip);
+        }
+    }
+    if narrow && main.nav_level == 0 {
+        let hb = s(g.hamburger_size, main.dpi);
+        paint_hamburger(hdc, main, Rect::new(0, 0, hb, hb), main.brush_content_bg);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

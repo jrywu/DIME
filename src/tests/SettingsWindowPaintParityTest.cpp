@@ -330,6 +330,48 @@ namespace DIMEUnitTests
             Assert::IsTrue(cases >= 32, L"page cases");
         }
 
+        TEST_METHOD(WindowFrames)
+        {
+            int frames = 0;
+            for (bool dark : { false, true }) {
+                for (UINT dpi : { 96u, 144u }) {
+                    for (int narrow = 0; narrow < 2; narrow++) {
+                        for (int collapsed = 0; collapsed < 2; collapsed++) {
+                            for (int nav = 0; nav < 2; nav++) {
+                                for (int sel : { 0, 3, 5 }) {
+                                    Ctx m(dark, dpi, sel);
+                                    m.ctx.selectedModeIndex = sel;
+                                    m.ctx.currentMode = sel < 4 ? sel : 0;
+                                    m.ctx.navLevel = nav;
+                                    m.ctx.currentCardIndex = 0;
+                                    m.ctx.sidebarNarrowMode = narrow;
+                                    m.ctx.sidebarCollapsed = collapsed;
+                                    m.ctx.hoverSidebarIndex = 2;
+                                    SWP::PaintContext content = m.ctx;
+                                    content.clientW = m.ctx.clientW - (narrow ? 0 : MulDiv(280, dpi, 96));
+                                    content.clientH = m.ctx.clientH - (nav == 1 && sel < 4 ? MulDiv(44, dpi, 96) : 0);
+                                    for (int hasContent = 0; hasContent < 2; hasContent++) {
+                                        ExpectSame(m.ctx.clientW, m.ctx.clientH, RGB(255, 0, 255),
+                                            [&](HDC dc) { SWP::Cpp::PaintMainFrame(dc, m.ctx, hasContent != 0); },
+                                            [&](HDC dc) { dime_settings_paint_main_frame(dc, &m.ctx, hasContent); },
+                                            L"main frame", collapsed == 0 || (nav == 1 && sel < 4 && hasContent != 0));
+                                        frames++;
+                                    }
+                                    ExpectSame(content.clientW, content.clientH, RGB(255, 0, 255),
+                                        [&](HDC dc) { SWP::Cpp::PaintContentFrame(dc, content, m.ctx); },
+                                        [&](HDC dc) { dime_settings_paint_content_frame(dc, &content, &m.ctx); },
+                                        L"content frame narrow=" + std::to_wstring(narrow) + L" collapsed=" + std::to_wstring(collapsed)
+                                            + L" nav=" + std::to_wstring(nav) + L" sel=" + std::to_wstring(sel));
+                                    frames++;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            Assert::IsTrue(frames >= 144, L"frame cases");
+        }
+
         TEST_METHOD(ThemedMessageBoxPaint)
         {
             static const wchar_t* labels[] = { L"是(Y)", L"否(N)", L"取消" };

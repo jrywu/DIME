@@ -1135,3 +1135,29 @@ pub unsafe extern "C" fn dime_settings_control_specs(
         write_list(&pool, text, text_cap, text_len);
     })
 }
+
+// ---- Phase 5b-8g: window frames (dime-settings::paint) ---------------------
+
+/// `SettingsWindowPaint::PaintMainFrame`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_paint_main_frame(hdc: Handle, main: *const PaintContext, has_content: i32) {
+    guard((), || {
+        if !main.is_null() {
+            paint::paint_main_frame(hdc, unsafe { &*main }, has_content != 0)
+        }
+    })
+}
+
+/// `SettingsWindowPaint::PaintContentFrame`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_paint_content_frame(
+    hdc: Handle,
+    content: *const PaintContext,
+    main: *const PaintContext,
+) {
+    guard((), || {
+        if !content.is_null() && !main.is_null() {
+            paint::paint_content_frame(hdc, unsafe { &*content }, unsafe { &*main })
+        }
+    })
+}

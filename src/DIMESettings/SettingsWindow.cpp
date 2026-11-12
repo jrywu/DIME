@@ -554,24 +554,6 @@ static SettingsWindowPaint::PaintContext MakePaintContext(HWND hPaint, HWND hMai
     return ctx;
 }
 
-void SettingsWindow::PaintSidebar(HWND hWnd, HDC hdc, WindowData* wd)
-{
-    SettingsWindowPaint::PaintContext ctx = MakePaintContext(hWnd, hWnd, wd);
-    SettingsWindowPaint::PaintSidebar(hdc, ctx);
-}
-
-void SettingsWindow::PaintContent(HWND hWnd, HDC hdc, WindowData* wd)
-{
-    SettingsWindowPaint::PaintContext ctx = MakePaintContext(hWnd, GetParent(hWnd), wd);
-    SettingsWindowPaint::PaintContent(hdc, ctx);
-}
-
-void SettingsWindow::PaintHamburger(HWND hMain, HDC hdc, WindowData* wd, RECT rc, HBRUSH bg)
-{
-    SettingsWindowPaint::PaintContext ctx = MakePaintContext(hMain, hMain, wd);
-    SettingsWindowPaint::PaintHamburger(hdc, ctx, rc, bg);
-}
-
 void SettingsWindow::AddControl(WindowData* wd, SettingsControlId id, HWND h, int x, int y, int w, int ht, int visH)
 {
     WindowData::ControlHandle ch = {};
@@ -663,12 +645,6 @@ void SettingsWindow::CreateControls(WindowData* wd, const std::vector<SettingsCo
     }
 }
 
-// Candidate + Notify preview — owner-draw card for RowType::CandidatePreview
-void SettingsWindow::PaintBreadcrumb(HWND hWnd, HDC hdc, WindowData* wd)
-{
-    SettingsWindowPaint::PaintContext ctx = MakePaintContext(hWnd, GetParent(hWnd), wd);
-    SettingsWindowPaint::PaintBreadcrumb(hdc, ctx);
-}
 void SettingsWindow::RebuildContentArea(HWND hWnd, WindowData* wd)
 {
     if (!wd->hContentArea) return;
@@ -890,47 +866,8 @@ LRESULT CALLBACK SettingsWindow::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPA
         HBITMAP hOldBmpMem = (HBITMAP)SelectObject(hdcMem, hBmpMem);
         if (hdcMem) hdc = hdcMem;
         if (wd) {
-            PaintSidebar(hWnd, hdc, wd);
-            // Paint breadcrumb (navLevel==1 only)
-            if (wd->navLevel == 1 && wd->selectedModeIndex < 4 && wd->hContentArea) {
-                UINT dpi = CConfig::GetDpiForHwnd(hWnd);
-                int sidebarW = (!wd->sidebarNarrowMode && !wd->sidebarCollapsed) ? ScaleForDpi(g_geo.sidebarWidth, dpi) : 0;
-                int bcH = ScaleForDpi(g_geo.breadcrumbH, dpi);
-                // Sidebar overlay covers breadcrumb in narrow mode when open
-                if (wd->sidebarNarrowMode && !wd->sidebarCollapsed) {
-                    int sidebarWOv = ScaleForDpi(g_geo.sidebarWidth, dpi);
-                    // Paint sidebar bg over breadcrumb strip (clipped to sidebar width)
-                    HRGN hClip = CreateRectRgn(0, 0, sidebarWOv, bcH);
-                    int savedDC = SaveDC(hdc);
-                    ExtSelectClipRgn(hdc, hClip, RGN_AND);
-                    PaintSidebar(hWnd, hdc, wd);
-                    RestoreDC(hdc, savedDC);
-                    DeleteObject(hClip);
-                    // Fill remainder of breadcrumb strip with content bg
-                    RECT rcBcRest = { sidebarWOv, 0, 32767, bcH };
-                    FillRect(hdc, &rcBcRest, wd->hBrushContentBg);
-                    // Hamburger on top of sidebar overlay (so user can close it)
-                    {
-                        int hbSize = ScaleForDpi(g_geo.hamburgerSize, dpi);
-                        RECT rcHbBg = { 0, 0, hbSize, hbSize };
-                        PaintHamburger(hWnd, hdc, wd, rcHbBg, wd->hBrushSidebarBg);
-                    }
-                } else {
-                    RECT rcBC = { sidebarW, 0, 32767, bcH };
-                    FillRect(hdc, &rcBC, wd->hBrushContentBg);
-                    int savedDC = SaveDC(hdc);
-                    SetViewportOrgEx(hdc, sidebarW, 0, nullptr);
-                    PaintBreadcrumb(wd->hContentArea, hdc, wd);
-                    RestoreDC(hdc, savedDC);
-                    // Hamburger in breadcrumb strip (Level 1 narrow mode)
-                    if (wd->sidebarNarrowMode) {
-                        int hbSize = ScaleForDpi(g_geo.hamburgerSize, dpi);
-                        RECT rcHb = { sidebarW, 0, sidebarW + hbSize, hbSize };
-                        PaintHamburger(hWnd, hdc, wd, rcHb, wd->hBrushContentBg);
-                    }
-                }
-            }
-            // Hamburger and sidebar overlay are drawn in ContentWndProc (content area covers main window in narrow mode)
+            SettingsWindowPaint::PaintContext main = MakePaintContext(hWnd, hWnd, wd);
+            SettingsWindowPaint::PaintMainFrame(hdc, main, wd->hContentArea != nullptr);
         }
         if (hdcMem) {
             BitBlt(hdcScreen, 0, 0, rcWnd.right, rcWnd.bottom, hdcMem, 0, 0, SRCCOPY);
@@ -1346,33 +1283,14 @@ LRESULT CALLBACK SettingsWindow::ContentWndProc(HWND hWnd, UINT msg, WPARAM wPar
             HBITMAP hBmp = CreateCompatibleBitmap(hdcScreen, rcClient.right, rcClient.bottom);
             HBITMAP hOldBmp = (HBITMAP)SelectObject(hdc, hBmp);
 
-            PaintContent(hWnd, hdc, wd);
-            // Sidebar overlay — painted within off-screen DC, clipped to sidebar width
+            // The open narrow sidebar is painted over the page: hide the child controls.
             if (wd->sidebarNarrowMode && !wd->sidebarCollapsed) {
-                HWND hMain = GetParent(hWnd);
-                UINT dpiOv = CConfig::GetDpiForHwnd(hMain);
-                int sidebarWOv = ScaleForDpi(g_geo.sidebarWidth, dpiOv);
-                for (auto& ch : wd->controlHandles) {
-                    if (ch.hWnd && IsWindow(ch.hWnd))
-                        ShowWindow(ch.hWnd, SW_HIDE);
-                }
-                bool hasBc = (wd->navLevel == 1 && wd->selectedModeIndex < 4);
-                int bcOff = hasBc ? ScaleForDpi(g_geo.breadcrumbH, dpiOv) : 0;
-                HRGN hClip = CreateRectRgn(0, 0, sidebarWOv, 32767);
-                int savedOv = SaveDC(hdc);
-                ExtSelectClipRgn(hdc, hClip, RGN_AND);
-                if (bcOff) SetViewportOrgEx(hdc, 0, -bcOff, nullptr);
-                PaintSidebar(hMain, hdc, wd);
-                RestoreDC(hdc, savedOv);
-                DeleteObject(hClip);
+                for (auto& ch : wd->controlHandles)
+                    if (ch.hWnd && IsWindow(ch.hWnd)) ShowWindow(ch.hWnd, SW_HIDE);
             }
-            // Hamburger in content area (Level 0 only; Level 1 draws it in breadcrumb strip)
-            if (wd->sidebarNarrowMode && wd->navLevel == 0) {
-                UINT dpiHb = CConfig::GetDpiForHwnd(GetParent(hWnd));
-                int hbSize = ScaleForDpi(g_geo.hamburgerSize, dpiHb);
-                RECT rcHb = { 0, 0, hbSize, hbSize };
-                PaintHamburger(GetParent(hWnd), hdc, wd, rcHb, wd->hBrushContentBg);
-            }
+            SettingsWindowPaint::PaintContext content = MakePaintContext(hWnd, GetParent(hWnd), wd);
+            SettingsWindowPaint::PaintContext main = MakePaintContext(GetParent(hWnd), GetParent(hWnd), wd);
+            SettingsWindowPaint::PaintContentFrame(hdc, content, main);
             // Blit off-screen buffer to screen (excludes child control areas via WS_CLIPCHILDREN)
             BitBlt(hdcScreen, 0, 0, rcClient.right, rcClient.bottom, hdc, 0, 0, SRCCOPY);
             SelectObject(hdc, hOldBmp);

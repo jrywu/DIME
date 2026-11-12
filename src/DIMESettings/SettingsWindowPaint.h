@@ -75,8 +75,19 @@ void PaintMsgBox(HDC hdc, const SettingsWindowLayout::MsgBoxLayout& L, const wch
     const wchar_t* const* labels, int btnCount, int hoverBtn, int defaultBtn,
     const ThemeColors& tc, HFONT font, HICON icon, UINT dpi);
 
+// Main window frame: sidebar, then on a sub-page the breadcrumb strip (or,
+// with the narrow sidebar open, the sidebar over the strip and the
+// hamburger). hasContent: the content area exists.
+void PaintMainFrame(HDC hdc, const PaintContext& main, bool hasContent);
+// Content area frame: the page, the narrow-mode sidebar overlay (clipped to
+// the sidebar, shifted up by the breadcrumb), and the Level 0 hamburger.
+// `content` has the content area's client size; `main` the main window's.
+void PaintContentFrame(HDC hdc, const PaintContext& content, const PaintContext& main);
+
 // ---- C++ originals --------------------------------------------------------
 namespace Cpp {
+void PaintMainFrame(HDC hdc, const PaintContext& main, bool hasContent);
+void PaintContentFrame(HDC hdc, const PaintContext& content, const PaintContext& main);
 void CreateFonts(UINT dpi, Fonts* out);
 void DrawCardWithShadow(HDC hdc, int x, int y, int w, int h, int cornerR,
     COLORREF cardBg, COLORREF cardBorder, COLORREF contentBg, bool isHover, COLORREF hoverColor);

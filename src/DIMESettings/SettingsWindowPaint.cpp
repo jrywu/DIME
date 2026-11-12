@@ -958,6 +958,66 @@ void PaintMsgBox(HDC hdc, const SettingsWindowLayout::MsgBoxLayout& L, const wch
     SelectObject(hdc, oldF);
 }
 
+void PaintMainFrame(HDC hdc, const PaintContext& main, bool hasContent)
+{
+    Cpp::PaintSidebar(hdc, main);
+    if (main.navLevel == 1 && main.selectedModeIndex < 4 && hasContent) {
+        UINT dpi = main.dpi;
+        int sidebarW = (!main.sidebarNarrowMode && !main.sidebarCollapsed) ? ScaleForDpi(g_geo.sidebarWidth, dpi) : 0;
+        int bcH = ScaleForDpi(g_geo.breadcrumbH, dpi);
+        if (main.sidebarNarrowMode && !main.sidebarCollapsed) {
+            // The open narrow sidebar covers the breadcrumb strip.
+            int sidebarWOv = ScaleForDpi(g_geo.sidebarWidth, dpi);
+            HRGN hClip = CreateRectRgn(0, 0, sidebarWOv, bcH);
+            int savedDC = SaveDC(hdc);
+            ExtSelectClipRgn(hdc, hClip, RGN_AND);
+            Cpp::PaintSidebar(hdc, main);
+            RestoreDC(hdc, savedDC);
+            DeleteObject(hClip);
+            RECT rcBcRest = { sidebarWOv, 0, 32767, bcH };
+            FillRect(hdc, &rcBcRest, main.brushContentBg);
+            int hbSize = ScaleForDpi(g_geo.hamburgerSize, dpi);
+            RECT rcHbBg = { 0, 0, hbSize, hbSize };
+            Cpp::PaintHamburger(hdc, main, rcHbBg, main.brushSidebarBg);
+        } else {
+            RECT rcBC = { sidebarW, 0, 32767, bcH };
+            FillRect(hdc, &rcBC, main.brushContentBg);
+            int savedDC = SaveDC(hdc);
+            SetViewportOrgEx(hdc, sidebarW, 0, nullptr);
+            Cpp::PaintBreadcrumb(hdc, main);
+            RestoreDC(hdc, savedDC);
+            if (main.sidebarNarrowMode) {
+                int hbSize = ScaleForDpi(g_geo.hamburgerSize, dpi);
+                RECT rcHb = { sidebarW, 0, sidebarW + hbSize, hbSize };
+                Cpp::PaintHamburger(hdc, main, rcHb, main.brushContentBg);
+            }
+        }
+    }
+}
+
+void PaintContentFrame(HDC hdc, const PaintContext& content, const PaintContext& main)
+{
+    Cpp::PaintContent(hdc, content);
+    if (main.sidebarNarrowMode && !main.sidebarCollapsed) {
+        UINT dpiOv = main.dpi;
+        int sidebarWOv = ScaleForDpi(g_geo.sidebarWidth, dpiOv);
+        bool hasBc = (main.navLevel == 1 && main.selectedModeIndex < 4);
+        int bcOff = hasBc ? ScaleForDpi(g_geo.breadcrumbH, dpiOv) : 0;
+        HRGN hClip = CreateRectRgn(0, 0, sidebarWOv, 32767);
+        int savedOv = SaveDC(hdc);
+        ExtSelectClipRgn(hdc, hClip, RGN_AND);
+        if (bcOff) SetViewportOrgEx(hdc, 0, -bcOff, nullptr);
+        Cpp::PaintSidebar(hdc, main);
+        RestoreDC(hdc, savedOv);
+        DeleteObject(hClip);
+    }
+    if (main.sidebarNarrowMode && main.navLevel == 0) {
+        int hbSize = ScaleForDpi(g_geo.hamburgerSize, main.dpi);
+        RECT rcHb = { 0, 0, hbSize, hbSize };
+        Cpp::PaintHamburger(hdc, main, rcHb, main.brushContentBg);
+    }
+}
+
 } // namespace Cpp
 
 // ============================================================================
@@ -1023,6 +1083,16 @@ void PaintSwatch(HDC hdc, RECT rc, COLORREF color, COLORREF border, int radius)
     dime_settings_paint_swatch(hdc, &rc, color, border, radius);
 }
 
+void PaintMainFrame(HDC hdc, const PaintContext& main, bool hasContent)
+{
+    dime_settings_paint_main_frame(hdc, &main, hasContent ? 1 : 0);
+}
+
+void PaintContentFrame(HDC hdc, const PaintContext& content, const PaintContext& main)
+{
+    dime_settings_paint_content_frame(hdc, &content, &main);
+}
+
 void PaintMsgBox(HDC hdc, const SettingsWindowLayout::MsgBoxLayout& L, const wchar_t* text,
     const wchar_t* const* labels, int btnCount, int hoverBtn, int defaultBtn,
     const ThemeColors& tc, HFONT font, HICON icon, UINT dpi)
@@ -1056,6 +1126,8 @@ void PaintOwnerButton(HDC hdc, RECT rc, const wchar_t* text, bool pressed, bool 
     Cpp::PaintOwnerButton(hdc, rc, text, pressed, disabled, tc, font, dpi);
 }
 void PaintSwatch(HDC hdc, RECT rc, COLORREF color, COLORREF border, int radius) { Cpp::PaintSwatch(hdc, rc, color, border, radius); }
+void PaintMainFrame(HDC hdc, const PaintContext& main, bool hasContent) { Cpp::PaintMainFrame(hdc, main, hasContent); }
+void PaintContentFrame(HDC hdc, const PaintContext& content, const PaintContext& main) { Cpp::PaintContentFrame(hdc, content, main); }
 void PaintMsgBox(HDC hdc, const SettingsWindowLayout::MsgBoxLayout& L, const wchar_t* text,
     const wchar_t* const* labels, int btnCount, int hoverBtn, int defaultBtn,
     const ThemeColors& tc, HFONT font, HICON icon, UINT dpi)

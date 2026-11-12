@@ -1476,6 +1476,16 @@ void dime_settings_control_specs(const void* input, int32_t card_w, const void* 
     const void* load, int32_t load_count, DimeControlSpec* out, size_t cap, size_t* out_count,
     uint16_t* text, size_t text_cap, size_t* text_len);
 
+/* ---- Settings window frames (phase 5b-8g, dime-settings::paint) --------
+ * SettingsWindowPaint::Cpp::PaintMainFrame / PaintContentFrame: how the
+ * main window and the content area compose the sidebar, the breadcrumb
+ * strip, the narrow-mode overlay, and the hamburger. Contexts are
+ * PaintContext; `main` has the main window's client size, `content` the
+ * content area's. Double buffering and hiding controls stay with the caller.
+ */
+void dime_settings_paint_main_frame(void* hdc, const void* main_ctx, int32_t has_content);
+void dime_settings_paint_content_frame(void* hdc, const void* content_ctx, const void* main_ctx);
+
 #ifdef __cplusplus
 }
 #endif
