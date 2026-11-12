@@ -1536,6 +1536,26 @@ void dime_settings_frame_initial_size(uint32_t dpi, int32_t out_size[2]);
 int32_t dime_settings_draw_item(const void* dis, const void* ctx);
 int32_t dime_settings_ctl_color(void* hdc, int32_t is_dark, const void* tc, void** brush);
 
+/* ---- Settings command host Win32 calls (phase 5b-8k, dime-settings::winhost)
+ * SettingsWinHost::Cpp: the font / colour / open / save dialogs, writing a
+ * UTF-16 file with a BOM, the Documents folder, LOGPIXELSY, and the custom
+ * table editor's text, line index, caret, and line count. Paths are
+ * MAX_PATH (260) unit buffers. lf is a LOGFONTW. Dialog functions return 1
+ * on OK.
+ */
+int32_t dime_settings_win_pick_font(void* owner, void* lf, int32_t* point_size10);
+int32_t dime_settings_win_pick_color(void* owner, uint32_t* rgb);
+int32_t dime_settings_win_open_file(void* owner, int32_t filter, uint16_t* path);
+int32_t dime_settings_win_save_file(void* owner, uint16_t* path);
+int32_t dime_settings_win_write_bom_file(const uint16_t* path, const uint16_t* text, size_t len);
+void dime_settings_win_documents_path(uint16_t* buf);
+int32_t dime_settings_win_log_pixels_y(void* wnd);
+void dime_settings_win_editor_text(void* re, uint16_t* buf, size_t cap, size_t* len);
+int32_t dime_settings_win_set_editor_text_muted(void* re, const uint16_t* text);
+int32_t dime_settings_win_editor_line_index(void* re, int32_t line);
+void dime_settings_win_editor_focus_at(void* re, int32_t cp);
+int32_t dime_settings_win_editor_line_count(void* re);
+
 #ifdef __cplusplus
 }
 #endif

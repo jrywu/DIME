@@ -120,6 +120,7 @@
     <ClInclude Include="SettingsLifecycle.h" />
     <ClInclude Include="SettingsFrame.h" />
     <ClInclude Include="SettingsOwnerDraw.h" />
+    <ClInclude Include="SettingsWinHost.h" />
     <ClInclude Include="DIMESettings.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="DIMESettingsResource.h" />
@@ -154,6 +155,7 @@
     <ClCompile Include="SettingsLifecycle.cpp" />
     <ClCompile Include="SettingsFrame.cpp" />
     <ClCompile Include="SettingsOwnerDraw.cpp" />
+    <ClCompile Include="SettingsWinHost.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\DIME.rc" />

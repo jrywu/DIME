@@ -12,7 +12,9 @@
 //! (`SettingsEditor.*`). Launch arguments, page defaults, and scroll
 //! placement are `lifecycle.rs` (`SettingsLifecycle.*`); window creation,
 //! theme and dpi changes are `frame.rs` (`SettingsFrame.*`); owner-drawn
-//! controls and dark control colours are `owner.rs` (`SettingsOwnerDraw.*`).
+//! controls and dark control colours are `owner.rs` (`SettingsOwnerDraw.*`);
+//! the dialogs, file writes, and editor calls of the command host are
+//! `winhost.rs` (`SettingsWinHost.*`).
 //! The binary comes in a later step.
 
 pub mod command;
@@ -32,3 +34,5 @@ pub mod owner;
 pub mod paint;
 pub mod populate;
 pub mod validate;
+#[cfg(windows)]
+pub mod winhost;

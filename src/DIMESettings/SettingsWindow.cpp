@@ -27,6 +27,7 @@
 #include "..\BuildInfo.h"
 #include "SettingsWindow.h"
 #include "SettingsOwnerDraw.h"
+#include "SettingsWinHost.h"
 #include "SettingsController.h"
 #include "SettingsPageLayout.h"
 #include "SettingsGeometry.h"
@@ -1029,94 +1030,20 @@ void SettingsWindow::HandleCommand(HWND hWnd, WindowData* wd, WPARAM wParam, LPA
 
         HWND Editor() { return FindControl(wd, CTRL_CUSTOM_TABLE_EDITOR); }
 
-        int LogPixelsY() override
-        {
-            HDC hdcScr = GetDC(hWnd);
-            int lpY = GetDeviceCaps(hdcScr, LOGPIXELSY);
-            ReleaseDC(hWnd, hdcScr);
-            return lpY;
-        }
+        // Win32 calls: SettingsWinHost. CConfig and the editor's viewport stay here.
+        int LogPixelsY() override { return SettingsWinHost::LogPixelsY(hWnd); }
         bool PickFont(LOGFONTW& lf, int& pointSize10) override
         {
-            bool ok = false;
-            HINSTANCE hDlgLib = LoadLibraryW(L"comdlg32.dll");
-            if (hDlgLib) {
-                auto pCF = reinterpret_cast<BOOL(WINAPI*)(LPCHOOSEFONTW)>(GetProcAddress(hDlgLib, "ChooseFontW"));
-                if (pCF) {
-                    CHOOSEFONTW cf = {};
-                    cf.lStructSize = sizeof(cf);
-                    cf.hwndOwner = GetParent(hWnd);
-                    cf.lpLogFont = &lf;
-                    cf.Flags = CF_INITTOLOGFONTSTRUCT | CF_NOVERTFONTS;
-                    if (pCF(&cf)) { pointSize10 = cf.iPointSize; ok = true; }
-                }
-                FreeLibrary(hDlgLib);
-            }
-            return ok;
+            return SettingsWinHost::PickFont(GetParent(hWnd), lf, pointSize10);
         }
-        bool PickColor(COLORREF& rgb) override
-        {
-            static COLORREF custColors[16] = {};
-            bool ok = false;
-            HINSTANCE hDlgLib = LoadLibraryW(L"comdlg32.dll");
-            if (hDlgLib) {
-                auto pCC = reinterpret_cast<BOOL(WINAPI*)(LPCHOOSECOLORW)>(GetProcAddress(hDlgLib, "ChooseColorW"));
-                if (pCC) {
-                    CHOOSECOLORW cc = {};
-                    cc.lStructSize = sizeof(cc);
-                    cc.hwndOwner = GetParent(hWnd);
-                    cc.rgbResult = rgb;
-                    cc.lpCustColors = custColors;
-                    cc.Flags = CC_FULLOPEN | CC_RGBINIT;
-                    if (pCC(&cc)) { rgb = cc.rgbResult; ok = true; }
-                }
-                FreeLibrary(hDlgLib);
-            }
-            return ok;
-        }
+        bool PickColor(COLORREF& rgb) override { return SettingsWinHost::PickColor(GetParent(hWnd), rgb); }
         bool OpenFileDialog(int filter, std::wstring& path) override
         {
-            bool ok = false;
-            HINSTANCE hDlgLib = LoadLibraryW(L"comdlg32.dll");
-            if (hDlgLib) {
-                auto pGetOpen = reinterpret_cast<_T_GetOpenFileName>(GetProcAddress(hDlgLib, "GetOpenFileNameW"));
-                if (pGetOpen) {
-                    WCHAR pathToLoad[MAX_PATH] = {};
-                    OPENFILENAMEW ofn = {};
-                    ofn.lStructSize = sizeof(OPENFILENAMEW);
-                    ofn.hwndOwner = GetParent(hWnd);
-                    ofn.lpstrFile = pathToLoad;
-                    ofn.nMaxFile = MAX_PATH;
-                    ofn.Flags = OFN_FILEMUSTEXIST;
-                    ofn.lpstrFilter = (filter == 0) ? L"CIN TXT Files(*.txt, *.cin)\0*.cin;*.txt\0\0"
-                                                    : L"詞庫文字檔(*.txt)\0*.txt\0\0";
-                    if (pGetOpen(&ofn)) { path = pathToLoad; ok = true; }
-                }
-                FreeLibrary(hDlgLib);
-            }
-            return ok;
+            return SettingsWinHost::OpenFileDialog(GetParent(hWnd), filter, path);
         }
         bool SaveFileDialog(std::wstring& path) override
         {
-            bool ok = false;
-            HINSTANCE hDlgLib = LoadLibraryW(L"comdlg32.dll");
-            if (hDlgLib) {
-                auto pGetSave = reinterpret_cast<_T_GetSaveFileName>(GetProcAddress(hDlgLib, "GetSaveFileNameW"));
-                if (pGetSave) {
-                    WCHAR pathToWrite[MAX_PATH] = {};
-                    StringCchCopyW(pathToWrite, MAX_PATH, path.c_str());
-                    OPENFILENAMEW ofn = {};
-                    ofn.lStructSize = sizeof(OPENFILENAMEW);
-                    ofn.hwndOwner = GetParent(hWnd);
-                    ofn.lpstrFile = pathToWrite;
-                    ofn.nMaxFile = MAX_PATH;
-                    ofn.Flags = OFN_OVERWRITEPROMPT;
-                    ofn.lpstrFilter = L"詞庫文字檔(*.txt)\0*.txt\0\0";
-                    if (pGetSave(&ofn)) { path = pathToWrite; ok = true; }
-                }
-                FreeLibrary(hDlgLib);
-            }
-            return ok;
+            return SettingsWinHost::SaveFileDialog(GetParent(hWnd), path);
         }
         int ShowMessage(const std::wstring& text, const wchar_t* caption, UINT type) override
         {
@@ -1128,12 +1055,7 @@ void SettingsWindow::HandleCommand(HWND hWnd, WindowData* wd, WPARAM wParam, LPA
             Global::GetAppDataPath(buf, TRUE);
             return buf;
         }
-        std::wstring DocumentsPath() override
-        {
-            WCHAR buf[MAX_PATH] = {};
-            SHGetSpecialFolderPathW(nullptr, buf, CSIDL_PERSONAL, FALSE);
-            return buf;
-        }
+        std::wstring DocumentsPath() override { return SettingsWinHost::DocumentsPath(); }
         std::wstring CustomTableTxtPath(int mode) override
         {
             WCHAR buf[MAX_PATH] = {};
@@ -1148,15 +1070,7 @@ void SettingsWindow::HandleCommand(HWND hWnd, WindowData* wd, WPARAM wParam, LPA
         }
         bool WriteBomFile(const std::wstring& path, const std::wstring& text) override
         {
-            HANDLE hFile = CreateFileW(path.c_str(), GENERIC_WRITE, FILE_SHARE_READ, nullptr,
-                CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-            if (hFile == INVALID_HANDLE_VALUE) return false;
-            DWORD written = 0;
-            WCHAR bom = 0xFEFF;
-            WriteFile(hFile, &bom, sizeof(WCHAR), &written, nullptr);
-            WriteFile(hFile, text.c_str(), (DWORD)(text.size() * sizeof(WCHAR)), &written, nullptr);
-            CloseHandle(hFile);
-            return true;
+            return SettingsWinHost::WriteBomFile(path, text);
         }
         bool LoadTextFile(const std::wstring& path, std::wstring& text) override
         {
@@ -1197,38 +1111,26 @@ void SettingsWindow::HandleCommand(HWND hWnd, WindowData* wd, WPARAM wParam, LPA
         std::wstring EditorText() override
         {
             HWND hRE = Editor();
-            if (!hRE) return {};
-            DWORD dwLen = GetWindowTextLengthW(hRE);
-            std::wstring text(dwLen + 1, L'\0');
-            GetWindowTextW(hRE, &text[0], dwLen + 1);
-            text.resize(dwLen);
-            return text;
+            return hRE ? SettingsWinHost::EditorText(hRE) : std::wstring();
         }
         void SetEditorTextMuted(const std::wstring& text) override
         {
             HWND hRE = Editor();
             if (!hRE) return;
-            LRESULT prevMask = SendMessageW(hRE, EM_GETEVENTMASK, 0, 0);
-            SendMessageW(hRE, EM_SETEVENTMASK, 0, 0);
-            SetWindowTextW(hRE, text.c_str());
-            wd->ctLastLineCount = (int)SendMessageW(hRE, EM_GETLINECOUNT, 0, 0);
+            wd->ctLastLineCount = SettingsWinHost::SetEditorTextMuted(hRE, text);
             wd->ctLastEditedLine = -1;
             wd->ctKeystrokeCount = 0;
-            SendMessageW(hRE, EM_SETEVENTMASK, 0, (LPARAM)prevMask);
         }
         int EditorLineIndex(int line) override
         {
             HWND hRE = Editor();
-            return hRE ? (int)(LONG)SendMessageW(hRE, EM_LINEINDEX, (WPARAM)line, 0) : -1;
+            return hRE ? SettingsWinHost::EditorLineIndex(hRE, line) : -1;
         }
         void EditorFocusAt(int cp) override
         {
             HWND hRE = Editor();
             if (!hRE) return;
-            // SetFocus first: the subclass's WM_SETFOCUS resets the selection.
-            SetFocus(hRE);
-            SendMessageW(hRE, EM_SETSEL, (WPARAM)cp, (LPARAM)cp);
-            SendMessageW(hRE, EM_SCROLLCARET, 0, 0);
+            SettingsWinHost::EditorFocusAt(hRE, cp);
             ::ValidateViewport(hRE, wd);
         }
         void ValidateViewport() override
@@ -1241,7 +1143,7 @@ void SettingsWindow::HandleCommand(HWND hWnd, WindowData* wd, WPARAM wParam, LPA
         void UpdateLineCount() override
         {
             HWND hRE = Editor();
-            if (hRE) wd->ctLastLineCount = (int)SendMessageW(hRE, EM_GETLINECOUNT, 0, 0);
+            if (hRE) wd->ctLastLineCount = SettingsWinHost::EditorLineCount(hRE);
         }
         int ValidateBuffer(const std::wstring& text, int maxReport, int& firstErrorLine,
             std::wstring& summary) override

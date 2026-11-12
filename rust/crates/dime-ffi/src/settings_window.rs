@@ -1299,3 +1299,139 @@ pub unsafe extern "C" fn dime_settings_ctl_color(
         i32::from(owner::ctl_color(hdc, is_dark != 0, &*tc, &mut *brush))
     })
 }
+
+// ---- Phase 5b-8k: command host Win32 calls (dime-settings::winhost) ---------
+
+use dime_settings::winhost;
+use std::ptr::null_mut;
+
+/// A NUL-terminated string as units (no cap).
+unsafe fn wstr<'a>(p: *const u16) -> &'a [u16] {
+    unsafe { cmd_units(p) }
+}
+
+/// Copies `s` plus a NUL into `buf` (`cap` units); the full length goes to
+/// `len`. Writes nothing past `cap`.
+unsafe fn out_str(s: &[u16], buf: *mut u16, cap: usize, len: *mut usize) {
+    unsafe {
+        write(len, s.len());
+        if buf.is_null() || cap == 0 {
+            return;
+        }
+        let n = s.len().min(cap - 1);
+        std::ptr::copy_nonoverlapping(s.as_ptr(), buf, n);
+        *buf.add(n) = 0;
+    }
+}
+
+/// `SettingsWinHost::PickFont`: `lf` is a LOGFONTW.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_win_pick_font(owner: Handle, lf: *mut LogFont, point_size10: *mut i32) -> i32 {
+    guard(0, || unsafe {
+        if lf.is_null() || point_size10.is_null() {
+            return 0;
+        }
+        i32::from(winhost::pick_font(owner, &mut *lf, &mut *point_size10))
+    })
+}
+
+/// `SettingsWinHost::PickColor`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_win_pick_color(owner: Handle, rgb: *mut u32) -> i32 {
+    guard(0, || unsafe {
+        if rgb.is_null() {
+            return 0;
+        }
+        i32::from(winhost::pick_color(owner, &mut *rgb))
+    })
+}
+
+/// `SettingsWinHost::OpenFileDialog`: `path` has `MAX_PATH` units.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_win_open_file(owner: Handle, filter: i32, path: *mut u16) -> i32 {
+    guard(0, || unsafe {
+        match winhost::open_file_dialog(owner, filter) {
+            Some(p) => {
+                out_str(&p, path, winhost::MAX_PATH, null_mut());
+                1
+            }
+            None => 0,
+        }
+    })
+}
+
+/// `SettingsWinHost::SaveFileDialog`: `path` (`MAX_PATH` units) holds the
+/// initial name and receives the chosen one.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_win_save_file(owner: Handle, path: *mut u16) -> i32 {
+    guard(0, || unsafe {
+        if path.is_null() {
+            return 0;
+        }
+        let initial = wstr(path).to_vec();
+        match winhost::save_file_dialog(owner, &initial) {
+            Some(p) => {
+                out_str(&p, path, winhost::MAX_PATH, null_mut());
+                1
+            }
+            None => 0,
+        }
+    })
+}
+
+/// `SettingsWinHost::WriteBomFile`: `text` has `len` units.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_win_write_bom_file(path: *const u16, text: *const u16, len: usize) -> i32 {
+    guard(0, || unsafe {
+        if path.is_null() || (text.is_null() && len > 0) {
+            return 0;
+        }
+        let t = if len == 0 {
+            &[][..]
+        } else {
+            std::slice::from_raw_parts(text, len)
+        };
+        i32::from(winhost::write_bom_file(wstr(path), t))
+    })
+}
+
+/// `SettingsWinHost::DocumentsPath` into `buf` (`MAX_PATH` units).
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_win_documents_path(buf: *mut u16) {
+    guard((), || unsafe {
+        out_str(&winhost::documents_path(), buf, winhost::MAX_PATH, null_mut())
+    })
+}
+
+#[no_mangle]
+pub extern "C" fn dime_settings_win_log_pixels_y(wnd: Handle) -> i32 {
+    guard(96, || winhost::log_pixels_y(wnd))
+}
+
+/// `SettingsWinHost::EditorText`: call with `cap` 0 for the length, then
+/// with `len + 1` units.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_win_editor_text(re: Handle, buf: *mut u16, cap: usize, len: *mut usize) {
+    guard((), || unsafe { out_str(&winhost::editor_text(re), buf, cap, len) })
+}
+
+/// `SettingsWinHost::SetEditorTextMuted`: returns the new line count.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_win_set_editor_text_muted(re: Handle, text: *const u16) -> i32 {
+    guard(0, || unsafe { winhost::set_editor_text_muted(re, wstr(text)) })
+}
+
+#[no_mangle]
+pub extern "C" fn dime_settings_win_editor_line_index(re: Handle, line: i32) -> i32 {
+    guard(-1, || winhost::editor_line_index(re, line))
+}
+
+#[no_mangle]
+pub extern "C" fn dime_settings_win_editor_focus_at(re: Handle, cp: i32) {
+    guard((), || winhost::editor_focus_at(re, cp))
+}
+
+#[no_mangle]
+pub extern "C" fn dime_settings_win_editor_line_count(re: Handle) -> i32 {
+    guard(0, || winhost::editor_line_count(re))
+}
