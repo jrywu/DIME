@@ -250,22 +250,22 @@ void SettingsWindow::RepositionControlsForScroll(WindowData* wd)
 {
     if (!wd->hContentArea) return;
     UINT dpi = CConfig::GetDpiForHwnd(wd->hContentArea);
-    int titleBottom = ScaleForDpi(g_geo.topMargin, dpi);
+    // SettingsLifecycle::PlanScroll decides; controls in the title band are hidden.
+    std::vector<SettingsLifecycle::ScrollItem> items;
     for (auto& ch : wd->controlHandles) {
-        if (!(ch.hWnd && IsWindow(ch.hWnd) && (ch.origW > 0 || ch.origH > 0)))
-            continue;
-        int newY = ch.origY - wd->scrollPos;
-        SetWindowPos(ch.hWnd, nullptr, ch.origX, newY,
-            ch.origW, ch.origH, SWP_NOZORDER | SWP_NOACTIVATE);
-        // Snap-hide any control whose top enters the title cover band.
-        // Settings rows are short (~24 px) — partial clipping looks like a
-        // floating control above the title rather than a graceful reveal.
-        if (newY < titleBottom) {
-            if (IsWindowVisible(ch.hWnd)) ShowWindow(ch.hWnd, SW_HIDE);
-        } else {
-            SetWindowRgn(ch.hWnd, nullptr, TRUE);
-            if (!IsWindowVisible(ch.hWnd)) ShowWindow(ch.hWnd, SW_SHOW);
-        }
+        bool alive = ch.hWnd && IsWindow(ch.hWnd);
+        items.push_back({ ch.origY, ch.origW, ch.origH, alive ? 1 : 0,
+            (alive && IsWindowVisible(ch.hWnd)) ? 1 : 0 });
+    }
+    std::vector<SettingsLifecycle::ScrollAction> acts = SettingsLifecycle::PlanScroll(items, wd->scrollPos, dpi);
+    for (size_t i = 0; i < acts.size() && i < wd->controlHandles.size(); i++) {
+        const auto& a = acts[i];
+        const auto& ch = wd->controlHandles[i];
+        if (!a.moved) continue;
+        SetWindowPos(ch.hWnd, nullptr, ch.origX, a.y, ch.origW, ch.origH, SWP_NOZORDER | SWP_NOACTIVATE);
+        if (a.show < 0) ShowWindow(ch.hWnd, SW_HIDE);
+        if (a.resetRgn) SetWindowRgn(ch.hWnd, nullptr, TRUE);
+        if (a.show > 0) ShowWindow(ch.hWnd, SW_SHOW);
     }
 }
 
@@ -482,16 +482,12 @@ void SettingsWindow::SwitchMode(HWND hWnd, WindowData* wd, IME_MODE mode)
     wd->selectedModeIndex = ModeToIndex(mode);
     wd->navLevel = 0;
     // Initialize expand state from layout defaultExpanded
-    memset(wd->cardExpanded, 0, sizeof(wd->cardExpanded));
     {
         int imeCount = 0;
         const LayoutCard* imeCards = GetIMEPageLayout(&imeCount);
-        for (int i = 0; i < imeCount && i < 16; i++)
-            wd->cardExpanded[i] = imeCards[i].defaultExpanded;
         int ltCount = 0;
         const LayoutCard* ltCards = GetLoadTablePageLayout(&ltCount);
-        for (int i = 0; i < ltCount && (4 + i) < 16; i++)
-            wd->cardExpanded[4 + i] = ltCards[i].defaultExpanded;
+        SettingsLifecycle::DefaultExpanded(imeCards, imeCount, ltCards, ltCount, wd->cardExpanded);
     }
     // Re-enumerate and reload only on actual mode change.
     // SetIMEMode() filters self from the list but skips if mode is unchanged.
@@ -928,17 +924,9 @@ LRESULT CALLBACK SettingsWindow::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPA
         if (!wd) break;
         COPYDATASTRUCT* pCds = (COPYDATASTRUCT*)lParam;
         if (pCds && pCds->lpData) {
-            const wchar_t* cmdLine = (const wchar_t*)pCds->lpData;
-            const wchar_t* modeStr = wcsstr(cmdLine, L"--mode ");
-            if (modeStr) {
-                modeStr += 7;
-                wchar_t modeName[32] = {};
-                for (int j = 0; modeStr[j] && modeStr[j] != L' ' && j < 31; j++)
-                    modeName[j] = modeStr[j];
-                IME_MODE mode = SettingsModel::StringToImeMode(modeName);
-                if (mode != IME_MODE::IME_MODE_NONE)
-                    SwitchMode(hWnd, wd, mode);
-            }
+            IME_MODE mode = SettingsLifecycle::CopyDataMode((const wchar_t*)pCds->lpData);
+            if (mode != IME_MODE::IME_MODE_NONE)
+                SwitchMode(hWnd, wd, mode);
             SetForegroundWindow(hWnd);
         }
         return TRUE;

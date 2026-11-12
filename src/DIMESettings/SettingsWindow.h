@@ -11,6 +11,7 @@
 #include "SettingsGeometry.h"
 #include "SettingsNav.h"
 #include "SettingsControls.h"
+#include "SettingsLifecycle.h"
 
 // Window class name for FindWindow / single-instance support
 constexpr wchar_t SETTINGS_WND_CLASS[] = L"DIMESettingsMainClass";

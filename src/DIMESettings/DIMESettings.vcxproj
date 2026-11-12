@@ -117,6 +117,7 @@
     <ClInclude Include="SettingsEditor.h" />
     <ClInclude Include="SettingsPopulate.h" />
     <ClInclude Include="SettingsControls.h" />
+    <ClInclude Include="SettingsLifecycle.h" />
     <ClInclude Include="DIMESettings.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="DIMESettingsResource.h" />
@@ -148,6 +149,7 @@
     <ClCompile Include="SettingsEditor.cpp" />
     <ClCompile Include="SettingsPopulate.cpp" />
     <ClCompile Include="SettingsControls.cpp" />
+    <ClCompile Include="SettingsLifecycle.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\DIME.rc" />

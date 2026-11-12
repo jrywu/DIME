@@ -1486,6 +1486,37 @@ void dime_settings_control_specs(const void* input, int32_t card_w, const void* 
 void dime_settings_paint_main_frame(void* hdc, const void* main_ctx, int32_t has_content);
 void dime_settings_paint_content_frame(void* hdc, const void* content_ctx, const void* main_ctx);
 
+/* ---- Settings launch, defaults, scroll (phase 5b-8h, dime-settings::lifecycle)
+ * SettingsLifecycle::Cpp: what wWinMain makes of its command line, the mode
+ * a second instance sends with WM_COPYDATA, the default card expand state,
+ * and where scrolling moves each control (hidden in the title band).
+ */
+typedef struct DimeLaunchArgs {
+    int32_t legacy;
+    int32_t reset_ui;
+    int32_t new_ui;
+    int32_t gui_mode;   /* IME_MODE */
+} DimeLaunchArgs;
+void dime_settings_parse_launch(const uint16_t* cmd_line, DimeLaunchArgs* out);
+int32_t dime_settings_copy_data_mode(const uint16_t* cmd_line);   /* IME_MODE; 4 = none */
+void dime_settings_default_expanded(const void* ime, int32_t ime_count, const void* load, int32_t load_count,
+    uint8_t* out16);
+typedef struct DimeScrollItem {
+    int32_t orig_y;
+    int32_t orig_w;
+    int32_t orig_h;
+    int32_t alive;
+    int32_t visible;
+} DimeScrollItem;
+typedef struct DimeScrollAction {
+    int32_t moved;
+    int32_t y;
+    int32_t reset_rgn;
+    int32_t show;       /* -1 hide, 1 show */
+} DimeScrollAction;
+void dime_settings_plan_scroll(const DimeScrollItem* items, size_t count, int32_t scroll_pos, uint32_t dpi,
+    DimeScrollAction* out);
+
 #ifdef __cplusplus
 }
 #endif

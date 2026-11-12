@@ -1161,3 +1161,76 @@ pub unsafe extern "C" fn dime_settings_paint_content_frame(
         }
     })
 }
+
+// ---- Phase 5b-8h: launch, defaults, scroll (dime-settings::lifecycle) -------
+
+use dime_settings::lifecycle::{self, LaunchArgs, ScrollAction, ScrollItem};
+
+/// A NUL-terminated command line (no length cap, like `wcsstr`).
+unsafe fn cmd_units<'a>(p: *const u16) -> &'a [u16] {
+    if p.is_null() {
+        return &[];
+    }
+    let mut n = 0;
+    // SAFETY: caller passes a NUL-terminated string.
+    unsafe {
+        while *p.add(n) != 0 {
+            n += 1;
+        }
+        std::slice::from_raw_parts(p, n)
+    }
+}
+
+/// `SettingsLifecycle::ParseLaunch`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_parse_launch(cmd: *const u16, out: *mut LaunchArgs) {
+    guard((), || unsafe { write(out, lifecycle::parse_launch(cmd_units(cmd))) })
+}
+
+/// `SettingsLifecycle::CopyDataMode`: an IME_MODE, 4 (none) for no switch.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_copy_data_mode(cmd: *const u16) -> i32 {
+    guard(ImeMode::None as i32, || unsafe {
+        lifecycle::copy_data_mode(cmd_units(cmd)) as i32
+    })
+}
+
+/// `SettingsLifecycle::DefaultExpanded`: writes 16 one-byte bools.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_default_expanded(
+    ime: *const LayoutCard,
+    ime_count: i32,
+    load: *const LayoutCard,
+    load_count: i32,
+    out: *mut u8,
+) {
+    guard((), || unsafe {
+        if out.is_null() {
+            return;
+        }
+        let e = lifecycle::default_expanded(cards(ime, ime_count), cards(load, load_count));
+        for (i, v) in e.iter().enumerate() {
+            *out.add(i) = u8::from(*v);
+        }
+    })
+}
+
+/// `SettingsLifecycle::PlanScroll`: `out` has `count` entries.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_plan_scroll(
+    items: *const ScrollItem,
+    count: usize,
+    scroll_pos: i32,
+    dpi: u32,
+    out: *mut ScrollAction,
+) {
+    guard((), || unsafe {
+        if items.is_null() || out.is_null() || count == 0 {
+            return;
+        }
+        let acts = lifecycle::plan_scroll(std::slice::from_raw_parts(items, count), scroll_pos, dpi);
+        for (i, a) in acts.iter().enumerate() {
+            *out.add(i) = *a;
+        }
+    })
+}

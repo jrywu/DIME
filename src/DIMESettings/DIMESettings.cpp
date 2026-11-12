@@ -126,42 +126,18 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     bool useLegacyUI = false;
     bool useNewUI = false;
     IME_MODE guiMode = IME_MODE::IME_MODE_DAYI;
-    if (lpCmdLine && lpCmdLine[0] != L'\0')
     {
-        // Parse --legacy flag
-        if (wcsstr(lpCmdLine, L"--legacy")) {
-            useLegacyUI = true;
-        }
-        // Parse --reset-ui flag (reset window placement, not a CLI command — launches GUI)
-        if (wcsstr(lpCmdLine, L"--reset-ui")) {
+        // SettingsLifecycle::ParseLaunch decides; --reset-ui (reset the window
+        // placement, then launch the GUI) is carried out here.
+        SettingsLifecycle::LaunchArgs launch = SettingsLifecycle::ParseLaunch(lpCmdLine);
+        useLegacyUI = launch.legacy != 0;
+        useNewUI = launch.newUi != 0;
+        guiMode = (IME_MODE)launch.guiMode;
+        if (launch.resetUi) {
             HKEY hKey;
             if (RegOpenKeyExW(HKEY_CURRENT_USER, L"SOFTWARE\\DIME\\SettingsUI", 0, KEY_WRITE, &hKey) == ERROR_SUCCESS) {
                 RegDeleteValueW(hKey, L"WindowPlacement");
                 RegCloseKey(hKey);
-            }
-            useNewUI = true; // treat as GUI launch, not CLI
-        }
-        // Parse --mode for GUI launch (only if no CLI commands present)
-        const wchar_t* modeArg = wcsstr(lpCmdLine, L"--mode ");
-        // Note: --reset-ui must not match --reset (CLI command). Check for --reset NOT followed by -
-        bool hasResetCmd = false;
-        { const wchar_t* r = wcsstr(lpCmdLine, L"--reset");
-          if (r && r[7] != L'-') hasResetCmd = true; }
-        bool hasCLICommand = wcsstr(lpCmdLine, L"--get") || wcsstr(lpCmdLine, L"--set") ||
-            hasResetCmd || wcsstr(lpCmdLine, L"--import") ||
-            wcsstr(lpCmdLine, L"--export") || wcsstr(lpCmdLine, L"--load") ||
-            wcsstr(lpCmdLine, L"--list") || wcsstr(lpCmdLine, L"--help");
-        if (modeArg && !hasCLICommand && !useLegacyUI) {
-            modeArg += 7; // skip "--mode "
-            wchar_t modeName[32] = {};
-            int j = 0;
-            while (modeArg[j] && modeArg[j] != L' ' && j < 31) {
-                modeName[j] = modeArg[j]; j++;
-            }
-            IME_MODE parsed = SettingsModel::StringToImeMode(modeName);
-            if (parsed != IME_MODE::IME_MODE_NONE) {
-                guiMode = parsed;
-                useNewUI = true;
             }
         }
     }
