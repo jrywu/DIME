@@ -36,6 +36,7 @@
 #include "SettingsCommand.h"
 #include "SettingsEditor.h"
 #include "SettingsPopulate.h"
+#include "SettingsControls.h"
 
 #include <Richedit.h>
 #include <MLang.h>
@@ -430,12 +431,6 @@ static int CalcCardW(HWND hMainWnd, UINT dpi, bool sidebarTakesSpace)
         GetSystemMetrics(SM_CXVSCROLL));
 }
 
-// Right edge X for controls (combo, button, toggle, swatch) — always left of chevron area
-static int CalcCtrlRight(int margin, int cardW, UINT dpi, bool hasChevron)
-{
-    return SettingsWindowLayout::CtrlRight(margin, cardW, dpi, hasChevron);
-}
-
 // Candidate preview height; RebuildContentArea and the painter must agree.
 static int CalcCandidatePreviewH(HDC hdc, const SettingsSnapshot& s, UINT dpi)
 {
@@ -587,164 +582,85 @@ void SettingsWindow::AddControl(WindowData* wd, SettingsControlId id, HWND h, in
 }
 
 // ============================================================================
-// CreateRowControl — unified control creation for any RowType
+// Child controls of a page: SettingsControls::BuildSpecs decides, this creates.
 // ============================================================================
-void SettingsWindow::CreateRowControl(WindowData* wd, const LayoutRow& lr,
-    int ctrlRight, int cy, int ctrlH, int btnH, UINT dpi)
+// After the RichEdit is created: text limit, theme, the saved custom table,
+// the editor subclass, and the first viewport pass.
+void SettingsWindow::SetupRichEditor(WindowData* wd, HWND hRE)
 {
-    SettingsWindowLayout::CtrlRect rc = {};
-    if (!SettingsWindowLayout::RowControlRect(lr.type, ctrlRight, cy, ctrlH, btnH, dpi, &rc))
-        return;
-
-    switch (lr.type) {
-    case RowType::Toggle:
-    {
-        HWND h = CreateWindowExW(0, L"BUTTON", lr.label,
-            WS_CHILD | BS_AUTOCHECKBOX, 0, 0, 0, 0,
-            wd->hContentArea, (HMENU)(UINT_PTR)(3000 + lr.id), wd->hInstance, nullptr);
-        AddControl(wd, lr.id, h, rc.x, rc.y, rc.w, rc.h);
-        break;
-    }
-    case RowType::ComboBox:
-    {
-        HWND h = CreateWindowExW(0, L"COMBOBOX", nullptr,
-            WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL,
-            rc.x, rc.y, rc.w, rc.h,
-            wd->hContentArea, (HMENU)(UINT_PTR)(3000 + lr.id), wd->hInstance, nullptr);
-        if (h) {
-            SendMessage(h, WM_SETFONT, (WPARAM)wd->hFontBody, TRUE);
-            if (wd->isDarkTheme) SetWindowTheme(h, L"DarkMode_CFD", nullptr);
-        }
-        AddControl(wd, lr.id, h, rc.x, rc.y, rc.w, rc.h, rc.visH);
-        break;
-    }
-    case RowType::Edit:
-    {
-        HWND h = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", nullptr,
-            WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
-            rc.x, rc.y, rc.w, rc.h,
-            wd->hContentArea, (HMENU)(UINT_PTR)(3000 + lr.id), wd->hInstance, nullptr);
-        if (h) {
-            SendMessage(h, WM_SETFONT, (WPARAM)wd->hFontBody, TRUE);
-            if (wd->isDarkTheme) SetWindowTheme(h, L"DarkMode_CFD", nullptr);
-        }
-        AddControl(wd, lr.id, h, rc.x, rc.y, rc.w, rc.h);
-        break;
-    }
-    case RowType::Button:
-    case RowType::Clickable:
-    {
-        const wchar_t* btnText = (lr.action == RowAction::LoadTable) ? L"載入" :
-                                 (lr.action == RowAction::OpenFontDialog) ? L"變更字型" :
-                                 (lr.action == RowAction::ExportCustomTable) ? L"匯出" :
-                                 (lr.action == RowAction::ImportCustomTable) ? L"匯入" :
-                                 (lr.action == RowAction::ResetDefaults) ? L"還原預設值" : lr.label;
-        HWND h = CreateWindowExW(0, L"BUTTON", btnText,
-            WS_CHILD | WS_VISIBLE | BS_OWNERDRAW,
-            rc.x, rc.y, rc.w, rc.h,
-            wd->hContentArea, (HMENU)(UINT_PTR)(3000 + lr.id), wd->hInstance, nullptr);
-        if (h) SendMessage(h, WM_SETFONT, (WPARAM)wd->hFontBody, TRUE);
-        AddControl(wd, lr.id, h, rc.x, rc.y, rc.w, rc.h);
-        break;
-    }
-    default: break;
+    // Issue #130: RichEdit50W defaults to ~32K-64K characters; SetWindowTextW
+    // bypasses the cap but typing is then rejected. Raise it to 100 MB.
+    SendMessageW(hRE, EM_EXLIMITTEXT, 0, (LPARAM)(100 * 1024 * 1024));
+    SendMessage(hRE, WM_SETFONT, (WPARAM)wd->hFontBody, TRUE);
+    if (wd->isDarkTheme) {
+        SetWindowTheme(hRE, L"DarkMode_Explorer", nullptr);
+        SendMessage(hRE, EM_SETBKGNDCOLOR, 0, (LPARAM)wd->theme.cardBg);
+        CHARFORMAT2W cf2 = {};
+        cf2.cbSize = sizeof(cf2);
+        cf2.dwMask = CFM_COLOR;
+        cf2.crTextColor = wd->theme.textPrimary;
+        SendMessage(hRE, EM_SETCHARFORMAT, SCF_ALL, (LPARAM)&cf2);
     }
 }
 
-// ============================================================================
-// CreateColorGridControls — owner-draw swatch grid for RowType::ColorGrid
-// ============================================================================
-void SettingsWindow::CreateColorGridControls(WindowData* wd, int margin, int curY, int ctrlRight, UINT dpi)
+void SettingsWindow::LoadRichEditor(WindowData* wd, HWND hRE)
 {
-    for (int si = 0; si < 6; si++) {
-        SettingsWindowLayout::CtrlRect rc = SettingsWindowLayout::SwatchRect(si, margin, curY, ctrlRight, dpi);
-        HWND h = CreateWindowExW(0, L"STATIC", nullptr,
-            WS_CHILD | WS_VISIBLE | SS_OWNERDRAW | SS_NOTIFY,
-            rc.x, rc.y, rc.w, rc.h,
-            wd->hContentArea, (HMENU)(UINT_PTR)(4000 + si), wd->hInstance, nullptr);
-        AddControl(wd, (SettingsControlId)(CTRL_COLOR_FR + si), h, rc.x, rc.y, rc.w, rc.h);
-    }
-}
+    // Load the saved custom table with the encoding-aware reader (issue #130).
+    WCHAR txtPath[MAX_PATH] = {};
+    GetCustomTableTxtPath(wd->currentMode, txtPath, MAX_PATH);
+    if (PathFileExistsW(txtPath)) {
+        CHARFORMAT2W cf = {};
+        cf.cbSize = sizeof(cf);
+        cf.dwMask = CFM_FACE | CFM_SIZE | CFM_WEIGHT;
+        StringCchCopyW(cf.szFaceName, LF_FACESIZE, L"Microsoft JhengHei UI");
+        cf.yHeight = 10 * 20;  // 10pt in twips — RichEdit applies DPI itself
+        cf.wWeight = FW_NORMAL;
+        SendMessageW(hRE, EM_SETCHARFORMAT, SCF_DEFAULT, (LPARAM)&cf);
 
-// ============================================================================
-// CreateRichEditorControl — owner-draw editor for RowType::RichEditor
-// ============================================================================
-void SettingsWindow::CreateRichEditorControl(WindowData* wd, const LayoutRow& lr,
-    int margin, int cardW, int pad, int curY, int thisH, int ctrlRight, int btnW, int btnH, UINT dpi)
-{
-    static HMODULE hMsftEdit = LoadLibraryW(L"msftedit.dll");
-    SettingsWindowLayout::CtrlRect rcRE = {}, rcSave = {};
-    SettingsWindowLayout::RichEditorRects(margin, cardW, pad, curY, thisH, ctrlRight, btnW, btnH, dpi,
-        &rcRE, &rcSave);
-    int reX = rcRE.x, reY = rcRE.y, reW = rcRE.w, reH = rcRE.h;
-    HWND hRE = CreateWindowExW(WS_EX_CLIENTEDGE, L"RICHEDIT50W", nullptr,
-        WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_MULTILINE | ES_WANTRETURN | ES_AUTOVSCROLL,
-        reX, reY, reW, reH,
-        wd->hContentArea, (HMENU)(UINT_PTR)(3000 + lr.id), wd->hInstance, nullptr);
-    if (hRE) {
-        // Issue #130: raise the text limit. RichEdit50W defaults to ~32K-64K
-        // characters; SetWindowTextW bypasses the cap (large bulk loads succeed)
-        // but the editor then silently rejects user input because the buffer is
-        // already over-limit. Symptom: caret moves but typing does nothing after
-        // a 1.6 MB Big5 import. EM_EXLIMITTEXT raises the cap to 100 MB chars.
-        SendMessageW(hRE, EM_EXLIMITTEXT, 0, (LPARAM)(100 * 1024 * 1024));
-        SendMessage(hRE, WM_SETFONT, (WPARAM)wd->hFontBody, TRUE);
-        if (wd->isDarkTheme) {
-            SetWindowTheme(hRE, L"DarkMode_Explorer", nullptr);
-            SendMessage(hRE, EM_SETBKGNDCOLOR, 0, (LPARAM)wd->theme.cardBg);
-            CHARFORMAT2W cf2 = {};
-            cf2.cbSize = sizeof(cf2);
-            cf2.dwMask = CFM_COLOR;
-            cf2.crTextColor = wd->theme.textPrimary;
-            SendMessage(hRE, EM_SETCHARFORMAT, SCF_ALL, (LPARAM)&cf2);
+        size_t wlen = 0;
+        LPWSTR text = SettingsModel::LoadTextFileAsUtf16(txtPath, &wlen);
+        if (text) {
+            SetWindowTextW(hRE, text);
+            delete[] text;
         }
     }
-    AddControl(wd, lr.id, hRE, reX, reY, reW, reH);
-    if (hRE) RemoveWindowSubclass(hRE, ChildWheelSubclassProc, 1);
+    SetWindowSubclass(hRE, SettingsEditor::SubclassProc(), 0, 0);
+    SendMessageW(hRE, EM_SETEVENTMASK, 0, ENM_CHANGE);
+    wd->ctLastLineCount = (int)SendMessageW(hRE, EM_GETLINECOUNT, 0, 0);
+    wd->ctLastEditedLine = -1;
+    wd->ctKeystrokeCount = 0;
+    // Paint the visible range now (TOM, no caret jump). The Save button stays
+    // disabled: the content matches the file.
+    ValidateViewport(hRE, wd);
+}
 
-    // Load existing custom table from file. Issue #130: use the encoding-aware
-    // helper. The file we wrote ourselves is UTF-16LE+BOM, but be defensive in
-    // case a user externally edited the file with a non-UTF-16 editor.
-    if (hRE) {
-        WCHAR txtPath[MAX_PATH] = {};
-        GetCustomTableTxtPath(wd->currentMode, txtPath, MAX_PATH);
-        if (PathFileExistsW(txtPath)) {
-            CHARFORMAT2W cf = {};
-            cf.cbSize = sizeof(cf);
-            cf.dwMask = CFM_FACE | CFM_SIZE | CFM_WEIGHT;
-            StringCchCopyW(cf.szFaceName, LF_FACESIZE, L"Microsoft JhengHei UI");
-            cf.yHeight = 10 * 20;  // 10pt in twips — RichEdit applies DPI itself
-            cf.wWeight = FW_NORMAL;
-            SendMessageW(hRE, EM_SETCHARFORMAT, SCF_DEFAULT, (LPARAM)&cf);
-
-            size_t wlen = 0;
-            LPWSTR text = SettingsModel::LoadTextFileAsUtf16(txtPath, &wlen);
-            if (text) {
-                SetWindowTextW(hRE, text);
-                delete[] text;
+void SettingsWindow::CreateControls(WindowData* wd, const std::vector<SettingsControls::ControlSpec>& specs)
+{
+    static HMODULE hMsftEdit = nullptr;
+    for (const auto& spec : specs) {
+        if (spec.controlClass == SettingsControls::CLS_RICHEDIT && !hMsftEdit)
+            hMsftEdit = LoadLibraryW(L"msftedit.dll");
+        HWND h = CreateWindowExW(spec.exStyle, SettingsControls::ClassName(spec.controlClass),
+            spec.hasText ? spec.text.c_str() : nullptr, spec.style,
+            spec.create.left, spec.create.top, spec.create.right, spec.create.bottom,
+            wd->hContentArea, (HMENU)(UINT_PTR)spec.menuId, wd->hInstance, nullptr);
+        if (spec.role == SettingsControls::ROLE_RICH_EDITOR) {
+            if (h) SetupRichEditor(wd, h);
+            AddControl(wd, (SettingsControlId)spec.ctrlId, h, spec.add.left, spec.add.top, spec.add.right, spec.add.bottom, spec.visH);
+            if (h) {
+                RemoveWindowSubclass(h, ChildWheelSubclassProc, 1);
+                LoadRichEditor(wd, h);
             }
+            continue;
         }
-        SetWindowSubclass(hRE, SettingsEditor::SubclassProc(), 0, 0);
-        SendMessageW(hRE, EM_SETEVENTMASK, 0, ENM_CHANGE);
-        wd->ctLastLineCount = (int)SendMessageW(hRE, EM_GETLINECOUNT, 0, 0);
-        wd->ctLastEditedLine = -1;
-        wd->ctKeystrokeCount = 0;
-        // Issue #130 Phase 3 (final): paint visible range immediately (TOM-based,
-        // no caret jump). NO background scan — even with TOM, ITextDocument::Range()
-        // walks the gap buffer per call, so painting all 73K lines O(N²) starves
-        // the message pump and makes the editor unresponsive. Save's full in-memory
-        // validation catches errors anywhere in the file with line numbers.
-        // Save button stays disabled (WS_DISABLED) — content matches disk.
-        ValidateViewport(hRE, wd);
+        if (h && spec.setFont)
+            SendMessage(h, WM_SETFONT, (WPARAM)wd->hFontBody, TRUE);
+        if (h && wd->isDarkTheme && spec.darkTheme == SettingsControls::DARK_CFD)
+            SetWindowTheme(h, L"DarkMode_CFD", nullptr);
+        else if (h && wd->isDarkTheme && spec.darkTheme == SettingsControls::DARK_EXPLORER)
+            SetWindowTheme(h, L"DarkMode_Explorer", nullptr);
+        AddControl(wd, (SettingsControlId)spec.ctrlId, h, spec.add.left, spec.add.top, spec.add.right, spec.add.bottom, spec.visH);
     }
-
-    // [儲存] button below RichEdit
-    HWND hSave = CreateWindowExW(0, L"BUTTON", L"儲存",
-        WS_CHILD | WS_VISIBLE | BS_OWNERDRAW | WS_DISABLED,
-        rcSave.x, rcSave.y, rcSave.w, rcSave.h,
-        wd->hContentArea, (HMENU)(UINT_PTR)(3000 + CTRL_CUSTOM_TABLE_SAVE), wd->hInstance, nullptr);
-    if (hSave) SendMessage(hSave, WM_SETFONT, (WPARAM)wd->hFontBody, TRUE);
-    AddControl(wd, CTRL_CUSTOM_TABLE_SAVE, hSave, rcSave.x, rcSave.y, rcSave.w, rcSave.h);
 }
 
 // Candidate + Notify preview — owner-draw card for RowType::CandidatePreview
@@ -777,15 +693,7 @@ void SettingsWindow::RebuildContentArea(HWND hWnd, WindowData* wd)
     }
 
     UINT dpi = CConfig::GetDpiForHwnd(hWnd);
-    int margin = ScaleForDpi(g_geo.contentMargin, dpi);
-    int pad = ScaleForDpi(g_geo.cardPad, dpi);
     int cardW = CalcCardW(hWnd, dpi, sidebarTakesSpace);
-    int btnW = ScaleForDpi(g_geo.buttonWidth, dpi);
-    int ctrlH = ScaleForDpi(g_geo.ctrlHeight, dpi);
-    int btnH = ScaleForDpi(g_geo.buttonHeight, dpi);
-    // Level 0 children: no chevron. Level 1 sub-pages: has chevron.
-    bool isLevel1 = (wd->navLevel == 1 && wd->selectedModeIndex < 4);
-    int ctrlRight = CalcCtrlRight(margin, cardW, dpi, isLevel1);
 
     int imeCount = 0;
     const LayoutCard* imeCards = GetIMEPageLayout(&imeCount);
@@ -812,16 +720,7 @@ void SettingsWindow::RebuildContentArea(HWND hWnd, WindowData* wd)
     SettingsWindowLayout::PlanResult plan = SettingsWindowLayout::PlanControls(
         in, imeCards, imeCount, ltCards, ltCount, placements);
 
-    for (const auto& pl : placements) {
-        const LayoutCard* cards = (wd->selectedModeIndex == 5) ? ltCards : imeCards;
-        const LayoutRow& lr = cards[pl.card].rows[pl.row];
-        switch (pl.kind) {
-        case 0: CreateRowControl(wd, lr, ctrlRight, pl.y, ctrlH, btnH, dpi); break;
-        case 1: CreateRichEditorControl(wd, lr, margin, cardW, pad, pl.y, pl.h, ctrlRight, btnW, btnH, dpi); break;
-        case 2: CreateColorGridControls(wd, margin, pl.y, ctrlRight, dpi); break;
-        default: break;
-        }
-    }
+    CreateControls(wd, SettingsControls::BuildSpecs(in, cardW, imeCards, imeCount, ltCards, ltCount));
     if (plan.setTotal) wd->totalContentHeight = plan.totalHeight;
     if (plan.populate) PopulateControls(wd);
 

@@ -12,6 +12,7 @@
 //! (`SettingsEditor.*`). The binary comes in a later step.
 
 pub mod command;
+pub mod controls;
 #[cfg(windows)]
 pub mod editor;
 pub mod layout;

@@ -1054,3 +1054,84 @@ pub unsafe extern "C" fn dime_settings_populate_ops(
         write_list(&pool, text, text_cap, text_len);
     })
 }
+
+// ---- Phase 5b-8f: control specs (dime-settings::controls) -----------------
+
+use dime_settings::controls;
+use dime_settings::layout::PlanInput as ControlsPlanInput;
+
+/// `DimeControlSpec` (80 bytes). Text is `text[text_offset..+text_len]`.
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+pub struct ControlSpecC {
+    ctrl_id: i32,
+    menu_id: i32,
+    role: i32,
+    control_class: i32,
+    ex_style: u32,
+    style: u32,
+    has_text: i32,
+    text_offset: i32,
+    text_len: i32,
+    create: [i32; 4],
+    add: [i32; 4],
+    vis_h: i32,
+    set_font: i32,
+    dark_theme: i32,
+}
+
+/// `SettingsControls::BuildSpecs`. Writes up to `cap` specs and `text_cap`
+/// text units; the full counts go to `out_count` / `text_len`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_control_specs(
+    input: *const ControlsPlanInput,
+    card_w: i32,
+    ime: *const LayoutCard,
+    ime_count: i32,
+    load: *const LayoutCard,
+    load_count: i32,
+    out: *mut ControlSpecC,
+    cap: usize,
+    out_count: *mut usize,
+    text: *mut u16,
+    text_cap: usize,
+    text_len: *mut usize,
+) {
+    guard((), || unsafe {
+        write(out_count, 0);
+        write(text_len, 0);
+        if input.is_null() {
+            return;
+        }
+        let specs = controls::build_specs(&*input, card_w, cards(ime, ime_count), cards(load, load_count));
+        let mut pool: Vec<u16> = Vec::new();
+        let flat: Vec<ControlSpecC> = specs
+            .iter()
+            .map(|s| {
+                let offset = pool.len() as i32;
+                let len = s.text.as_ref().map_or(0, |t| t.len()) as i32;
+                if let Some(t) = &s.text {
+                    pool.extend_from_slice(t);
+                }
+                ControlSpecC {
+                    ctrl_id: s.ctrl_id,
+                    menu_id: s.menu_id,
+                    role: s.role,
+                    control_class: s.control_class,
+                    ex_style: s.ex_style,
+                    style: s.style,
+                    has_text: i32::from(s.text.is_some()),
+                    text_offset: offset,
+                    text_len: len,
+                    create: s.create,
+                    add: s.add,
+                    vis_h: s.vis_h,
+                    set_font: i32::from(s.set_font),
+                    dark_theme: s.dark_theme,
+                }
+            })
+            .collect();
+        write_list(&flat, out, cap, out_count);
+        write_list(&pool, text, text_cap, text_len);
+    })
+}

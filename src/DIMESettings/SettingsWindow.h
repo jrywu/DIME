@@ -10,6 +10,7 @@
 #include "SettingsPageLayout.h"
 #include "SettingsGeometry.h"
 #include "SettingsNav.h"
+#include "SettingsControls.h"
 
 // Window class name for FindWindow / single-instance support
 constexpr wchar_t SETTINGS_WND_CLASS[] = L"DIMESettingsMainClass";
@@ -142,11 +143,9 @@ private:
     static void PaintBreadcrumb(HWND hWnd, HDC hdc, WindowData* wd);
     static void PaintHamburger(HWND hMain, HDC hdc, WindowData* wd, RECT rc, HBRUSH bg);
     static void AddControl(WindowData* wd, SettingsControlId id, HWND h, int x, int y, int w, int ht, int visH = -1);
-    static void CreateRowControl(WindowData* wd, const LayoutRow& lr,
-        int ctrlRight, int cy, int ctrlH, int btnH, UINT dpi);
-    static void CreateColorGridControls(WindowData* wd, int margin, int curY, int ctrlRight, UINT dpi);
-    static void CreateRichEditorControl(WindowData* wd, const LayoutRow& lr,
-        int margin, int cardW, int pad, int curY, int thisH, int ctrlRight, int btnW, int btnH, UINT dpi);
+    static void CreateControls(WindowData* wd, const std::vector<SettingsControls::ControlSpec>& specs);
+    static void SetupRichEditor(WindowData* wd, HWND hRE);
+    static void LoadRichEditor(WindowData* wd, HWND hRE);
     static void RunNav(HWND hMain, WindowData* wd, SettingsNav::NavEvent ev);
     static void HandleCommand(HWND hWnd, WindowData* wd, WPARAM wParam, LPARAM lParam);
     static void ShowAllControls(WindowData* wd);

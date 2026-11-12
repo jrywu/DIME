@@ -1445,6 +1445,37 @@ void dime_settings_populate_ops(const void* snapshot, int32_t windows1809, int32
     const uint16_t* const* reverse_descs, const int32_t* reverse_selected, int32_t reverse_count,
     DimePopulateOp* out, size_t cap, size_t* out_count, uint16_t* text, size_t text_cap, size_t* text_len);
 
+/* ---- Settings control specs (phase 5b-8f, dime-settings::controls) ----
+ * SettingsControls::Cpp::BuildSpecs: the child windows of a page in
+ * creation order. input is a SettingsWindowLayout::PlanInput (48 bytes),
+ * card_w CalcCardW, ime / load the page tables. Rectangles are x, y, w, h.
+ * control_class: 0 BUTTON, 1 COMBOBOX, 2 EDIT, 3 STATIC, 4 RICHEDIT50W;
+ * role: 0 plain, 1 rich editor, 2 save button; dark_theme (when the window
+ * is dark): 0 none, 1 DarkMode_CFD, 2 DarkMode_Explorer. has_text 0 means
+ * a null caption; text is text[text_offset .. +text_len] without NULs.
+ * Writes up to cap specs and text_cap units; full counts go to out_count
+ * and text_len (call once with zero caps to size).
+ */
+typedef struct DimeControlSpec {
+    int32_t ctrl_id;
+    int32_t menu_id;
+    int32_t role;
+    int32_t control_class;
+    uint32_t ex_style;
+    uint32_t style;
+    int32_t has_text;
+    int32_t text_offset;
+    int32_t text_len;
+    int32_t create[4];
+    int32_t add[4];
+    int32_t vis_h;
+    int32_t set_font;
+    int32_t dark_theme;
+} DimeControlSpec;
+void dime_settings_control_specs(const void* input, int32_t card_w, const void* ime, int32_t ime_count,
+    const void* load, int32_t load_count, DimeControlSpec* out, size_t cap, size_t* out_count,
+    uint16_t* text, size_t text_cap, size_t* text_len);
+
 #ifdef __cplusplus
 }
 #endif
