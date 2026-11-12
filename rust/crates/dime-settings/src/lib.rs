@@ -14,7 +14,8 @@
 //! theme and dpi changes are `frame.rs` (`SettingsFrame.*`); owner-drawn
 //! controls and dark control colours are `owner.rs` (`SettingsOwnerDraw.*`);
 //! the dialogs, file writes, and editor calls of the command host are
-//! `winhost.rs` (`SettingsWinHost.*`).
+//! `winhost.rs` (`SettingsWinHost.*`). The window procedures' message
+//! decoding and dispatch is `wndproc.rs` (`SettingsProc.*`).
 //! The binary comes in a later step.
 
 pub mod command;
@@ -36,3 +37,4 @@ pub mod populate;
 pub mod validate;
 #[cfg(windows)]
 pub mod winhost;
+pub mod wndproc;

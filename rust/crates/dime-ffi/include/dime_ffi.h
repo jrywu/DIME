@@ -1556,6 +1556,41 @@ int32_t dime_settings_win_editor_line_index(void* re, int32_t line);
 void dime_settings_win_editor_focus_at(void* re, int32_t cp);
 int32_t dime_settings_win_editor_line_count(void* re);
 
+/* ---- Settings window procedures (phase 5b-9a, dime-settings::wndproc)
+ * SettingsProc::Cpp::Main / Content: which message does what, how its
+ * parameters are decoded, and what it returns. Every side effect goes
+ * through the host, including DefWindowProc, PostQuitMessage, and
+ * SetForegroundWindow. The field order must match SettingsProc.cpp (kVtbl)
+ * and settings_window.rs (ProcHostVtbl). Host callbacks must not throw.
+ * lparam must be what Windows passes with the message.
+ */
+typedef struct DimeSettingsProcHostVtbl {
+    int32_t (*has_data)(void* ctx);
+    int32_t (*has_content)(void* ctx);
+    void (*create)(void* ctx, intptr_t instance);
+    void (*nav)(void* ctx, int32_t kind, int32_t x, int32_t y, int32_t delta, int32_t thumb);
+    void (*theme_changed)(void* ctx);
+    void (*setting_changed)(void* ctx);
+    void (*dpi_changed)(void* ctx, uint32_t dpi, const int32_t* rect4_or_null);
+    void (*paint_main)(void* ctx);
+    void (*paint_content)(void* ctx);
+    uint32_t (*screen_dpi)(void* ctx);
+    void (*switch_mode)(void* ctx, int32_t mode);
+    void (*set_foreground)(void* ctx);
+    void (*destroy)(void* ctx);
+    void (*quit)(void* ctx);
+    void (*command)(void* ctx, uintptr_t wparam, intptr_t lparam);
+    void (*editor_revalidate)(void* ctx);
+    void (*editor_viewport)(void* ctx);
+    int32_t (*draw_item)(void* ctx, intptr_t dis);
+    int32_t (*ctl_color)(void* ctx, intptr_t hdc, intptr_t* brush);
+    intptr_t (*def)(void* ctx, uint32_t msg, uintptr_t wparam, intptr_t lparam);
+} DimeSettingsProcHostVtbl;
+intptr_t dime_settings_main_proc(const DimeSettingsProcHostVtbl* vtbl, void* ctx, uint32_t msg, uintptr_t wparam,
+    intptr_t lparam);
+intptr_t dime_settings_content_proc(const DimeSettingsProcHostVtbl* vtbl, void* ctx, uint32_t msg,
+    uintptr_t wparam, intptr_t lparam);
+
 #ifdef __cplusplus
 }
 #endif

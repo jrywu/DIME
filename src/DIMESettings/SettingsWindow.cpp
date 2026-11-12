@@ -28,6 +28,7 @@
 #include "SettingsWindow.h"
 #include "SettingsOwnerDraw.h"
 #include "SettingsWinHost.h"
+#include "SettingsProc.h"
 #include "SettingsController.h"
 #include "SettingsPageLayout.h"
 #include "SettingsGeometry.h"
@@ -854,165 +855,189 @@ int SettingsWindow::Run(HINSTANCE hInstance, int nCmdShow, IME_MODE initialMode)
 }
 
 // ============================================================================
-// Main window procedure
+// Window procedures: SettingsProc decides, ProcHost carries out.
 // ============================================================================
 LRESULT CALLBACK SettingsWindow::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    WindowData* wd = (WindowData*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+    return Dispatch(hWnd, false, msg, wParam, lParam);
+}
 
-    switch (msg) {
-    case WM_CREATE:
-    {
-        wd = new WindowData();
-        SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)wd);
-        HINSTANCE hInst = ((LPCREATESTRUCT)lParam)->hInstance;
-        wd->hInstance = hInst;
-        wd->micaActive = false; // Don't use Mica — it makes title bar translucent
-        RECT rc; GetClientRect(hWnd, &rc);
-        SettingsFrame::FrameEvent ev = {};
-        ev.kind = SettingsFrame::EV_CREATE;
-        ev.dpi = CConfig::GetDpiForHwnd(hWnd);
-        ev.clientW = rc.right;
-        ev.clientH = rc.bottom;
-        RunFrame(hWnd, wd, ev);
-        return 0;
-    }
+LRESULT CALLBACK SettingsWindow::ContentWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    return Dispatch(hWnd, true, msg, wParam, lParam);
+}
 
-    case WM_SIZE:
-        if (wd) {
-            SettingsNav::NavEvent ev = {};
-            ev.kind = SettingsNav::EV_MAIN_SIZE;
-            ev.x = LOWORD(lParam);
-            ev.y = HIWORD(lParam);
-            RunNav(hWnd, wd, ev);
-        }
-        return 0;
+LRESULT SettingsWindow::Dispatch(HWND hWnd, bool content, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    // A local class has the member function's access to SettingsWindow.
+    class ProcHost : public SettingsProc::Host {
+    public:
+        HWND hWnd;          // the window receiving the message
+        HWND hMain;         // the main window
+        WindowData* wd;
+        ProcHost(HWND h, HWND main, WindowData* w) : hWnd(h), hMain(main), wd(w) {}
 
-    case WM_PAINT:
-    {
-        PAINTSTRUCT ps;
-        HDC hdcScreen = BeginPaint(hWnd, &ps);
-        HDC hdc = hdcScreen;
-        RECT rcWnd; GetClientRect(hWnd, &rcWnd);
-        HDC hdcMem = CreateCompatibleDC(hdcScreen);
-        HBITMAP hBmpMem = CreateCompatibleBitmap(hdcScreen, rcWnd.right, rcWnd.bottom);
-        HBITMAP hOldBmpMem = (HBITMAP)SelectObject(hdcMem, hBmpMem);
-        if (hdcMem) hdc = hdcMem;
-        if (wd) {
-            SettingsWindowPaint::PaintContext main = MakePaintContext(hWnd, hWnd, wd);
-            SettingsWindowPaint::PaintMainFrame(hdc, main, wd->hContentArea != nullptr);
-        }
-        if (hdcMem) {
-            BitBlt(hdcScreen, 0, 0, rcWnd.right, rcWnd.bottom, hdcMem, 0, 0, SRCCOPY);
-            SelectObject(hdcMem, hOldBmpMem);
-            DeleteObject(hBmpMem);
-            DeleteDC(hdcMem);
-        }
-        EndPaint(hWnd, &ps);
-        return 0;
-    }
-
-    case WM_MOUSEWHEEL:
-        if (wd && wd->hContentArea) {
-            SettingsNav::NavEvent ev = {};
-            ev.kind = SettingsNav::EV_MAIN_WHEEL;
-            ev.delta = GET_WHEEL_DELTA_WPARAM(wParam);
-            RunNav(hWnd, wd, ev);
-        }
-        return 0;
-
-    case WM_LBUTTONDOWN:
-    case WM_MOUSEMOVE:
-    {
-        // Sidebar click / hover, breadcrumb back link, narrow-mode hamburger
-        if (!wd) break;
-        SettingsNav::NavEvent ev = {};
-        ev.kind = (msg == WM_LBUTTONDOWN) ? SettingsNav::EV_MAIN_LBUTTON : SettingsNav::EV_MAIN_MOUSEMOVE;
-        ev.x = GET_X_LPARAM(lParam);
-        ev.y = GET_Y_LPARAM(lParam);
-        RunNav(hWnd, wd, ev);
-        return 0;
-    }
-
-    case WM_MOUSELEAVE:
-        if (wd) {
-            SettingsNav::NavEvent ev = {};
-            ev.kind = SettingsNav::EV_MAIN_MOUSELEAVE;
-            RunNav(hWnd, wd, ev);
-        }
-        return 0;
-
-    case WM_THEMECHANGED:
-        if (wd) {
+        bool HasData() override { return wd != nullptr; }
+        bool HasContent() override { return wd && wd->hContentArea != nullptr; }
+        void Create(HINSTANCE hInst) override
+        {
+            wd = new WindowData();
+            SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)wd);
+            wd->hInstance = hInst;
+            wd->micaActive = false; // Don't use Mica — it makes title bar translucent
+            RECT rc; GetClientRect(hWnd, &rc);
             SettingsFrame::FrameEvent ev = {};
-            ev.kind = SettingsFrame::EV_THEME_CHANGED;
+            ev.kind = SettingsFrame::EV_CREATE;
+            ev.dpi = CConfig::GetDpiForHwnd(hWnd);
+            ev.clientW = rc.right;
+            ev.clientH = rc.bottom;
+            RunFrame(hWnd, wd, ev);
+        }
+        void Nav(int kind, int x, int y, int delta, int thumb) override
+        {
+            SettingsNav::NavEvent ev = {};
+            ev.kind = kind;
+            ev.x = x;
+            ev.y = y;
+            ev.delta = delta;
+            ev.thumb = thumb;
+            RunNav(hMain, wd, ev);
+        }
+        void Frame(int kind)
+        {
+            SettingsFrame::FrameEvent ev = {};
+            ev.kind = kind;
             ev.dpi = CConfig::GetDpiForHwnd(hWnd);
             RunFrame(hWnd, wd, ev);
         }
-        return 0;
-
-    case WM_GETMINMAXINFO:
-    {
-        LPMINMAXINFO mmi = (LPMINMAXINFO)lParam;
-        UINT dpi2 = 96;
-        HDC hdc2 = GetDC(nullptr);
-        if (hdc2) { dpi2 = GetDeviceCaps(hdc2, LOGPIXELSY); ReleaseDC(nullptr, hdc2); }
-        mmi->ptMinTrackSize = SettingsNav::MinTrackSize(dpi2);
-        return 0;
-    }
-
-    case WM_COPYDATA:
-    {
-        if (!wd) break;
-        COPYDATASTRUCT* pCds = (COPYDATASTRUCT*)lParam;
-        if (pCds && pCds->lpData) {
-            IME_MODE mode = SettingsLifecycle::CopyDataMode((const wchar_t*)pCds->lpData);
-            if (mode != IME_MODE::IME_MODE_NONE)
-                SwitchMode(hWnd, wd, mode);
-            SetForegroundWindow(hWnd);
+        void ThemeChanged() override { Frame(SettingsFrame::EV_THEME_CHANGED); }
+        void SettingChanged() override { Frame(SettingsFrame::EV_SETTING_CHANGE); }
+        void DpiChanged(UINT dpi, const RECT* suggested) override
+        {
+            SettingsFrame::FrameEvent ev = {};
+            ev.kind = SettingsFrame::EV_DPI_CHANGED;
+            ev.dpi = dpi;
+            if (suggested) {
+                ev.hasRect = 1;
+                ev.rc = *suggested;
+            }
+            RunFrame(hWnd, wd, ev);
         }
-        return TRUE;
-    }
-
-    case WM_SETTINGCHANGE:
-    {
-        if (!wd) break;
-        SettingsFrame::FrameEvent ev = {};
-        ev.kind = SettingsFrame::EV_SETTING_CHANGE;
-        ev.dpi = CConfig::GetDpiForHwnd(hWnd);
-        RunFrame(hWnd, wd, ev);
-        return 0;
-    }
-
-    case WM_DPICHANGED:
-    {
-        if (!wd) break;
-        SettingsFrame::FrameEvent ev = {};
-        ev.kind = SettingsFrame::EV_DPI_CHANGED;
-        ev.dpi = HIWORD(wParam);
-        RECT* prcNew = (RECT*)lParam;
-        if (prcNew) {
-            ev.hasRect = 1;
-            ev.rc = *prcNew;
+        void PaintMain() override
+        {
+            PAINTSTRUCT ps;
+            HDC hdcScreen = BeginPaint(hWnd, &ps);
+            HDC hdc = hdcScreen;
+            RECT rcWnd; GetClientRect(hWnd, &rcWnd);
+            HDC hdcMem = CreateCompatibleDC(hdcScreen);
+            HBITMAP hBmpMem = CreateCompatibleBitmap(hdcScreen, rcWnd.right, rcWnd.bottom);
+            HBITMAP hOldBmpMem = (HBITMAP)SelectObject(hdcMem, hBmpMem);
+            if (hdcMem) hdc = hdcMem;
+            if (wd) {
+                SettingsWindowPaint::PaintContext main = MakePaintContext(hWnd, hWnd, wd);
+                SettingsWindowPaint::PaintMainFrame(hdc, main, wd->hContentArea != nullptr);
+            }
+            if (hdcMem) {
+                BitBlt(hdcScreen, 0, 0, rcWnd.right, rcWnd.bottom, hdcMem, 0, 0, SRCCOPY);
+                SelectObject(hdcMem, hOldBmpMem);
+                DeleteObject(hBmpMem);
+                DeleteDC(hdcMem);
+            }
+            EndPaint(hWnd, &ps);
         }
-        RunFrame(hWnd, wd, ev);
-        return 0;
-    }
+        void PaintContent() override
+        {
+            PAINTSTRUCT ps;
+            HDC hdcScreen = BeginPaint(hWnd, &ps);
+            if (wd) {
+                // Double-buffer: paint to off-screen bitmap, then BitBlt to screen
+                RECT rcClient; GetClientRect(hWnd, &rcClient);
+                HDC hdc = CreateCompatibleDC(hdcScreen);
+                HBITMAP hBmp = CreateCompatibleBitmap(hdcScreen, rcClient.right, rcClient.bottom);
+                HBITMAP hOldBmp = (HBITMAP)SelectObject(hdc, hBmp);
 
-    case WM_DESTROY:
-        SaveWindowPlacement(hWnd);
-        if (wd) {
-            SettingsModel::DestroyEngine(wd->pEngine);
-            DestroyThemeBrushes(wd);
-            DestroyFonts(wd);
-            for (auto& ch : wd->controlHandles) { if (ch.hWnd) DestroyWindow(ch.hWnd); }
-            delete wd;
-            SetWindowLongPtr(hWnd, GWLP_USERDATA, 0);
+                // The open narrow sidebar is painted over the page: hide the child controls.
+                if (wd->sidebarNarrowMode && !wd->sidebarCollapsed) {
+                    for (auto& ch : wd->controlHandles)
+                        if (ch.hWnd && IsWindow(ch.hWnd)) ShowWindow(ch.hWnd, SW_HIDE);
+                }
+                SettingsWindowPaint::PaintContext contentCtx = MakePaintContext(hWnd, hMain, wd);
+                SettingsWindowPaint::PaintContext mainCtx = MakePaintContext(hMain, hMain, wd);
+                SettingsWindowPaint::PaintContentFrame(hdc, contentCtx, mainCtx);
+                // Blit off-screen buffer to screen (excludes child control areas via WS_CLIPCHILDREN)
+                BitBlt(hdcScreen, 0, 0, rcClient.right, rcClient.bottom, hdc, 0, 0, SRCCOPY);
+                SelectObject(hdc, hOldBmp);
+                DeleteObject(hBmp);
+                DeleteDC(hdc);
+            }
+            EndPaint(hWnd, &ps);
         }
-        PostQuitMessage(0);
-        return 0;
-    }
-    return DefWindowProc(hWnd, msg, wParam, lParam);
+        UINT ScreenDpi() override
+        {
+            UINT dpi = 96;
+            HDC hdc = GetDC(nullptr);
+            if (hdc) { dpi = GetDeviceCaps(hdc, LOGPIXELSY); ReleaseDC(nullptr, hdc); }
+            return dpi;
+        }
+        void SwitchMode(int mode) override { SettingsWindow::SwitchMode(hWnd, wd, (IME_MODE)mode); }
+        void SetForeground() override { SetForegroundWindow(hWnd); }
+        void Destroy() override
+        {
+            SaveWindowPlacement(hWnd);
+            if (wd) {
+                SettingsModel::DestroyEngine(wd->pEngine);
+                DestroyThemeBrushes(wd);
+                DestroyFonts(wd);
+                for (auto& ch : wd->controlHandles) { if (ch.hWnd) DestroyWindow(ch.hWnd); }
+                delete wd;
+                wd = nullptr;
+                SetWindowLongPtr(hWnd, GWLP_USERDATA, 0);
+            }
+        }
+        void Quit() override { PostQuitMessage(0); }
+        void Command(WPARAM wParam, LPARAM lParam) override { HandleCommand(hWnd, wd, wParam, lParam); }
+        void EditorRevalidate() override
+        {
+            HWND hRE = FindControl(wd, CTRL_CUSTOM_TABLE_EDITOR);
+            if (hRE) {
+                ValidateViewport(hRE, wd);
+                EnableSaveButton(wd, TRUE);
+                wd->ctKeystrokeCount = 0;
+            }
+        }
+        void EditorViewport() override
+        {
+            HWND hRE = FindControl(wd, CTRL_CUSTOM_TABLE_EDITOR);
+            if (hRE) ValidateViewport(hRE, wd);   // newly-visible lines need painting
+        }
+        bool DrawItem(const DRAWITEMSTRUCT* pdis) override
+        {
+            SettingsOwnerDraw::Context ctx = {};
+            ctx.theme = wd->theme;
+            ctx.fontBody = wd->hFontBody;
+            ctx.dpi = CConfig::GetDpiForHwnd(hMain);
+            const SettingsSnapshot& sn = wd->snapshot;
+            COLORREF swatch[6] = { sn.itemColor, sn.selectedColor, sn.itemBGColor,
+                sn.phraseColor, sn.numberColor, sn.selectedBGColor };
+            memcpy(ctx.swatch, swatch, sizeof(swatch));
+            return SettingsOwnerDraw::DrawItem(pdis, ctx);
+        }
+        bool CtlColor(HDC hdc, LRESULT& brush) override
+        {
+            if (!SettingsOwnerDraw::CtlColor(hdc, wd->isDarkTheme, wd->theme, &wd->hBrushCardBg)) return false;
+            brush = (LRESULT)wd->hBrushCardBg;
+            return true;
+        }
+        LRESULT Default(UINT msg, WPARAM wParam, LPARAM lParam) override
+        {
+            return DefWindowProc(hWnd, msg, wParam, lParam);
+        }
+    };
+
+    WindowData* wd = (WindowData*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+    ProcHost host(hWnd, content ? GetParent(hWnd) : hWnd, wd);
+    return content ? SettingsProc::Content(host, msg, wParam, lParam)
+                   : SettingsProc::Main(host, msg, wParam, lParam);
 }
 
 // ============================================================================
@@ -1175,139 +1200,3 @@ void SettingsWindow::HandleCommand(HWND hWnd, WindowData* wd, WPARAM wParam, LPA
     SettingsCommand::Handle(host, wd->snapshot, wd->colorGridExpanded, ev);
 }
 
-// ============================================================================
-// Content area window procedure
-// ============================================================================
-LRESULT CALLBACK SettingsWindow::ContentWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
-{
-    WindowData* wd = (WindowData*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
-
-    switch (msg) {
-    case WM_PAINT:
-    {
-        PAINTSTRUCT ps;
-        HDC hdcScreen = BeginPaint(hWnd, &ps);
-        if (wd) {
-            // Double-buffer: paint to off-screen bitmap, then BitBlt to screen
-            RECT rcClient; GetClientRect(hWnd, &rcClient);
-            HDC hdc = CreateCompatibleDC(hdcScreen);
-            HBITMAP hBmp = CreateCompatibleBitmap(hdcScreen, rcClient.right, rcClient.bottom);
-            HBITMAP hOldBmp = (HBITMAP)SelectObject(hdc, hBmp);
-
-            // The open narrow sidebar is painted over the page: hide the child controls.
-            if (wd->sidebarNarrowMode && !wd->sidebarCollapsed) {
-                for (auto& ch : wd->controlHandles)
-                    if (ch.hWnd && IsWindow(ch.hWnd)) ShowWindow(ch.hWnd, SW_HIDE);
-            }
-            SettingsWindowPaint::PaintContext content = MakePaintContext(hWnd, GetParent(hWnd), wd);
-            SettingsWindowPaint::PaintContext main = MakePaintContext(GetParent(hWnd), GetParent(hWnd), wd);
-            SettingsWindowPaint::PaintContentFrame(hdc, content, main);
-            // Blit off-screen buffer to screen (excludes child control areas via WS_CLIPCHILDREN)
-            BitBlt(hdcScreen, 0, 0, rcClient.right, rcClient.bottom, hdc, 0, 0, SRCCOPY);
-            SelectObject(hdc, hOldBmp);
-            DeleteObject(hBmp);
-            DeleteDC(hdc);
-        }
-        EndPaint(hWnd, &ps);
-        return 0;
-    }
-
-    case WM_VSCROLL:
-    case WM_MOUSEWHEEL:
-    case WM_MOUSEMOVE:
-    case WM_LBUTTONDOWN:
-    {
-        if (!wd) break;
-        SettingsNav::NavEvent ev = {};
-        switch (msg) {
-        case WM_VSCROLL:
-            ev.kind = SettingsNav::EV_CONTENT_VSCROLL;
-            ev.delta = LOWORD(wParam);
-            ev.thumb = HIWORD(wParam);
-            break;
-        case WM_MOUSEWHEEL:
-            ev.kind = SettingsNav::EV_CONTENT_WHEEL;
-            ev.delta = GET_WHEEL_DELTA_WPARAM(wParam);
-            break;
-        case WM_MOUSEMOVE:
-            ev.kind = SettingsNav::EV_CONTENT_MOUSEMOVE;
-            ev.x = GET_X_LPARAM(lParam);
-            ev.y = GET_Y_LPARAM(lParam);
-            break;
-        default:
-            ev.kind = SettingsNav::EV_CONTENT_LBUTTON;
-            ev.x = GET_X_LPARAM(lParam);
-            ev.y = GET_Y_LPARAM(lParam);
-            break;
-        }
-        RunNav(GetParent(hWnd), wd, ev);
-        return 0;
-    }
-
-    case WM_MOUSELEAVE:
-    {
-        if (wd) {
-            SettingsNav::NavEvent ev = {};
-            ev.kind = SettingsNav::EV_CONTENT_MOUSELEAVE;
-            RunNav(GetParent(hWnd), wd, ev);
-        }
-        break;
-    }
-
-    case WM_COMMAND:
-        if (!wd) break;
-        HandleCommand(hWnd, wd, wParam, lParam);
-        break;
-
-    case WM_USER + 1:  // Deferred trigger from subclass after Enter/Space/Paste/large-delete
-    {
-        if (!wd) break;
-        HWND hRE = FindControl(wd, CTRL_CUSTOM_TABLE_EDITOR);
-        if (hRE) {
-            ValidateViewport(hRE, wd);
-            EnableSaveButton(wd, TRUE);
-            wd->ctKeystrokeCount = 0;
-        }
-        return 0;
-    }
-
-    case WM_USER + 3:  // Forwarded from subclass on WM_VSCROLL / WM_MOUSEWHEEL
-    {
-        if (!wd) break;
-        HWND hRE = FindControl(wd, CTRL_CUSTOM_TABLE_EDITOR);
-        if (hRE) ValidateViewport(hRE, wd);   // newly-visible lines need painting
-        return 0;
-    }
-
-    case WM_DRAWITEM:
-    {
-        if (!wd) break;
-        LPDRAWITEMSTRUCT pdis = (LPDRAWITEMSTRUCT)lParam;
-        if (!pdis) break;
-
-        SettingsOwnerDraw::Context ctx = {};
-        ctx.theme = wd->theme;
-        ctx.fontBody = wd->hFontBody;
-        ctx.dpi = CConfig::GetDpiForHwnd(GetParent(hWnd));
-        const SettingsSnapshot& sn = wd->snapshot;
-        COLORREF swatch[6] = { sn.itemColor, sn.selectedColor, sn.itemBGColor,
-            sn.phraseColor, sn.numberColor, sn.selectedBGColor };
-        memcpy(ctx.swatch, swatch, sizeof(swatch));
-        if (SettingsOwnerDraw::DrawItem(pdis, ctx))
-            return TRUE;
-        break;
-    }
-
-    case WM_CTLCOLOREDIT:
-    case WM_CTLCOLORLISTBOX:
-    {
-        if (!wd) break;
-        if (!SettingsOwnerDraw::CtlColor((HDC)wParam, wd->isDarkTheme, wd->theme, &wd->hBrushCardBg)) break;
-        return (LRESULT)wd->hBrushCardBg;
-    }
-
-    case WM_ERASEBKGND:
-        return 1;
-    }
-    return DefWindowProc(hWnd, msg, wParam, lParam);
-}

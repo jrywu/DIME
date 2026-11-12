@@ -34,6 +34,8 @@ public:
 private:
     // Window procedure
     static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+    // Both window procedures: a ProcHost over the window, then SettingsProc::Main / Content.
+    static LRESULT Dispatch(HWND hWnd, bool content, UINT msg, WPARAM wParam, LPARAM lParam);
 
 public:
     // Content area child window procedure (public: used by RegisterContentClass)

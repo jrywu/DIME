@@ -1435,3 +1435,142 @@ pub extern "C" fn dime_settings_win_editor_focus_at(re: Handle, cp: i32) {
 pub extern "C" fn dime_settings_win_editor_line_count(re: Handle) -> i32 {
     guard(0, || winhost::editor_line_count(re))
 }
+
+// ---- Phase 5b-9a: window procedures (dime-settings::wndproc) ---------------
+
+use dime_settings::wndproc::{self, ProcHost};
+
+/// `DimeSettingsProcHostVtbl`: the order must match dime_ffi.h and
+/// SettingsProc.cpp (`kVtbl`).
+#[repr(C)]
+pub struct ProcHostVtbl {
+    has_data: unsafe extern "C" fn(Ctx) -> i32,
+    has_content: unsafe extern "C" fn(Ctx) -> i32,
+    create: unsafe extern "C" fn(Ctx, isize),
+    nav: unsafe extern "C" fn(Ctx, i32, i32, i32, i32, i32),
+    theme_changed: unsafe extern "C" fn(Ctx),
+    setting_changed: unsafe extern "C" fn(Ctx),
+    dpi_changed: unsafe extern "C" fn(Ctx, u32, *const [i32; 4]),
+    paint_main: unsafe extern "C" fn(Ctx),
+    paint_content: unsafe extern "C" fn(Ctx),
+    screen_dpi: unsafe extern "C" fn(Ctx) -> u32,
+    switch_mode: unsafe extern "C" fn(Ctx, i32),
+    set_foreground: unsafe extern "C" fn(Ctx),
+    destroy: unsafe extern "C" fn(Ctx),
+    quit: unsafe extern "C" fn(Ctx),
+    command: unsafe extern "C" fn(Ctx, usize, isize),
+    editor_revalidate: unsafe extern "C" fn(Ctx),
+    editor_viewport: unsafe extern "C" fn(Ctx),
+    draw_item: unsafe extern "C" fn(Ctx, isize) -> i32,
+    ctl_color: unsafe extern "C" fn(Ctx, isize, *mut isize) -> i32,
+    default: unsafe extern "C" fn(Ctx, u32, usize, isize) -> isize,
+}
+
+struct ProcVtblHost<'a> {
+    v: &'a ProcHostVtbl,
+    ctx: Ctx,
+}
+
+// SAFETY (every method): the vtable functions are the host thunks; they take
+// `ctx` and never unwind.
+impl ProcHost for ProcVtblHost<'_> {
+    fn has_data(&mut self) -> bool {
+        unsafe { (self.v.has_data)(self.ctx) != 0 }
+    }
+    fn has_content(&mut self) -> bool {
+        unsafe { (self.v.has_content)(self.ctx) != 0 }
+    }
+    fn create(&mut self, instance: isize) {
+        unsafe { (self.v.create)(self.ctx, instance) }
+    }
+    fn nav(&mut self, kind: i32, x: i32, y: i32, delta: i32, thumb: i32) {
+        unsafe { (self.v.nav)(self.ctx, kind, x, y, delta, thumb) }
+    }
+    fn theme_changed(&mut self) {
+        unsafe { (self.v.theme_changed)(self.ctx) }
+    }
+    fn setting_changed(&mut self) {
+        unsafe { (self.v.setting_changed)(self.ctx) }
+    }
+    fn dpi_changed(&mut self, dpi: u32, rect: Option<[i32; 4]>) {
+        let p = rect.as_ref().map_or(std::ptr::null(), |r| r as *const [i32; 4]);
+        unsafe { (self.v.dpi_changed)(self.ctx, dpi, p) }
+    }
+    fn paint_main(&mut self) {
+        unsafe { (self.v.paint_main)(self.ctx) }
+    }
+    fn paint_content(&mut self) {
+        unsafe { (self.v.paint_content)(self.ctx) }
+    }
+    fn screen_dpi(&mut self) -> u32 {
+        unsafe { (self.v.screen_dpi)(self.ctx) }
+    }
+    fn switch_mode(&mut self, mode: i32) {
+        unsafe { (self.v.switch_mode)(self.ctx, mode) }
+    }
+    fn set_foreground(&mut self) {
+        unsafe { (self.v.set_foreground)(self.ctx) }
+    }
+    fn destroy(&mut self) {
+        unsafe { (self.v.destroy)(self.ctx) }
+    }
+    fn quit(&mut self) {
+        unsafe { (self.v.quit)(self.ctx) }
+    }
+    fn command(&mut self, wparam: usize, lparam: isize) {
+        unsafe { (self.v.command)(self.ctx, wparam, lparam) }
+    }
+    fn editor_revalidate(&mut self) {
+        unsafe { (self.v.editor_revalidate)(self.ctx) }
+    }
+    fn editor_viewport(&mut self) {
+        unsafe { (self.v.editor_viewport)(self.ctx) }
+    }
+    fn draw_item(&mut self, dis: isize) -> bool {
+        unsafe { (self.v.draw_item)(self.ctx, dis) != 0 }
+    }
+    fn ctl_color(&mut self, hdc: isize) -> Option<isize> {
+        let mut brush = 0isize;
+        let handled = unsafe { (self.v.ctl_color)(self.ctx, hdc, &mut brush) } != 0;
+        handled.then_some(brush)
+    }
+    fn default(&mut self, msg: u32, wparam: usize, lparam: isize) -> isize {
+        unsafe { (self.v.default)(self.ctx, msg, wparam, lparam) }
+    }
+}
+
+/// `SettingsProc::Main`. `lparam` must be what Windows passes with `msg`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_main_proc(
+    vtbl: *const ProcHostVtbl,
+    ctx: Ctx,
+    msg: u32,
+    wparam: usize,
+    lparam: isize,
+) -> isize {
+    guard(0, || unsafe {
+        if vtbl.is_null() {
+            return 0;
+        }
+        let mut host = ProcVtblHost { v: &*vtbl, ctx };
+        wndproc::main_proc(&mut host, msg, wparam, lparam)
+    })
+}
+
+/// `SettingsProc::Content`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_content_proc(
+    vtbl: *const ProcHostVtbl,
+    ctx: Ctx,
+    msg: u32,
+    wparam: usize,
+    lparam: isize,
+) -> isize {
+    guard(0, || unsafe {
+        if vtbl.is_null() {
+            return 0;
+        }
+        let mut host = ProcVtblHost { v: &*vtbl, ctx };
+        wndproc::content_proc(&mut host, msg, wparam, lparam)
+    })
+}
