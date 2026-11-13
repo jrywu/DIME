@@ -1770,6 +1770,8 @@ void* dime_settings_window_create(const DimeSettingsAppVtbl* vtbl, void* app, vo
     const uint16_t* placement_key, const uint16_t* placement_value, int32_t icon_id);
 int32_t dime_settings_window_state(void* hwnd, void* state, void* snapshot);
 void dime_settings_window_paint(void* hwnd, void* hdc, int32_t w, int32_t h, int32_t content);
+void dime_settings_window_navigate(void* hwnd, int32_t mode, int32_t selected_mode_index, int32_t nav_level,
+    int32_t card_index);
 
 #ifdef __cplusplus
 }

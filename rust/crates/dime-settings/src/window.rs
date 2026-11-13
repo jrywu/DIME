@@ -1582,6 +1582,26 @@ pub fn state(hwnd: Handle) -> Option<(DriverState, SettingsSnapshot)> {
     Some(unsafe { ((*wd).state, (*wd).snapshot) })
 }
 
+/// `SettingsWindow::NavigateForTest`.
+pub fn navigate(hwnd: Handle, mode: i32, selected_mode_index: i32, nav_level: i32, card_index: i32) {
+    let wd = get_data(hwnd);
+    if wd.is_null() {
+        return;
+    }
+    switch_mode(hwnd, wd, mode);
+    // SAFETY: live data; no call inside.
+    unsafe {
+        let n = &mut (*wd).state.nav;
+        n.selected_mode_index = selected_mode_index;
+        n.nav_level = nav_level;
+        n.current_card_index = card_index;
+        n.scroll_pos = 0;
+    }
+    rebuild(hwnd, wd);
+    // SAFETY: plain user32 call.
+    unsafe { InvalidateRect(hwnd, null(), 0) };
+}
+
 /// `SettingsWindow::PaintForTest`: the main window, or with `content` the
 /// content area `hwnd`, painted into `target`.
 pub fn paint_into(hwnd: Handle, target: Handle, w: i32, h: i32, content: bool) {

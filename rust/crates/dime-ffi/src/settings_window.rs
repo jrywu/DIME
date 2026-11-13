@@ -2310,6 +2310,20 @@ pub unsafe extern "C" fn dime_settings_window_state(
     })
 }
 
+/// `SettingsWindow::NavigateForTest`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_window_navigate(
+    hwnd: Handle,
+    mode: i32,
+    selected_mode_index: i32,
+    nav_level: i32,
+    card_index: i32,
+) {
+    guard((), || {
+        window::navigate(hwnd, mode, selected_mode_index, nav_level, card_index)
+    })
+}
+
 /// `SettingsWindow::PaintForTest`.
 #[no_mangle]
 pub unsafe extern "C" fn dime_settings_window_paint(hwnd: Handle, hdc: Handle, w: i32, h: i32, content: i32) {

@@ -40,6 +40,9 @@ public:
         const wchar_t* caption, const wchar_t* mainClass, const wchar_t* contentClass,
         const wchar_t* placementKey, const wchar_t* placementValue);
     static bool StateForTest(HWND hMain, SettingsDriver::State* state, SettingsSnapshot* snapshot);
+    // Switch to mode, then show sidebar item selectedModeIndex at navLevel /
+    // cardIndex from the top (rebuilds the page).
+    static void NavigateForTest(HWND hMain, IME_MODE mode, int selectedModeIndex, int navLevel, int cardIndex);
     // Paint the main window (or, with content, the content area hWnd) into target.
     static void PaintForTest(HWND hWnd, HDC target, int w, int h, bool content);
 

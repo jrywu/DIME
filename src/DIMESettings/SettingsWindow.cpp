@@ -632,6 +632,19 @@ bool SettingsWindow::StateForTest(HWND hMain, SettingsDriver::State* state, Sett
     return true;
 }
 
+void SettingsWindow::NavigateForTest(HWND hMain, IME_MODE mode, int selectedModeIndex, int navLevel, int cardIndex)
+{
+    WindowData* wd = (WindowData*)GetWindowLongPtr(hMain, GWLP_USERDATA);
+    if (!wd) return;
+    SwitchMode(hMain, wd, mode);
+    wd->nav.selectedModeIndex = selectedModeIndex;
+    wd->nav.navLevel = navLevel;
+    wd->nav.currentCardIndex = cardIndex;
+    wd->nav.scrollPos = 0;
+    RebuildContentArea(hMain, wd);
+    InvalidateRect(hMain, nullptr, FALSE);
+}
+
 void SettingsWindow::PaintForTest(HWND hWnd, HDC target, int w, int h, bool content)
 {
     // The WM_PAINT bodies (SettingsShell::Paint*Into) with this window's source.
