@@ -1655,6 +1655,31 @@ void dime_settings_driver_frame(const DimeSettingsDriverHostVtbl* vtbl, void* ct
 void dime_settings_driver_switch_mode(const DimeSettingsDriverHostVtbl* vtbl, void* ctx, void* state, int32_t mode);
 void dime_settings_driver_rebuild(const DimeSettingsDriverHostVtbl* vtbl, void* ctx, void* state);
 
+/* ---- Settings child windows (phase 5b-9c, dime-settings::children)
+ * SettingsChildren::Cpp::Create: CreateWindowEx per DimeControlSpec (text
+ * is text[text_offset..+text_len]), the wheel forwarder, body font, dark
+ * theme, and the custom table RichEdit (limit, colours, saved table,
+ * editor subclass, event mask). ctx_in is SettingsChildren::Context.
+ * editor_path returns the full length and writes up to cap - 1 units plus
+ * a NUL. The order must match SettingsChildren.cpp (kVtbl) and
+ * settings_window.rs (ChildHostVtbl). Host callbacks must not throw.
+ */
+typedef struct DimeSettingsChildContext {
+    void* parent;
+    void* instance;
+    void* font_body;
+    int32_t is_dark;
+    uint32_t card_bg;
+    uint32_t text_primary;
+} DimeSettingsChildContext;
+typedef struct DimeSettingsChildHostVtbl {
+    void (*added)(void* ctx, int32_t ctrl_id, void* hwnd, int32_t x, int32_t y, int32_t w, int32_t h, int32_t vis_h);
+    size_t (*editor_path)(void* ctx, uint16_t* buf, size_t cap);
+    void (*editor_ready)(void* ctx, void* hre, int32_t line_count);
+} DimeSettingsChildHostVtbl;
+void dime_settings_create_children(const DimeSettingsChildHostVtbl* vtbl, void* ctx, const void* ctx_in,
+    const DimeControlSpec* specs, size_t count, const uint16_t* text, size_t text_len);
+
 #ifdef __cplusplus
 }
 #endif

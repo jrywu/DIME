@@ -120,8 +120,6 @@ private:
     static void DestroyFonts(WindowData* wd);
     static void AddControl(WindowData* wd, SettingsControlId id, HWND h, int x, int y, int w, int ht, int visH = -1);
     static void CreateControls(WindowData* wd, const std::vector<SettingsControls::ControlSpec>& specs);
-    static void SetupRichEditor(WindowData* wd, HWND hRE);
-    static void LoadRichEditor(WindowData* wd, HWND hRE);
     static void RunNav(HWND hMain, WindowData* wd, SettingsNav::NavEvent ev);
     static void HandleCommand(HWND hWnd, WindowData* wd, WPARAM wParam, LPARAM lParam);
     static void ApplyAndSave(WindowData* wd);

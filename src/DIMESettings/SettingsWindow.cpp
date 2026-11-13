@@ -40,6 +40,7 @@
 #include "SettingsEditor.h"
 #include "SettingsPopulate.h"
 #include "SettingsControls.h"
+#include "SettingsChildren.h"
 
 #include <Richedit.h>
 #include <MLang.h>
@@ -69,19 +70,6 @@ static bool s_contentClassRegistered = false;
 static int ThemedMessageBox(HWND hParent, const wchar_t* text, const wchar_t* caption, UINT type)
 {
     return SettingsMsgBox::Show(hParent, text, caption, type);
-}
-
-// ============================================================================
-// Child control WM_MOUSEWHEEL forwarder
-// ============================================================================
-static LRESULT CALLBACK ChildWheelSubclassProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
-    UINT_PTR uIdSubclass, DWORD_PTR dwRefData)
-{
-    if (uMsg == WM_MOUSEWHEEL)
-        return SendMessage(GetParent(hWnd), uMsg, wParam, lParam);
-    if (uMsg == WM_NCDESTROY)
-        RemoveWindowSubclass(hWnd, ChildWheelSubclassProc, uIdSubclass);
-    return DefSubclassProc(hWnd, uMsg, wParam, lParam);
 }
 
 // ============================================================================
@@ -544,89 +532,44 @@ void SettingsWindow::AddControl(WindowData* wd, SettingsControlId id, HWND h, in
     ch.id = id; ch.hWnd = h; ch.origX = x; ch.origY = y; ch.origW = w; ch.origH = ht;
     ch.visH = (visH > 0) ? visH : ht;
     wd->controlHandles.push_back(ch);
-    if (h) SetWindowSubclass(h, ChildWheelSubclassProc, 1, 0);
 }
 
 // ============================================================================
-// Child controls of a page: SettingsControls::BuildSpecs decides, this creates.
+// Child controls of a page: SettingsControls::BuildSpecs decides,
+// SettingsChildren creates the windows, the window keeps the list.
 // ============================================================================
-// After the RichEdit is created: text limit, theme, the saved custom table,
-// the editor subclass, and the first viewport pass.
-void SettingsWindow::SetupRichEditor(WindowData* wd, HWND hRE)
-{
-    // Issue #130: RichEdit50W defaults to ~32K-64K characters; SetWindowTextW
-    // bypasses the cap but typing is then rejected. Raise it to 100 MB.
-    SendMessageW(hRE, EM_EXLIMITTEXT, 0, (LPARAM)(100 * 1024 * 1024));
-    SendMessage(hRE, WM_SETFONT, (WPARAM)wd->hFontBody, TRUE);
-    if (wd->isDark) {
-        SetWindowTheme(hRE, L"DarkMode_Explorer", nullptr);
-        SendMessage(hRE, EM_SETBKGNDCOLOR, 0, (LPARAM)wd->theme.cardBg);
-        CHARFORMAT2W cf2 = {};
-        cf2.cbSize = sizeof(cf2);
-        cf2.dwMask = CFM_COLOR;
-        cf2.crTextColor = wd->theme.textPrimary;
-        SendMessage(hRE, EM_SETCHARFORMAT, SCF_ALL, (LPARAM)&cf2);
-    }
-}
-
-void SettingsWindow::LoadRichEditor(WindowData* wd, HWND hRE)
-{
-    // Load the saved custom table with the encoding-aware reader (issue #130).
-    WCHAR txtPath[MAX_PATH] = {};
-    GetCustomTableTxtPath(wd->Mode(), txtPath, MAX_PATH);
-    if (PathFileExistsW(txtPath)) {
-        CHARFORMAT2W cf = {};
-        cf.cbSize = sizeof(cf);
-        cf.dwMask = CFM_FACE | CFM_SIZE | CFM_WEIGHT;
-        StringCchCopyW(cf.szFaceName, LF_FACESIZE, L"Microsoft JhengHei UI");
-        cf.yHeight = 10 * 20;  // 10pt in twips — RichEdit applies DPI itself
-        cf.wWeight = FW_NORMAL;
-        SendMessageW(hRE, EM_SETCHARFORMAT, SCF_DEFAULT, (LPARAM)&cf);
-
-        size_t wlen = 0;
-        LPWSTR text = SettingsModel::LoadTextFileAsUtf16(txtPath, &wlen);
-        if (text) {
-            SetWindowTextW(hRE, text);
-            delete[] text;
-        }
-    }
-    SetWindowSubclass(hRE, SettingsEditor::SubclassProc(), 0, 0);
-    SendMessageW(hRE, EM_SETEVENTMASK, 0, ENM_CHANGE);
-    wd->ctLastLineCount = (int)SendMessageW(hRE, EM_GETLINECOUNT, 0, 0);
-    wd->ctLastEditedLine = -1;
-    wd->ctKeystrokeCount = 0;
-    // Paint the visible range now (TOM, no caret jump). The Save button stays
-    // disabled: the content matches the file.
-    ValidateViewport(hRE, wd);
-}
-
 void SettingsWindow::CreateControls(WindowData* wd, const std::vector<SettingsControls::ControlSpec>& specs)
 {
-    static HMODULE hMsftEdit = nullptr;
-    for (const auto& spec : specs) {
-        if (spec.controlClass == SettingsControls::CLS_RICHEDIT && !hMsftEdit)
-            hMsftEdit = LoadLibraryW(L"msftedit.dll");
-        HWND h = CreateWindowExW(spec.exStyle, SettingsControls::ClassName(spec.controlClass),
-            spec.hasText ? spec.text.c_str() : nullptr, spec.style,
-            spec.create.left, spec.create.top, spec.create.right, spec.create.bottom,
-            wd->hContentArea, (HMENU)(UINT_PTR)spec.menuId, wd->hInstance, nullptr);
-        if (spec.role == SettingsControls::ROLE_RICH_EDITOR) {
-            if (h) SetupRichEditor(wd, h);
-            AddControl(wd, (SettingsControlId)spec.ctrlId, h, spec.add.left, spec.add.top, spec.add.right, spec.add.bottom, spec.visH);
-            if (h) {
-                RemoveWindowSubclass(h, ChildWheelSubclassProc, 1);
-                LoadRichEditor(wd, h);
-            }
-            continue;
+    // A local class has the member function's access to SettingsWindow.
+    class ChildHost : public SettingsChildren::Host {
+    public:
+        WindowData* wd;
+        explicit ChildHost(WindowData* w) : wd(w) {}
+        void Added(int ctrlId, HWND h, int x, int y, int w, int ht, int visH) override
+        {
+            AddControl(wd, (SettingsControlId)ctrlId, h, x, y, w, ht, visH);
         }
-        if (h && spec.setFont)
-            SendMessage(h, WM_SETFONT, (WPARAM)wd->hFontBody, TRUE);
-        if (h && (wd->isDark != 0) && spec.darkTheme == SettingsControls::DARK_CFD)
-            SetWindowTheme(h, L"DarkMode_CFD", nullptr);
-        else if (h && (wd->isDark != 0) && spec.darkTheme == SettingsControls::DARK_EXPLORER)
-            SetWindowTheme(h, L"DarkMode_Explorer", nullptr);
-        AddControl(wd, (SettingsControlId)spec.ctrlId, h, spec.add.left, spec.add.top, spec.add.right, spec.add.bottom, spec.visH);
-    }
+        std::wstring EditorPath() override
+        {
+            WCHAR txtPath[MAX_PATH] = {};
+            GetCustomTableTxtPath(wd->Mode(), txtPath, MAX_PATH);
+            return txtPath;
+        }
+        void EditorReady(HWND hRE, int lineCount) override
+        {
+            wd->ctLastLineCount = lineCount;
+            wd->ctLastEditedLine = -1;
+            wd->ctKeystrokeCount = 0;
+            // Paint the visible range now (TOM, no caret jump). The Save
+            // button stays disabled: the content matches the file.
+            ValidateViewport(hRE, wd);
+        }
+    };
+
+    SettingsChildren::Context ctx = { wd->hContentArea, wd->hInstance, wd->hFontBody, wd->isDark,
+        wd->theme.cardBg, wd->theme.textPrimary };
+    ChildHost host(wd);
+    SettingsChildren::Create(host, ctx, specs);
 }
 
 // Fill the controls from the snapshot (SettingsPopulate.*).

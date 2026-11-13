@@ -17,9 +17,12 @@
 //! `winhost.rs` (`SettingsWinHost.*`). The window procedures' message
 //! decoding and dispatch is `wndproc.rs` (`SettingsProc.*`); carrying out
 //! navigation and frame effects, mode switches, and page rebuilds is
-//! `driver.rs` (`SettingsDriver.*`).
+//! `driver.rs` (`SettingsDriver.*`); creating a page's child windows is
+//! `children.rs` (`SettingsChildren.*`).
 //! The binary comes in a later step.
 
+#[cfg(windows)]
+pub mod children;
 pub mod command;
 pub mod controls;
 pub mod driver;

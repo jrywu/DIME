@@ -1845,3 +1845,98 @@ pub unsafe extern "C" fn dime_settings_driver_rebuild(vtbl: *const DriverHostVtb
         driver::rebuild(&mut host, state);
     })
 }
+
+// ---- Phase 5b-9c: child windows (dime-settings::children) -----------------
+
+use dime_settings::children::{self, ChildHost, Context as ChildContext};
+use dime_settings::controls::ControlSpec;
+
+/// `DimeSettingsChildHostVtbl`: the order must match dime_ffi.h and
+/// SettingsChildren.cpp (kVtbl).
+#[repr(C)]
+pub struct ChildHostVtbl {
+    added: unsafe extern "C" fn(Ctx, i32, Handle, i32, i32, i32, i32, i32),
+    editor_path: unsafe extern "C" fn(Ctx, *mut u16, usize) -> usize,
+    editor_ready: unsafe extern "C" fn(Ctx, Handle, i32),
+}
+
+struct ChildVtblHost<'a> {
+    v: &'a ChildHostVtbl,
+    ctx: Ctx,
+}
+
+impl ChildHost for ChildVtblHost<'_> {
+    fn added(&mut self, ctrl_id: i32, h: Handle, add: [i32; 4], vis_h: i32) {
+        // SAFETY: the C++ host outlives this call; thunks do not throw.
+        unsafe { (self.v.added)(self.ctx, ctrl_id, h, add[0], add[1], add[2], add[3], vis_h) }
+    }
+    fn editor_path(&mut self) -> Vec<u16> {
+        // One call (the host's EditorPath runs once, like the C++ original):
+        // the longest Win32 path fits.
+        const CAP: usize = 32_768;
+        let mut buf = vec![0u16; CAP];
+        // SAFETY: `buf` holds CAP units; the thunk writes at most CAP - 1 plus a NUL.
+        let len = unsafe { (self.v.editor_path)(self.ctx, buf.as_mut_ptr(), CAP) };
+        buf.truncate(len.min(CAP - 1));
+        buf
+    }
+    fn editor_ready(&mut self, hre: Handle, line_count: i32) {
+        // SAFETY: as above.
+        unsafe { (self.v.editor_ready)(self.ctx, hre, line_count) }
+    }
+}
+
+/// `SettingsChildren::Create`. `specs[i]` text is
+/// `text[text_offset..+text_len]`; an out-of-range slice is an empty caption.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_create_children(
+    vtbl: *const ChildHostVtbl,
+    ctx: Ctx,
+    ctx_in: *const ChildContext,
+    specs: *const ControlSpecC,
+    count: usize,
+    text: *const u16,
+    text_len: usize,
+) {
+    guard((), || unsafe {
+        if vtbl.is_null() || ctx_in.is_null() || (specs.is_null() && count > 0) {
+            return;
+        }
+        let raw = if count == 0 {
+            &[][..]
+        } else {
+            std::slice::from_raw_parts(specs, count)
+        };
+        let pool = if text.is_null() || text_len == 0 {
+            &[][..]
+        } else {
+            std::slice::from_raw_parts(text, text_len)
+        };
+        let list: Vec<ControlSpec> = raw
+            .iter()
+            .map(|r| {
+                let caption = (r.has_text != 0).then(|| {
+                    let start = r.text_offset.max(0) as usize;
+                    let end = start.saturating_add(r.text_len.max(0) as usize);
+                    pool.get(start..end).map_or_else(Vec::new, <[u16]>::to_vec)
+                });
+                ControlSpec {
+                    ctrl_id: r.ctrl_id,
+                    menu_id: r.menu_id,
+                    role: r.role,
+                    control_class: r.control_class,
+                    ex_style: r.ex_style,
+                    style: r.style,
+                    text: caption,
+                    create: r.create,
+                    add: r.add,
+                    vis_h: r.vis_h,
+                    set_font: r.set_font != 0,
+                    dark_theme: r.dark_theme,
+                }
+            })
+            .collect();
+        let mut host = ChildVtblHost { v: &*vtbl, ctx };
+        children::create(&mut host, &*ctx_in, &list);
+    })
+}
