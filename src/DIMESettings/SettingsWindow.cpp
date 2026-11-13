@@ -112,8 +112,8 @@ static int ValidateCustomTableBuffer(const wchar_t* text, size_t wlen,
 static void ValidateViewport(HWND hRE, SettingsWindow::WindowData* wd)
 {
     if (!hRE || !wd) return;
-    SettingsEditor::EditorContext ctx = { (int)wd->currentMode, wd->snapshot.maxCodes,
-        wd->isDarkTheme ? 1 : 0, wd->pEngine };
+    SettingsEditor::EditorContext ctx = { (int)wd->Mode(), wd->snapshot.maxCodes,
+        wd->isDark ? 1 : 0, wd->pEngine };
     SettingsEditor::ValidateViewport(hRE, ctx);
 }
 
@@ -193,7 +193,7 @@ static bool ApplyMicaBackdrop(HWND hWnd)
 void SettingsWindow::CreateThemeBrushes(WindowData* wd)
 {
     DestroyThemeBrushes(wd);
-    wd->theme = ComputeThemeColors(wd->isDarkTheme);
+    wd->theme = ComputeThemeColors(wd->isDark != 0);
     wd->hBrushSidebarBg = CreateSolidBrush(wd->theme.sidebarBg);
     wd->hBrushContentBg = CreateSolidBrush(wd->theme.contentBg);
     wd->hBrushCardBg    = CreateSolidBrush(wd->theme.cardBg);
@@ -236,191 +236,8 @@ void SettingsWindow::DestroyFonts(WindowData* wd)
 
 COLORREF SettingsWindow::GetAccentColor() { return ComputeThemeColors(false).accent; }
 
-// ============================================================================
-// Scroll helpers
-// ============================================================================
-void SettingsWindow::UpdateScrollInfo(WindowData* wd)
-{
-    if (!wd->hContentArea) return;
-    RECT rc; GetClientRect(wd->hContentArea, &rc);
-    wd->scrollMax = SettingsModel::ComputeScrollRange(wd->totalContentHeight, rc.bottom);
-    wd->scrollPos = SettingsModel::ClampScrollPos(wd->scrollPos, wd->scrollMax);
-    SCROLLINFO si = { sizeof(si), SIF_RANGE | SIF_PAGE | SIF_POS, 0, wd->totalContentHeight, (UINT)rc.bottom, wd->scrollPos };
-    SetScrollInfo(wd->hContentArea, SB_VERT, &si, TRUE);
-}
-
-void SettingsWindow::RepositionControlsForScroll(WindowData* wd)
-{
-    if (!wd->hContentArea) return;
-    UINT dpi = CConfig::GetDpiForHwnd(wd->hContentArea);
-    // SettingsLifecycle::PlanScroll decides; controls in the title band are hidden.
-    std::vector<SettingsLifecycle::ScrollItem> items;
-    for (auto& ch : wd->controlHandles) {
-        bool alive = ch.hWnd && IsWindow(ch.hWnd);
-        items.push_back({ ch.origY, ch.origW, ch.origH, alive ? 1 : 0,
-            (alive && IsWindowVisible(ch.hWnd)) ? 1 : 0 });
-    }
-    std::vector<SettingsLifecycle::ScrollAction> acts = SettingsLifecycle::PlanScroll(items, wd->scrollPos, dpi);
-    for (size_t i = 0; i < acts.size() && i < wd->controlHandles.size(); i++) {
-        const auto& a = acts[i];
-        const auto& ch = wd->controlHandles[i];
-        if (!a.moved) continue;
-        SetWindowPos(ch.hWnd, nullptr, ch.origX, a.y, ch.origW, ch.origH, SWP_NOZORDER | SWP_NOACTIVATE);
-        if (a.show < 0) ShowWindow(ch.hWnd, SW_HIDE);
-        if (a.resetRgn) SetWindowRgn(ch.hWnd, nullptr, TRUE);
-        if (a.show > 0) ShowWindow(ch.hWnd, SW_SHOW);
-    }
-}
-
-void SettingsWindow::ShowAllControls(WindowData* wd)
-{
-    for (auto& ch : wd->controlHandles) {
-        if (ch.hWnd && IsWindow(ch.hWnd) && (ch.origW > 0 || ch.origH > 0))
-            ShowWindow(ch.hWnd, SW_SHOW);
-    }
-}
-
 // Forward declarations
 static int CalcCandidatePreviewH(HDC hdc, const SettingsSnapshot& s, UINT dpi);
-
-// Navigation state <-> WindowData.
-static SettingsNav::NavState LoadNav(const SettingsWindow::WindowData* wd)
-{
-    SettingsNav::NavState n = {};
-    n.selectedModeIndex = wd->selectedModeIndex;
-    n.hoverSidebarIndex = wd->hoverSidebarIndex;
-    n.navLevel = wd->navLevel;
-    n.currentCardIndex = wd->currentCardIndex;
-    n.hoverRowIndex = wd->hoverRowIndex;
-    n.currentMode = (int)wd->currentMode;
-    n.scrollPos = wd->scrollPos;
-    n.scrollMax = wd->scrollMax;
-    n.totalContentHeight = wd->totalContentHeight;
-    n.sidebarCollapsed = wd->sidebarCollapsed ? 1 : 0;
-    n.sidebarNarrowMode = wd->sidebarNarrowMode ? 1 : 0;
-    n.colorGridExpanded = wd->colorGridExpanded ? 1 : 0;
-    memcpy(n.cardExpanded, wd->cardExpanded, sizeof(n.cardExpanded));
-    return n;
-}
-
-static void StoreNav(SettingsWindow::WindowData* wd, const SettingsNav::NavState& n)
-{
-    wd->selectedModeIndex = n.selectedModeIndex;
-    wd->hoverSidebarIndex = n.hoverSidebarIndex;
-    wd->navLevel = n.navLevel;
-    wd->currentCardIndex = n.currentCardIndex;
-    wd->hoverRowIndex = n.hoverRowIndex;
-    wd->currentMode = (IME_MODE)n.currentMode;
-    wd->scrollPos = n.scrollPos;
-    wd->scrollMax = n.scrollMax;
-    wd->totalContentHeight = n.totalContentHeight;
-    wd->sidebarCollapsed = n.sidebarCollapsed != 0;
-    wd->sidebarNarrowMode = n.sidebarNarrowMode != 0;
-    wd->colorGridExpanded = n.colorGridExpanded != 0;
-    memcpy(wd->cardExpanded, n.cardExpanded, sizeof(wd->cardExpanded));
-}
-
-// Feed one event to SettingsNav, then carry out its effects in order.
-void SettingsWindow::RunNav(HWND hMain, WindowData* wd, SettingsNav::NavEvent ev)
-{
-    HWND hContent = wd->hContentArea;
-    ev.dpi = CConfig::GetDpiForHwnd(hMain);
-    ev.colorMode = wd->snapshot.colorMode;
-    HWND hSaveBtn = FindControl(wd, CTRL_CUSTOM_TABLE_SAVE);
-    ev.customTableDirty = (hSaveBtn && IsWindowEnabled(hSaveBtn)) ? 1 : 0;
-    ev.previewH = 0;
-    if (wd->navLevel == 1 && wd->selectedModeIndex < 4 && hContent) {
-        HDC hdcTmp = GetDC(hContent);
-        ev.previewH = CalcCandidatePreviewH(hdcTmp, wd->snapshot, ev.dpi);
-        ReleaseDC(hContent, hdcTmp);
-    }
-
-    SettingsNav::NavState nav = LoadNav(wd);
-    std::vector<SettingsNav::NavEffect> effects;
-    SettingsNav::Handle(nav, ev, effects);
-    StoreNav(wd, nav);
-
-    for (const auto& fx : effects) {
-        switch (fx.kind) {
-        case SettingsNav::FX_INVALIDATE_MAIN:
-            InvalidateRect(hMain, fx.hasRect ? &fx.rc : nullptr, fx.erase ? TRUE : FALSE);
-            break;
-        case SettingsNav::FX_INVALIDATE_CONTENT:
-            if (hContent) InvalidateRect(hContent, nullptr, fx.erase ? TRUE : FALSE);
-            break;
-        case SettingsNav::FX_TRACK_LEAVE_MAIN:
-        case SettingsNav::FX_TRACK_LEAVE_CONTENT: {
-            TRACKMOUSEEVENT tme = { sizeof(tme), TME_LEAVE,
-                fx.kind == SettingsNav::FX_TRACK_LEAVE_MAIN ? hMain : hContent };
-            TrackMouseEvent(&tme);
-            break;
-        }
-        case SettingsNav::FX_SCROLL_CHANGED:
-            UpdateScrollInfo(wd);
-            RepositionControlsForScroll(wd);
-            RedrawWindow(hContent, nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
-            break;
-        case SettingsNav::FX_SHOW_ALL_CONTROLS:
-            ShowAllControls(wd);
-            break;
-        case SettingsNav::FX_HIDE_ALL_CONTROLS:
-            for (auto& ch : wd->controlHandles)
-                if (ch.hWnd && IsWindow(ch.hWnd)) ShowWindow(ch.hWnd, SW_HIDE);
-            break;
-        case SettingsNav::FX_SWITCH_MODE:
-            SwitchMode(hMain, wd, (IME_MODE)fx.arg);
-            break;
-        case SettingsNav::FX_REBUILD:
-            RebuildContentArea(hMain, wd);
-            break;
-        case SettingsNav::FX_TOGGLE_CONTROL: {
-            SettingsControlId id = (SettingsControlId)fx.arg;
-            HWND hCtrl = FindControl(wd, id);
-            if (hCtrl) {
-                BOOL checked = (SendMessage(hCtrl, BM_GETCHECK, 0, 0) == BST_CHECKED);
-                bool newState = !checked;
-                SendMessage(hCtrl, BM_SETCHECK, newState ? BST_CHECKED : BST_UNCHECKED, 0);
-                SettingsModel::SyncToggleToSnapshot(wd->snapshot, id, newState);
-                ApplyAndSave(wd);
-                InvalidateRect(hContent, nullptr, FALSE);
-                UpdateWindow(hContent);
-            }
-            break;
-        }
-        case SettingsNav::FX_ASK_SAVE_THEN_BACK: {
-            // 自建詞庫 has unsaved changes: ask before leaving the sub-page.
-            int result = ThemedMessageBox(hMain,
-                L"自建詞庫尚未儲存，是否要儲存後離開？\n\n[是] 儲存並離開\n[否] 不儲存離開\n[取消] 繼續編輯",
-                L"自建詞庫未儲存", MB_YESNOCANCEL | MB_ICONQUESTION);
-            if (result == IDYES) {
-                HWND hSave = FindControl(wd, CTRL_CUSTOM_TABLE_SAVE);
-                SendMessageW(hContent, WM_COMMAND,
-                    MAKEWPARAM(3000 + CTRL_CUSTOM_TABLE_SAVE, BN_CLICKED), (LPARAM)hSave);
-            }
-            if (result == IDYES || result == IDNO) {
-                SettingsNav::NavEvent back = {};
-                back.kind = SettingsNav::EV_BACK;
-                RunNav(hMain, wd, back);
-            }
-            break;
-        }
-        case SettingsNav::FX_MOVE_CONTENT:
-            MoveWindow(hContent, fx.rc.left, fx.rc.top, fx.rc.right, fx.rc.bottom, FALSE);
-            break;
-        case SettingsNav::FX_SET_FOCUS_CONTENT:
-            SetFocus(hContent);
-            break;
-        case SettingsNav::FX_UPDATE_CONTENT:
-            UpdateWindow(hContent);
-            break;
-        case SettingsNav::FX_UPDATE_SCROLL_INFO:
-            UpdateScrollInfo(wd);
-            break;
-        default:
-            break;
-        }
-    }
-}
 
 // ============================================================================
 // Shared geometry helpers — used by ALL paint paths and RebuildContentArea
@@ -453,108 +270,227 @@ HWND SettingsWindow::FindControl(WindowData* wd, SettingsControlId id)
 void SettingsWindow::ApplyAndSave(WindowData* wd)
 {
     SettingsModel::ApplyToConfig(wd->snapshot);
-    CConfig::WriteConfig(wd->currentMode);
+    CConfig::WriteConfig(wd->Mode());
 }
 
 static void RegisterContentClass(HINSTANCE hInstance);
 
-// Create / theme / dpi: SettingsFrame::Handle decides, this carries out the
-// effects. The dark flag is stored first (CreateThemeBrushes reads it).
-void SettingsWindow::RunFrame(HWND hWnd, WindowData* wd, SettingsFrame::FrameEvent ev)
-{
-    ev.systemDark = CConfig::IsSystemDarkTheme() ? 1 : 0;
-    ev.hasContent = wd->hContentArea ? 1 : 0;
-    SettingsFrame::FrameState st = { wd->isDarkTheme ? 1 : 0 };
-    std::vector<SettingsFrame::FrameEffect> effects;
-    SettingsFrame::Handle(st, ev, effects);
-    wd->isDarkTheme = st.isDark != 0;
+// ============================================================================
+// Navigation, frame, mode switch, rebuild: SettingsDriver decides, this
+// carries out. hMain is the main window.
+// ============================================================================
+class SettingsWindow::DriverHost : public SettingsDriver::Host {
+public:
+    HWND hMain;
+    WindowData* wd;
+    DriverHost(HWND main, WindowData* w) : hMain(main), wd(w) {}
 
-    for (const auto& fx : effects) {
-        switch (fx.kind) {
-        case SettingsFrame::FX_SET_DARK_TITLE: {
-            BOOL useDark = fx.arg ? TRUE : FALSE;
-            DwmSetWindowAttribute(hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &useDark, sizeof(BOOL));
-            break;
-        }
-        case SettingsFrame::FX_CAPTION_COLOR: {
-            COLORREF cbg = wd->theme.contentBg;
-            DwmSetWindowAttribute(hWnd, (DWORD)fx.arg, &cbg, sizeof(COLORREF));
-            break;
-        }
-        case SettingsFrame::FX_THEME_BRUSHES:
-            CreateThemeBrushes(wd);
-            break;
-        case SettingsFrame::FX_CREATE_FONTS:
-            CreateFonts(wd, fx.arg);
-            break;
-        case SettingsFrame::FX_DESTROY_FONTS:
-            DestroyFonts(wd);
-            break;
-        case SettingsFrame::FX_INVALIDATE_MAIN:
-            InvalidateRect(hWnd, nullptr, TRUE);
-            break;
-        case SettingsFrame::FX_INVALIDATE_CONTENT:
-            if (wd->hContentArea) InvalidateRect(wd->hContentArea, nullptr, TRUE);
-            break;
-        case SettingsFrame::FX_CONTENT_THEME:
-            if (wd->hContentArea)
-                SetWindowTheme(wd->hContentArea, fx.arg ? L"DarkMode_Explorer" : nullptr, nullptr);
-            break;
-        case SettingsFrame::FX_REBUILD:
-            RebuildContentArea(hWnd, wd);
-            break;
-        case SettingsFrame::FX_SET_POS:
-            SetWindowPos(hWnd, nullptr, fx.rc.left, fx.rc.top, fx.rc.right, fx.rc.bottom,
-                SWP_NOZORDER | SWP_NOACTIVATE);
-            break;
-        case SettingsFrame::FX_CREATE_CONTENT:
-            RegisterContentClass(wd->hInstance);
-            wd->hContentArea = CreateWindowExW(0, CONTENT_WND_CLASS, nullptr,
-                WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_CLIPCHILDREN,
-                fx.rc.left, fx.rc.top, fx.rc.right, fx.rc.bottom,
-                hWnd, (HMENU)IDC_CONTENT_AREA, wd->hInstance, nullptr);
-            SetWindowLongPtr(wd->hContentArea, GWLP_USERDATA, (LONG_PTR)wd);
-            break;
-        default:
-            break;
-        }
+    HWND Content() const { return wd->hContentArea; }
+    HWND ControlHwnd(int i) const
+    {
+        return (i >= 0 && i < (int)wd->controlHandles.size()) ? wd->controlHandles[i].hWnd : nullptr;
     }
-}
 
-// ============================================================================
-// TODO: The rest of the clean implementation follows
-// Each function will be written step by step
-// ============================================================================
+    UINT MainDpi() override { return CConfig::GetDpiForHwnd(hMain); }
+    UINT ContentDpi() override { return CConfig::GetDpiForHwnd(Content()); }
+    bool HasContent() override { return Content() != nullptr; }
+    void MainClient(int& w, int& h) override
+    {
+        RECT rc; GetClientRect(hMain, &rc);
+        w = rc.right;
+        h = rc.bottom;
+    }
+    int ContentClientHeight() override
+    {
+        RECT rc = {};
+        if (Content()) GetClientRect(Content(), &rc);
+        return rc.bottom;
+    }
+    int VScrollWidth() override { return GetSystemMetrics(SM_CXVSCROLL); }
+    bool SystemDark() override { return CConfig::IsSystemDarkTheme() != FALSE; }
+    int ColorMode() override { return wd->snapshot.colorMode; }
+    bool SaveEnabled() override
+    {
+        HWND hSave = FindControl(wd, CTRL_CUSTOM_TABLE_SAVE);
+        return hSave && IsWindowEnabled(hSave);
+    }
+    int PreviewHeight(UINT dpi) override
+    {
+        if (!Content()) return 0;
+        HDC hdc = GetDC(Content());
+        int h = CalcCandidatePreviewH(hdc, wd->snapshot, dpi);
+        ReleaseDC(Content(), hdc);
+        return h;
+    }
 
-// Placeholder stubs — will be replaced one by one
-void SettingsWindow::SwitchMode(HWND hWnd, WindowData* wd, IME_MODE mode)
-{
-    bool modeChanged = (mode != wd->currentMode);
-    wd->currentMode = mode;
-    wd->selectedModeIndex = ModeToIndex(mode);
-    wd->navLevel = 0;
-    // Initialize expand state from layout defaultExpanded
+    int ControlCount() override { return (int)wd->controlHandles.size(); }
+    SettingsDriver::ControlInfo Control(int i) override
+    {
+        SettingsDriver::ControlInfo c = {};
+        if (i < 0 || i >= (int)wd->controlHandles.size()) return c;
+        const auto& ch = wd->controlHandles[i];
+        bool alive = ch.hWnd && IsWindow(ch.hWnd);
+        c.id = (int)ch.id;
+        c.exists = ch.hWnd ? 1 : 0;
+        c.alive = alive ? 1 : 0;
+        c.visible = (alive && IsWindowVisible(ch.hWnd)) ? 1 : 0;
+        c.x = ch.origX;
+        c.y = ch.origY;
+        c.w = ch.origW;
+        c.h = ch.origH;
+        return c;
+    }
+    void MoveControl(int i, int x, int y, int w, int h) override
+    {
+        if (HWND hc = ControlHwnd(i)) SetWindowPos(hc, nullptr, x, y, w, h, SWP_NOZORDER | SWP_NOACTIVATE);
+    }
+    void ShowControl(int i, bool show) override
+    {
+        if (HWND hc = ControlHwnd(i)) ShowWindow(hc, show ? SW_SHOW : SW_HIDE);
+    }
+    void ResetControlRegion(int i) override
+    {
+        if (HWND hc = ControlHwnd(i)) SetWindowRgn(hc, nullptr, TRUE);
+    }
+    bool ControlChecked(int i) override
+    {
+        HWND hc = ControlHwnd(i);
+        return hc && SendMessage(hc, BM_GETCHECK, 0, 0) == BST_CHECKED;
+    }
+    void SetControlChecked(int i, bool on) override
+    {
+        if (HWND hc = ControlHwnd(i)) SendMessage(hc, BM_SETCHECK, on ? BST_CHECKED : BST_UNCHECKED, 0);
+    }
+    void DestroyControls() override
+    {
+        for (auto& ch : wd->controlHandles)
+            if (ch.hWnd) DestroyWindow(ch.hWnd);
+        wd->controlHandles.clear();
+    }
+    void CreateControls(const SettingsWindowLayout::PlanInput& in, int cardW) override
     {
         int imeCount = 0;
         const LayoutCard* imeCards = GetIMEPageLayout(&imeCount);
         int ltCount = 0;
         const LayoutCard* ltCards = GetLoadTablePageLayout(&ltCount);
-        SettingsLifecycle::DefaultExpanded(imeCards, imeCount, ltCards, ltCount, wd->cardExpanded);
+        SettingsWindow::CreateControls(wd, SettingsControls::BuildSpecs(in, cardW, imeCards, imeCount, ltCards, ltCount));
     }
-    // Re-enumerate and reload only on actual mode change.
-    // SetIMEMode() filters self from the list but skips if mode is unchanged.
-    // Don't re-enumerate when staying on the same mode (e.g., sidebar click from
-    // Level 1 back to Level 0) — the list is already correctly filtered.
-    if (modeChanged)
-        CConfig::EnumerateReverseConversionProviders(1028);
-    CConfig::LoadConfig(mode);
-    CConfig::LoadColorsForMode((IME_COLOR_MODE)CConfig::GetColorMode());
-    wd->snapshot = SettingsModel::LoadFromConfig();
-    // Recreate composition engine for the new mode (custom table validation)
-    SettingsModel::DestroyEngine(wd->pEngine);
-    wd->pEngine = SettingsModel::CreateEngine(mode);
-    RebuildContentArea(hWnd, wd);
-    InvalidateRect(hWnd, nullptr, TRUE);
+    void Populate() override { PopulateControls(wd); }
+
+    void InvalidateMain(const RECT* rc, bool erase) override { InvalidateRect(hMain, rc, erase ? TRUE : FALSE); }
+    void InvalidateContent(bool erase) override
+    {
+        if (Content()) InvalidateRect(Content(), nullptr, erase ? TRUE : FALSE);
+    }
+    void TrackLeave(bool content) override
+    {
+        HWND target = content ? Content() : hMain;
+        if (!target) return;
+        TRACKMOUSEEVENT tme = { sizeof(tme), TME_LEAVE, target };
+        TrackMouseEvent(&tme);
+    }
+    void SetScrollInfo(int total, int page, int pos) override
+    {
+        if (!Content()) return;
+        SCROLLINFO si = { sizeof(si), SIF_RANGE | SIF_PAGE | SIF_POS, 0, total, (UINT)page, pos };
+        ::SetScrollInfo(Content(), SB_VERT, &si, TRUE);
+    }
+    void RedrawContent() override
+    {
+        if (Content()) RedrawWindow(Content(), nullptr, nullptr, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN);
+    }
+    void UpdateContent() override
+    {
+        if (Content()) UpdateWindow(Content());
+    }
+    void MoveContent(int x, int y, int w, int h) override
+    {
+        if (Content()) MoveWindow(Content(), x, y, w, h, FALSE);
+    }
+    void FocusContent() override
+    {
+        if (Content()) SetFocus(Content());
+    }
+    void CreateContent(int x, int y, int w, int h) override
+    {
+        RegisterContentClass(wd->hInstance);
+        wd->hContentArea = CreateWindowExW(0, CONTENT_WND_CLASS, nullptr,
+            WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_CLIPCHILDREN,
+            x, y, w, h, hMain, (HMENU)IDC_CONTENT_AREA, wd->hInstance, nullptr);
+        SetWindowLongPtr(wd->hContentArea, GWLP_USERDATA, (LONG_PTR)wd);
+    }
+    void ContentTheme(bool dark) override
+    {
+        if (Content()) SetWindowTheme(Content(), dark ? L"DarkMode_Explorer" : nullptr, nullptr);
+    }
+    void SetMainPos(int x, int y, int w, int h) override
+    {
+        SetWindowPos(hMain, nullptr, x, y, w, h, SWP_NOZORDER | SWP_NOACTIVATE);
+    }
+    void SetDarkTitle(bool dark) override
+    {
+        BOOL useDark = dark ? TRUE : FALSE;
+        DwmSetWindowAttribute(hMain, DWMWA_USE_IMMERSIVE_DARK_MODE, &useDark, sizeof(BOOL));
+    }
+    void SetCaptionColor(int attribute) override
+    {
+        COLORREF cbg = wd->theme.contentBg;
+        DwmSetWindowAttribute(hMain, (DWORD)attribute, &cbg, sizeof(COLORREF));
+    }
+    void ThemeBrushes() override { CreateThemeBrushes(wd); }
+    void CreateFonts(int dpi) override { SettingsWindow::CreateFonts(wd, dpi); }
+    void DestroyFonts() override { SettingsWindow::DestroyFonts(wd); }
+
+    int AskSaveBeforeBack() override
+    {
+        return ThemedMessageBox(hMain,
+            L"自建詞庫尚未儲存，是否要儲存後離開？\n\n[是] 儲存並離開\n[否] 不儲存離開\n[取消] 繼續編輯",
+            L"自建詞庫未儲存", MB_YESNOCANCEL | MB_ICONQUESTION);
+    }
+    void ClickSave() override
+    {
+        HWND hSave = FindControl(wd, CTRL_CUSTOM_TABLE_SAVE);
+        SendMessageW(Content(), WM_COMMAND, MAKEWPARAM(3000 + CTRL_CUSTOM_TABLE_SAVE, BN_CLICKED), (LPARAM)hSave);
+    }
+
+    void ToggleSnapshot(int id, bool on) override
+    {
+        SettingsModel::SyncToggleToSnapshot(wd->snapshot, (SettingsControlId)id, on);
+    }
+    void ApplyAndSave() override { SettingsWindow::ApplyAndSave(wd); }
+    void EnumerateReverseProviders() override { CConfig::EnumerateReverseConversionProviders(1028); }
+    void LoadConfig(int mode) override { CConfig::LoadConfig((IME_MODE)mode); }
+    void LoadColors() override { CConfig::LoadColorsForMode((IME_COLOR_MODE)CConfig::GetColorMode()); }
+    void LoadSnapshot() override { wd->snapshot = SettingsModel::LoadFromConfig(); }
+    void RecreateEngine(int mode) override
+    {
+        SettingsModel::DestroyEngine(wd->pEngine);
+        wd->pEngine = SettingsModel::CreateEngine((IME_MODE)mode);
+    }
+};
+
+void SettingsWindow::RunNav(HWND hMain, WindowData* wd, SettingsNav::NavEvent ev)
+{
+    DriverHost host(hMain, wd);
+    SettingsDriver::Nav(host, wd, ev);
+}
+
+void SettingsWindow::RunFrame(HWND hWnd, WindowData* wd, SettingsFrame::FrameEvent ev)
+{
+    DriverHost host(hWnd, wd);
+    SettingsDriver::Frame(host, wd, ev);
+}
+
+void SettingsWindow::SwitchMode(HWND hWnd, WindowData* wd, IME_MODE mode)
+{
+    DriverHost host(hWnd, wd);
+    SettingsDriver::SwitchMode(host, wd, (int)mode);
+}
+
+void SettingsWindow::RebuildContentArea(HWND hWnd, WindowData* wd)
+{
+    DriverHost host(hWnd, wd);
+    SettingsDriver::Rebuild(host, wd);
 }
 
 // Everything the painters read. hPaint is the window painted into (its client
@@ -579,19 +515,19 @@ static SettingsWindowPaint::PaintContext MakePaintContext(HWND hPaint, HWND hMai
     RECT rc; GetClientRect(hPaint, &rc);
     ctx.clientW = rc.right;
     ctx.clientH = rc.bottom;
-    ctx.cardW = CalcCardW(hMain, ctx.dpi, !wd->sidebarNarrowMode && !wd->sidebarCollapsed);
+    ctx.cardW = CalcCardW(hMain, ctx.dpi, !wd->nav.sidebarNarrowMode && !wd->nav.sidebarCollapsed);
     ctx.sysFace = GetSysColor(COLOR_3DFACE);
-    ctx.selectedModeIndex = wd->selectedModeIndex;
-    ctx.hoverSidebarIndex = wd->hoverSidebarIndex;
-    ctx.navLevel = wd->navLevel;
-    ctx.currentCardIndex = wd->currentCardIndex;
-    ctx.hoverRowIndex = wd->hoverRowIndex;
-    ctx.currentMode = (int)wd->currentMode;
-    ctx.scrollPos = wd->scrollPos;
-    ctx.sidebarNarrowMode = wd->sidebarNarrowMode ? 1 : 0;
-    ctx.sidebarCollapsed = wd->sidebarCollapsed ? 1 : 0;
-    ctx.colorGridExpanded = wd->colorGridExpanded ? 1 : 0;
-    memcpy(ctx.cardExpanded, wd->cardExpanded, sizeof(ctx.cardExpanded));
+    ctx.selectedModeIndex = wd->nav.selectedModeIndex;
+    ctx.hoverSidebarIndex = wd->nav.hoverSidebarIndex;
+    ctx.navLevel = wd->nav.navLevel;
+    ctx.currentCardIndex = wd->nav.currentCardIndex;
+    ctx.hoverRowIndex = wd->nav.hoverRowIndex;
+    ctx.currentMode = (int)wd->Mode();
+    ctx.scrollPos = wd->nav.scrollPos;
+    ctx.sidebarNarrowMode = wd->nav.sidebarNarrowMode ? 1 : 0;
+    ctx.sidebarCollapsed = wd->nav.sidebarCollapsed ? 1 : 0;
+    ctx.colorGridExpanded = wd->nav.colorGridExpanded ? 1 : 0;
+    memcpy(ctx.cardExpanded, wd->nav.cardExpanded, sizeof(ctx.cardExpanded));
     // Toggle state of the first control with each id (FindControl order).
     bool seen[SettingsWindowPaint::kToggleSlots] = {};
     for (auto& ch : wd->controlHandles) {
@@ -622,7 +558,7 @@ void SettingsWindow::SetupRichEditor(WindowData* wd, HWND hRE)
     // bypasses the cap but typing is then rejected. Raise it to 100 MB.
     SendMessageW(hRE, EM_EXLIMITTEXT, 0, (LPARAM)(100 * 1024 * 1024));
     SendMessage(hRE, WM_SETFONT, (WPARAM)wd->hFontBody, TRUE);
-    if (wd->isDarkTheme) {
+    if (wd->isDark) {
         SetWindowTheme(hRE, L"DarkMode_Explorer", nullptr);
         SendMessage(hRE, EM_SETBKGNDCOLOR, 0, (LPARAM)wd->theme.cardBg);
         CHARFORMAT2W cf2 = {};
@@ -637,7 +573,7 @@ void SettingsWindow::LoadRichEditor(WindowData* wd, HWND hRE)
 {
     // Load the saved custom table with the encoding-aware reader (issue #130).
     WCHAR txtPath[MAX_PATH] = {};
-    GetCustomTableTxtPath(wd->currentMode, txtPath, MAX_PATH);
+    GetCustomTableTxtPath(wd->Mode(), txtPath, MAX_PATH);
     if (PathFileExistsW(txtPath)) {
         CHARFORMAT2W cf = {};
         cf.cbSize = sizeof(cf);
@@ -685,73 +621,14 @@ void SettingsWindow::CreateControls(WindowData* wd, const std::vector<SettingsCo
         }
         if (h && spec.setFont)
             SendMessage(h, WM_SETFONT, (WPARAM)wd->hFontBody, TRUE);
-        if (h && wd->isDarkTheme && spec.darkTheme == SettingsControls::DARK_CFD)
+        if (h && (wd->isDark != 0) && spec.darkTheme == SettingsControls::DARK_CFD)
             SetWindowTheme(h, L"DarkMode_CFD", nullptr);
-        else if (h && wd->isDarkTheme && spec.darkTheme == SettingsControls::DARK_EXPLORER)
+        else if (h && (wd->isDark != 0) && spec.darkTheme == SettingsControls::DARK_EXPLORER)
             SetWindowTheme(h, L"DarkMode_Explorer", nullptr);
         AddControl(wd, (SettingsControlId)spec.ctrlId, h, spec.add.left, spec.add.top, spec.add.right, spec.add.bottom, spec.visH);
     }
 }
 
-void SettingsWindow::RebuildContentArea(HWND hWnd, WindowData* wd)
-{
-    if (!wd->hContentArea) return;
-
-    // Destroy all existing child controls
-    for (auto& ch : wd->controlHandles) {
-        if (ch.hWnd) DestroyWindow(ch.hWnd);
-    }
-    wd->controlHandles.clear();
-
-    // Position content area based on navLevel:
-    // navLevel==1 (sub-page): start below the breadcrumb strip painted in main WndProc
-    // navLevel==0: start at y=0
-    bool sidebarTakesSpace = !wd->sidebarNarrowMode && !wd->sidebarCollapsed;
-    {
-        RECT rcMain; GetClientRect(hWnd, &rcMain);
-        UINT dpiPos = CConfig::GetDpiForHwnd(hWnd);
-        bool hasBc = (wd->navLevel == 1 && wd->selectedModeIndex < 4);
-        SettingsWindowLayout::CtrlRect rcArea = SettingsWindowLayout::ContentAreaRect(
-            rcMain.right, rcMain.bottom, dpiPos, sidebarTakesSpace, hasBc);
-        MoveWindow(wd->hContentArea, rcArea.x, rcArea.y, rcArea.w, rcArea.h, FALSE);
-    }
-
-    UINT dpi = CConfig::GetDpiForHwnd(hWnd);
-    int cardW = CalcCardW(hWnd, dpi, sidebarTakesSpace);
-
-    int imeCount = 0;
-    const LayoutCard* imeCards = GetIMEPageLayout(&imeCount);
-    int ltCount = 0;
-    const LayoutCard* ltCards = GetLoadTablePageLayout(&ltCount);
-
-    SettingsWindowLayout::PlanInput in = {};
-    in.dpi = dpi;
-    in.selectedModeIndex = wd->selectedModeIndex;
-    in.navLevel = wd->navLevel;
-    in.currentCardIndex = wd->currentCardIndex;
-    in.modeMask = SettingsModel::GetModeBitmask(wd->currentMode);
-    in.colorMode = wd->snapshot.colorMode;
-    in.gridExpanded = wd->colorGridExpanded ? 1 : 0;
-    in.previewH = 0;
-    if (wd->navLevel == 1 && wd->selectedModeIndex < 4) {
-        HDC hdcTmp = GetDC(wd->hContentArea);
-        in.previewH = CalcCandidatePreviewH(hdcTmp, wd->snapshot, dpi);
-        ReleaseDC(wd->hContentArea, hdcTmp);
-    }
-    memcpy(in.expanded, wd->cardExpanded, sizeof(in.expanded));
-
-    std::vector<SettingsWindowLayout::Placement> placements;
-    SettingsWindowLayout::PlanResult plan = SettingsWindowLayout::PlanControls(
-        in, imeCards, imeCount, ltCards, ltCount, placements);
-
-    CreateControls(wd, SettingsControls::BuildSpecs(in, cardW, imeCards, imeCount, ltCards, ltCount));
-    if (plan.setTotal) wd->totalContentHeight = plan.totalHeight;
-    if (plan.populate) PopulateControls(wd);
-
-    wd->scrollPos = 0;
-    UpdateScrollInfo(wd);
-    InvalidateRect(wd->hContentArea, nullptr, TRUE);
-}
 // Fill the controls from the snapshot (SettingsPopulate.*).
 static HWND FindControlThunk(void* ctx, SettingsControlId id)
 {
@@ -957,7 +834,7 @@ LRESULT SettingsWindow::Dispatch(HWND hWnd, bool content, UINT msg, WPARAM wPara
                 HBITMAP hOldBmp = (HBITMAP)SelectObject(hdc, hBmp);
 
                 // The open narrow sidebar is painted over the page: hide the child controls.
-                if (wd->sidebarNarrowMode && !wd->sidebarCollapsed) {
+                if (wd->nav.sidebarNarrowMode && !wd->nav.sidebarCollapsed) {
                     for (auto& ch : wd->controlHandles)
                         if (ch.hWnd && IsWindow(ch.hWnd)) ShowWindow(ch.hWnd, SW_HIDE);
                 }
@@ -1024,7 +901,7 @@ LRESULT SettingsWindow::Dispatch(HWND hWnd, bool content, UINT msg, WPARAM wPara
         }
         bool CtlColor(HDC hdc, LRESULT& brush) override
         {
-            if (!SettingsOwnerDraw::CtlColor(hdc, wd->isDarkTheme, wd->theme, &wd->hBrushCardBg)) return false;
+            if (!SettingsOwnerDraw::CtlColor(hdc, (wd->isDark != 0), wd->theme, &wd->hBrushCardBg)) return false;
             brush = (LRESULT)wd->hBrushCardBg;
             return true;
         }
@@ -1175,7 +1052,7 @@ void SettingsWindow::HandleCommand(HWND hWnd, WindowData* wd, WPARAM wParam, LPA
         {
             wchar_t errSummary[1024] = {};
             int first = 0;
-            int count = ValidateCustomTableBuffer(text.c_str(), text.size(), wd->currentMode,
+            int count = ValidateCustomTableBuffer(text.c_str(), text.size(), wd->Mode(),
                 wd->snapshot.maxCodes, wd->pEngine, &first, errSummary, _countof(errSummary), maxReport);
             firstErrorLine = first;
             summary = errSummary;
@@ -1186,7 +1063,7 @@ void SettingsWindow::HandleCommand(HWND hWnd, WindowData* wd, WPARAM wParam, LPA
     SettingsCommand::CommandEvent ev = {};
     ev.notifyCode = HIWORD(wParam);
     ev.ctrlId = LOWORD(wParam);
-    ev.mode = (int)wd->currentMode;
+    ev.mode = (int)wd->Mode();
     HWND hSender = (HWND)lParam;
     if (ev.notifyCode == CBN_SELCHANGE && hSender) {
         ev.comboSel = (int)SendMessage(hSender, CB_GETCURSEL, 0, 0);
@@ -1197,6 +1074,6 @@ void SettingsWindow::HandleCommand(HWND hWnd, WindowData* wd, WPARAM wParam, LPA
         GetWindowTextW(hSender, ev.editText, 16);
 
     WindowHost host(hWnd, wd, hSender);
-    SettingsCommand::Handle(host, wd->snapshot, wd->colorGridExpanded, ev);
+    SettingsCommand::Handle(host, wd->snapshot, wd->nav.colorGridExpanded, ev);
 }
 

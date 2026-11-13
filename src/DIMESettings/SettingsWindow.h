@@ -13,6 +13,7 @@
 #include "SettingsControls.h"
 #include "SettingsLifecycle.h"
 #include "SettingsFrame.h"
+#include "SettingsDriver.h"
 
 // Window class name for FindWindow / single-instance support
 constexpr wchar_t SETTINGS_WND_CLASS[] = L"DIMESettingsMainClass";
@@ -42,31 +43,17 @@ public:
     static LRESULT CALLBACK ContentWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 public:
-    // Instance data stored via GWLP_USERDATA. Public so file-static helpers
-    // in SettingsWindow.cpp (foreground/background validator, etc.) can hold
+    // Public so file-static helpers in SettingsWindow.cpp can hold
     // WindowData* parameters.
-    struct WindowData {
+    // Instance data stored via GWLP_USERDATA. The navigation fields
+    // (nav.selectedModeIndex, nav.navLevel, nav.scrollPos, ...) and the dark
+    // flag are SettingsDriver::State, which the driver reads and writes in place.
+    struct WindowData : SettingsDriver::State {
         HINSTANCE hInstance;
-        bool isDarkTheme;
         bool micaActive;
 
         // Theme colors (from system APIs, refreshed on WM_THEMECHANGED)
         ThemeColors theme;
-
-        // Sidebar state
-        int selectedModeIndex;    // 0-3 = IME mode, 5 = 載入碼表
-        int hoverSidebarIndex;    // -1 = none
-
-        // Navigation
-        int navLevel;             // 0 = Level 1 (category list), 1 = Level 2 (sub-page)
-        int currentCardIndex;     // Which card in s_imePageLayout[] is showing in Level 2
-        bool cardExpanded[16];    // Which expandable cards are open (Level 1 ∨ sections)
-
-        // Hover
-        int hoverRowIndex;        // -1 = none; index into current layout.controls
-
-        // Current IME mode
-        IME_MODE currentMode;
 
         // Settings snapshot
         SettingsSnapshot snapshot;
@@ -74,22 +61,13 @@ public:
         // Composition engine for custom table validation (ValidateCompositionKeyCharFull)
         CCompositionProcessorEngine* pEngine;
 
-        // Total content height (for scroll)
-        int totalContentHeight;
-
-        // Cached preview height (computed in RebuildContentArea, reused in PaintSettingsDetail)
-        // cachedPreviewH removed — preview is now a RowType::CandidatePreview card
-
         // Content area
         HWND hContentArea;
-        int scrollPos;
-        int scrollMax;
 
         // Custom table editor state (EN_CHANGE smart validation tracking)
         int ctLastLineCount;
         int ctLastEditedLine;
         int ctKeystrokeCount;
-
 
         // GDI resources
         HBRUSH hBrushSidebarBg;
@@ -102,9 +80,6 @@ public:
         HFONT hFontMDL2;       // Segoe MDL2 Assets — small, for chevrons
         HFONT hFontMDL2Icon;   // Segoe MDL2 Assets — large, for row icons
         bool hasMDL2;          // true if Segoe MDL2 Assets is installed (Win10+)
-        bool colorGridExpanded; // true = color swatches visible in custom mode
-        bool sidebarCollapsed; // true = sidebar hidden when window is narrow
-        bool sidebarNarrowMode; // true = window is in narrow mode (< collapseBreak)
 
         // Win32 child controls
         struct ControlHandle {
@@ -116,25 +91,26 @@ public:
         };
         std::vector<ControlHandle> controlHandles;
 
-        WindowData() : hInstance(nullptr), isDarkTheme(false), micaActive(false),
-            theme{}, selectedModeIndex(0), hoverSidebarIndex(-1),
-            navLevel(0), currentCardIndex(0), hoverRowIndex(-1),
-            currentMode(IME_MODE::IME_MODE_DAYI), snapshot{}, pEngine(nullptr),
-            hContentArea(nullptr), scrollPos(0), scrollMax(0),
+        WindowData() : SettingsDriver::State{}, hInstance(nullptr), micaActive(false),
+            theme{}, snapshot{}, pEngine(nullptr), hContentArea(nullptr),
             ctLastLineCount(0), ctLastEditedLine(-1), ctKeystrokeCount(0),
             hBrushSidebarBg(nullptr), hBrushContentBg(nullptr), hBrushCardBg(nullptr),
             hFontTitle(nullptr), hFontCardHeader(nullptr), hFontBody(nullptr), hFontDesc(nullptr),
-            hFontMDL2(nullptr), hFontMDL2Icon(nullptr), hasMDL2(false), colorGridExpanded(true), sidebarCollapsed(false), sidebarNarrowMode(false)
+            hFontMDL2(nullptr), hFontMDL2Icon(nullptr), hasMDL2(false)
         {
-            memset(cardExpanded, 0, sizeof(cardExpanded));
-            totalContentHeight = 0;
-            // cachedPreviewH removed
+            nav.hoverSidebarIndex = -1;
+            nav.hoverRowIndex = -1;
+            nav.currentMode = (int)IME_MODE::IME_MODE_DAYI;
+            nav.colorGridExpanded = 1;   // color swatches visible in custom mode
         }
+        IME_MODE Mode() const { return (IME_MODE)nav.currentMode; }
     };
 
     // Helpers (internal — but FindControl is needed by file-static helpers
     // in SettingsWindow.cpp for the FG/BG validator, so it stays public).
 private:
+    // SettingsDriver::Host over the main window (SettingsWindow.cpp).
+    class DriverHost;
     static void SwitchMode(HWND hWnd, WindowData* wd, IME_MODE mode);
     static void RebuildContentArea(HWND hWnd, WindowData* wd);
     static void RunFrame(HWND hWnd, WindowData* wd, SettingsFrame::FrameEvent ev);
@@ -148,9 +124,6 @@ private:
     static void LoadRichEditor(WindowData* wd, HWND hRE);
     static void RunNav(HWND hMain, WindowData* wd, SettingsNav::NavEvent ev);
     static void HandleCommand(HWND hWnd, WindowData* wd, WPARAM wParam, LPARAM lParam);
-    static void ShowAllControls(WindowData* wd);
-    static void UpdateScrollInfo(WindowData* wd);
-    static void RepositionControlsForScroll(WindowData* wd);
     static void ApplyAndSave(WindowData* wd);
     static void PopulateControls(WindowData* wd);
 public:

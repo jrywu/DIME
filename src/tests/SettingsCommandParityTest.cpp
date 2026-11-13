@@ -107,6 +107,7 @@ namespace
     public:
         const Script& sc;
         const SettingsSnapshot* snap = nullptr;
+        const int* grid = nullptr;      // the window's flag, read by Rebuild
         std::vector<std::wstring> log;
         explicit FakeHost(const Script& s) : sc(s) {}
 
@@ -177,7 +178,7 @@ namespace
         void SetColor(int i, COLORREF c) override { L(L"SetColor " + std::to_wstring(i) + L" " + std::to_wstring(c)); }
         void SaveColorsForMode(int m) override { L(L"SaveColors " + std::to_wstring(m)); }
         void SetReverseConversionSelection(int sel) override { L(L"Reverse " + std::to_wstring(sel)); }
-        void Rebuild() override { L(L"Rebuild"); }
+        void Rebuild() override { L(L"Rebuild grid=" + std::to_wstring(grid ? *grid : -1)); }
         void InvalidateContent(bool erase) override { L(L"Invalidate " + std::to_wstring(erase)); }
         void UpdateContent() override { L(L"Update"); }
         void InvalidateSwatch(int i) override { L(L"InvalidateSwatch " + std::to_wstring(i)); }
@@ -253,13 +254,15 @@ namespace DIMEUnitTests
                 wcscpy_s(ev.editText, edits[rng() % _countof(edits)]);
 
                 SettingsSnapshot start = RandomSnapshot(rng);
-                bool startGrid = (rng() & 1) != 0;
+                int startGrid = (int)(rng() & 1);
 
                 SettingsSnapshot sa = start, sb = start;
-                bool ga = startGrid, gb = startGrid;
+                int ga = startGrid, gb = startGrid;
                 FakeHost ha(sc), hb(sc);
                 ha.snap = &sa;
                 hb.snap = &sb;
+                ha.grid = &ga;
+                hb.grid = &gb;
                 SC::Cpp::Handle(ha, sa, ga, ev);
                 SC::HandleRust(hb, sb, gb, ev);
 

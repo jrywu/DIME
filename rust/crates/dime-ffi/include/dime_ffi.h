@@ -1591,6 +1591,70 @@ intptr_t dime_settings_main_proc(const DimeSettingsProcHostVtbl* vtbl, void* ctx
 intptr_t dime_settings_content_proc(const DimeSettingsProcHostVtbl* vtbl, void* ctx, uint32_t msg,
     uintptr_t wparam, intptr_t lparam);
 
+/* ---- Settings window driver (phase 5b-9b, dime-settings::driver)
+ * SettingsDriver::Cpp: carrying out navigation and frame effects (RunNav /
+ * RunFrame), SwitchMode, RebuildContentArea, the scroll bar, and moving
+ * controls on scroll. state is SettingsDriver::State (72 bytes), read and
+ * written in place (host calls may re-enter the driver); nav_ev is
+ * SettingsNav::NavEvent, frame_ev SettingsFrame::FrameEvent. control() writes
+ * a SettingsDriver::ControlInfo (32 bytes); create_controls gets a
+ * SettingsWindowLayout::PlanInput. invalidate_main's rect is RECT or null.
+ * The order must match SettingsDriver.cpp (kVtbl) and settings_window.rs
+ * (DriverHostVtbl). Host callbacks must not throw.
+ */
+typedef struct DimeSettingsDriverHostVtbl {
+    uint32_t (*main_dpi)(void* ctx);
+    uint32_t (*content_dpi)(void* ctx);
+    int32_t (*has_content)(void* ctx);
+    void (*main_client)(void* ctx, int32_t* w, int32_t* h);
+    int32_t (*content_client_height)(void* ctx);
+    int32_t (*vscroll_width)(void* ctx);
+    int32_t (*system_dark)(void* ctx);
+    int32_t (*color_mode)(void* ctx);
+    int32_t (*save_enabled)(void* ctx);
+    int32_t (*preview_height)(void* ctx, uint32_t dpi);
+    int32_t (*control_count)(void* ctx);
+    void (*control)(void* ctx, int32_t index, void* out_info);
+    void (*move_control)(void* ctx, int32_t index, int32_t x, int32_t y, int32_t w, int32_t h);
+    void (*show_control)(void* ctx, int32_t index, int32_t show);
+    void (*reset_control_region)(void* ctx, int32_t index);
+    int32_t (*control_checked)(void* ctx, int32_t index);
+    void (*set_control_checked)(void* ctx, int32_t index, int32_t on);
+    void (*destroy_controls)(void* ctx);
+    void (*create_controls)(void* ctx, const void* plan_input, int32_t card_w);
+    void (*populate)(void* ctx);
+    void (*invalidate_main)(void* ctx, const int32_t* rect4_or_null, int32_t erase);
+    void (*invalidate_content)(void* ctx, int32_t erase);
+    void (*track_leave)(void* ctx, int32_t content);
+    void (*set_scroll_info)(void* ctx, int32_t total, int32_t page, int32_t pos);
+    void (*redraw_content)(void* ctx);
+    void (*update_content)(void* ctx);
+    void (*move_content)(void* ctx, int32_t x, int32_t y, int32_t w, int32_t h);
+    void (*focus_content)(void* ctx);
+    void (*create_content)(void* ctx, int32_t x, int32_t y, int32_t w, int32_t h);
+    void (*content_theme)(void* ctx, int32_t dark);
+    void (*set_main_pos)(void* ctx, int32_t x, int32_t y, int32_t w, int32_t h);
+    void (*set_dark_title)(void* ctx, int32_t dark);
+    void (*set_caption_color)(void* ctx, int32_t attribute);
+    void (*theme_brushes)(void* ctx);
+    void (*create_fonts)(void* ctx, int32_t dpi);
+    void (*destroy_fonts)(void* ctx);
+    int32_t (*ask_save_before_back)(void* ctx);
+    void (*click_save)(void* ctx);
+    void (*toggle_snapshot)(void* ctx, int32_t id, int32_t on);
+    void (*apply_and_save)(void* ctx);
+    void (*enumerate_reverse_providers)(void* ctx);
+    void (*load_config)(void* ctx, int32_t mode);
+    void (*load_colors)(void* ctx);
+    void (*load_snapshot)(void* ctx);
+    void (*recreate_engine)(void* ctx, int32_t mode);
+} DimeSettingsDriverHostVtbl;
+void dime_settings_driver_nav(const DimeSettingsDriverHostVtbl* vtbl, void* ctx, void* state, const void* nav_ev);
+void dime_settings_driver_frame(const DimeSettingsDriverHostVtbl* vtbl, void* ctx, void* state,
+    const void* frame_ev);
+void dime_settings_driver_switch_mode(const DimeSettingsDriverHostVtbl* vtbl, void* ctx, void* state, int32_t mode);
+void dime_settings_driver_rebuild(const DimeSettingsDriverHostVtbl* vtbl, void* ctx, void* state);
+
 #ifdef __cplusplus
 }
 #endif

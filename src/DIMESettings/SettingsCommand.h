@@ -77,16 +77,17 @@ public:
 };
 
 // ---- Dispatched (Rust under DIME_USE_RUST_CONFIG) -------------------------
-// snapshot and colorGridExpanded are the window's; Handle updates them.
-void Handle(Host& host, SettingsSnapshot& snapshot, bool& colorGridExpanded, const CommandEvent& ev);
+// snapshot and colorGridExpanded are the window's; Handle updates them in place
+// (Host::Rebuild reads them during the call).
+void Handle(Host& host, SettingsSnapshot& snapshot, int& colorGridExpanded, const CommandEvent& ev);
 
 namespace Cpp {
-void Handle(Host& host, SettingsSnapshot& snapshot, bool& colorGridExpanded, const CommandEvent& ev);
+void Handle(Host& host, SettingsSnapshot& snapshot, int& colorGridExpanded, const CommandEvent& ev);
 } // namespace Cpp
 
 #ifdef DIME_RUST_AVAILABLE
 // Run the Rust version against any Host (the dispatch above uses it; tests too).
-void HandleRust(Host& host, SettingsSnapshot& snapshot, bool& colorGridExpanded, const CommandEvent& ev);
+void HandleRust(Host& host, SettingsSnapshot& snapshot, int& colorGridExpanded, const CommandEvent& ev);
 #endif
 
 } // namespace SettingsCommand

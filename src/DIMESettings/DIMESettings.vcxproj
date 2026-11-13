@@ -122,6 +122,7 @@
     <ClInclude Include="SettingsOwnerDraw.h" />
     <ClInclude Include="SettingsWinHost.h" />
     <ClInclude Include="SettingsProc.h" />
+    <ClInclude Include="SettingsDriver.h" />
     <ClInclude Include="DIMESettings.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="DIMESettingsResource.h" />
@@ -158,6 +159,7 @@
     <ClCompile Include="SettingsOwnerDraw.cpp" />
     <ClCompile Include="SettingsWinHost.cpp" />
     <ClCompile Include="SettingsProc.cpp" />
+    <ClCompile Include="SettingsDriver.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\DIME.rc" />

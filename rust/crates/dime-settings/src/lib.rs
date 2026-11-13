@@ -15,11 +15,14 @@
 //! controls and dark control colours are `owner.rs` (`SettingsOwnerDraw.*`);
 //! the dialogs, file writes, and editor calls of the command host are
 //! `winhost.rs` (`SettingsWinHost.*`). The window procedures' message
-//! decoding and dispatch is `wndproc.rs` (`SettingsProc.*`).
+//! decoding and dispatch is `wndproc.rs` (`SettingsProc.*`); carrying out
+//! navigation and frame effects, mode switches, and page rebuilds is
+//! `driver.rs` (`SettingsDriver.*`).
 //! The binary comes in a later step.
 
 pub mod command;
 pub mod controls;
+pub mod driver;
 #[cfg(windows)]
 pub mod editor;
 pub mod frame;

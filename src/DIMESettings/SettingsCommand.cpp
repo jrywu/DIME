@@ -185,7 +185,7 @@ void ImportCustomTable(Host& host)
 
 } // namespace
 
-void Handle(Host& host, SettingsSnapshot& s, bool& colorGridExpanded, const CommandEvent& ev)
+void Handle(Host& host, SettingsSnapshot& s, int& colorGridExpanded, const CommandEvent& ev)
 {
     int notifyCode = ev.notifyCode;
     int ctrlId = ev.ctrlId;
@@ -232,7 +232,7 @@ void Handle(Host& host, SettingsSnapshot& s, bool& colorGridExpanded, const Comm
             if ((SettingsControlId)settingsId == CTRL_COLOR_MODE) {
                 // Auto-expand the color grid when switching to custom; save only
                 // the mode (not the palette), then preview the mode's palette.
-                colorGridExpanded = (s.colorMode == 3);
+                colorGridExpanded = (s.colorMode == 3) ? 1 : 0;
                 host.SetColorMode(s.colorMode);
                 host.WriteConfig(ev.mode);
                 host.LoadColorsForMode(s.colorMode);
@@ -356,23 +356,22 @@ const DimeSettingsCmdHostVtbl kVtbl = {
 
 } // namespace
 
-void HandleRust(Host& host, SettingsSnapshot& s, bool& colorGridExpanded, const CommandEvent& ev)
+void HandleRust(Host& host, SettingsSnapshot& s, int& colorGridExpanded, const CommandEvent& ev)
 {
     Bridge bridge{ &host, {} };
-    int32_t grid = colorGridExpanded ? 1 : 0;
-    dime_settings_command_handle(&kVtbl, &bridge, &s, &grid, &ev);
-    colorGridExpanded = grid != 0;
+    // The flag is written in place: Host::Rebuild reads it during the call.
+    dime_settings_command_handle(&kVtbl, &bridge, &s, &colorGridExpanded, &ev);
 }
 
 #endif
 
 #ifdef DIME_USE_RUST_CONFIG
-void Handle(Host& host, SettingsSnapshot& s, bool& colorGridExpanded, const CommandEvent& ev)
+void Handle(Host& host, SettingsSnapshot& s, int& colorGridExpanded, const CommandEvent& ev)
 {
     HandleRust(host, s, colorGridExpanded, ev);
 }
 #else
-void Handle(Host& host, SettingsSnapshot& s, bool& colorGridExpanded, const CommandEvent& ev)
+void Handle(Host& host, SettingsSnapshot& s, int& colorGridExpanded, const CommandEvent& ev)
 {
     Cpp::Handle(host, s, colorGridExpanded, ev);
 }

@@ -929,9 +929,9 @@ pub unsafe extern "C" fn dime_settings_command_handle(
             return;
         }
         let mut host = VtblHost { v: &*vtbl, ctx };
-        let mut grid = *grid_expanded != 0;
-        command::handle(&mut host, &mut *snapshot, &mut grid, &*ev);
-        *grid_expanded = i32::from(grid);
+        // Written in place: the host's rebuild reads it during the call.
+        let mut set_grid = |on: bool| *grid_expanded = i32::from(on);
+        command::handle(&mut host, &mut *snapshot, &mut set_grid, &*ev);
     })
 }
 
@@ -1572,5 +1572,276 @@ pub unsafe extern "C" fn dime_settings_content_proc(
         }
         let mut host = ProcVtblHost { v: &*vtbl, ctx };
         wndproc::content_proc(&mut host, msg, wparam, lparam)
+    })
+}
+
+// ---- Phase 5b-9b: window driver (dime-settings::driver) --------------------
+
+use dime_settings::driver::{self, ControlInfo, DriverHost, DriverState};
+use dime_settings::frame::FrameEvent as DriverFrameEvent;
+use dime_settings::layout::PlanInput as DriverPlanInput;
+use dime_settings::nav::NavEvent as DriverNavEvent;
+
+/// `DimeSettingsDriverHostVtbl`: the order must match dime_ffi.h and
+/// SettingsDriver.cpp (`kVtbl`).
+#[repr(C)]
+pub struct DriverHostVtbl {
+    main_dpi: unsafe extern "C" fn(Ctx) -> u32,
+    content_dpi: unsafe extern "C" fn(Ctx) -> u32,
+    has_content: unsafe extern "C" fn(Ctx) -> i32,
+    main_client: unsafe extern "C" fn(Ctx, *mut i32, *mut i32),
+    content_client_height: unsafe extern "C" fn(Ctx) -> i32,
+    vscroll_width: unsafe extern "C" fn(Ctx) -> i32,
+    system_dark: unsafe extern "C" fn(Ctx) -> i32,
+    color_mode: unsafe extern "C" fn(Ctx) -> i32,
+    save_enabled: unsafe extern "C" fn(Ctx) -> i32,
+    preview_height: unsafe extern "C" fn(Ctx, u32) -> i32,
+    control_count: unsafe extern "C" fn(Ctx) -> i32,
+    control: unsafe extern "C" fn(Ctx, i32, *mut ControlInfo),
+    move_control: unsafe extern "C" fn(Ctx, i32, i32, i32, i32, i32),
+    show_control: unsafe extern "C" fn(Ctx, i32, i32),
+    reset_control_region: unsafe extern "C" fn(Ctx, i32),
+    control_checked: unsafe extern "C" fn(Ctx, i32) -> i32,
+    set_control_checked: unsafe extern "C" fn(Ctx, i32, i32),
+    destroy_controls: unsafe extern "C" fn(Ctx),
+    create_controls: unsafe extern "C" fn(Ctx, *const DriverPlanInput, i32),
+    populate: unsafe extern "C" fn(Ctx),
+    invalidate_main: unsafe extern "C" fn(Ctx, *const [i32; 4], i32),
+    invalidate_content: unsafe extern "C" fn(Ctx, i32),
+    track_leave: unsafe extern "C" fn(Ctx, i32),
+    set_scroll_info: unsafe extern "C" fn(Ctx, i32, i32, i32),
+    redraw_content: unsafe extern "C" fn(Ctx),
+    update_content: unsafe extern "C" fn(Ctx),
+    move_content: unsafe extern "C" fn(Ctx, i32, i32, i32, i32),
+    focus_content: unsafe extern "C" fn(Ctx),
+    create_content: unsafe extern "C" fn(Ctx, i32, i32, i32, i32),
+    content_theme: unsafe extern "C" fn(Ctx, i32),
+    set_main_pos: unsafe extern "C" fn(Ctx, i32, i32, i32, i32),
+    set_dark_title: unsafe extern "C" fn(Ctx, i32),
+    set_caption_color: unsafe extern "C" fn(Ctx, i32),
+    theme_brushes: unsafe extern "C" fn(Ctx),
+    create_fonts: unsafe extern "C" fn(Ctx, i32),
+    destroy_fonts: unsafe extern "C" fn(Ctx),
+    ask_save_before_back: unsafe extern "C" fn(Ctx) -> i32,
+    click_save: unsafe extern "C" fn(Ctx),
+    toggle_snapshot: unsafe extern "C" fn(Ctx, i32, i32),
+    apply_and_save: unsafe extern "C" fn(Ctx),
+    enumerate_reverse_providers: unsafe extern "C" fn(Ctx),
+    load_config: unsafe extern "C" fn(Ctx, i32),
+    load_colors: unsafe extern "C" fn(Ctx),
+    load_snapshot: unsafe extern "C" fn(Ctx),
+    recreate_engine: unsafe extern "C" fn(Ctx, i32),
+}
+
+struct DriverVtblHost<'a> {
+    v: &'a DriverHostVtbl,
+    ctx: Ctx,
+}
+
+// SAFETY (every method): the vtable functions are the host thunks; they take
+// `ctx` and never unwind.
+impl DriverHost for DriverVtblHost<'_> {
+    fn main_dpi(&mut self) -> u32 {
+        unsafe { (self.v.main_dpi)(self.ctx) }
+    }
+    fn content_dpi(&mut self) -> u32 {
+        unsafe { (self.v.content_dpi)(self.ctx) }
+    }
+    fn has_content(&mut self) -> bool {
+        unsafe { (self.v.has_content)(self.ctx) != 0 }
+    }
+    fn main_client(&mut self) -> (i32, i32) {
+        let (mut w, mut h) = (0, 0);
+        unsafe { (self.v.main_client)(self.ctx, &mut w, &mut h) };
+        (w, h)
+    }
+    fn content_client_height(&mut self) -> i32 {
+        unsafe { (self.v.content_client_height)(self.ctx) }
+    }
+    fn vscroll_width(&mut self) -> i32 {
+        unsafe { (self.v.vscroll_width)(self.ctx) }
+    }
+    fn system_dark(&mut self) -> bool {
+        unsafe { (self.v.system_dark)(self.ctx) != 0 }
+    }
+    fn color_mode(&mut self) -> i32 {
+        unsafe { (self.v.color_mode)(self.ctx) }
+    }
+    fn save_enabled(&mut self) -> bool {
+        unsafe { (self.v.save_enabled)(self.ctx) != 0 }
+    }
+    fn preview_height(&mut self, dpi: u32) -> i32 {
+        unsafe { (self.v.preview_height)(self.ctx, dpi) }
+    }
+    fn control_count(&mut self) -> i32 {
+        unsafe { (self.v.control_count)(self.ctx) }
+    }
+    fn control(&mut self, index: i32) -> ControlInfo {
+        let mut c = ControlInfo::default();
+        unsafe { (self.v.control)(self.ctx, index, &mut c) };
+        c
+    }
+    fn move_control(&mut self, index: i32, x: i32, y: i32, w: i32, h: i32) {
+        unsafe { (self.v.move_control)(self.ctx, index, x, y, w, h) }
+    }
+    fn show_control(&mut self, index: i32, show: bool) {
+        unsafe { (self.v.show_control)(self.ctx, index, i32::from(show)) }
+    }
+    fn reset_control_region(&mut self, index: i32) {
+        unsafe { (self.v.reset_control_region)(self.ctx, index) }
+    }
+    fn control_checked(&mut self, index: i32) -> bool {
+        unsafe { (self.v.control_checked)(self.ctx, index) != 0 }
+    }
+    fn set_control_checked(&mut self, index: i32, on: bool) {
+        unsafe { (self.v.set_control_checked)(self.ctx, index, i32::from(on)) }
+    }
+    fn destroy_controls(&mut self) {
+        unsafe { (self.v.destroy_controls)(self.ctx) }
+    }
+    fn create_controls(&mut self, input: &DriverPlanInput, card_w: i32) {
+        unsafe { (self.v.create_controls)(self.ctx, input, card_w) }
+    }
+    fn populate(&mut self) {
+        unsafe { (self.v.populate)(self.ctx) }
+    }
+    fn invalidate_main(&mut self, rc: Option<[i32; 4]>, erase: bool) {
+        let p = rc.as_ref().map_or(std::ptr::null(), |r| r as *const [i32; 4]);
+        unsafe { (self.v.invalidate_main)(self.ctx, p, i32::from(erase)) }
+    }
+    fn invalidate_content(&mut self, erase: bool) {
+        unsafe { (self.v.invalidate_content)(self.ctx, i32::from(erase)) }
+    }
+    fn track_leave(&mut self, content: bool) {
+        unsafe { (self.v.track_leave)(self.ctx, i32::from(content)) }
+    }
+    fn set_scroll_info(&mut self, total: i32, page: i32, pos: i32) {
+        unsafe { (self.v.set_scroll_info)(self.ctx, total, page, pos) }
+    }
+    fn redraw_content(&mut self) {
+        unsafe { (self.v.redraw_content)(self.ctx) }
+    }
+    fn update_content(&mut self) {
+        unsafe { (self.v.update_content)(self.ctx) }
+    }
+    fn move_content(&mut self, x: i32, y: i32, w: i32, h: i32) {
+        unsafe { (self.v.move_content)(self.ctx, x, y, w, h) }
+    }
+    fn focus_content(&mut self) {
+        unsafe { (self.v.focus_content)(self.ctx) }
+    }
+    fn create_content(&mut self, x: i32, y: i32, w: i32, h: i32) {
+        unsafe { (self.v.create_content)(self.ctx, x, y, w, h) }
+    }
+    fn content_theme(&mut self, dark: bool) {
+        unsafe { (self.v.content_theme)(self.ctx, i32::from(dark)) }
+    }
+    fn set_main_pos(&mut self, x: i32, y: i32, w: i32, h: i32) {
+        unsafe { (self.v.set_main_pos)(self.ctx, x, y, w, h) }
+    }
+    fn set_dark_title(&mut self, dark: bool) {
+        unsafe { (self.v.set_dark_title)(self.ctx, i32::from(dark)) }
+    }
+    fn set_caption_color(&mut self, attribute: i32) {
+        unsafe { (self.v.set_caption_color)(self.ctx, attribute) }
+    }
+    fn theme_brushes(&mut self) {
+        unsafe { (self.v.theme_brushes)(self.ctx) }
+    }
+    fn create_fonts(&mut self, dpi: i32) {
+        unsafe { (self.v.create_fonts)(self.ctx, dpi) }
+    }
+    fn destroy_fonts(&mut self) {
+        unsafe { (self.v.destroy_fonts)(self.ctx) }
+    }
+    fn ask_save_before_back(&mut self) -> i32 {
+        unsafe { (self.v.ask_save_before_back)(self.ctx) }
+    }
+    fn click_save(&mut self) {
+        unsafe { (self.v.click_save)(self.ctx) }
+    }
+    fn toggle_snapshot(&mut self, id: i32, on: bool) {
+        unsafe { (self.v.toggle_snapshot)(self.ctx, id, i32::from(on)) }
+    }
+    fn apply_and_save(&mut self) {
+        unsafe { (self.v.apply_and_save)(self.ctx) }
+    }
+    fn enumerate_reverse_providers(&mut self) {
+        unsafe { (self.v.enumerate_reverse_providers)(self.ctx) }
+    }
+    fn load_config(&mut self, mode: i32) {
+        unsafe { (self.v.load_config)(self.ctx, mode) }
+    }
+    fn load_colors(&mut self) {
+        unsafe { (self.v.load_colors)(self.ctx) }
+    }
+    fn load_snapshot(&mut self) {
+        unsafe { (self.v.load_snapshot)(self.ctx) }
+    }
+    fn recreate_engine(&mut self, mode: i32) {
+        unsafe { (self.v.recreate_engine)(self.ctx, mode) }
+    }
+}
+
+/// `SettingsDriver::Nav`. `state` is read and written in place.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_driver_nav(
+    vtbl: *const DriverHostVtbl,
+    ctx: Ctx,
+    state: *mut DriverState,
+    ev: *const DriverNavEvent,
+) {
+    guard((), || unsafe {
+        if vtbl.is_null() || state.is_null() || ev.is_null() {
+            return;
+        }
+        let mut host = DriverVtblHost { v: &*vtbl, ctx };
+        driver::nav(&mut host, state, *ev);
+    })
+}
+
+/// `SettingsDriver::Frame`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_driver_frame(
+    vtbl: *const DriverHostVtbl,
+    ctx: Ctx,
+    state: *mut DriverState,
+    ev: *const DriverFrameEvent,
+) {
+    guard((), || unsafe {
+        if vtbl.is_null() || state.is_null() || ev.is_null() {
+            return;
+        }
+        let mut host = DriverVtblHost { v: &*vtbl, ctx };
+        driver::frame(&mut host, state, *ev);
+    })
+}
+
+/// `SettingsDriver::SwitchMode`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_driver_switch_mode(
+    vtbl: *const DriverHostVtbl,
+    ctx: Ctx,
+    state: *mut DriverState,
+    mode: i32,
+) {
+    guard((), || unsafe {
+        if vtbl.is_null() || state.is_null() {
+            return;
+        }
+        let mut host = DriverVtblHost { v: &*vtbl, ctx };
+        driver::switch_mode(&mut host, state, mode);
+    })
+}
+
+/// `SettingsDriver::Rebuild`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_driver_rebuild(vtbl: *const DriverHostVtbl, ctx: Ctx, state: *mut DriverState) {
+    guard((), || unsafe {
+        if vtbl.is_null() || state.is_null() {
+            return;
+        }
+        let mut host = DriverVtblHost { v: &*vtbl, ctx };
+        driver::rebuild(&mut host, state);
     })
 }

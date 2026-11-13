@@ -313,7 +313,9 @@ fn import_custom_table(host: &mut dyn Host) {
 }
 
 /// `SettingsCommand::Cpp::Handle`.
-pub fn handle(host: &mut dyn Host, s: &mut SettingsSnapshot, color_grid_expanded: &mut bool, ev: &CommandEvent) {
+/// `set_grid` writes the window's `colorGridExpanded` at once: `host.rebuild()`
+/// reads it during the call.
+pub fn handle(host: &mut dyn Host, s: &mut SettingsSnapshot, set_grid: &mut dyn FnMut(bool), ev: &CommandEvent) {
     let notify = ev.notify_code;
     let ctrl_id = ev.ctrl_id;
 
@@ -356,7 +358,7 @@ pub fn handle(host: &mut dyn Host, s: &mut SettingsSnapshot, color_grid_expanded
                 _ => sync_combo(s, id, sel),
             }
             if id == CTRL_COLOR_MODE {
-                *color_grid_expanded = s.color_mode == 3;
+                set_grid(s.color_mode == 3);
                 host.set_color_mode(s.color_mode);
                 host.write_config(ev.mode);
                 host.load_colors_for_mode(s.color_mode);
