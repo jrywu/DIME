@@ -41,6 +41,7 @@
 #include "SettingsPopulate.h"
 #include "SettingsControls.h"
 #include "SettingsChildren.h"
+#include "SettingsShell.h"
 
 #include <Richedit.h>
 #include <MLang.h>
@@ -64,7 +65,6 @@
 // Content area child window
 #define IDC_CONTENT_AREA 2000
 static const wchar_t CONTENT_WND_CLASS[] = L"DIMESettingsContentArea";
-static bool s_contentClassRegistered = false;
 
 // ThemedMessageBox — owner-drawn MessageBox replacement (SettingsMsgBox.*).
 static int ThemedMessageBox(HWND hParent, const wchar_t* text, const wchar_t* caption, UINT type)
@@ -118,61 +118,6 @@ static void EnableSaveButton(SettingsWindow::WindowData* wd, BOOL enable)
 #define GetCustomTableCINPath  SettingsModel::GetCustomTableCINPath
 
 // ============================================================================
-// Window placement persistence (registry)
-// ============================================================================
-static const wchar_t SETTINGS_UI_REG_KEY[] = L"SOFTWARE\\DIME\\SettingsUI";
-static const wchar_t SETTINGS_UI_WP_VALUE[] = L"WindowPlacement";
-
-static bool SaveWindowPlacement(HWND hWnd)
-{
-    WINDOWPLACEMENT wp = { sizeof(wp) };
-    if (!GetWindowPlacement(hWnd, &wp)) return false;
-    HKEY hKey;
-    if (RegCreateKeyExW(HKEY_CURRENT_USER, SETTINGS_UI_REG_KEY, 0, nullptr,
-        0, KEY_WRITE, nullptr, &hKey, nullptr) != ERROR_SUCCESS) return false;
-    RegSetValueExW(hKey, SETTINGS_UI_WP_VALUE, 0, REG_BINARY, (const BYTE*)&wp, sizeof(wp));
-    RegCloseKey(hKey);
-    return true;
-}
-
-static bool RestoreWindowPlacement(HWND hWnd)
-{
-    WINDOWPLACEMENT wp = {};
-    DWORD cbData = sizeof(wp);
-    DWORD dwType = 0;
-    if (RegGetValueW(HKEY_CURRENT_USER, SETTINGS_UI_REG_KEY, SETTINGS_UI_WP_VALUE,
-        RRF_RT_REG_BINARY, &dwType, &wp, &cbData) != ERROR_SUCCESS) return false;
-    if (cbData != sizeof(wp) || wp.length != sizeof(wp)) return false;
-    // Verify saved position is on a connected monitor
-    if (!MonitorFromRect(&wp.rcNormalPosition, MONITOR_DEFAULTTONULL)) return false;
-    SetWindowPlacement(hWnd, &wp);
-    return true;
-}
-
-static void DeleteWindowPlacement()
-{
-    HKEY hKey;
-    if (RegOpenKeyExW(HKEY_CURRENT_USER, SETTINGS_UI_REG_KEY, 0, KEY_WRITE, &hKey) == ERROR_SUCCESS) {
-        RegDeleteValueW(hKey, SETTINGS_UI_WP_VALUE);
-        RegCloseKey(hKey);
-    }
-}
-
-// ============================================================================
-// Mica backdrop (title bar only)
-// ============================================================================
-static bool ApplyMicaBackdrop(HWND hWnd)
-{
-    int backdropType = 2;
-    if (SUCCEEDED(DwmSetWindowAttribute(hWnd, DWMWA_SYSTEMBACKDROP_TYPE, &backdropType, sizeof(int))))
-        return true;
-    BOOL enable = TRUE;
-    if (SUCCEEDED(DwmSetWindowAttribute(hWnd, DWMWA_MICA_EFFECT, &enable, sizeof(BOOL))))
-        return true;
-    return false;
-}
-
-// ============================================================================
 // Helper: create a font
 // ============================================================================
 // ============================================================================
@@ -182,16 +127,19 @@ void SettingsWindow::CreateThemeBrushes(WindowData* wd)
 {
     DestroyThemeBrushes(wd);
     wd->theme = ComputeThemeColors(wd->isDark != 0);
-    wd->hBrushSidebarBg = CreateSolidBrush(wd->theme.sidebarBg);
-    wd->hBrushContentBg = CreateSolidBrush(wd->theme.contentBg);
-    wd->hBrushCardBg    = CreateSolidBrush(wd->theme.cardBg);
+    SettingsShell::Brushes b = SettingsShell::CreateBrushes(wd->theme);
+    wd->hBrushSidebarBg = b.sidebarBg;
+    wd->hBrushContentBg = b.contentBg;
+    wd->hBrushCardBg    = b.cardBg;
 }
 
 void SettingsWindow::DestroyThemeBrushes(WindowData* wd)
 {
-    if (wd->hBrushSidebarBg)  { DeleteObject(wd->hBrushSidebarBg);  wd->hBrushSidebarBg = nullptr; }
-    if (wd->hBrushContentBg)  { DeleteObject(wd->hBrushContentBg);  wd->hBrushContentBg = nullptr; }
-    if (wd->hBrushCardBg)     { DeleteObject(wd->hBrushCardBg);     wd->hBrushCardBg = nullptr; }
+    SettingsShell::Brushes b = { wd->hBrushSidebarBg, wd->hBrushContentBg, wd->hBrushCardBg };
+    SettingsShell::DestroyBrushes(b);
+    wd->hBrushSidebarBg = b.sidebarBg;
+    wd->hBrushContentBg = b.contentBg;
+    wd->hBrushCardBg    = b.cardBg;
 }
 
 void SettingsWindow::CreateFonts(WindowData* wd, int dpi)
@@ -260,8 +208,6 @@ void SettingsWindow::ApplyAndSave(WindowData* wd)
     SettingsModel::ApplyToConfig(wd->snapshot);
     CConfig::WriteConfig(wd->Mode());
 }
-
-static void RegisterContentClass(HINSTANCE hInstance);
 
 // ============================================================================
 // Navigation, frame, mode switch, rebuild: SettingsDriver decides, this
@@ -401,7 +347,7 @@ public:
     }
     void CreateContent(int x, int y, int w, int h) override
     {
-        RegisterContentClass(wd->hInstance);
+        SettingsShell::RegisterContentClass(wd->hInstance, CONTENT_WND_CLASS, SettingsWindow::ContentWndProc);
         wd->hContentArea = CreateWindowExW(0, CONTENT_WND_CLASS, nullptr,
             WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_CLIPCHILDREN,
             x, y, w, h, hMain, (HMENU)IDC_CONTENT_AREA, wd->hInstance, nullptr);
@@ -600,78 +546,43 @@ void SettingsWindow::PopulateControls(WindowData* wd)
 }
 
 // ============================================================================
-// Window class registration
-// ============================================================================
-bool SettingsWindow::RegisterWindowClass(HINSTANCE hInstance)
-{
-    WNDCLASSEXW wcex = {};
-    wcex.cbSize = sizeof(WNDCLASSEX);
-    wcex.style = CS_HREDRAW | CS_VREDRAW;
-    wcex.lpfnWndProc = WndProc;
-    wcex.hInstance = hInstance;
-    wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
-    wcex.lpszClassName = SETTINGS_WND_CLASS;
-    wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_DIMESETTINGS));
-    wcex.hIconSm = wcex.hIcon;
-    return RegisterClassExW(&wcex) != 0;
-}
-
-static void RegisterContentClass(HINSTANCE hInstance)
-{
-    if (s_contentClassRegistered) return;
-    WNDCLASSEXW wcex = {};
-    wcex.cbSize = sizeof(WNDCLASSEX);
-    wcex.style = CS_HREDRAW | CS_VREDRAW;
-    wcex.lpfnWndProc = SettingsWindow::ContentWndProc;
-    wcex.hInstance = hInstance;
-    wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
-    wcex.lpszClassName = CONTENT_WND_CLASS;
-    RegisterClassExW(&wcex);
-    s_contentClassRegistered = true;
-}
-
-// ============================================================================
-// Run — main entry point
+// Run — main entry point: SettingsShell runs the window, this sets up its data.
 // ============================================================================
 int SettingsWindow::Run(HINSTANCE hInstance, int nCmdShow, IME_MODE initialMode)
 {
-    // Initialize GDI+ for anti-aliased toggle switches
-    Gdiplus::GdiplusStartupInput gdiplusStartupInput;
-    ULONG_PTR gdiplusToken = 0;
-    Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, nullptr);
-
-    RegisterWindowClass(hInstance);
-    UINT dpi = 96;
-    { HDC hdc = GetDC(nullptr); if (hdc) { dpi = GetDeviceCaps(hdc, LOGPIXELSY); ReleaseDC(nullptr, hdc); } }
-    SIZE initial = SettingsFrame::InitialSize(dpi);
+    // A local class has the member function's access to SettingsWindow.
+    struct Start {
+        HINSTANCE instance;
+        IME_MODE mode;
+        static void Started(void* user, HWND hWnd)
+        {
+            try {
+                Start* st = static_cast<Start*>(user);
+                WindowData* wd = (WindowData*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+                if (wd) {
+                    wd->hInstance = st->instance;
+                    SwitchMode(hWnd, wd, st->mode);
+                }
+            } catch (...) {}
+        }
+    };
+    Start start = { hInstance, initialMode };
 
     WCHAR caption[128];
     StringCchPrintfW(caption, 128, L"DIME 設定 v%d.%d.%d", BUILD_VER_MAJOR, BUILD_VER_MINOR, BUILD_COMMIT_COUNT);
 
-    HWND hWnd = CreateWindowExW(0, SETTINGS_WND_CLASS, caption,
-        WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
-        CW_USEDEFAULT, CW_USEDEFAULT,
-        initial.cx, initial.cy,
-        nullptr, nullptr, hInstance, nullptr);
-    if (!hWnd) return -1;
-
-    WindowData* wd = (WindowData*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
-    if (wd) {
-        wd->hInstance = hInstance;
-        SwitchMode(hWnd, wd, initialMode);
-    }
-    // Restore saved window placement, or use default (CW_USEDEFAULT + nCmdShow)
-    if (!RestoreWindowPlacement(hWnd))
-        ShowWindow(hWnd, nCmdShow);
-    UpdateWindow(hWnd);
-
-    MSG msg;
-    while (GetMessage(&msg, nullptr, 0, 0)) {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
-    }
-    Gdiplus::GdiplusShutdown(gdiplusToken);
-    return (int)msg.wParam;
+    SettingsShell::RunParams p = {};
+    p.instance = hInstance;
+    p.nCmdShow = nCmdShow;
+    p.mainClass = SETTINGS_WND_CLASS;
+    p.mainProc = WndProc;
+    p.iconId = IDI_DIMESETTINGS;
+    p.caption = caption;
+    p.placementKey = SettingsShell::kPlacementKey;
+    p.placementValue = SettingsShell::kPlacementValue;
+    p.started = &Start::Started;
+    p.user = &start;
+    return SettingsShell::Run(p);
 }
 
 // ============================================================================
@@ -743,55 +654,31 @@ LRESULT SettingsWindow::Dispatch(HWND hWnd, bool content, UINT msg, WPARAM wPara
             }
             RunFrame(hWnd, wd, ev);
         }
-        void PaintMain() override
+        // WM_PAINT: SettingsShell double-buffers, this builds the contexts.
+        static int HasDataThunk(void* user) { return static_cast<ProcHost*>(user)->wd ? 1 : 0; }
+        static void PrepareThunk(void* user, int content, SettingsWindowPaint::PaintContext* first,
+            SettingsWindowPaint::PaintContext* second, int* hasContent)
         {
-            PAINTSTRUCT ps;
-            HDC hdcScreen = BeginPaint(hWnd, &ps);
-            HDC hdc = hdcScreen;
-            RECT rcWnd; GetClientRect(hWnd, &rcWnd);
-            HDC hdcMem = CreateCompatibleDC(hdcScreen);
-            HBITMAP hBmpMem = CreateCompatibleBitmap(hdcScreen, rcWnd.right, rcWnd.bottom);
-            HBITMAP hOldBmpMem = (HBITMAP)SelectObject(hdcMem, hBmpMem);
-            if (hdcMem) hdc = hdcMem;
-            if (wd) {
-                SettingsWindowPaint::PaintContext main = MakePaintContext(hWnd, hWnd, wd);
-                SettingsWindowPaint::PaintMainFrame(hdc, main, wd->hContentArea != nullptr);
-            }
-            if (hdcMem) {
-                BitBlt(hdcScreen, 0, 0, rcWnd.right, rcWnd.bottom, hdcMem, 0, 0, SRCCOPY);
-                SelectObject(hdcMem, hOldBmpMem);
-                DeleteObject(hBmpMem);
-                DeleteDC(hdcMem);
-            }
-            EndPaint(hWnd, &ps);
-        }
-        void PaintContent() override
-        {
-            PAINTSTRUCT ps;
-            HDC hdcScreen = BeginPaint(hWnd, &ps);
-            if (wd) {
-                // Double-buffer: paint to off-screen bitmap, then BitBlt to screen
-                RECT rcClient; GetClientRect(hWnd, &rcClient);
-                HDC hdc = CreateCompatibleDC(hdcScreen);
-                HBITMAP hBmp = CreateCompatibleBitmap(hdcScreen, rcClient.right, rcClient.bottom);
-                HBITMAP hOldBmp = (HBITMAP)SelectObject(hdc, hBmp);
-
+            try {
+                ProcHost* h = static_cast<ProcHost*>(user);
+                WindowData* wd = h->wd;
+                if (!content) {
+                    *first = MakePaintContext(h->hWnd, h->hWnd, wd);
+                    *hasContent = wd->hContentArea != nullptr ? 1 : 0;
+                    return;
+                }
                 // The open narrow sidebar is painted over the page: hide the child controls.
                 if (wd->nav.sidebarNarrowMode && !wd->nav.sidebarCollapsed) {
                     for (auto& ch : wd->controlHandles)
                         if (ch.hWnd && IsWindow(ch.hWnd)) ShowWindow(ch.hWnd, SW_HIDE);
                 }
-                SettingsWindowPaint::PaintContext contentCtx = MakePaintContext(hWnd, hMain, wd);
-                SettingsWindowPaint::PaintContext mainCtx = MakePaintContext(hMain, hMain, wd);
-                SettingsWindowPaint::PaintContentFrame(hdc, contentCtx, mainCtx);
-                // Blit off-screen buffer to screen (excludes child control areas via WS_CLIPCHILDREN)
-                BitBlt(hdcScreen, 0, 0, rcClient.right, rcClient.bottom, hdc, 0, 0, SRCCOPY);
-                SelectObject(hdc, hOldBmp);
-                DeleteObject(hBmp);
-                DeleteDC(hdc);
-            }
-            EndPaint(hWnd, &ps);
+                *first = MakePaintContext(h->hWnd, h->hMain, wd);
+                *second = MakePaintContext(h->hMain, h->hMain, wd);
+            } catch (...) {}
         }
+        SettingsShell::PaintSource Source() { return { this, &HasDataThunk, &PrepareThunk }; }
+        void PaintMain() override { SettingsShell::PaintMain(hWnd, Source()); }
+        void PaintContent() override { SettingsShell::PaintContent(hWnd, Source()); }
         UINT ScreenDpi() override
         {
             UINT dpi = 96;
@@ -803,7 +690,7 @@ LRESULT SettingsWindow::Dispatch(HWND hWnd, bool content, UINT msg, WPARAM wPara
         void SetForeground() override { SetForegroundWindow(hWnd); }
         void Destroy() override
         {
-            SaveWindowPlacement(hWnd);
+            SettingsShell::SavePlacement(hWnd, SettingsShell::kPlacementKey, SettingsShell::kPlacementValue);
             if (wd) {
                 SettingsModel::DestroyEngine(wd->pEngine);
                 DestroyThemeBrushes(wd);

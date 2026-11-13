@@ -11,6 +11,7 @@
 #include "..\BuildInfo.h"
 #include "..\TfInputProcessorProfile.h"
 #include "SettingsWindow.h"
+#include "SettingsShell.h"
 
 #include <io.h>      // _open_osfhandle, _dup2, _fileno
 #include <fcntl.h>   // _O_WRONLY, _O_TEXT
@@ -133,13 +134,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         useLegacyUI = launch.legacy != 0;
         useNewUI = launch.newUi != 0;
         guiMode = (IME_MODE)launch.guiMode;
-        if (launch.resetUi) {
-            HKEY hKey;
-            if (RegOpenKeyExW(HKEY_CURRENT_USER, L"SOFTWARE\\DIME\\SettingsUI", 0, KEY_WRITE, &hKey) == ERROR_SUCCESS) {
-                RegDeleteValueW(hKey, L"WindowPlacement");
-                RegCloseKey(hKey);
-            }
-        }
+        if (launch.resetUi)
+            SettingsShell::DeletePlacement(SettingsShell::kPlacementKey, SettingsShell::kPlacementValue);
     }
 
     // CLI mode: if arguments are present and not a GUI launch, run headless.

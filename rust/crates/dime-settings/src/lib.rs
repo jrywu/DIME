@@ -18,7 +18,9 @@
 //! decoding and dispatch is `wndproc.rs` (`SettingsProc.*`); carrying out
 //! navigation and frame effects, mode switches, and page rebuilds is
 //! `driver.rs` (`SettingsDriver.*`); creating a page's child windows is
-//! `children.rs` (`SettingsChildren.*`).
+//! `children.rs` (`SettingsChildren.*`); placement, brushes, paint double
+//! buffering, class registration and the message loop are `shell.rs`
+//! (`SettingsShell.*`).
 //! The binary comes in a later step.
 
 #[cfg(windows)]
@@ -40,6 +42,8 @@ pub mod owner;
 #[cfg(windows)]
 pub mod paint;
 pub mod populate;
+#[cfg(windows)]
+pub mod shell;
 pub mod validate;
 #[cfg(windows)]
 pub mod winhost;

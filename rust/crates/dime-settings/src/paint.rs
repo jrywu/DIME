@@ -267,14 +267,25 @@ fn lum(c: u32) -> i32 {
 }
 
 /// `DrawTextW` with an explicit length (the C++ passes -1 on the same text).
+/// A readable pointer for `text`: an empty slice's pointer is dangling, and
+/// the C++ painters pass `L""` there.
+fn text_ptr(text: &[u16]) -> *const u16 {
+    static EMPTY: [u16; 1] = [0];
+    if text.is_empty() {
+        EMPTY.as_ptr()
+    } else {
+        text.as_ptr()
+    }
+}
+
 unsafe fn draw_text(hdc: Handle, text: &[u16], rc: &mut Rect, format: u32) -> i32 {
-    unsafe { DrawTextW(hdc, text.as_ptr(), text.len() as i32, rc, format) }
+    unsafe { DrawTextW(hdc, text_ptr(text), text.len() as i32, rc, format) }
 }
 
 fn text_extent(hdc: Handle, text: &[u16]) -> Size {
     let mut sz = Size::default();
     // SAFETY: valid DC from the caller; text is a live slice.
-    unsafe { GetTextExtentPoint32W(hdc, text.as_ptr(), text.len() as i32, &mut sz) };
+    unsafe { GetTextExtentPoint32W(hdc, text_ptr(text), text.len() as i32, &mut sz) };
     sz
 }
 

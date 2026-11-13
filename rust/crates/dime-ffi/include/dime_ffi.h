@@ -1680,6 +1680,44 @@ typedef struct DimeSettingsChildHostVtbl {
 void dime_settings_create_children(const DimeSettingsChildHostVtbl* vtbl, void* ctx, const void* ctx_in,
     const DimeControlSpec* specs, size_t count, const uint16_t* text, size_t text_len);
 
+/* ---- Settings window shell (phase 5b-9d, dime-settings::shell)
+ * SettingsShell::Cpp: the window placement in HKCU (key / value are
+ * NUL-terminated), the three theme brushes (brushes is HBRUSH[3]: sidebar,
+ * content, card; theme is ThemeColors), the WM_PAINT double buffering, class
+ * registration, and Run. Paint sources call back into the window: has_data,
+ * then prepare(user, content, first, second, has_content) with PaintContexts
+ * (second is null for the main window). Callbacks must not throw.
+ */
+typedef struct DimeSettingsPaintSource {
+    void* user;
+    int32_t (*has_data)(void* user);
+    void (*prepare)(void* user, int32_t content, void* first, void* second, int32_t* has_content);
+} DimeSettingsPaintSource;
+typedef struct DimeSettingsRunParams {
+    void* instance;
+    int32_t n_cmd_show;
+    const uint16_t* main_class;
+    const void* main_proc;      /* WNDPROC */
+    int32_t icon_id;
+    const uint16_t* caption;
+    const uint16_t* placement_key;
+    const uint16_t* placement_value;
+    void (*started)(void* user, void* hwnd);
+    void* user;
+} DimeSettingsRunParams;
+int32_t dime_settings_save_placement(void* hwnd, const uint16_t* key, const uint16_t* value);
+int32_t dime_settings_restore_placement(void* hwnd, const uint16_t* key, const uint16_t* value);
+void dime_settings_delete_placement(const uint16_t* key, const uint16_t* value);
+void dime_settings_create_brushes(const void* theme, void** brushes);
+void dime_settings_destroy_brushes(void** brushes);
+void dime_settings_shell_paint_main(void* hwnd, const DimeSettingsPaintSource* src);
+void dime_settings_shell_paint_content(void* hwnd, const DimeSettingsPaintSource* src);
+void dime_settings_shell_paint_main_into(void* hdc, int32_t w, int32_t h, const DimeSettingsPaintSource* src);
+void dime_settings_shell_paint_content_into(void* hdc, int32_t w, int32_t h, const DimeSettingsPaintSource* src);
+int32_t dime_settings_register_main_class(void* instance, const uint16_t* name, const void* proc, int32_t icon_id);
+void dime_settings_register_content_class(void* instance, const uint16_t* name, const void* proc);
+int32_t dime_settings_shell_run(const DimeSettingsRunParams* params);
+
 #ifdef __cplusplus
 }
 #endif

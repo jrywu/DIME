@@ -1940,3 +1940,140 @@ pub unsafe extern "C" fn dime_settings_create_children(
         children::create(&mut host, &*ctx_in, &list);
     })
 }
+
+// ---- Phase 5b-9d: window shell (dime-settings::shell) ----------------------
+
+use dime_settings::shell::{self, PaintSource, RunParams};
+
+/// `SettingsShell::SavePlacement`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_save_placement(hwnd: Handle, key: *const u16, value: *const u16) -> i32 {
+    guard(0, || {
+        if key.is_null() || value.is_null() {
+            return 0;
+        }
+        i32::from(shell::save_placement(hwnd, key, value))
+    })
+}
+
+/// `SettingsShell::RestorePlacement`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_restore_placement(hwnd: Handle, key: *const u16, value: *const u16) -> i32 {
+    guard(0, || {
+        if key.is_null() || value.is_null() {
+            return 0;
+        }
+        i32::from(shell::restore_placement(hwnd, key, value))
+    })
+}
+
+/// `SettingsShell::DeletePlacement`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_delete_placement(key: *const u16, value: *const u16) {
+    guard((), || {
+        if !key.is_null() && !value.is_null() {
+            shell::delete_placement(key, value)
+        }
+    })
+}
+
+/// `SettingsShell::CreateBrushes`: `brushes` is HBRUSH[3].
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_create_brushes(theme: *const ThemeColors, brushes: *mut [Handle; 3]) {
+    guard((), || unsafe {
+        if !theme.is_null() && !brushes.is_null() {
+            *brushes = shell::create_brushes(&*theme);
+        }
+    })
+}
+
+/// `SettingsShell::DestroyBrushes`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_destroy_brushes(brushes: *mut [Handle; 3]) {
+    guard((), || unsafe {
+        if !brushes.is_null() {
+            shell::destroy_brushes(&mut *brushes);
+        }
+    })
+}
+
+/// `SettingsShell::PaintMain`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_shell_paint_main(hwnd: Handle, src: *const PaintSource) {
+    guard((), || unsafe {
+        if !src.is_null() {
+            shell::paint_main(hwnd, &*src);
+        }
+    })
+}
+
+/// `SettingsShell::PaintContent`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_shell_paint_content(hwnd: Handle, src: *const PaintSource) {
+    guard((), || unsafe {
+        if !src.is_null() {
+            shell::paint_content(hwnd, &*src);
+        }
+    })
+}
+
+/// `SettingsShell::PaintMainInto`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_shell_paint_main_into(hdc: Handle, w: i32, h: i32, src: *const PaintSource) {
+    guard((), || unsafe {
+        if !src.is_null() {
+            shell::paint_main_into(hdc, w, h, &*src);
+        }
+    })
+}
+
+/// `SettingsShell::PaintContentInto`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_shell_paint_content_into(hdc: Handle, w: i32, h: i32, src: *const PaintSource) {
+    guard((), || unsafe {
+        if !src.is_null() {
+            shell::paint_content_into(hdc, w, h, &*src);
+        }
+    })
+}
+
+/// `SettingsShell::RegisterMainClass`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_register_main_class(
+    instance: Handle,
+    name: *const u16,
+    proc_: *const c_void,
+    icon_id: i32,
+) -> i32 {
+    guard(0, || {
+        if name.is_null() {
+            return 0;
+        }
+        i32::from(shell::register_main_class(instance, name, proc_, icon_id))
+    })
+}
+
+/// `SettingsShell::RegisterContentClass`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_register_content_class(
+    instance: Handle,
+    name: *const u16,
+    proc_: *const c_void,
+) {
+    guard((), || {
+        if !name.is_null() {
+            shell::register_content_class(instance, name, proc_)
+        }
+    })
+}
+
+/// `SettingsShell::Run`. -1 for a null `params`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_shell_run(params: *const RunParams) -> i32 {
+    guard(-1, || unsafe {
+        if params.is_null() {
+            return -1;
+        }
+        shell::run(&*params)
+    })
+}

@@ -29,9 +29,6 @@ public:
     // Create and show the settings window. Returns 0 on success.
     static int Run(HINSTANCE hInstance, int nCmdShow, IME_MODE initialMode);
 
-    // Register the window class. Called once.
-    static bool RegisterWindowClass(HINSTANCE hInstance);
-
 private:
     // Window procedure
     static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
