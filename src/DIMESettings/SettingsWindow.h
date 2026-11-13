@@ -14,6 +14,7 @@
 #include "SettingsLifecycle.h"
 #include "SettingsFrame.h"
 #include "SettingsDriver.h"
+#include "SettingsApp.h"
 
 // Window class name for FindWindow / single-instance support
 constexpr wchar_t SETTINGS_WND_CLASS[] = L"DIMESettingsMainClass";
@@ -26,8 +27,21 @@ constexpr wchar_t SETTINGS_WND_CLASS[] = L"DIMESettingsMainClass";
 // ============================================================================
 class SettingsWindow {
 public:
-    // Create and show the settings window. Returns 0 on success.
+    // Create and show the settings window over SettingsApp::ConfigHost and
+    // run its message loop (the Rust window under DIME_USE_RUST_CONFIG).
     static int Run(HINSTANCE hInstance, int nCmdShow, IME_MODE initialMode);
+    // The C++ window over any app host (Run without DIME_USE_RUST_CONFIG).
+    static int RunCpp(SettingsApp::Host* app, HINSTANCE hInstance, int nCmdShow, IME_MODE initialMode,
+        const wchar_t* caption);
+
+    // Tests: the window as Run creates it (classes and placement value of the
+    // test's choosing), without showing it or running a message loop.
+    static HWND CreateForTest(SettingsApp::Host* app, HINSTANCE hInstance, IME_MODE initialMode,
+        const wchar_t* caption, const wchar_t* mainClass, const wchar_t* contentClass,
+        const wchar_t* placementKey, const wchar_t* placementValue);
+    static bool StateForTest(HWND hMain, SettingsDriver::State* state, SettingsSnapshot* snapshot);
+    // Paint the main window (or, with content, the content area hWnd) into target.
+    static void PaintForTest(HWND hWnd, HDC target, int w, int h, bool content);
 
 private:
     // Window procedure
@@ -55,8 +69,12 @@ public:
         // Settings snapshot
         SettingsSnapshot snapshot;
 
-        // Composition engine for custom table validation (ValidateCompositionKeyCharFull)
-        CCompositionProcessorEngine* pEngine;
+        // CConfig, the engine, paths (SettingsApp::Host), and where this
+        // window's classes and placement live.
+        SettingsApp::Host* app;
+        const wchar_t* contentClass;
+        const wchar_t* placementKey;
+        const wchar_t* placementValue;
 
         // Content area
         HWND hContentArea;
@@ -89,7 +107,8 @@ public:
         std::vector<ControlHandle> controlHandles;
 
         WindowData() : SettingsDriver::State{}, hInstance(nullptr), micaActive(false),
-            theme{}, snapshot{}, pEngine(nullptr), hContentArea(nullptr),
+            theme{}, snapshot{}, app(nullptr), contentClass(nullptr), placementKey(nullptr),
+            placementValue(nullptr), hContentArea(nullptr),
             ctLastLineCount(0), ctLastEditedLine(-1), ctKeystrokeCount(0),
             hBrushSidebarBg(nullptr), hBrushContentBg(nullptr), hBrushCardBg(nullptr),
             hFontTitle(nullptr), hFontCardHeader(nullptr), hFontBody(nullptr), hFontDesc(nullptr),

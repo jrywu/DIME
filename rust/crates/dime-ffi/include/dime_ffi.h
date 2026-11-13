@@ -1718,6 +1718,59 @@ int32_t dime_settings_register_main_class(void* instance, const uint16_t* name, 
 void dime_settings_register_content_class(void* instance, const uint16_t* name, const void* proc);
 int32_t dime_settings_shell_run(const DimeSettingsRunParams* params);
 
+/* ---- Settings window (phase 5b-9e, dime-settings::window)
+ * The Rust-owned settings window. Everything it needs from C++ (CConfig,
+ * the composition engine's key check, the table parser, custom-table paths,
+ * the reverse-conversion list, the themed message box) comes through
+ * DimeSettingsAppVtbl over a SettingsApp::Host (ctx). Strings returned
+ * through (buf, cap) return the full length and write up to cap - 1 units
+ * plus a NUL. Snapshots are SettingsSnapshot. The order must match
+ * SettingsApp.cpp (kVtbl) and settings_window.rs (AppVtbl). Callbacks must
+ * not throw.
+ */
+typedef struct DimeSettingsAppVtbl {
+    uint32_t (*dpi_for_window)(void* ctx, void* hwnd);
+    int32_t (*system_dark)(void* ctx);
+    int32_t (*show_message)(void* ctx, void* parent, const uint16_t* text, const uint16_t* caption, uint32_t type);
+    void (*load_config)(void* ctx, int32_t mode);
+    void (*write_config)(void* ctx, int32_t mode);
+    void (*reset_all_defaults)(void* ctx, int32_t mode);
+    int32_t (*color_mode)(void* ctx);
+    void (*set_color_mode)(void* ctx, int32_t color_mode);
+    void (*load_colors_for_mode)(void* ctx, int32_t color_mode);
+    void (*save_colors_for_mode)(void* ctx, int32_t color_mode);
+    void (*get_colors)(void* ctx, uint32_t* out6);
+    void (*set_color)(void* ctx, int32_t index, uint32_t color);
+    void (*set_reverse_selection)(void* ctx, int32_t sel);
+    void (*enumerate_reverse_providers)(void* ctx);
+    int32_t (*reverse_count)(void* ctx);
+    size_t (*reverse_description)(void* ctx, int32_t index, uint16_t* buf, size_t cap);
+    int32_t (*reverse_is_current)(void* ctx, int32_t index);
+    int32_t (*reverse_is_null)(void* ctx);
+    void (*load_snapshot)(void* ctx, void* out);
+    void (*apply_snapshot)(void* ctx, const void* snapshot);
+    int32_t (*parse_cin)(void* ctx, const uint16_t* src, const uint16_t* dst, int32_t custom_table);
+    void (*recreate_engine)(void* ctx, int32_t mode);
+    void (*destroy_engine)(void* ctx);
+    int32_t (*has_engine)(void* ctx);
+    int32_t (*engine_char_ok)(void* ctx, uint16_t ch);
+    size_t (*custom_table_txt_path)(void* ctx, int32_t mode, uint16_t* buf, size_t cap);
+    size_t (*custom_table_cin_path)(void* ctx, int32_t mode, uint16_t* buf, size_t cap);
+    size_t (*app_data_path)(void* ctx, uint16_t* buf, size_t cap);
+    int32_t (*windows_1809_or_later)(void* ctx);
+} DimeSettingsAppVtbl;
+/* SettingsWindow::Run: register the classes, create and show the window
+ * (saved placement or n_cmd_show), run the message loop. */
+int32_t dime_settings_window_run(const DimeSettingsAppVtbl* vtbl, void* app, void* instance, int32_t n_cmd_show,
+    int32_t mode, const uint16_t* caption, int32_t icon_id);
+/* Tests: SettingsWindow::CreateForTest / StateForTest / PaintForTest. state
+ * is SettingsDriver::State, snapshot SettingsSnapshot (either may be null). */
+void* dime_settings_window_create(const DimeSettingsAppVtbl* vtbl, void* app, void* instance, int32_t mode,
+    const uint16_t* caption, const uint16_t* main_class, const uint16_t* content_class,
+    const uint16_t* placement_key, const uint16_t* placement_value, int32_t icon_id);
+int32_t dime_settings_window_state(void* hwnd, void* state, void* snapshot);
+void dime_settings_window_paint(void* hwnd, void* hdc, int32_t w, int32_t h, int32_t content);
+
 #ifdef __cplusplus
 }
 #endif

@@ -180,20 +180,39 @@ fn more(count: i32) -> &'static str {
     }
 }
 
-fn font_dialog(host: &mut dyn Host, s: &mut SettingsSnapshot) {
+/// A short-lived view of the window's snapshot. Host calls may read it (a
+/// rebuild re-reads the snapshot), so no reference outlives a statement.
+///
+/// # Safety
+/// `s` points at a live snapshot; the result is dropped before the next
+/// host call.
+unsafe fn snap<'a>(s: *mut SettingsSnapshot) -> &'a mut SettingsSnapshot {
+    // SAFETY: per the contract above.
+    unsafe { &mut *s }
+}
+
+unsafe fn font_dialog(host: &mut dyn Host, s: *mut SettingsSnapshot) {
     let lp_y = host.log_pixels_y();
     let mut lf = LogFont::default();
-    copy_face(&mut lf.face_name, &s.font_face_name);
-    lf.height = -mul_div(s.font_size as i32, lp_y, 72);
-    lf.weight = s.font_weight as i32;
-    lf.italic = s.font_italic as u8;
+    {
+        // SAFETY: `s` is live; no host call while this borrow exists.
+        let sn = unsafe { snap(s) };
+        copy_face(&mut lf.face_name, &sn.font_face_name);
+        lf.height = -mul_div(sn.font_size as i32, lp_y, 72);
+        lf.weight = sn.font_weight as i32;
+        lf.italic = sn.font_italic as u8;
+    }
     lf.char_set = DEFAULT_CHARSET;
     let mut pt10 = 0;
     if host.choose_font(&mut lf, &mut pt10) {
-        copy_face(&mut s.font_face_name, &lf.face_name);
-        s.font_size = (pt10 / 10) as u32;
-        s.font_weight = lf.weight as u32;
-        s.font_italic = i32::from(lf.italic);
+        {
+            // SAFETY: as above.
+            let sn = unsafe { snap(s) };
+            copy_face(&mut sn.font_face_name, &lf.face_name);
+            sn.font_size = (pt10 / 10) as u32;
+            sn.font_weight = lf.weight as u32;
+            sn.font_italic = i32::from(lf.italic);
+        }
         host.apply_and_save();
         host.rebuild();
         host.invalidate_content(false);
@@ -201,11 +220,13 @@ fn font_dialog(host: &mut dyn Host, s: &mut SettingsSnapshot) {
     }
 }
 
-fn reset_defaults(host: &mut dyn Host, s: &mut SettingsSnapshot, mode: i32) {
+unsafe fn reset_defaults(host: &mut dyn Host, s: *mut SettingsSnapshot, mode: i32) {
     host.reset_all_defaults(mode);
     host.write_config(mode);
     host.load_config(mode);
-    *s = host.load_snapshot();
+    let fresh = host.load_snapshot();
+    // SAFETY: as above.
+    unsafe { *snap(s) = fresh };
     host.rebuild();
     host.invalidate_content(false);
     host.update_content();
@@ -315,15 +336,24 @@ fn import_custom_table(host: &mut dyn Host) {
 /// `SettingsCommand::Cpp::Handle`.
 /// `set_grid` writes the window's `colorGridExpanded` at once: `host.rebuild()`
 /// reads it during the call.
-pub fn handle(host: &mut dyn Host, s: &mut SettingsSnapshot, set_grid: &mut dyn FnMut(bool), ev: &CommandEvent) {
+/// `SettingsCommand::Handle`. The snapshot is read and written in place
+/// through `s` (host calls may read it, e.g. a rebuild); `set_grid` writes
+/// the window's colour grid flag.
+///
+/// # Safety
+/// `s` points at the window's live snapshot for the whole call, and nothing
+/// else holds a reference to it across a host call.
+pub unsafe fn handle(host: &mut dyn Host, s: *mut SettingsSnapshot, set_grid: &mut dyn FnMut(bool), ev: &CommandEvent) {
     let notify = ev.notify_code;
     let ctrl_id = ev.ctrl_id;
 
     if notify == BN_CLICKED {
         let btn_id = ctrl_id - 3000;
         match find_action(btn_id) {
-            ACT_FONT => font_dialog(host, s),
-            ACT_RESET => reset_defaults(host, s, ev.mode),
+            // SAFETY: forwarded contract.
+            ACT_FONT => unsafe { font_dialog(host, s) },
+            // SAFETY: forwarded contract.
+            ACT_RESET => unsafe { reset_defaults(host, s, ev.mode) },
             ACT_LOAD => load_table(host, btn_id),
             ACT_SAVE => save_custom_table(host, ev.mode),
             ACT_EXPORT => export_custom_table(host),
@@ -341,7 +371,8 @@ pub fn handle(host: &mut dyn Host, s: &mut SettingsSnapshot, set_grid: &mut dyn 
             host.update_line_count();
         } else if id == CTRL_MAX_CODES {
             if let Some(val) = parse_max_codes(Some(until_nul(&ev.edit_text))) {
-                s.max_codes = val;
+                // SAFETY: forwarded contract.
+                unsafe { snap(s).max_codes = val };
                 host.apply_and_save();
             }
         }
@@ -351,24 +382,29 @@ pub fn handle(host: &mut dyn Host, s: &mut SettingsSnapshot, set_grid: &mut dyn 
         let id = ctrl_id - 3000;
         let sel = ev.combo_sel;
         if sel != CB_ERR {
+            // SAFETY (each `snap`): forwarded contract; no host call while borrowed.
             match id {
-                CTRL_COLOR_MODE => s.color_mode = ev.combo_item_data,
-                CTRL_ARRAY_SCOPE => s.array_scope = ev.combo_item_data,
+                CTRL_COLOR_MODE => unsafe { snap(s).color_mode = ev.combo_item_data },
+                CTRL_ARRAY_SCOPE => unsafe { snap(s).array_scope = ev.combo_item_data },
                 CTRL_REVERSE_CONVERSION => host.set_reverse_conversion_selection(sel),
-                _ => sync_combo(s, id, sel),
+                _ => sync_combo(unsafe { snap(s) }, id, sel),
             }
             if id == CTRL_COLOR_MODE {
-                set_grid(s.color_mode == 3);
-                host.set_color_mode(s.color_mode);
+                let color_mode = unsafe { snap(s).color_mode };
+                set_grid(color_mode == 3);
+                host.set_color_mode(color_mode);
                 host.write_config(ev.mode);
-                host.load_colors_for_mode(s.color_mode);
+                host.load_colors_for_mode(color_mode);
                 let c = host.get_colors();
-                s.item_color = c[0];
-                s.selected_color = c[1];
-                s.item_bg_color = c[2];
-                s.phrase_color = c[3];
-                s.number_color = c[4];
-                s.selected_bg_color = c[5];
+                {
+                    let sn = unsafe { snap(s) };
+                    sn.item_color = c[0];
+                    sn.selected_color = c[1];
+                    sn.item_bg_color = c[2];
+                    sn.phrase_color = c[3];
+                    sn.number_color = c[4];
+                    sn.selected_bg_color = c[5];
+                }
                 host.rebuild();
             } else {
                 host.apply_and_save();
@@ -381,27 +417,35 @@ pub fn handle(host: &mut dyn Host, s: &mut SettingsSnapshot, set_grid: &mut dyn 
     if notify == STN_CLICKED || (notify == BN_CLICKED && (4000..4006).contains(&ctrl_id)) {
         let idx = ctrl_id - 4000;
         if (0..6).contains(&idx) {
-            let current = match idx {
-                0 => s.item_color,
-                1 => s.selected_color,
-                2 => s.item_bg_color,
-                3 => s.phrase_color,
-                4 => s.number_color,
-                _ => s.selected_bg_color,
+            // SAFETY (each `snap`): forwarded contract; no host call while borrowed.
+            let current = {
+                let sn = unsafe { snap(s) };
+                match idx {
+                    0 => sn.item_color,
+                    1 => sn.selected_color,
+                    2 => sn.item_bg_color,
+                    3 => sn.phrase_color,
+                    4 => sn.number_color,
+                    _ => sn.selected_bg_color,
+                }
             };
             let mut rgb = current;
             if host.choose_color(&mut rgb) {
-                match idx {
-                    0 => s.item_color = rgb,
-                    1 => s.selected_color = rgb,
-                    2 => s.item_bg_color = rgb,
-                    3 => s.phrase_color = rgb,
-                    4 => s.number_color = rgb,
-                    _ => s.selected_bg_color = rgb,
-                }
-                host.load_colors_for_mode(s.color_mode);
+                let color_mode = {
+                    let sn = unsafe { snap(s) };
+                    match idx {
+                        0 => sn.item_color = rgb,
+                        1 => sn.selected_color = rgb,
+                        2 => sn.item_bg_color = rgb,
+                        3 => sn.phrase_color = rgb,
+                        4 => sn.number_color = rgb,
+                        _ => sn.selected_bg_color = rgb,
+                    }
+                    sn.color_mode
+                };
+                host.load_colors_for_mode(color_mode);
                 host.set_color(idx, rgb);
-                host.save_colors_for_mode(s.color_mode);
+                host.save_colors_for_mode(color_mode);
                 host.apply_and_save();
                 host.invalidate_swatch(idx);
                 host.invalidate_content(false);

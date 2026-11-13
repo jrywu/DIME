@@ -13,7 +13,6 @@
 
 use std::ffi::c_void;
 use std::ptr::{null, null_mut};
-use std::sync::atomic::{AtomicBool, Ordering};
 
 use dime_config::geometry::ThemeColors;
 
@@ -112,6 +111,7 @@ windows_link::link!("user32.dll" "system" fn ReleaseDC(h: Handle, hdc: Handle) -
 windows_link::link!("user32.dll" "system" fn LoadCursorW(inst: Handle, name: *const u16) -> Handle);
 windows_link::link!("user32.dll" "system" fn LoadIconW(inst: Handle, name: *const u16) -> Handle);
 windows_link::link!("user32.dll" "system" fn RegisterClassExW(wc: *const WndClassEx) -> u16);
+windows_link::link!("user32.dll" "system" fn GetClassInfoExW(inst: Handle, name: *const u16, wc: *mut WndClassEx) -> i32);
 windows_link::link!("user32.dll" "system" fn CreateWindowExW(ex: u32, class: *const u16, name: *const u16, style: u32, x: i32, y: i32, w: i32, h: i32, parent: Handle, menu: Handle, inst: Handle, param: *mut c_void) -> Handle);
 windows_link::link!("user32.dll" "system" fn ShowWindow(h: Handle, cmd: i32) -> i32);
 windows_link::link!("user32.dll" "system" fn UpdateWindow(h: Handle) -> i32);
@@ -385,17 +385,18 @@ pub fn register_main_class(instance: Handle, name: *const u16, proc_: *const c_v
     }
 }
 
-static CONTENT_REGISTERED: AtomicBool = AtomicBool::new(false);
-
-/// `SettingsShell::RegisterContentClass`: once per process.
+/// `SettingsShell::RegisterContentClass`: nothing when a class with that
+/// name is already registered.
 pub fn register_content_class(instance: Handle, name: *const u16, proc_: *const c_void) {
-    if CONTENT_REGISTERED.load(Ordering::Relaxed) {
-        return;
+    // SAFETY: NUL-terminated name; `existing` is a WNDCLASSEXW to fill.
+    unsafe {
+        let mut existing = class(instance, name, proc_, null_mut());
+        if GetClassInfoExW(instance, name, &mut existing) != 0 {
+            return;
+        }
+        let wc = class(instance, name, proc_, null_mut());
+        RegisterClassExW(&wc);
     }
-    let wc = class(instance, name, proc_, null_mut());
-    // SAFETY: NUL-terminated name.
-    unsafe { RegisterClassExW(&wc) };
-    CONTENT_REGISTERED.store(true, Ordering::Relaxed);
 }
 
 /// `SettingsShell::Run`: -1 when the window cannot be created (GDI+ is then

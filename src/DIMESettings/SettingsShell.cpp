@@ -142,8 +142,8 @@ bool RegisterMainClass(HINSTANCE instance, const wchar_t* name, WNDPROC proc, in
 
 void RegisterContentClass(HINSTANCE instance, const wchar_t* name, WNDPROC proc)
 {
-    static bool registered = false;
-    if (registered) return;
+    WNDCLASSEXW existing = { sizeof(existing) };
+    if (GetClassInfoExW(instance, name, &existing)) return;
     WNDCLASSEXW wcex = {};
     wcex.cbSize = sizeof(WNDCLASSEX);
     wcex.style = CS_HREDRAW | CS_VREDRAW;
@@ -152,7 +152,6 @@ void RegisterContentClass(HINSTANCE instance, const wchar_t* name, WNDPROC proc)
     wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
     wcex.lpszClassName = name;
     RegisterClassExW(&wcex);
-    registered = true;
 }
 
 int Run(const RunParams& p)

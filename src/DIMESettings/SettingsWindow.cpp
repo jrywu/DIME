@@ -42,6 +42,11 @@
 #include "SettingsControls.h"
 #include "SettingsChildren.h"
 #include "SettingsShell.h"
+#include "SettingsApp.h"
+#include "SettingsDriver.h"
+#if defined(DIME_RUST_AVAILABLE) || defined(DIME_USE_RUST_CONFIG)
+#include "dime_ffi.h"
+#endif
 
 #include <Richedit.h>
 #include <MLang.h>
@@ -66,11 +71,15 @@
 #define IDC_CONTENT_AREA 2000
 static const wchar_t CONTENT_WND_CLASS[] = L"DIMESettingsContentArea";
 
-// ThemedMessageBox — owner-drawn MessageBox replacement (SettingsMsgBox.*).
-static int ThemedMessageBox(HWND hParent, const wchar_t* text, const wchar_t* caption, UINT type)
-{
-    return SettingsMsgBox::Show(hParent, text, caption, type);
-}
+// What the next window created on this thread uses (SettingsWindow::Run /
+// CreateForTest set it before CreateWindowEx; WM_CREATE takes it).
+struct PendingWindow {
+    SettingsApp::Host* app;
+    const wchar_t* contentClass;
+    const wchar_t* placementKey;
+    const wchar_t* placementValue;
+};
+static thread_local const PendingWindow* s_pending = nullptr;
 
 // ============================================================================
 // ValidateCustomTableBuffer — fast in-memory validator (issue #130).
@@ -101,7 +110,7 @@ static void ValidateViewport(HWND hRE, SettingsWindow::WindowData* wd)
 {
     if (!hRE || !wd) return;
     SettingsEditor::EditorContext ctx = { (int)wd->Mode(), wd->snapshot.maxCodes,
-        wd->isDark ? 1 : 0, wd->pEngine };
+        wd->isDark ? 1 : 0, wd->app->Engine() };
     SettingsEditor::ValidateViewport(hRE, ctx);
 }
 
@@ -113,9 +122,6 @@ static void EnableSaveButton(SettingsWindow::WindowData* wd, BOOL enable)
     if (hSaveBtn) EnableWindow(hSaveBtn, enable);
 }
 
-// Custom table path helpers — delegated to SettingsModel
-#define GetCustomTableTxtPath  SettingsModel::GetCustomTableTxtPath
-#define GetCustomTableCINPath  SettingsModel::GetCustomTableCINPath
 
 // ============================================================================
 // Helper: create a font
@@ -205,8 +211,8 @@ HWND SettingsWindow::FindControl(WindowData* wd, SettingsControlId id)
 
 void SettingsWindow::ApplyAndSave(WindowData* wd)
 {
-    SettingsModel::ApplyToConfig(wd->snapshot);
-    CConfig::WriteConfig(wd->Mode());
+    wd->app->ApplySnapshot(wd->snapshot);
+    wd->app->WriteConfig((int)wd->Mode());
 }
 
 // ============================================================================
@@ -225,8 +231,8 @@ public:
         return (i >= 0 && i < (int)wd->controlHandles.size()) ? wd->controlHandles[i].hWnd : nullptr;
     }
 
-    UINT MainDpi() override { return CConfig::GetDpiForHwnd(hMain); }
-    UINT ContentDpi() override { return CConfig::GetDpiForHwnd(Content()); }
+    UINT MainDpi() override { return wd->app->DpiForWindow(hMain); }
+    UINT ContentDpi() override { return wd->app->DpiForWindow(Content()); }
     bool HasContent() override { return Content() != nullptr; }
     void MainClient(int& w, int& h) override
     {
@@ -241,7 +247,7 @@ public:
         return rc.bottom;
     }
     int VScrollWidth() override { return GetSystemMetrics(SM_CXVSCROLL); }
-    bool SystemDark() override { return CConfig::IsSystemDarkTheme() != FALSE; }
+    bool SystemDark() override { return wd->app->SystemDark(); }
     int ColorMode() override { return wd->snapshot.colorMode; }
     bool SaveEnabled() override
     {
@@ -347,8 +353,8 @@ public:
     }
     void CreateContent(int x, int y, int w, int h) override
     {
-        SettingsShell::RegisterContentClass(wd->hInstance, CONTENT_WND_CLASS, SettingsWindow::ContentWndProc);
-        wd->hContentArea = CreateWindowExW(0, CONTENT_WND_CLASS, nullptr,
+        SettingsShell::RegisterContentClass(wd->hInstance, wd->contentClass, SettingsWindow::ContentWndProc);
+        wd->hContentArea = CreateWindowExW(0, wd->contentClass, nullptr,
             WS_CHILD | WS_VISIBLE | WS_VSCROLL | WS_CLIPCHILDREN,
             x, y, w, h, hMain, (HMENU)IDC_CONTENT_AREA, wd->hInstance, nullptr);
         SetWindowLongPtr(wd->hContentArea, GWLP_USERDATA, (LONG_PTR)wd);
@@ -377,7 +383,7 @@ public:
 
     int AskSaveBeforeBack() override
     {
-        return ThemedMessageBox(hMain,
+        return wd->app->ShowMessage(hMain,
             L"自建詞庫尚未儲存，是否要儲存後離開？\n\n[是] 儲存並離開\n[否] 不儲存離開\n[取消] 繼續編輯",
             L"自建詞庫未儲存", MB_YESNOCANCEL | MB_ICONQUESTION);
     }
@@ -392,15 +398,11 @@ public:
         SettingsModel::SyncToggleToSnapshot(wd->snapshot, (SettingsControlId)id, on);
     }
     void ApplyAndSave() override { SettingsWindow::ApplyAndSave(wd); }
-    void EnumerateReverseProviders() override { CConfig::EnumerateReverseConversionProviders(1028); }
-    void LoadConfig(int mode) override { CConfig::LoadConfig((IME_MODE)mode); }
-    void LoadColors() override { CConfig::LoadColorsForMode((IME_COLOR_MODE)CConfig::GetColorMode()); }
-    void LoadSnapshot() override { wd->snapshot = SettingsModel::LoadFromConfig(); }
-    void RecreateEngine(int mode) override
-    {
-        SettingsModel::DestroyEngine(wd->pEngine);
-        wd->pEngine = SettingsModel::CreateEngine((IME_MODE)mode);
-    }
+    void EnumerateReverseProviders() override { wd->app->EnumerateReverseProviders(); }
+    void LoadConfig(int mode) override { wd->app->LoadConfig(mode); }
+    void LoadColors() override { wd->app->LoadColorsForMode(wd->app->ColorMode()); }
+    void LoadSnapshot() override { wd->snapshot = wd->app->LoadSnapshot(); }
+    void RecreateEngine(int mode) override { wd->app->RecreateEngine(mode); }
 };
 
 void SettingsWindow::RunNav(HWND hMain, WindowData* wd, SettingsNav::NavEvent ev)
@@ -444,7 +446,7 @@ static SettingsWindowPaint::PaintContext MakePaintContext(HWND hPaint, HWND hMai
     ctx.brushSidebarBg = wd->hBrushSidebarBg;
     ctx.brushContentBg = wd->hBrushContentBg;
     ctx.iconModule = GetModuleHandleW(nullptr);
-    ctx.dpi = CConfig::GetDpiForHwnd(hMain);
+    ctx.dpi = wd->app->DpiForWindow(hMain);
     ctx.hasMDL2 = wd->hasMDL2 ? 1 : 0;
     RECT rc; GetClientRect(hPaint, &rc);
     ctx.clientW = rc.right;
@@ -497,9 +499,7 @@ void SettingsWindow::CreateControls(WindowData* wd, const std::vector<SettingsCo
         }
         std::wstring EditorPath() override
         {
-            WCHAR txtPath[MAX_PATH] = {};
-            GetCustomTableTxtPath(wd->Mode(), txtPath, MAX_PATH);
-            return txtPath;
+            return wd->app->CustomTableTxtPath((int)wd->Mode());
         }
         void EditorReady(HWND hRE, int lineCount) override
         {
@@ -528,18 +528,16 @@ void SettingsWindow::PopulateControls(WindowData* wd)
 {
     // The reverse-conversion providers are enumerated at startup and
     // filtered by LoadConfig in SwitchMode.
+    SettingsApp::Host* app = wd->app;
+    int count = app->ReverseCount();
+    std::vector<std::wstring> names;
+    for (int i = 0; i < count; i++) names.push_back(app->ReverseDescription(i));
     std::vector<SettingsPopulate::ReverseEntry> reverse;
-    CDIMEArray<LanguageProfileInfo>* infoList = CConfig::GetReverseConvervsionInfoList();
-    if (infoList) {
-        for (UINT i = 0; i < infoList->Count(); i++) {
-            reverse.push_back({ infoList->GetAt(i)->description,
-                IsEqualCLSID(CConfig::GetReverseConversionGUIDProfile(), infoList->GetAt(i)->guidProfile) != FALSE });
-        }
-    }
+    for (int i = 0; i < count; i++) reverse.push_back({ names[i].c_str(), app->ReverseIsCurrent(i) });
     SettingsPopulate::Inputs in = {};
     in.snapshot = &wd->snapshot;
-    in.windows1809OrLater = Global::isWindows1809OrLater != FALSE;
-    in.reverseIsNull = IsEqualCLSID(CConfig::GetReverseConversionGUIDProfile(), CLSID_NULL) != FALSE;
+    in.windows1809OrLater = app->Windows1809OrLater();
+    in.reverseIsNull = app->ReverseIsNull();
     in.reverse = reverse.data();
     in.reverseCount = (int)reverse.size();
     SettingsPopulate::Populate(in, &FindControlThunk, wd);
@@ -549,6 +547,22 @@ void SettingsWindow::PopulateControls(WindowData* wd)
 // Run — main entry point: SettingsShell runs the window, this sets up its data.
 // ============================================================================
 int SettingsWindow::Run(HINSTANCE hInstance, int nCmdShow, IME_MODE initialMode)
+{
+    SettingsApp::ConfigHost app;
+    WCHAR caption[128];
+    StringCchPrintfW(caption, 128, L"DIME 設定 v%d.%d.%d", BUILD_VER_MAJOR, BUILD_VER_MINOR, BUILD_COMMIT_COUNT);
+#ifdef DIME_USE_RUST_CONFIG
+    // dime-settings::window owns the window; CConfig and the engine stay here.
+    return dime_settings_window_run(static_cast<const DimeSettingsAppVtbl*>(SettingsApp::Vtbl()),
+        static_cast<SettingsApp::Host*>(&app), hInstance, nCmdShow, (int)initialMode,
+        reinterpret_cast<const uint16_t*>(caption), IDI_DIMESETTINGS);
+#else
+    return RunCpp(&app, hInstance, nCmdShow, initialMode, caption);
+#endif
+}
+
+int SettingsWindow::RunCpp(SettingsApp::Host* app, HINSTANCE hInstance, int nCmdShow, IME_MODE initialMode,
+    const wchar_t* caption)
 {
     // A local class has the member function's access to SettingsWindow.
     struct Start {
@@ -567,9 +581,8 @@ int SettingsWindow::Run(HINSTANCE hInstance, int nCmdShow, IME_MODE initialMode)
         }
     };
     Start start = { hInstance, initialMode };
-
-    WCHAR caption[128];
-    StringCchPrintfW(caption, 128, L"DIME 設定 v%d.%d.%d", BUILD_VER_MAJOR, BUILD_VER_MINOR, BUILD_COMMIT_COUNT);
+    PendingWindow pending = { app, CONTENT_WND_CLASS, SettingsShell::kPlacementKey, SettingsShell::kPlacementValue };
+    s_pending = &pending;
 
     SettingsShell::RunParams p = {};
     p.instance = hInstance;
@@ -582,7 +595,73 @@ int SettingsWindow::Run(HINSTANCE hInstance, int nCmdShow, IME_MODE initialMode)
     p.placementValue = SettingsShell::kPlacementValue;
     p.started = &Start::Started;
     p.user = &start;
-    return SettingsShell::Run(p);
+    int result = SettingsShell::Run(p);
+    s_pending = nullptr;
+    return result;
+}
+
+HWND SettingsWindow::CreateForTest(SettingsApp::Host* app, HINSTANCE hInstance, IME_MODE initialMode,
+    const wchar_t* caption, const wchar_t* mainClass, const wchar_t* contentClass,
+    const wchar_t* placementKey, const wchar_t* placementValue)
+{
+    // SettingsShell::Run without the placement, ShowWindow, and message loop.
+    PendingWindow pending = { app, contentClass, placementKey, placementValue };
+    s_pending = &pending;
+    SettingsShell::RegisterMainClass(hInstance, mainClass, WndProc, IDI_DIMESETTINGS);
+    UINT dpi = 96;
+    { HDC hdc = GetDC(nullptr); if (hdc) { dpi = GetDeviceCaps(hdc, LOGPIXELSY); ReleaseDC(nullptr, hdc); } }
+    SIZE initial = SettingsFrame::InitialSize(dpi);
+    HWND hWnd = CreateWindowExW(0, mainClass, caption, WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
+        CW_USEDEFAULT, CW_USEDEFAULT, initial.cx, initial.cy, nullptr, nullptr, hInstance, nullptr);
+    s_pending = nullptr;
+    if (!hWnd) return nullptr;
+    WindowData* wd = (WindowData*)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+    if (wd) {
+        wd->hInstance = hInstance;
+        SwitchMode(hWnd, wd, initialMode);
+    }
+    return hWnd;
+}
+
+bool SettingsWindow::StateForTest(HWND hMain, SettingsDriver::State* state, SettingsSnapshot* snapshot)
+{
+    WindowData* wd = (WindowData*)GetWindowLongPtr(hMain, GWLP_USERDATA);
+    if (!wd) return false;
+    if (state) *state = *static_cast<SettingsDriver::State*>(wd);
+    if (snapshot) *snapshot = wd->snapshot;
+    return true;
+}
+
+void SettingsWindow::PaintForTest(HWND hWnd, HDC target, int w, int h, bool content)
+{
+    // The WM_PAINT bodies (SettingsShell::Paint*Into) with this window's source.
+    class Probe {
+    public:
+        HWND hWnd, hMain;
+        WindowData* wd;
+        static int HasData(void* u) { return static_cast<Probe*>(u)->wd ? 1 : 0; }
+        static void Prepare(void* u, int content, SettingsWindowPaint::PaintContext* first,
+            SettingsWindowPaint::PaintContext* second, int* hasContent)
+        {
+            Probe* p = static_cast<Probe*>(u);
+            if (!content) {
+                *first = MakePaintContext(p->hWnd, p->hWnd, p->wd);
+                *hasContent = p->wd->hContentArea != nullptr ? 1 : 0;
+                return;
+            }
+            // Same as WM_PAINT: the open narrow sidebar hides the child controls.
+            if (p->wd->nav.sidebarNarrowMode && !p->wd->nav.sidebarCollapsed) {
+                for (auto& ch : p->wd->controlHandles)
+                    if (ch.hWnd && IsWindow(ch.hWnd)) ShowWindow(ch.hWnd, SW_HIDE);
+            }
+            *first = MakePaintContext(p->hWnd, p->hMain, p->wd);
+            *second = MakePaintContext(p->hMain, p->hMain, p->wd);
+        }
+    };
+    Probe probe = { hWnd, content ? GetParent(hWnd) : hWnd, (WindowData*)GetWindowLongPtr(hWnd, GWLP_USERDATA) };
+    SettingsShell::PaintSource src = { &probe, &Probe::HasData, &Probe::Prepare };
+    if (content) SettingsShell::PaintContentInto(target, w, h, src);
+    else SettingsShell::PaintMainInto(target, w, h, src);
 }
 
 // ============================================================================
@@ -616,10 +695,16 @@ LRESULT SettingsWindow::Dispatch(HWND hWnd, bool content, UINT msg, WPARAM wPara
             SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)wd);
             wd->hInstance = hInst;
             wd->micaActive = false; // Don't use Mica — it makes title bar translucent
+            if (s_pending) {
+                wd->app = s_pending->app;
+                wd->contentClass = s_pending->contentClass;
+                wd->placementKey = s_pending->placementKey;
+                wd->placementValue = s_pending->placementValue;
+            }
             RECT rc; GetClientRect(hWnd, &rc);
             SettingsFrame::FrameEvent ev = {};
             ev.kind = SettingsFrame::EV_CREATE;
-            ev.dpi = CConfig::GetDpiForHwnd(hWnd);
+            ev.dpi = wd->app->DpiForWindow(hWnd);
             ev.clientW = rc.right;
             ev.clientH = rc.bottom;
             RunFrame(hWnd, wd, ev);
@@ -638,7 +723,7 @@ LRESULT SettingsWindow::Dispatch(HWND hWnd, bool content, UINT msg, WPARAM wPara
         {
             SettingsFrame::FrameEvent ev = {};
             ev.kind = kind;
-            ev.dpi = CConfig::GetDpiForHwnd(hWnd);
+            ev.dpi = wd->app->DpiForWindow(hWnd);
             RunFrame(hWnd, wd, ev);
         }
         void ThemeChanged() override { Frame(SettingsFrame::EV_THEME_CHANGED); }
@@ -690,9 +775,9 @@ LRESULT SettingsWindow::Dispatch(HWND hWnd, bool content, UINT msg, WPARAM wPara
         void SetForeground() override { SetForegroundWindow(hWnd); }
         void Destroy() override
         {
-            SettingsShell::SavePlacement(hWnd, SettingsShell::kPlacementKey, SettingsShell::kPlacementValue);
             if (wd) {
-                SettingsModel::DestroyEngine(wd->pEngine);
+                SettingsShell::SavePlacement(hWnd, wd->placementKey, wd->placementValue);
+                wd->app->DestroyEngine();
                 DestroyThemeBrushes(wd);
                 DestroyFonts(wd);
                 for (auto& ch : wd->controlHandles) { if (ch.hWnd) DestroyWindow(ch.hWnd); }
@@ -722,7 +807,7 @@ LRESULT SettingsWindow::Dispatch(HWND hWnd, bool content, UINT msg, WPARAM wPara
             SettingsOwnerDraw::Context ctx = {};
             ctx.theme = wd->theme;
             ctx.fontBody = wd->hFontBody;
-            ctx.dpi = CConfig::GetDpiForHwnd(hMain);
+            ctx.dpi = wd->app->DpiForWindow(hMain);
             const SettingsSnapshot& sn = wd->snapshot;
             COLORREF swatch[6] = { sn.itemColor, sn.selectedColor, sn.itemBGColor,
                 sn.phraseColor, sn.numberColor, sn.selectedBGColor };
@@ -779,27 +864,12 @@ void SettingsWindow::HandleCommand(HWND hWnd, WindowData* wd, WPARAM wParam, LPA
         }
         int ShowMessage(const std::wstring& text, const wchar_t* caption, UINT type) override
         {
-            return ThemedMessageBox(GetParent(hWnd), text.c_str(), caption, type);
+            return wd->app->ShowMessage(GetParent(hWnd), text.c_str(), caption, type);
         }
-        std::wstring AppDataPath() override
-        {
-            WCHAR buf[MAX_PATH] = {};
-            Global::GetAppDataPath(buf, TRUE);
-            return buf;
-        }
+        std::wstring AppDataPath() override { return wd->app->AppDataPath(); }
         std::wstring DocumentsPath() override { return SettingsWinHost::DocumentsPath(); }
-        std::wstring CustomTableTxtPath(int mode) override
-        {
-            WCHAR buf[MAX_PATH] = {};
-            GetCustomTableTxtPath((IME_MODE)mode, buf, MAX_PATH);
-            return buf;
-        }
-        std::wstring CustomTableCinPath(int mode) override
-        {
-            WCHAR buf[MAX_PATH] = {};
-            GetCustomTableCINPath((IME_MODE)mode, buf, MAX_PATH);
-            return buf;
-        }
+        std::wstring CustomTableTxtPath(int mode) override { return wd->app->CustomTableTxtPath(mode); }
+        std::wstring CustomTableCinPath(int mode) override { return wd->app->CustomTableCinPath(mode); }
         bool WriteBomFile(const std::wstring& path, const std::wstring& text) override
         {
             return SettingsWinHost::WriteBomFile(path, text);
@@ -815,26 +885,19 @@ void SettingsWindow::HandleCommand(HWND hWnd, WindowData* wd, WPARAM wParam, LPA
         }
         bool ParseCin(const std::wstring& src, const std::wstring& dst, bool customTable) override
         {
-            return CConfig::parseCINFile(src.c_str(), dst.c_str(), customTable ? TRUE : FALSE) != FALSE;
+            return wd->app->ParseCin(src.c_str(), dst.c_str(), customTable);
         }
-        void ResetAllDefaults(int mode) override { CConfig::ResetAllDefaults((IME_MODE)mode); }
-        void WriteConfig(int mode) override { CConfig::WriteConfig((IME_MODE)mode); }
-        void LoadConfig(int mode) override { CConfig::LoadConfig((IME_MODE)mode); }
-        SettingsSnapshot LoadSnapshot() override { return SettingsModel::LoadFromConfig(); }
+        void ResetAllDefaults(int mode) override { wd->app->ResetAllDefaults(mode); }
+        void WriteConfig(int mode) override { wd->app->WriteConfig(mode); }
+        void LoadConfig(int mode) override { wd->app->LoadConfig(mode); }
+        SettingsSnapshot LoadSnapshot() override { return wd->app->LoadSnapshot(); }
         void ApplyAndSave() override { SettingsWindow::ApplyAndSave(wd); }
-        void SetColorMode(int m) override { CConfig::SetColorMode((IME_COLOR_MODE)m); }
-        void LoadColorsForMode(int m) override { CConfig::LoadColorsForMode((IME_COLOR_MODE)m); }
-        void GetColors(COLORREF out[6]) override
-        {
-            const ColorInfo* clrs = CConfig::GetColors();
-            for (int i = 0; i < 6; i++) out[i] = clrs[i].color;
-        }
-        void SetColor(int index, COLORREF color) override
-        {
-            const_cast<ColorInfo*>(CConfig::GetColors())[index].color = color;
-        }
-        void SaveColorsForMode(int m) override { CConfig::SaveColorsForMode((IME_COLOR_MODE)m); }
-        void SetReverseConversionSelection(int sel) override { CConfig::SetReverseConversionSelection(sel); }
+        void SetColorMode(int m) override { wd->app->SetColorMode(m); }
+        void LoadColorsForMode(int m) override { wd->app->LoadColorsForMode(m); }
+        void GetColors(COLORREF out[6]) override { wd->app->GetColors(out); }
+        void SetColor(int index, COLORREF color) override { wd->app->SetColor(index, color); }
+        void SaveColorsForMode(int m) override { wd->app->SaveColorsForMode(m); }
+        void SetReverseConversionSelection(int sel) override { wd->app->SetReverseSelection(sel); }
         void Rebuild() override { RebuildContentArea(GetParent(hWnd), wd); }
         void InvalidateContent(bool erase) override { InvalidateRect(hWnd, nullptr, erase ? TRUE : FALSE); }
         void UpdateContent() override { UpdateWindow(hWnd); }
@@ -883,7 +946,7 @@ void SettingsWindow::HandleCommand(HWND hWnd, WindowData* wd, WPARAM wParam, LPA
             wchar_t errSummary[1024] = {};
             int first = 0;
             int count = ValidateCustomTableBuffer(text.c_str(), text.size(), wd->Mode(),
-                wd->snapshot.maxCodes, wd->pEngine, &first, errSummary, _countof(errSummary), maxReport);
+                wd->snapshot.maxCodes, wd->app->Engine(), &first, errSummary, _countof(errSummary), maxReport);
             firstErrorLine = first;
             summary = errSummary;
             return count;

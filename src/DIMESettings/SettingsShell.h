@@ -70,7 +70,7 @@ void PaintContent(HWND hWnd, const PaintSource& src);
 void PaintMainInto(HDC target, int w, int h, const PaintSource& src);
 void PaintContentInto(HDC target, int w, int h, const PaintSource& src);
 bool RegisterMainClass(HINSTANCE instance, const wchar_t* name, WNDPROC proc, int iconId);
-// Once per process (later calls do nothing).
+// Does nothing when a class with that name is already registered.
 void RegisterContentClass(HINSTANCE instance, const wchar_t* name, WNDPROC proc);
 // GDI+ up, class, window, placement or nCmdShow, message loop, GDI+ down.
 // -1 when the window cannot be created; else WM_QUIT's wParam.

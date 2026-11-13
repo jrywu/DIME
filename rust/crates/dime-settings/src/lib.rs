@@ -20,7 +20,9 @@
 //! `driver.rs` (`SettingsDriver.*`); creating a page's child windows is
 //! `children.rs` (`SettingsChildren.*`); placement, brushes, paint double
 //! buffering, class registration and the message loop are `shell.rs`
-//! (`SettingsShell.*`).
+//! (`SettingsShell.*`). The window itself, its data and the hosts over
+//! them, is `window.rs` (`SettingsWindow`), reaching C++ only through
+//! `window::App` (`SettingsApp.*`).
 //! The binary comes in a later step.
 
 #[cfg(windows)]
@@ -47,4 +49,6 @@ pub mod shell;
 pub mod validate;
 #[cfg(windows)]
 pub mod winhost;
+#[cfg(windows)]
+pub mod window;
 pub mod wndproc;

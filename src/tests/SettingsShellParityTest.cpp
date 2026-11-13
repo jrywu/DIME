@@ -245,6 +245,8 @@ namespace
         PostMessageW(h, WM_CLOSE, 0, 0);
     }
 
+    LRESULT CALLBACK FailProcForClass(HWND h, UINT m, WPARAM w, LPARAM l) { return DefWindowProcW(h, m, w, l); }
+
     std::wstring ClassInfo(const wchar_t* name)
     {
         WNDCLASSEXW wc = { sizeof(wc) };
@@ -478,14 +480,18 @@ namespace DIMEUnitTests
                 UnregisterClassW(c.c_str(), inst);
                 UnregisterClassW(r.c_str(), inst);
             }
-            // The content class registers once per process: the second name never does.
-            SS::Cpp::RegisterContentClass(inst, L"DIMEShellParityContentC1", PlainProc);
-            SS::Cpp::RegisterContentClass(inst, L"DIMEShellParityContentC2", PlainProc);
-            SS::Rust::RegisterContentClass(inst, L"DIMEShellParityContentR1", PlainProc);
-            SS::Rust::RegisterContentClass(inst, L"DIMEShellParityContentR2", PlainProc);
-            Assert::AreEqual(ClassInfo(L"DIMEShellParityContentC1"), ClassInfo(L"DIMEShellParityContentR1"));
-            Assert::AreEqual(ClassInfo(L"DIMEShellParityContentC2"), ClassInfo(L"DIMEShellParityContentR2"));
-            Assert::AreEqual(std::wstring(L"none"), ClassInfo(L"DIMEShellParityContentR2"));
+            // The content class registers unless the name is taken: a second
+            // call with another procedure keeps the first registration.
+            SS::Cpp::RegisterContentClass(inst, L"DIMEShellParityContentC", PlainProc);
+            SS::Cpp::RegisterContentClass(inst, L"DIMEShellParityContentC", FailProcForClass);
+            SS::Rust::RegisterContentClass(inst, L"DIMEShellParityContentR", PlainProc);
+            SS::Rust::RegisterContentClass(inst, L"DIMEShellParityContentR", FailProcForClass);
+            Assert::AreEqual(ClassInfo(L"DIMEShellParityContentC"), ClassInfo(L"DIMEShellParityContentR"));
+            Assert::AreNotEqual(std::wstring(L"none"), ClassInfo(L"DIMEShellParityContentR"));
+            Assert::IsTrue(ClassInfo(L"DIMEShellParityContentR").find(L"proc=" + std::to_wstring((ULONG_PTR)PlainProc) + L" ")
+                != std::wstring::npos);
+            UnregisterClassW(L"DIMEShellParityContentC", inst);
+            UnregisterClassW(L"DIMEShellParityContentR", inst);
         }
 
         TEST_METHOD(Run)

@@ -931,7 +931,7 @@ pub unsafe extern "C" fn dime_settings_command_handle(
         let mut host = VtblHost { v: &*vtbl, ctx };
         // Written in place: the host's rebuild reads it during the call.
         let mut set_grid = |on: bool| *grid_expanded = i32::from(on);
-        command::handle(&mut host, &mut *snapshot, &mut set_grid, &*ev);
+        command::handle(&mut host, snapshot, &mut set_grid, &*ev);
     })
 }
 
@@ -2076,4 +2076,242 @@ pub unsafe extern "C" fn dime_settings_shell_run(params: *const RunParams) -> i3
         }
         shell::run(&*params)
     })
+}
+
+// ---- Phase 5b-9e: the Rust-owned window (dime-settings::window) ------------
+
+use dime_settings::window::{self, App};
+
+/// `DimeSettingsAppVtbl`: the order must match dime_ffi.h and
+/// SettingsApp.cpp (kVtbl).
+#[repr(C)]
+pub struct AppVtbl {
+    dpi_for_window: unsafe extern "C" fn(Ctx, Handle) -> u32,
+    system_dark: unsafe extern "C" fn(Ctx) -> i32,
+    show_message: unsafe extern "C" fn(Ctx, Handle, *const u16, *const u16, u32) -> i32,
+    load_config: unsafe extern "C" fn(Ctx, i32),
+    write_config: unsafe extern "C" fn(Ctx, i32),
+    reset_all_defaults: unsafe extern "C" fn(Ctx, i32),
+    color_mode: unsafe extern "C" fn(Ctx) -> i32,
+    set_color_mode: unsafe extern "C" fn(Ctx, i32),
+    load_colors_for_mode: unsafe extern "C" fn(Ctx, i32),
+    save_colors_for_mode: unsafe extern "C" fn(Ctx, i32),
+    get_colors: unsafe extern "C" fn(Ctx, *mut u32),
+    set_color: unsafe extern "C" fn(Ctx, i32, u32),
+    set_reverse_selection: unsafe extern "C" fn(Ctx, i32),
+    enumerate_reverse_providers: unsafe extern "C" fn(Ctx),
+    reverse_count: unsafe extern "C" fn(Ctx) -> i32,
+    reverse_description: unsafe extern "C" fn(Ctx, i32, *mut u16, usize) -> usize,
+    reverse_is_current: unsafe extern "C" fn(Ctx, i32) -> i32,
+    reverse_is_null: unsafe extern "C" fn(Ctx) -> i32,
+    load_snapshot: unsafe extern "C" fn(Ctx, *mut SettingsSnapshot),
+    apply_snapshot: unsafe extern "C" fn(Ctx, *const SettingsSnapshot),
+    parse_cin: unsafe extern "C" fn(Ctx, *const u16, *const u16, i32) -> i32,
+    recreate_engine: unsafe extern "C" fn(Ctx, i32),
+    destroy_engine: unsafe extern "C" fn(Ctx),
+    has_engine: unsafe extern "C" fn(Ctx) -> i32,
+    engine_char_ok: unsafe extern "C" fn(Ctx, u16) -> i32,
+    custom_table_txt_path: unsafe extern "C" fn(Ctx, i32, *mut u16, usize) -> usize,
+    custom_table_cin_path: unsafe extern "C" fn(Ctx, i32, *mut u16, usize) -> usize,
+    app_data_path: unsafe extern "C" fn(Ctx, *mut u16, usize) -> usize,
+    windows_1809_or_later: unsafe extern "C" fn(Ctx) -> i32,
+}
+
+/// A `SettingsApp::Host` through its vtable. The C++ host outlives the window.
+struct VtblApp {
+    v: &'static AppVtbl,
+    ctx: Ctx,
+}
+
+/// One call with room for the longest Win32 path (the thunks write at most
+/// `cap - 1` units plus a NUL and return the full length).
+fn take_string(f: impl FnOnce(*mut u16, usize) -> usize) -> Vec<u16> {
+    const CAP: usize = 32_768;
+    let mut buf = vec![0u16; CAP];
+    let len = f(buf.as_mut_ptr(), CAP);
+    buf.truncate(len.min(CAP - 1));
+    buf
+}
+
+fn z(s: &[u16]) -> Vec<u16> {
+    let mut v = s.to_vec();
+    v.push(0);
+    v
+}
+
+// SAFETY (every unsafe block below): the vtable and ctx come from C++ and
+// outlive the window; thunks do not throw; strings passed are NUL-terminated
+// copies that outlive the call.
+impl App for VtblApp {
+    fn dpi_for_window(&self, hwnd: Handle) -> u32 {
+        unsafe { (self.v.dpi_for_window)(self.ctx, hwnd) }
+    }
+    fn system_dark(&self) -> bool {
+        unsafe { (self.v.system_dark)(self.ctx) != 0 }
+    }
+    fn show_message(&self, parent: Handle, text: &[u16], caption: &[u16], mb_type: u32) -> i32 {
+        let (t, c) = (z(text), z(caption));
+        unsafe { (self.v.show_message)(self.ctx, parent, t.as_ptr(), c.as_ptr(), mb_type) }
+    }
+    fn load_config(&self, mode: i32) {
+        unsafe { (self.v.load_config)(self.ctx, mode) }
+    }
+    fn write_config(&self, mode: i32) {
+        unsafe { (self.v.write_config)(self.ctx, mode) }
+    }
+    fn reset_all_defaults(&self, mode: i32) {
+        unsafe { (self.v.reset_all_defaults)(self.ctx, mode) }
+    }
+    fn color_mode(&self) -> i32 {
+        unsafe { (self.v.color_mode)(self.ctx) }
+    }
+    fn set_color_mode(&self, color_mode: i32) {
+        unsafe { (self.v.set_color_mode)(self.ctx, color_mode) }
+    }
+    fn load_colors_for_mode(&self, color_mode: i32) {
+        unsafe { (self.v.load_colors_for_mode)(self.ctx, color_mode) }
+    }
+    fn save_colors_for_mode(&self, color_mode: i32) {
+        unsafe { (self.v.save_colors_for_mode)(self.ctx, color_mode) }
+    }
+    fn get_colors(&self) -> [u32; 6] {
+        let mut out = [0u32; 6];
+        unsafe { (self.v.get_colors)(self.ctx, out.as_mut_ptr()) };
+        out
+    }
+    fn set_color(&self, index: i32, color: u32) {
+        unsafe { (self.v.set_color)(self.ctx, index, color) }
+    }
+    fn set_reverse_selection(&self, sel: i32) {
+        unsafe { (self.v.set_reverse_selection)(self.ctx, sel) }
+    }
+    fn enumerate_reverse_providers(&self) {
+        unsafe { (self.v.enumerate_reverse_providers)(self.ctx) }
+    }
+    fn reverse_count(&self) -> i32 {
+        unsafe { (self.v.reverse_count)(self.ctx) }
+    }
+    fn reverse_description(&self, index: i32) -> Vec<u16> {
+        take_string(|b, c| unsafe { (self.v.reverse_description)(self.ctx, index, b, c) })
+    }
+    fn reverse_is_current(&self, index: i32) -> bool {
+        unsafe { (self.v.reverse_is_current)(self.ctx, index) != 0 }
+    }
+    fn reverse_is_null(&self) -> bool {
+        unsafe { (self.v.reverse_is_null)(self.ctx) != 0 }
+    }
+    fn load_snapshot(&self) -> SettingsSnapshot {
+        let mut s = SettingsSnapshot::default();
+        unsafe { (self.v.load_snapshot)(self.ctx, &mut s) };
+        s
+    }
+    fn apply_snapshot(&self, s: &SettingsSnapshot) {
+        unsafe { (self.v.apply_snapshot)(self.ctx, s) }
+    }
+    fn parse_cin(&self, src: &[u16], dst: &[u16], custom_table: bool) -> bool {
+        let (s, d) = (z(src), z(dst));
+        unsafe { (self.v.parse_cin)(self.ctx, s.as_ptr(), d.as_ptr(), i32::from(custom_table)) != 0 }
+    }
+    fn recreate_engine(&self, mode: i32) {
+        unsafe { (self.v.recreate_engine)(self.ctx, mode) }
+    }
+    fn destroy_engine(&self) {
+        unsafe { (self.v.destroy_engine)(self.ctx) }
+    }
+    fn has_engine(&self) -> bool {
+        unsafe { (self.v.has_engine)(self.ctx) != 0 }
+    }
+    fn engine_char_ok(&self, ch: u16) -> bool {
+        unsafe { (self.v.engine_char_ok)(self.ctx, ch) != 0 }
+    }
+    fn custom_table_txt_path(&self, mode: i32) -> Vec<u16> {
+        take_string(|b, c| unsafe { (self.v.custom_table_txt_path)(self.ctx, mode, b, c) })
+    }
+    fn custom_table_cin_path(&self, mode: i32) -> Vec<u16> {
+        take_string(|b, c| unsafe { (self.v.custom_table_cin_path)(self.ctx, mode, b, c) })
+    }
+    fn app_data_path(&self) -> Vec<u16> {
+        take_string(|b, c| unsafe { (self.v.app_data_path)(self.ctx, b, c) })
+    }
+    fn windows_1809_or_later(&self) -> bool {
+        unsafe { (self.v.windows_1809_or_later)(self.ctx) != 0 }
+    }
+}
+
+/// `SettingsWindow::Run` (Rust window). -1 for a null vtable.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_window_run(
+    vtbl: *const AppVtbl,
+    app: Ctx,
+    instance: Handle,
+    n_cmd_show: i32,
+    mode: i32,
+    caption: *const u16,
+    icon_id: i32,
+) -> i32 {
+    guard(-1, || unsafe {
+        if vtbl.is_null() {
+            return -1;
+        }
+        let a = Box::new(VtblApp { v: &*vtbl, ctx: app });
+        window::run(a, instance, n_cmd_show, mode, wstr(caption), icon_id)
+    })
+}
+
+/// `SettingsWindow::CreateForTest` (Rust window). Null for a null vtable.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_window_create(
+    vtbl: *const AppVtbl,
+    app: Ctx,
+    instance: Handle,
+    mode: i32,
+    caption: *const u16,
+    main_class: *const u16,
+    content_class: *const u16,
+    placement_key: *const u16,
+    placement_value: *const u16,
+    icon_id: i32,
+) -> Handle {
+    guard(null_mut(), || unsafe {
+        if vtbl.is_null() || main_class.is_null() || content_class.is_null() {
+            return null_mut();
+        }
+        let a = Box::new(VtblApp { v: &*vtbl, ctx: app });
+        window::create(
+            a,
+            instance,
+            mode,
+            wstr(caption),
+            wstr(main_class),
+            wstr(content_class),
+            wstr(placement_key),
+            wstr(placement_value),
+            icon_id,
+        )
+    })
+}
+
+/// `SettingsWindow::StateForTest`: 0 when the window has no data.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_window_state(
+    hwnd: Handle,
+    state: *mut DriverState,
+    snapshot: *mut SettingsSnapshot,
+) -> i32 {
+    guard(0, || unsafe {
+        match window::state(hwnd) {
+            Some((st, sn)) => {
+                write(state, st);
+                write(snapshot, sn);
+                1
+            }
+            None => 0,
+        }
+    })
+}
+
+/// `SettingsWindow::PaintForTest`.
+#[no_mangle]
+pub unsafe extern "C" fn dime_settings_window_paint(hwnd: Handle, hdc: Handle, w: i32, h: i32, content: i32) {
+    guard((), || window::paint_into(hwnd, hdc, w, h, content != 0))
 }
