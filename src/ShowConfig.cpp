@@ -38,9 +38,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // ITfFnConfigure::Show
 //
 // Launch DIMESettings.exe. The legacy PropertySheet used to follow a failed
-// launch; phase 4e shows an error instead. ConfigDialog.cpp stays in
-// DIMESettings.exe until phase 5b. Dialog resources stay in DIME.rc because
-// DIMESettings compiles that file.
+// launch; phase 4e shows an error instead, and phase 5b-10 removed the
+// PropertySheet (ConfigDialog.cpp) and its dialog resources.
 //
 //----------------------------------------------------------------------------
 

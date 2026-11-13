@@ -135,7 +135,6 @@
     <ClCompile Include="..\BaseStructure.cpp" />
     <ClCompile Include="..\CompositionProcessorEngine.cpp" />
     <ClCompile Include="..\Config.cpp" />
-    <ClCompile Include="..\ConfigDialog.cpp" />
     <ClCompile Include="..\DictionaryParser.cpp" />
     <ClCompile Include="..\DictionarySearch.cpp" />
     <ClCompile Include="..\File.cpp" />

@@ -209,9 +209,6 @@
     <ClCompile Include="CandidateWindowIntegrationTest.cpp">
       <Filter>Source Files\Integration Tests</Filter>
     </ClCompile>
-    <ClCompile Include="SettingsDialogIntegrationTest.cpp">
-      <Filter>Source Files\Integration Tests</Filter>
-    </ClCompile>
     <ClCompile Include="TSFCoreLogicIntegrationTest.cpp">
       <Filter>Source Files\Integration Tests</Filter>
     </ClCompile>
@@ -234,9 +231,6 @@
       <Filter>Source Files\Unit Tests</Filter>
     </ClCompile>
     <ClCompile Include="..\DIMESettings\CLI.cpp">
-      <Filter>Source Files\DIME Source</Filter>
-    </ClCompile>
-    <ClCompile Include="..\\ConfigDialog.cpp">
       <Filter>Source Files\DIME Source</Filter>
     </ClCompile>
     <ClCompile Include="TestStubs.cpp">

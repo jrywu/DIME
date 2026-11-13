@@ -53,39 +53,6 @@ struct DimeSettings;
 #endif
 typedef WCHAR DimeFontFaceName[LF_FACESIZE];
 
-// Lightweight dialog context passed to property pages via PROPSHEETPAGE.lParam
-// Holds a pointer to the composition engine and whether the engine is owned
-// by the dialog (and therefore should be deleted by the dialog proc).
-struct DialogContext {
-	IME_MODE imeMode;
-	UINT maxCodes;                 // Max key length for this IME mode
-	CCompositionProcessorEngine* pEngine;
-	bool engineOwned;
-
-	// Smart validation tracking
-	int lastEditedLine;            // Track which line user is editing
-	int lastLineCount;             // Track total line count to detect paste/delete
-	int keystrokesSinceValidation; // Validate every N keystrokes
-
-	// Dark mode theme support
-	bool isDarkTheme;              // true = Windows dark mode active
-	HBRUSH hBrushBackground;       // Solid brush for dialog/static backgrounds
-	HBRUSH hBrushEditControl;      // Solid brush for edit control backgrounds
-
-	DialogContext() 
-		: imeMode(IME_MODE::IME_MODE_NONE)
-		, maxCodes(4)
-		, pEngine(nullptr)
-		, engineOwned(false)
-		, lastEditedLine(-1)
-		, lastLineCount(0)
-		, keystrokesSinceValidation(0)
-		, isDarkTheme(false)
-		, hBrushBackground(nullptr)
-		, hBrushEditControl(nullptr)
-	{}
-};
-
 #ifdef DIME_UNIT_TESTING
 // Forward declaration for unit testing
 namespace DIMEUnitTests {
@@ -323,16 +290,8 @@ public:
 	static void ResetAllDefaults(IME_MODE imeMode);
 	
 	static void SetDefaultTextFont(HWND hWnd = nullptr);
-	static BOOL ValidateCustomTableLines(HWND hDlg, IME_MODE imeMode, CCompositionProcessorEngine* pEngine, UINT maxCodes, bool showAlert = true);
 	static bool IsSystemDarkTheme();
-	static void ApplyDialogDarkTheme(HWND hDlg, bool isDark);
-	static void DrawDarkButton(LPDRAWITEMSTRUCT pdis);
-	static int CALLBACK PropSheetCallback(HWND hwndDlg, UINT uMsg, LPARAM lParam);
 
-	//configuration propertysheet dialog
-	static INT_PTR CALLBACK CommonPropertyPageWndProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
-	static INT_PTR CALLBACK DictionaryPropertyPageWndProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
-	friend void DrawColor(HWND hwnd, HDC hdc, COLORREF col);
 	
 	//DPI function pointers (loaded dynamically for backward compatibility)
 	static void SetGetDpiForMonitor(_T_GetDpiForMonitor getDpiForMonitor) {	_GetDpiForMonitor = getDpiForMonitor; }
@@ -437,12 +396,6 @@ private:
 	static _T_SetThreadDpiAwarenessContext _SetThreadDpiAwarenessContext;
 	
 
-	static IME_COLOR_MODE GetComboSelectedMode(HWND hCombo);
-
-	static void ParseConfig(HWND hDlg, IME_MODE imeMode, BOOL initDiag = FALSE);
-
-	static BOOL importCustomTableFile(_In_ HWND hDlg, _In_ LPCWSTR pathToLoad);
-	static BOOL exportCustomTableFile(_In_ HWND hDlg, IME_MODE imeMode, _In_ LPCWSTR pathToWrite);
 };
 
 #ifdef DIME_RUST_AVAILABLE

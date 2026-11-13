@@ -117,9 +117,8 @@
 
     <ClCompile Include="CandidateWindow.cpp" Condition="'$(DimeRustEnabled)'!='true'" />
     <ClCompile Include="Config.cpp" />
-    <!-- Legacy PropertySheet. Phase 4e dropped it from DIME.dll (ShowConfig shows an
-         error when DIMESettings.exe is missing). DIMESettings.exe keeps ConfigDialog.cpp
-         until phase 5b. DIME.rc dialog resources stay: DIMESettings compiles that rc. -->
+    <!-- The legacy PropertySheet (ConfigDialog.cpp) and its dialog resources were
+         removed in phase 5b-10; DIMESettings.exe is the only settings UI. -->
     <ClCompile Include="Compartment.cpp" />
     <ClCompile Include="Composition.cpp">
       <PreprocessorDefinitions Condition="'$(DiagnosticLogging)'=='true'">DEBUG_PRINT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
